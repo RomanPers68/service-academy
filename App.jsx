@@ -3895,7 +3895,7 @@ export default function ServiceAcademy() {
   const [activeModule, setActiveModule] = useState(null);
   const [activeLesson, setActiveLesson] = useState(null);
   const [completed, setCompleted] = useState({});
-  const [completedRoles, setCompletedRoles] = useState(new Set(["seasonal"]));
+  const [completedRoles, setCompletedRoles] = useState(new Set());
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
   const [practiceState, setPracticeState] = useState({ step: 0, choice: null, isAnswered: false, results: [], done: false, lives: 3, score: 0, combo: 0, situations: [], flash: null, usedIds: [] });
   const [gameKey, setGameKey] = useState(0);
@@ -3927,7 +3927,7 @@ export default function ServiceAcademy() {
       } catch(e) { clearTimeout(fallback); setStorageLoaded(true); setScreen("profile"); return; }
       try { const s = await storageGet("sa_scores"); if (s) { const saved = JSON.parse(s.value); setScores(prev => { const ids = new Set(saved.map(x => x.id)); return [...prev.filter(x => !ids.has(x.id)), ...saved]; }); } } catch(e) {}
       // quizDone загружается из Supabase ниже
-      try { const cr = await storageGet("sa_completed_roles"); if (cr) setCompletedRoles(new Set(["seasonal", ...JSON.parse(cr.value)])); } catch(e) {}
+      try { const cr = await storageGet("sa_completed_roles"); if (cr) setCompletedRoles(new Set(JSON.parse(cr.value))); } catch(e) {}
       try { const sc = await storageGet("sa_completed"); if (sc) setCompleted(JSON.parse(sc.value)); } catch(e) {}
       try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
       clearTimeout(fallback);
@@ -3967,9 +3967,9 @@ export default function ServiceAcademy() {
 
   const modules = useMemo(() => role ? MODULES[role] : [], [role]);
   const totalLessons = useMemo(() => modules.reduce((a, m) => a + m.lessons.length, 0), [modules]);
-  const doneCount = useMemo(() => Object.keys(completed).filter((k) => completed[k]).length, [completed]);
-  const progress = useMemo(() => totalLessons ? Math.round((doneCount / totalLessons) * 100) : 0, [doneCount, totalLessons]);
-
+  const roleLesonIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.map(l => l.id))), [modules]);
+  const doneCount = useMemo(() => Object.keys(completed).filter((k) => completed[k] && roleLesonIds.has(k)).length, [completed, roleLesonIds]);
+  const progress = useMemo(() => totalLessons ? Math.min(100, Math.round((doneCount / totalLessons) * 100)) : 0, [doneCount, totalLessons]);
   const navigate = useCallback((to) => { setScreen(prev => { setPrevScreen(prev); return to; }); }, []);
   const selectRole = useCallback((r) => {
     setRole(r);
@@ -4089,7 +4089,8 @@ export default function ServiceAcademy() {
           const nextIdx = ROLE_ORDER.indexOf(role) + 1;
           const nextRole = ROLE_ORDER[nextIdx];
           setCompletedRoles(prev => {
-            const updated = new Set([...prev, role, ...(nextRole ? [nextRole] : [])]);
+            const updated = new Set([...prev, role]);
+            if (nextRole) updated.add(nextRole); // разблокируем следующую
             try { localStorage.setItem("sa_completed_roles", JSON.stringify([...updated])); } catch(e) {};
             setTimeout(() => checkAndShowAchievements(scores, practiceStars, updated), 500);
             return updated;
@@ -4201,10 +4202,15 @@ export default function ServiceAcademy() {
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname}`]; return n; });
-            fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }).catch(() => {});
+            const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
+            fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
           } : null}
           onUnlockQuiz={isAdmin ? (name, surname) => {
-            fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }).catch(() => {});
+            const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
+            fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).then(() => {
+              alert(`Тесты для ${name} ${surname} разблокированы!`);
+            }).catch(() => {});
           } : null}
         />}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
@@ -4693,7 +4699,7 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
         {ROLE_ORDER.map(r => {
           const roleScores = myScores.filter(s => s.role === r);
           const avg = roleScores.length > 0 ? Math.round(roleScores.reduce((s, x) => s + x.pct, 0) / roleScores.length) : 0;
-          const done = completedRoles.has(r);
+          const done = completedRoles.has(r) && roleScores.length > 0;
           return (
             <div key={r} style={{ ...T.modCard, marginBottom:8, gap:12, opacity: done || roleScores.length > 0 ? 1 : 0.4 }}>
               <div style={{ fontSize:24, flexShrink:0 }}>{roleIcon[r]}</div>
@@ -4975,12 +4981,23 @@ function ProfileScreen({ onDone, T }) {
   );
 }
 
-function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, role, profile, completedRoles = new Set(["seasonal"]) }) {
+function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, role, profile, completedRoles = new Set() }) {
   const isAdmin = profile?.name === "RomanPersAdmin";
   const initials = isAdmin ? "👑" : profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
-  const isManager = isAdmin || profile?.position === "manager" || profile?.position === "senior";
-  const effectiveUnlocked = isManager ? new Set(ROLE_ORDER) : completedRoles;
+  const position = profile?.position || "waiter";
+
+  // Роли доступные сразу по должности (без прохождения)
+  const baseUnlocked = new Set(["seasonal"]);
+  if (isAdmin || position === "senior") {
+    ROLE_ORDER.forEach(r => baseUnlocked.add(r));
+  } else if (position === "manager") {
+    baseUnlocked.add("core");
+    baseUnlocked.add("manager");
+  }
+
+  // Добавляем разблокированные через прохождение
+  const effectiveUnlocked = new Set([...baseUnlocked, ...completedRoles]);
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ ...T.roleHeader, position:"relative", overflow:"hidden" }}>
@@ -4990,7 +5007,7 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
           <img src={a11y ? LOGO_SRC_DARK : LOGO_SRC_DARK} alt="Service Academy" style={{ width:198, height:158, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         </div>
         {profile && (
-          <div style={{ margin:"0 14px 14px", padding:"12px 16px", borderRadius:18, background:"linear-gradient(135deg, rgba(212,168,90,0.12) 0%, rgba(255,255,255,0.04) 100%)", border:"1px solid rgba(212,168,90,0.25)", display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ margin:"0 14px 14px", padding:"12px 16px", borderRadius:16, background: T.modCard.background, border:"1px solid rgba(160,120,60,0.12)", boxShadow: T.modCard.boxShadow, display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
               <span style={{ color:"#fff", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{initials}</span>
             </div>
@@ -5047,9 +5064,7 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
               className={isUnlocked ? "sa-card sa-glass" : "sa-card"}
               style={{
                 ...T.roleCard,
-                background: isUnlocked
-                  ? `linear-gradient(135deg, ${r.color}18 0%, rgba(255,255,255,0.04) 100%)`
-                  : T.roleCard.background,
+                background: T.roleCard.background,
                 borderColor: isUnlocked ? r.color+"44" : "rgba(255,255,255,0.06)",
                 opacity: isUnlocked ? 1 : 0.45,
                 cursor: isUnlocked ? "pointer" : "default",
@@ -5157,7 +5172,7 @@ function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T }) {
           const typeColor = { lesson:"#7C9E87", quiz:"#C8A96E", practice:"#8B7BAB" };
           return (
             <div key={l.id} className="sa-card sa-glass" style={{ ...T.lessCard, opacity: 1 }} onClick={() => onLesson(l)}>
-              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? "#C8A96E" : "#C8B898", fontSize: (l.type==="practice"||l.type==="quiz") ? 16 : 13, border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : "1.5px solid rgba(200,185,152,0.35)" }}>
+              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? "#C8A96E" : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
                 {done ? "✓" : l.type==="practice" ? "🎮" : l.type==="quiz" ? "📝" : i+1}
               </div>
               <div style={{ ...T.lessInfo, display:"flex", flexDirection:"column", justifyContent:"center" }}>
@@ -5668,35 +5683,37 @@ const A = {
   roleHeader: { ...S.roleHeader, background:"#F2EAD8" },
   roleSubtitle:{ ...S.roleSubtitle, color:"#2A1F0E", fontSize:22, fontWeight:"bold" },
   roleList:   { ...S.roleList, gap:10 },
-  roleCard:   { ...S.roleCard, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", boxShadow:"0 3px 16px rgba(100,70,20,0.12)" },
+  roleCard:   { ...S.roleCard, background:"#FBF5E8", border:"2px solid rgba(160,120,60,0.45)", boxShadow:"0 4px 16px rgba(100,70,20,0.18), 0 1px 4px rgba(160,120,60,0.25), inset 0 1px 0 rgba(255,240,200,0.7)", borderRadius:16 },
   roleIcon:   { ...S.roleIcon, background:"transparent" },
-  roleSublabel:{ ...S.roleSublabel, color:"#7A6548", fontSize:13 },
-  roleDesc:   { ...S.roleDesc, color:"#7A6548", fontSize:13 },
+  roleSublabel:{ ...S.roleSublabel, color:"#7A6548", fontSize:15 },
+  roleDesc:   { ...S.roleDesc, color:"#7A6548", fontSize:15 },
   roleArrow:  { ...S.roleArrow, color:"#B09060" },
-  roleQuote:  { ...S.roleQuote, color:"#7A6548", fontSize:13 },
+  roleQuote:  { ...S.roleQuote, color:"#7A6548", fontSize:15 },
 
   homeHead:   { ...S.homeHead, background:"#F2EAD8" },
   changeRoleBtn:{ ...S.changeRoleBtn, background:"transparent", border:"1px solid rgba(160,120,60,0.3)", color:"#7A6548" },
   homeRoleBadge:{ ...S.homeRoleBadge },
 
   progCard:   { ...S.progCard, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.18)", boxShadow:"0 2px 12px rgba(100,70,20,0.1)", borderRadius:16 },
-  progLabel:  { ...S.progLabel, color:"#2A1F0E", fontSize:14 },
+  progLabel:  { ...S.progLabel, color:"#2A1F0E", fontSize:16 },
   progBar:    { ...S.progBar, background:"rgba(160,120,60,0.15)" },
-  progSub:    { ...S.progSub, color:"#7A6548", fontSize:12 },
-  secTitle:   { ...S.secTitle, color:"#9A8060", fontSize:10, fontWeight:"normal" },
+  progSub:    { ...S.progSub, color:"#7A6548", fontSize:14 },
+  secTitle:   { ...S.secTitle, color:"#9A8060", fontSize:13, fontWeight:"normal" },
 
   modList:    { ...S.modList, gap:10 },
   modCard:    { ...S.modCard, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.18)", boxShadow:"0 2px 12px rgba(100,70,20,0.1)" },
   modIcon:    { ...S.modIcon, background:"transparent" },
   modTitle:   { ...S.modTitle, color:"#2A1F0E", fontSize:16, fontWeight:"bold" },
-  modSub:     { ...S.modSub, color:"#7A6548", fontSize:13 },
+  modSub:     { ...S.modSub, color:"#7A6548", fontSize:15 },
   modArrow:   { ...S.modArrow, color:"#B09060" },
-  modTag:     { ...S.modTag, fontSize:10 },
+  modTag:     { ...S.modTag, fontSize:13 },
 
   lessCard:   { ...S.lessCard, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.18)", boxShadow:"0 2px 10px rgba(100,70,20,0.1)" },
-  lessTitle:  { ...S.lessTitle, color:"#2A1F0E", fontSize:15 },
+  lessTitle:  { ...S.lessTitle, color:"#2A1F0E", fontSize:17 },
   lessArrow:  { ...S.lessArrow, color:"#B09060" },
-  lessNum:    { ...S.lessNum, fontSize:14 },
+  lessNum:    { ...S.lessNum, fontSize:16 },
+  lessNumColor: "#5A3E1B",
+  lessNumBorder: "2px solid rgba(120,80,20,0.6)",
 
   lessHead:   { ...S.lessHead, background:"#E8DEC8", borderBottom:"1px solid rgba(160,120,60,0.2)" },
   backBtn2:   { ...S.backBtn2, color:"#7A6548", fontSize:22 },
@@ -5716,15 +5733,15 @@ const A = {
   doneBtn:    { ...S.doneBtn, fontSize:17, padding:"16px", border:"1px solid rgba(160,120,60,0.3)", color:"#fff", boxShadow:"0 4px 20px rgba(100,70,20,0.2), inset 0 1px 0 rgba(255,220,140,0.2)" },
 
   quizWrap:      { ...S.quizWrap, background:"#F2EAD8" },
-  quizProgress:  { ...S.quizProgress, color:"#9A8060", fontSize:12 },
+  quizProgress:  { ...S.quizProgress, color:"#9A8060", fontSize:14 },
   quizQ:         { ...S.quizQ, color:"#2A1F0E", fontSize:18, lineHeight:1.9 },
   quizOpt:       { ...S.quizOpt, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", color:"#2A1F0E", fontSize:16, padding:"14px 16px", boxShadow:"0 2px 10px rgba(100,70,20,0.08)" },
-  explain:       { ...S.explain, color:"#2A1F0E", background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", fontSize:14 },
+  explain:       { ...S.explain, color:"#2A1F0E", background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", fontSize:16 },
   resultCircle:  { ...S.resultCircle, background:"#FBF5E8", border:"2px solid" },
   resultTxt:     { ...S.resultTxt, color:"#2A1F0E", fontSize:17 },
 
   simScen:  { ...S.simScen, background:"#FBF5E8", color:"#2A1F0E", border:"1px solid rgba(160,120,60,0.2)", boxShadow:"0 2px 12px rgba(100,70,20,0.1)", fontSize:15 },
   simQ:     { ...S.simQ, color:"#2A1F0E", fontSize:17 },
   simOpt:   { ...S.simOpt, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", color:"#2A1F0E", fontSize:16, boxShadow:"0 2px 10px rgba(100,70,20,0.08)" },
-  simFb:    { ...S.simFb, color:"#2A1F0E", background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", fontSize:14 },
+  simFb:    { ...S.simFb, color:"#2A1F0E", background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", fontSize:16 },
 };

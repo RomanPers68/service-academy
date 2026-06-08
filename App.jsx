@@ -4237,7 +4237,7 @@ export default function ServiceAcademy() {
             background: a11y ? "#F2EAD8" : "#1A1612",
             borderTop: a11y ? "1px solid rgba(160,120,60,0.3)" : "1px solid rgba(200,160,80,0.15)",
             display:"flex", alignItems:"stretch",
-            paddingBottom:"env(safe-area-inset-bottom, 10px)",
+            paddingBottom:"env(safe-area-inset-bottom, 8px)",
             backdropFilter:"blur(20px)",
             boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -2px 20px rgba(0,0,0,0.5)",
           }}>
@@ -4254,16 +4254,16 @@ export default function ServiceAcademy() {
               return (
                 <div key={tab.id} onClick={() => navigate(tab.id)}
                   style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
-                    justifyContent:"center", padding:"10px 0 6px", cursor:"pointer",
+                    justifyContent:"center", padding:"6px 4px 4px", cursor:"pointer",
                     transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
                   <div style={{
-                    fontSize: active ? 24 : 21, lineHeight:1, marginBottom:4,
+                    fontSize: active ? 22 : 19, lineHeight:1, marginBottom:3,
                     transition:"font-size 0.4s cubic-bezier(0.34,1.56,0.64,1), transform 0.4s cubic-bezier(0.34,1.56,0.64,1)",
                     transform: active ? "translateY(-1px)" : "translateY(0)",
                     filter: active ? "none" : (a11y ? "grayscale(0.2) opacity(0.75)" : "grayscale(0.3) opacity(0.55)"),
                   }}>{tab.icon}</div>
                   <div style={{
-                    fontSize: active ? 11 : 10,
+                    fontSize: active ? 10 : 9,
                     fontFamily:"Georgia, serif",
                     letterSpacing: active ? 0.4 : 0.2,
                     color: active ? accentColor : inactiveColor,

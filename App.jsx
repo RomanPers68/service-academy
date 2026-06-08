@@ -3927,8 +3927,8 @@ export default function ServiceAcademy() {
       } catch(e) { clearTimeout(fallback); setStorageLoaded(true); setScreen("profile"); return; }
       try { const s = await storageGet("sa_scores"); if (s) { const saved = JSON.parse(s.value); setScores(prev => { const ids = new Set(saved.map(x => x.id)); return [...prev.filter(x => !ids.has(x.id)), ...saved]; }); } } catch(e) {}
       // quizDone загружается из Supabase ниже
-      try { const cr = await storageGet("sa_completed_roles"); if (cr) setCompletedRoles(new Set(JSON.parse(cr.value))); } catch(e) {}
-      try { const sc = await storageGet("sa_completed"); if (sc) setCompleted(JSON.parse(sc.value)); } catch(e) {}
+      try { const uk2 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const cr = await storageGet("sa_completed_roles"+uk2); if (cr) setCompletedRoles(new Set(JSON.parse(cr.value))); } catch(e) {}
+      try { const uk3 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const sc = await storageGet("sa_completed"+uk3); if (sc) setCompleted(JSON.parse(sc.value)); } catch(e) {}
       try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
       clearTimeout(fallback);
       setStorageLoaded(true);
@@ -3974,7 +3974,7 @@ export default function ServiceAcademy() {
   const selectRole = useCallback((r) => {
     setRole(r);
     try { localStorage.setItem("sa_last_role", JSON.stringify(r)); } catch(e) {}
-    try { const d = localStorage.getItem("sa_completed"); if (d) setCompleted(JSON.parse(d)); else setCompleted({}); } catch(e) { setCompleted({}); }
+    try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; const d = localStorage.getItem("sa_completed"+uk); if (d) setCompleted(JSON.parse(d)); else setCompleted({}); } catch(e) { setCompleted({}); }
     setScreen("home");
   }, []);
   const openModule = useCallback((m) => { setActiveModule(m); setScreen("module"); }, []);
@@ -4039,7 +4039,7 @@ export default function ServiceAcademy() {
     try {
       setCompleted(prevCompleted => {
         const newCompleted = { ...prevCompleted, [activeLesson.id]: true };
-        try { localStorage.setItem("sa_completed", JSON.stringify(newCompleted)); } catch(e) {};
+        try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; localStorage.setItem("sa_completed"+uk, JSON.stringify(newCompleted)); } catch(e) {};
 
         if (activeLesson.type === "quiz" && profile) {
           const sc = quizState.answers.filter(a => a.isCorrect).length;
@@ -4091,7 +4091,7 @@ export default function ServiceAcademy() {
           setCompletedRoles(prev => {
             const updated = new Set([...prev, role]);
             if (nextRole) updated.add(nextRole); // разблокируем следующую
-            try { localStorage.setItem("sa_completed_roles", JSON.stringify([...updated])); } catch(e) {};
+            try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...updated])); } catch(e) {};
             setTimeout(() => checkAndShowAchievements(scores, practiceStars, updated), 500);
             return updated;
           });
@@ -4205,10 +4205,9 @@ export default function ServiceAcademy() {
             if (profile && profile.name === name && profile.surname === surname) {
               setCompleted({});
               setQuizDone({});
-              try { localStorage.removeItem("sa_completed"); } catch(e) {}
+              try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); } catch(e) {}
               try { localStorage.removeItem("sa_quiz_done"); } catch(e) {}
               try { localStorage.removeItem("sa_scores"); } catch(e) {}
-              try { localStorage.removeItem("sa_completed_roles"); } catch(e) {}
             }
             const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
             fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});

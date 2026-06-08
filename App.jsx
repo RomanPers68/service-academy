@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 
+// Supabase клиент через fetch
+const SUPABASE_URL = "https://gvxhgdynjuaisswplroh.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2eGhnZHluanVhaXNzd3Bscm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NjA1ODgsImV4cCI6MjA5NjQzNjU4OH0._4aLd4eb7cSfcqS9EvSwChJR-SixW2tsgn4ksCM5S3g";
+const supabase = {
+  from: (table) => ({
+    select: (cols) => fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${cols||"*"}`, { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }).then(r => r.json()).then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
+    insert: (row) => fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" }, body: JSON.stringify(row) }).then(r => r.ok ? { data: null, error: null } : r.json().then(e => ({ data: null, error: e }))).catch(error => ({ data: null, error }))
+  })
+};
+
 
 
 

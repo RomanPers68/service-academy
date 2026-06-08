@@ -4202,6 +4202,10 @@ export default function ServiceAcademy() {
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname}`]; return n; });
+            if (profile && profile.name === name && profile.surname === surname) {
+              setCompleted({});
+              setQuizDone({});
+            }
             const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
             fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});

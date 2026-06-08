@@ -4205,10 +4205,15 @@ export default function ServiceAcademy() {
             if (profile && profile.name === name && profile.surname === surname) {
               setCompleted({});
               setQuizDone({});
+              try { localStorage.removeItem("sa_completed"); } catch(e) {}
+              try { localStorage.removeItem("sa_quiz_done"); } catch(e) {}
+              try { localStorage.removeItem("sa_scores"); } catch(e) {}
+              try { localStorage.removeItem("sa_completed_roles"); } catch(e) {}
             }
             const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
             fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            navigate("roleSelect");
           } : null}
           onUnlockQuiz={isAdmin ? (name, surname) => {
             const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };

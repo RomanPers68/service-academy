@@ -4222,12 +4222,70 @@ export default function ServiceAcademy() {
           } : null}
         />}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} role={role} />}
-        {screen === "leaderboard" && <LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} />}
-        {screen === "home" && <HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} />}
-        {screen === "module" && <ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} />}
+        {screen === "roleSelect" && <div style={{paddingBottom:70}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} /></div>}
+        {screen === "glossary" && <div style={{paddingBottom:70}}><GlossaryScreen T={T} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
+        {screen === "leaderboard" && <div style={{paddingBottom:70}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "home" && <div style={{paddingBottom:70}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} /></div>}
+        {screen === "module" && <div style={{paddingBottom:70}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} />}
+
+        {/* Нижняя навигация — только на основных экранах */}
+        {["roleSelect","home","module","leaderboard","glossary","stats","daily"].includes(screen) && profile && (
+          <div style={{
+            position:"fixed", bottom:0, left:0, right:0, zIndex:200,
+            background: a11y ? "#F2EAD8" : "#1A1612",
+            borderTop: a11y ? "1px solid rgba(160,120,60,0.3)" : "1px solid rgba(200,160,80,0.15)",
+            display:"flex", alignItems:"stretch",
+            paddingBottom:"env(safe-area-inset-bottom, 10px)",
+            backdropFilter:"blur(20px)",
+            boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -2px 20px rgba(0,0,0,0.5)",
+          }}>
+            {[
+              { id:"roleSelect", icon:"🏠", label:"Главная" },
+              { id:"daily",      icon:"🎯", label:"Задания" },
+              { id:"glossary",   icon:"📖", label:"Глоссарий" },
+              { id:"leaderboard",icon:"📊", label:"Рейтинг" },
+              { id:"stats",      icon:"👤", label:"Профиль" },
+            ].map(tab => {
+              const active = screen === tab.id;
+              const accentColor = a11y ? "#6B4E1A" : "#C8A96E";
+              const inactiveColor = a11y ? "#5C3D10" : "#9A8060";
+              return (
+                <div key={tab.id} onClick={() => navigate(tab.id)}
+                  style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
+                    justifyContent:"center", padding:"10px 0 6px", cursor:"pointer",
+                    transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
+                  <div style={{
+                    fontSize: active ? 24 : 21, lineHeight:1, marginBottom:4,
+                    transition:"font-size 0.4s cubic-bezier(0.34,1.56,0.64,1), transform 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+                    transform: active ? "translateY(-1px)" : "translateY(0)",
+                    filter: active ? "none" : (a11y ? "grayscale(0.2) opacity(0.75)" : "grayscale(0.3) opacity(0.55)"),
+                  }}>{tab.icon}</div>
+                  <div style={{
+                    fontSize: active ? 11 : 10,
+                    fontFamily:"Georgia, serif",
+                    letterSpacing: active ? 0.4 : 0.2,
+                    color: active ? accentColor : inactiveColor,
+                    fontWeight: active ? "bold" : "normal",
+                    transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+                  }}>
+                    {tab.label}
+                  </div>
+                  <div style={{
+                    width: active ? 24 : 0,
+                    height: 2,
+                    borderRadius: 1,
+                    background: accentColor,
+                    marginTop: 4,
+                    transition:"width 0.45s cubic-bezier(0.34,1.56,0.64,1)",
+                    overflow:"hidden",
+                  }} />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4648,6 +4706,47 @@ function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, o
 }
 
 // ── Личная статистика ──────────────────────────────────────
+function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz }) {
+  const [showConfirm, setShowConfirm] = React.useState(false);
+  return (
+    <div style={{ ...T.modCard, marginBottom:8, gap:12, flexDirection:"column" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ flex:1 }}>
+          <div style={{ ...T.modTitle, fontSize:13 }}>{p.name} {p.surname}</div>
+          <div style={{ color:T.modSub.color, fontSize:11 }}>{p.restaurant}</div>
+        </div>
+        <div onClick={() => setShowConfirm(s => !s)}
+          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
+            background:"rgba(220,80,80,0.12)", border:"1px solid rgba(220,80,80,0.3)", color:"#e57373" }}>
+          🗑 Сбросить
+        </div>
+      </div>
+      {showConfirm && (
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <div style={{ color:"#e57373", fontSize:12, flex:1 }}>Удалить все результаты?</div>
+          <div onClick={() => { onResetPlayer(p.name, p.surname); setShowConfirm(false); }}
+            style={{ padding:"6px 14px", borderRadius:10, cursor:"pointer", fontSize:12,
+              background:"rgba(220,80,80,0.25)", border:"1px solid rgba(220,80,80,0.5)", color:"#e57373", fontWeight:"bold" }}>
+            Да
+          </div>
+          <div onClick={() => setShowConfirm(false)}
+            style={{ padding:"6px 14px", borderRadius:10, cursor:"pointer", fontSize:12,
+              background:T.modCard.background, border:"1px solid rgba(255,255,255,0.08)", color:T.modSub.color }}>
+            Нет
+          </div>
+        </div>
+      )}
+      {onUnlockQuiz && (
+        <div onClick={() => onUnlockQuiz(p.name, p.surname)}
+          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
+            background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start" }}>
+          🔓 Разблокировать тесты
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatsScreen({ T, profile, scores, completedRoles, completed, practiceStars, onBack, onResetPlayer, onUnlockQuiz }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
@@ -4760,46 +4859,9 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
           return players.length > 0 ? (
             <>
               <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:3, fontFamily:"monospace", margin:"16px 0 8px" }}>УПРАВЛЕНИЕ ДАННЫМИ</div>
-              {players.map((p, i) => {
-                const [showConfirm, setShowConfirm] = React.useState(false);
-                return (
-                  <div key={i} style={{ ...T.modCard, marginBottom:8, gap:12, flexDirection:"column" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                      <div style={{ flex:1 }}>
-                        <div style={{ ...T.modTitle, fontSize:13 }}>{p.name} {p.surname}</div>
-                        <div style={{ color:T.modSub.color, fontSize:11 }}>{p.restaurant}</div>
-                      </div>
-                      <div onClick={() => setShowConfirm(s => !s)}
-                        style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
-                          background:"rgba(220,80,80,0.12)", border:"1px solid rgba(220,80,80,0.3)", color:"#e57373" }}>
-                        🗑 Сбросить
-                      </div>
-                    </div>
-                    {showConfirm && (
-                      <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                        <div style={{ color:"#e57373", fontSize:12, flex:1 }}>Удалить все результаты?</div>
-                        <div onClick={() => { onResetPlayer(p.name, p.surname); setShowConfirm(false); }}
-                          style={{ padding:"6px 14px", borderRadius:10, cursor:"pointer", fontSize:12,
-                            background:"rgba(220,80,80,0.25)", border:"1px solid rgba(220,80,80,0.5)", color:"#e57373", fontWeight:"bold" }}>
-                          Да
-                        </div>
-                        <div onClick={() => setShowConfirm(false)}
-                          style={{ padding:"6px 14px", borderRadius:10, cursor:"pointer", fontSize:12,
-                            background:T.modCard.background, border:"1px solid rgba(255,255,255,0.08)", color:T.modSub.color }}>
-                          Нет
-                        </div>
-                      </div>
-                    )}
-                    {onUnlockQuiz && (
-                      <div onClick={() => onUnlockQuiz(p.name, p.surname)}
-                        style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
-                          background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start" }}>
-                        🔓 Разблокировать тесты
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {players.map((p, i) => (
+                <PlayerResetCard key={i} p={p} T={T} onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} />
+              ))}
             </>
           ) : null;
         })()}
@@ -4989,7 +5051,7 @@ function ProfileScreen({ onDone, T }) {
   );
 }
 
-function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, role, profile, completedRoles = new Set() }) {
+function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set() }) {
   const isAdmin = profile?.name === "RomanPersAdmin";
   const initials = isAdmin ? "👑" : profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -5028,9 +5090,6 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
               </div>
             </div>
             <div style={{ display:"flex", gap:4, flexShrink:0 }}>
-              {onStats && (
-                <div onClick={onStats} style={{ color: T.modSub.color, fontSize:18, cursor:"pointer", padding:"4px 6px" }}>📊</div>
-              )}
               {onProfile && (
                 <div onClick={onProfile} style={{ color: T.modSub.color, fontSize:18, cursor:"pointer", padding:"4px 6px" }}>✏️</div>
               )}
@@ -5043,19 +5102,7 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to left, transparent, #D4A85A55, transparent)" }} />
         </div>
 
-        {/* Баннер «Задание дня» */}
-        {onDaily && role && (
-          <div onClick={onDaily} style={{ ...T.modCard, margin:"0 14px 12px", padding:"10px 14px", borderRadius:14, cursor:"pointer",
-            border:"1px solid rgba(232,160,32,0.45)",
-            display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ fontSize:22, flexShrink:0 }}>🎯</div>
-            <div style={{ flex:1 }}>
-              <div style={{ ...T.modTitle, fontSize:14, fontWeight:"bold" }}>Задание дня</div>
-              <div style={{ color:T.modSub.color, fontSize:11 }}>3 задания · обновляются каждый день</div>
-            </div>
-            <div style={{ color:"#E8A020", fontSize:16, flexShrink:0 }}>›</div>
-          </div>
-        )}
+
 
         <div style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ ...T.roleSubtitle }}>Выбери свою роль</div>
@@ -5110,9 +5157,7 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
       </div>
 
       <div style={{ padding:"0 14px 20px", display:"flex", flexDirection:"column", gap:8 }}>
-        <button onClick={onLeaderboard} className="sa-btn" style={{ width:"100%", padding:"11px", borderRadius:14, border:"1px solid rgba(255,220,140,0.12)", background:"transparent", color:"#C8A870", fontSize:14, cursor:"pointer", fontFamily:"Georgia, serif", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <span>📊</span><span>Рейтинг сотрудников</span>
-        </button>
+
       </div>
     </div>
   );
@@ -5223,6 +5268,68 @@ function TimerBar({ duration, color, onExpire }) {
 
 function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T }) {
   const nextBtnRef = React.useRef(null);
+  const bodyRef = React.useRef(null);
+  const [scrollPct, setScrollPct] = React.useState(0);
+  const [termPopup, setTermPopup] = React.useState(null);
+  const [dialogueScreen, setDialogueScreen] = React.useState(null); // dialogue id to show
+  const handleScroll = React.useCallback(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const pct = el.scrollHeight <= el.clientHeight ? 100 : Math.min(100, Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100));
+    setScrollPct(pct);
+  }, []);
+
+  // Предварительно разбиваем ВЕСЬ текст урока на строки с подсветкой — один раз
+  // Это делается в useMemo и не пересчитывается при открытии попапа
+  const processedLines = React.useMemo(() => {
+    if (!lesson.content) return [];
+    const terms = GLOSSARY.map(g => g.term);
+    const pattern = new RegExp(`(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+    const seenTerms = new Set();
+    return lesson.content.split("\n").map((line, lineIdx) => {
+      // Нормализуем строку — убираем ** для bold и прочие маркеры чтобы совпадало с тем что рендерится
+      const normalizedLine = line.startsWith("**") && line.endsWith("**") ? line.replace(/\*\*/g,"") : line;
+      const parts = normalizedLine.split(pattern);
+      if (parts.length === 1) return { lineIdx, parts: [{ text: normalizedLine, isPlain: true }] };
+      return {
+        lineIdx,
+        parts: parts.map((part, partIdx) => {
+          const g = GLOSSARY.find(g => g.term.toLowerCase() === part.toLowerCase());
+          if (g) {
+            const key = g.term.toLowerCase();
+            if (seenTerms.has(key)) return { text: part, isPlain: true };
+            seenTerms.add(key);
+            return { text: part, isPlain: false, term: g };
+          }
+          return { text: part, isPlain: true };
+        })
+      };
+    });
+  }, [lesson.id]);
+
+  // Рендер строки с подсветкой из предвычисленных данных
+  const highlightTerms = React.useCallback((text) => {
+    if (!text || typeof text !== "string") return <span>{text}</span>;
+    // Ищем предвычисленную строку
+    const lineData = processedLines.find(l =>
+      l.parts.map(p => p.text).join("") === text
+    );
+    if (!lineData) return <span>{text}</span>;
+    return (
+      <span>
+        {lineData.parts.map((part, idx) => {
+          if (part.isPlain) return <span key={idx}>{part.text}</span>;
+          return (
+            <span key={idx}
+              onClick={e => { e.stopPropagation(); setTermPopup({ term: part.term.term, def: part.term.def }); }}
+              style={{ color, borderBottom:`1.5px dotted ${color}`, cursor:"pointer", fontWeight:"bold" }}>
+              {part.text}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }, [processedLines, color]);
   const wrappedPracticeChoice = React.useCallback((idx) => {
     onPracticeChoice(idx);
     setTimeout(() => { if (nextBtnRef.current) nextBtnRef.current.scrollIntoView({ behavior: "smooth", block: "end" }); }, 150);
@@ -5231,7 +5338,22 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
     return (
       <div style={T.screen}>
         <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div></div>
-        <div style={T.lessBody}>
+        <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:2 }} /></div>
+        <div ref={bodyRef} onScroll={handleScroll} style={T.lessBody}>
+          {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
+          {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
+            <div style={{ background:`linear-gradient(135deg, ${color||"#C8A96E"}22, ${color||"#C8A96E"}08)`, border:`2px solid ${color||"#C8A96E"}66`, borderRadius:16, padding:"14px 16px", marginBottom:18, boxShadow:`0 4px 20px ${color||"#C8A96E"}22` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+                <div style={{ fontSize:28 }}>💬</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ color: color || "#C8A96E", fontSize: T.para?.fontSize || 15, fontWeight:"bold", fontFamily:"Georgia, serif" }}>В этом уроке есть живой диалог</div>
+                </div>
+              </div>
+              <div style={{ color: T.modSub?.color || "#7A6548", fontSize: T.modSub?.fontSize || 13, lineHeight:1.6, fontFamily:"Georgia, serif" }}>
+                Нажми на <span style={{ color: color||"#C8A96E", borderBottom:`1.5px dotted ${color||"#C8A96E"}`, fontWeight:"bold" }}>выделенное слово</span> в тексте — и отработай навык в живом диалоге с гостем
+              </div>
+            </div>
+          )}
           {lesson.content.split("\n").map((line,i) => {
             if (!line.trim()) return <div key={i} style={{ height:10 }} />;
             // Тег мимодзи [mm:name] — крупная иллюстрация по центру
@@ -5241,19 +5363,48 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
             }
             // Строка только из эмодзи — отображается как крупный стикер
             if (/^[\p{Emoji}\s]+$/u.test(line.trim()) && line.trim().length <= 12) return <div key={i} style={{ fontSize:52, textAlign:"center", margin:"10px 0 4px", lineHeight:1.1 }}>{line.trim()}</div>;
-            if (line.startsWith("**") && line.endsWith("**")) return <div key={i} style={T.bold}>{line.replace(/\*\*/g,"")}</div>;
-            if (line.startsWith("•")) return <div key={i} style={T.bullet}>{line}</div>;
-            if (line.startsWith("☑")) return <div key={i} style={T.check}>{line}</div>;
-            if (line.startsWith("🚫")) return <div key={i} style={T.forbidden}>{line}</div>;
-            if (line.startsWith("✅")) return <div key={i} style={T.good}>{line}</div>;
-            if (line.startsWith("❌")) return <div key={i} style={T.bad}>{line}</div>;
-            if (line.startsWith("📌")) return <div key={i} style={T.note}>{line}</div>;
-            if (/^[1-9]️⃣|^🔵|^🟢|^🟡|^🟠|^🔵/.test(line)) return <div key={i} style={T.principle}>{line}</div>;
-            if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{line}</div>;
-            return <div key={i} style={T.para}>{line}</div>;
+            if (line.startsWith("**") && line.endsWith("**")) return <div key={i} style={T.bold}>{highlightTerms(line.replace(/\*\*/g,""))}</div>;
+            if (line.startsWith("•")) return <div key={i} style={T.bullet}>{highlightTerms(line, T.bullet)}</div>;
+            if (line.startsWith("☑")) return <div key={i} style={T.check}>{highlightTerms(line, T.check)}</div>;
+            if (line.startsWith("🚫")) return <div key={i} style={T.forbidden}>{highlightTerms(line, T.forbidden)}</div>;
+            if (line.startsWith("✅")) return <div key={i} style={T.good}>{highlightTerms(line, T.good)}</div>;
+            if (line.startsWith("❌")) return <div key={i} style={T.bad}>{highlightTerms(line, T.bad)}</div>;
+            if (line.startsWith("📌")) return <div key={i} style={T.note}>{highlightTerms(line, T.note)}</div>;
+            if (/^[1-9]️⃣|^🔵|^🟢|^🟡|^🟠|^🔵/.test(line)) return <div key={i} style={T.principle}>{highlightTerms(line, T.principle)}</div>;
+            if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
+            return <div key={i} style={T.para}>{highlightTerms(line, T.para)}</div>;
           })}
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
         </div>
+        {dialogueScreen && (
+          <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />
+        )}
+        {termPopup && (
+          <div onClick={() => setTermPopup(null)}
+            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:999, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 40px" }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ background: T.modCard?.background || "#2A1F14", borderRadius:20, padding:"20px 20px 24px", margin:"0 16px", maxWidth:440, width:"100%",
+                border:`1px solid ${color}55`, boxShadow:`0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${color}22` }}>
+              <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
+                📖 {termPopup.term}
+              </div>
+              <div style={{ color: T.modSub?.color || "#C8B898", fontSize:15, lineHeight:1.7, fontFamily:"Georgia, serif" }}>
+                {termPopup.def}
+              </div>
+              {DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()) && (
+                <div onClick={() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); }}
+                  style={{ marginTop:14, padding:"11px 16px", borderRadius:12, background:color, cursor:"pointer",
+                    textAlign:"center", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold" }}>
+                  Отработать на практике →
+                </div>
+              )}
+              <div onClick={() => setTermPopup(null)}
+                style={{ marginTop:10, textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
+                Закрыть ✕
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -5579,6 +5730,337 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
 // Green:  #5DBB8A  успех
 // Red:    #E07070  ошибка
 // ────────────────────────────────────────────────────────────
+
+// ── Глоссарий терминов ────────────────────────────────────
+const GLOSSARY = [
+  { term: "Антиципация", def: "Предугадывание потребностей гостя до того, как он попросил. Высший уровень сервиса." },
+  { term: "L.A.S.T.", def: "Метод работы с жалобами: Listen (слушай), Apologize (извинись), Solve (реши), Thank (поблагодари)." },
+  { term: "Shadow", def: "Метод обучения: новичок наблюдает за наставником и копирует его поведение — без самодеятельности и импровизации." },
+  { term: "Стоп-лист", def: "Список позиций меню, которых сегодня нет в наличии. Обновляется каждую смену на брифинге." },
+  { term: "Брифинг", def: "Короткая встреча команды перед сменой (5–15 минут). Стоп-лист, расстановка, акции, фокус дня." },
+  { term: "Pre-shift", def: "Период до открытия ресторана. Проверка зала, сервировка, брифинг, подготовка." },
+  { term: "Check Back", def: "Визит к столу через 2–3 минуты после подачи блюда: «Вам понравилось, как приготовили?»" },
+  { term: "Правило 2 пальцев", def: "Когда в бокале гостя остаётся около 1/3 — предложи повторить напиток." },
+  { term: "Правило последнего бокала", def: "Гость не должен оставаться без стекла на столе. Пустой стол создаёт ощущение, что пора уходить." },
+  { term: "Эффект края", def: "Психологический эффект: люди запоминают начало и конец визита лучше, чем середину." },
+  { term: "Парадокс восстановления сервиса", def: "Гость, который пожаловался и получил быстрое решение, лояльнее, чем тот, у кого всё прошло гладко." },
+  { term: "Сервисные якоря", def: "5 ключевых фраз, которые повторяются каждый день и формируют культуру сервиса в команде." },
+  { term: "Ядро", def: "Постоянная команда ресторана. Опытные сотрудники, которые держат стандарт и обучают новичков." },
+  { term: "Целиакия", def: "Аутоиммунное заболевание при котором даже следы глютена опасны. Требует отдельного протокола." },
+  { term: "Глютен", def: "Белок, содержащийся в пшенице, ржи, ячмене. Один из 8 главных аллергенов." },
+  { term: "Кивок «Салливана»", def: "Техника продаж: медленно кивай при описании блюда — гость кивнёт в ответ и согласится." },
+  { term: "Ёлочка", def: "Техника сужения выбора наводящими вопросами: чай — зелёный или чёрный? С молоком? С мятой?" },
+  { term: "SOP", def: "Standard Operating Procedure — стандартная операционная процедура. Письменный регламент работы." },
+  { term: "Фокус смены", def: "Одна конкретная задача или навык, который команда отрабатывает в течение всей смены." },
+  { term: "Сервис-менеджер", def: "Архитектор сервисной культуры. Строит систему, в которой хороший сервис возникает сам без его постоянного присутствия." },
+  { term: "Расстановка", def: "Распределение сотрудников по зонам и столам на смену с учётом опыта и загрузки." },
+  { term: "Предчек", def: "Счёт, подготовленный по первой просьбе гостя. Всегда проверяется перед подачей." },
+  { term: "Fine dining", def: "Высокая кухня. Формат ресторана с особыми стандартами сервировки, подачи и обслуживания." },
+  { term: "Аперитив", def: "Напиток, подаваемый до основной еды для возбуждения аппетита. Предлагается при первом контакте." },
+  { term: "Дижестив", def: "Напиток, подаваемый после еды для улучшения пищеварения. Завершает трапезу." },
+];
+
+function GlossaryScreen({ T, onBack, color }) {
+  const [search, setSearch] = React.useState("");
+  const filtered = GLOSSARY.filter(g =>
+    g.term.toLowerCase().includes(search.toLowerCase()) ||
+    g.def.toLowerCase().includes(search.toLowerCase())
+  );
+  return (
+    <div style={T.screen}>
+      <div style={T.lessHead}>
+        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <div style={T.lessHeadTitle}>📖 Глоссарий</div>
+      </div>
+      <div style={{ ...T.lessBody, padding:"14px 16px 40px" }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Поиск термина..."
+          style={{ width:"100%", padding:"10px 14px", borderRadius:12, border:`1px solid ${color}44`,
+            background: T.modCard?.background || "rgba(255,255,255,0.05)",
+            color: T.para?.color || "#F0E8D8", fontSize:15, fontFamily:"Georgia, serif",
+            outline:"none", boxSizing:"border-box", marginBottom:14 }}
+        />
+        {filtered.length === 0 && (
+          <div style={{ ...T.para, textAlign:"center", opacity:0.5 }}>Ничего не найдено</div>
+        )}
+        {filtered.map((g, i) => (
+          <div key={i} style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
+            <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{g.term}</div>
+            <div style={{ ...T.modSub, fontSize:14, lineHeight:1.6 }}>{g.def}</div>
+          </div>
+        ))}
+        <div style={{ ...T.para, textAlign:"center", opacity:0.4, fontSize:12, marginTop:8 }}>{GLOSSARY.length} терминов</div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Данные живых диалогов ─────────────────────────────────
+const DIALOGUES_DATA = [
+  {
+    id: "anticipation", termKey: "антиципация",
+    title: "Встреча и первый контакт", icon: "🤝", color: "#7C9E87",
+    guest: { name: "Михаил", avatar: "👔", context: "Деловой ужин. Пришёл первым, ждёт коллегу. Выглядит уставшим после рабочего дня.", mood: 2 },
+    steps: [
+      { type: "action", text: "Михаил входит в зал, оглядывается." },
+      { type: "choice", prompt: "Замечаешь гостя у входа. Как реагируешь?", options: [
+        { text: "Добрый вечер! Рады вас видеть. Вас ждут или вы один?", correct: true, feedback: "Тёплое приветствие + уточняющий вопрос. Первый контакт — не позже 10 секунд.", moodDelta: 1 },
+        { text: "Одну минуту, сейчас освобожусь.", correct: false, feedback: "«Одну минуту» без контакта — гость чувствует себя помехой.", moodDelta: -1 },
+        { text: "Здравствуйте, вы бронировали столик?", correct: false, feedback: "Формальный вопрос о брони вместо тёплого приветствия — холодный старт.", moodDelta: 0 },
+      ]},
+      { type: "guest", text: "Добрый вечер. Нас двое, жду коллегу." },
+      { type: "choice", prompt: "Что делаешь дальше?", options: [
+        { text: "Позвольте провожу вас к столику — выберем место поудобнее.", correct: true, feedback: "Проводишь сам — гость не должен искать место.", moodDelta: 1 },
+        { text: "Присаживайтесь где удобно, я принесу меню.", correct: false, feedback: "Гость не должен сам искать стол. Твоя задача — проводить.", moodDelta: -1 },
+        { text: "Хорошо, подождите — уточню есть ли свободный стол.", correct: false, feedback: "Заставлять ждать у входа — плохое начало.", moodDelta: 0 },
+      ]},
+      { type: "action", text: "Ты провожаешь Михаила, помогаешь с пальто, отодвигаешь стул." },
+      { type: "choice", prompt: "Подаёшь меню. Что говоришь?", options: [
+        { text: "Меня зовут Александр, сегодня я буду заботиться о вас. Пока выбираете — могу предложить воды или аперитив?", correct: true, feedback: "Представился + предложил напитки. Гость знает твоё имя — уже теплее.", moodDelta: 1 },
+        { text: "Вот меню. Позовите когда будете готовы.", correct: false, feedback: "Молча подать меню и уйти — упущен момент установить контакт.", moodDelta: -1 },
+        { text: "Будете что-нибудь пить пока ждёте?", correct: false, feedback: "Вопрос правильный, но сначала нужно представиться.", moodDelta: 0 },
+      ]},
+      { type: "result", tip: "✦ Первый контакт — не позже 10 секунд. Имя + тепло + предложение = профессиональный старт." },
+    ]
+  },
+  {
+    id: "last", termKey: "l.a.s.t.",
+    title: "Работа с жалобой", icon: "🛡️", color: "#C8A96E",
+    guest: { name: "Елена", avatar: "👩‍💼", context: "Романтический ужин. Пришла с мужем по случаю годовщины. Ждала этого вечера.", mood: 3 },
+    steps: [
+      { type: "action", text: "Елена отодвинула тарелку. Блюдо почти не тронуто, выражение лица напряжённое." },
+      { type: "choice", prompt: "Замечаешь сигнал. Как реагируешь?", options: [
+        { text: "Позвольте уточнить — всё в порядке с блюдом?", correct: true, feedback: "Заметил сигнал и спросил первым — антиципация в действии.", moodDelta: 1 },
+        { text: "Жду пока сама скажет — не хочу мешать.", correct: false, feedback: "Молчащий недовольный гость — самый опасный. Он уйдёт и напишет плохой отзыв.", moodDelta: -1 },
+        { text: "Могу убрать тарелку?", correct: false, feedback: "Убирать нетронутое блюдо без вопроса — грубая ошибка.", moodDelta: -1 },
+      ]},
+      { type: "guest", text: "Честно говоря... рыба пересолена. Я очень ждала этого вечера." },
+      { type: "choice", prompt: "Елена расстроена. Что отвечаешь?", options: [
+        { text: "Вижу что вам неприятно — и в такой вечер особенно. Приношу извинения. Заменю блюдо прямо сейчас — что предпочтёте?", correct: true, feedback: "L.A.S.T.: выслушал, понял контекст годовщины, извинился, предложил решение.", moodDelta: 2 },
+        { text: "Извините, это кухня пересолила. Сейчас скажу им.", correct: false, feedback: "Никогда не перекладывай вину на кухню при госте.", moodDelta: -1 },
+        { text: "Хорошо, принесу другое блюдо.", correct: false, feedback: "Слишком сухо. Елена расстроена — ей нужно почувствовать что её услышали.", moodDelta: 0 },
+      ]},
+      { type: "guest", text: "Замените пожалуйста. Жаль что так получилось..." },
+      { type: "choice", prompt: "Уходишь на кухню. Что говоришь напоследок?", options: [
+        { text: "Конечно. Скажу кухне приоритет — долго ждать не придётся. И позвольте пока предложу комплиментный бокал вина — пусть вечер всё же удастся.", correct: true, feedback: "Жест доброй воли + конкретное действие + забота об особом вечере.", moodDelta: 2 },
+        { text: "Хорошо, сейчас всё исправим.", correct: false, feedback: "Формально верно, но упущена возможность сгладить особый вечер.", moodDelta: 0 },
+        { text: "Подождите минут 10-15, кухня загружена.", correct: false, feedback: "Называть долгое время без компенсации в годовщину — усугубляет ситуацию.", moodDelta: -1 },
+      ]},
+      { type: "result", tip: "✦ L.A.S.T.: выслушал — извинился — решил — поблагодарил. Жалоба в особый день — шанс стать героем вечера." },
+    ]
+  },
+  {
+    id: "yolochka", termKey: "ёлочка",
+    title: "Приём заказа", icon: "📋", color: "#8B7BAB",
+    guest: { name: "Артём", avatar: "🧑", context: "Первый раз в ресторане. Ждёт девушку, хочет произвести впечатление. Теряется в меню.", mood: 2 },
+    steps: [
+      { type: "action", text: "Артём несколько минут листает меню туда-обратно, выглядит растерянно." },
+      { type: "choice", prompt: "Артём не может определиться. Как начинаешь?", options: [
+        { text: "Могу помочь с выбором? Что обычно предпочитаете — мясо, рыбу или что-то лёгкое?", correct: true, feedback: "Ёлочка — сужаешь выбор вопросами. Артём расслабится и почувствует поддержку.", moodDelta: 1 },
+        { text: "Рекомендую наш фирменный стейк, очень популярен.", correct: false, feedback: "Рекомендовать без понимания предпочтений — стрельба вслепую.", moodDelta: 0 },
+        { text: "Вы готовы сделать заказ?", correct: false, feedback: "Закрытый вопрос — Артём скажет «нет» и ты уйдёшь ни с чем.", moodDelta: -1 },
+      ]},
+      { type: "guest", text: "Да, наверное мясо... но не хочу что-то слишком тяжёлое. Жду девушку, хочется чтобы всё прошло хорошо." },
+      { type: "choice", prompt: "Артём хочет произвести впечатление. Как рекомендуешь?", options: [
+        { text: "Отлично. Тогда советую телячьи медальоны — нежные, с лёгким соусом из трав. Шеф ими особенно гордится, и выглядят очень эффектно при подаче.", correct: true, feedback: "Учёл контекст! Упомянул подачу — Артём уже представляет впечатление на девушку.", moodDelta: 2 },
+        { text: "Есть стейк, телятина, утка и ягнёнок — всё хорошее.", correct: false, feedback: "Перечислить список — не рекомендация. Артём и так видит это в меню.", moodDelta: 0 },
+        { text: "Медальоны или утка, оба варианта подойдут.", correct: false, feedback: "Два варианта без описания — Артём снова в растерянности.", moodDelta: -1 },
+      ]},
+      { type: "guest", text: "Медальоны звучат здорово. А что к ним из вина? Я не очень разбираюсь..." },
+      { type: "choice", prompt: "Артём не разбирается в вине. Как отвечаешь?", options: [
+        { text: "Не страшно — для этого я здесь. К телятине идеально подойдёт бокал Пино Нуар: лёгкое красное, не перебьёт вкус блюда.", correct: true, feedback: "Снял напряжение + конкретная рекомендация. Артём почувствовал себя уверенно.", moodDelta: 2 },
+        { text: "Посмотрите в винную карту, там всё описано.", correct: false, feedback: "Артём признался что не разбирается — отправить его читать карту провал доверия.", moodDelta: -2 },
+        { text: "Можно взять любое красное или белое.", correct: false, feedback: "«Любое» — не рекомендация. Артём хочет быть уверен в выборе.", moodDelta: -1 },
+      ]},
+      { type: "guest", text: "Отлично, беру медальоны и бокал Пино Нуар." },
+      { type: "choice", prompt: "Артём сделал заказ. Что делаешь перед уходом?", options: [
+        { text: "Замечательно. Повторю: телячьи медальоны и бокал Пино Нуар. Есть ли у вас аллергия на какие-либо продукты?", correct: true, feedback: "Подтвердил заказ + спросил об аллергенах. Оба действия обязательны.", moodDelta: 1 },
+        { text: "Хорошо, сейчас оформлю.", correct: false, feedback: "Уйти без подтверждения заказа — риск ошибки.", moodDelta: 0 },
+        { text: "Отличный выбор! Девушка оценит.", correct: false, feedback: "Комплимент уместен, но важнее подтвердить заказ и уточнить аллергены.", moodDelta: 0 },
+      ]},
+      { type: "result", tip: "✦ Ёлочка + контекст гостя + кивок Салливана + подтверждение + аллергены = идеальный приём заказа." },
+    ]
+  },
+];
+
+const MOOD_EMOJI_D = ["😞","😕","😐","🙂","😊"];
+const MOOD_COLORS_D = ["#E07878","#C8905A","#C8A96E","#8FB890","#5DBB8A"];
+
+function LiveDialogue({ dialogueId, T, onClose, color }) {
+  const dialogue = DIALOGUES_DATA.find(d => d.id === dialogueId);
+  const [messages, setMessages] = React.useState([]);
+  const [stepIdx, setStepIdx] = React.useState(0);
+  const [chosen, setChosen] = React.useState(null);
+  const [score, setScore] = React.useState(0);
+  const [mood, setMood] = React.useState(dialogue?.guest.mood || 3);
+  const [typing, setTyping] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+  const bottomRef = React.useRef(null);
+  const runningRef = React.useRef(false);
+
+  React.useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing, chosen]);
+
+  const addMsg = (msg) => new Promise(r => {
+    setMessages(prev => [...prev, msg]);
+    setTimeout(r, 100);
+  });
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  React.useEffect(() => {
+    if (!dialogue || runningRef.current) return;
+    const step = dialogue.steps[stepIdx];
+    if (!step || step.type === "choice" || step.type === "result") return;
+
+    runningRef.current = true;
+    const run = async () => {
+      if (step.type === "guest") {
+        setTyping(true);
+        await sleep(900);
+        setTyping(false);
+      }
+      await sleep(200);
+      await addMsg({ ...step });
+      await sleep(350);
+      runningRef.current = false;
+      if (step.type !== "result") setStepIdx(i => i + 1);
+    };
+    run();
+  }, [stepIdx]);
+
+  const choose = async (optIdx) => {
+    if (chosen !== null) return;
+    const step = dialogue.steps[stepIdx];
+    const opt = step.options[optIdx];
+    setChosen(optIdx);
+    if (opt.correct) setScore(s => s + 1);
+    setMood(m => Math.max(1, Math.min(5, m + opt.moodDelta)));
+    await addMsg({ type: "waiter", text: opt.text, correct: opt.correct });
+    await sleep(500);
+    await addMsg({ type: "feedback", text: opt.feedback, correct: opt.correct });
+    await sleep(700);
+    setChosen(null);
+    const next = stepIdx + 1;
+    if (dialogue.steps[next]?.type === "result") { setDone(true); return; }
+    runningRef.current = false;
+    setStepIdx(next);
+  };
+
+  if (!dialogue) return null;
+  const moodC = Math.max(1, Math.min(5, mood));
+  const totalChoices = dialogue.steps.filter(s => s.type === "choice").length;
+  const dColor = dialogue.color;
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:1000, background: T.screen?.background || "#1A1612", display:"flex", flexDirection:"column" }}>
+      {/* Header */}
+      <div style={{ padding:"12px 14px 10px", background:`linear-gradient(135deg, ${dColor}18, transparent)`, borderBottom:`1px solid ${dColor}22` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:"#7A6548", fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
+          <div style={{ fontSize:20 }}>{dialogue.guest.avatar}</div>
+          <div style={{ flex:1 }}>
+            <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
+            <div style={{ color:"#6A5535", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
+          </div>
+          <div style={{ color:"#7A6548", fontSize: T.modSub?.fontSize || 13 }}>{score}/{totalChoices} ✓</div>
+        </div>
+        {/* Mood bar */}
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ fontSize:15, transition:"all 0.5s" }}>{MOOD_EMOJI_D[moodC-1]}</div>
+          <div style={{ flex:1, height:3, background:"rgba(255,255,255,0.08)", borderRadius:2 }}>
+            <div style={{ height:3, width:`${(moodC/5)*100}%`, background:MOOD_COLORS_D[moodC-1], borderRadius:2, transition:"width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.5s" }} />
+          </div>
+          <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:MOOD_COLORS_D[moodC-1], fontFamily:"monospace" }}>настроение</div>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div style={{ height:2, background:"rgba(255,255,255,0.05)" }}>
+        <div style={{ height:2, width:`${(stepIdx/(dialogue.steps.length-1))*100}%`, background:dColor, transition:"width 0.4s ease" }} />
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8 }}>
+        {messages.map((msg, i) => {
+          if (msg.type === "action") return (
+            <div key={i} style={{ textAlign:"center", color:"#6A5535", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
+          );
+          if (msg.type === "guest") return (
+            <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
+              <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:"#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+            </div>
+          );
+          if (msg.type === "waiter") return (
+            <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
+              <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:"#6A5535", marginBottom:2, paddingRight:4 }}>Ты</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomRightRadius:4, background: msg.correct ? `${dColor}28` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || "#F0E8D8", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+            </div>
+          );
+          if (msg.type === "feedback") return (
+            <div key={i} style={{ padding:"8px 12px", borderRadius:10, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", border:`1px solid ${msg.correct ? "rgba(93,187,138,0.2)" : "rgba(224,120,120,0.2)"}`, color: msg.correct ? "#5DBB8A" : "#E07878", fontSize: T.modSub?.fontSize || 12, lineHeight:1.6 }}>
+              {msg.correct ? "✓ " : "✗ "}{msg.text}
+            </div>
+          );
+          return null;
+        })}
+
+        {typing && (
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
+            <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:"#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
+            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", display:"flex", gap:5, alignItems:"center" }}>
+              {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:"#7A6548", animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
+            </div>
+          </div>
+        )}
+
+        {/* Choice options */}
+        {dialogue.steps[stepIdx]?.type === "choice" && !typing && messages.length > 0 && chosen === null && (
+          <div style={{ marginTop:8 }}>
+            <div style={{ color:"#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:10, fontStyle:"italic" }}>💬 {dialogue.steps[stepIdx].prompt}</div>
+            {dialogue.steps[stepIdx].options.map((opt, oi) => (
+              <div key={oi} onClick={() => choose(oi)} style={{ padding:"11px 14px", borderRadius:12, marginBottom:8, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.para?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"all 0.15s" }}>{opt.text}</div>
+            ))}
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Result */}
+      {done && (
+        <div style={{ padding:"16px 14px 24px", borderTop:`1px solid ${dColor}22`, textAlign:"center" }}>
+          <div style={{ fontSize:36, marginBottom:8 }}>{MOOD_EMOJI_D[moodC-1]}</div>
+          <div style={{ color:MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:4 }}>
+            {moodC>=4 ? `${dialogue.guest.name} доволен` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} расстроен`}
+          </div>
+          <div style={{ color:"#7A6548", fontSize:12, marginBottom:12 }}>{score} из {totalChoices} правильных ответов</div>
+          <div style={{ color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.6, marginBottom:16, fontStyle:"italic" }}>
+            {dialogue.steps.find(s=>s.type==="result")?.tip}
+          </div>
+          <div style={{ display:"flex", gap:10 }}>
+            <button onClick={() => { setMessages([]); setStepIdx(0); setChosen(null); setScore(0); setMood(dialogue.guest.mood); setDone(false); runningRef.current=false; }}
+              style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
+              ↺ Ещё раз
+            </button>
+            <button onClick={onClose}
+              style={{ flex:1, padding:"12px", borderRadius:12, background:dColor, border:"none", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer", fontWeight:"bold" }}>
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes dlgPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+    </div>
+  );
+}
+
 // Тёмная тема: глубокий антрацит + тёплые золотые акценты
 // BG:     #18181C  (почти чёрный, чуть тёплый)
 // Card:   #222228  (чуть светлее BG)

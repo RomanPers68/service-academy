@@ -209,7 +209,7 @@ const MODULES = {
           id: "s0-q", title: "Тест: первый день", type: "quiz",
           questions: [
   { q: "Первый день. Гость спрашивает: «Что посоветуешь?» Меню ты не знаешь. Что делаешь?", options: ["Называю первое блюдо — звучит уверенно", "Говорю «уточню у коллеги» и узнаю", "Даю меню и отхожу", "Честно объясняю что пока не ориентируюсь"], correct: 1, explanation: "Честность + немедленное действие = доверие. Угадывать рекомендацию без знания меню — риск для гостя." },
-  { q: "Shadow-день — это:", options: ["Работаешь сам, менеджер наблюдает", "Наблюдаешь за наставником и копируешь.", "Обучаешь нового под контролем", "Работаешь в паре за один стол"], correct: 1, explanation: "Shadow = наблюдение и копирование. Никакой самодеятельности. Смотришь как двигается, подходит, говорит наставник." },
+  { q: "Shadow — это:", options: ["Работаешь сам, менеджер наблюдает", "Наблюдаешь за наставником и копируешь.", "Обучаешь нового под контролем", "Работаешь в паре за один стол"], correct: 1, explanation: "Shadow = наблюдение и копирование. Никакой самодеятельности. Смотришь как двигается, подходит, говорит наставник." },
   { q: "2-й день работы. Гость повышает голос. Что делаешь?", options: ["Разбираюсь сам — нужна практика", "Зову наставника или менеджера", "Извиняюсь и жду пока остынет", "Молча слушаю до конца"], correct: 1, explanation: "Конфликты в первые дни — уровень менеджера. Позвать помощь = профессионализм, не слабость." },
   { q: "Стоп-лист — это:", options: ["Список сотрудников с замечаниями", "Позиции которых сегодня нет", "Гости которым нельзя отказать", "Запрещённые фразы для персонала"], correct: 1, explanation: "Стоп-лист = что нельзя предлагать сегодня. Обновляется каждую смену. Узнаётся на брифинге." },
   { q: "Что НЕ входит в брифинг перед сменой?", options: ["Стоп-лист на сегодня", "Расстановка по зонам", "Личные конфликты коллег", "Акции и спецпредложения"], correct: 2, explanation: "Брифинг = рабочая информация: стоп-лист, расстановка, акции, бронирования. Личные конфликты — не тема брифинга." },
@@ -4198,7 +4198,7 @@ export default function ServiceAcademy() {
           </div>
         )}
         {screen === "profile" && <ProfileScreen T={S} onDone={(p) => { setProfile(p); navigate("roleSelect"); }} />}
-        {screen === "stats" && <StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} practiceStars={practiceStars} onBack={() => navigate("roleSelect")}
+        {screen === "stats" && <div style={{paddingBottom:70}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} practiceStars={practiceStars} onBack={() => navigate("roleSelect")}
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname}`]; return n; });
@@ -4220,7 +4220,7 @@ export default function ServiceAcademy() {
               alert(`Тесты для ${name} ${surname} разблокированы!`);
             }).catch(() => {});
           } : null}
-        />}
+        />}</div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
         {screen === "roleSelect" && <div style={{paddingBottom:70}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:70}}><GlossaryScreen T={T} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}

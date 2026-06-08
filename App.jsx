@@ -4217,6 +4217,10 @@ export default function ServiceAcademy() {
           onUnlockQuiz={isAdmin ? (name, surname) => {
             const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
             fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).then(() => {
+              if (profile && profile.name === name && profile.surname === surname) {
+                setQuizDone({});
+                try { localStorage.removeItem("sa_quiz_done"); } catch(e) {}
+              }
               alert(`Тесты для ${name} ${surname} разблокированы!`);
             }).catch(() => {});
           } : null}

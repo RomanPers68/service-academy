@@ -3926,7 +3926,7 @@ export default function ServiceAcademy() {
         else { clearTimeout(fallback); setStorageLoaded(true); setScreen("profile"); return; }
       } catch(e) { clearTimeout(fallback); setStorageLoaded(true); setScreen("profile"); return; }
       try { const s = await storageGet("sa_scores"); if (s) { const saved = JSON.parse(s.value); setScores(prev => { const ids = new Set(saved.map(x => x.id)); return [...prev.filter(x => !ids.has(x.id)), ...saved]; }); } } catch(e) {}
-      try { const d = await storageGet("sa_quiz_done"); if (d) setQuizDone(JSON.parse(d.value)); } catch(e) {}
+      // quizDone загружается из Supabase ниже
       try { const cr = await storageGet("sa_completed_roles"); if (cr) setCompletedRoles(new Set(["seasonal", ...JSON.parse(cr.value)])); } catch(e) {}
       try { const sc = await storageGet("sa_completed"); if (sc) setCompleted(JSON.parse(sc.value)); } catch(e) {}
       try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
@@ -3950,6 +3950,20 @@ export default function ServiceAcademy() {
       }
     }).catch(() => {});
   }, []);
+
+  // Загрузка quizDone из Supabase для текущего пользователя
+  React.useEffect(() => {
+    if (!profile) return;
+    fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    }).then(r => r.json()).then(data => {
+      if (data && data.length > 0) {
+        const done = {};
+        data.forEach(row => { done[row.quiz_id] = true; });
+        setQuizDone(done);
+      }
+    }).catch(() => {});
+  }, [profile]);
 
   const modules = useMemo(() => role ? MODULES[role] : [], [role]);
   const totalLessons = useMemo(() => modules.reduce((a, m) => a + m.lessons.length, 0), [modules]);
@@ -4045,6 +4059,14 @@ export default function ServiceAcademy() {
           setQuizDone(prev => {
             const updated = { ...prev, [activeLesson.id]: true };
             try { localStorage.setItem("sa_quiz_done", JSON.stringify(updated)); } catch(e) {};
+            // Сохраняем в Supabase
+            if (profile) {
+              fetch(`${SUPABASE_URL}/rest/v1/quiz_done`, {
+                method: "POST",
+                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+                body: JSON.stringify({ name: profile.name, surname: profile.surname || "", quiz_id: activeLesson.id })
+              }).catch(() => {});
+            }
             return updated;
           });
         }
@@ -4180,6 +4202,9 @@ export default function ServiceAcademy() {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname}`]; return n; });
             fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }).catch(() => {});
+          } : null}
+          onUnlockQuiz={isAdmin ? (name, surname) => {
+            fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }).catch(() => {});
           } : null}
         />}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
@@ -4609,7 +4634,7 @@ function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, o
 }
 
 // ── Личная статистика ──────────────────────────────────────
-function StatsScreen({ T, profile, scores, completedRoles, completed, practiceStars, onBack, onResetPlayer }) {
+function StatsScreen({ T, profile, scores, completedRoles, completed, practiceStars, onBack, onResetPlayer, onUnlockQuiz }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
   const roleColor = { seasonal:"#7C9E87", core:"#C8A96E", manager:"#8B7BAB", service_manager:"#7B8FAB" };
@@ -4749,6 +4774,13 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
                             background:T.modCard.background, border:"1px solid rgba(255,255,255,0.08)", color:T.modSub.color }}>
                           Нет
                         </div>
+                      </div>
+                    )}
+                    {onUnlockQuiz && (
+                      <div onClick={() => onUnlockQuiz(p.name, p.surname)}
+                        style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
+                          background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start" }}>
+                        🔓 Разблокировать тесты
                       </div>
                     )}
                   </div>

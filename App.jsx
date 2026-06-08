@@ -5222,6 +5222,11 @@ function TimerBar({ duration, color, onExpire }) {
 }
 
 function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T }) {
+  const nextBtnRef = React.useRef(null);
+  const wrappedPracticeChoice = React.useCallback((idx) => {
+    onPracticeChoice(idx);
+    setTimeout(() => { if (nextBtnRef.current) nextBtnRef.current.scrollIntoView({ behavior: "smooth", block: "end" }); }, 150);
+  }, [onPracticeChoice]);
   if (lesson.type === "lesson") {
     return (
       <div style={T.screen}>
@@ -5408,7 +5413,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
                   let bg = answered?(chosen&&i===sit.correct?"rgba(93,187,138,0.25)":chosen&&i!==sit.correct?"rgba(224,120,120,0.25)":!chosen&&i===sit.correct&&userWrong?"rgba(93,187,138,0.12)":T.simOpt.background):T.simOpt.background;
                   let bc = answered?(chosen&&i===sit.correct?"#5DBB8A":chosen&&i!==sit.correct?"#E07878":!chosen&&i===sit.correct&&userWrong?"#5DBB8A":neutralBC):neutralBC;
                   return (
-                    <div key={i} className="sa-opt" onClick={()=>!answered&&onPracticeChoice(i)}
+                    <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)}
                       style={{ flex:1, background:bg, border:`2px solid ${bc}`, borderRadius:16, padding:"16px 10px", textAlign:"center", color:T.para.color, fontSize:16, fontWeight:"bold", cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>
                       {btn.label}
                     </div>
@@ -5433,7 +5438,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
                 let bc = neutralBC;
                 let tc = T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&onPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -5455,7 +5460,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&onPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -5465,7 +5470,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
             <>
               <div className="sa-fast" style={{ ...T.simScen, borderRadius:16, padding:"14px", marginBottom:12 }}>
                 {genre==="timer" && !answered && (
-                  <TimerBar key={`timer-${practiceState.step}`} duration={12} color={color} onExpire={()=>onPracticeChoice(-1)} />
+                  <TimerBar key={`timer-${practiceState.step}`} duration={12} color={color} onExpire={()=>wrappedPracticeChoice(-1)} />
                 )}
                 <div style={{ color:T.para.color, fontSize:14, lineHeight:1.75 }}>{sit.scene}</div>
               </div>
@@ -5475,7 +5480,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color,prefix="";
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";prefix="❌ ";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&onPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
               })}
             </>
           )}
@@ -5492,7 +5497,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
                   {isCorrectAnswer ? sit.win : sit.fail||"Попробуй ещё раз в следующем раунде!"}
                 </div>
               </div>
-              <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:0 }} onClick={onPracticeNext}>
+              <button ref={nextBtnRef} className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:0 }} onClick={onPracticeNext}>
                 {practiceState.step+1<situations.length?"Дальше →":"Финиш! 🏁"}
               </button>
             </div>

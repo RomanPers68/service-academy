@@ -4092,39 +4092,36 @@ export default function ServiceAcademy() {
     }).catch(() => {});
   }, [profile, role]);
 
-  // Загрузка practiceStars из Supabase
+  // Загрузка practiceStars из Supabase — авторитетный источник
   React.useEffect(() => {
     if (!profile) return;
+    const userKey = `${profile.name}|${profile.surname || ""}`;
     fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
-      if (data && data.length > 0) {
-        const userKey = `${profile.name}|${profile.surname || ""}`;
-        const starsObj = {};
+      const starsObj = {};
+      if (Array.isArray(data)) {
         data.forEach(row => { starsObj[row.lesson_id] = row.stars; });
-        setPracticeStars(prev => {
-          const updated = { ...prev, [userKey]: starsObj };
-          try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch(e) {}
-          return updated;
-        });
       }
+      // Всегда перезаписываем — Supabase главный источник
+      setPracticeStars(prev => {
+        const updated = { ...prev, [userKey]: starsObj };
+        try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch(e) {}
+        return updated;
+      });
     }).catch(() => {});
   }, [profile]);
 
-  // Загрузка completedRoles из Supabase
+  // Загрузка completedRoles из Supabase — авторитетный источник
   React.useEffect(() => {
     if (!profile) return;
     fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
-      if (data && data.length > 0) {
-        const roles = new Set(data.map(row => row.role));
-        setCompletedRoles(prev => {
-          const merged = new Set([...prev, ...roles]);
-          try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...merged])); } catch(e) {}
-          return merged;
-        });
-      }
+      const roles = new Set(Array.isArray(data) ? data.map(row => row.role) : []);
+      // Всегда перезаписываем — Supabase главный источник
+      setCompletedRoles(roles);
+      try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...roles])); } catch(e) {}
     }).catch(() => {});
   }, [profile]);
 

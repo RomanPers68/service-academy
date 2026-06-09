@@ -4040,6 +4040,7 @@ export default function ServiceAcademy() {
     fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
+      if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
       {
         // Восстанавливаем completed из Supabase — авторитетный источник
         const allValidIds = new Set(
@@ -4068,8 +4069,9 @@ export default function ServiceAcademy() {
     fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
+      if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
       const done = {};
-      if (Array.isArray(data)) data.forEach(row => { done[row.quiz_id] = true; });
+      data.forEach(row => { if (row.quiz_id) done[row.quiz_id] = true; });
       setQuizDone(done);
       try { localStorage.setItem("sa_quiz_done", JSON.stringify(done)); } catch(e) {}
     }).catch(() => {});

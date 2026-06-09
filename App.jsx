@@ -4078,6 +4078,56 @@ export default function ServiceAcademy() {
     }).catch(() => {});
   }, [profile]);
 
+  // Загрузка last_role из Supabase если localStorage не дал роль
+  React.useEffect(() => {
+    if (!profile || role) return; // уже есть роль — не нужно
+    fetch(`${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}&select=last_role`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    }).then(r => r.json()).then(data => {
+      if (data && data.length > 0 && data[0].last_role) {
+        setRole(data[0].last_role);
+        try { localStorage.setItem("sa_last_role", JSON.stringify(data[0].last_role)); } catch(e) {}
+        setScreen("home");
+      }
+    }).catch(() => {});
+  }, [profile, role]);
+
+  // Загрузка practiceStars из Supabase
+  React.useEffect(() => {
+    if (!profile) return;
+    fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    }).then(r => r.json()).then(data => {
+      if (data && data.length > 0) {
+        const userKey = `${profile.name}|${profile.surname || ""}`;
+        const starsObj = {};
+        data.forEach(row => { starsObj[row.lesson_id] = row.stars; });
+        setPracticeStars(prev => {
+          const updated = { ...prev, [userKey]: starsObj };
+          try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch(e) {}
+          return updated;
+        });
+      }
+    }).catch(() => {});
+  }, [profile]);
+
+  // Загрузка completedRoles из Supabase
+  React.useEffect(() => {
+    if (!profile) return;
+    fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    }).then(r => r.json()).then(data => {
+      if (data && data.length > 0) {
+        const roles = new Set(data.map(row => row.role));
+        setCompletedRoles(prev => {
+          const merged = new Set([...prev, ...roles]);
+          try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...merged])); } catch(e) {}
+          return merged;
+        });
+      }
+    }).catch(() => {});
+  }, [profile]);
+
   const modules = useMemo(() => role ? MODULES[role] : [], [role]);
   const totalLessons = useMemo(() => modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0), [modules]);
   const roleLesonIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id))), [modules]);
@@ -4092,8 +4142,16 @@ export default function ServiceAcademy() {
   const selectRole = useCallback((r) => {
     setRole(r);
     try { localStorage.setItem("sa_last_role", JSON.stringify(r)); } catch(e) {}
+    // Сохраняем выбранную роль в Supabase
+    if (profile) {
+      fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ name: profile.name, surname: profile.surname || "", last_role: r, updated_at: new Date().toISOString() })
+      }).catch(() => {});
+    }
     setScreen("home");
-  }, []);
+  }, [profile]);
   const openModule = useCallback((m) => { setActiveModule(m); setScreen("module"); }, []);
   const openLesson = (l) => {
     if (l.type === "quiz" && quizDone[l.id]) return;
@@ -4228,6 +4286,14 @@ export default function ServiceAcademy() {
             if (stars <= prevBest) return prev; // не обновляем если результат не лучше
             const updated = { ...prev, [userKey]: { ...userStars, [activeLesson.id]: stars } };
             try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch(e) {};
+            // Сохраняем в Supabase (upsert — обновляем если уже есть)
+            if (profile) {
+              fetch(`${SUPABASE_URL}/rest/v1/practice_stars`, {
+                method: "POST",
+                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+                body: JSON.stringify({ name: profile.name, surname: profile.surname || "", lesson_id: activeLesson.id, stars, updated_at: new Date().toISOString() })
+              }).catch(() => {});
+            }
             return updated;
           });
         }
@@ -4242,6 +4308,17 @@ export default function ServiceAcademy() {
             const updated = new Set([...prev, role]);
             if (nextRole) updated.add(nextRole); // разблокируем следующую
             try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...updated])); } catch(e) {};
+            // Сохраняем в Supabase
+            if (profile) {
+              const newRoles = [role, nextRole].filter(Boolean);
+              newRoles.forEach(r => {
+                fetch(`${SUPABASE_URL}/rest/v1/completed_roles`, {
+                  method: "POST",
+                  headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+                  body: JSON.stringify({ name: profile.name, surname: profile.surname || "", role: r, updated_at: new Date().toISOString() })
+                }).catch(() => {});
+              });
+            }
             setTimeout(() => checkAndShowAchievements(scores, practiceStars, updated), 500);
             return updated;
           });
@@ -4377,7 +4454,7 @@ export default function ServiceAcademy() {
         {screen === "roleSelect" && <div style={{paddingBottom:70}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:70}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:70}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "home" && <div style={{paddingBottom:70}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} /></div>}
+        {screen === "home" && <div style={{paddingBottom:70}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} /></div>}
         {screen === "module" && <div style={{paddingBottom:70}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} />}
@@ -5506,7 +5583,7 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
   );
 }
 
-function HomeScreen({ role, modules, completed, progress, doneCount, totalLessons, onModule, onChangeRole, T }) {
+function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.homeHead}>
@@ -5528,8 +5605,11 @@ function HomeScreen({ role, modules, completed, progress, doneCount, totalLesson
       <div style={T.secTitle}>Программа обучения</div>
       <div style={T.modList} className="sa-stagger">
         {modules.map((m) => {
-          const done = m.lessons.filter(l => completed[l.id]).length;
-          const pct = Math.round((done/m.lessons.length)*100);
+          const lessonsDone = m.lessons.filter(l => l.type !== "quiz" && l.type !== "result" && completed[l.id]).length;
+          const quizzesDone = m.lessons.filter(l => l.type === "quiz" && quizDone[l.id]).length;
+          const done = lessonsDone + quizzesDone;
+          const total = m.lessons.filter(l => l.type !== "result").length;
+          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
           return (
             <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => onModule(m)}>
               <div style={{ ...T.modBar, background:m.color }} />
@@ -5563,7 +5643,7 @@ function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T }) {
       </div>
       <div style={T.lessList} className="sa-stagger">
         {mod.lessons.map((l,i) => {
-          const done = completed[l.id];
+          const done = l.type === "quiz" ? quizDone[l.id] : completed[l.id];
           const typeMap = { lesson:"Урок", quiz:"Тест", practice:"Практика" };
           const typeColor = { lesson:"#7C9E87", quiz:"#C8A96E", practice:"#8B7BAB" };
           return (

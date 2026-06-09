@@ -3885,6 +3885,7 @@ const vibrate = (pattern) => {
 export default function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
   const [prevScreen, setPrevScreen] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = React.useState(null);
   const [profile, setProfile] = useState(null);
   const [scores, setScores] = useState([]);
   const [practiceStars, setPracticeStars] = useState({}); // { "name|surname": totalStars }
@@ -4040,6 +4041,15 @@ export default function ServiceAcademy() {
       setCompleted(prevCompleted => {
         const newCompleted = { ...prevCompleted, [activeLesson.id]: true };
         try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; localStorage.setItem("sa_completed"+uk, JSON.stringify(newCompleted)); } catch(e) {};
+
+        // Сохраняем факт прохождения урока в Supabase
+        if (profile && activeLesson.type !== "quiz") {
+          fetch(`${SUPABASE_URL}/rest/v1/progress`, {
+            method: "POST",
+            headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+            body: JSON.stringify({ name: profile.name, surname: profile.surname || "", lesson_id: activeLesson.id, role })
+          }).catch(() => {});
+        }
 
         if (activeLesson.type === "quiz" && profile) {
           const sc = quizState.answers.filter(a => a.isCorrect).length;
@@ -4198,6 +4208,7 @@ export default function ServiceAcademy() {
           </div>
         )}
         {screen === "profile" && <ProfileScreen T={S} onDone={(p) => { setProfile(p); navigate("roleSelect"); }} />}
+        {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:70}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} practiceStars={practiceStars} onBack={() => navigate("roleSelect")}
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
@@ -4224,6 +4235,7 @@ export default function ServiceAcademy() {
               alert(`Тесты для ${name} ${surname} разблокированы!`);
             }).catch(() => {});
           } : null}
+          onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         />}</div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
         {screen === "roleSelect" && <div style={{paddingBottom:70}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} /></div>}
@@ -4235,7 +4247,7 @@ export default function ServiceAcademy() {
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} />}
 
         {/* Нижняя навигация — только на основных экранах */}
-        {["roleSelect","home","module","leaderboard","glossary","stats","daily"].includes(screen) && profile && (
+        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail"].includes(screen) && profile && (
           <div style={{
             position:"fixed", bottom:0, left:0, right:0, zIndex:200,
             background: a11y ? "#F2EAD8" : "#1A1612",
@@ -4710,7 +4722,119 @@ function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, o
 }
 
 // ── Личная статистика ──────────────────────────────────────
-function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz }) {
+
+// ── Детальная статистика сотрудника ───────────────────────
+function PlayerDetailScreen({ player, T, onBack }) {
+  const [progress, setProgress] = React.useState([]);
+  const [scores, setScores] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
+    Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}`, { headers: h }).then(r => r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}&order=updated_at.desc`, { headers: h }).then(r => r.json()),
+    ]).then(([prog, sc]) => {
+      setProgress(Array.isArray(prog) ? prog : []);
+      setScores(Array.isArray(sc) ? sc : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [player.name, player.surname]);
+
+  const roleNames = { seasonal: "Новичок", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер" };
+  const roleColors = { seasonal: "#7C9E87", core: "#C8A96E", manager: "#8B7BAB", service_manager: "#5B8FA8" };
+
+  // Группируем прогресс по ролям
+  const byRole = {};
+  progress.forEach(p => {
+    if (!byRole[p.role]) byRole[p.role] = 0;
+    byRole[p.role]++;
+  });
+
+  const avgScore = scores.length > 0
+    ? Math.round(scores.reduce((a, s) => a + (s.score / s.total * 100), 0) / scores.length)
+    : 0;
+
+  return (
+    <div style={T.screen}>
+      <div style={T.lessHead}>
+        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <div style={T.lessHeadTitle}>📊 {player.name} {player.surname}</div>
+      </div>
+      <div style={{ ...T.lessBody, padding:"14px 16px 80px" }}>
+        {loading ? (
+          <div style={{ textAlign:"center", color: T.modSub?.color || "#7A6548", padding:"40px 0" }}>Загрузка...</div>
+        ) : (
+          <>
+            {/* Общая сводка */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+              {[
+                { icon:"📚", value: progress.length, label:"Уроков пройдено" },
+                { icon:"📝", value: scores.length, label:"Тестов сдано" },
+                { icon:"🎯", value: avgScore+"%", label:"Средний балл" },
+                { icon:"💎", value: scores.filter(s=>s.score===s.total).length, label:"На 100%" },
+              ].map((s, i) => (
+                <div key={i} style={{ ...T.modCard, flexDirection:"column", alignItems:"center", padding:"12px", gap:4 }}>
+                  <div style={{ fontSize:22 }}>{s.icon}</div>
+                  <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize:20, fontWeight:"bold" }}>{s.value}</div>
+                  <div style={{ color: T.modSub?.color || "#7A6548", fontSize:11, textAlign:"center" }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Прогресс по ролям */}
+            <div style={{ color: T.secTitle?.color || "#9A8060", fontSize:11, letterSpacing:3, marginBottom:10, fontFamily:"monospace" }}>ПРОГРЕСС ПО РОЛЯМ</div>
+            {Object.entries(roleNames).map(([roleId, roleName]) => {
+              const count = byRole[roleId] || 0;
+              const total = (MODULES[roleId] || []).flatMap(m => m.lessons.filter(l => l.type === "lesson" || l.type === "practice")).length;
+              const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+              const color = roleColors[roleId] || "#C8A96E";
+              return (
+                <div key={roleId} style={{ ...T.modCard, flexDirection:"column", gap:8, marginBottom:8, padding:"12px 14px" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize:14, fontWeight:"bold" }}>{roleName}</div>
+                    <div style={{ color, fontSize:14, fontWeight:"bold" }}>{pct}%</div>
+                  </div>
+                  <div style={{ height:6, background:"rgba(255,255,255,0.08)", borderRadius:3 }}>
+                    <div style={{ height:6, width:`${pct}%`, background:color, borderRadius:3, transition:"width 0.5s ease" }} />
+                  </div>
+                  <div style={{ color: T.modSub?.color || "#7A6548", fontSize:12 }}>{count} из {total} уроков</div>
+                </div>
+              );
+            })}
+
+            {/* Последние тесты */}
+            {scores.length > 0 && (
+              <>
+                <div style={{ color: T.secTitle?.color || "#9A8060", fontSize:11, letterSpacing:3, margin:"16px 0 10px", fontFamily:"monospace" }}>ПОСЛЕДНИЕ ТЕСТЫ</div>
+                {scores.slice(0, 5).map((s, i) => {
+                  const pct = Math.round(s.score / s.total * 100);
+                  return (
+                    <div key={i} style={{ ...T.modCard, marginBottom:8, padding:"10px 14px", flexDirection:"column", gap:4 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between" }}>
+                        <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize:13, fontWeight:"bold", flex:1 }}>{s.role ? roleNames[s.role] || s.role : ""}</div>
+                        <div style={{ color: pct === 100 ? "#5DBB8A" : pct >= 70 ? "#C8A96E" : "#E07878", fontSize:14, fontWeight:"bold" }}>{pct}%</div>
+                      </div>
+                      <div style={{ color: T.modSub?.color || "#7A6548", fontSize:11 }}>{new Date(s.updated_at).toLocaleDateString("ru-RU")}</div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {progress.length === 0 && scores.length === 0 && (
+              <div style={{ textAlign:"center", color: T.modSub?.color || "#7A6548", padding:"30px 0", fontSize:14 }}>
+                📭 Пока нет данных
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const [showConfirm, setShowConfirm] = React.useState(false);
   return (
     <div style={{ ...T.modCard, marginBottom:8, gap:12, flexDirection:"column" }}>
@@ -4718,6 +4842,11 @@ function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz }) {
         <div style={{ flex:1 }}>
           <div style={{ ...T.modTitle, fontSize:13 }}>{p.name} {p.surname}</div>
           <div style={{ color:T.modSub.color, fontSize:11 }}>{p.restaurant}</div>
+        </div>
+        <div onClick={() => onViewPlayer && onViewPlayer(p)}
+          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
+            background:"rgba(200,169,110,0.12)", border:"1px solid rgba(200,169,110,0.3)", color:"#C8A96E" }}>
+          📊
         </div>
         <div onClick={() => setShowConfirm(s => !s)}
           style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
@@ -4751,7 +4880,7 @@ function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz }) {
   );
 }
 
-function StatsScreen({ T, profile, scores, completedRoles, completed, practiceStars, onBack, onResetPlayer, onUnlockQuiz }) {
+function StatsScreen({ T, profile, scores, completedRoles, completed, practiceStars, onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
   const roleColor = { seasonal:"#7C9E87", core:"#C8A96E", manager:"#8B7BAB", service_manager:"#7B8FAB" };
@@ -4864,7 +4993,7 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
             <>
               <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:3, fontFamily:"monospace", margin:"16px 0 8px" }}>УПРАВЛЕНИЕ ДАННЫМИ</div>
               {players.map((p, i) => (
-                <PlayerResetCard key={i} p={p} T={T} onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} />
+                <PlayerResetCard key={i} p={p} T={T} onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} />
               ))}
             </>
           ) : null;

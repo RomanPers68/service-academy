@@ -3882,6 +3882,68 @@ const vibrate = (pattern) => {
   } catch(e) {}
 };
 
+
+// ── Попап ачивки с анимацией ──────────────────────────────
+function AchievementPopup({ ach, a11y, onClose }) {
+  const [visible, setVisible] = React.useState(false);
+  const [leaving, setLeaving] = React.useState(false);
+
+  React.useEffect(() => {
+    setTimeout(() => setVisible(true), 20);
+    const t = setTimeout(() => handleClose(), 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleClose = () => {
+    setLeaving(true);
+    setTimeout(() => onClose(), 380);
+  };
+
+  const color = ach.color || "#C8A96E";
+  const popupBg = a11y ? "rgba(220,200,165,0.55)" : "rgba(20,14,6,0.45)";
+  const labelColor = a11y ? "rgba(120,85,30,0.55)" : "rgba(200,160,80,0.6)";
+  const titleColor = a11y ? "#6B4A10" : color;
+
+  return (
+    <div onClick={handleClose}
+      style={{ position:"fixed", inset:0, background:"transparent", zIndex:999, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 16px 50px" }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{
+          background: popupBg,
+          backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
+          border:`1px solid ${color}55`, borderTop:`1px solid ${color}77`,
+          borderRadius:22, padding:"24px 22px 20px",
+          maxWidth:440, width:"100%",
+          boxShadow:`0 8px 32px rgba(0,0,0,0.4), 0 2px 0 rgba(200,160,60,0.15) inset`,
+          transform: leaving ? "translateY(120%) scale(0.95)" : visible ? "translateY(0) scale(1)" : "translateY(120%) scale(0.95)",
+          opacity: leaving ? 0 : visible ? 1 : 0,
+          transition: leaving
+            ? "transform 0.35s cubic-bezier(0.4,0,1,1), opacity 0.3s ease"
+            : "transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease",
+        }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16 }}>
+          <div style={{
+            width:64, height:64, borderRadius:18, flexShrink:0,
+            background:`linear-gradient(145deg, ${color}30, ${color}10)`,
+            border:`1px solid ${color}45`, borderTop:`1px solid ${color}66`,
+            display:"flex", alignItems:"center", justifyContent:"center", fontSize:32,
+            boxShadow:`0 0 24px ${color}40, inset 0 1px 0 rgba(255,255,255,0.1)`,
+            animation:"achIconPulse 2s ease-in-out infinite",
+          }}>{ach.icon}</div>
+          <div>
+            <div style={{ color:labelColor, fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:5 }}>✦ НОВАЯ АЧИВКА</div>
+            <div style={{ color:titleColor, fontSize:20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{ach.label}</div>
+          </div>
+        </div>
+        <div onClick={handleClose}
+          style={{ textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
+          Закрыть ✕
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
   const [prevScreen, setPrevScreen] = useState(null);
@@ -4225,16 +4287,7 @@ export default function ServiceAcademy() {
     <div style={T.app}>
       {/* 🏆 Achievement popup */}
       {newAchievement && (
-        <div className="sa-pop" style={{ position:"fixed", top:80, left:"50%", transform:"translateX(-50%)", zIndex:999,
-          background:"linear-gradient(135deg, #1E1A16, #2A2218)", border:"1px solid rgba(200,160,80,0.5)",
-          borderRadius:20, padding:"16px 24px", display:"flex", alignItems:"center", gap:12,
-          boxShadow:"0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,160,80,0.2)", minWidth:240 }}>
-          <div style={{ fontSize:36 }}>{newAchievement.icon}</div>
-          <div>
-            <div style={{ color:"rgba(200,160,80,0.7)", fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:2 }}>НОВАЯ АЧИВКА</div>
-            <div style={{ color:"#F0E8D8", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{newAchievement.label}</div>
-          </div>
-        </div>
+        <AchievementPopup ach={newAchievement} a11y={a11y} onClose={() => setNewAchievement(null)} />
       )}
 
       <div style={T.phone}>
@@ -4275,10 +4328,10 @@ export default function ServiceAcademy() {
             }).catch(() => {});
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
-        />}</div>}
+        /></div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
         {screen === "roleSelect" && <div style={{paddingBottom:70}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} /></div>}
-        {screen === "glossary" && <div style={{paddingBottom:70}}><GlossaryScreen T={T} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
+        {screen === "glossary" && <div style={{paddingBottom:70}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:70}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "home" && <div style={{paddingBottom:70}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} /></div>}
         {screen === "module" && <div style={{paddingBottom:70}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
@@ -4289,12 +4342,12 @@ export default function ServiceAcademy() {
         {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail"].includes(screen) && profile && (
           <div style={{
             position:"fixed", bottom:0, left:0, right:0, zIndex:200,
-            background: a11y ? "#F2EAD8" : "#1A1612",
-            borderTop: a11y ? "1px solid rgba(160,120,60,0.3)" : "1px solid rgba(200,160,80,0.15)",
+            background: a11y ? "#F2EAD8" : "linear-gradient(160deg, #3A2A10 0%, #2A1E0A 100%)",
+            borderTop: a11y ? "1px solid rgba(160,120,60,0.3)" : "1px solid rgba(210,170,70,0.45)",
             display:"flex", alignItems:"stretch",
             paddingBottom:"env(safe-area-inset-bottom, 8px)",
             backdropFilter:"blur(20px)",
-            boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -2px 20px rgba(0,0,0,0.5)",
+            boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -4px 24px rgba(0,0,0,0.55), 0 -1px 0 rgba(210,170,70,0.20)",
           }}>
             {[
               { id:"roleSelect", icon:"🏠", label:"Главная" },
@@ -4557,10 +4610,12 @@ function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}
       {!detailTab && (
         <div style={{ display:"flex", margin:"12px 16px 0", gap:6 }}>
           {visibleTabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border:"none", cursor:"pointer", fontFamily:"Georgia, serif", fontSize:12, fontWeight:"bold", transition:"background 0.2s, color 0.2s",
-              background: tab === t.id ? t.color+"33" : T.modCard.background,
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border: tab === t.id ? `1px solid ${t.color}55` : "1px solid transparent", borderTop: tab === t.id ? `1px solid ${t.color}88` : "1px solid transparent", cursor:"pointer", fontFamily:"Georgia, serif", fontSize:12, fontWeight:"bold", transition:"all 0.25s ease",
+              background: tab === t.id
+                ? `linear-gradient(155deg, ${t.color}28, ${t.color}10)`
+                : T.modCard.background,
               color: tab === t.id ? t.color : T.progLabel.color,
-              borderBottom: tab === t.id ? `2px solid ${t.color}` : "2px solid transparent" }}>
+              boxShadow: tab === t.id ? `0 4px 14px rgba(0,0,0,0.3), 0 1px 0 ${t.color}22 inset` : "none" }}>
               {t.icon} {t.label}
             </button>
           ))}
@@ -5511,10 +5566,31 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
       <div style={T.screen}>
         <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div></div>
         <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:2 }} /></div>
-        <div ref={bodyRef} onScroll={handleScroll} style={T.lessBody}>
+        <div ref={bodyRef} onScroll={handleScroll} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
+          {/* Стеклянная подложка для текста урока */}
+          <div style={{
+            background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+            border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+            borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+            borderRadius: 22,
+            boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset",
+            padding: "20px 18px",
+            marginBottom: 16,
+            position: "relative",
+            overflow: "hidden",
+            backdropFilter: T.lessGlass?.blur || "none",
+            WebkitBackdropFilter: T.lessGlass?.blur || "none",
+          }}>
+            {/* Верхний блик */}
+            <div style={{ position:"absolute", top:0, left:0, right:0, height:"35%", borderRadius:"22px 22px 50% 50%", background: T.lessGlass?.glare || "linear-gradient(180deg, rgba(200,160,70,0.07) 0%, transparent 100%)", pointerEvents:"none" }} />
+            {/* Левая грань */}
+            <div style={{ position:"absolute", top:0, left:0, width:1, bottom:0, background: T.lessGlass?.edgeLeft || "linear-gradient(180deg, rgba(200,160,60,0.15) 0%, transparent 60%)", pointerEvents:"none" }} />
+            {/* Нижняя тень */}
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"20%", borderRadius:"0 0 22px 22px", background:"linear-gradient(0deg, rgba(0,0,0,0.12) 0%, transparent 100%)", pointerEvents:"none" }} />
+            <div style={{ position:"relative", zIndex:1 }}>
           {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
-            <div style={{ background:`linear-gradient(135deg, ${color||"#C8A96E"}22, ${color||"#C8A96E"}08)`, border:`2px solid ${color||"#C8A96E"}66`, borderRadius:16, padding:"14px 16px", marginBottom:18, boxShadow:`0 4px 20px ${color||"#C8A96E"}22` }}>
+            <div style={{ background: T.modCard?.background || "linear-gradient(155deg, #382810 0%, #281C08 100%)", border:`1px solid ${color||"#C8A96E"}44`, borderTop:`1px solid ${color||"#C8A96E"}66`, borderRadius:18, padding:"14px 16px", marginBottom:18, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||"#C8A96E"}18 inset` }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
                 <div style={{ fontSize:28 }}>💬</div>
                 <div style={{ flex:1 }}>
@@ -5546,6 +5622,8 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
             if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
             return <div key={i} style={T.para}>{highlightTerms(line, T.para)}</div>;
           })}
+            </div>{/* конец zIndex:1 */}
+          </div>{/* конец стеклянной подложки */}
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
         </div>
         {dialogueScreen && (
@@ -5553,10 +5631,12 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
         )}
         {termPopup && (
           <div onClick={() => setTermPopup(null)}
-            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:999, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 40px" }}>
+            style={{ position:"fixed", inset:0, background:"transparent", zIndex:999, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 40px" }}>
             <div onClick={e => e.stopPropagation()}
-              style={{ background: T.modCard?.background || "#2A1F14", borderRadius:20, padding:"20px 20px 24px", margin:"0 16px", maxWidth:440, width:"100%",
-                border:`1px solid ${color}55`, boxShadow:`0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${color}22` }}>
+              style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:20, padding:"20px 20px 24px", margin:"0 16px", maxWidth:440, width:"100%",
+                border:`1px solid ${color}55`, borderTop:`1px solid ${color}77`,
+                backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
+                boxShadow:`0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset` }}>
               <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
                 📖 {termPopup.term}
               </div>
@@ -5932,7 +6012,7 @@ const GLOSSARY = [
   { term: "Дижестив", def: "Напиток, подаваемый после еды для улучшения пищеварения. Завершает трапезу." },
 ];
 
-function GlossaryScreen({ T, onBack, color }) {
+function GlossaryScreen({ T, onBack, color, a11y }) {
   const [search, setSearch] = React.useState("");
   const filtered = GLOSSARY.filter(g =>
     g.term.toLowerCase().includes(search.toLowerCase()) ||
@@ -5959,8 +6039,8 @@ function GlossaryScreen({ T, onBack, color }) {
         )}
         {filtered.map((g, i) => (
           <div key={i} style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
-            <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{g.term}</div>
-            <div style={{ ...T.modSub, fontSize:14, lineHeight:1.6 }}>{g.def}</div>
+            <div style={{ color: a11y ? "#6B4A10" : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{g.term}</div>
+            <div style={{ ...T.modSub, color: a11y ? "#3A2A0E" : "#C8B898", fontSize:14, lineHeight:1.6 }}>{g.def}</div>
           </div>
         ))}
         <div style={{ ...T.para, textAlign:"center", opacity:0.4, fontSize:12, marginTop:8 }}>{GLOSSARY.length} терминов</div>
@@ -6228,7 +6308,8 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
         </div>
       )}
 
-      <style>{`@keyframes dlgPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+      <style>{`@keyframes achIconPulse { 0%,100%{box-shadow:0 0 24px rgba(200,160,80,0.4)} 50%{box-shadow:0 0 40px rgba(200,160,80,0.7)} }
+    @keyframes dlgPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
     </div>
   );
 }
@@ -6246,9 +6327,9 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
 // ────────────────────────────────────────────────────────────
 
 const S = {
-  app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:"#141210", fontFamily:"'Georgia', serif", overflowX:"hidden" },
-  phone: { width:"100%", maxWidth:430, background:"#141210", minHeight:"100vh", overflowY:"auto" },
-  screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"#141210", overflowX:"hidden" },
+  app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:"linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily:"'Georgia', serif", overflowX:"hidden" },
+  phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh", overflowY:"auto" },
+  screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"transparent", overflowX:"hidden" },
 
   a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:"#1A1612", borderBottom:"1px solid #4A3525" },
   a11yLabel: { color:"#A09080", fontSize:11, fontFamily:"monospace", letterSpacing:1 },
@@ -6260,7 +6341,7 @@ const S = {
   logoStar: { color:"#C8A050", fontSize:16 },
   roleSubtitle: { color:"#F0E8D8", fontSize:17, fontWeight:"bold", marginTop:0 },
   roleList: { padding:"2px 14px 4px", display:"flex", flexDirection:"column", gap:8 },
-  roleCard: { background:"#1E1A16", boxShadow:"0 2px 16px rgba(0,0,0,0.4)", borderRadius:22, padding:"10px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"2px solid #52381F", position:"relative", overflow:"hidden" },
+  roleCard: { background:"linear-gradient(160deg, #3A2A10 0%, #2A1E0A 100%)", boxShadow:"0 8px 28px rgba(0,0,0,0.55), 0 2px 0 rgba(210,170,70,0.22) inset, 0 -2px 4px rgba(0,0,0,0.4) inset", borderRadius:22, padding:"10px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:"1px solid rgba(160,120,45,0.40)", borderTop:"1px solid rgba(220,175,75,0.50)", position:"relative", overflow:"hidden" },
   roleAccent: { position:"absolute", left:0, top:0, bottom:0, width:3, borderRadius:"3px 0 0 3px" },
   roleIcon: { fontSize:38, flexShrink:0, width:54, height:54, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:14 },
   roleInfo: { flex:1 },
@@ -6275,7 +6356,7 @@ const S = {
   changeRoleBtn: { background:"transparent", border:"1px solid #4A3525", borderRadius:20, color:"#7A7060", fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"Georgia, serif" },
   homeRoleBadge: { display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, border:"1px solid" },
 
-  progCard: { margin:"6px 14px", background:"#1E1A16", boxShadow:"0 2px 12px rgba(0,0,0,0.3)", borderRadius:16, padding:"12px 16px", border:"1px solid #4A3525" },
+  progCard: { margin:"6px 14px", background:"linear-gradient(150deg, #332510 0%, #231908 100%)", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset", borderRadius:16, padding:"12px 16px", border:"1px solid rgba(140,106,38,0.34)", borderTop:"1px solid rgba(208,166,62,0.42)" },
   progTop: { display:"flex", justifyContent:"space-between", marginBottom:8 },
   progLabel: { color:"#7A7060", fontSize:12 },
   progPct: { fontSize:14, fontWeight:"bold" },
@@ -6285,7 +6366,7 @@ const S = {
   secTitle: { color:"#544C40", fontSize:9, letterSpacing:4, padding:"14px 20px 6px", fontFamily:"monospace", textTransform:"uppercase" },
 
   modList: { padding:"0 14px 32px", display:"flex", flexDirection:"column", gap:8 },
-  modCard: { background:"#1E1A16", boxShadow:"0 2px 12px rgba(0,0,0,0.35)", borderRadius:20, padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", border:"2px solid #4A3525", position:"relative", overflow:"hidden" },
+  modCard: { background:"linear-gradient(155deg, #382810 0%, #281C08 100%)", boxShadow:"0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset", borderRadius:20, padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", border:"1px solid rgba(150,112,42,0.38)", borderTop:"1px solid rgba(215,170,68,0.46)", position:"relative", overflow:"hidden" },
   modBar: { position:"absolute", left:0, top:0, bottom:0, width:3 },
   modIcon: { fontSize:22, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:10, flexShrink:0 },
   modInfo: { flex:1 },
@@ -6298,7 +6379,7 @@ const S = {
   modHead: { padding:"44px 18px 20px", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)" },
   backBtn: { background:"none", border:"none", color:"rgba(255,255,255,0.4)", fontSize:14, cursor:"pointer", padding:0, marginBottom:18, display:"flex", alignItems:"center", gap:8 },
   lessList: { padding:"10px 14px 28px", flex:1 },
-  lessCard: { display:"flex", alignItems:"center", gap:10, background:"#1E1A16", boxShadow:"0 2px 10px rgba(0,0,0,0.3)", borderRadius:18, padding:"11px 14px", marginBottom:6, cursor:"pointer", border:"2px solid #4A3525" },
+  lessCard: { display:"flex", alignItems:"center", gap:10, background:"linear-gradient(150deg, #352610 0%, #251A08 100%)", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(195,155,58,0.16) inset, 0 -2px 3px rgba(0,0,0,0.35) inset", borderRadius:18, padding:"11px 14px", marginBottom:6, cursor:"pointer", border:"1px solid rgba(145,108,40,0.36)", borderTop:"1px solid rgba(210,168,65,0.44)" },
   lessNum: { width:28, height:28, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", flexShrink:0 },
   lessInfo: { flex:1 },
   lessTitle: { color:"#F0E8D8", fontSize:14, marginBottom:2, fontWeight:"600" },
@@ -6308,6 +6389,8 @@ const S = {
   backBtn2: { background:"none", border:"none", color:"#686050", fontSize:26, cursor:"pointer", padding:0, lineHeight:1 },
   lessHeadTitle: { color:"#F0E8D8", fontSize:15, fontWeight:"bold", flex:1, lineHeight:1.3 },
   lessBody: { flex:1, padding:"18px 18px 44px", overflowY:"auto", background:"transparent" },
+  termPopupBg: "rgba(20,14,6,0.45)",
+  lessGlass: { bg:"linear-gradient(155deg, #382810 0%, #281C08 100%)", border:"1px solid rgba(150,112,42,0.38)", borderTop:"1px solid rgba(215,170,68,0.46)", shadow:"0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset", glare:"linear-gradient(180deg, rgba(200,160,70,0.07) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(200,160,60,0.15) 0%, transparent 60%)", blur:"none" },
 
   para: { color:"#DDD4C4", fontSize:15, lineHeight:1.85, marginBottom:5 },
   bold: { color:"#F0E8D8", fontSize:15, fontWeight:"bold", marginBottom:6, marginTop:16, letterSpacing:0.1 },
@@ -6316,26 +6399,26 @@ const S = {
   forbidden: { color:"#E07878", fontSize:15, marginBottom:4, lineHeight:1.7 },
   good: { color:"#5DBB8A", fontSize:15, marginBottom:4, lineHeight:1.7 },
   bad: { color:"#E07878", fontSize:15, marginBottom:4, lineHeight:1.7 },
-  note: { color:"#C8A050", fontSize:12, fontStyle:"italic", marginBottom:5, marginTop:6, lineHeight:1.65, padding:"8px 12px", background:"#1A1612", borderRadius:8 },
+  note: { color:"#C8A050", fontSize:12, fontStyle:"italic", marginBottom:5, marginTop:6, lineHeight:1.65, padding:"10px 14px", background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", borderRadius:12, border:"1px solid rgba(200,160,60,0.20)", borderTop:"1px solid rgba(210,170,70,0.28)", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.12) inset" },
   principle: { color:"#DDD4C4", fontSize:15, lineHeight:1.85, marginBottom:6 },
-  quote: { color:"#C8A050", fontSize:13, fontStyle:"italic", paddingLeft:12, borderLeft:"2px solid #D4A85A55", margin:"12px 0", lineHeight:1.85 },
+  quote: { color:"#C8A050", fontSize:13, fontStyle:"italic", paddingLeft:14, borderLeft:"2px solid rgba(210,170,70,0.5)", margin:"12px 0", lineHeight:1.85, background:"linear-gradient(150deg, rgba(58,42,16,0.6) 0%, rgba(40,28,8,0.4) 100%)", borderRadius:"0 10px 10px 0", padding:"10px 14px", boxShadow:"0 2px 10px rgba(0,0,0,0.25)" },
   doneBtn: { width:"100%", padding:"14px", border:"1px solid rgba(255,255,255,0.2)", borderRadius:16, color:"#fff", fontSize:15, fontWeight:"bold", cursor:"pointer", marginTop:24, fontFamily:"Georgia, serif", letterSpacing:0.3, boxShadow:"0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25)" },
 
   quizWrap: { flex:1, padding:"16px 18px 36px" },
   quizProgress: { color:"#686050", fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
   quizQ: { color:"#F0E8D8", fontSize:15, lineHeight:1.75, marginBottom:18, fontWeight:"bold", whiteSpace:"pre-wrap" },
-  quizOpt: { background:"#1E1A16", border:"1px solid #4A3525", borderRadius:12, padding:"12px 14px", marginBottom:7, color:"#DDD4C4", fontSize:14, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
-  explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"#1A1612", padding:"10px 14px", borderRadius:"0 10px 10px 0" },
+  quizOpt: { background:"linear-gradient(155deg, #382810 0%, #281C08 100%)", border:"1px solid rgba(150,112,42,0.38)", borderTop:"1px solid rgba(215,170,68,0.46)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:"#DDD4C4", fontSize:14, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 12px 12px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.10) inset" },
   resultWrap: { display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 18px 20px", gap:16 },
   resultCircle: { width:100, height:100, borderRadius:"50%", background:"#1E1A16", border:"3px solid", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", boxShadow:"0 0 24px rgba(200,160,80,0.18)" },
   resultScore: { fontSize:28, fontWeight:"bold" },
   resultTxt: { color:"#DDD4C4", fontSize:15, textAlign:"center", lineHeight:1.6 },
 
   simWrap: { flex:1, padding:"14px 18px 36px" },
-  simScen: { background:"#1E1A16", borderRadius:12, padding:"13px", color:"#C8B89A", fontSize:13, lineHeight:1.8, marginBottom:13, border:"1px solid #4A3525" },
+  simScen: { background:"linear-gradient(155deg, #332510 0%, #231908 100%)", borderRadius:12, padding:"13px", color:"#C8B89A", fontSize:13, lineHeight:1.8, marginBottom:13, border:"1px solid rgba(140,106,38,0.34)", borderTop:"1px solid rgba(208,166,62,0.40)", boxShadow:"0 4px 14px rgba(0,0,0,0.38), 0 1px 0 rgba(190,152,56,0.12) inset" },
   simQ: { color:"#F0E8D8", fontSize:14, fontWeight:"bold", marginBottom:13 },
-  simOpt: { border:"1px solid #4A3525", background:"#1E1A16", borderRadius:12, padding:"12px 14px", marginBottom:7, color:"#DDD4C4", fontSize:13, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
-  simFb: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, margin:"0 0 8px", background:"#1A1612", padding:"10px 14px", borderRadius:"0 10px 10px 0" },
+  simOpt: { border:"1px solid rgba(145,108,40,0.36)", borderTop:"1px solid rgba(210,168,65,0.44)", background:"linear-gradient(150deg, #352610 0%, #251A08 100%)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:"#DDD4C4", fontSize:13, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.38), 0 1px 0 rgba(195,155,58,0.12) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  simFb: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, margin:"0 0 8px", background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 10px 10px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35)" },
 };
 
 const A = {
@@ -6350,7 +6433,7 @@ const A = {
   roleHeader: { ...S.roleHeader, background:"#F2EAD8" },
   roleSubtitle:{ ...S.roleSubtitle, color:"#2A1F0E", fontSize:22, fontWeight:"bold" },
   roleList:   { ...S.roleList, gap:10 },
-  roleCard:   { ...S.roleCard, background:"#FBF5E8", border:"2px solid rgba(160,120,60,0.45)", boxShadow:"0 4px 16px rgba(100,70,20,0.18), 0 1px 4px rgba(160,120,60,0.25), inset 0 1px 0 rgba(255,240,200,0.7)", borderRadius:16 },
+  roleCard:   { ...S.roleCard, background:"rgba(238,225,198,0.75)", backdropFilter:"blur(20px) saturate(130%)", WebkitBackdropFilter:"blur(20px) saturate(130%)", border:"1px solid rgba(180,145,70,0.22)", borderTop:"1px solid rgba(255,240,200,0.72)", boxShadow:"0 4px 18px rgba(120,90,30,0.13), 0 1px 0 rgba(255,250,235,0.82) inset, 0 -1px 2px rgba(140,105,40,0.10) inset", borderRadius:20 },
   roleIcon:   { ...S.roleIcon, background:"transparent" },
   roleSublabel:{ ...S.roleSublabel, color:"#7A6548", fontSize:15 },
   roleDesc:   { ...S.roleDesc, color:"#7A6548", fontSize:15 },
@@ -6361,21 +6444,21 @@ const A = {
   changeRoleBtn:{ ...S.changeRoleBtn, background:"transparent", border:"1px solid rgba(160,120,60,0.3)", color:"#7A6548" },
   homeRoleBadge:{ ...S.homeRoleBadge },
 
-  progCard:   { ...S.progCard, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.18)", boxShadow:"0 2px 12px rgba(100,70,20,0.1)", borderRadius:16 },
+  progCard:   { ...S.progCard, background:"rgba(235,222,195,0.70)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset", borderRadius:16 },
   progLabel:  { ...S.progLabel, color:"#2A1F0E", fontSize:16 },
   progBar:    { ...S.progBar, background:"rgba(160,120,60,0.15)" },
   progSub:    { ...S.progSub, color:"#7A6548", fontSize:14 },
   secTitle:   { ...S.secTitle, color:"#9A8060", fontSize:13, fontWeight:"normal" },
 
   modList:    { ...S.modList, gap:10 },
-  modCard:    { ...S.modCard, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.18)", boxShadow:"0 2px 12px rgba(100,70,20,0.1)" },
+  modCard:    { ...S.modCard, background:"rgba(238,225,198,0.72)", backdropFilter:"blur(18px) saturate(128%)", WebkitBackdropFilter:"blur(18px) saturate(128%)", border:"1px solid rgba(180,145,70,0.20)", borderTop:"1px solid rgba(255,240,200,0.68)", boxShadow:"0 3px 14px rgba(120,90,30,0.11), 0 1px 0 rgba(255,248,230,0.75) inset" },
   modIcon:    { ...S.modIcon, background:"transparent" },
   modTitle:   { ...S.modTitle, color:"#2A1F0E", fontSize:16, fontWeight:"bold" },
   modSub:     { ...S.modSub, color:"#7A6548", fontSize:15 },
   modArrow:   { ...S.modArrow, color:"#B09060" },
   modTag:     { ...S.modTag, fontSize:13 },
 
-  lessCard:   { ...S.lessCard, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.18)", boxShadow:"0 2px 10px rgba(100,70,20,0.1)" },
+  lessCard:   { ...S.lessCard, background:"rgba(238,225,198,0.70)", backdropFilter:"blur(16px) saturate(125%)", WebkitBackdropFilter:"blur(16px) saturate(125%)", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.65)", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset" },
   lessTitle:  { ...S.lessTitle, color:"#2A1F0E", fontSize:17 },
   lessArrow:  { ...S.lessArrow, color:"#B09060" },
   lessNum:    { ...S.lessNum, fontSize:16 },
@@ -6386,6 +6469,8 @@ const A = {
   backBtn2:   { ...S.backBtn2, color:"#7A6548", fontSize:22 },
   lessHeadTitle:{ ...S.lessHeadTitle, color:"#2A1F0E", fontSize:17, fontWeight:"bold" },
   lessBody:   { ...S.lessBody, background:"#F2EAD8" },
+  termPopupBg: "rgba(220,200,165,0.55)",
+  lessGlass:  { bg:"rgba(238,225,198,0.75)", border:"1px solid rgba(180,145,70,0.22)", borderTop:"1px solid rgba(255,240,200,0.72)", shadow:"0 4px 18px rgba(120,90,30,0.13), 0 1px 0 rgba(255,250,235,0.82) inset, 0 -1px 2px rgba(140,105,40,0.10) inset", glare:"linear-gradient(180deg, rgba(255,252,240,0.45) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,245,210,0.5) 0%, transparent 60%)", blur:"blur(20px) saturate(130%)" },
 
   para:       { ...S.para, color:"#2A1F0E", fontSize:18, lineHeight:2.1 },
   bold:       { ...S.bold, color:"#1A1008", fontSize:19, marginTop:18 },
@@ -6394,21 +6479,21 @@ const A = {
   forbidden:  { ...S.forbidden, color:"#8B3020", fontSize:18 },
   good:       { ...S.good, color:"#2A6B45", fontSize:18 },
   bad:        { ...S.bad, color:"#8B3020", fontSize:18 },
-  note:       { ...S.note, color:"#4A3010", background:"rgba(200,160,60,0.12)", border:"1px solid rgba(160,120,40,0.3)", fontSize:16, padding:"12px 16px" },
+  note:       { ...S.note, color:"#4A3010", background:"rgba(235,218,185,0.72)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.22)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, padding:"12px 16px", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },
   principle:  { ...S.principle, color:"#2A1F0E", fontSize:18 },
-  quote:      { ...S.quote, color:"#7A5020", fontSize:16 },
+  quote:      { ...S.quote, color:"#6B4A10", fontSize:16, background:"rgba(232,215,180,0.60)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderLeft:"2px solid rgba(160,120,50,0.5)", boxShadow:"0 2px 10px rgba(120,90,30,0.08), 0 1px 0 rgba(255,245,210,0.5) inset" },
   doneBtn:    { ...S.doneBtn, fontSize:17, padding:"16px", border:"1px solid rgba(160,120,60,0.3)", color:"#fff", boxShadow:"0 4px 20px rgba(100,70,20,0.2), inset 0 1px 0 rgba(255,220,140,0.2)" },
 
   quizWrap:      { ...S.quizWrap, background:"#F2EAD8" },
   quizProgress:  { ...S.quizProgress, color:"#9A8060", fontSize:14 },
   quizQ:         { ...S.quizQ, color:"#2A1F0E", fontSize:18, lineHeight:1.9 },
-  quizOpt:       { ...S.quizOpt, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", color:"#2A1F0E", fontSize:16, padding:"14px 16px", boxShadow:"0 2px 10px rgba(100,70,20,0.08)" },
-  explain:       { ...S.explain, color:"#2A1F0E", background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", fontSize:16 },
+  quizOpt:       { ...S.quizOpt, background:"rgba(238,225,198,0.72)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.65)", color:"#2A1F0E", fontSize:16, padding:"14px 16px", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset" },
+  explain:       { ...S.explain, color:"#2A1F0E", background:"rgba(235,220,192,0.75)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.20)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },
   resultCircle:  { ...S.resultCircle, background:"#FBF5E8", border:"2px solid" },
   resultTxt:     { ...S.resultTxt, color:"#2A1F0E", fontSize:17 },
 
-  simScen:  { ...S.simScen, background:"#FBF5E8", color:"#2A1F0E", border:"1px solid rgba(160,120,60,0.2)", boxShadow:"0 2px 12px rgba(100,70,20,0.1)", fontSize:15 },
+  simScen:  { ...S.simScen, background:"rgba(235,220,192,0.70)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:"#2A1F0E", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", boxShadow:"0 3px 14px rgba(120,90,30,0.11), 0 1px 0 rgba(255,248,230,0.68) inset", fontSize:15 },
   simQ:     { ...S.simQ, color:"#2A1F0E", fontSize:17 },
-  simOpt:   { ...S.simOpt, background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", color:"#2A1F0E", fontSize:16, boxShadow:"0 2px 10px rgba(100,70,20,0.08)" },
-  simFb:    { ...S.simFb, color:"#2A1F0E", background:"#FBF5E8", border:"1px solid rgba(160,120,60,0.2)", fontSize:16 },
+  simOpt:   { ...S.simOpt, background:"rgba(238,225,198,0.70)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", color:"#2A1F0E", fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset" },
+  simFb:    { ...S.simFb, color:"#2A1F0E", background:"rgba(232,218,188,0.68)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(170,135,62,0.18)", borderTop:"1px solid rgba(255,238,195,0.60)", fontSize:16, boxShadow:"0 2px 10px rgba(120,90,30,0.08)" },
 };

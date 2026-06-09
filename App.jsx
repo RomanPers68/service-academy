@@ -4686,7 +4686,7 @@ function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}
               </div>
               <div style={{ textAlign:"center" }}>
                 <div style={{ color:"#C8A96E", fontSize:22, fontWeight:"bold" }}>{selected?.total}</div>
-                <div style={{ color:T.modSub.color, fontSize:11 }}>тестов</div>
+                <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 13 }}>тестов</div>
               </div>
               <div style={{ textAlign:"center" }}>
                 <div style={{ color:roleColor[selected?.role]||"#C8A96E", fontSize:14, fontWeight:"bold", marginTop:4 }}>{selected?.position !== "senior" ? (roleLabel[selected?.role]||"") : ""}</div>
@@ -5022,8 +5022,8 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
           ].map((s, i) => (
             <div key={i} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ fontSize:22 }}>{s.icon}</div>
-              <div style={{ color:s.color, fontSize:20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
-              <div style={{ color:T.modSub.color, fontSize:11 }}>{s.label}</div>
+              <div style={{ color:s.color, fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 8 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
+              <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -5039,15 +5039,15 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
               <div style={{ fontSize:24, flexShrink:0 }}>{roleIcon[r]}</div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                  <div style={{ ...T.modTitle, fontSize:14 }}>{roleLabel[r]}</div>
-                  <div style={{ color:roleColor[r], fontSize:12, fontWeight:"bold" }}>
+                  <div style={{ ...T.modTitle, fontSize: T.modTitle?.fontSize || 17 }}>{roleLabel[r]}</div>
+                  <div style={{ color:roleColor[r], fontSize: T.modSub?.fontSize || 15, fontWeight:"bold" }}>
                     {done ? "✓ Завершено" : roleScores.length > 0 ? `${avg}%` : "Не начато"}
                   </div>
                 </div>
                 <div style={{ height:4, background:T.progBar.background, borderRadius:2, overflow:"hidden" }}>
                   <div style={{ width:`${avg}%`, height:"100%", background:roleColor[r], borderRadius:2, transition:"width 0.5s" }} />
                 </div>
-                <div style={{ color:T.modSub.color, fontSize:11, marginTop:4 }}>{roleScores.length} тест{roleScores.length === 1 ? "" : roleScores.length < 5 ? "а" : "ов"} пройдено</div>
+                <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15, marginTop:4 }}>{roleScores.length} тест{roleScores.length === 1 ? "" : roleScores.length < 5 ? "а" : "ов"} пройдено</div>
               </div>
             </div>
           );
@@ -6453,7 +6453,7 @@ const A = {
   modList:    { ...S.modList, gap:10 },
   modCard:    { ...S.modCard, background:"rgba(238,225,198,0.72)", backdropFilter:"blur(18px) saturate(128%)", WebkitBackdropFilter:"blur(18px) saturate(128%)", border:"1px solid rgba(180,145,70,0.20)", borderTop:"1px solid rgba(255,240,200,0.68)", boxShadow:"0 3px 14px rgba(120,90,30,0.11), 0 1px 0 rgba(255,248,230,0.75) inset" },
   modIcon:    { ...S.modIcon, background:"transparent" },
-  modTitle:   { ...S.modTitle, color:"#2A1F0E", fontSize:16, fontWeight:"bold" },
+  modTitle:   { ...S.modTitle, color:"#2A1F0E", fontSize:17, fontWeight:"bold" },
   modSub:     { ...S.modSub, color:"#7A6548", fontSize:15 },
   modArrow:   { ...S.modArrow, color:"#B09060" },
   modTag:     { ...S.modTag, fontSize:13 },

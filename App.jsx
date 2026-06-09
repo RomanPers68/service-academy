@@ -4079,10 +4079,15 @@ export default function ServiceAcademy() {
   }, [profile]);
 
   const modules = useMemo(() => role ? MODULES[role] : [], [role]);
-  const totalLessons = useMemo(() => modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").length, 0), [modules]);
-  const roleLesonIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").map(l => l.id))), [modules]);
-  const doneCount = useMemo(() => Object.keys(completed).filter((k) => completed[k] && roleLesonIds.has(k)).length, [completed, roleLesonIds]);
-  const progress = useMemo(() => totalLessons ? Math.min(100, Math.round((doneCount / totalLessons) * 100)) : 0, [doneCount, totalLessons]);
+  const totalLessons = useMemo(() => modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0), [modules]);
+  const roleLesonIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id))), [modules]);
+  const roleQuizIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id))), [modules]);
+  const doneCount = useMemo(() => {
+    const lessonsDone = Object.keys(completed).filter(k => completed[k] && roleLesonIds.has(k) && !roleQuizIds.has(k)).length;
+    const quizzesDone = Object.keys(quizDone).filter(k => quizDone[k] && roleQuizIds.has(k)).length;
+    return lessonsDone + quizzesDone;
+  }, [completed, quizDone, roleLesonIds, roleQuizIds]);
+  const progress = useMemo(() => totalLessons ? Math.round((doneCount / totalLessons) * 100) : 0, [doneCount, totalLessons]);
   const navigate = useCallback((to) => { setScreen(prev => { setPrevScreen(prev); return to; }); }, []);
   const selectRole = useCallback((r) => {
     setRole(r);
@@ -4192,7 +4197,7 @@ export default function ServiceAcademy() {
             pct: Math.round(sc / activeLesson.questions.length * 100),
             date: new Date().toLocaleDateString("ru-RU"),
           };
-          supabase.from("scores").insert({ name: profile.name, surname: profile.surname || "", restaurant: profile.restaurant, role, position: profile.position || "waiter", score: sc, total: activeLesson.questions.length, updated_at: new Date().toISOString() }).then(({ data, error }) => { if (error) console.error("Supabase insert error:", error); else console.log("Supabase insert ok:", data); }).catch((e) => console.error("Supabase catch:", e));
+          supabase.from("scores").insert({ name: profile.name, surname: profile.surname || "", restaurant: profile.restaurant, role, position: profile.position || "waiter", quiz_id: activeLesson.id, score: sc, total: activeLesson.questions.length, updated_at: new Date().toISOString() }).then(({ data, error }) => { if (error) console.error("Supabase insert error:", error); else console.log("Supabase insert ok:", data); }).catch((e) => console.error("Supabase catch:", e));
           setScores(prev => {
             const updated = [...prev, newScore];
             try { localStorage.setItem("sa_scores", JSON.stringify(updated.filter(s => s.id > 900))); } catch(e) {};
@@ -4227,9 +4232,9 @@ export default function ServiceAcademy() {
           });
         }
 
-        // Проверяем — пройдена ли вся роль?
-        const allLessons = (MODULES[role] || []).flatMap(m => m.lessons);
-        const allDone = allLessons.every(l => newCompleted[l.id]);
+        // Проверяем — пройдена ли вся роль? (уроки + практики через completed, квизы через quizDone)
+        const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
+        const allDone = allLessons.every(l => l.type === "quiz" ? quizDone[l.id] : newCompleted[l.id]);
         if (allDone) {
           const nextIdx = ROLE_ORDER.indexOf(role) + 1;
           const nextRole = ROLE_ORDER[nextIdx];
@@ -4335,7 +4340,7 @@ export default function ServiceAcademy() {
         )}
         {screen === "profile" && <ProfileScreen T={S} onDone={(p) => { setProfile(p); navigate("roleSelect"); }} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
-        {screen === "stats" && <div style={{paddingBottom:70}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} practiceStars={practiceStars} onBack={() => navigate("roleSelect")}
+        {screen === "stats" && <div style={{paddingBottom:70}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} onBack={() => navigate("roleSelect")}
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname}`]; return n; });
@@ -4862,14 +4867,18 @@ function PlayerDetailScreen({ player, T, onBack }) {
   const [scores, setScores] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
 
+  const [quizDonePlayer, setQuizDonePlayer] = React.useState([]);
+
   React.useEffect(() => {
     const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
     Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}`, { headers: h }).then(r => r.json()),
       fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}&order=updated_at.desc`, { headers: h }).then(r => r.json()),
-    ]).then(([prog, sc]) => {
+      fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}`, { headers: h }).then(r => r.json()),
+    ]).then(([prog, sc, qd]) => {
       setProgress(Array.isArray(prog) ? prog : []);
       setScores(Array.isArray(sc) ? sc : []);
+      setQuizDonePlayer(Array.isArray(qd) ? qd : []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [player.name, player.surname]);
@@ -4877,21 +4886,64 @@ function PlayerDetailScreen({ player, T, onBack }) {
   const roleNames = { seasonal: "Новичок", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер" };
   const roleColors = { seasonal: "#7C9E87", core: "#C8A96E", manager: "#8B7BAB", service_manager: "#5B8FA8" };
 
-  // Группируем прогресс по ролям — только актуальные и уникальные lesson_id
+  // Группируем прогресс по ролям — уроки + практики (без квизов)
   const byRole = {};
   const seenLessons = new Set();
   progress.forEach(p => {
     const key = `${p.role}|${p.lesson_id}`;
-    if (seenLessons.has(key)) return; // пропускаем дубли
+    if (seenLessons.has(key)) return;
     seenLessons.add(key);
-    const roleLessons = (MODULES[p.role] || []).flatMap(m => m.lessons.map(l => l.id));
-    if (!roleLessons.includes(p.lesson_id)) return; // пропускаем устаревшие записи
+    const roleQuizIds = new Set((MODULES[p.role] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id)));
+    if (roleQuizIds.has(p.lesson_id)) return; // квизы считаем отдельно
+    const roleLessons = (MODULES[p.role] || []).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").map(l => l.id));
+    if (!roleLessons.includes(p.lesson_id)) return;
     if (!byRole[p.role]) byRole[p.role] = 0;
     byRole[p.role]++;
   });
 
-  const avgScore = scores.length > 0
-    ? Math.round(scores.reduce((a, s) => a + (s.score / s.total * 100), 0) / scores.length)
+  // Квизы пройденные игроком по ролям
+  const quizByRole = {};
+  const seenQuizzes = new Set();
+  quizDonePlayer.forEach(q => {
+    if (seenQuizzes.has(q.quiz_id)) return;
+    seenQuizzes.add(q.quiz_id);
+    for (const [roleId, modules] of Object.entries(MODULES)) {
+      const quizIds = modules.flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id));
+      if (quizIds.includes(q.quiz_id)) {
+        if (!quizByRole[roleId]) quizByRole[roleId] = 0;
+        quizByRole[roleId]++;
+        break;
+      }
+    }
+  });
+
+  // Дедуплицируем тесты — по quiz_id берём лучший результат, если нет quiz_id — по роли
+  const uniqueScores = Object.values(
+    scores.reduce((acc, s) => {
+      const key = s.quiz_id ? `${s.role}|${s.quiz_id}` : `${s.role}`;
+      if (!acc[key] || (s.score / s.total) > (acc[key].score / acc[key].total)) {
+        acc[key] = s;
+      }
+      return acc;
+    }, {})
+  );
+
+  // Честное число пройденных уроков (без дублей и устаревших)
+  const validLessonIds = new Set(
+    Object.values(MODULES).flatMap(modules =>
+      modules.flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").map(l => l.id))
+    )
+  );
+  const seenForCount = new Set();
+  const uniqueLessonCount = progress.filter(p => {
+    if (!validLessonIds.has(p.lesson_id)) return false;
+    if (seenForCount.has(p.lesson_id)) return false;
+    seenForCount.add(p.lesson_id);
+    return true;
+  }).length;
+
+  const avgScore = uniqueScores.length > 0
+    ? Math.round(uniqueScores.reduce((a, s) => a + (s.score / s.total * 100), 0) / uniqueScores.length)
     : 0;
 
   return (
@@ -4908,10 +4960,10 @@ function PlayerDetailScreen({ player, T, onBack }) {
             {/* Общая сводка */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
               {[
-                { icon:"📚", value: progress.length, label:"Уроков пройдено" },
-                { icon:"📝", value: scores.length, label:"Тестов сдано" },
+                { icon:"📚", value: uniqueLessonCount, label:"Уроков пройдено" },
+                { icon:"📝", value: uniqueScores.length, label:"Тестов сдано" },
                 { icon:"🎯", value: avgScore+"%", label:"Средний балл" },
-                { icon:"💎", value: scores.filter(s=>s.score===s.total).length, label:"На 100%" },
+                { icon:"💎", value: uniqueScores.filter(s=>s.score===s.total).length, label:"На 100%" },
               ].map((s, i) => (
                 <div key={i} style={{ ...T.modCard, flexDirection:"column", alignItems:"center", padding:"12px", gap:4 }}>
                   <div style={{ fontSize:22 }}>{s.icon}</div>
@@ -4924,8 +4976,12 @@ function PlayerDetailScreen({ player, T, onBack }) {
             {/* Прогресс по ролям */}
             <div style={{ color: T.secTitle?.color || "#9A8060", fontSize:11, letterSpacing:3, marginBottom:10, fontFamily:"monospace" }}>ПРОГРЕСС ПО РОЛЯМ</div>
             {Object.entries(roleNames).map(([roleId, roleName]) => {
-              const count = byRole[roleId] || 0;
-              const total = (MODULES[roleId] || []).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result")).length;
+              const lessonCount = byRole[roleId] || 0;
+              const quizCount = quizByRole[roleId] || 0;
+              const count = lessonCount + quizCount;
+              const lessonTotal = (MODULES[roleId] || []).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result")).length;
+              const quizTotal = (MODULES[roleId] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz")).length;
+              const total = lessonTotal + quizTotal;
               const pct = total > 0 ? Math.round((count / total) * 100) : 0;
               const color = roleColors[roleId] || "#C8A96E";
               return (
@@ -4946,7 +5002,7 @@ function PlayerDetailScreen({ player, T, onBack }) {
             {scores.length > 0 && (
               <>
                 <div style={{ color: T.secTitle?.color || "#9A8060", fontSize:11, letterSpacing:3, margin:"16px 0 10px", fontFamily:"monospace" }}>ПОСЛЕДНИЕ ТЕСТЫ</div>
-                {scores.slice(0, 5).map((s, i) => {
+                {uniqueScores.sort((a,b) => (b.score/b.total) - (a.score/a.total)).map((s, i) => {
                   const pct = Math.round(s.score / s.total * 100);
                   return (
                     <div key={i} style={{ ...T.modCard, marginBottom:8, padding:"10px 14px", flexDirection:"column", gap:4 }}>
@@ -4954,14 +5010,17 @@ function PlayerDetailScreen({ player, T, onBack }) {
                         <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize:13, fontWeight:"bold", flex:1 }}>{s.role ? roleNames[s.role] || s.role : ""}</div>
                         <div style={{ color: pct === 100 ? "#5DBB8A" : pct >= 70 ? "#C8A96E" : "#E07878", fontSize:14, fontWeight:"bold" }}>{pct}%</div>
                       </div>
-                      <div style={{ color: T.modSub?.color || "#7A6548", fontSize:11 }}>{new Date(s.updated_at).toLocaleDateString("ru-RU")}</div>
+                      <div style={{ color: T.modSub?.color || "#7A6548", fontSize:11 }}>{s.score} из {s.total} верно · {new Date(s.updated_at).toLocaleDateString("ru-RU")}</div>
+                      <div style={{ height:3, background:"rgba(255,255,255,0.08)", borderRadius:2, marginTop:2 }}>
+                        <div style={{ height:3, width:`${pct}%`, background: pct === 100 ? "#5DBB8A" : pct >= 70 ? "#C8A96E" : "#E07878", borderRadius:2 }} />
+                      </div>
                     </div>
                   );
                 })}
               </>
             )}
 
-            {progress.length === 0 && scores.length === 0 && (
+            {uniqueLessonCount === 0 && uniqueScores.length === 0 && (
               <div style={{ textAlign:"center", color: T.modSub?.color || "#7A6548", padding:"30px 0", fontSize:14 }}>
                 📭 Пока нет данных
               </div>
@@ -5019,7 +5078,7 @@ function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   );
 }
 
-function StatsScreen({ T, profile, scores, completedRoles, completed, practiceStars, onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
+function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, practiceStars, onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
   const roleColor = { seasonal:"#7C9E87", core:"#C8A96E", manager:"#8B7BAB", service_manager:"#7B8FAB" };
@@ -5079,12 +5138,15 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
           const roleScores = myScores.filter(s => s.role === r);
           const avg = roleScores.length > 0 ? Math.round(roleScores.reduce((s, x) => s + x.pct, 0) / roleScores.length) : 0;
           const done = completedRoles.has(r) && roleScores.length > 0;
-          const roleLessonIds = new Set((MODULES[r] || []).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").map(l => l.id)));
-          const lessonDone = Object.keys(completed).filter(k => completed[k] && roleLessonIds.has(k)).length;
-          const lessonTotal = roleLessonIds.size;
-          const lessonPct = lessonTotal > 0 ? Math.round((lessonDone / lessonTotal) * 100) : 0;
-          const displayPct = roleScores.length > 0 ? avg : lessonPct;
-          const hasAnyProgress = roleScores.length > 0 || lessonDone > 0;
+          const roleAllIds = new Set((MODULES[r] || []).flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id)));
+          const roleQuizIds = new Set((MODULES[r] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id)));
+          const lessonDone = Object.keys(completed).filter(k => completed[k] && roleAllIds.has(k) && !roleQuizIds.has(k)).length;
+          const quizzesDone = Object.keys(quizDone).filter(k => quizDone[k] && roleQuizIds.has(k)).length;
+          const totalDone = lessonDone + quizzesDone;
+          const lessonTotal = roleAllIds.size;
+          const lessonPct = lessonTotal > 0 ? Math.round((totalDone / lessonTotal) * 100) : 0;
+          const displayPct = lessonPct;
+          const hasAnyProgress = totalDone > 0;
           return (
             <div key={r} style={{ ...T.modCard, marginBottom:8, gap:12, opacity: done || hasAnyProgress ? 1 : 0.4 }}>
               <div style={{ fontSize:24, flexShrink:0 }}>{roleIcon[r]}</div>
@@ -5098,7 +5160,7 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
                 <div style={{ height:4, background:T.progBar.background, borderRadius:2, overflow:"hidden" }}>
                   <div style={{ width:`${displayPct}%`, height:"100%", background:roleColor[r], borderRadius:2, transition:"width 0.5s" }} />
                 </div>
-                <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15, marginTop:4 }}>{lessonDone} из {lessonTotal} уроков · {roleScores.length} тест{roleScores.length === 1 ? "" : roleScores.length < 5 ? "а" : "ов"} пройдено</div>
+                <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15, marginTop:4 }}>{totalDone} из {lessonTotal} · {roleScores.length} тест{roleScores.length === 1 ? "" : roleScores.length < 5 ? "а" : "ов"} пройдено</div>
               </div>
             </div>
           );

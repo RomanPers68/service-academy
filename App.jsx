@@ -3987,7 +3987,11 @@ export default function ServiceAcademy() {
         const p = await storageGet("sa_profile");
         if (p) {
           const parsed = JSON.parse(p.value);
-          if (parsed.surname === "EMPTY") parsed.surname = "";
+          if (parsed.surname === "EMPTY") {
+            parsed.surname = "";
+            // Пересохраняем без EMPTY
+            try { localStorage.setItem("sa_profile", JSON.stringify(parsed)); } catch(e) {}
+          }
           setProfile(parsed);
         }
         else { clearTimeout(fallback); setStorageLoaded(true); setScreen("profile"); return; }

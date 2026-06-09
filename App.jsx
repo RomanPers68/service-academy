@@ -4424,14 +4424,20 @@ export default function ServiceAcademy() {
             if (profile && profile.name === name && profile.surname === surname) {
               setCompleted({});
               setQuizDone({});
-              try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); } catch(e) {}
+              setCompletedRoles(new Set());
+              setRole(null);
+              try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); localStorage.removeItem("sa_last_role"); } catch(e) {}
               try { localStorage.removeItem("sa_quiz_done"); } catch(e) {}
               try { localStorage.removeItem("sa_scores"); } catch(e) {}
+              try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
             }
             const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
             fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            fetch(`${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             // Очищаем localStorage для любого пользователя
             try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); } catch(e) {}
             // Ачивки тоже сбрасываем

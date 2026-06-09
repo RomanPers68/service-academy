@@ -4040,8 +4040,8 @@ export default function ServiceAcademy() {
     fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
-      if (data && data.length > 0) {
-        // Восстанавливаем completed из Supabase — только актуальные и уникальные lesson_id
+      {
+        // Восстанавливаем completed из Supabase — авторитетный источник
         const allValidIds = new Set(
           Object.values(MODULES).flatMap(modules =>
             modules.flatMap(m => m.lessons.map(l => l.id))
@@ -4054,27 +4054,24 @@ export default function ServiceAcademy() {
           seen.add(row.lesson_id);
           return true;
         });
-        setCompleted(prev => {
-          const merged = { ...prev };
-          validRows.forEach(row => { merged[row.lesson_id] = true; });
-          try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed"+uk, JSON.stringify(merged)); } catch(e) {}
-          return merged;
-        });
+        const merged = {};
+        validRows.forEach(row => { merged[row.lesson_id] = true; });
+        setCompleted(merged);
+        try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed"+uk, JSON.stringify(merged)); } catch(e) {}
       }
     }).catch(() => {});
   }, [profile]);
 
-  // Загрузка quizDone из Supabase для текущего пользователя
+  // Загрузка quizDone из Supabase — авторитетный источник
   React.useEffect(() => {
     if (!profile) return;
     fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
-      if (data && data.length > 0) {
-        const done = {};
-        data.forEach(row => { done[row.quiz_id] = true; });
-        setQuizDone(done);
-      }
+      const done = {};
+      if (Array.isArray(data)) data.forEach(row => { done[row.quiz_id] = true; });
+      setQuizDone(done);
+      try { localStorage.setItem("sa_quiz_done", JSON.stringify(done)); } catch(e) {}
     }).catch(() => {});
   }, [profile]);
 

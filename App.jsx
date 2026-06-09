@@ -4033,6 +4033,24 @@ export default function ServiceAcademy() {
     }).catch(() => {});
   }, [profile]);
 
+  // Загрузка progress из Supabase и синхронизация с completed
+  React.useEffect(() => {
+    if (!profile) return;
+    fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    }).then(r => r.json()).then(data => {
+      if (data && data.length > 0) {
+        // Восстанавливаем completed из Supabase progress
+        setCompleted(prev => {
+          const merged = { ...prev };
+          data.forEach(row => { merged[row.lesson_id] = true; });
+          try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed"+uk, JSON.stringify(merged)); } catch(e) {}
+          return merged;
+        });
+      }
+    }).catch(() => {});
+  }, [profile]);
+
   // Загрузка quizDone из Supabase для текущего пользователя
   React.useEffect(() => {
     if (!profile) return;
@@ -4056,7 +4074,6 @@ export default function ServiceAcademy() {
   const selectRole = useCallback((r) => {
     setRole(r);
     try { localStorage.setItem("sa_last_role", JSON.stringify(r)); } catch(e) {}
-    try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; const d = localStorage.getItem("sa_completed"+uk); if (d) setCompleted(JSON.parse(d)); else setCompleted({}); } catch(e) { setCompleted({}); }
     setScreen("home");
   }, []);
   const openModule = useCallback((m) => { setActiveModule(m); setScreen("module"); }, []);
@@ -4315,6 +4332,11 @@ export default function ServiceAcademy() {
             const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
             fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            // Очищаем localStorage для любого пользователя
+            try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); } catch(e) {}
+            // Ачивки тоже сбрасываем
+            try { ["god","master","core","pioneer"].forEach(k => localStorage.removeItem(`sa_ach_${k}_${name}_${surname||""}`)); } catch(e) {}
             navigate("roleSelect");
           } : null}
           onUnlockQuiz={isAdmin ? (name, surname) => {
@@ -6239,7 +6261,7 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
           <div style={{ fontSize:20 }}>{dialogue.guest.avatar}</div>
           <div style={{ flex:1 }}>
             <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
-            <div style={{ color:"#6A5535", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
+            <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
           </div>
           <div style={{ color: T.modTitle?.color || "#7A6548", fontSize: T.modSub?.fontSize || 13 }}>{score}/{totalChoices} ✓</div>
         </div>
@@ -6262,7 +6284,7 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
       {!done && <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8 }}>
         {messages.map((msg, i) => {
           if (msg.type === "action") return (
-            <div key={i} style={{ textAlign:"center", color: T.modSub?.color || "#6A5535", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
+            <div key={i} style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
           );
           if (msg.type === "guest") return (
             <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
@@ -6323,7 +6345,7 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
           {/* История диалога */}
           <div style={{ flex:1, overflowY:"auto", padding:"8px 14px 8px", display:"flex", flexDirection:"column", gap:6, borderTop:`1px solid ${dColor}11` }}>
             {messages.map((msg, i) => {
-              if (msg.type === "action") return <div key={i} style={{ textAlign:"center", color: T.modSub?.color || "#6A5535", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
+              if (msg.type === "action") return <div key={i} style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
               if (msg.type === "guest") return <div key={i} style={{ alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
               if (msg.type === "waiter") return <div key={i} style={{ alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || "#F0E8D8", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
               if (msg.type === "feedback") return <div key={i} style={{ padding:"5px 10px", borderRadius:8, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
@@ -6367,7 +6389,7 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
 
 const S = {
   app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:"linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily:"'Georgia', serif", overflowX:"hidden" },
-  phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh", overflowY:"auto" },
+  phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh" },
   screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"transparent", overflowX:"hidden" },
 
   a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:"#1A1612", borderBottom:"1px solid #4A3525" },

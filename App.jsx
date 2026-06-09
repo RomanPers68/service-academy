@@ -3946,11 +3946,30 @@ export default function ServiceAcademy() {
           quizTitle: "", score: s.score, total: s.total,
           pct: s.total > 0 ? Math.round(s.score / s.total * 100) : 0,
           date: new Date(s.updated_at).toLocaleDateString("ru-RU"),
+          updated_at: s.updated_at,
         }));
         setScores(mapped);
+
+        // Проверяем ачивку «Первопроходец» — первый кто появился в системе
+        if (profile) {
+          const myScores = mapped.filter(s => s.name === profile.name && s.surname === profile.surname);
+          if (myScores.length > 0) {
+            const allDates = mapped.map(s => s.updated_at).sort();
+            const myDates = myScores.map(s => s.updated_at).sort();
+            const alreadyShown = localStorage.getItem(`sa_ach_pioneer_${profile.name}_${profile.surname||""}`);
+            if (!alreadyShown && myDates[0] === allDates[0] && mapped.length > myScores.length) {
+              setTimeout(() => {
+                setNewAchievement({ icon: "🚀", label: "Первопроходец" });
+                vibrate("heavy");
+                try { localStorage.setItem(`sa_ach_pioneer_${profile.name}_${profile.surname||""}`, "1"); } catch(e) {}
+                setTimeout(() => setNewAchievement(null), 3000);
+              }, 1500);
+            }
+          }
+        }
       }
     }).catch(() => {});
-  }, []);
+  }, [profile]);
 
   // Загрузка quizDone из Supabase для текущего пользователя
   React.useEffect(() => {
@@ -4012,24 +4031,44 @@ export default function ServiceAcademy() {
     const myStars = newPracticeStars[key] || 0;
     const maxStars = Math.max(...Object.values(newPracticeStars), 0);
 
-    // Проверяем каждую ачивку
     const achieved = [];
 
     // 🌟 Бог сервиса — все 4 роли пройдены + все тесты 100%
     const allRolesDone = ROLE_ORDER.every(r => newCompletedRoles.has(r));
     const allPerfect = myScores.length > 0 && myScores.every(s => s.pct === 100);
-    if (allRolesDone && allPerfect) achieved.push({ icon:"🌟", label:"Бог сервиса" });
+    if (allRolesDone && allPerfect) achieved.push({ icon:"🌟", label:"Бог сервиса", key:"god" });
 
     // 🏆 Мастер практики — больше всех звёздочек
     if (myStars > 0 && myStars === maxStars && Object.keys(newPracticeStars).length > 1) {
-      achieved.push({ icon:"🏆", label:"Мастер практики" });
+      achieved.push({ icon:"🏆", label:"Мастер практики", key:"master" });
     }
 
-    if (achieved.length > 0) {
-      achieved.forEach((a, i) => {
+    // ⭐ Ядро команды — лучший средний % в роли core
+    const coreScores = newScores.filter(s => s.role === "core");
+    if (coreScores.length > 0) {
+      const myCore = coreScores.filter(s => s.name === profile.name && s.surname === profile.surname);
+      const myAvg = myCore.length > 0 ? myCore.reduce((sum, s) => sum + s.pct, 0) / myCore.length : 0;
+      const allAvgs = [...new Set(newScores.map(s => `${s.name}|${s.surname}`))].map(k => {
+        const ps = coreScores.filter(s => `${s.name}|${s.surname}` === k);
+        return ps.length > 0 ? ps.reduce((sum, s) => sum + s.pct, 0) / ps.length : 0;
+      });
+      const maxAvg = Math.max(...allAvgs, 0);
+      if (myAvg > 0 && myAvg === maxAvg && allAvgs.filter(a => a > 0).length > 1) {
+        achieved.push({ icon:"⭐", label:"Ядро команды", key:"core" });
+      }
+    }
+
+    // Показываем только те что ещё не показывали
+    const toShow = achieved.filter(a => {
+      try { return !localStorage.getItem(`sa_ach_${a.key}_${profile.name}_${profile.surname||""}`); } catch(e) { return true; }
+    });
+
+    if (toShow.length > 0) {
+      toShow.forEach((a, i) => {
         setTimeout(() => {
           setNewAchievement(a);
           vibrate("heavy");
+          try { localStorage.setItem(`sa_ach_${a.key}_${profile.name}_${profile.surname||""}`, "1"); } catch(e) {}
         }, i * 3500);
         setTimeout(() => setNewAchievement(null), i * 3500 + 3000);
       });

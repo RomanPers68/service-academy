@@ -4434,10 +4434,10 @@ export default function ServiceAcademy() {
             fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
-            fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).then(() => {
-              // После успешного удаления из Supabase — обнуляем state
-              setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname||""}`]; return n; });
-            }).catch(() => {});
+            // Сразу обнуляем звёзды в state и localStorage
+            setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname||""}`]; return n; });
+            try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
+            fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
             // Очищаем localStorage для любого пользователя

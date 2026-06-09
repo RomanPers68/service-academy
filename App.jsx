@@ -3744,10 +3744,10 @@ const injectStyles = () => {
     @keyframes progressFill {
       from { width: 0%; }
     }
-    .sa-screen   { animation: fadeIn 0.3s cubic-bezier(0.4,0,0.2,1) both; }
+    .sa-screen   { animation: fadeIn 0.45s cubic-bezier(0.16,1,0.3,1) both; }
     .sa-slide-r  { animation: slideInRight 0.28s cubic-bezier(0.4,0,0.2,1) both; }
     .sa-slide-l  { animation: slideInLeft 0.28s cubic-bezier(0.4,0,0.2,1) both; }
-    .sa-pop      { animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both; }
+    .sa-pop      { animation: popIn 0.4s cubic-bezier(0.16,1,0.3,1) both; }
     .sa-fast     { animation: fadeInFast 0.2s ease both; }
 
     .sa-card {
@@ -3918,8 +3918,8 @@ function AchievementPopup({ ach, a11y, onClose }) {
           transform: leaving ? "translateY(120%) scale(0.95)" : visible ? "translateY(0) scale(1)" : "translateY(120%) scale(0.95)",
           opacity: leaving ? 0 : visible ? 1 : 0,
           transition: leaving
-            ? "transform 0.35s cubic-bezier(0.4,0,1,1), opacity 0.3s ease"
-            : "transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease",
+            ? "transform 0.45s cubic-bezier(0.4,0,1,1), opacity 0.35s ease"
+            : "transform 0.65s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease",
         }}>
         <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16 }}>
           <div style={{
@@ -5580,7 +5580,6 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
             padding: "20px 18px",
             marginBottom: 16,
             position: "relative",
-            overflow: "hidden",
             backdropFilter: T.lessGlass?.blur || "none",
             WebkitBackdropFilter: T.lessGlass?.blur || "none",
           }}>
@@ -6146,7 +6145,12 @@ const MOOD_COLORS_D = ["#E07878","#C8905A","#C8A96E","#8FB890","#5DBB8A"];
 
 function LiveDialogue({ dialogueId, T, onClose, color }) {
   const dialogue = DIALOGUES_DATA.find(d => d.id === dialogueId);
+  const [visible, setVisible] = React.useState(false);
   const [messages, setMessages] = React.useState([]);
+
+  React.useEffect(() => {
+    setTimeout(() => setVisible(true), 20);
+  }, []);
   const [stepIdx, setStepIdx] = React.useState(0);
   const [chosen, setChosen] = React.useState(null);
   const [score, setScore] = React.useState(0);
@@ -6154,14 +6158,24 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
   const [typing, setTyping] = React.useState(false);
   const [done, setDone] = React.useState(false);
   const bottomRef = React.useRef(null);
+  const scrollRef = React.useRef(null);
   const runningRef = React.useRef(false);
 
   React.useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing, chosen]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+    const t = setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [messages, typing]);
 
   const addMsg = (msg) => new Promise(r => {
     setMessages(prev => [...prev, msg]);
+    setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight + 999; }, 50);
     setTimeout(r, 100);
   });
 
@@ -6212,7 +6226,12 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
   const dColor = dialogue.color;
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:1000, background: T.screen?.background || "#1A1612", display:"flex", flexDirection:"column" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
+      background: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",
+      transition:"background 0.8s ease" }}>
+      <div style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", borderTop:"1px solid rgba(210,170,70,0.55)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset", margin:"0 16px 40px",
+        transform: visible ? "translateY(0)" : "translateY(120%)",
+        transition:"transform 1.1s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Header */}
       <div style={{ padding:"12px 14px 10px", background:`linear-gradient(135deg, ${dColor}18, transparent)`, borderBottom:`1px solid ${dColor}22` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
@@ -6222,7 +6241,7 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
             <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
             <div style={{ color:"#6A5535", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
           </div>
-          <div style={{ color:"#7A6548", fontSize: T.modSub?.fontSize || 13 }}>{score}/{totalChoices} ✓</div>
+          <div style={{ color: T.modTitle?.color || "#7A6548", fontSize: T.modSub?.fontSize || 13 }}>{score}/{totalChoices} ✓</div>
         </div>
         {/* Mood bar */}
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -6240,25 +6259,25 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
       </div>
 
       {/* Messages */}
-      <div style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8 }}>
+      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8 }}>
         {messages.map((msg, i) => {
           if (msg.type === "action") return (
-            <div key={i} style={{ textAlign:"center", color:"#6A5535", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
+            <div key={i} style={{ textAlign:"center", color: T.modSub?.color || "#6A5535", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
           );
           if (msg.type === "guest") return (
             <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
-              <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:"#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+              <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(180,145,70,0.12)" : "rgba(200,160,80,0.10)", border: T.a11y ? "1px solid rgba(160,120,50,0.25)" : "1px solid rgba(200,160,80,0.20)", color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "waiter") return (
             <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
-              <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:"#6A5535", marginBottom:2, paddingRight:4 }}>Ты</div>
-              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomRightRadius:4, background: msg.correct ? `${dColor}28` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || "#F0E8D8", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+              <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingRight:4 }}>Ты</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomRightRadius:4, background: msg.correct ? `${dColor}28` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.modTitle?.color || "#F0E8D8", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "feedback") return (
-            <div key={i} style={{ padding:"8px 12px", borderRadius:10, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", border:`1px solid ${msg.correct ? "rgba(93,187,138,0.2)" : "rgba(224,120,120,0.2)"}`, color: msg.correct ? "#5DBB8A" : "#E07878", fontSize: T.modSub?.fontSize || 12, lineHeight:1.6 }}>
+            <div key={i} style={{ padding:"8px 12px", borderRadius:10, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", border:`1px solid ${msg.correct ? "rgba(93,187,138,0.2)" : "rgba(224,120,120,0.2)"}`, color: msg.correct ? "#2DBB6A" : "#E05858", fontSize: T.modSub?.fontSize || 12, fontWeight:"bold", lineHeight:1.6 }}>
               {msg.correct ? "✓ " : "✗ "}{msg.text}
             </div>
           );
@@ -6267,38 +6286,52 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
 
         {typing && (
           <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
-            <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:"#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", display:"flex", gap:5, alignItems:"center" }}>
+            <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
+            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(180,145,70,0.12)" : "rgba(200,160,80,0.10)", border: T.a11y ? "1px solid rgba(160,120,50,0.25)" : "1px solid rgba(200,160,80,0.20)", display:"flex", gap:5, alignItems:"center" }}>
               {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:"#7A6548", animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
             </div>
           </div>
         )}
 
-        {/* Choice options */}
-        {dialogue.steps[stepIdx]?.type === "choice" && !typing && messages.length > 0 && chosen === null && (
+        {dialogue.steps[stepIdx]?.type === "choice" && !typing && messages.length > 0 && chosen === null && !done && (
           <div style={{ marginTop:8 }}>
-            <div style={{ color:"#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:10, fontStyle:"italic" }}>💬 {dialogue.steps[stepIdx].prompt}</div>
+            <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic" }}>💬 {dialogue.steps[stepIdx].prompt}</div>
             {dialogue.steps[stepIdx].options.map((opt, oi) => (
-              <div key={oi} onClick={() => choose(oi)} style={{ padding:"11px 14px", borderRadius:12, marginBottom:8, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.para?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"all 0.15s" }}>{opt.text}</div>
+              <div key={oi} onClick={() => choose(oi)} style={{ padding:"11px 14px", borderRadius:12, marginBottom:6, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"all 0.15s" }}>{opt.text}</div>
             ))}
           </div>
         )}
-
-        <div ref={bottomRef} />
+        <div ref={bottomRef} style={{ height:8 }} />
       </div>
+
+
 
       {/* Result */}
       {done && (
-        <div style={{ padding:"16px 14px 24px", borderTop:`1px solid ${dColor}22`, textAlign:"center" }}>
-          <div style={{ fontSize:36, marginBottom:8 }}>{MOOD_EMOJI_D[moodC-1]}</div>
-          <div style={{ color:MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:4 }}>
-            {moodC>=4 ? `${dialogue.guest.name} доволен` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} расстроен`}
+        <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
+          {/* Итог */}
+          <div style={{ padding:"12px 14px 8px", borderTop:`1px solid ${dColor}22`, textAlign:"center", flexShrink:0 }}>
+            <div style={{ fontSize:32, marginBottom:4 }}>{MOOD_EMOJI_D[moodC-1]}</div>
+            <div style={{ color:MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:2 }}>
+              {moodC>=4 ? `${dialogue.guest.name} доволен` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} расстроен`}
+            </div>
+            <div style={{ color: T.modSub?.color || "#7A6548", fontSize:12, marginBottom:6 }}>{score} из {totalChoices} правильных ответов</div>
+            <div style={{ color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.5, marginBottom:8, fontStyle:"italic" }}>
+              ✦ {dialogue.steps.find(s=>s.type==="result")?.tip}
+            </div>
           </div>
-          <div style={{ color:"#7A6548", fontSize:12, marginBottom:12 }}>{score} из {totalChoices} правильных ответов</div>
-          <div style={{ color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.6, marginBottom:16, fontStyle:"italic" }}>
-            {dialogue.steps.find(s=>s.type==="result")?.tip}
+          {/* История диалога */}
+          <div style={{ flex:1, overflowY:"auto", padding:"8px 14px 8px", display:"flex", flexDirection:"column", gap:6, borderTop:`1px solid ${dColor}11` }}>
+            {messages.map((msg, i) => {
+              if (msg.type === "action") return <div key={i} style={{ textAlign:"center", color: T.modSub?.color || "#6A5535", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
+              if (msg.type === "guest") return <div key={i} style={{ alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
+              if (msg.type === "waiter") return <div key={i} style={{ alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || "#F0E8D8", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
+              if (msg.type === "feedback") return <div key={i} style={{ padding:"5px 10px", borderRadius:8, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
+              return null;
+            })}
           </div>
-          <div style={{ display:"flex", gap:10 }}>
+          {/* Кнопки */}
+          <div style={{ padding:"10px 14px 14px", display:"flex", gap:10, flexShrink:0, borderTop:`1px solid ${dColor}22` }}>
             <button onClick={() => { setMessages([]); setStepIdx(0); setChosen(null); setScore(0); setMood(dialogue.guest.mood); setDone(false); runningRef.current=false; }}
               style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
               ↺ Ещё раз
@@ -6312,7 +6345,10 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
       )}
 
       <style>{`@keyframes achIconPulse { 0%,100%{box-shadow:0 0 24px rgba(200,160,80,0.4)} 50%{box-shadow:0 0 40px rgba(200,160,80,0.7)} }
-    @keyframes dlgPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+    @keyframes dlgPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }
+    @keyframes dlgOverlayIn { from{opacity:0} to{opacity:1;transition-duration:0.8s} }
+    @keyframes dlgSheetIn { from{transform:translateY(100%)} to{transform:translateY(0)} }`}</style>
+      </div>
     </div>
   );
 }
@@ -6472,7 +6508,7 @@ const A = {
   backBtn2:   { ...S.backBtn2, color:"#7A6548", fontSize:22 },
   lessHeadTitle:{ ...S.lessHeadTitle, color:"#2A1F0E", fontSize:17, fontWeight:"bold" },
   lessBody:   { ...S.lessBody, background:"#F2EAD8" },
-  termPopupBg: "rgba(220,200,165,0.55)",
+  termPopupBg: "rgba(238,225,198,0.72)",
   lessGlass:  { bg:"rgba(238,225,198,0.75)", border:"1px solid rgba(180,145,70,0.22)", borderTop:"1px solid rgba(255,240,200,0.72)", shadow:"0 4px 18px rgba(120,90,30,0.13), 0 1px 0 rgba(255,250,235,0.82) inset, 0 -1px 2px rgba(140,105,40,0.10) inset", glare:"linear-gradient(180deg, rgba(255,252,240,0.45) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,245,210,0.5) 0%, transparent 60%)", blur:"blur(20px) saturate(130%)" },
 
   para:       { ...S.para, color:"#2A1F0E", fontSize:18, lineHeight:2.1 },

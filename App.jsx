@@ -5022,7 +5022,7 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
           ].map((s, i) => (
             <div key={i} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ fontSize:22 }}>{s.icon}</div>
-              <div style={{ color:s.color, fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 8 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
+              <div style={{ color:s.color, fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 10 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
               <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15 }}>{s.label}</div>
             </div>
           ))}
@@ -5100,11 +5100,11 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, practiceSt
 // ── Страница регистрации ───────────────────────────────────
 // Статичные объекты стилей вне компонента — не пересоздаются при каждом рендере
 const PS = {
-  fieldBase: { width:"100%", padding:"14px 16px", borderRadius:14, color:"#F0E8D8", fontSize:15, fontFamily:"Georgia, serif", outline:"none", boxSizing:"border-box" },
-  fieldNormal: { border:"1px solid rgba(255,220,140,0.12)", background:"rgba(255,255,255,0.04)", boxShadow:"none" },
-  fieldFocus:  { border:"1px solid rgba(200,160,80,0.6)",   background:"rgba(200,160,80,0.08)",   boxShadow:"0 0 0 3px rgba(200,160,80,0.1)" },
-  lblEmpty:  { color:"#544C40",             fontSize:10, letterSpacing:2.5, fontFamily:"monospace", textTransform:"uppercase", marginBottom:7, display:"block" },
-  lblFilled: { color:"rgba(200,160,80,0.9)", fontSize:10, letterSpacing:2.5, fontFamily:"monospace", textTransform:"uppercase", marginBottom:7, display:"block" },
+  fieldBase: { width:"100%", padding:"14px 16px", borderRadius:14, color:"#EEE4CC", fontSize:15, fontFamily:"Georgia, serif", outline:"none", boxSizing:"border-box", transition:"all 0.25s ease" },
+  fieldNormal: { border:"1px solid rgba(180,138,55,0.45)", borderTop:"1px solid rgba(210,165,65,0.38)", background:"linear-gradient(155deg, rgba(55,40,16,0.65) 0%, rgba(38,26,10,0.55) 100%)", boxShadow:"0 4px 14px rgba(0,0,0,0.3), 0 1px 0 rgba(200,160,60,0.14) inset" },
+  fieldFocus:  { border:"1px solid rgba(200,160,80,0.6)", borderTop:"1px solid rgba(220,175,75,0.7)", background:"linear-gradient(155deg, rgba(58,42,16,0.7) 0%, rgba(40,28,8,0.6) 100%)", boxShadow:"0 0 0 3px rgba(200,160,80,0.1), 0 4px 14px rgba(0,0,0,0.3), 0 1px 0 rgba(200,160,60,0.15) inset" },
+  lblEmpty:  { color:"#8A7055",             fontSize:10, letterSpacing:2.5, fontFamily:"monospace", textTransform:"uppercase", marginBottom:7, display:"block" },
+  lblFilled: { color:"rgba(220,175,80,1.0)", fontSize:10, letterSpacing:2.5, fontFamily:"monospace", textTransform:"uppercase", marginBottom:7, display:"block" },
 };
 
 function ProfileScreen({ onDone, T }) {
@@ -5144,7 +5144,7 @@ function ProfileScreen({ onDone, T }) {
   const fRestaurant = { ...PS.fieldBase, ...(focusedField==="restaurant" ? PS.fieldFocus : PS.fieldNormal) };
 
   return (
-    <div style={{ ...T.screen, background:"#141210" }} className="sa-screen">
+    <div style={{ ...T.screen, background:"linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)" }} className="sa-screen">
 
       {/* Фоновые декоративные огни */}
       <div style={{ position:"absolute", top:-80, left:-60, width:280, height:280, borderRadius:"50%",
@@ -5177,9 +5177,9 @@ function ProfileScreen({ onDone, T }) {
         {/* Форма */}
         <div style={{ flex:1, padding:"0 24px 40px" }}>
 
-          <div style={{ background:"#1E1A16", borderRadius:22, padding:"24px 20px",
-            border:"1px solid rgba(255,220,140,0.08)",
-            boxShadow:"0 4px 24px rgba(0,0,0,0.4)", marginBottom:16 }}>
+          <div style={{ background:"linear-gradient(155deg, #382810 0%, #281C08 100%)", borderRadius:22, padding:"24px 20px",
+            border:"1px solid rgba(150,112,42,0.38)", borderTop:"1px solid rgba(215,170,68,0.46)",
+            boxShadow:"0 8px 28px rgba(0,0,0,0.55), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset", marginBottom:16 }}>
 
             {/* Имя */}
             <div style={{ marginBottom:18 }}>
@@ -5214,7 +5214,7 @@ function ProfileScreen({ onDone, T }) {
                 style={{ ...PS.fieldBase, ...(position ? PS.fieldFocus : PS.fieldNormal),
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                   cursor:"pointer", userSelect:"none" }}>
-                <span style={{ color: position ? "#F0E8D8" : "#544C40", fontSize:15 }}>
+                <span style={{ color: position ? "#F0E8D8" : "#9A8060", fontSize:15 }}>
                   {position ? {waiter:"🍽️ Официант", manager:"🎯 Менеджер", senior:"🏛️ Руководящий состав"}[position] : "Выбери должность"}
                 </span>
                 <span style={{ color:"#C8A870", fontSize:14, transition:"transform 0.2s", display:"inline-block", transform: showPositionSheet ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
@@ -5228,8 +5228,10 @@ function ProfileScreen({ onDone, T }) {
                   ].map(pos => (
                     <div key={pos.id} onClick={() => { setPosition(pos.id); setShowPositionSheet(false); }}
                       style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", borderRadius:13, cursor:"pointer",
-                        background: position === pos.id ? "rgba(200,160,80,0.12)" : "rgba(255,255,255,0.03)",
-                        border: position === pos.id ? "1px solid rgba(200,160,80,0.4)" : "1px solid rgba(255,220,140,0.07)" }}>
+                        background: position === pos.id ? "linear-gradient(155deg, rgba(58,42,16,0.8), rgba(40,28,8,0.7))" : "linear-gradient(155deg, rgba(40,28,10,0.5), rgba(28,18,6,0.4))",
+                        border: position === pos.id ? "1px solid rgba(200,160,80,0.45)" : "1px solid rgba(150,112,42,0.20)",
+                        borderTop: position === pos.id ? "1px solid rgba(220,175,75,0.55)" : "1px solid rgba(180,140,50,0.15)",
+                        boxShadow: position === pos.id ? "0 4px 14px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.15) inset" : "0 2px 8px rgba(0,0,0,0.25)" }}>
                       <div style={{ fontSize:22 }}>{pos.icon}</div>
                       <div style={{ flex:1 }}>
                         <div style={{ color: position === pos.id ? "#F0E8D8" : "#A89880", fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{pos.label}</div>
@@ -5260,16 +5262,17 @@ function ProfileScreen({ onDone, T }) {
             style={{
               width:"100%", padding:"16px", borderRadius:18,
               border: isValid ? "1px solid rgba(200,160,80,0.3)" : "1px solid rgba(255,255,255,0.05)",
-              background: done ? "rgba(93,187,138,0.25)" : isValid ? "rgba(200,160,80,0.18)" : "rgba(255,255,255,0.03)",
+              background: done ? "linear-gradient(155deg, rgba(60,140,80,0.5), rgba(40,100,60,0.4))" : isValid ? "linear-gradient(155deg, #3A2A10 0%, #2A1E0A 100%)" : "rgba(255,255,255,0.03)",
               color: done ? "#5DBB8A" : isValid ? "#F0E8D8" : "#3C3428",
               fontSize:15, fontWeight:"bold", cursor: isValid ? "pointer" : "default",
-              fontFamily:"Georgia, serif", letterSpacing:0.3, transition:"background 0.3s, border 0.3s, color 0.3s, box-shadow 0.3s",
-              boxShadow: isValid && !done ? "0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(200,160,80,0.15)" : "none",
+              fontFamily:"Georgia, serif", letterSpacing:0.3, transition:"all 0.3s ease",
+              boxShadow: isValid && !done ? "0 6px 22px rgba(0,0,0,0.4), 0 2px 0 rgba(210,170,70,0.22) inset, 0 -2px 4px rgba(0,0,0,0.38) inset" : "none",
+              borderTop: isValid && !done ? "1px solid rgba(220,175,75,0.50)" : "1px solid rgba(255,255,255,0.05)",
             }}>
             {done ? "✓ Добро пожаловать!" : saving ? "Сохраняем..." : "Начать обучение →"}
           </button>
 
-          <div style={{ textAlign:"center", marginTop:20, color:"#3C3428", fontSize:11, lineHeight:1.6 }}>
+          <div style={{ textAlign:"center", marginTop:20, color:"#6A5840", fontSize:11, lineHeight:1.6 }}>
             Данные хранятся локально на устройстве<br/>и в общем рейтинге команды
           </div>
         </div>

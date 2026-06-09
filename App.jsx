@@ -3985,7 +3985,11 @@ export default function ServiceAcademy() {
     (async () => {
       try {
         const p = await storageGet("sa_profile");
-        if (p) setProfile(JSON.parse(p.value));
+        if (p) {
+          const parsed = JSON.parse(p.value);
+          if (parsed.surname === "EMPTY") parsed.surname = "";
+          setProfile(parsed);
+        }
         else { clearTimeout(fallback); setStorageLoaded(true); setScreen("profile"); return; }
       } catch(e) { clearTimeout(fallback); setStorageLoaded(true); setScreen("profile"); return; }
       try { const s = await storageGet("sa_scores"); if (s) { const saved = JSON.parse(s.value); setScores(prev => { const ids = new Set(saved.map(x => x.id)); return [...prev.filter(x => !ids.has(x.id)), ...saved]; }); } } catch(e) {}
@@ -4037,7 +4041,7 @@ export default function ServiceAcademy() {
   // Загрузка progress из Supabase и синхронизация с completed
   React.useEffect(() => {
     if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname === "EMPTY" ? "" : (profile.surname || ""))}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
@@ -4066,7 +4070,7 @@ export default function ServiceAcademy() {
   // Загрузка quizDone из Supabase — авторитетный источник
   React.useEffect(() => {
     if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname === "EMPTY" ? "" : (profile.surname || ""))}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
@@ -4080,7 +4084,7 @@ export default function ServiceAcademy() {
   // Загрузка last_role из Supabase если localStorage не дал роль
   React.useEffect(() => {
     if (!profile || role) return; // уже есть роль — не нужно
-    fetch(`${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}&select=last_role`, {
+    fetch(`${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname === "EMPTY" ? "" : (profile.surname || ""))}&select=last_role`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (data && data.length > 0 && data[0].last_role) {
@@ -4095,7 +4099,7 @@ export default function ServiceAcademy() {
   React.useEffect(() => {
     if (!profile) return;
     const userKey = `${profile.name}|${profile.surname || ""}`;
-    fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname === "EMPTY" ? "" : (profile.surname || ""))}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       const starsObj = {};
@@ -4114,7 +4118,7 @@ export default function ServiceAcademy() {
   // Загрузка completedRoles из Supabase — авторитетный источник
   React.useEffect(() => {
     if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname || "")}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(profile.surname === "EMPTY" ? "" : (profile.surname || ""))}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       const roles = new Set(Array.isArray(data) ? data.map(row => row.role) : []);
@@ -4143,7 +4147,7 @@ export default function ServiceAcademy() {
       fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
         method: "POST",
         headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({ name: profile.name, surname: profile.surname || "", last_role: r, updated_at: new Date().toISOString() })
+        body: JSON.stringify({ name: profile.name, surname: (profile.surname === "EMPTY" ? "" : (profile.surname || "")), last_role: r, updated_at: new Date().toISOString() })
       }).catch(() => {});
     }
     setScreen("home");
@@ -4238,20 +4242,20 @@ export default function ServiceAcademy() {
           fetch(`${SUPABASE_URL}/rest/v1/progress`, {
             method: "POST",
             headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
-            body: JSON.stringify({ name: profile.name, surname: profile.surname || "", lesson_id: activeLesson.id, role })
+            body: JSON.stringify({ name: profile.name, surname: (profile.surname === "EMPTY" ? "" : (profile.surname || "")), lesson_id: activeLesson.id, role })
           }).catch(() => {});
         }
 
         if (activeLesson.type === "quiz" && profile) {
           const sc = quizState.answers.filter(a => a.isCorrect).length;
           const newScore = {
-            id: Date.now(), name: profile.name, surname: profile.surname || "",
+            id: Date.now(), name: profile.name, surname: (profile.surname === "EMPTY" ? "" : (profile.surname || "")),
             restaurant: profile.restaurant, role, position: profile.position || "waiter",
             quizTitle: activeLesson.title, score: sc, total: activeLesson.questions.length,
             pct: Math.round(sc / activeLesson.questions.length * 100),
             date: new Date().toLocaleDateString("ru-RU"),
           };
-          supabase.from("scores").insert({ name: profile.name, surname: profile.surname || "", restaurant: profile.restaurant, role, position: profile.position || "waiter", quiz_id: activeLesson.id, score: sc, total: activeLesson.questions.length, updated_at: new Date().toISOString() }).then(({ data, error }) => { if (error) console.error("Supabase insert error:", error); else console.log("Supabase insert ok:", data); }).catch((e) => console.error("Supabase catch:", e));
+          supabase.from("scores").insert({ name: profile.name, surname: (profile.surname === "EMPTY" ? "" : (profile.surname || "")), restaurant: profile.restaurant, role, position: profile.position || "waiter", quiz_id: activeLesson.id, score: sc, total: activeLesson.questions.length, updated_at: new Date().toISOString() }).then(({ data, error }) => { if (error) console.error("Supabase insert error:", error); else console.log("Supabase insert ok:", data); }).catch((e) => console.error("Supabase catch:", e));
           setScores(prev => {
             const updated = [...prev, newScore];
             try { localStorage.setItem("sa_scores", JSON.stringify(updated.filter(s => s.id > 900))); } catch(e) {};
@@ -4265,7 +4269,7 @@ export default function ServiceAcademy() {
               fetch(`${SUPABASE_URL}/rest/v1/quiz_done`, {
                 method: "POST",
                 headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
-                body: JSON.stringify({ name: profile.name, surname: profile.surname || "", quiz_id: activeLesson.id })
+                body: JSON.stringify({ name: profile.name, surname: (profile.surname === "EMPTY" ? "" : (profile.surname || "")), quiz_id: activeLesson.id })
               }).catch(() => {});
             }
             return updated;
@@ -4287,7 +4291,7 @@ export default function ServiceAcademy() {
               fetch(`${SUPABASE_URL}/rest/v1/practice_stars`, {
                 method: "POST",
                 headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-                body: JSON.stringify({ name: profile.name, surname: profile.surname || "", lesson_id: activeLesson.id, stars, updated_at: new Date().toISOString() })
+                body: JSON.stringify({ name: profile.name, surname: (profile.surname === "EMPTY" ? "" : (profile.surname || "")), lesson_id: activeLesson.id, stars, updated_at: new Date().toISOString() })
               }).catch(() => {});
             }
             return updated;
@@ -4311,7 +4315,7 @@ export default function ServiceAcademy() {
                 fetch(`${SUPABASE_URL}/rest/v1/completed_roles`, {
                   method: "POST",
                   headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-                  body: JSON.stringify({ name: profile.name, surname: profile.surname || "", role: r, updated_at: new Date().toISOString() })
+                  body: JSON.stringify({ name: profile.name, surname: (profile.surname === "EMPTY" ? "" : (profile.surname || "")), role: r, updated_at: new Date().toISOString() })
                 }).catch(() => {});
               });
             }

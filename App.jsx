@@ -6259,7 +6259,7 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8 }}>
+      {!done && <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8 }}>
         {messages.map((msg, i) => {
           if (msg.type === "action") return (
             <div key={i} style={{ textAlign:"center", color: T.modSub?.color || "#6A5535", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
@@ -6302,7 +6302,7 @@ function LiveDialogue({ dialogueId, T, onClose, color }) {
           </div>
         )}
         <div ref={bottomRef} style={{ height:8 }} />
-      </div>
+      </div>}
 
 
 

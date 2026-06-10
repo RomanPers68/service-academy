@@ -3954,6 +3954,7 @@ export default function ServiceAcademy() {
   const [profile, setProfile] = useState(null);
   const [scores, setScores] = useState([]);
   const [practiceStars, setPracticeStars] = useState({}); // { "name|surname": { "lesson_id": stars } }
+  const [allProfiles, setAllProfiles] = useState([]); // все пользователи из таблицы profiles
   const [newAchievement, setNewAchievement] = useState(null); // { icon, label } для popup
   const [quizDone, setQuizDone] = useState({});
   const [storageLoaded, setStorageLoaded] = useState(false);
@@ -4006,6 +4007,15 @@ export default function ServiceAcademy() {
       clearTimeout(fallback);
       setStorageLoaded(true);
     })();
+  }, []);
+
+  // Загрузка всех профилей из Supabase
+  React.useEffect(() => {
+    const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
+    fetch(`${SUPABASE_URL}/rest/v1/profiles?select=name,surname,restaurant,position,last_role`, { headers: h })
+      .then(r => r.json()).then(data => {
+        if (Array.isArray(data) && data.length > 0) setAllProfiles(data);
+      }).catch(() => {});
   }, []);
 
   // Загрузка рейтинга из Supabase
@@ -4424,7 +4434,7 @@ export default function ServiceAcademy() {
         )}
         {screen === "profile" && <ProfileScreen T={S} onDone={(p) => { setProfile(p); navigate("roleSelect"); }} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
-        {screen === "stats" && <div style={{paddingBottom:70}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} onBack={() => navigate("roleSelect")}
+        {screen === "stats" && <div style={{paddingBottom:70}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             if (profile && profile.name === name && profile.surname === surname) {
@@ -5170,7 +5180,7 @@ function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   );
 }
 
-function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, practiceStars, onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
+function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
   const roleColor = { seasonal:"#7C9E87", core:"#C8A96E", manager:"#8B7BAB", service_manager:"#7B8FAB" };
@@ -5287,7 +5297,10 @@ function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone =
 
         {/* Сброс статистики — только для админа */}
         {onResetPlayer && (() => {
-          const players = [...new Map(scores.map(s => [`${s.name}|${s.surname}`, s])).values()];
+          const profilePlayers = allProfiles.map(p => ({ name: p.name, surname: p.surname || "", restaurant: p.restaurant || "", position: p.position || "waiter" }));
+          const scorePlayers = [...new Map(scores.map(s => [`${s.name}|${s.surname}`, s])).values()];
+          const allKeys = new Set([...profilePlayers.map(p => `${p.name}|${p.surname}`), ...scorePlayers.map(p => `${p.name}|${p.surname}`)]);
+          const players = [...allKeys].map(key => scorePlayers.find(p => `${p.name}|${p.surname}` === key) || profilePlayers.find(p => `${p.name}|${p.surname}` === key)).filter(Boolean);
           return players.length > 0 ? (
             <>
               <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:3, fontFamily:"monospace", margin:"16px 0 8px" }}>УПРАВЛЕНИЕ ДАННЫМИ</div>
@@ -5329,8 +5342,14 @@ function ProfileScreen({ onDone, T }) {
   const handleSave = React.useCallback(async () => {
     if (!isValid || saving) return;
     setSaving(true);
-    const p = { name: name.trim(), surname: surname.trim(), restaurant: restaurant.trim(), position };
+    const p = { name: name.trim(), surname: name.trim() === "RomanPersAdmin" ? "" : surname.trim(), restaurant: restaurant.trim(), position };
     try { localStorage.setItem("sa_profile", JSON.stringify(p)); } catch(e) {}
+    // Сохраняем профиль в Supabase при регистрации
+    fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ name: p.name, surname: p.surname, restaurant: p.restaurant, position: p.position, updated_at: new Date().toISOString() })
+    }).catch(() => {});
     setDone(true);
     setTimeout(() => onDone(p), 900);
   }, [isValid, saving, name, surname, restaurant, position, onDone]);

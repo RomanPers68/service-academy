@@ -4275,7 +4275,7 @@ export default function ServiceAcademy() {
             if (profile) {
               fetch(`${SUPABASE_URL}/rest/v1/quiz_done`, {
                 method: "POST",
-                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
                 body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), quiz_id: activeLesson.id })
               }).catch(() => {});
             }

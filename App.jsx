@@ -4050,6 +4050,7 @@ export default function ServiceAcademy() {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
+      if (data.length === 0) return; // пусто — не обнуляем
       {
         // Восстанавливаем completed из Supabase — авторитетный источник
         const allValidIds = new Set(
@@ -4079,6 +4080,7 @@ export default function ServiceAcademy() {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
+      if (data.length === 0) return; // пусто — не обнуляем
       const done = {};
       data.forEach(row => { if (row.quiz_id) done[row.quiz_id] = true; });
       setQuizDone(done);
@@ -4107,11 +4109,10 @@ export default function ServiceAcademy() {
     fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(normSurname(profile.surname))}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
+      if (!Array.isArray(data)) return; // ошибка — не трогаем
+      if (data.length === 0) return; // пусто — не обнуляем, оставляем как есть
       const starsObj = {};
-      if (Array.isArray(data)) {
-        data.forEach(row => { starsObj[row.lesson_id] = row.stars; });
-      }
-      // Всегда перезаписываем — Supabase главный источник
+      data.forEach(row => { starsObj[row.lesson_id] = row.stars; });
       setPracticeStars(prev => {
         const updated = { ...prev, [userKey]: starsObj };
         try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch(e) {}
@@ -4126,8 +4127,9 @@ export default function ServiceAcademy() {
     fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(normSurname(profile.surname))}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
-      const roles = new Set(Array.isArray(data) ? data.map(row => row.role) : []);
-      // Всегда перезаписываем — Supabase главный источник
+      if (!Array.isArray(data)) return; // ошибка — не трогаем
+      if (data.length === 0) return; // пусто — не обнуляем
+      const roles = new Set(data.map(row => row.role));
       setCompletedRoles(roles);
       try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...roles])); } catch(e) {}
     }).catch(() => {});
@@ -4306,7 +4308,7 @@ export default function ServiceAcademy() {
         // Проверяем — пройдена ли вся роль? (уроки + практики через completed, квизы через quizDone)
         const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
         const allDone = allLessons.every(l => l.type === "quiz" ? quizDone[l.id] : newCompleted[l.id]);
-        if (allDone) {
+        if (allDone && !completedRoles.has(role)) { // показываем только если роль ещё не была завершена
           const nextIdx = ROLE_ORDER.indexOf(role) + 1;
           const nextRole = ROLE_ORDER[nextIdx];
           setCompletedRoles(prev => {

@@ -4024,16 +4024,16 @@ export default function ServiceAcademy() {
 
         // Проверяем ачивку «Первопроходец» — первый кто появился в системе
         if (profile) {
-          const myScores = mapped.filter(s => s.name === profile.name && s.surname === profile.surname);
+          const myScores = mapped.filter(s => s.name === profile.name && s.surname === normSurname(profile.surname));
           if (myScores.length > 0) {
             const allDates = mapped.map(s => s.updated_at).sort();
             const myDates = myScores.map(s => s.updated_at).sort();
-            const alreadyShown = localStorage.getItem(`sa_ach_pioneer_${profile.name}_${profile.surname||""}`);
+            const alreadyShown = localStorage.getItem(`sa_ach_pioneer_${profile.name}_${normSurname(profile.surname)}`);
             if (!alreadyShown && myDates[0] === allDates[0] && mapped.length > myScores.length) {
               setTimeout(() => {
                 setNewAchievement({ icon: "🚀", label: "Первопроходец" });
                 vibrate("heavy");
-                try { localStorage.setItem(`sa_ach_pioneer_${profile.name}_${profile.surname||""}`, "1"); } catch(e) {}
+                try { localStorage.setItem(`sa_ach_pioneer_${profile.name}_${normSurname(profile.surname)}`, "1"); } catch(e) {}
                 setTimeout(() => setNewAchievement(null), 3000);
               }, 1500);
             }

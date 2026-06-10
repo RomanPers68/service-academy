@@ -4250,108 +4250,104 @@ export default function ServiceAcademy() {
 
   const completeLesson = useCallback(() => {
     try {
-      setCompleted(prevCompleted => {
-        const newCompleted = { ...prevCompleted, [activeLesson.id]: true };
-        try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; localStorage.setItem("sa_completed"+uk, JSON.stringify(newCompleted)); } catch(e) {};
+      if (!activeLesson) { setScreen("module"); return; }
+      const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
 
-        // Сохраняем факт прохождения урока в Supabase — только если ещё не было записано
-        if (profile && activeLesson.type !== "quiz" && !prevCompleted[activeLesson.id]) {
-          fetch(`${SUPABASE_URL}/rest/v1/progress`, {
+      // 1. Урок пройден
+      const newCompleted = { ...completed, [activeLesson.id]: true };
+      try { localStorage.setItem("sa_completed"+uk, JSON.stringify(newCompleted)); } catch(e) {}
+      setCompleted(newCompleted);
+
+      // Прогресс урока в Supabase — только при первом прохождении
+      if (profile && activeLesson.type !== "quiz" && !completed[activeLesson.id]) {
+        fetch(`${SUPABASE_URL}/rest/v1/progress`, {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+          body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), lesson_id: activeLesson.id, role })
+        }).catch(() => {});
+      }
+
+      // 2. Квиз → результат + отметка о прохождении (считаем свежие значения, чтобы передать их дальше)
+      let newScores = scores;
+      let newQuizDone = quizDone;
+      if (activeLesson.type === "quiz" && profile) {
+        const sc = quizState.answers.filter(a => a.isCorrect).length;
+        const newScore = {
+          id: Date.now(), name: profile.name, surname: normSurname(profile.surname),
+          restaurant: profile.restaurant, role, position: profile.position || "waiter",
+          quizTitle: activeLesson.title, score: sc, total: activeLesson.questions.length,
+          pct: Math.round(sc / activeLesson.questions.length * 100),
+          date: new Date().toLocaleDateString("ru-RU"),
+        };
+        supabase.from("scores").insert({ name: profile.name, surname: normSurname(profile.surname), restaurant: profile.restaurant, role, position: profile.position || "waiter", quiz_id: activeLesson.id, score: sc, total: activeLesson.questions.length, updated_at: new Date().toISOString() }).then(({ data, error }) => { if (error) console.error("Supabase insert error:", error); else console.log("Supabase insert ok:", data); }).catch((e) => console.error("Supabase catch:", e));
+
+        newScores = [...scores, newScore];
+        try { localStorage.setItem("sa_scores", JSON.stringify(newScores.filter(s => s.id > 900))); } catch(e) {}
+        setScores(newScores);
+
+        if (!quizDone[activeLesson.id]) {
+          newQuizDone = { ...quizDone, [activeLesson.id]: true };
+          try { localStorage.setItem("sa_quiz_done", JSON.stringify(newQuizDone)); } catch(e) {}
+          setQuizDone(newQuizDone);
+          fetch(`${SUPABASE_URL}/rest/v1/quiz_done`, {
             method: "POST",
-            headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
-            body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), lesson_id: activeLesson.id, role })
+            headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), quiz_id: activeLesson.id })
           }).catch(() => {});
         }
+      }
 
-        if (activeLesson.type === "quiz" && profile) {
-          const sc = quizState.answers.filter(a => a.isCorrect).length;
-          const newScore = {
-            id: Date.now(), name: profile.name, surname: normSurname(profile.surname),
-            restaurant: profile.restaurant, role, position: profile.position || "waiter",
-            quizTitle: activeLesson.title, score: sc, total: activeLesson.questions.length,
-            pct: Math.round(sc / activeLesson.questions.length * 100),
-            date: new Date().toLocaleDateString("ru-RU"),
-          };
-          supabase.from("scores").insert({ name: profile.name, surname: normSurname(profile.surname), restaurant: profile.restaurant, role, position: profile.position || "waiter", quiz_id: activeLesson.id, score: sc, total: activeLesson.questions.length, updated_at: new Date().toISOString() }).then(({ data, error }) => { if (error) console.error("Supabase insert error:", error); else console.log("Supabase insert ok:", data); }).catch((e) => console.error("Supabase catch:", e));
-          setScores(prev => {
-            const updated = [...prev, newScore];
-            try { localStorage.setItem("sa_scores", JSON.stringify(updated.filter(s => s.id > 900))); } catch(e) {};
-            return updated;
-          });
-          setQuizDone(prev => {
-            const updated = { ...prev, [activeLesson.id]: true };
-            try { localStorage.setItem("sa_quiz_done", JSON.stringify(updated)); } catch(e) {};
-            // Сохраняем в Supabase
-            if (profile) {
-              fetch(`${SUPABASE_URL}/rest/v1/quiz_done`, {
-                method: "POST",
-                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-                body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), quiz_id: activeLesson.id })
-              }).catch(() => {});
-            }
-            return updated;
+      // 3. Звёздочки практики — лучший результат по каждой практике
+      let newPracticeStars = practiceStars;
+      if (activeLesson.type === "practice" && profile) {
+        const stars = practiceState.score >= 60 ? 3 : practiceState.score >= 30 ? 2 : 1;
+        const userKey = `${profile.name}|${profile.surname}`;
+        const userStars = practiceStars[userKey] || {};
+        const prevBest = userStars[activeLesson.id] || 0;
+        if (stars > prevBest) { // обновляем только если результат лучше
+          newPracticeStars = { ...practiceStars, [userKey]: { ...userStars, [activeLesson.id]: stars } };
+          try { localStorage.setItem("sa_practice_stars", JSON.stringify(newPracticeStars)); } catch(e) {}
+          setPracticeStars(newPracticeStars);
+          fetch(`${SUPABASE_URL}/rest/v1/practice_stars`, {
+            method: "POST",
+            headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), lesson_id: activeLesson.id, stars, updated_at: new Date().toISOString() })
+          }).catch(() => {});
+        }
+      }
+
+      // 4. Пройдена ли вся роль? (используем СВЕЖИЕ newCompleted / newQuizDone)
+      const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
+      const allDone = allLessons.every(l => l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]);
+      if (allDone && !completedRoles.has(role)) { // показываем только если роль ещё не была завершена
+        const nextIdx = ROLE_ORDER.indexOf(role) + 1;
+        const nextRole = ROLE_ORDER[nextIdx];
+        const updatedRoles = new Set([...completedRoles, role]);
+        if (nextRole) updatedRoles.add(nextRole); // разблокируем следующую
+        try { localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...updatedRoles])); } catch(e) {}
+        setCompletedRoles(updatedRoles);
+        if (profile) {
+          const newRoles = [role, nextRole].filter(Boolean);
+          newRoles.forEach(r => {
+            fetch(`${SUPABASE_URL}/rest/v1/completed_roles`, {
+              method: "POST",
+              headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
+              body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), role: r, updated_at: new Date().toISOString() })
+            }).catch(() => {});
           });
         }
-
-        // Сохраняем звёздочки практики — лучший результат по каждой практике
-        if (activeLesson.type === "practice" && profile) {
-          const stars = practiceState.score >= 60 ? 3 : practiceState.score >= 30 ? 2 : 1;
-          const userKey = `${profile.name}|${profile.surname}`;
-          setPracticeStars(prev => {
-            const userStars = prev[userKey] || {};
-            const prevBest = userStars[activeLesson.id] || 0;
-            if (stars <= prevBest) return prev; // не обновляем если результат не лучше
-            const updated = { ...prev, [userKey]: { ...userStars, [activeLesson.id]: stars } };
-            try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch(e) {};
-            // Сохраняем в Supabase (upsert — обновляем если уже есть)
-            if (profile) {
-              fetch(`${SUPABASE_URL}/rest/v1/practice_stars`, {
-                method: "POST",
-                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-                body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), lesson_id: activeLesson.id, stars, updated_at: new Date().toISOString() })
-              }).catch(() => {});
-            }
-            return updated;
-          });
-        }
-
-        // Проверяем — пройдена ли вся роль? (уроки + практики через completed, квизы через quizDone)
-        const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
-        const allDone = allLessons.every(l => l.type === "quiz" ? quizDone[l.id] : newCompleted[l.id]);
-        if (allDone && !completedRoles.has(role)) { // показываем только если роль ещё не была завершена
-          const nextIdx = ROLE_ORDER.indexOf(role) + 1;
-          const nextRole = ROLE_ORDER[nextIdx];
-          setCompletedRoles(prev => {
-            const updated = new Set([...prev, role]);
-            if (nextRole) updated.add(nextRole); // разблокируем следующую
-            try { const uk = profile ? `_${profile.name}_${profile.surname||""}` : ""; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...updated])); } catch(e) {};
-            // Сохраняем в Supabase
-            if (profile) {
-              const newRoles = [role, nextRole].filter(Boolean);
-              newRoles.forEach(r => {
-                fetch(`${SUPABASE_URL}/rest/v1/completed_roles`, {
-                  method: "POST",
-                  headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-                  body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), role: r, updated_at: new Date().toISOString() })
-                }).catch(() => {});
-              });
-            }
-            setTimeout(() => checkAndShowAchievements(scores, practiceStars, updated), 500);
-            return updated;
-          });
-          vibrate("heavy");
-          setTimeout(() => setScreen("roleComplete"), 50);
-        } else {
-          vibrate("success");
-          setTimeout(() => setScreen("module"), 50);
-        }
-        return newCompleted;
-      });
+        setTimeout(() => checkAndShowAchievements(newScores, newPracticeStars, updatedRoles), 500);
+        vibrate("heavy");
+        setTimeout(() => setScreen("roleComplete"), 50);
+      } else {
+        vibrate("success");
+        setTimeout(() => setScreen("module"), 50);
+      }
     } catch(e) {
       console.error("completeLesson error:", e);
       setScreen("module");
     }
-  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, checkAndShowAchievements]);
+  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, completed, quizDone, completedRoles, checkAndShowAchievements]);
   const handleQuiz = useCallback((idx) => {
     if (quizState.blocked) return;
     const q = activeLesson.questions[quizState.step];

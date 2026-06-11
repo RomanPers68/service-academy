@@ -4603,6 +4603,22 @@ function ServiceAcademy() {
   const [practiceState, setPracticeState] = useState({ step: 0, choice: null, isAnswered: false, results: [], done: false, lives: 3, score: 0, combo: 0, situations: [], flash: null, usedIds: [] });
   const [gameKey, setGameKey] = useState(0);
   const [a11y, setA11y] = useState(false);
+
+  // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
+  React.useEffect(() => {
+    try {
+      const tg = window.Telegram?.WebApp;
+      const bg = a11y ? "#E8DEC8" : "#14100A";
+      document.documentElement.style.background = bg;
+      document.body.style.background = bg;
+      if (!tg) return;
+      tg.ready?.();
+      tg.expand?.();
+      tg.setBackgroundColor?.(bg);
+      tg.setHeaderColor?.(bg);
+      tg.setBottomBarColor?.(bg);
+    } catch (e) {}
+  }, [a11y]);
   const isAdmin = !!profile?.is_admin;
 
   // Загрузка из хранилища: сессия → whoami → профиль

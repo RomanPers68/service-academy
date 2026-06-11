@@ -5081,7 +5081,7 @@ function ServiceAcademy() {
   if (!storageLoaded) return (
     <div style={{ ...T.app, alignItems:'center', justifyContent:'center' }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:18 }}>
-        <img src={LOGO_SRC_DARK} alt="" style={{ width:150, animation:'logoPulse 1.6s ease-in-out infinite' }} />
+        <img src={LOGO_SRC_DARK} alt="" style={{ width:150, animation:'logoPulse 1.6s ease-in-out infinite', filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         <div style={{ color:'#9A8C74', fontSize:11, fontFamily:'monospace', letterSpacing:3 }}>ЗАГРУЗКА</div>
       </div>
     </div>

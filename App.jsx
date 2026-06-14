@@ -14,6 +14,9 @@ const rpc = (fn, params) => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
   body: JSON.stringify(params || {})
 }).then(r => r.json());
 
+// Текущий токен сессии — серверные функции записи берут из него личность пользователя
+const saToken = () => { try { return localStorage.getItem("sa_session_token"); } catch(e) { return null; } };
+
 const supabase = {
   from: (table) => ({
     select: (cols) => fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${cols||"*"}`, { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }).then(r => r.json()).then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
@@ -4849,11 +4852,7 @@ function ServiceAcademy() {
     try { localStorage.setItem("sa_last_role", JSON.stringify(r)); } catch(e) {}
     // Сохраняем выбранную роль в Supabase
     if (profile) {
-      fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
-        method: "POST",
-        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), last_role: r, updated_at: new Date().toISOString() })
-      }).catch(() => {});
+      rpc("save_last_role", { p_token: saToken(), p_role: r }).catch(() => {});
     }
     setScreen("home");
   }, [profile]);
@@ -4948,11 +4947,7 @@ function ServiceAcademy() {
 
       // Прогресс урока в Supabase — только при первом прохождении
       if (profile && activeLesson.type !== "quiz" && !completed[activeLesson.id]) {
-        fetch(`${SUPABASE_URL}/rest/v1/progress`, {
-          method: "POST",
-          headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
-          body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), lesson_id: activeLesson.id, role })
-        }).catch(() => {});
+        rpc("save_progress", { p_token: saToken(), p_lesson_id: activeLesson.id, p_role: role }).catch(() => {});
       }
 
       // 2. Квиз → результат + отметка о прохождении (считаем свежие значения, чтобы передать их дальше)
@@ -4967,7 +4962,7 @@ function ServiceAcademy() {
           pct: Math.round(sc / activeLesson.questions.length * 100),
           date: new Date().toLocaleDateString("ru-RU"),
         };
-        supabase.from("scores").insert({ name: profile.name, surname: normSurname(profile.surname), restaurant: profile.restaurant, role, position: profile.position || "waiter", quiz_id: activeLesson.id, score: sc, total: activeLesson.questions.length, updated_at: new Date().toISOString() }).then(({ data, error }) => { if (error) console.error("Supabase insert error:", error); }).catch((e) => console.error("Supabase catch:", e));
+        rpc("save_score", { p_token: saToken(), p_quiz_id: activeLesson.id, p_role: role, p_score: sc, p_total: activeLesson.questions.length }).catch((e) => console.error("save_score error:", e));
 
         newScores = [...scores, newScore];
         try { localStorage.setItem("sa_scores", JSON.stringify(newScores.filter(s => s.id > 900))); } catch(e) {}
@@ -4977,11 +4972,7 @@ function ServiceAcademy() {
           newQuizDone = { ...quizDone, [activeLesson.id]: true };
           try { localStorage.setItem("sa_quiz_done", JSON.stringify(newQuizDone)); } catch(e) {}
           setQuizDone(newQuizDone);
-          fetch(`${SUPABASE_URL}/rest/v1/quiz_done`, {
-            method: "POST",
-            headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-            body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), quiz_id: activeLesson.id })
-          }).catch(() => {});
+          rpc("save_quiz_done", { p_token: saToken(), p_quiz_id: activeLesson.id }).catch(() => {});
         }
       }
 
@@ -4996,11 +4987,7 @@ function ServiceAcademy() {
           newPracticeStars = { ...practiceStars, [userKey]: { ...userStars, [activeLesson.id]: stars } };
           try { localStorage.setItem("sa_practice_stars", JSON.stringify(newPracticeStars)); } catch(e) {}
           setPracticeStars(newPracticeStars);
-          fetch(`${SUPABASE_URL}/rest/v1/practice_stars`, {
-            method: "POST",
-            headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-            body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), lesson_id: activeLesson.id, stars, updated_at: new Date().toISOString() })
-          }).catch(() => {});
+          rpc("save_practice_stars", { p_token: saToken(), p_lesson_id: activeLesson.id, p_stars: stars }).catch(() => {});
         }
       }
 
@@ -5017,11 +5004,7 @@ function ServiceAcademy() {
         if (profile) {
           const newRoles = [role, nextRole].filter(Boolean);
           newRoles.forEach(r => {
-            fetch(`${SUPABASE_URL}/rest/v1/completed_roles`, {
-              method: "POST",
-              headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" },
-              body: JSON.stringify({ name: profile.name, surname: normSurname(profile.surname), role: r, updated_at: new Date().toISOString() })
-            }).catch(() => {});
+            rpc("save_completed_role", { p_token: saToken(), p_role: r }).catch(() => {});
           });
         }
         setTimeout(() => checkAndShowAchievements(newScores, newPracticeStars, updatedRoles), 500);
@@ -5136,16 +5119,11 @@ function ServiceAcademy() {
               try { localStorage.removeItem("sa_scores"); } catch(e) {}
               try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
             }
-            const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
-            fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
-            fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
-            fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }).catch(() => {});
             // Сразу обнуляем звёзды в state и localStorage
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname||""}`]; return n; });
             try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
-            fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
-            fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
-            fetch(`${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).catch(() => {});
+            // practice_stars / completed_roles / profiles на сервере уже удалены через admin_reset_player выше
             // Очищаем localStorage для любого пользователя
             try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); } catch(e) {}
             // Ачивки тоже сбрасываем
@@ -5153,8 +5131,7 @@ function ServiceAcademy() {
             navigate("roleSelect");
           } : null}
           onUnlockQuiz={isAdmin ? (name, surname) => {
-            const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
-            fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(name)}&surname=eq.${encodeURIComponent(surname)}`, { method: "DELETE", headers: h }).then(() => {
+            rpc("admin_unlock_quiz", { p_token: saToken(), p_name: name, p_surname: surname || "" }).then(() => {
               if (profile && profile.name === name && profile.surname === surname) {
                 setQuizDone({});
                 try { localStorage.removeItem("sa_quiz_done"); } catch(e) {}

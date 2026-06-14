@@ -17,6 +17,48 @@ const rpc = (fn, params) => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
 // Текущий токен сессии — серверные функции записи берут из него личность пользователя
 const saToken = () => { try { return localStorage.getItem("sa_session_token"); } catch(e) { return null; } };
 
+// ── Офлайн-очередь записи: при сбое сети сохранения не теряются ──────────────
+const SYNC_KEY = "sa_sync_queue";
+const _loadQueue = () => { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || "[]"); } catch(e) { return []; } };
+const _saveQueue = (q) => { try { localStorage.setItem(SYNC_KEY, JSON.stringify((q || []).slice(-200))); } catch(e) {} };
+
+// Отправить один вызов: "ok" (успех) | "drop" (сервер отверг, повтор не поможет) | "retry" (нет сети)
+const _sendRpc = (item) =>
+  fetch(`${SUPABASE_URL}/rest/v1/rpc/${item.fn}`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(item.params || {})
+  }).then(async (r) => {
+    if (!r.ok) return (r.status >= 400 && r.status < 500) ? "drop" : "retry";
+    let body = null; try { body = await r.json(); } catch(e) {}
+    return (body && body.ok === false) ? "drop" : "ok";
+  }).catch(() => "retry");
+
+// Прогон очереди по одному с головы. Безопасно к параллельным записям во время await.
+let _flushing = false;
+const flushQueue = async () => {
+  if (_flushing) return;
+  _flushing = true;
+  try {
+    while (true) {
+      const q = _loadQueue();
+      if (!q.length) break;
+      const item = q[0];
+      if (Date.now() - (item.ts || 0) > 7 * 24 * 3600 * 1000) { _saveQueue(q.slice(1)); continue; } // старше 7 дней
+      const res = await _sendRpc(item);
+      if (res === "retry") break;            // нет сети — оставляем всё на потом
+      _saveQueue(_loadQueue().slice(1));      // ok/drop — убираем обработанный (перечитываем на случай новых)
+    }
+  } finally { _flushing = false; }
+};
+
+// Запись с гарантией доставки: пробуем сразу, при сбое — в очередь.
+const rpcSync = (fn, params) =>
+  _sendRpc({ fn, params }).then((res) => {
+    if (res === "retry") { const q = _loadQueue(); q.push({ fn, params, ts: Date.now() }); _saveQueue(q); }
+    else if (res === "ok") { flushQueue(); }
+  });
+
 const supabase = {
   from: (table) => ({
     select: (cols) => fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${cols||"*"}`, { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }).then(r => r.json()).then(data => ({ data, error: null })).catch(error => ({ data: null, error })),
@@ -4624,6 +4666,15 @@ function ServiceAcademy() {
   }, [a11y]);
   const isAdmin = !!profile?.is_admin;
 
+  // Офлайн-очередь: досылаем несохранённые записи при старте, возврате сети и раз в минуту
+  React.useEffect(() => {
+    flushQueue();
+    const onOnline = () => flushQueue();
+    window.addEventListener("online", onOnline);
+    const iv = setInterval(flushQueue, 60000);
+    return () => { window.removeEventListener("online", onOnline); clearInterval(iv); };
+  }, []);
+
   // Загрузка из хранилища: сессия → whoami → профиль
   React.useEffect(() => {
     // Таймаут — если что-то зависнет, показываем экран входа
@@ -4852,7 +4903,7 @@ function ServiceAcademy() {
     try { localStorage.setItem("sa_last_role", JSON.stringify(r)); } catch(e) {}
     // Сохраняем выбранную роль в Supabase
     if (profile) {
-      rpc("save_last_role", { p_token: saToken(), p_role: r }).catch(() => {});
+      rpcSync("save_last_role", { p_token: saToken(), p_role: r });
     }
     setScreen("home");
   }, [profile]);
@@ -4947,7 +4998,7 @@ function ServiceAcademy() {
 
       // Прогресс урока в Supabase — только при первом прохождении
       if (profile && activeLesson.type !== "quiz" && !completed[activeLesson.id]) {
-        rpc("save_progress", { p_token: saToken(), p_lesson_id: activeLesson.id, p_role: role }).catch(() => {});
+        rpcSync("save_progress", { p_token: saToken(), p_lesson_id: activeLesson.id, p_role: role });
       }
 
       // 2. Квиз → результат + отметка о прохождении (считаем свежие значения, чтобы передать их дальше)
@@ -4962,7 +5013,7 @@ function ServiceAcademy() {
           pct: Math.round(sc / activeLesson.questions.length * 100),
           date: new Date().toLocaleDateString("ru-RU"),
         };
-        rpc("save_score", { p_token: saToken(), p_quiz_id: activeLesson.id, p_role: role, p_score: sc, p_total: activeLesson.questions.length }).catch((e) => console.error("save_score error:", e));
+        rpcSync("save_score", { p_token: saToken(), p_quiz_id: activeLesson.id, p_role: role, p_score: sc, p_total: activeLesson.questions.length });
 
         newScores = [...scores, newScore];
         try { localStorage.setItem("sa_scores", JSON.stringify(newScores.filter(s => s.id > 900))); } catch(e) {}
@@ -4972,7 +5023,7 @@ function ServiceAcademy() {
           newQuizDone = { ...quizDone, [activeLesson.id]: true };
           try { localStorage.setItem("sa_quiz_done", JSON.stringify(newQuizDone)); } catch(e) {}
           setQuizDone(newQuizDone);
-          rpc("save_quiz_done", { p_token: saToken(), p_quiz_id: activeLesson.id }).catch(() => {});
+          rpcSync("save_quiz_done", { p_token: saToken(), p_quiz_id: activeLesson.id });
         }
       }
 
@@ -4987,7 +5038,7 @@ function ServiceAcademy() {
           newPracticeStars = { ...practiceStars, [userKey]: { ...userStars, [activeLesson.id]: stars } };
           try { localStorage.setItem("sa_practice_stars", JSON.stringify(newPracticeStars)); } catch(e) {}
           setPracticeStars(newPracticeStars);
-          rpc("save_practice_stars", { p_token: saToken(), p_lesson_id: activeLesson.id, p_stars: stars }).catch(() => {});
+          rpcSync("save_practice_stars", { p_token: saToken(), p_lesson_id: activeLesson.id, p_stars: stars });
         }
       }
 
@@ -5004,7 +5055,7 @@ function ServiceAcademy() {
         if (profile) {
           const newRoles = [role, nextRole].filter(Boolean);
           newRoles.forEach(r => {
-            rpc("save_completed_role", { p_token: saToken(), p_role: r }).catch(() => {});
+            rpcSync("save_completed_role", { p_token: saToken(), p_role: r });
           });
         }
         setTimeout(() => checkAndShowAchievements(newScores, newPracticeStars, updatedRoles), 500);

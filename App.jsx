@@ -4728,7 +4728,7 @@ function ServiceAcademy() {
   // Загрузка progress из Supabase и синхронизация с completed
   React.useEffect(() => {
     if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(normSurname(profile.surname))}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/progress?user_id=eq.${encodeURIComponent(profile.id)}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
@@ -4758,7 +4758,7 @@ function ServiceAcademy() {
   // Загрузка quizDone из Supabase — авторитетный источник
   React.useEffect(() => {
     if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(normSurname(profile.surname))}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/quiz_done?user_id=eq.${encodeURIComponent(profile.id)}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
@@ -4773,7 +4773,7 @@ function ServiceAcademy() {
   // Загрузка last_role из Supabase если localStorage не дал роль
   React.useEffect(() => {
     if (!profile || role) return; // уже есть роль — не нужно
-    fetch(`${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(normSurname(profile.surname))}&select=last_role`, {
+    fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${encodeURIComponent(profile.id)}&select=last_role`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (data && data.length > 0 && data[0].last_role) {
@@ -4788,7 +4788,7 @@ function ServiceAcademy() {
   React.useEffect(() => {
     if (!profile) return;
     const userKey = `${profile.name}|${profile.surname || ""}`;
-    fetch(`${SUPABASE_URL}/rest/v1/practice_stars?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(normSurname(profile.surname))}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/practice_stars?user_id=eq.${encodeURIComponent(profile.id)}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка — не трогаем
@@ -4806,7 +4806,7 @@ function ServiceAcademy() {
   // Загрузка completedRoles из Supabase — авторитетный источник
   React.useEffect(() => {
     if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/completed_roles?name=eq.${encodeURIComponent(profile.name)}&surname=eq.${encodeURIComponent(normSurname(profile.surname))}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/completed_roles?user_id=eq.${encodeURIComponent(profile.id)}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     }).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка — не трогаем

@@ -506,11 +506,11 @@ function ServiceAcademy() {
       // 4. Пройдена ли вся роль? (используем СВЕЖИЕ newCompleted / newQuizDone)
       const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
       const allDone = allLessons.every(l => l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]);
-      if (allDone && !completedRoles.has(role)) { // показываем только если роль ещё не была завершена
-        const nextIdx = ROLE_ORDER.indexOf(role) + 1;
-        const nextRole = ROLE_ORDER[nextIdx];
+      const nextIdx = ROLE_ORDER.indexOf(role) + 1;
+      const nextRole = ROLE_ORDER[nextIdx];
+      if (allDone && nextRole && !completedRoles.has(nextRole)) { // открываем следующую роль, если она ещё закрыта
         const updatedRoles = new Set([...completedRoles, role]);
-        if (nextRole) updatedRoles.add(nextRole); // разблокируем следующую
+        updatedRoles.add(nextRole); // разблокируем следующую
         try { localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...updatedRoles])); } catch(e) {}
         setCompletedRoles(updatedRoles);
         if (profile) {

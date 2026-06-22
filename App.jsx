@@ -635,9 +635,9 @@ function ServiceAcademy() {
         )}
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} />}
-        {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("home")} /></div>}
-        {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("home")} /></div>}
-        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("home")} /></div>}
+        {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
@@ -2458,7 +2458,7 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
           return (
             <div style={{ display:"flex", gap:10, padding:"0 14px 14px" }}>
               {tiles.map(t => (
-                <div key={t.key} onClick={t.onClick} style={{ flex:1, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:16, padding:"12px 6px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+                <div key={t.key} onClick={t.onClick} style={{ flex:1, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:16, padding:"12px 6px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
                   <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
                   <div style={{ fontSize:11, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1 }}>{t.label}</div>
                 </div>
@@ -2546,13 +2546,13 @@ function faceIcon(level, color, size=28){
 function StreakCard({ streak, a11y }) {
   const C = a11y
     ? { gold:"#8B6A30", num:"#9A6B1E", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060",
-        cardBg:"rgba(238,225,198,0.72)", border:"rgba(180,145,70,0.22)", top:"rgba(255,240,200,0.7)",
+        cardBg:"rgba(235,222,195,0.70)", border:"rgba(175,140,65,0.18)", top:"rgba(255,240,200,0.62)", shadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset",
         glow:"radial-gradient(circle, rgba(200,150,50,0.16) 0%, transparent 70%)",
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(216,160,60,0.22), rgba(180,130,40,0.05) 70%)",
         done:"radial-gradient(circle at 35% 30%, #E8C173, #C2912F 72%)", check:"#3a2c10",
         miss:"rgba(140,105,40,0.28)", future:"rgba(140,105,40,0.2)", div:"rgba(140,105,40,0.25)" }
     : { gold:"#C8A96E", num:"#EBCF8E", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354",
-        cardBg:"linear-gradient(145deg,#1d1810,#15110a)", border:"rgba(200,169,110,0.14)", top:"transparent",
+        cardBg:"linear-gradient(150deg,#332510 0%,#231908 100%)", border:"rgba(140,106,38,0.34)", top:"rgba(208,166,62,0.42)", shadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset",
         glow:"radial-gradient(circle, rgba(200,169,110,0.16) 0%, transparent 70%)",
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(235,207,142,0.28), rgba(200,169,110,0.06) 70%)",
         done:"radial-gradient(circle at 35% 30%, #EBCF8E, #C8A96E 70%)", check:"#3a2c10",
@@ -2582,7 +2582,7 @@ function StreakCard({ streak, a11y }) {
     return { ...base, border:`2px dashed ${C.future}` };
   };
   return (
-    <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`,
+    <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow,
       borderRadius:18, padding:"12px 14px", margin:"0 0 12px", position:"relative", overflow:"hidden",
       backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
       <div style={{ position:"absolute", top:-50, right:-40, width:150, height:150, borderRadius:"50%", background:C.glow, pointerEvents:"none" }} />
@@ -2618,12 +2618,12 @@ function StreakCard({ streak, a11y }) {
 
 function moodPalette(a11y) {
   return a11y
-    ? { cardBg:"rgba(238,225,198,0.72)", border:"rgba(180,145,70,0.22)", top:"rgba(255,240,200,0.7)", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060", gold:"#8B6A30", green:"#2A6B45", barTop:"#C8A96E", barBot:"#8B6A30" }
-    : { cardBg:"linear-gradient(145deg,#1d1810,#15110a)", border:"rgba(200,169,110,0.14)", top:"transparent", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:"#C8A96E", green:"#5DBB8A", barTop:"#E8C87A", barBot:"#C8A96E" };
+    ? { cardBg:"rgba(235,222,195,0.70)", border:"rgba(175,140,65,0.18)", top:"rgba(255,240,200,0.62)", shadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060", gold:"#8B6A30", green:"#2A6B45", barTop:"#C8A96E", barBot:"#8B6A30" }
+    : { cardBg:"linear-gradient(150deg,#332510 0%,#231908 100%)", border:"rgba(140,106,38,0.34)", top:"rgba(208,166,62,0.42)", shadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:"#C8A96E", green:"#5DBB8A", barTop:"#E8C87A", barBot:"#C8A96E" };
 }
 const MOOD_FACES = [{lvl:1,l:"Тяжело"},{lvl:2,l:"Так себе"},{lvl:3,l:"Норм"},{lvl:4,l:"Хорошо"},{lvl:5,l:"Отлично"}];
 const _moodYmd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:18, padding:"15px 16px", marginBottom:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" });
+const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:18, padding:"15px 16px", marginBottom:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" });
 
 function MoodCheckCard({ a11y }) {
   const C = moodPalette(a11y);
@@ -2807,7 +2807,7 @@ function ChecklistScreen({ T, a11y, profile, onBack }) {
       .catch(()=>{ setSaving(false); setToast("Нет сети"); setTimeout(()=>setToast(""),1800); });
   };
 
-  const itemCard = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:14, marginBottom:8, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
+  const itemCard = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:14, marginBottom:8, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
   const iconBtn = { width:26, height:18, border:"none", background:"transparent", cursor:"pointer", color:C.muted, fontSize:12, lineHeight:1, padding:0 };
   const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
 
@@ -2925,7 +2925,7 @@ function OnboardingScreen({ T, a11y, profile, role, onBack }) {
   };
 
   const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
-  const card = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
+  const card = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
 
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
@@ -3027,7 +3027,7 @@ function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
 
   const scopeLabel = allScope ? "все рестораны" : (profile?.restaurant || "ваш ресторан");
   const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
-  const cardBase = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
+  const cardBase = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
 
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>

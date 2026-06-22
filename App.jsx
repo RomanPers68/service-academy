@@ -109,6 +109,7 @@ function ServiceAcademy() {
   const [practiceState, setPracticeState] = useState({ step: 0, choice: null, isAnswered: false, results: [], done: false, lives: 3, score: 0, combo: 0, situations: [], flash: null, usedIds: [] });
   const [gameKey, setGameKey] = useState(0);
   const [a11y, setA11y] = useState(false);
+  const [streak, setStreak] = useState({ count: 0, best: 0, last: "", days: [] });
 
   // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
   React.useEffect(() => {
@@ -188,6 +189,7 @@ function ServiceAcademy() {
       try { const uk3 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const sc = await storageGet("sa_completed"+uk3) || await storageGet("sa_completed"); if (sc) setCompleted(JSON.parse(sc.value)); } catch(e) {}
       try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
       try { const ps = await storageGet("sa_practice_stars"); if (ps) setPracticeStars(JSON.parse(ps.value)); } catch(e) {}
+      try { const uk4 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const st = await storageGet("sa_streak"+uk4); if (st) setStreak(JSON.parse(st.value)); } catch(e) {}
       clearTimeout(fallback);
       setStorageLoaded(true);
     })();
@@ -457,6 +459,23 @@ function ServiceAcademy() {
       try { localStorage.setItem("sa_completed"+uk, JSON.stringify(newCompleted)); } catch(e) {}
       setCompleted(newCompleted);
 
+      // Стрик: отмечаем активность за сегодня
+      try {
+        const _ymd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+        const _today = _ymd(new Date());
+        setStreak(prev => {
+          if (prev.last === _today) return prev;
+          const _y = new Date(); _y.setDate(_y.getDate() - 1);
+          const _yest = _ymd(_y);
+          const count = prev.last === _yest ? (prev.count || 0) + 1 : 1;
+          const best = Math.max(prev.best || 0, count);
+          const days = [...new Set([...(prev.days || []), _today])].slice(-21);
+          const next = { count, best, last: _today, days };
+          try { localStorage.setItem("sa_streak"+uk, JSON.stringify(next)); } catch(e) {}
+          return next;
+        });
+      } catch(e) {}
+
       // Прогресс урока в Supabase — только при первом прохождении
       if (profile && activeLesson.type !== "quiz" && !completed[activeLesson.id]) {
         rpcSync("save_progress", { p_token: saToken(), p_lesson_id: activeLesson.id, p_role: role });
@@ -616,6 +635,9 @@ function ServiceAcademy() {
         )}
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} />}
+        {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("home")} /></div>}
+        {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("home")} /></div>}
+        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("home")} /></div>}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
@@ -658,7 +680,7 @@ function ServiceAcademy() {
         {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} /></div>}
+        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} /></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} />}
@@ -854,6 +876,45 @@ function RoleCompleteScreen({ role, nextRole, T, onNext }) {
   );
 }
 
+function WeekStar({ weekly, T }) {
+  const gold = "#C8A96E";
+  const wrap = { background:`linear-gradient(150deg, ${gold}1f, ${gold}08)`, border:`1px solid ${gold}55`, borderRadius:16, padding:"14px 16px", marginBottom:14, boxShadow:"0 4px 14px rgba(0,0,0,0.18)" };
+  if (!weekly || weekly.length === 0) {
+    return (
+      <div style={wrap}>
+        <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:6 }}>👑 СОТРУДНИК НЕДЕЛИ</div>
+        <div style={{ color:T.modSub.color, fontSize:13, lineHeight:1.5 }}>На этой неделе пока нет активности — самое время вырваться вперёд!</div>
+      </div>
+    );
+  }
+  const top = weekly[0]; const rest = weekly.slice(1);
+  return (
+    <div style={wrap}>
+      <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10 }}>👑 СОТРУДНИК НЕДЕЛИ</div>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #8B6A30)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>👑</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ ...T.modTitle, fontSize:16 }}>{top.name} {top.surname}</div>
+          <div style={{ color:T.modSub.color, fontSize:12 }}>{top.restaurant || ""}</div>
+        </div>
+        <div style={{ textAlign:"right", flexShrink:0 }}>
+          <div style={{ color:gold, fontFamily:"Georgia, serif", fontSize:22, fontWeight:"bold", lineHeight:1 }}>{top.pts}</div>
+          <div style={{ color:T.modSub.color, fontSize:10 }}>очков</div>
+        </div>
+      </div>
+      {rest.length > 0 && (
+        <div style={{ display:"flex", gap:14, marginTop:12, paddingTop:10, borderTop:`1px solid ${gold}22`, flexWrap:"wrap" }}>
+          {rest.map((p, i) => (
+            <div key={i} style={{ color:T.modSub.color, fontSize:12 }}>
+              <span style={{ marginRight:4 }}>{i===0?"🥈":"🥉"}</span>{p.name} {p.surname ? p.surname[0]+"." : ""} <span style={{ color:gold, fontWeight:"bold" }}>{p.pts}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}, onBack }) {
   const myPosition = profile?.position || "waiter";
   const isAdmin = !!profile?.is_admin;
@@ -922,6 +983,21 @@ function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}
   const filtered = leaderboard.filter(p => (p.position || "waiter") === tab);
   const detail = selected ? scores.filter(s => s.name === selected.name && s.surname === selected.surname) : [];
 
+  // Сотрудник недели: сумма очков за текущую неделю (Пн–Вс) в рамках вкладки
+  const weekStar = React.useMemo(() => {
+    const d = new Date(); const dow = (d.getDay()+6)%7; d.setHours(0,0,0,0); d.setDate(d.getDate()-dow);
+    const weekStart = d.getTime();
+    const map = {};
+    scores.forEach(s => {
+      if (!s.updated_at || new Date(s.updated_at).getTime() < weekStart) return;
+      if ((s.position || "waiter") !== tab) return;
+      const k = `${s.name}|${s.surname||""}`;
+      if (!map[k]) map[k] = { name:s.name, surname:s.surname||"", restaurant:s.restaurant, pts:0 };
+      map[k].pts += (s.score || 0);
+    });
+    return Object.values(map).filter(p => p.pts > 0).sort((a,b) => b.pts - a.pts).slice(0,3);
+  }, [scores, tab]);
+
   return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
@@ -948,6 +1024,7 @@ function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}
 
       {!detailTab ? (
         <div style={{ flex:1, padding:"12px 16px", overflowY:"auto" }}>
+          <WeekStar weekly={weekStar} T={T} />
           {filtered.length === 0 ? (
             <div style={{ textAlign:"center", padding:"60px 0", color:T.modSub.color, fontSize:14 }}>
               <div style={{ fontSize:40, marginBottom:12 }}>📭</div>
@@ -1823,6 +1900,25 @@ function TeamScreen({ T, profile, a11y }) {
     setBusy(false);
   };
 
+  const doDelete = async () => {
+    if (busy || !selected) return;
+    if (isDemo) {
+      vibrate("success");
+      setList(l => (l || []).filter(e => e.id !== selected.id));
+      setConfirm(null); setSelected(null); setView("list");
+      return;
+    }
+    setBusy(true); setActionError(null);
+    try {
+      const res = await rpc("admin_delete_employee", { p_token: token, p_employee_id: selected.id });
+      if (res && res.ok) {
+        vibrate("success");
+        setConfirm(null); setSelected(null); setView("list"); loadList();
+      } else { vibrate("error"); setActionError("Не получилось удалить. Попробуй ещё раз."); }
+    } catch(e) { vibrate("error"); setActionError("Нет связи. Попробуй ещё раз."); }
+    setBusy(false);
+  };
+
   const inputStyle = {
     width:"100%", padding:"13px 14px", borderRadius:12, fontSize:15,
     fontFamily:"Georgia, serif",
@@ -2037,6 +2133,19 @@ function TeamScreen({ T, profile, a11y }) {
                 </button>
               </div>
             </div>
+          ) : confirm === "delete" ? (
+            <div className="sa-fast">
+              <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+                Удалить <b>{selected.name} {selected.surname}</b> из команды? Профиль, прогресс, результаты и код входа будут стёрты безвозвратно.
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
+                <button className="sa-btn" disabled={busy} onClick={doDelete}
+                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:"#E07878", color:"#fff" }}>
+                  {busy ? "..." : "Удалить"}
+                </button>
+              </div>
+            </div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               <button className="sa-btn" style={goldBtn} onClick={() => setConfirm("reset")}>
@@ -2047,6 +2156,10 @@ function TeamScreen({ T, profile, a11y }) {
                   border: selected.status === "disabled" ? "1px solid rgba(93,187,138,0.5)" : "1px solid rgba(224,120,120,0.45)",
                   color: selected.status === "disabled" ? "#5DBB8A" : "#E07878" }}>
                 {selected.status === "disabled" ? "Включить доступ" : "Отключить доступ"}
+              </button>
+              <button className="sa-btn" onClick={() => setConfirm("delete")}
+                style={{ ...ghostBtn, border:"1px solid rgba(224,120,120,0.55)", color:"#E07878", marginTop:2 }}>
+                Удалить из команды
               </button>
             </div>
           )}
@@ -2396,7 +2509,554 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
   );
 }
 
-function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T }) {
+function StreakCard({ streak, a11y }) {
+  const C = a11y
+    ? { gold:"#8B6A30", num:"#9A6B1E", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060",
+        cardBg:"rgba(238,225,198,0.72)", border:"rgba(180,145,70,0.22)", top:"rgba(255,240,200,0.7)",
+        glow:"radial-gradient(circle, rgba(200,150,50,0.16) 0%, transparent 70%)",
+        flameGlow:"radial-gradient(circle at 40% 35%, rgba(216,160,60,0.22), rgba(180,130,40,0.05) 70%)",
+        done:"radial-gradient(circle at 35% 30%, #E8C173, #C2912F 72%)", check:"#3a2c10",
+        miss:"rgba(140,105,40,0.28)", future:"rgba(140,105,40,0.2)", div:"rgba(140,105,40,0.25)" }
+    : { gold:"#C8A96E", num:"#EBCF8E", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354",
+        cardBg:"linear-gradient(145deg,#1d1810,#15110a)", border:"rgba(200,169,110,0.14)", top:"transparent",
+        glow:"radial-gradient(circle, rgba(200,169,110,0.16) 0%, transparent 70%)",
+        flameGlow:"radial-gradient(circle at 40% 35%, rgba(235,207,142,0.28), rgba(200,169,110,0.06) 70%)",
+        done:"radial-gradient(circle at 35% 30%, #EBCF8E, #C8A96E 70%)", check:"#3a2c10",
+        miss:"rgba(160,120,60,0.18)", future:"rgba(160,120,60,0.16)", div:"rgba(160,120,60,0.2)" };
+  const serif = "Georgia, 'Times New Roman', serif";
+  const ymd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+  const set = new Set(streak.days || []);
+  const today = new Date(); const todayStr = ymd(today);
+  const dow = (today.getDay() + 6) % 7;
+  const monday = new Date(today); monday.setDate(today.getDate() - dow);
+  const labels = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+  const week = labels.map((lbl, i) => {
+    const d = new Date(monday); d.setDate(monday.getDate() + i); const ds = ymd(d);
+    const active = set.has(ds);
+    const st = ds === todayStr ? (active ? "done" : "today") : active ? "done" : (d < today ? "miss" : "future");
+    return { lbl, st, isToday: ds === todayStr };
+  });
+  const count = streak.count || 0;
+  const activeToday = streak.last === todayStr;
+  const sub = count === 0 ? "Пройди урок, чтобы начать серию"
+    : activeToday ? "Серия идёт — так держать!" : "Загляни сегодня, чтобы не прервать серию";
+  const dot = (st) => {
+    const base = { width:28, height:28, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", margin:"0 auto" };
+    if (st === "done") return { ...base, background:C.done, color:C.check };
+    if (st === "today") return { ...base, color:C.gold, border:`2px solid ${C.gold}` };
+    if (st === "miss") return { ...base, color:C.dim, border:`2px solid ${C.miss}` };
+    return { ...base, border:`2px dashed ${C.future}` };
+  };
+  return (
+    <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`,
+      borderRadius:18, padding:"16px 16px 14px", margin:"0 0 14px", position:"relative", overflow:"hidden",
+      backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+      <div style={{ position:"absolute", top:-50, right:-40, width:150, height:150, borderRadius:"50%", background:C.glow, pointerEvents:"none" }} />
+      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ width:60, height:60, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:C.flameGlow }}>
+          <span style={{ fontSize:30, filter:"drop-shadow(0 2px 6px rgba(216,140,40,0.45))" }}>🔥</span>
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
+            <span style={{ fontFamily:serif, fontSize:34, fontWeight:"bold", color:C.num, lineHeight:1 }}>{count}</span>
+            <span style={{ color:C.muted, fontSize:14 }}>дней подряд</span>
+          </div>
+          <div style={{ color:C.muted, fontSize:12, marginTop:5, lineHeight:1.4 }}>{sub}</div>
+        </div>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginTop:14 }}>
+        {week.map((d, i) => (
+          <div key={i} style={{ textAlign:"center" }}>
+            <div style={dot(d.st)}>{d.st === "done" ? "✓" : d.st === "today" ? "•" : ""}</div>
+            <div style={{ marginTop:5, fontSize:10.5, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
+          </div>
+        ))}
+      </div>
+      {(streak.best || 0) > 0 && (
+        <div style={{ marginTop:12, paddingTop:10, borderTop:`1px solid ${C.div}`, color:C.muted, fontSize:12 }}>
+          🏆 Лучшая серия — <span style={{ color:C.gold, fontWeight:"bold" }}>{streak.best} дн.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function moodPalette(a11y) {
+  return a11y
+    ? { cardBg:"rgba(238,225,198,0.72)", border:"rgba(180,145,70,0.22)", top:"rgba(255,240,200,0.7)", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060", gold:"#8B6A30", green:"#2A6B45", barTop:"#C8A96E", barBot:"#8B6A30" }
+    : { cardBg:"linear-gradient(145deg,#1d1810,#15110a)", border:"rgba(200,169,110,0.14)", top:"transparent", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:"#C8A96E", green:"#5DBB8A", barTop:"#E8C87A", barBot:"#C8A96E" };
+}
+const MOOD_FACES = [{e:"😞",l:"Тяжело"},{e:"😕",l:"Так себе"},{e:"😐",l:"Норм"},{e:"🙂",l:"Хорошо"},{e:"😄",l:"Отлично"}];
+const _moodYmd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:18, padding:"15px 16px", marginBottom:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" });
+
+function MoodCheckCard({ a11y }) {
+  const C = moodPalette(a11y);
+  const serif = "Georgia, 'Times New Roman', serif";
+  const today = _moodYmd(new Date());
+  const key = "sa_mood_" + today;
+  const [picked, setPicked] = React.useState(() => { try { return localStorage.getItem(key); } catch(e) { return null; } });
+  const choose = (m) => {
+    setPicked(String(m));
+    try { localStorage.setItem(key, String(m)); } catch(e) {}
+    try { rpc("save_mood", { p_token: saToken(), p_mood: m, p_day: today }); } catch(e) {}
+    try { navigator.vibrate && navigator.vibrate(14); } catch(e) {}
+  };
+  if (picked) {
+    const f = MOOD_FACES[(parseInt(picked,10)||3)-1] || MOOD_FACES[2];
+    return (
+      <div style={_moodBase(C, a11y)}>
+        <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+          <span style={{ fontSize:26 }}>{f.e}</span>
+          <div>
+            <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>Настрой записан</div>
+            <div style={{ color:C.muted, fontSize:12, marginTop:1 }}>Спасибо! Ответ анонимный — можно поменять завтра.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={_moodBase(C, a11y)}>
+      <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold", textAlign:"center" }}>Как настрой сегодня?</div>
+      <div style={{ color:C.muted, fontSize:11.5, textAlign:"center", marginTop:3, marginBottom:14 }}>один тап · анонимно для команды</div>
+      <div style={{ display:"flex", justifyContent:"space-between" }}>
+        {MOOD_FACES.map((m, i) => (
+          <div key={i} onClick={() => choose(i+1)} style={{ flex:1, textAlign:"center", cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+            <div style={{ fontSize:30, lineHeight:1 }}>{m.e}</div>
+            <div style={{ marginTop:6, fontSize:10, color:C.dim }}>{m.l}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TeamMoodCard({ a11y }) {
+  const C = moodPalette(a11y);
+  const serif = "Georgia, 'Times New Roman', serif";
+  const [data, setData] = React.useState(null);
+  const [hide, setHide] = React.useState(false);
+  React.useEffect(() => {
+    let live = true;
+    const today = _moodYmd(new Date());
+    rpc("mood_summary", { p_token: saToken(), p_today: today })
+      .then(d => { if (!live) return; if (d && d.ok) setData(d); else setHide(true); })
+      .catch(() => { if (live) setHide(true); });
+    return () => { live = false; };
+  }, []);
+  if (hide || !data) return null;
+  const total = data.today_total || 0;
+  const dist = data.today_dist || {};
+  const maxD = Math.max(1, ...MOOD_FACES.map((_, i) => dist[String(i+1)] || 0));
+  const avg = data.today_avg ? Number(data.today_avg) : 0;
+  const avgFace = MOOD_FACES[Math.min(4, Math.max(0, Math.round(avg) - 1))] || MOOD_FACES[2];
+  const trend = Array.isArray(data.trend) ? data.trend : [];
+  const spark = () => {
+    if (trend.length < 2) return null;
+    const vals = trend.map(t => Number(t.avg));
+    const n = vals.length, w = 100, h = 26;
+    const pts = vals.map((v, i) => `${(i/(n-1))*w},${h-2-((v-1)/4)*(h-4)}`).join(" ");
+    return <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width:"100%", height:34, marginTop:8 }}><polyline points={pts} fill="none" stroke={C.gold} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  };
+  return (
+    <div style={_moodBase(C, a11y)}>
+      <div style={{ color:C.gold, fontSize:10.5, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10 }}>📊 ПУЛЬС КОМАНДЫ · СЕГОДНЯ</div>
+      {total === 0 ? (
+        <div style={{ color:C.muted, fontSize:13, lineHeight:1.5 }}>Сегодня ещё нет ответов. Команда отметит настрой в течение дня.</div>
+      ) : (
+        <>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <span style={{ fontSize:34 }}>{avgFace.e}</span>
+            <div>
+              <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>В целом {avgFace.l.toLowerCase()}</div>
+              <div style={{ color:C.muted, fontSize:12 }}>ответили {total}</div>
+            </div>
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:6, marginTop:14, height:64 }}>
+            {MOOD_FACES.map((m, i) => { const c = dist[String(i+1)] || 0; return (
+              <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", height:"100%" }}>
+                <div style={{ color:C.muted, fontSize:10.5, fontWeight:"bold", marginBottom:3 }}>{c}</div>
+                <div style={{ width:"64%", maxWidth:22, height:`${Math.max(5,(c/maxD)*42)}px`, borderRadius:4, background:`linear-gradient(180deg,${C.barTop},${C.barBot})`, opacity:c===0?0.25:1 }} />
+                <div style={{ fontSize:16, marginTop:4 }}>{m.e}</div>
+              </div>
+            ); })}
+          </div>
+          {spark()}
+        </>
+      )}
+      <div style={{ color:C.dim, fontSize:11, marginTop:12, paddingTop:9, borderTop:`1px solid ${C.border}` }}>🔒 ответы анонимны — только общая картина</div>
+    </div>
+  );
+}
+
+const DEFAULT_CHECKLISTS = {
+  open: [
+    { id:"o1", text:"Свет, музыка, климат включены" },
+    { id:"o2", text:"Столы протёрты и сервированы" },
+    { id:"o3", text:"Зал и санзона проверены" },
+    { id:"o4", text:"Меню и спецпредложения на местах" },
+    { id:"o5", text:"Кофемашина и бар готовы" },
+    { id:"o6", text:"Касса открыта, разменка есть" },
+  ],
+  preshift: [
+    { id:"p1", text:"Стоп-лист озвучен команде" },
+    { id:"p2", text:"Спецпредложения дня названы" },
+    { id:"p3", text:"Брони и крупные столы разобраны" },
+    { id:"p4", text:"Зоны распределены" },
+    { id:"p5", text:"Внешний вид команды проверен" },
+  ],
+  close: [
+    { id:"c1", text:"Столы убраны, зал готов на завтра" },
+    { id:"c2", text:"Касса сведена" },
+    { id:"c3", text:"Техника и свет выключены" },
+    { id:"c4", text:"Стоп-лист обновлён" },
+    { id:"c5", text:"Уборка завершена" },
+    { id:"c6", text:"Закрытие и сигнализация" },
+  ],
+};
+const CL_KINDS = [["open","Открытие"],["preshift","Предсменка"],["close","Закрытие"]];
+const _clYmd = (d) => { const z = new Date(d.getTime()-d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+const _clId = () => Math.random().toString(36).slice(2,8);
+
+function ChecklistScreen({ T, a11y, profile, onBack }) {
+  const C = moodPalette(a11y);
+  const serif = "Georgia, 'Times New Roman', serif";
+  const today = _clYmd(new Date());
+  const canEdit = !!(profile && (profile.is_admin || ["manager","senior"].includes(profile.position)));
+  const [tab, setTab] = React.useState("open");
+  const [tpls, setTpls] = React.useState({});
+  const [todayLog, setTodayLog] = React.useState({});
+  const [edit, setEdit] = React.useState(false);
+  const [draft, setDraft] = React.useState([]);
+  const [saving, setSaving] = React.useState(false);
+  const [toast, setToast] = React.useState("");
+
+  React.useEffect(() => {
+    let live = true;
+    rpc("checklist_get", { p_token: saToken(), p_day: today })
+      .then(d => { if (!live || !d || !d.ok) return; setTpls(d.templates || {}); setTodayLog(d.today || {}); })
+      .catch(()=>{});
+    return () => { live = false; };
+  }, []);
+
+  const itemsFor = (kind) => { const t = tpls[kind]; return (Array.isArray(t) && t.length) ? t : DEFAULT_CHECKLISTS[kind]; };
+  const items = itemsFor(tab);
+  const log = todayLog[tab] || {};
+  const checked = Array.isArray(log.checked) ? log.checked : [];
+  const doneCount = checked.filter(id => items.some(it => it.id === id)).length;
+  const allDone = items.length > 0 && doneCount === items.length;
+  const doneInfo = log.done_at
+    ? `Завершено в ${new Date(log.done_at).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}${log.by_name?` · ${log.by_name}`:""}`
+    : "отмечено · время фиксируется";
+
+  const toggle = (id) => {
+    const cur = checked.includes(id) ? checked.filter(x=>x!==id) : [...checked, id];
+    setTodayLog(prev => ({ ...prev, [tab]: { ...(prev[tab]||{}), checked: cur } }));
+    rpc("checklist_check", { p_token: saToken(), p_kind: tab, p_checked: cur, p_total: items.length, p_day: today })
+      .then(d => { if (d && d.ok && d.done_at) setTodayLog(prev => ({ ...prev, [tab]: { ...(prev[tab]||{}), checked: cur, done_at: d.done_at } })); })
+      .catch(()=>{});
+    try { navigator.vibrate && navigator.vibrate(10); } catch(e){}
+  };
+
+  const startEdit = () => { setDraft(itemsFor(tab).map(x => ({...x}))); setEdit(true); };
+  const dEdit = (i,v) => setDraft(d => d.map((x,j)=> j===i?{...x,text:v}:x));
+  const dDel = (i) => setDraft(d => d.filter((_,j)=>j!==i));
+  const dAdd = () => setDraft(d => [...d, { id:_clId(), text:"" }]);
+  const dMove = (i,dir) => setDraft(d => { const j=i+dir; if(j<0||j>=d.length) return d; const c=[...d]; const t=c[i]; c[i]=c[j]; c[j]=t; return c; });
+  const saveEdit = () => {
+    const clean = draft.map(x=>({ id:x.id||_clId(), text:(x.text||"").trim() })).filter(x=>x.text);
+    setSaving(true);
+    rpc("checklist_save", { p_token: saToken(), p_kind: tab, p_items: clean })
+      .then(d => { setSaving(false); if (d && d.ok) { setTpls(prev=>({...prev,[tab]:clean})); setEdit(false); setToast("Чек-лист сохранён"); } else { setToast("Не удалось сохранить"); } setTimeout(()=>setToast(""),1800); })
+      .catch(()=>{ setSaving(false); setToast("Нет сети"); setTimeout(()=>setToast(""),1800); });
+  };
+
+  const itemCard = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:14, marginBottom:8, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
+  const iconBtn = { width:26, height:18, border:"none", background:"transparent", cursor:"pointer", color:C.muted, fontSize:12, lineHeight:1, padding:0 };
+  const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
+
+  return (
+    <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
+        <div onClick={onBack} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:19, fontWeight:"bold" }}>Чек-листы смены</div>
+        {canEdit && !edit && <div onClick={startEdit} style={{ cursor:"pointer", color:C.gold, fontSize:13, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:20, padding:"5px 12px" }}>✎ Править</div>}
+        {edit && <div onClick={()=>setEdit(false)} style={{ cursor:"pointer", color:C.muted, fontSize:13, padding:"5px 10px" }}>Отмена</div>}
+      </div>
+
+      <div style={{ padding:"0 14px", marginBottom:14 }}>
+        <div style={{ display:"flex", gap:4, padding:4, borderRadius:12, background:a11y?"rgba(140,105,40,0.12)":"rgba(160,120,60,0.14)" }}>
+          {CL_KINDS.map(([k,label]) => (
+            <button key={k} onClick={()=>{ setTab(k); setEdit(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", fontFamily:serif, fontSize:13, fontWeight:"bold", cursor:"pointer", background: tab===k ? "linear-gradient(135deg,#C8A96E,#8B6A30)" : "transparent", color: tab===k ? "#fff" : C.muted }}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding:"0 14px" }}>
+        {edit ? (
+          <>
+            <div style={{ color:C.muted, fontSize:12, marginBottom:12, lineHeight:1.5 }}>Правишь под своё заведение{profile?.restaurant?` · ${profile.restaurant}`:""}. Изменения применятся только к твоему ресторану.</div>
+            {draft.map((it,i)=>(
+              <div key={it.id} style={{ ...itemCard, padding:"8px 8px 8px 12px", display:"flex", alignItems:"center", gap:6 }}>
+                <input value={it.text} onChange={e=>dEdit(i,e.target.value)} placeholder="Текст пункта…" style={{ flex:1, minWidth:0, background:a11y?"rgba(255,250,238,0.7)":"rgba(30,24,14,0.6)", border:`1px solid ${C.border}`, borderRadius:9, padding:"9px 11px", color:C.text, fontSize:14, fontFamily:"-apple-system, sans-serif" }} />
+                <div style={{ display:"flex", flexDirection:"column" }}>
+                  <button onClick={()=>dMove(i,-1)} style={{ ...iconBtn, opacity:i===0?0.3:1 }}>▲</button>
+                  <button onClick={()=>dMove(i,1)} style={{ ...iconBtn, opacity:i===draft.length-1?0.3:1 }}>▼</button>
+                </div>
+                <button onClick={()=>dDel(i)} style={{ ...iconBtn, width:26, height:26, color:"#B5683A", fontSize:14 }}>✕</button>
+              </div>
+            ))}
+            <button onClick={dAdd} style={{ width:"100%", padding:"12px", borderRadius:13, border:`1.5px dashed ${C.gold}`, background:"transparent", color:C.gold, fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", marginTop:2 }}>+ Добавить пункт</button>
+            <button onClick={saveEdit} disabled={saving} style={{ width:"100%", marginTop:14, padding:"14px", borderRadius:16, border:"none", background:"linear-gradient(135deg,#C8A96E,#8B6A30)", color:"#fff", fontFamily:serif, fontSize:15, fontWeight:"bold", cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Сохраняю…":"Сохранить чек-лист"}</button>
+          </>
+        ) : (
+          <>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+              <div style={{ flex:1, height:6, borderRadius:4, background:trackBg, overflow:"hidden" }}>
+                <div style={{ width:`${items.length?(doneCount/items.length)*100:0}%`, height:"100%", background:C.green, transition:"width .3s" }} />
+              </div>
+              <span style={{ color:C.muted, fontSize:12, fontWeight:"bold" }}>{doneCount}/{items.length}</span>
+            </div>
+            {items.map(it=>{ const on=checked.includes(it.id); return (
+              <div key={it.id} onClick={()=>toggle(it.id)} style={{ ...itemCard, padding:"13px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+                <div style={{ width:23, height:23, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:on?"radial-gradient(circle at 35% 30%, #4FB484, #2A6B45 72%)":"transparent", border:on?"none":`2px solid ${trackBg}`, color:"#fff", fontSize:13, fontWeight:"bold" }}>{on?"✓":""}</div>
+                <span style={{ flex:1, color:on?C.muted:C.text, fontSize:14.5, lineHeight:1.4, textDecoration:on?"line-through":"none" }}>{it.text}</span>
+              </div>
+            ); })}
+            {allDone && (
+              <div style={{ marginTop:6, padding:"14px 16px", borderRadius:14, background:a11y?"rgba(42,107,69,0.14)":"rgba(93,187,138,0.16)", border:`1px solid ${C.green}`, display:"flex", alignItems:"center", gap:11 }}>
+                <span style={{ fontSize:20 }}>✓</span>
+                <div>
+                  <div style={{ color:C.green, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>«{(CL_KINDS.find(k=>k[0]===tab)||["","смена"])[1]}» — всё готово</div>
+                  <div style={{ color:C.muted, fontSize:12, marginTop:1 }}>{doneInfo}</div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {toast && <div style={{ position:"fixed", bottom:100, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg,#C8A96E,#8B6A30)", color:"#fff", padding:"11px 20px", borderRadius:14, fontWeight:"bold", fontFamily:serif, fontSize:13.5, zIndex:60 }}>{toast}</div>}
+    </div>
+  );
+}
+
+const DEFAULT_ONBOARDING = [
+  { day:"ДЕНЬ 1", steps:[
+    { id:"d1a", text:"Познакомиться с командой и наставником" },
+    { id:"d1b", text:"Изучить меню и сегодняшний стоп-лист" },
+    { id:"d1c", text:"Внешний вид по стандарту" },
+    { id:"d1d", text:"Урок «Добро пожаловать»" },
+  ]},
+  { day:"ДНИ 2–3", steps:[
+    { id:"d2a", text:"Сервировка стола по стандарту" },
+    { id:"d2b", text:"Работа с подносом" },
+    { id:"d2c", text:"5 столов под присмотром наставника" },
+    { id:"d2d", text:"Глоссарий: первые 10 терминов" },
+  ]},
+  { day:"К КОНЦУ НЕДЕЛИ", steps:[
+    { id:"d3a", text:"Пройти тест роли «Новичок»" },
+    { id:"d3b", text:"Отработать смену самостоятельно" },
+  ]},
+];
+const ONB_TOTAL = DEFAULT_ONBOARDING.reduce((n,p)=>n+p.steps.length,0);
+
+function OnboardingScreen({ T, a11y, profile, role, onBack }) {
+  const C = moodPalette(a11y);
+  const serif = "Georgia, 'Times New Roman', serif";
+  const isLeader = !!(profile && (profile.is_admin || ["manager","senior"].includes(profile.position)));
+  const isNew = role === "seasonal";
+  const [view, setView] = React.useState(isNew ? "me" : "mentor");
+  const [checked, setChecked] = React.useState([]);
+  const [doneAt, setDoneAt] = React.useState(false);
+  const [list, setList] = React.useState(null);
+
+  React.useEffect(() => {
+    let live = true;
+    rpc("onboarding_get", { p_token: saToken() }).then(d => { if (!live || !d || !d.ok) return; setChecked(Array.isArray(d.checked)?d.checked:[]); setDoneAt(!!d.done_at); }).catch(()=>{});
+    if (isLeader) rpc("onboarding_list", { p_token: saToken() }).then(d => { if (!live) return; setList(d && d.ok ? (d.list||[]) : []); }).catch(()=>{ if(live) setList([]); });
+    return () => { live = false; };
+  }, []);
+
+  const total = ONB_TOTAL;
+  const doneCount = checked.length;
+  const pct = Math.round((doneCount/total)*100);
+  const toggle = (id) => {
+    const cur = checked.includes(id) ? checked.filter(x=>x!==id) : [...checked, id];
+    setChecked(cur);
+    rpc("onboarding_check", { p_token: saToken(), p_checked: cur, p_total: total }).then(d => { if (d && d.ok) setDoneAt(!!d.done_at); }).catch(()=>{});
+    try { navigator.vibrate && navigator.vibrate(10); } catch(e){}
+  };
+
+  const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
+  const card = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
+
+  return (
+    <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
+        <div onClick={onBack} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:19, fontWeight:"bold" }}>{isNew && view==="me" ? "Первая неделя" : "Новички на онбординге"}</div>
+      </div>
+
+      {isNew && isLeader && (
+        <div style={{ padding:"0 14px", marginBottom:14 }}>
+          <div style={{ display:"flex", gap:4, padding:4, borderRadius:12, background:a11y?"rgba(140,105,40,0.12)":"rgba(160,120,60,0.14)" }}>
+            {[["me","Мой путь"],["mentor","Новички"]].map(([k,label])=>(
+              <button key={k} onClick={()=>setView(k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", fontFamily:serif, fontSize:13, fontWeight:"bold", cursor:"pointer", background:view===k?"linear-gradient(135deg,#C8A96E,#8B6A30)":"transparent", color:view===k?"#fff":C.muted }}>{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding:"0 14px" }}>
+        {view === "me" ? (
+          <>
+            <div style={{ ...card, padding:"14px 16px", marginBottom:14 }}>
+              <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>Добро пожаловать в команду 👋</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:12 }}>
+                <div style={{ flex:1, height:8, borderRadius:5, background:trackBg, overflow:"hidden" }}>
+                  <div style={{ width:`${pct}%`, height:"100%", borderRadius:5, background:"linear-gradient(90deg,#C8A96E,#8B6A30)", transition:"width .3s" }} />
+                </div>
+                <span style={{ color:C.gold, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>{pct}%</span>
+              </div>
+            </div>
+            {DEFAULT_ONBOARDING.map((ph)=>(
+              <div key={ph.day} style={{ marginBottom:14 }}>
+                <div style={{ color:C.gold, fontSize:10.5, letterSpacing:2, fontWeight:"bold", marginBottom:8, paddingLeft:2 }}>{ph.day}</div>
+                {ph.steps.map((s)=>{ const on=checked.includes(s.id); return (
+                  <div key={s.id} onClick={()=>toggle(s.id)} style={{ ...card, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, marginBottom:8, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+                    <div style={{ width:23, height:23, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:on?"radial-gradient(circle at 35% 30%, #4FB484, #2A6B45 72%)":"transparent", border:on?"none":`2px solid ${trackBg}`, color:"#fff", fontSize:13, fontWeight:"bold" }}>{on?"✓":""}</div>
+                    <span style={{ flex:1, color:on?C.muted:C.text, fontSize:14, lineHeight:1.4, textDecoration:on?"line-through":"none" }}>{s.text}</span>
+                  </div>
+                ); })}
+              </div>
+            ))}
+            {pct===100 && (
+              <div style={{ padding:"16px", borderRadius:14, background:a11y?"rgba(42,107,69,0.14)":"rgba(93,187,138,0.16)", border:`1px solid ${C.green}`, textAlign:"center" }}>
+                <div style={{ color:C.green, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>🎉 Онбординг пройден!</div>
+                <div style={{ color:C.muted, fontSize:12.5, marginTop:4 }}>Добро пожаловать в команду. Открыт путь к роли «Ядро».</div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {list === null ? (
+              <div style={{ color:C.muted, fontSize:13, padding:"8px 2px" }}>Загружаю…</div>
+            ) : list.length === 0 ? (
+              <div style={{ color:C.muted, fontSize:13, padding:"8px 2px", lineHeight:1.5 }}>Сейчас на онбординге никого нет. Когда новичок начнёт путь — он появится здесь.</div>
+            ) : list.map((h,i)=>{ const tot=h.total||ONB_TOTAL; const p=Math.round(((h.checked||0)/tot)*100); const ini=((h.name||"?")[0]||"")+((h.surname||"")[0]||""); return (
+              <div key={i} style={{ ...card, padding:"14px 16px", marginBottom:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:40, height:40, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:serif, fontWeight:"bold", fontSize:15 }}>{ini.toUpperCase()}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>{h.name} {h.surname||""}</div>
+                    <div style={{ color:C.muted, fontSize:12 }}>{h.restaurant||""}</div>
+                  </div>
+                  <span style={{ color:C.gold, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>{p}%</span>
+                </div>
+                <div style={{ height:6, borderRadius:4, background:trackBg, overflow:"hidden", marginTop:11 }}>
+                  <div style={{ width:`${p}%`, height:"100%", background:"linear-gradient(90deg,#C8A96E,#8B6A30)" }} />
+                </div>
+              </div>
+            ); })}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
+  const C = moodPalette(a11y);
+  const serif = "Georgia, 'Times New Roman', serif";
+  const [view, setView] = React.useState("weak");
+  const allScope = !!(profile && (profile.is_admin || profile.position === "senior"));
+  const scoped = React.useMemo(() => (scores||[]).filter(s => allScope || s.restaurant === profile?.restaurant), [scores, allScope, profile]);
+  const titleById = React.useMemo(() => { const m={}; try { Object.values(MODULES).forEach(mods=>(mods||[]).forEach(md=>((md.lessons||md.items||[])).forEach(l=>{ if(l&&l.id) m[l.id]=l.title||l.name||l.id; }))); } catch(e){} return m; }, []);
+
+  const weak = React.useMemo(() => {
+    const by={}; scoped.forEach(s=>{ const k=s.quiz_id||"—"; if(!by[k]) by[k]={id:k,sum:0,n:0}; by[k].sum+=(s.pct||0); by[k].n++; });
+    return Object.values(by).map(q=>({ title:titleById[q.id]||q.id, avg:Math.round(q.sum/q.n), n:q.n })).sort((a,b)=>a.avg-b.avg).slice(0,6);
+  }, [scoped, titleById]);
+
+  const dg = React.useMemo(() => {
+    const d=new Date(); const dow=(d.getDay()+6)%7; d.setHours(0,0,0,0); d.setDate(d.getDate()-dow); const ws=d.getTime();
+    const recent=scoped.filter(s=>s.updated_at && new Date(s.updated_at).getTime()>=ws);
+    const active=new Set(recent.map(s=>`${s.name}|${s.surname}`)).size;
+    const avg=recent.length?Math.round(recent.reduce((a,s)=>a+(s.pct||0),0)/recent.length):0;
+    const last={}; scoped.forEach(s=>{ const k=`${s.name}|${s.surname}`; const t=s.updated_at?new Date(s.updated_at).getTime():0; if(!last[k]||t>last[k].t) last[k]={t,name:s.name,surname:s.surname}; });
+    const wa=Date.now()-7*864e5; const asleep=Object.values(last).filter(p=>p.t&&p.t<wa);
+    return { active, lessons:recent.length, avg, weak:weak[0], asleep };
+  }, [scoped, weak]);
+
+  const scopeLabel = allScope ? "все рестораны" : (profile?.restaurant || "ваш ресторан");
+  const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
+  const cardBase = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" };
+
+  return (
+    <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 4px" }}>
+        <div onClick={onBack} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:19, fontWeight:"bold" }}>Аналитика</div>
+      </div>
+      <div style={{ padding:"0 16px 10px", color:C.muted, fontSize:12 }}>Охват: {scopeLabel}</div>
+
+      <div style={{ padding:"0 14px", marginBottom:14 }}>
+        <div style={{ display:"flex", gap:4, padding:4, borderRadius:12, background:a11y?"rgba(140,105,40,0.12)":"rgba(160,120,60,0.14)" }}>
+          {[["weak","Слабые места"],["digest","Сводка недели"]].map(([k,l])=>(
+            <button key={k} onClick={()=>setView(k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", fontFamily:serif, fontSize:13, fontWeight:"bold", cursor:"pointer", background:view===k?"linear-gradient(135deg,#C8A96E,#8B6A30)":"transparent", color:view===k?"#fff":C.muted }}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding:"0 14px" }}>
+        {scoped.length === 0 ? (
+          <div style={{ color:C.muted, fontSize:13, padding:"8px 2px", lineHeight:1.5 }}>Пока нет данных по тестам{allScope?"":" в вашем ресторане"}. Аналитика появится, когда команда начнёт проходить тесты.</div>
+        ) : view === "weak" ? (
+          <>
+            <div style={{ color:C.muted, fontSize:12, marginBottom:10, lineHeight:1.5 }}>Темы с самым низким средним результатом — над ними стоит поработать.</div>
+            {weak.map((q,i)=>{ const col=q.avg<60?"#D9764A":q.avg<75?"#D6A33A":"#4FB07A"; return (
+              <div key={i} style={{ ...cardBase, padding:"12px 14px", marginBottom:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
+                  <span style={{ color:C.text, fontSize:14, fontWeight:"bold", flex:1, minWidth:0 }}>{q.title}</span>
+                  <span style={{ color:col, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>{q.avg}%</span>
+                </div>
+                <div style={{ height:6, borderRadius:4, background:trackBg, overflow:"hidden", margin:"8px 0 4px" }}>
+                  <div style={{ width:`${q.avg}%`, height:"100%", background:col }} />
+                </div>
+                <div style={{ color:C.dim, fontSize:11 }}>{q.n} {q.n===1?"ответ":"ответов"}</div>
+              </div>
+            ); })}
+          </>
+        ) : (
+          <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+              {[["Активных за неделю", dg.active],["Пройдено за неделю", dg.lessons],["Средний тест", dg.avg+"%"]].map(([l,v],i)=>(
+                <div key={i} style={{ ...cardBase, padding:"13px 14px" }}>
+                  <div style={{ color:C.dim, fontSize:11.5 }}>{l}</div>
+                  <div style={{ color:C.text, fontFamily:serif, fontSize:24, fontWeight:"bold", marginTop:3 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ ...cardBase, padding:"14px 16px", marginBottom:10 }}>
+              <div style={{ color:"#D6A33A", fontSize:10.5, letterSpacing:1.5, fontWeight:"bold", marginBottom:7 }}>СЛАБОЕ МЕСТО</div>
+              {dg.weak ? <div style={{ color:C.text, fontSize:14 }}>{dg.weak.title} — <b style={{color:"#D9764A"}}>{dg.weak.avg}%</b></div> : <div style={{ color:C.muted, fontSize:13 }}>Достаточно данных пока нет</div>}
+            </div>
+            <div style={{ ...cardBase, padding:"14px 16px" }}>
+              <div style={{ color:"#D6A33A", fontSize:10.5, letterSpacing:1.5, fontWeight:"bold", marginBottom:7 }}>УСНУЛИ · 7+ дней без активности</div>
+              {dg.asleep.length===0 ? <div style={{ color:C.green, fontSize:13 }}>Все активны 👍</div> : (
+                <div style={{ color:C.text, fontSize:13, lineHeight:1.6 }}>{dg.asleep.length} чел.: {dg.asleep.slice(0,5).map(p=>`${p.name} ${(p.surname||"")[0]||""}`.trim()).join(", ")}{dg.asleep.length>5?" и др.":""}</div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.homeHead}>
@@ -2415,6 +3075,39 @@ function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCou
         <div style={T.progBar}><div style={{ ...T.progFill, width:`${progress}%`, background:role.color }} /></div>
         <div style={T.progSub}>{doneCount} из {totalLessons} разделов завершено</div>
       </div>
+      <StreakCard streak={streak} a11y={a11y} />
+      <MoodCheckCard a11y={a11y} />
+      {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && <TeamMoodCard a11y={a11y} />}
+      {onChecklist && (() => { const Cc = moodPalette(a11y); return (
+        <div onClick={onChecklist} style={{ background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:18, padding:"14px 16px", marginBottom:14, display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+          <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:19, fontWeight:"bold" }}>✓</div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ color:Cc.text, fontFamily:"Georgia, serif", fontSize:15.5, fontWeight:"bold" }}>Чек-листы смены</div>
+            <div style={{ color:Cc.muted, fontSize:12 }}>Открытие · Предсменка · Закрытие</div>
+          </div>
+          <div style={{ color:Cc.muted, fontSize:22 }}>›</div>
+        </div>
+      ); })()}
+      {(role?.id === "seasonal" || ["manager","senior"].includes(profile?.position) || profile?.is_admin) && onOnboarding && (() => { const Cc = moodPalette(a11y); const newbie = role?.id === "seasonal"; return (
+        <div onClick={onOnboarding} style={{ background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:18, padding:"14px 16px", marginBottom:14, display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+          <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19 }}>🎓</div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ color:Cc.text, fontFamily:"Georgia, serif", fontSize:15.5, fontWeight:"bold" }}>{newbie ? "Твоя первая неделя" : "Новички на онбординге"}</div>
+            <div style={{ color:Cc.muted, fontSize:12 }}>{newbie ? "Путь освоения по дням" : "Прогресс новеньких"}</div>
+          </div>
+          <div style={{ color:Cc.muted, fontSize:22 }}>›</div>
+        </div>
+      ); })()}
+      {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && onAnalytics && (() => { const Cc = moodPalette(a11y); return (
+        <div onClick={onAnalytics} style={{ background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:18, padding:"14px 16px", marginBottom:14, display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+          <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19 }}>📊</div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ color:Cc.text, fontFamily:"Georgia, serif", fontSize:15.5, fontWeight:"bold" }}>Аналитика</div>
+            <div style={{ color:Cc.muted, fontSize:12 }}>Слабые места · сводка недели</div>
+          </div>
+          <div style={{ color:Cc.muted, fontSize:22 }}>›</div>
+        </div>
+      ); })()}
       <div style={T.secTitle}>Программа обучения</div>
       <div style={T.modList} className="sa-stagger">
         {modules.map((m) => {
@@ -2498,6 +3191,33 @@ function TimerBar({ duration, color, onExpire }) {
       <div style={{ height:4, background:"rgba(255,255,255,0.1)", borderRadius:2, overflow:"hidden" }}>
         <div style={{ height:"100%", width:`${pct}%`, background:barColor, borderRadius:2, transition:"width 1s linear, background 0.3s" }} />
       </div>
+    </div>
+  );
+}
+
+function SayAloud({ phrase, T, color }) {
+  const [done, setDone] = React.useState(null);
+  const gold = "#C8A96E";
+  return (
+    <div style={{ background:"rgba(200,169,110,0.1)", border:"1.5px solid rgba(200,169,110,0.4)", borderRadius:14, padding:"13px 14px", marginBottom:10 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:8 }}>
+        <span style={{ fontSize:16 }}>🗣</span>
+        <span style={{ color:gold, fontSize:10.5, letterSpacing:1.5, fontFamily:"monospace", fontWeight:"bold" }}>А ТЕПЕРЬ — ВСЛУХ</span>
+      </div>
+      <div style={{ color:T.para.color, fontSize:14, lineHeight:1.6, fontStyle:"italic", marginBottom:done===null?12:10 }}>«{phrase}»</div>
+      {done===null ? (
+        <>
+          <div style={{ color:T.modSub.color, fontSize:12, marginBottom:10, lineHeight:1.5 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={()=>setDone("ok")} style={{ flex:1, padding:"9px", borderRadius:11, border:"none", background:gold, color:"#241a0a", fontSize:13, fontWeight:"bold", cursor:"pointer" }}>Получилось</button>
+            <button onClick={()=>setDone("again")} style={{ flex:1, padding:"9px", borderRadius:11, border:`1.5px solid ${gold}`, background:"transparent", color:gold, fontSize:13, fontWeight:"bold", cursor:"pointer" }}>Ещё разок</button>
+          </div>
+        </>
+      ) : (
+        <div style={{ color:done==="ok"?"#5DBB8A":gold, fontSize:13, fontWeight:"bold", lineHeight:1.5 }}>
+          {done==="ok" ? "🔥 Отлично! Звучит уверенно." : "💪 Ещё пара повторов — и пойдёт на автомате."}
+        </div>
+      )}
     </div>
   );
 }
@@ -2789,6 +3509,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
       empathy:  { label:"РОЛЬ ГОСТЯ",     gicon:"mask",   color:"#C8A96E" },
     };
     const gm = genreMeta[genre] || genreMeta.action;
+    const sayPhrase = sit.say || ((genre === "action" || genre === "empathy") && sit.options ? sit.options[sit.correct] : null);
 
     return (
       <div style={{ ...T.screen }} className="sa-screen">
@@ -2930,6 +3651,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
                   {isCorrectAnswer ? sit.win : sit.fail||"Попробуй ещё раз в следующем раунде!"}
                 </div>
               </div>
+              {sayPhrase && <SayAloud phrase={sayPhrase} T={T} color={color} />}
               <button ref={nextBtnRef} className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:0 }} onClick={onPracticeNext}>
                 {practiceState.step+1<situations.length?"Дальше →":<span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>Финиш {GAME_SVG.flag("currentColor", 14)}</span>}
               </button>

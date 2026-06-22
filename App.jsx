@@ -677,7 +677,7 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} /></div>}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} /></div>}
@@ -1035,7 +1035,7 @@ function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}
             return (
             <div key={i} onClick={() => { setSelected(p); setDetailTab(true); }}
               style={{ ...T.modCard, marginBottom:10, cursor:"pointer", gap:12 }}>
-              <div style={{ fontSize:22, flexShrink:0, minWidth:28, textAlign:"center" }}>{medals[i] || `${i+1}`}</div>
+              <div style={{ fontSize:22, flexShrink:0, minWidth:28, textAlign:"center", color: T.modTitle?.color || "#C8A96E", fontWeight:"bold" }}>{medals[i] || `${i+1}`}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <div style={{ ...T.modTitle }}>{p.name} {p.surname}</div>
@@ -2397,7 +2397,7 @@ function AccountScreen({ profile, T, onBack, onLogout }) {
   );
 }
 
-function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set() }) {
+function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -2442,6 +2442,30 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
             </div>
           </div>
         )}
+        {(() => {
+          const Cc = moodPalette(a11y);
+          const tiles = [];
+          if (onChecklist) tiles.push({ key:"cl", label:"Чек-листы", onClick:onChecklist, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v2H9z"/><path d="M8.5 12l2 2 3.5-3.5"/></svg>
+          )});
+          if (onOnboarding && (role === "seasonal" || ["manager","senior"].includes(profile?.position) || profile?.is_admin)) tiles.push({ key:"ob", label: role === "seasonal" ? "Первая неделя" : "Новички", onClick:onOnboarding, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-4 9 4-9 4-9-4z"/><path d="M7 11v4c0 1.4 2.5 2.4 5 2.4s5-1 5-2.4v-4"/></svg>
+          )});
+          if (onAnalytics && (["manager","senior"].includes(profile?.position) || profile?.is_admin)) tiles.push({ key:"an", label:"Аналитика", onClick:onAnalytics, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5v14h16"/><path d="M8 15l3-4 3 2 4-6"/></svg>
+          )});
+          if (!tiles.length) return null;
+          return (
+            <div style={{ display:"flex", gap:10, padding:"0 14px 14px" }}>
+              {tiles.map(t => (
+                <div key={t.key} onClick={t.onClick} style={{ flex:1, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:16, padding:"12px 6px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+                  <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
+                  <div style={{ fontSize:11, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1 }}>{t.label}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 20px 10px" }}>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D4A85A55, transparent)" }} />
           <span style={{ color:"#D4A85A", fontSize:14 }}>✦</span>
@@ -2509,6 +2533,16 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
   );
 }
 
+function flameIcon(color, size=24){
+  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2c0 3-2 4-2 7 0 1 .6 1.7 1.5 1.7S14 9.8 14 9c1 1.2 2 2.7 2 4.5a5 5 0 0 1-10 0C6 9 10 6 13 2z"/></svg>);
+}
+function trophyIcon(color, size=18){
+  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H5a2 2 0 0 0 2 4"/><path d="M17 6h2a2 2 0 0 1-2 4"/><path d="M12 14v3"/><path d="M9.5 20h5l-.6-3h-3.8z"/></svg>);
+}
+function faceIcon(level, color, size=28){
+  const m={1:"M8.5 16.2 Q12 13.4 15.5 16.2",2:"M8.7 15.5 Q12 14.2 15.3 15.5",3:"M9 15 H15",4:"M8.7 14.6 Q12 16.4 15.3 14.6",5:"M8 14 Q12 17.8 16 14"};
+  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.7" fill={color} stroke="none"/><circle cx="15" cy="10" r="0.7" fill={color} stroke="none"/><path d={m[level]||m[3]}/></svg>);
+}
 function StreakCard({ streak, a11y }) {
   const C = a11y
     ? { gold:"#8B6A30", num:"#9A6B1E", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060",
@@ -2541,7 +2575,7 @@ function StreakCard({ streak, a11y }) {
   const sub = count === 0 ? "Пройди урок, чтобы начать серию"
     : activeToday ? "Серия идёт — так держать!" : "Загляни сегодня, чтобы не прервать серию";
   const dot = (st) => {
-    const base = { width:28, height:28, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", margin:"0 auto" };
+    const base = { width:24, height:24, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:"bold", margin:"0 auto" };
     if (st === "done") return { ...base, background:C.done, color:C.check };
     if (st === "today") return { ...base, color:C.gold, border:`2px solid ${C.gold}` };
     if (st === "miss") return { ...base, color:C.dim, border:`2px solid ${C.miss}` };
@@ -2549,34 +2583,35 @@ function StreakCard({ streak, a11y }) {
   };
   return (
     <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`,
-      borderRadius:18, padding:"16px 16px 14px", margin:"0 0 14px", position:"relative", overflow:"hidden",
+      borderRadius:18, padding:"12px 14px", margin:"0 0 12px", position:"relative", overflow:"hidden",
       backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
       <div style={{ position:"absolute", top:-50, right:-40, width:150, height:150, borderRadius:"50%", background:C.glow, pointerEvents:"none" }} />
-      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:60, height:60, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:C.flameGlow }}>
-          <span style={{ fontSize:30, filter:"drop-shadow(0 2px 6px rgba(216,140,40,0.45))" }}>🔥</span>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:44, height:44, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:C.flameGlow }}>
+          {flameIcon("#E0913A", 26)}
         </div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
-            <span style={{ fontFamily:serif, fontSize:34, fontWeight:"bold", color:C.num, lineHeight:1 }}>{count}</span>
-            <span style={{ color:C.muted, fontSize:14 }}>дней подряд</span>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+            <span style={{ fontFamily:serif, fontSize:26, fontWeight:"bold", color:C.num, lineHeight:1 }}>{count}</span>
+            <span style={{ color:C.muted, fontSize:13 }}>дней подряд</span>
           </div>
-          <div style={{ color:C.muted, fontSize:12, marginTop:5, lineHeight:1.4 }}>{sub}</div>
+          <div style={{ color:C.muted, fontSize:11.5, marginTop:3, lineHeight:1.35 }}>{sub}</div>
         </div>
+        {(streak.best || 0) > 0 && (
+          <div style={{ flexShrink:0, textAlign:"center", paddingLeft:10 }}>
+            <div style={{ display:"flex", justifyContent:"center" }}>{trophyIcon(C.gold, 18)}</div>
+            <div style={{ color:C.gold, fontSize:13, fontWeight:"bold", fontFamily:serif }}>{streak.best}</div>
+          </div>
+        )}
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginTop:14 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginTop:11 }}>
         {week.map((d, i) => (
           <div key={i} style={{ textAlign:"center" }}>
             <div style={dot(d.st)}>{d.st === "done" ? "✓" : d.st === "today" ? "•" : ""}</div>
-            <div style={{ marginTop:5, fontSize:10.5, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
+            <div style={{ marginTop:4, fontSize:10, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
           </div>
         ))}
       </div>
-      {(streak.best || 0) > 0 && (
-        <div style={{ marginTop:12, paddingTop:10, borderTop:`1px solid ${C.div}`, color:C.muted, fontSize:12 }}>
-          🏆 Лучшая серия — <span style={{ color:C.gold, fontWeight:"bold" }}>{streak.best} дн.</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -2586,7 +2621,7 @@ function moodPalette(a11y) {
     ? { cardBg:"rgba(238,225,198,0.72)", border:"rgba(180,145,70,0.22)", top:"rgba(255,240,200,0.7)", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060", gold:"#8B6A30", green:"#2A6B45", barTop:"#C8A96E", barBot:"#8B6A30" }
     : { cardBg:"linear-gradient(145deg,#1d1810,#15110a)", border:"rgba(200,169,110,0.14)", top:"transparent", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:"#C8A96E", green:"#5DBB8A", barTop:"#E8C87A", barBot:"#C8A96E" };
 }
-const MOOD_FACES = [{e:"😞",l:"Тяжело"},{e:"😕",l:"Так себе"},{e:"😐",l:"Норм"},{e:"🙂",l:"Хорошо"},{e:"😄",l:"Отлично"}];
+const MOOD_FACES = [{lvl:1,l:"Тяжело"},{lvl:2,l:"Так себе"},{lvl:3,l:"Норм"},{lvl:4,l:"Хорошо"},{lvl:5,l:"Отлично"}];
 const _moodYmd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
 const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, borderRadius:18, padding:"15px 16px", marginBottom:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" });
 
@@ -2607,7 +2642,7 @@ function MoodCheckCard({ a11y }) {
     return (
       <div style={_moodBase(C, a11y)}>
         <div style={{ display:"flex", alignItems:"center", gap:11 }}>
-          <span style={{ fontSize:26 }}>{f.e}</span>
+          {faceIcon(f.lvl, C.gold, 28)}
           <div>
             <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>Настрой записан</div>
             <div style={{ color:C.muted, fontSize:12, marginTop:1 }}>Спасибо! Ответ анонимный — можно поменять завтра.</div>
@@ -2623,7 +2658,7 @@ function MoodCheckCard({ a11y }) {
       <div style={{ display:"flex", justifyContent:"space-between" }}>
         {MOOD_FACES.map((m, i) => (
           <div key={i} onClick={() => choose(i+1)} style={{ flex:1, textAlign:"center", cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
-            <div style={{ fontSize:30, lineHeight:1 }}>{m.e}</div>
+            <div style={{ display:"flex", justifyContent:"center" }}>{faceIcon(m.lvl, C.gold, 31)}</div>
             <div style={{ marginTop:6, fontSize:10, color:C.dim }}>{m.l}</div>
           </div>
         ))}
@@ -2667,7 +2702,7 @@ function TeamMoodCard({ a11y }) {
       ) : (
         <>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <span style={{ fontSize:34 }}>{avgFace.e}</span>
+            {faceIcon(avgFace.lvl, C.gold, 34)}
             <div>
               <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>В целом {avgFace.l.toLowerCase()}</div>
               <div style={{ color:C.muted, fontSize:12 }}>ответили {total}</div>
@@ -2678,7 +2713,7 @@ function TeamMoodCard({ a11y }) {
               <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", height:"100%" }}>
                 <div style={{ color:C.muted, fontSize:10.5, fontWeight:"bold", marginBottom:3 }}>{c}</div>
                 <div style={{ width:"64%", maxWidth:22, height:`${Math.max(5,(c/maxD)*42)}px`, borderRadius:4, background:`linear-gradient(180deg,${C.barTop},${C.barBot})`, opacity:c===0?0.25:1 }} />
-                <div style={{ fontSize:16, marginTop:4 }}>{m.e}</div>
+                <div style={{ marginTop:4, display:"flex", justifyContent:"center" }}>{faceIcon(m.lvl, C.muted, 18)}</div>
               </div>
             ); })}
           </div>
@@ -3078,36 +3113,6 @@ function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCou
       <StreakCard streak={streak} a11y={a11y} />
       <MoodCheckCard a11y={a11y} />
       {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && <TeamMoodCard a11y={a11y} />}
-      {onChecklist && (() => { const Cc = moodPalette(a11y); return (
-        <div onClick={onChecklist} style={{ background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:18, padding:"14px 16px", marginBottom:14, display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
-          <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:19, fontWeight:"bold" }}>✓</div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ color:Cc.text, fontFamily:"Georgia, serif", fontSize:15.5, fontWeight:"bold" }}>Чек-листы смены</div>
-            <div style={{ color:Cc.muted, fontSize:12 }}>Открытие · Предсменка · Закрытие</div>
-          </div>
-          <div style={{ color:Cc.muted, fontSize:22 }}>›</div>
-        </div>
-      ); })()}
-      {(role?.id === "seasonal" || ["manager","senior"].includes(profile?.position) || profile?.is_admin) && onOnboarding && (() => { const Cc = moodPalette(a11y); const newbie = role?.id === "seasonal"; return (
-        <div onClick={onOnboarding} style={{ background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:18, padding:"14px 16px", marginBottom:14, display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
-          <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19 }}>🎓</div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ color:Cc.text, fontFamily:"Georgia, serif", fontSize:15.5, fontWeight:"bold" }}>{newbie ? "Твоя первая неделя" : "Новички на онбординге"}</div>
-            <div style={{ color:Cc.muted, fontSize:12 }}>{newbie ? "Путь освоения по дням" : "Прогресс новеньких"}</div>
-          </div>
-          <div style={{ color:Cc.muted, fontSize:22 }}>›</div>
-        </div>
-      ); })()}
-      {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && onAnalytics && (() => { const Cc = moodPalette(a11y); return (
-        <div onClick={onAnalytics} style={{ background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, borderRadius:18, padding:"14px 16px", marginBottom:14, display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
-          <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19 }}>📊</div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ color:Cc.text, fontFamily:"Georgia, serif", fontSize:15.5, fontWeight:"bold" }}>Аналитика</div>
-            <div style={{ color:Cc.muted, fontSize:12 }}>Слабые места · сводка недели</div>
-          </div>
-          <div style={{ color:Cc.muted, fontSize:22 }}>›</div>
-        </div>
-      ); })()}
       <div style={T.secTitle}>Программа обучения</div>
       <div style={T.modList} className="sa-stagger">
         {modules.map((m) => {

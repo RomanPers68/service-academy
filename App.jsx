@@ -858,7 +858,7 @@ function RoleCompleteScreen({ role, nextRole, T, onNext }) {
       {isLast && phase >= 1 && (
         <div className="sa-pop" style={{ width:"100%", maxWidth:340, marginBottom:24 }}>
           <div style={{ background:"linear-gradient(135deg, rgba(212,168,90,0.15) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(212,168,90,0.4)", borderRadius:20, padding:"16px 20px", textAlign:"center" }}>
-            <div style={{ fontSize:32, marginBottom:8 }}>👑</div>
+            <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{crownIcon("#D4A85A", 32)}</div>
             <div style={{ color:"#D4A85A", fontSize:15, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>Мастер сервиса</div>
             <div style={{ color:"#8A7A6A", fontSize:12, lineHeight:1.6 }}>Ты прошёл весь путь Service Academy. Теперь ты — архитектор сервиса.</div>
           </div>
@@ -882,7 +882,7 @@ function WeekStar({ weekly, T }) {
   if (!weekly || weekly.length === 0) {
     return (
       <div style={wrap}>
-        <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:6 }}>👑 СОТРУДНИК НЕДЕЛИ</div>
+        <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} СОТРУДНИК НЕДЕЛИ</div>
         <div style={{ color:T.modSub.color, fontSize:13, lineHeight:1.5 }}>На этой неделе пока нет активности — самое время вырваться вперёд!</div>
       </div>
     );
@@ -890,9 +890,9 @@ function WeekStar({ weekly, T }) {
   const top = weekly[0]; const rest = weekly.slice(1);
   return (
     <div style={wrap}>
-      <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10 }}>👑 СОТРУДНИК НЕДЕЛИ</div>
+      <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} СОТРУДНИК НЕДЕЛИ</div>
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #8B6A30)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>👑</div>
+        <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #8B6A30)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#fff8ec", 24)}</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ ...T.modTitle, fontSize:16 }}>{top.name} {top.surname}</div>
           <div style={{ color:T.modSub.color, fontSize:12 }}>{top.restaurant || ""}</div>
@@ -1035,7 +1035,7 @@ function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}
             return (
             <div key={i} onClick={() => { setSelected(p); setDetailTab(true); }}
               style={{ ...T.modCard, marginBottom:10, cursor:"pointer", gap:12 }}>
-              <div style={{ fontSize:22, flexShrink:0, minWidth:28, textAlign:"center", color: T.modTitle?.color || "#C8A96E", fontWeight:"bold" }}>{medals[i] || `${i+1}`}</div>
+              <div style={{ flexShrink:0, minWidth:28, display:"flex", alignItems:"center", justifyContent:"center" }}>{(() => { const med = [["#F0CE72","rgba(232,196,106,0.20)"],["#D2D7DE","rgba(200,205,212,0.16)"],["#D6A06A","rgba(214,160,106,0.18)"]][i]; const fg = med ? med[0] : (T.modTitle?.color||"#C8A96E"); const bg = med ? med[1] : (T.modSub?.color||"#9A8C74")+"22"; const bd = med ? med[0]+"99" : (T.modTitle?.color||"#C8A96E")+"44"; return <div style={{ width:27, height:27, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:bg, border:`1.5px solid ${bd}`, color:fg, fontSize:13, fontWeight:"bold" }}>{i+1}</div>; })()}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <div style={{ ...T.modTitle }}>{p.name} {p.surname}</div>
@@ -2533,6 +2533,9 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
   );
 }
 
+function crownIcon(color, size=22){
+  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M5 16L3.4 7.8l4.8 3.4L12 5.5l3.8 5.7 4.8-3.4L19 16z"/><path d="M5 19h14"/></svg>);
+}
 function flameIcon(color, size=24){
   return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2c0 3-2 4-2 7 0 1 .6 1.7 1.5 1.7S14 9.8 14 9c1 1.2 2 2.7 2 4.5a5 5 0 0 1-10 0C6 9 10 6 13 2z"/></svg>);
 }
@@ -2583,7 +2586,7 @@ function StreakCard({ streak, a11y }) {
   };
   return (
     <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow,
-      borderRadius:18, padding:"12px 14px", margin:"0 0 12px", position:"relative", overflow:"hidden",
+      borderRadius:18, padding:"12px 14px", margin:"0 14px 12px", position:"relative", overflow:"hidden",
       backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
       <div style={{ position:"absolute", top:-50, right:-40, width:150, height:150, borderRadius:"50%", background:C.glow, pointerEvents:"none" }} />
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -2623,7 +2626,7 @@ function moodPalette(a11y) {
 }
 const MOOD_FACES = [{lvl:1,l:"Тяжело"},{lvl:2,l:"Так себе"},{lvl:3,l:"Норм"},{lvl:4,l:"Хорошо"},{lvl:5,l:"Отлично"}];
 const _moodYmd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:18, padding:"15px 16px", marginBottom:14, backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" });
+const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:18, padding:"15px 16px", margin:"0 14px 14px", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" });
 
 function MoodCheckCard({ a11y }) {
   const C = moodPalette(a11y);

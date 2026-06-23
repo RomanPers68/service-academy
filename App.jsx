@@ -3228,13 +3228,14 @@ function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCou
         const _n = mistakeBank.length;
         const _w = _n === 1 ? "вопрос" : (_n % 10 >= 2 && _n % 10 <= 4 && (_n % 100 < 10 || _n % 100 >= 20)) ? "вопроса" : "вопросов";
         return (
-          <div onClick={onMistakes} className="sa-opt" style={{ display:"flex", alignItems:"center", gap:12, background:T.progCard.background, border:`1px solid ${_g}44`, borderRadius:16, padding:"14px 16px", margin:"0 0 14px", cursor:"pointer" }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={_g} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          <div onClick={onMistakes} style={{ ...T.modCard, margin:"0 14px 12px" }}>
+            <div style={{ ...T.modBar, background:_g }} />
+            <div style={T.modIcon}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={_g} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ ...T.bold, fontSize:15 }}>Работа над ошибками</div>
-              <div style={{ ...T.modSub, fontSize:12, marginTop:2 }}>{_n} {_w} на повтор</div>
+              <div style={T.modTitle}>Работа над ошибками</div>
+              <div style={T.modSub}>{_n} {_w} на повтор</div>
             </div>
-            <div style={{ color:_g, fontSize:18, flexShrink:0 }}>{"\u203a"}</div>
+            <div style={T.modArrow}>{"\u203a"}</div>
           </div>
         );
       })()}

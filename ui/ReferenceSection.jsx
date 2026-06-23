@@ -105,9 +105,14 @@ function Course({ T, gold, openLesson, onBack }) {
 
 // ── Глава ──
 function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
+  const bodyRef = R.useRef(null);
+  R.useEffect(() => {
+    if (typeof window !== "undefined") { try { window.scrollTo(0, 0); } catch (e) {} }
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [lesson.id]);
   return (<div style={T.screen}>
     <Head T={T} title={lesson.title} onBack={onBack} />
-    <div style={{ ...T.lessBody, padding: "14px 14px 40px" }}>
+    <div ref={bodyRef} style={{ ...T.lessBody, padding: "14px 14px 40px" }}>
       {lesson.images && lesson.images.map((k, i) => <Figure key={i} T={T}>{renderIll(k, gold, dark)}</Figure>)}
       <div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 22, boxShadow: T.lessGlass.shadow, padding: "20px 18px", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur }}>
         <Content text={lesson.content} T={T} gold={gold} dark={dark} />
@@ -171,7 +176,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId }) {
 
   if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={() => setView("course")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} openLesson={openLesson} onBack={() => setView("hub")} />;
-  const back = () => setView("course");
+  const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
   return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
 }

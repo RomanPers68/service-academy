@@ -113,6 +113,7 @@ function ServiceAcademy() {
   const [a11y, setA11y] = useState(false);
   const [streak, setStreak] = useState({ count: 0, best: 0, last: "", days: [] });
   const [mistakeBank, setMistakeBank] = useState([]); // #5/#6 — заваленные вопросы для повтора
+  const [customLessons, setCustomLessons] = useState([]); // свой контент (редактор)
 
   // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
   React.useEffect(() => {
@@ -345,6 +346,30 @@ function ServiceAcademy() {
     return lessonsDone + quizzesDone;
   }, [completed, quizDone, roleLesonIds, roleQuizIds]);
   const progress = useMemo(() => totalLessons ? Math.round((doneCount / totalLessons) * 100) : 0, [doneCount, totalLessons]);
+
+  // ── Свой контент (редактор) ──
+  const loadCustomLessons = useCallback(async () => {
+    const t = saToken();
+    if (!t) { setCustomLessons([]); return; }
+    try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) setCustomLessons(res); } catch(e) {}
+  }, []);
+  React.useEffect(() => { if (profile) loadCustomLessons(); }, [profile, loadCustomLessons]);
+  // Свои разделы для текущей роли (синтетические модули: урок + тест)
+  const customModules = useMemo(() => {
+    if (!role) return [];
+    const mine = customLessons.filter(c => c.role === role);
+    const groups = {};
+    mine.forEach(c => { const k = ((c.module || "").trim()) || "Свой раздел"; (groups[k] = groups[k] || []).push(c); });
+    return Object.entries(groups).map(([name, list], mi) => ({
+      id: "cms-" + role + "-" + mi, tag: "Своё", title: name, subtitle: "Раздел вашего ресторана",
+      icon: "📘", color: "#C8A96E", custom: true,
+      lessons: list.flatMap(c => {
+        const out = [{ id: "cms-l-" + c.id, title: c.title || "Урок", type: "lesson", content: c.content || "" }];
+        if (Array.isArray(c.questions) && c.questions.length) out.push({ id: "cms-q-" + c.id, title: "Тест: " + (c.title || ""), type: "quiz", questions: c.questions });
+        return out;
+      }),
+    }));
+  }, [customLessons, role]);
   const navigate = useCallback((to) => { setScreen(prev => { setPrevScreen(prev); return to; }); }, []);
   const handleLogin = useCallback((token, emp) => {
     const prof = { id: emp.id, name: emp.name, surname: normSurname(emp.surname || ""), restaurant: emp.restaurant, position: emp.position, is_admin: !!emp.is_admin };
@@ -658,6 +683,7 @@ function ServiceAcademy() {
         {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} />}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
@@ -697,10 +723,10 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} /></div>}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} /></div>}
+        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onBack={() => navigate(prevScreen || "home")} />}
         {screen === "module" && <div style={{paddingBottom:88}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
@@ -2436,7 +2462,7 @@ function AccountScreen({ profile, T, onBack, onLogout }) {
   );
 }
 
-function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference }) {
+function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -2495,6 +2521,9 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
           )});
           if (onReference) tiles.push({ key:"sp", label:"Справочник", onClick:onReference, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
+          )});
+          if (onContentEditor && (["manager","senior"].includes(profile?.position) || profile?.is_admin)) tiles.push({ key:"ce", label:"Редактор", onClick:onContentEditor, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z"/><path d="M14.5 6.5l3 3"/></svg>
           )});
           if (!tiles.length) return null;
           return (
@@ -3136,6 +3165,179 @@ function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   );
 }
 
+// ── Редактор контента («Свой контент») — этап 1: CRUD уроков (бэкенд cms_*) ──
+function ContentEditorScreen({ T, a11y, onBack }) {
+  const dark = !a11y;
+  const gold = dark ? "#C8A96E" : "#8B6A30";
+  const green = dark ? "#5DBB8A" : "#2A6B45";
+  const red = dark ? "#E07878" : "#8B3020";
+  const txt = dark ? "#F0E8D8" : "#2A1F0E";
+  const brd = dark ? "rgba(150,112,42,0.45)" : "rgba(180,145,70,0.35)";
+  const SERIF = "Georgia, 'Times New Roman', serif";
+  const ROLES = [{ id: "seasonal", label: "Новичок" }, { id: "core", label: "Ядро" }, { id: "manager", label: "Менеджер" }, { id: "service_manager", label: "Сервис-менеджер" }];
+  const token = (() => { try { return localStorage.getItem("sa_session_token"); } catch (e) { return null; } })();
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
+  const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], sort: 0 });
+
+  const ico = {
+    book: (c) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 6.2C10.2 4.7 7.8 4.2 5 4.2v14.6c2.8 0 5.2.5 7 2 1.8-1.5 4.2-2 7-2V4.2c-2.8 0-5.2.5-7 2z" /><path d="M12 6.2v14.6" /></svg>),
+    pencil: (c) => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z" /><path d="M14.5 6.5l3 3" /></svg>),
+    trash: (c, s) => (<svg width={s || 17} height={s || 17} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>),
+    plus: (c, s) => (<svg width={s || 18} height={s || 18} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>),
+    photo: (c) => (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>),
+  };
+
+  const [lessons, setLessons] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [loadErr, setLoadErr] = React.useState(false);
+  const [view, setView] = React.useState("list");
+  const [draft, setDraft] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState(null);
+
+  const load = React.useCallback(async () => {
+    setLoading(true); setLoadErr(false);
+    try {
+      const res = await rpc("cms_list_lessons", { p_token: token });
+      if (Array.isArray(res)) setLessons(res); else { setLessons([]); setLoadErr(true); }
+    } catch (e) { setLessons([]); setLoadErr(true); }
+    setLoading(false);
+  }, [token]);
+  React.useEffect(() => { load(); }, [load]);
+
+  const startNew = () => { setErr(null); setDraft(blankLesson()); setView("edit"); };
+  const startEdit = (l) => { setErr(null); setDraft(JSON.parse(JSON.stringify({ ...blankLesson(), ...l, questions: Array.isArray(l.questions) ? l.questions.map(q => ({ id: uid(), ...q })) : [] }))); setView("edit"); };
+  const patch = (f) => setDraft(d => ({ ...d, ...f }));
+  const setQ = (qid, f) => setDraft(d => ({ ...d, questions: d.questions.map(q => q.id === qid ? { ...q, ...f } : q) }));
+  const addQ = () => setDraft(d => ({ ...d, questions: [...d.questions, blankQ()] }));
+  const delQ = (qid) => setDraft(d => ({ ...d, questions: d.questions.filter(q => q.id !== qid) }));
+
+  const save = async () => {
+    if (busy || !draft.title.trim()) return;
+    setBusy(true); setErr(null);
+    const payload = { ...draft, questions: draft.questions.map(({ id, ...q }) => q) };
+    try {
+      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: payload });
+      if (res && res.ok) { await load(); setView("list"); setDraft(null); }
+      else setErr(res && res.error === "forbidden" ? "Недостаточно прав." : "Не удалось сохранить.");
+    } catch (e) { setErr("Нет связи. Попробуй ещё раз."); }
+    setBusy(false);
+  };
+  const remove = async (id) => {
+    if (busy) return;
+    setBusy(true); setErr(null);
+    try {
+      const res = await rpc("cms_delete_lesson", { p_token: token, p_id: id });
+      if (res && res.ok) setLessons(ls => ls.filter(l => l.id !== id)); else setErr("Не удалось удалить.");
+    } catch (e) { setErr("Нет связи."); }
+    setBusy(false);
+  };
+
+  const input = { width: "100%", boxSizing: "border-box", borderRadius: 12, padding: "12px 14px", fontFamily: SERIF, fontSize: 15, outline: "none", background: dark ? "rgba(20,14,6,0.55)" : "rgba(255,255,255,0.6)", border: `1px solid ${brd}`, color: txt };
+  const iconBtn = { background: "transparent", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", flexShrink: 0 };
+  const ghostBtn = { background: "transparent", color: T.modSub.color, border: `1px solid ${brd}`, borderRadius: 16, padding: "14px", fontSize: 15, fontFamily: SERIF, cursor: "pointer", width: "100%" };
+  const glass = { background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 16, boxShadow: T.lessGlass.shadow };
+  const label = { ...T.secTitle, padding: "0 0 7px" };
+
+  if (view === "list") {
+    return (
+      <div style={T.screen}>
+        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Редактор контента</div></div>
+        <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "12px 16px 44px" }}>
+          <div style={{ ...T.modSub, lineHeight: 1.5, marginBottom: 16 }}>Свои уроки под твой ресторан — их увидят сотрудники твоего заведения.</div>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: T.modSub.color }}>Загрузка…</div>
+          ) : loadErr ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: T.modSub.color }}>Не удалось загрузить. <span onClick={load} style={{ color: gold, cursor: "pointer" }}>Повторить</span></div>
+          ) : lessons.length === 0 ? (
+            <div style={{ ...glass, padding: "36px 24px", textAlign: "center" }}>
+              <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>{ico.book(gold)}</div>
+              <div style={{ ...T.bold, marginBottom: 6 }}>Пока ни одного своего урока</div>
+              <div style={{ ...T.modSub, lineHeight: 1.5 }}>Добавь первый — он появится у сотрудников рядом со штатными.</div>
+            </div>
+          ) : lessons.map(l => {
+            const roleLabel = (ROLES.find(r => r.id === l.role) || {}).label || l.role;
+            const nq = Array.isArray(l.questions) ? l.questions.length : 0;
+            return (
+              <div key={l.id} style={{ ...T.modCard, margin: "0 0 12px" }}>
+                <div style={{ ...T.modBar, background: gold }} />
+                <div style={T.modIcon}>{ico.book(gold)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...T.modTag, color: gold }}>{roleLabel}{l.module ? ` · ${l.module}` : ""}</div>
+                  <div style={T.modTitle}>{l.title || "Без названия"}</div>
+                  <div style={T.modSub}>{nq} вопр.</div>
+                </div>
+                <button onClick={() => startEdit(l)} style={iconBtn}>{ico.pencil(T.modSub.color)}</button>
+                <button onClick={() => remove(l.id)} disabled={busy} style={iconBtn}>{ico.trash(red)}</button>
+              </div>
+            );
+          })}
+          {err && <div style={{ color: red, fontSize: 13, margin: "4px 0 10px", textAlign: "center" }}>{err}</div>}
+          {!loading && !loadErr && (
+            <button onClick={startNew} style={{ ...T.doneBtn, background: gold, marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(dark ? "#1a1304" : "#fff")} Добавить урок</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const canSave = draft.title.trim().length > 0;
+  const editing = !!draft.id;
+  return (
+    <div style={T.screen}>
+      <div style={T.lessHead}><button style={T.backBtn2} onClick={() => { setView("list"); setDraft(null); }}>‹</button><div style={T.lessHeadTitle}>{editing ? "Изменить урок" : "Новый урок"}</div></div>
+      <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "14px 16px 44px" }}>
+        <div style={label}>Для кого</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+          {ROLES.map(r => { const on = draft.role === r.id; return (
+            <button key={r.id} onClick={() => patch({ role: r.id })} style={{ padding: "8px 13px", borderRadius: 11, fontFamily: SERIF, fontSize: 13.5, cursor: "pointer", background: on ? gold : "transparent", color: on ? (dark ? "#1a1304" : "#fff") : T.modSub.color, border: `1px solid ${on ? gold : brd}`, fontWeight: on ? "bold" : "normal" }}>{r.label}</button>
+          ); })}
+        </div>
+        <div style={label}>Раздел</div>
+        <input style={{ ...input, marginBottom: 18 }} value={draft.module} onChange={e => patch({ module: e.target.value })} placeholder="Напр. «Наше вино»" />
+        <div style={label}>Название урока</div>
+        <input style={{ ...input, marginBottom: 18 }} value={draft.title} onChange={e => patch({ title: e.target.value })} placeholder="Напр. «Базовые сорта белого»" />
+        <div style={label}>Текст урока</div>
+        <textarea style={{ ...input, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} value={draft.content} onChange={e => patch({ content: e.target.value })} placeholder={"**жирный заголовок**\n• пункт списка"} />
+        <div style={{ ...T.modSub, fontSize: 11.5, margin: "6px 0 22px", lineHeight: 1.5 }}>Форматирование как в штатных уроках: <b style={{ color: gold }}>**жирный**</b> и <b style={{ color: gold }}>• списки</b>.</div>
+
+        <div style={{ ...label, paddingBottom: 10 }}>Вопросы теста ({draft.questions.length})</div>
+        {draft.questions.map((q, qi) => (
+          <div key={q.id} style={{ ...glass, padding: "14px 14px", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <span style={{ ...T.modTag, color: gold }}>Вопрос {qi + 1}</span>
+              <button onClick={() => delQ(q.id)} style={iconBtn}>{ico.trash(red)}</button>
+            </div>
+            <input style={{ ...input, marginBottom: 10 }} value={q.q} onChange={e => setQ(q.id, { q: e.target.value })} placeholder="Текст вопроса" />
+            {q.options.map((opt, oi) => { const right = q.correct === oi; return (
+              <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <button onClick={() => setQ(q.id, { correct: oi })} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${right ? green : brd}`, background: right ? green : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{right && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={dark ? "#14110a" : "#fff"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}</button>
+                <input style={{ ...input, padding: "10px 12px", fontSize: 14 }} value={opt} onChange={e => setQ(q.id, { options: q.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`Вариант ${oi + 1}`} />
+                {q.options.length > 2 && <button onClick={() => setQ(q.id, { options: q.options.filter((_, k) => k !== oi), correct: q.correct >= q.options.length - 1 ? 0 : q.correct })} style={iconBtn}>{ico.trash(T.modSub.color, 15)}</button>}
+              </div>
+            ); })}
+            {q.options.length < 4 && <button onClick={() => setQ(q.id, { options: [...q.options, ""] })} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", border: "none", color: gold, fontFamily: SERIF, fontSize: 13, cursor: "pointer", padding: "2px 0", marginBottom: 8 }}>{ico.plus(gold, 15)} вариант</button>}
+            <div style={{ ...T.modSub, fontSize: 11, marginBottom: 4 }}>Зелёная галочка — верный ответ.</div>
+            <input style={{ ...input, marginTop: 10, fontSize: 14 }} value={q.explanation} onChange={e => setQ(q.id, { explanation: e.target.value })} placeholder="Пояснение «почему»" />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <span style={{ flexShrink: 0 }}>{ico.photo(T.modSub.color)}</span>
+              <input style={{ ...input, padding: "10px 12px", fontSize: 13 }} value={q.img} onChange={e => setQ(q.id, { img: e.target.value })} placeholder="Ссылка на фото (необязательно)" />
+            </div>
+            {q.img ? <img src={q.img} alt="" style={{ width: "100%", maxHeight: 150, objectFit: "cover", borderRadius: 10, marginTop: 10, display: "block" }} /> : null}
+          </div>
+        ))}
+        <button onClick={addQ} style={{ ...ghostBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 22 }}>{ico.plus(gold)} Добавить вопрос</button>
+
+        {err && <div style={{ color: red, fontSize: 13, marginBottom: 10, textAlign: "center" }}>{err}</div>}
+        <button onClick={save} disabled={!canSave || busy} style={{ ...T.doneBtn, background: gold, opacity: (canSave && !busy) ? 1 : 0.45, cursor: (canSave && !busy) ? "pointer" : "default", marginBottom: 10 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
+        <button onClick={() => { setView("list"); setDraft(null); }} style={ghostBtn}>Отменить</button>
+        {!canSave && <div style={{ ...T.modSub, fontSize: 12, textAlign: "center", marginTop: 10 }}>Заполни хотя бы название урока.</div>}
+      </div>
+    </div>
+  );
+}
+
 // ── Работа над ошибками (#5) + Слабые темы (#6) — общая копилка sa_mistakes ──
 function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack }) {
   const gold = a11y ? "#8B6A30" : "#C8A96E";
@@ -3203,7 +3405,7 @@ function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack }) {
   );
 }
 
-function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes }) {
+function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [] }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.homeHead}>
@@ -3243,7 +3445,7 @@ function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCou
       {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && <TeamMoodCard a11y={a11y} />}
       <div style={T.secTitle}>Программа обучения</div>
       <div style={T.modList} className="sa-stagger">
-        {modules.map((m) => {
+        {[...modules, ...customModules].map((m) => {
           const lessonsDone = m.lessons.filter(l => l.type !== "quiz" && l.type !== "result" && completed[l.id]).length;
           const quizzesDone = m.lessons.filter(l => l.type === "quiz" && quizDone[l.id]).length;
           const done = lessonsDone + quizzesDone;

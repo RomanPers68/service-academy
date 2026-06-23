@@ -112,6 +112,7 @@ function ServiceAcademy() {
   const [gameKey, setGameKey] = useState(0);
   const [a11y, setA11y] = useState(false);
   const [streak, setStreak] = useState({ count: 0, best: 0, last: "", days: [] });
+  const [mistakeBank, setMistakeBank] = useState([]); // #5/#6 — заваленные вопросы для повтора
 
   // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
   React.useEffect(() => {
@@ -192,6 +193,7 @@ function ServiceAcademy() {
       try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
       try { const ps = await storageGet("sa_practice_stars"); if (ps) setPracticeStars(JSON.parse(ps.value)); } catch(e) {}
       try { const uk4 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const st = await storageGet("sa_streak"+uk4); if (st) setStreak(JSON.parse(st.value)); } catch(e) {}
+      try { const mb = await storageGet("sa_mistakes"); if (mb) { const arr = JSON.parse(mb.value); if (Array.isArray(arr)) setMistakeBank(arr); } } catch(e) {}
       clearTimeout(fallback);
       setStorageLoaded(true);
     })();
@@ -560,13 +562,29 @@ function ServiceAcademy() {
     const answers = [...quizState.answers, { idx, isCorrect }];
     const done = quizState.step + 1 >= activeLesson.questions.length;
     if (isCorrect) vibrate("light");
-    else vibrate("error");
+    else {
+      vibrate("error");
+      const _qe = { q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "", img: q.img || null, lessonTitle: (activeLesson && activeLesson.title) || "" };
+      setMistakeBank(prev => {
+        if (prev.some(m => m.q === q.q)) return prev;
+        const nx = [...prev, _qe].slice(-200);
+        try { localStorage.setItem("sa_mistakes", JSON.stringify(nx)); } catch(e) {}
+        return nx;
+      });
+    }
     if (newMistakes >= 3 && !isCorrect) {
       setQuizState({ step: quizState.step, answers, done: true, mistakes: newMistakes, blocked: true });
       return;
     }
     setQuizState({ step: done ? quizState.step : quizState.step + 1, answers, done, mistakes: newMistakes, blocked: false });
   }, [quizState, activeLesson]);
+  const resolveMistake = useCallback((qText) => {
+    setMistakeBank(prev => {
+      const next = prev.filter(m => m.q !== qText);
+      try { localStorage.setItem("sa_mistakes", JSON.stringify(next)); } catch(e) {}
+      return next;
+    });
+  }, []);
   const flashTimerRef = useRef(null);
   const handlePracticeChoice = useCallback((idx) => {
     let vibratePattern = null;
@@ -682,7 +700,8 @@ function ServiceAcademy() {
         {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} /></div>}
+        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} /></div>}
+        {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onBack={() => navigate(prevScreen || "home")} />}
         {screen === "module" && <div style={{paddingBottom:88}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} />}
@@ -3117,7 +3136,74 @@ function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   );
 }
 
-function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics }) {
+// ── Работа над ошибками (#5) + Слабые темы (#6) — общая копилка sa_mistakes ──
+function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack }) {
+  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const [idx, setIdx] = React.useState(0);
+  const [pick, setPick] = React.useState(null);
+  const bank = mistakeBank;
+  const weak = React.useMemo(() => {
+    const m = {};
+    bank.forEach(qq => { const k = qq.lessonTitle || "Без темы"; m[k] = (m[k] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }, [bank]);
+
+  const Head = (<div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
+
+  if (bank.length === 0) return (
+    <div style={T.screen}>
+      {Head}
+      <div style={{ textAlign: "center", padding: "60px 24px", color: T.modSub.color }}>
+        <div style={{ fontSize: 44, marginBottom: 14 }}>🎉</div>
+        <div style={{ ...T.bold, marginBottom: 6 }}>Ошибок нет</div>
+        <div style={{ fontSize: 14, lineHeight: 1.6 }}>Заваленные в тестах вопросы будут попадать сюда — прорешаешь их ещё раз и закрепишь.</div>
+      </div>
+    </div>
+  );
+
+  const q = bank[Math.min(idx, bank.length - 1)];
+  const answer = (i) => { if (pick !== null) return; setPick(i); vibrate(i === q.correct ? "light" : "error"); };
+  const next = () => {
+    const wasCorrect = pick === q.correct;
+    setPick(null);
+    if (wasCorrect) onResolve(q.q);
+    else setIdx(i => (i + 1) % bank.length);
+  };
+
+  return (
+    <div style={T.screen}>
+      {Head}
+      <div style={{ padding: "10px 18px 0" }}>
+        <div style={{ ...T.secTitle, padding: "0 0 8px" }}>СЛАБЫЕ ТЕМЫ</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+          {weak.slice(0, 6).map(([name, n]) => (
+            <div key={name} style={{ ...T.modSub, fontSize: 12, padding: "5px 10px", borderRadius: 10, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>{name}</span><b style={{ color: gold }}>{n}</b>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div key={q.q} style={T.quizWrap}>
+        <div style={T.quizProgress}>Осталось повторить: {bank.length}</div>
+        {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 210, objectFit: "cover", borderRadius: 14, display: "block", margin: "0 0 14px" }} />}
+        <div style={T.quizQ}>{q.q}</div>
+        {q.options.map((opt, i) => {
+          let st = { ...T.quizOpt, cursor: pick === null ? "pointer" : "default" };
+          if (pick !== null) {
+            if (i === q.correct) st = { ...st, background: "rgba(93,187,138,0.15)", border: "1px solid #5DBB8A" };
+            else if (i === pick) st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878" };
+            else st = { ...st, opacity: 0.5 };
+          }
+          return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)}>{opt}</div>;
+        })}
+        {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
+        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 14 }} onClick={next}>{pick === q.correct ? "Верно — убрать ✓" : "Дальше →"}</button>}
+      </div>
+    </div>
+  );
+}
+
+function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.homeHead}>
@@ -3137,6 +3223,21 @@ function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCou
         <div style={T.progSub}>{doneCount} из {totalLessons} разделов завершено</div>
       </div>
       <StreakCard streak={streak} a11y={a11y} />
+      {mistakeBank.length > 0 && onMistakes && (() => {
+        const _g = a11y ? "#8B6A30" : "#C8A96E";
+        const _n = mistakeBank.length;
+        const _w = _n === 1 ? "вопрос" : (_n % 10 >= 2 && _n % 10 <= 4 && (_n % 100 < 10 || _n % 100 >= 20)) ? "вопроса" : "вопросов";
+        return (
+          <div onClick={onMistakes} className="sa-opt" style={{ display:"flex", alignItems:"center", gap:12, background:T.progCard.background, border:`1px solid ${_g}44`, borderRadius:16, padding:"14px 16px", margin:"0 0 14px", cursor:"pointer" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={_g} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ ...T.bold, fontSize:15 }}>Работа над ошибками</div>
+              <div style={{ ...T.modSub, fontSize:12, marginTop:2 }}>{_n} {_w} на повтор</div>
+            </div>
+            <div style={{ color:_g, fontSize:18, flexShrink:0 }}>{"\u203a"}</div>
+          </div>
+        );
+      })()}
       <MoodCheckCard a11y={a11y} />
       {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && <TeamMoodCard a11y={a11y} />}
       <div style={T.secTitle}>Программа обучения</div>
@@ -3720,6 +3821,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
                 {wrongAnswers.map((a,i) => (
                   <div key={i} style={{ background:T.progCard.background, borderRadius:14, padding:"14px 16px", marginBottom:12, border:`1px solid ${color}44` }}>
                     <div style={{ ...T.para, fontWeight:"bold", marginBottom:8 }}>{a.question.q}</div>
+                    {a.question.img && <img src={a.question.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:150, objectFit:"cover", borderRadius:10, display:"block", marginBottom:8 }} />}
                     <div style={{ ...T.bad, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}><Mm id="thumbs_down" size={36}/> Твой ответ: {a.question.options[a.idx]}</div>
                     <div style={{ ...T.good, marginBottom:8, display:"flex", alignItems:"center", gap:8 }}><Mm id="thumbs_up" size={36}/> Правильно: {a.question.options[a.question.correct]}</div>
                     <div style={{ ...T.note, fontStyle:"normal", borderLeft:`2px solid ${color}`, paddingLeft:10 }}>{a.question.explanation}</div>
@@ -3743,6 +3845,7 @@ function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, 
         <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>📝 Тест</div></div>
         <div key={quizState.step} style={T.quizWrap}>
           <div style={T.quizProgress}>{quizState.step+1} / {lesson.questions.length}</div>
+          {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:210, objectFit:"cover", borderRadius:14, display:"block", margin:"0 0 14px" }} />}
           <div style={T.quizQ}>{q.q}</div>
           {q.options.map((opt,i) => {
             return <div key={i} className="sa-opt" style={{ ...T.quizOpt, cursor:"pointer" }} onClick={()=>onQuiz(i)}>{opt}</div>;

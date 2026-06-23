@@ -145,7 +145,7 @@ function SceneOyster({ c }) {
 }
 
 function Row({ children }) { return <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 14, padding: "6px 0" }}>{children}</div>; }
-function Photo({ src }) { return <img src={src} alt="" style={{ width: "100%", height: 190, objectFit: "cover", borderRadius: 14, display: "block" }} />; }
+function Photo({ src }) { return <img src={src} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 190, objectFit: "cover", borderRadius: 14, display: "block" }} />; }
 
 // ── Реестр иллюстраций ──
 export const ILL = {

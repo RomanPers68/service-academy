@@ -686,7 +686,7 @@ function ServiceAcademy() {
         {screen === "module" && <div style={{paddingBottom:88}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} />}
-        {screen === "reference" && <ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate("roleSelect")} />}
+        {screen === "reference" && <ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} />}
 
         {/* Нижняя навигация — только на основных экранах */}
         {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && (

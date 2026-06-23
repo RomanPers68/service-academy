@@ -5,8 +5,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Supabase клиент через fetch
-export const SUPABASE_URL = "https://gvxhgdynjuaisswplroh.supabase.co";
-export const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2eGhnZHluanVhaXNzd3Bscm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NjA1ODgsImV4cCI6MjA5NjQzNjU4OH0._4aLd4eb7cSfcqS9EvSwChJR-SixW2tsgn4ksCM5S3g";
+// Ключи можно задать через переменные окружения (Vercel → Settings → Environment Variables):
+//   VITE_SUPABASE_URL и VITE_SUPABASE_KEY
+// Если переменные не заданы — используется встроенный публичный anon-ключ (рабочий по умолчанию),
+// поэтому сборка не сломается, даже если ты ничего не настроишь.
+const _ENV = (typeof import.meta !== "undefined" && import.meta.env) ? import.meta.env : {};
+export const SUPABASE_URL = _ENV.VITE_SUPABASE_URL || "https://gvxhgdynjuaisswplroh.supabase.co";
+export const SUPABASE_KEY = _ENV.VITE_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2eGhnZHluanVhaXNzd3Bscm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NjA1ODgsImV4cCI6MjA5NjQzNjU4OH0._4aLd4eb7cSfcqS9EvSwChJR-SixW2tsgn4ksCM5S3g";
 
 // Вызов серверных функций авторизации (этап 1 в Supabase)
 export const rpc = (fn, params) => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {

@@ -103,6 +103,7 @@ function ServiceAcademy() {
   const [role, setRole] = useState(null);
   const [activeModule, setActiveModule] = useState(null);
   const [activeLesson, setActiveLesson] = useState(null);
+  const [refStart, setRefStart] = useState(null);
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
@@ -676,15 +677,15 @@ function ServiceAcademy() {
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
-        {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReference={() => navigate("reference")} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => navigate("reference")} /></div>}
+        {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} /></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} />}
-        {screen === "reference" && <ReferenceSection T={T} a11y={a11y} onExit={() => navigate("roleSelect")} />}
+        {screen === "reference" && <ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate("roleSelect")} />}
 
         {/* Нижняя навигация — только на основных экранах */}
         {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && (
@@ -1116,9 +1117,10 @@ function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}
 
 
 // ── Ежедневные задания ─────────────────────────────────────
-function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, onLesson, onReference }) {
+function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson }) {
   const today = new Date().toLocaleDateString("ru-RU");
   const seed = today.split(".").reduce((a, v) => a + parseInt(v), 0);
+  const refTask = ReferenceSection.dailyTask(seed);
 
   // Генерируем 3 задания на сегодня из непройденных уроков
   const allLessons = React.useMemo(() => {
@@ -1178,17 +1180,17 @@ function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, o
           <div style={{ color:T.modSub.color, fontSize:12, marginTop:4 }}>3 задания обновляются каждый день</div>
         </div>
 
-        {onReference && (
-          <div onClick={onReference} style={{ ...T.modCard, marginBottom:12, gap:12, cursor:"pointer", border:"1px solid rgba(200,160,80,0.15)" }}>
+        {onReferenceLesson && refTask && (
+          <div onClick={() => onReferenceLesson(refTask.id)} style={{ ...T.modCard, marginBottom:12, gap:12, cursor:"pointer", border:"1px solid rgba(200,160,80,0.15)" }}>
             <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C8A96E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
             </div>
             <div style={{ flex:1 }}>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                <div style={{ color:"rgba(200,160,80,0.6)", fontSize:10, letterSpacing:2, fontFamily:"monospace" }}>СПРАВОЧНИК · КУРС</div>
+                <div style={{ color:"rgba(200,160,80,0.6)", fontSize:10, letterSpacing:2, fontFamily:"monospace" }}>СПРАВОЧНИК · {refTask.type === "quiz" ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
               </div>
-              <div style={{ ...T.modTitle, fontSize:15 }}>Сервировка</div>
-              <div style={{ color:T.modSub.color, fontSize:12, marginTop:2 }}>Посуда, приборы, бокалы, школы</div>
+              <div style={{ ...T.modTitle, fontSize:15 }}>{refTask.title}</div>
+              <div style={{ color:T.modSub.color, fontSize:12, marginTop:2 }}>Курс: Сервировка</div>
             </div>
             <div style={{ color:"#C8A96E", fontSize:18, flexShrink:0 }}>›</div>
           </div>
@@ -4100,7 +4102,7 @@ export default function App() {
   );
 }
 
-// ═══ РАЗДЕЛ «СПРАВОЧНИК» — всё инлайн (данные, фото, рисунки, экраны) ═══
+// ═══ РАЗДЕЛ «СПРАВОЧНИК» — всё инлайн ═══
 const ReferenceSection = (() => {
 // data/reference-photos.js
 // Реальные фото сервировок разных школ. Сжато до 720px (JPEG q68), base64 — как assets/logo.js.
@@ -4126,53 +4128,149 @@ const REFERENCE_PHOTOS = {
 };
 
 // data/reference.js
-// Контент курса «Сервировка» для раздела «Справочник».
-// images[] и quiz.img ссылаются на ключи иллюстраций (ui/reference-illustrations.jsx)
+// Справочник «Сервировка»: насыщенные главы, без тестов.
+// images[] — иллюстрации (ui/reference-illustrations.jsx).
+// В тексте можно вставлять фото/рисунок строкой [img:ключ] или [img:ключ1,ключ2]
+// (ключи фото — data/reference-photos.js).
 
 const REFERENCE_COURSE = {
-    id: "serving", title: "Сервировка", subtitle: "Наглядно: посуда, приборы, бокалы, школы сервиса",
-    lessons: [
-      { id: "srv-1", title: "Что такое сервировка", type: "lesson", content: `Сервировка — это подготовка стола к приёму гостя согласно концепции заведения, формату обслуживания и меню.\n\n**Основные задачи:**\n• комфорт гостя\n• скорость обслуживания\n• эстетика\n• увеличение среднего чека\n• создание атмосферы\n\n📌 **Главное правило:** гость не должен задумываться, каким прибором пользоваться и где находится нужный предмет.` },
-      { id: "srv-2", title: "Виды сервировки", type: "lesson", images: ["preset_table", "oyster_service", "fine_dining_full", "banquet", "buffet"], content: `**Предварительная (Pre-set)** — стол готовится до прихода гостей: сервировочная тарелка, базовые приборы, бокалы, салфетка.\n\n**Дополнительная** — после заказа. Пример: гость заказал устрицы → добавляют устричную вилку, лимонницу, специальную тарелку.\n\n**Полная** — Fine Dining. Заранее весь комплект: закусочные, рыбные, основные, десертные приборы, несколько бокалов.\n\n**Банкетная** — много гостей, единая схема, высокая скорость.\n\n**Фуршетная** — без закреплённых мест, маленькие тарелки, минимум приборов.` },
-      { id: "srv-3", title: "Расположение приборов", type: "lesson", images: ["cutlery_layout_diagram", "bread_plate_butter"], content: `Международный стандарт — от внешнего прибора к внутреннему (в порядке подачи блюд).\n\n**Слева:** закусочная вилка → рыбная вилка → столовая вилка.\n\n**Справа:** закусочный нож → рыбный нож → столовый нож → ложка. Лезвие всегда направлено к тарелке.\n\n**Сверху:** десертная ложка и десертная вилка.\n\n**Слева сверху:** пирожковая тарелка и нож для масла.` },
-      { id: "srv-q-layout", title: "Фото-вопросы: расположение", type: "quiz", questions: [
-        { q: "С какой стороны от тарелки кладут вилки?", img: "cutlery_layout_diagram", options: ["Справа", "Слева", "Сверху", "Снизу"], correct: 1, explanation: "Вилки — слева, ножи и ложка — справа. От внешнего к внутреннему по порядку подачи." },
-        { q: "Куда направлено лезвие ножа?", img: "cutlery_layout_diagram", options: ["От тарелки", "К тарелке", "Вверх", "Без разницы"], correct: 1, explanation: "Лезвие всегда направлено к тарелке — это стандарт и безопасность." },
-        { q: "Где находится пирожковая тарелка?", img: "bread_plate_butter", options: ["Справа сверху", "Слева сверху", "По центру", "Справа внизу"], correct: 1, explanation: "Пирожковая тарелка и нож для масла — слева сверху." },
-      ] },
-      { id: "srv-4", title: "Виды тарелок", type: "lesson", images: ["plates_sizes", "charger_plate"], content: `**Сервировочная (Charger Plate)** — основа сервировки, убирается перед подачей основного блюда.\n\n**Столовая** — для горячих блюд, диаметр 26–32 см.\n\n**Закусочная** — для холодных закусок, 18–22 см.\n\n**Десертная** — для десертов, 16–20 см.\n\n**Пирожковая** — для хлеба и масла.` },
-      { id: "srv-q-plates", title: "Фото-вопросы: тарелки", type: "quiz", questions: [
-        { q: "Какая тарелка убирается перед подачей основного блюда?", img: "charger_plate", options: ["Столовая", "Сервировочная (Charger)", "Десертная", "Пирожковая"], correct: 1, explanation: "Сервировочная (Charger Plate) — декоративная основа, её убирают перед горячим." },
-        { q: "Для горячих блюд используют тарелку диаметром:", options: ["16–20 см", "18–22 см", "26–32 см", "10–14 см"], correct: 2, explanation: "Столовая тарелка для горячего — 26–32 см." },
-      ] },
-      { id: "srv-5", title: "Виды приборов", type: "lesson", images: ["basic_flatware", "fish_steak_cutlery"], content: `**Базовые:** столовая вилка, столовый нож, столовая ложка.\n\n**Специализированные:**\n• **Рыбные** — особая форма для отделения костей.\n• **Стейковые** — зубчатое лезвие.\n• **Устричные** — маленькая трезубая вилка.\n• **Для лобстера** — длинные узкие приборы.\n• **Десертные** — уменьшенный размер.` },
-      { id: "srv-q-cutlery", title: "Фото-вопросы: приборы", type: "quiz", questions: [
-        { q: "У какого ножа зубчатое лезвие?", img: "fish_steak_cutlery", options: ["Рыбный", "Стейковый", "Десертный", "Закусочный"], correct: 1, explanation: "Зубчатое лезвие — у стейкового ножа, чтобы резать мясо." },
-        { q: "Маленькая трезубая вилка — для чего?", options: ["Десерт", "Рыба", "Устрицы", "Лобстер"], correct: 2, explanation: "Трезубая устричная вилка — для морепродуктов в раковине." },
-      ] },
-      { id: "srv-6", title: "Виды бокалов", type: "lesson", images: ["wine_glasses_chart", "snifter_rocks"], content: `**Вода** — самый крупный бокал.\n\n**Белое вино** — меньше объём, сохраняет температуру.\n\n**Красное вино** — большая чаша, вино раскрывается.\n\n**Игристое** — флюте или тюльпан.\n\n**Коньяк** — снифтер.\n\n**Виски** — рокс.` },
-      { id: "srv-q-glasses", title: "Фото-вопросы: бокалы", type: "quiz", questions: [
-        { q: "Какой это бокал?", img: "glass_red", options: ["Вода", "Белое вино", "Красное вино", "Игристое"], correct: 2, explanation: "Большая чаша — для красного: вино «дышит» и раскрывает аромат." },
-        { q: "Какой это бокал?", img: "glass_flute", options: ["Игристое (флюте)", "Красное вино", "Вода", "Коньяк"], correct: 0, explanation: "Узкий флюте сохраняет пузырьки игристого." },
-        { q: "В каком бокале подают коньяк?", img: "snifter_rocks", options: ["Флюте", "Снифтер", "Рокс", "Бокал для воды"], correct: 1, explanation: "Снифтер — широкая чаша, согревается в ладони, раскрывает аромат." },
-      ] },
-      { id: "srv-7", title: "Французская школа", type: "lesson", images: ["school_french_1", "school_french_2"], content: `🇫🇷 Основа современной ресторанной сервировки.\n\n• большое количество приборов\n• несколько бокалов\n• строгая симметрия\n• сервировочная тарелка обязательна\n\n**Принцип:** всё должно выглядеть идеально ещё до появления гостя.` },
-      { id: "srv-8", title: "Английская школа", type: "lesson", images: ["school_english_1", "school_english_2"], content: `🇬🇧 Консервативность и этикет.\n\n• большое значение этикету\n• серебряные приборы\n• сервировка под каждый курс\n\nИспользуется во многих исторических отелях.` },
-      { id: "srv-9", title: "Американская школа", type: "lesson", images: ["school_american_1", "school_american_2"], content: `🇺🇸 Практичность и скорость.\n\n• меньше приборов\n• акцент на скорость обслуживания\n\nОчень популярна в сетевых ресторанах.` },
-      { id: "srv-10", title: "Итальянская школа", type: "lesson", images: ["school_italian_1", "school_italian_2"], content: `🇮🇹 Меньше формальностей.\n\n• акцент на еде\n• часто минималистичная сервировка\n\nДаже дорогие рестораны нередко используют упрощённую схему.` },
-      { id: "srv-11", title: "Японская сервировка", type: "lesson", images: ["school_japanese_1", "school_japanese_2"], content: `🇯🇵 Полностью отличается от европейской.\n\n• палочки вместо приборов\n• много маленьких тарелок\n• асимметрия считается красивой\n• важна сезонность посуды\n\nВ ресторанах кайсэки сервировка может меняться каждый сезон.` },
-      { id: "srv-12", title: "Китайская сервировка", type: "lesson", images: ["school_chinese_1", "school_chinese_2"], content: `🇨🇳 Стол для общего стола.\n\n• вращающийся центр стола\n• блюда для общего потребления\n• палочки\n• фарфоровая ложка\n\n**Главная идея:** еда принадлежит столу, а не конкретному гостю.` },
-      { id: "srv-13", title: "Ближневосточная сервировка", type: "lesson", images: ["school_middle_east_1", "school_middle_east_2"], content: `🕌 Гостеприимство и общие блюда.\n\n• большое количество общих блюд\n• мезе\n• коллективное потребление пищи\n• акцент на гостеприимство` },
-      { id: "srv-14", title: "Русская школа сервиса", type: "lesson", images: ["school_russian_1", "school_russian_2"], content: `🇷🇺 Исторически одна из самых сложных.\n\n• блюда подаются по очереди\n• большое количество смен посуды\n• активная работа официанта возле гостя\n\nМногие элементы современного Fine Dining пришли именно из русской подачи XIX века.` },
-      { id: "srv-15", title: "Стандарт Michelin", type: "lesson", content: `Ни один гид не требует конкретной сервировки. Но практически все рестораны уровня Michelin соблюдают:\n\n1. Идеальную чистоту.\n2. Абсолютную симметрию.\n3. Сервировку под конкретное меню.\n4. Безупречное состояние бокалов.\n5. Отсутствие лишних предметов.\n6. Единообразие на всех столах.` },
-      { id: "srv-final", title: "Итоговый тест", type: "quiz", questions: [
-        { q: "Главное правило сервировки:", options: ["Чем больше приборов, тем лучше", "Гость не должен думать, чем пользоваться", "Всё симметрично", "Минимум посуды"], correct: 1, explanation: "Сервировка должна быть интуитивной для гостя." },
-        { q: "Pre-set сервировка — это:", options: ["После заказа", "До прихода гостей", "Только на банкетах", "Только фуршет"], correct: 1, explanation: "Предварительная — стол накрыт заранее." },
-        { q: "Какая школа — основа современной сервировки?", options: ["Английская", "Французская", "Американская", "Японская"], correct: 1, explanation: "Французская школа — фундамент современного сервиса." },
-        { q: "Вращающийся центр стола характерен для:", options: ["Японской", "Русской", "Китайской", "Французской"], correct: 2, explanation: "Lazy Susan — китайская традиция общего стола." },
-      ] },
-    ],
-  };
+  id: "serving", title: "Сервировка", subtitle: "Наглядно: посуда, приборы, бокалы, школы сервиса",
+  lessons: [
+
+    { id: "srv-basics", title: "Основы сервировки", type: "lesson", content: `Сервировка — это подготовка стола к приёму гостя по концепции заведения, формату обслуживания и меню. Это первое, что гость оценивает ещё до подачи блюд.
+
+**Зачем нужна сервировка**
+• комфорт гостя — всё под рукой
+• скорость — официант не бегает за приборами
+• эстетика и атмосфера заведения
+• рост среднего чека: красивый стол располагает заказать больше
+
+**Из чего состоит**
+• скатерть или раннер, тканевые салфетки
+• тарелки под формат подачи
+• приборы строго под меню
+• бокалы под напитки
+• декор: свеча, цветы, номер стола
+
+**Главное правило**
+Гость не должен задумываться, каким прибором пользоваться и где что лежит. Если он растерялся — сервировка сделана плохо.
+
+**Уровень качества (ориентир Fine Dining / Michelin)**
+• идеальная чистота посуды, приборов и скатерти
+• симметрия и единообразие на всех столах
+• бокалы отполированы, без разводов и следов
+• ничего лишнего на столе
+• любая мелочь поправляется до прихода гостя
+
+📌 Каждый предмет ставится чистым и проверяется на свет.` },
+
+    { id: "srv-types", title: "Виды сервировки", type: "lesson", images: ["preset_table", "fine_dining_full", "banquet", "buffet", "oyster_service"], content: `**Предварительная (Pre-set)**
+Стол накрывают до прихода гостей: сервировочная тарелка, базовые приборы, бокал, салфетка. Создаёт «готовый» вид зала.
+
+**Дополнительная**
+Докладывают после заказа под конкретное блюдо: устрицы → устричная вилка и лимон; стейк → стейковый нож.
+
+**Полная (Fine Dining)**
+Заранее выставляют весь комплект под все курсы: закусочные, рыбные, основные, десертные приборы и несколько бокалов. Требует знания меню гостя.
+
+**Банкетная**
+Много гостей, единая схема на всех столах. Главное — скорость и одинаковость.
+
+**Фуршетная**
+Без закреплённых мест: стопки маленьких тарелок, минимум приборов, гость ест стоя.
+
+📌 Чаще всего сочетают предварительную и дополнительную: базовый стол накрыт заранее, остальное — под заказ.` },
+
+    { id: "srv-plates", title: "Посуда и тарелки", type: "lesson", images: ["plates_sizes", "charger_plate"], content: `**Сервировочная (Charger / подстановочная)**
+Крупная декоративная тарелка-основа. На неё ставят другие тарелки; убирают перед подачей горячего. Еда на неё не кладётся.
+
+**Виды и размеры**
+• **Столовая (основная)** — для горячих блюд, 26–32 см
+• **Закусочная** — для холодных закусок, 18–22 см
+• **Десертная** — для десертов, 16–20 см
+• **Пирожковая** — маленькая, для хлеба и масла, слева сверху
+• **Суповая** — глубокая тарелка или бульонная чашка с блюдцем
+
+**Правила обращения**
+• берут только за края
+• логотип ставят «на 12 часов»
+• тёплые блюда — на тёплые тарелки, холодные — на охлаждённые
+
+📌 Скол или трещина — повод сразу убрать тарелку из оборота.` },
+
+    { id: "srv-cutlery", title: "Приборы: виды и раскладка", type: "lesson", images: ["cutlery_layout_diagram", "basic_flatware", "fish_steak_cutlery", "bread_plate_butter"], content: `**Базовые приборы**
+Столовые вилка, нож и ложка — под основные блюда.
+
+**Специализированные**
+• **Рыбные** — нож-лопатка без режущей кромки и вилка с выемкой: отделять мякоть от костей
+• **Стейковый нож** — зубчатое лезвие для плотного мяса
+• **Устричная вилка** — маленькая трезубая, для морепродуктов в раковине
+• **Для лобстера** — щипцы и узкая вилка достать мясо из клешни
+• **Десертные** — уменьшенные, кладут сверху тарелки
+
+**Раскладка: «снаружи внутрь»**
+Гость берёт крайний прибор, а к каждому следующему блюду — следующий, ближе к тарелке. Поэтому порядок раскладки = порядок подачи.
+• **слева (вилки):** закусочная → рыбная → столовая
+• **справа (ножи и ложка):** закусочный → рыбный → столовый нож → суповая ложка; лезвие всегда к тарелке
+• **сверху тарелки:** десертные ложка и вилка
+• **слева сверху:** пирожковая тарелка с ножом для масла
+
+📌 Приборы параллельны, на одной линии, в 1–2 см от края. Держат за ручку; упавший прибор заменяют на чистый.` },
+
+    { id: "srv-glasses", title: "Бокалы", type: "lesson", images: ["wine_glasses_chart", "snifter_rocks"], content: `Форма бокала влияет на аромат, температуру и подачу напитка.
+
+**Основные бокалы**
+• **Вода** — самый крупный, ставится ближе к гостю
+• **Белое вино** — меньше объём, узкая чаша держит прохладу
+• **Красное вино** — крупная широкая чаша: вино «дышит» и раскрывается
+• **Игристое** — узкий флюте или тюльпан: дольше держатся пузырьки
+• **Коньяк** — снифтер: широкая чаша греется в ладони
+• **Виски** — низкий рокс (тумблер) с толстым дном
+
+**Подача**
+• бокалы — справа сверху, над ножами
+• держат **за ножку**, а не за чашу
+• вино наливают примерно до 1/3 — остаётся место для аромата
+• на просвет — без разводов и следов
+
+📌 Полировка над паром чистым полотенцем — обязательна перед каждой сменой.` },
+
+    { id: "srv-schools", title: "Школы сервировки мира", type: "lesson", content: `В каждой стране — своя традиция сервировки. Понимание этих школ помогает работать в любом формате заведения.
+
+**🇫🇷 Французская — основа современного сервиса**
+Полный комплект приборов под все курсы, несколько бокалов в ряд, строгая симметрия, подача «в обнос». Стол безупречен ещё до прихода гостя.
+[img:school_french_1,school_french_2]
+
+**🇬🇧 Английская — этикет и серебро**
+Строгое соблюдение этикета, серебряные приборы, перемена под каждый курс. Сохранилась в исторических отелях и клубах.
+[img:school_english_1,school_english_2]
+
+**🇺🇸 Американская — практичность и скорость**
+Меньше приборов на столе, быстрый оборот, часто всё необходимое подаётся сразу. Популярна в сетевых и casual-ресторанах.
+[img:school_american_1,school_american_2]
+
+**🇮🇹 Итальянская — еда и атмосфера**
+Простая, иногда минималистичная сервировка; акцент на качестве продуктов и общении. Тёплый, почти домашний стиль.
+[img:school_italian_1,school_italian_2]
+
+**🇯🇵 Японская — асимметрия и сезон**
+Палочки (хаси) и подставка хасиоки, много маленьких тарелок, асимметрия как красота. Посуда подбирается под сезон (кайсэки).
+[img:school_japanese_1,school_japanese_2]
+
+**🇨🇳 Китайская — общий стол**
+Вращающийся центр (Lazy Susan), общие блюда, палочки и фарфоровая ложка. Еда принадлежит столу, а не одному гостю.
+[img:school_chinese_1,school_chinese_2]
+
+**🕌 Ближневосточная — гостеприимство**
+Много общих закусок (мезе), лепёшки и соусы для всех, щедрая коллективная трапеза. Главная ценность — радушие.
+[img:school_middle_east_1,school_middle_east_2]
+
+**🇷🇺 Русская — поочерёдная подача**
+«Русская подача»: блюда выносят по очереди со сменой посуды, официант активно работает у стола. Именно отсюда в мировой Fine Dining пришёл принцип service à la russe.
+[img:school_russian_1,school_russian_2]` },
+
+  ],
+};
 
 // ui/reference-illustrations.jsx
 // Линейные SVG-иллюстрации раздела «Справочник» (бокалы, приборы, тарелки, сцены)
@@ -4357,10 +4455,17 @@ function inlineBold(s, T) {
     ? <b key={i} style={{ color: T.bold.color, fontWeight: "bold" }}>{p}</b>
     : <R.Fragment key={i}>{p}</R.Fragment>);
 }
-function Content({ text, T, gold }) {
+function Content({ text, T, gold, dark }) {
   return (<div>{text.split("\n").map((ln, i) => {
     const t = ln.trim();
     if (!t) return <div key={i} style={{ height: 10 }} />;
+    const im = t.match(/^\[img:(.+)\]$/);
+    if (im) {
+      const keys = im[1].split(",").map(x => x.trim());
+      return (<div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, margin: "8px 0 16px" }}>
+        {keys.map((k, j) => <div key={j} style={{ display: "flex", justifyContent: "center", overflow: "hidden", borderRadius: 14 }}>{renderIll(k, gold, dark)}</div>)}
+      </div>);
+    }
     if (t.startsWith("**") && t.endsWith("**")) return <div key={i} style={T.bold}>{t.replace(/\*\*/g, "")}</div>;
     if (t.startsWith("• ")) return (<div key={i} style={{ ...T.para, display: "flex", gap: 8, marginBottom: 4 }}><span style={{ color: gold }}>•</span><span style={{ flex: 1 }}>{inlineBold(t.slice(2), T)}</span></div>);
     const num = t.match(/^(\d+)\.\s+(.*)/);
@@ -4379,8 +4484,9 @@ function Figure({ T, children }) {
 // ── Хаб ──
 function Hub({ T, gold, dark, openCourse, onExit }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
+  const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
   const cards = [
-    { id: "serving", t: "Сервировка", s: `${chapters} глав · фото-тесты`, icon: Ico.serving, on: true },
+    { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} · с фото`, icon: Ico.serving, on: true },
     { id: "wine", t: "Вина", s: "скоро", icon: Ico.wine },
     { id: "coffee", t: "Кофе", s: "скоро", icon: Ico.coffee },
     { id: "bar", t: "Бар и коктейли", s: "скоро", icon: Ico.bar },
@@ -4445,7 +4551,7 @@ function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
     <div style={{ ...T.lessBody, padding: "14px 14px 40px" }}>
       {lesson.images && lesson.images.map((k, i) => <Figure key={i} T={T}>{renderIll(k, gold, dark)}</Figure>)}
       <div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 22, boxShadow: T.lessGlass.shadow, padding: "20px 18px", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur }}>
-        <Content text={lesson.content} T={T} gold={gold} />
+        <Content text={lesson.content} T={T} gold={gold} dark={dark} />
       </div>
       {onNext && <button style={{ ...T.doneBtn, background: gold }} onClick={onNext}>{nextLabel} →</button>}
     </div>
@@ -4491,12 +4597,13 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-function ReferenceSection({ T, a11y, onExit }) {
+function ReferenceSection({ T, a11y, onExit, startLessonId }) {
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const dark = !a11y;
-  const [view, setView] = R.useState("hub");
-  const [idx, setIdx] = R.useState(0);
   const lessons = REFERENCE_COURSE.lessons;
+  const startIdx = startLessonId ? lessons.findIndex(l => l.id === startLessonId) : -1;
+  const [view, setView] = R.useState(startIdx >= 0 ? "read" : "hub");
+  const [idx, setIdx] = R.useState(startIdx >= 0 ? startIdx : 0);
   const lesson = lessons[idx];
   const openLesson = (l) => { setIdx(lessons.indexOf(l)); setView("read"); };
   const next = idx < lessons.length - 1 ? lessons[idx + 1] : null;
@@ -4509,5 +4616,11 @@ function ReferenceSection({ T, a11y, onExit }) {
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
   return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
 }
+
+// Задание дня из Справочника: одна глава/тест, меняется по дате (seed).
+ReferenceSection.dailyTask = (seed) => {
+  const ls = REFERENCE_COURSE.lessons;
+  return ls[((seed % ls.length) + ls.length) % ls.length];
+};
   return ReferenceSection;
 })();

@@ -5,11 +5,12 @@ import React from "react";
 import { faceIcon, flameIcon, trophyIcon } from "./icons-extra";
 import { rpc, saToken } from "../api/supabase";
 import { vibrate } from "../lib/utils";
+import { BROWN, GOLD, GREEN, GREEN_DARK, INK } from "./tokens";
 
 export function moodPalette(a11y) {
   return a11y
-    ? { cardBg:"rgba(235,222,195,0.70)", border:"rgba(175,140,65,0.18)", top:"rgba(255,240,200,0.62)", shadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060", gold:"#8B6A30", green:"#2A6B45", barTop:"#C8A96E", barBot:"#8B6A30" }
-    : { cardBg:"linear-gradient(150deg,#332510 0%,#231908 100%)", border:"rgba(140,106,38,0.34)", top:"rgba(208,166,62,0.42)", shadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:"#C8A96E", green:"#5DBB8A", barTop:"#E8C87A", barBot:"#C8A96E" };
+    ? { cardBg:"rgba(235,222,195,0.70)", border:"rgba(175,140,65,0.18)", top:"rgba(255,240,200,0.62)", shadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset", text:INK, muted:BROWN, dim:"#9A8060", gold:"#8B6A30", green:GREEN_DARK, barTop:GOLD, barBot:"#8B6A30" }
+    : { cardBg:"linear-gradient(150deg,#332510 0%,#231908 100%)", border:"rgba(140,106,38,0.34)", top:"rgba(208,166,62,0.42)", shadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:GOLD, green:GREEN, barTop:"#E8C87A", barBot:GOLD };
 }
 
 export const MOOD_FACES = [{lvl:1,l:"Тяжело"},{lvl:2,l:"Так себе"},{lvl:3,l:"Норм"},{lvl:4,l:"Хорошо"},{lvl:5,l:"Отлично"}];
@@ -20,13 +21,13 @@ export const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid 
 
 export function StreakCard({ streak, a11y }) {
   const C = a11y
-    ? { gold:"#8B6A30", num:"#9A6B1E", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060",
+    ? { gold:"#8B6A30", num:"#9A6B1E", text:INK, muted:BROWN, dim:"#9A8060",
         cardBg:"rgba(235,222,195,0.70)", border:"rgba(175,140,65,0.18)", top:"rgba(255,240,200,0.62)", shadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset",
         glow:"radial-gradient(circle, rgba(200,150,50,0.16) 0%, transparent 70%)",
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(216,160,60,0.22), rgba(180,130,40,0.05) 70%)",
         done:"radial-gradient(circle at 35% 30%, #E8C173, #C2912F 72%)", check:"#3a2c10",
         miss:"rgba(140,105,40,0.28)", future:"rgba(140,105,40,0.2)", div:"rgba(140,105,40,0.25)" }
-    : { gold:"#C8A96E", num:"#EBCF8E", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354",
+    : { gold:GOLD, num:"#EBCF8E", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354",
         cardBg:"linear-gradient(150deg,#332510 0%,#231908 100%)", border:"rgba(140,106,38,0.34)", top:"rgba(208,166,62,0.42)", shadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset",
         glow:"radial-gradient(circle, rgba(200,169,110,0.16) 0%, transparent 70%)",
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(235,207,142,0.28), rgba(200,169,110,0.06) 70%)",

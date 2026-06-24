@@ -5,6 +5,7 @@ import React from "react";
 import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
 import { onActivate } from "../lib/utils";
+import { GOLD, GREEN, RED } from "./tokens";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -37,8 +38,8 @@ function Content({ text, T, gold, dark }) {
     const mk = t.match(MARK_RE);
     if (mk) {
       const m = mk[1].replace("\uFE0F", "");
-      const icon = m === "✅" ? Ico.check("#5DBB8A", 15)
-        : m === "❌" ? Ico.x("#E07878", 15)
+      const icon = m === "✅" ? Ico.check(GREEN, 15)
+        : m === "❌" ? Ico.x(RED, 15)
         : Ico.pin(gold, 15);
       const st = m === "✅" ? T.good : m === "❌" ? T.bad : T.note;
       return (<div key={i} style={{ ...(st || T.para), display: "flex", gap: 9, alignItems: "flex-start" }}>
@@ -155,8 +156,8 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
   if (done) return (<div style={T.screen}>
     <Head T={T} title={lesson.title} onBack={onBack} />
     <div style={T.resultWrap}>
-      <div style={{ ...T.resultCircle, borderColor: "#5DBB8A" }}>
-        <div style={{ ...T.resultScore, color: "#5DBB8A" }}>{score}/{qs.length}</div>
+      <div style={{ ...T.resultCircle, borderColor: GREEN }}>
+        <div style={{ ...T.resultScore, color: GREEN }}>{score}/{qs.length}</div>
       </div>
       <div style={T.resultTxt}>{score === qs.length ? "Отлично! Все верно" : "Неплохо — повтори главу"}</div>
       <button style={{ ...T.doneBtn, background: gold, marginTop: 4 }} onClick={onNext || onBack}>{onNext ? nextLabel + " →" : "К программе курса"}</button>
@@ -171,8 +172,8 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
       {q.options.map((opt, i) => {
         let st = { ...T.quizOpt }; let ic = null;
         if (pick !== null) {
-          if (i === q.correct) { st = { ...st, background: "rgba(93,187,138,0.15)", border: "1px solid #5DBB8A", color: T.bold.color }; ic = Ico.check("#5DBB8A", 17); }
-          else if (i === pick) { st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878", color: T.bold.color }; ic = Ico.x("#E07878", 17); }
+          if (i === q.correct) { st = { ...st, background: "rgba(93,187,138,0.15)", border: "1px solid #5DBB8A", color: T.bold.color }; ic = Ico.check(GREEN, 17); }
+          else if (i === pick) { st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878", color: T.bold.color }; ic = Ico.x(RED, 17); }
           else st = { ...st, opacity: 0.5 };
         }
         const choose = () => { if (pick === null) { setPick(i); if (i === q.correct) setScore(s => s + 1); } };
@@ -186,7 +187,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 
 // ── Корень раздела ──
 export function ReferenceSection({ T, a11y, onExit, startLessonId }) {
-  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const gold = a11y ? "#8B6A30" : GOLD;
   const dark = !a11y;
   const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE };
   let startCourseId = "serving", startIdx = -1;

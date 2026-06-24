@@ -3,6 +3,7 @@
 
 import React from "react";
 import { MOD_SVG } from "./icons";
+import { CREAM, GOLD, GOLD_SOFT, GREEN, RED } from "./tokens";
 
 export function Confetti() {
   const canvasRef = React.useRef(null);
@@ -17,7 +18,7 @@ export function Confetti() {
       y: Math.random() * -canvas.height,
       w: Math.random() * 10 + 5,
       h: Math.random() * 6 + 3,
-      color: ["#C8A96E","#5DBB8A","#E07878","#8B7BAB","#7B8FAB","#F0E8D8","#D4A85A"][Math.floor(Math.random()*7)],
+      color: [GOLD,GREEN,RED,"#8B7BAB","#7B8FAB",CREAM,GOLD_SOFT][Math.floor(Math.random()*7)],
       rot: Math.random() * Math.PI * 2,
       vx: Math.random() * 2 - 1,
       vy: Math.random() * 3 + 2,
@@ -57,7 +58,7 @@ export function TimerBar({ duration, color, onExpire }) {
     return () => clearTimeout(t);
   }, [timeLeft]);
   const pct = (timeLeft/duration)*100;
-  const barColor = pct>60?"#5DBB8A":pct>30?"#D4A85A":"#E07878";
+  const barColor = pct>60?GREEN:pct>30?GOLD_SOFT:RED;
   return (
     <div style={{ marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
@@ -73,7 +74,7 @@ export function TimerBar({ duration, color, onExpire }) {
 
 export function SayAloud({ phrase, T, color }) {
   const [done, setDone] = React.useState(null);
-  const gold = "#C8A96E";
+  const gold = GOLD;
   return (
     <div style={{ background:"rgba(200,169,110,0.1)", border:"1.5px solid rgba(200,169,110,0.4)", borderRadius:14, padding:"13px 14px", marginBottom:10 }}>
       <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:8 }}>
@@ -90,7 +91,7 @@ export function SayAloud({ phrase, T, color }) {
           </div>
         </>
       ) : (
-        <div style={{ color:done==="ok"?"#5DBB8A":gold, fontSize:13, fontWeight:"bold", lineHeight:1.5 }}>
+        <div style={{ color:done==="ok"?GREEN:gold, fontSize:13, fontWeight:"bold", lineHeight:1.5 }}>
           {done==="ok" ? "🔥 Отлично! Звучит уверенно." : "💪 Ещё пара повторов — и пойдёт на автомате."}
         </div>
       )}

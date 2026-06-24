@@ -3,6 +3,7 @@
 // + фото национальных школ (base64) + реестр ILL/renderIll.
 import React from "react";
 import { REFERENCE_PHOTOS } from "../data/reference-photos";
+import { GOLD } from "./tokens";
 
 const sv = (c, s, w = 2) => ({ width: s, height: s, viewBox: "0 0 24 24", fill: "none", stroke: c, strokeWidth: w, strokeLinecap: "round", strokeLinejoin: "round" });
 export const Ico = {
@@ -188,35 +189,35 @@ export const FLAGS = {
   'fr': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_fr"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_fr)"><rect x="0.00" y="0" width="8.00" height="16" fill="#0055A4"/><rect x="8.00" y="0" width="8.00" height="16" fill="#FFFFFF"/><rect x="16.00" y="0" width="8.00" height="16" fill="#EF4135"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
   'gb': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_gb"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_gb)"><rect width="24" height="16" fill="#012169"/><line x1="0" y1="0" x2="24" y2="16" stroke="#FFFFFF" strokeWidth="3.2"/><line x1="24" y1="0" x2="0" y2="16" stroke="#FFFFFF" strokeWidth="3.2"/><line x1="0" y1="0" x2="24" y2="16" stroke="#C8102E" strokeWidth="1.4"/><line x1="24" y1="0" x2="0" y2="16" stroke="#C8102E" strokeWidth="1.4"/><rect x="9.4" y="0" width="5.2" height="16" fill="#FFFFFF"/><rect x="0" y="5.4" width="24" height="5.2" fill="#FFFFFF"/><rect x="10.4" y="0" width="3.2" height="16" fill="#C8102E"/><rect x="0" y="6.4" width="24" height="3.2" fill="#C8102E"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
   'us': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_us"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_us)"><rect x="0" y="0.00" width="24" height="2.29" fill="#B22234"/><rect x="0" y="2.29" width="24" height="2.29" fill="#FFFFFF"/><rect x="0" y="4.57" width="24" height="2.29" fill="#B22234"/><rect x="0" y="6.86" width="24" height="2.29" fill="#FFFFFF"/><rect x="0" y="9.14" width="24" height="2.29" fill="#B22234"/><rect x="0" y="11.43" width="24" height="2.29" fill="#FFFFFF"/><rect x="0" y="13.71" width="24" height="2.29" fill="#B22234"/><rect x="0" y="0" width="10" height="9.14" fill="#3C3B6E"/><circle cx="1.30" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="3.70" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="6.10" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="8.50" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="1.30" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="3.70" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="6.10" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="8.50" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="1.30" cy="6.80" r="0.5" fill="#FFFFFF"/><circle cx="3.70" cy="6.80" r="0.5" fill="#FFFFFF"/><circle cx="6.10" cy="6.80" r="0.5" fill="#FFFFFF"/><circle cx="8.50" cy="6.80" r="0.5" fill="#FFFFFF"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
   'it': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_it"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_it)"><rect x="0.00" y="0" width="8.00" height="16" fill="#009246"/><rect x="8.00" y="0" width="8.00" height="16" fill="#FFFFFF"/><rect x="16.00" y="0" width="8.00" height="16" fill="#CE2B37"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
   'jp': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_jp"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_jp)"><rect width="24" height="16" fill="#FFFFFF"/><circle cx="12" cy="8" r="4.4" fill="#BC002D"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
   'cn': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_cn"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_cn)"><rect width="24" height="16" fill="#DE2910"/><polygon points="4.20,1.90 4.85,3.61 6.67,3.70 5.25,4.84 5.73,6.60 4.20,5.60 2.67,6.60 3.15,4.84 1.73,3.70 3.55,3.61" fill="#FFDE00"/><polygon points="8.08,0.92 7.98,1.62 8.58,1.98 7.89,2.11 7.73,2.79 7.40,2.17 6.70,2.23 7.19,1.72 6.91,1.07 7.55,1.38" fill="#FFDE00"/><polygon points="9.78,2.98 9.42,3.58 9.83,4.15 9.15,3.99 8.73,4.56 8.67,3.86 8.00,3.64 8.65,3.37 8.65,2.66 9.11,3.20" fill="#FFDE00"/><polygon points="9.20,5.22 9.31,5.92 9.99,6.09 9.37,6.41 9.42,7.11 8.92,6.61 8.26,6.88 8.58,6.25 8.13,5.71 8.83,5.82" fill="#FFDE00"/><polygon points="7.40,7.02 7.77,7.62 8.47,7.51 8.02,8.05 8.34,8.68 7.68,8.41 7.18,8.91 7.23,8.21 6.61,7.89 7.29,7.72" fill="#FFDE00"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
   '_me': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_me"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_me)"><rect width="24" height="16" fill="#1F6E54"/><circle cx="9.5" cy="8" r="5" fill="#E8C56A"/><circle cx="11.3" cy="7.2" r="5" fill="#1F6E54"/><polygon points="15.00,5.90 15.50,7.31 17.00,7.35 15.81,8.26 16.23,9.70 15.00,8.85 13.77,9.70 14.19,8.26 13.00,7.35 14.50,7.31" fill="#E8C56A"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
   'ru': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
     <defs><clipPath id="fl_ru"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
     <g clipPath="url(#fl_ru)"><rect x="0" y="0.00" width="24" height="5.33" fill="#FFFFFF"/><rect x="0" y="5.33" width="24" height="5.33" fill="#0039A6"/><rect x="0" y="10.67" width="24" height="5.33" fill="#D52B1E"/></g>
-    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke={GOLD} strokeWidth="0.7"/></svg>),
 };
 
 // Снимает ведущий эмодзи-флаг (пара regional-indicator) или 🕌 и отдаёт SVG + остаток строки.

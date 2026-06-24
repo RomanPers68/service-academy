@@ -164,7 +164,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
 }
 
 export function WeekStar({ weekly, T }) {
-  const gold = "#C8A96E";
+  const gold = GOLD;
   const wrap = { background:`linear-gradient(150deg, ${gold}1f, ${gold}08)`, border:`1px solid ${gold}55`, borderRadius:16, padding:"14px 16px", marginBottom:14, boxShadow:"0 4px 14px rgba(0,0,0,0.18)" };
   if (!weekly || weekly.length === 0) {
     return (
@@ -466,7 +466,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
         {onReferenceLesson && refTask && (
           <div onClick={() => onReferenceLesson(refTask.id)} {...onActivate(() => onReferenceLesson(refTask.id))} style={{ ...T.modCard, marginBottom:12, gap:12, cursor:"pointer", border:"1px solid rgba(200,160,80,0.15)" }}>
             <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C8A96E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
             </div>
             <div style={{ flex:1 }}>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>

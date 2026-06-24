@@ -4,6 +4,7 @@
 import React from "react";
 import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
+import { onActivate } from "../lib/utils";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -81,7 +82,7 @@ function Hub({ T, gold, dark, openCourse, onExit }) {
     </div>
     <div style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
-        <div key={c.id} onClick={c.on ? () => openCourse(c.id) : undefined} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
+        <div key={c.id} onClick={c.on ? () => openCourse(c.id) : undefined} {...onActivate(c.on ? () => openCourse(c.id) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
           <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
           <div style={T.modIcon}>{c.icon(gold, 24)}</div>
           <div style={{ flex: 1 }}>
@@ -108,7 +109,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
     <div style={T.lessList}>
       {course.lessons.map((l, i) => {
         const isQuiz = l.type === "quiz";
-        return (<div key={l.id} style={T.lessCard} onClick={() => openLesson(l)}>
+        return (<div key={l.id} style={T.lessCard} onClick={() => openLesson(l)} {...onActivate(() => openLesson(l))} aria-label={l.title}>
           <div style={{ ...T.lessNum, color: isQuiz ? gold : (T.lessNumColor || "#C8B898"), fontWeight: T.lessNumColor ? "bold" : "normal", border: isQuiz ? "1.5px solid rgba(200,169,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
             {isQuiz ? Ico.cam(gold, 15) : i + 1}
           </div>
@@ -174,7 +175,8 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
           else if (i === pick) { st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878", color: T.bold.color }; ic = Ico.x("#E07878", 17); }
           else st = { ...st, opacity: 0.5 };
         }
-        return (<div key={i} onClick={() => { if (pick === null) { setPick(i); if (i === q.correct) setScore(s => s + 1); } }} style={{ ...st, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: pick === null ? "pointer" : "default" }}><span>{opt}</span>{ic && <span style={{ flexShrink: 0 }}>{ic}</span>}</div>);
+        const choose = () => { if (pick === null) { setPick(i); if (i === q.correct) setScore(s => s + 1); } };
+        return (<div key={i} onClick={choose} {...onActivate(pick === null ? choose : undefined)} aria-label={opt} style={{ ...st, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: pick === null ? "pointer" : "default" }}><span>{opt}</span>{ic && <span style={{ flexShrink: 0 }}>{ic}</span>}</div>);
       })}
       {pick !== null && <div style={{ ...T.explain, borderLeftColor: gold }}>{q.explanation}</div>}
       {pick !== null && <button style={{ ...T.doneBtn, background: gold, marginTop: 14 }} onClick={() => { if (last) setDone(true); else { setStep(s => s + 1); setPick(null); } }}>{last ? "Завершить" : "Дальше →"}</button>}

@@ -8,11 +8,14 @@ import { ROLES, RESTAURANTS } from "./data/roles";
 import { GLOSSARY } from "./data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "./data/dialogues";
 import { LOGO_SRC, LOGO_SRC_DARK } from "./assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate } from "./lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate } from "./lib/utils";
 import { injectStyles } from "./ui/css";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./ui/icons";
 import { S, A } from "./ui/styles";
 import { ReferenceSection } from "./ui/ReferenceSection";
+import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
+import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
+import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./ui/mood-cards";
 
 
 
@@ -756,8 +759,9 @@ function ServiceAcademy() {
               const active = screen === tab.id;
               const accentColor = a11y ? "#6B4E1A" : "#C8A96E";
               const inactiveColor = a11y ? "#5C3D10" : "#9A8060";
+              const goTab = () => { if (!active) vibrate("light"); navigate(tab.id); };
               return (
-                <div key={tab.id} onClick={() => { if (!active) vibrate("light"); navigate(tab.id); }}
+                <div key={tab.id} onClick={goTab} {...onActivate(goTab)} aria-label={tab.label}
                   style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
                     justifyContent:"center", padding:"6px 4px 6px", cursor:"pointer" }}>
                   {/* Золотая «таблетка» за активной иконкой */}
@@ -794,51 +798,6 @@ function ServiceAcademy() {
 }
 
 // ── КОНФЕТТИ ──────────────────────────────────────────────────────────
-function Confetti() {
-  const canvasRef = React.useRef(null);
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const pieces = Array.from({ length: 120 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * -canvas.height,
-      w: Math.random() * 10 + 5,
-      h: Math.random() * 6 + 3,
-      color: ["#C8A96E","#5DBB8A","#E07878","#8B7BAB","#7B8FAB","#F0E8D8","#D4A85A"][Math.floor(Math.random()*7)],
-      rot: Math.random() * Math.PI * 2,
-      vx: Math.random() * 2 - 1,
-      vy: Math.random() * 3 + 2,
-      vrot: (Math.random() - 0.5) * 0.15,
-      opacity: 1,
-    }));
-    let frame;
-    let tick = 0;
-    const draw = () => {
-      tick++;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      pieces.forEach(p => {
-        p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
-        if (tick > 120) p.opacity = Math.max(0, p.opacity - 0.008);
-        ctx.save();
-        ctx.globalAlpha = p.opacity;
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-        ctx.restore();
-        if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width; }
-      });
-      if (pieces.some(p => p.opacity > 0)) frame = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(frame);
-  }, []);
-  return <canvas ref={canvasRef} style={{ position:"fixed", top:0, left:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:999 }} />;
-}
-
 // ── ЭКРАН ЗАВЕРШЕНИЯ РОЛИ ────────────────────────────────────────────
 function RoleCompleteScreen({ role, nextRole, T, onNext }) {
   const [showConfetti, setShowConfetti] = React.useState(true);
@@ -2604,201 +2563,6 @@ function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDa
   );
 }
 
-function crownIcon(color, size=22){
-  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M5 16L3.4 7.8l4.8 3.4L12 5.5l3.8 5.7 4.8-3.4L19 16z"/><path d="M5 19h14"/></svg>);
-}
-function flameIcon(color, size=24){
-  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2c0 3-2 4-2 7 0 1 .6 1.7 1.5 1.7S14 9.8 14 9c1 1.2 2 2.7 2 4.5a5 5 0 0 1-10 0C6 9 10 6 13 2z"/></svg>);
-}
-function trophyIcon(color, size=18){
-  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H5a2 2 0 0 0 2 4"/><path d="M17 6h2a2 2 0 0 1-2 4"/><path d="M12 14v3"/><path d="M9.5 20h5l-.6-3h-3.8z"/></svg>);
-}
-function faceIcon(level, color, size=28){
-  const m={1:"M8.5 16.2 Q12 13.4 15.5 16.2",2:"M8.7 15.5 Q12 14.2 15.3 15.5",3:"M9 15 H15",4:"M8.7 14.6 Q12 16.4 15.3 14.6",5:"M8 14 Q12 17.8 16 14"};
-  return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.7" fill={color} stroke="none"/><circle cx="15" cy="10" r="0.7" fill={color} stroke="none"/><path d={m[level]||m[3]}/></svg>);
-}
-function StreakCard({ streak, a11y }) {
-  const C = a11y
-    ? { gold:"#8B6A30", num:"#9A6B1E", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060",
-        cardBg:"rgba(235,222,195,0.70)", border:"rgba(175,140,65,0.18)", top:"rgba(255,240,200,0.62)", shadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset",
-        glow:"radial-gradient(circle, rgba(200,150,50,0.16) 0%, transparent 70%)",
-        flameGlow:"radial-gradient(circle at 40% 35%, rgba(216,160,60,0.22), rgba(180,130,40,0.05) 70%)",
-        done:"radial-gradient(circle at 35% 30%, #E8C173, #C2912F 72%)", check:"#3a2c10",
-        miss:"rgba(140,105,40,0.28)", future:"rgba(140,105,40,0.2)", div:"rgba(140,105,40,0.25)" }
-    : { gold:"#C8A96E", num:"#EBCF8E", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354",
-        cardBg:"linear-gradient(150deg,#332510 0%,#231908 100%)", border:"rgba(140,106,38,0.34)", top:"rgba(208,166,62,0.42)", shadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset",
-        glow:"radial-gradient(circle, rgba(200,169,110,0.16) 0%, transparent 70%)",
-        flameGlow:"radial-gradient(circle at 40% 35%, rgba(235,207,142,0.28), rgba(200,169,110,0.06) 70%)",
-        done:"radial-gradient(circle at 35% 30%, #EBCF8E, #C8A96E 70%)", check:"#3a2c10",
-        miss:"rgba(160,120,60,0.18)", future:"rgba(160,120,60,0.16)", div:"rgba(160,120,60,0.2)" };
-  const serif = "Georgia, 'Times New Roman', serif";
-  const ymd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-  const set = new Set(streak.days || []);
-  const today = new Date(); const todayStr = ymd(today);
-  const dow = (today.getDay() + 6) % 7;
-  const monday = new Date(today); monday.setDate(today.getDate() - dow);
-  const labels = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
-  const week = labels.map((lbl, i) => {
-    const d = new Date(monday); d.setDate(monday.getDate() + i); const ds = ymd(d);
-    const active = set.has(ds);
-    const st = ds === todayStr ? (active ? "done" : "today") : active ? "done" : (d < today ? "miss" : "future");
-    return { lbl, st, isToday: ds === todayStr };
-  });
-  const count = streak.count || 0;
-  const activeToday = streak.last === todayStr;
-  const sub = count === 0 ? "Пройди урок, чтобы начать серию"
-    : activeToday ? "Серия идёт — так держать!" : "Загляни сегодня, чтобы не прервать серию";
-  const dot = (st) => {
-    const base = { width:24, height:24, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:"bold", margin:"0 auto" };
-    if (st === "done") return { ...base, background:C.done, color:C.check };
-    if (st === "today") return { ...base, color:C.gold, border:`2px solid ${C.gold}` };
-    if (st === "miss") return { ...base, color:C.dim, border:`2px solid ${C.miss}` };
-    return { ...base, border:`2px dashed ${C.future}` };
-  };
-  return (
-    <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow,
-      borderRadius:18, padding:"12px 14px", margin:"0 14px 12px", position:"relative", overflow:"hidden",
-      backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
-      <div style={{ position:"absolute", top:-50, right:-40, width:150, height:150, borderRadius:"50%", background:C.glow, pointerEvents:"none" }} />
-      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:44, height:44, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:C.flameGlow }}>
-          {flameIcon("#E0913A", 26)}
-        </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-            <span style={{ fontFamily:serif, fontSize:26, fontWeight:"bold", color:C.num, lineHeight:1 }}>{count}</span>
-            <span style={{ color:C.muted, fontSize:13 }}>дней подряд</span>
-          </div>
-          <div style={{ color:C.muted, fontSize:11.5, marginTop:3, lineHeight:1.35 }}>{sub}</div>
-        </div>
-        {(streak.best || 0) > 0 && (
-          <div style={{ flexShrink:0, textAlign:"center", paddingLeft:10 }}>
-            <div style={{ display:"flex", justifyContent:"center" }}>{trophyIcon(C.gold, 18)}</div>
-            <div style={{ color:C.gold, fontSize:13, fontWeight:"bold", fontFamily:serif }}>{streak.best}</div>
-          </div>
-        )}
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginTop:11 }}>
-        {week.map((d, i) => (
-          <div key={i} style={{ textAlign:"center" }}>
-            <div style={dot(d.st)}>{d.st === "done" ? "✓" : d.st === "today" ? "•" : ""}</div>
-            <div style={{ marginTop:4, fontSize:10, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function moodPalette(a11y) {
-  return a11y
-    ? { cardBg:"rgba(235,222,195,0.70)", border:"rgba(175,140,65,0.18)", top:"rgba(255,240,200,0.62)", shadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset", text:"#2A1F0E", muted:"#7A6548", dim:"#9A8060", gold:"#8B6A30", green:"#2A6B45", barTop:"#C8A96E", barBot:"#8B6A30" }
-    : { cardBg:"linear-gradient(150deg,#332510 0%,#231908 100%)", border:"rgba(140,106,38,0.34)", top:"rgba(208,166,62,0.42)", shadow:"0 5px 18px rgba(0,0,0,0.48), 0 2px 0 rgba(190,152,56,0.15) inset, 0 -2px 3px rgba(0,0,0,0.32) inset", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:"#C8A96E", green:"#5DBB8A", barTop:"#E8C87A", barBot:"#C8A96E" };
-}
-const MOOD_FACES = [{lvl:1,l:"Тяжело"},{lvl:2,l:"Так себе"},{lvl:3,l:"Норм"},{lvl:4,l:"Хорошо"},{lvl:5,l:"Отлично"}];
-const _moodYmd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-const _moodBase = (C, a11y) => ({ background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:18, padding:"15px 16px", margin:"0 14px 14px", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" });
-
-function MoodCheckCard({ a11y }) {
-  const C = moodPalette(a11y);
-  const serif = "Georgia, 'Times New Roman', serif";
-  const today = _moodYmd(new Date());
-  const key = "sa_mood_" + today;
-  const [picked, setPicked] = React.useState(() => { try { return localStorage.getItem(key); } catch(e) { return null; } });
-  const choose = (m) => {
-    setPicked(String(m));
-    try { localStorage.setItem(key, String(m)); } catch(e) {}
-    try { rpc("save_mood", { p_token: saToken(), p_mood: m, p_day: today }); } catch(e) {}
-    try { navigator.vibrate && navigator.vibrate(14); } catch(e) {}
-  };
-  if (picked) {
-    const f = MOOD_FACES[(parseInt(picked,10)||3)-1] || MOOD_FACES[2];
-    return (
-      <div style={_moodBase(C, a11y)}>
-        <div style={{ display:"flex", alignItems:"center", gap:11 }}>
-          {faceIcon(f.lvl, C.gold, 28)}
-          <div>
-            <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>Настрой записан</div>
-            <div style={{ color:C.muted, fontSize:12, marginTop:1 }}>Спасибо! Ответ анонимный — можно поменять завтра.</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div style={_moodBase(C, a11y)}>
-      <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold", textAlign:"center" }}>Как настрой сегодня?</div>
-      <div style={{ color:C.muted, fontSize:11.5, textAlign:"center", marginTop:3, marginBottom:14 }}>один тап · анонимно для команды</div>
-      <div style={{ display:"flex", justifyContent:"space-between" }}>
-        {MOOD_FACES.map((m, i) => (
-          <div key={i} onClick={() => choose(i+1)} style={{ flex:1, textAlign:"center", cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
-            <div style={{ display:"flex", justifyContent:"center" }}>{faceIcon(m.lvl, C.gold, 31)}</div>
-            <div style={{ marginTop:6, fontSize:10, color:C.dim }}>{m.l}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TeamMoodCard({ a11y }) {
-  const C = moodPalette(a11y);
-  const serif = "Georgia, 'Times New Roman', serif";
-  const [data, setData] = React.useState(null);
-  const [hide, setHide] = React.useState(false);
-  React.useEffect(() => {
-    let live = true;
-    const today = _moodYmd(new Date());
-    rpc("mood_summary", { p_token: saToken(), p_today: today })
-      .then(d => { if (!live) return; if (d && d.ok) setData(d); else setHide(true); })
-      .catch(() => { if (live) setHide(true); });
-    return () => { live = false; };
-  }, []);
-  if (hide || !data) return null;
-  const total = data.today_total || 0;
-  const dist = data.today_dist || {};
-  const maxD = Math.max(1, ...MOOD_FACES.map((_, i) => dist[String(i+1)] || 0));
-  const avg = data.today_avg ? Number(data.today_avg) : 0;
-  const avgFace = MOOD_FACES[Math.min(4, Math.max(0, Math.round(avg) - 1))] || MOOD_FACES[2];
-  const trend = Array.isArray(data.trend) ? data.trend : [];
-  const spark = () => {
-    if (trend.length < 2) return null;
-    const vals = trend.map(t => Number(t.avg));
-    const n = vals.length, w = 100, h = 26;
-    const pts = vals.map((v, i) => `${(i/(n-1))*w},${h-2-((v-1)/4)*(h-4)}`).join(" ");
-    return <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width:"100%", height:34, marginTop:8 }}><polyline points={pts} fill="none" stroke={C.gold} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-  };
-  return (
-    <div style={_moodBase(C, a11y)}>
-      <div style={{ color:C.gold, fontSize:10.5, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10 }}>📊 ПУЛЬС КОМАНДЫ · СЕГОДНЯ</div>
-      {total === 0 ? (
-        <div style={{ color:C.muted, fontSize:13, lineHeight:1.5 }}>Сегодня ещё нет ответов. Команда отметит настрой в течение дня.</div>
-      ) : (
-        <>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            {faceIcon(avgFace.lvl, C.gold, 34)}
-            <div>
-              <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>В целом {avgFace.l.toLowerCase()}</div>
-              <div style={{ color:C.muted, fontSize:12 }}>ответили {total}</div>
-            </div>
-          </div>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:6, marginTop:14, height:64 }}>
-            {MOOD_FACES.map((m, i) => { const c = dist[String(i+1)] || 0; return (
-              <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", height:"100%" }}>
-                <div style={{ color:C.muted, fontSize:10.5, fontWeight:"bold", marginBottom:3 }}>{c}</div>
-                <div style={{ width:"64%", maxWidth:22, height:`${Math.max(5,(c/maxD)*42)}px`, borderRadius:4, background:`linear-gradient(180deg,${C.barTop},${C.barBot})`, opacity:c===0?0.25:1 }} />
-                <div style={{ marginTop:4, display:"flex", justifyContent:"center" }}>{faceIcon(m.lvl, C.muted, 18)}</div>
-              </div>
-            ); })}
-          </div>
-          {spark()}
-        </>
-      )}
-      <div style={{ color:C.dim, fontSize:11, marginTop:12, paddingTop:9, borderTop:`1px solid ${C.border}` }}>🔒 ответы анонимны — только общая картина</div>
-    </div>
-  );
-}
-
 const DEFAULT_CHECKLISTS = {
   open: [
     { id:"o1", text:"Свет, музыка, климат включены" },
@@ -3507,55 +3271,6 @@ function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T }) {
   );
 }
 
-
-function TimerBar({ duration, color, onExpire }) {
-  const [timeLeft, setTimeLeft] = React.useState(duration);
-  React.useEffect(() => {
-    if (timeLeft <= 0) { onExpire(); return; }
-    const t = setTimeout(() => setTimeLeft(t => t-1), 1000);
-    return () => clearTimeout(t);
-  }, [timeLeft]);
-  const pct = (timeLeft/duration)*100;
-  const barColor = pct>60?"#5DBB8A":pct>30?"#D4A85A":"#E07878";
-  return (
-    <div style={{ marginBottom:10 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-        <span style={{ color:barColor, fontSize:11, fontFamily:"monospace", fontWeight:"bold", display:"inline-flex", alignItems:"center", gap:5 }}>{MOD_SVG["⚡"](barColor, 12)}БЫСТРЫЙ ВЫБОР</span>
-        <span style={{ color:barColor, fontSize:13, fontWeight:"bold" }}>{timeLeft}с</span>
-      </div>
-      <div style={{ height:4, background:"rgba(255,255,255,0.1)", borderRadius:2, overflow:"hidden" }}>
-        <div style={{ height:"100%", width:`${pct}%`, background:barColor, borderRadius:2, transition:"width 1s linear, background 0.3s" }} />
-      </div>
-    </div>
-  );
-}
-
-function SayAloud({ phrase, T, color }) {
-  const [done, setDone] = React.useState(null);
-  const gold = "#C8A96E";
-  return (
-    <div style={{ background:"rgba(200,169,110,0.1)", border:"1.5px solid rgba(200,169,110,0.4)", borderRadius:14, padding:"13px 14px", marginBottom:10 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:8 }}>
-        <span style={{ fontSize:16 }}>🗣</span>
-        <span style={{ color:gold, fontSize:10.5, letterSpacing:1.5, fontFamily:"monospace", fontWeight:"bold" }}>А ТЕПЕРЬ — ВСЛУХ</span>
-      </div>
-      <div style={{ color:T.para.color, fontSize:14, lineHeight:1.6, fontStyle:"italic", marginBottom:done===null?12:10 }}>«{phrase}»</div>
-      {done===null ? (
-        <>
-          <div style={{ color:T.modSub.color, fontSize:12, marginBottom:10, lineHeight:1.5 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>setDone("ok")} style={{ flex:1, padding:"9px", borderRadius:11, border:"none", background:gold, color:"#241a0a", fontSize:13, fontWeight:"bold", cursor:"pointer" }}>Получилось</button>
-            <button onClick={()=>setDone("again")} style={{ flex:1, padding:"9px", borderRadius:11, border:`1.5px solid ${gold}`, background:"transparent", color:gold, fontSize:13, fontWeight:"bold", cursor:"pointer" }}>Ещё разок</button>
-          </div>
-        </>
-      ) : (
-        <div style={{ color:done==="ok"?"#5DBB8A":gold, fontSize:13, fontWeight:"bold", lineHeight:1.5 }}>
-          {done==="ok" ? "🔥 Отлично! Звучит уверенно." : "💪 Ещё пара повторов — и пойдёт на автомате."}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T }) {
   const nextBtnRef = React.useRef(null);

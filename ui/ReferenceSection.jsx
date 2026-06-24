@@ -2,11 +2,14 @@
 // Раздел «Справочник»: хаб → курс → глава → фото-тест.
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
 import React from "react";
-import { Ico, renderIll } from "./reference-illustrations";
+import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
+import { UI_SVG } from "./icons";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
+// Маркеры-иконки в стиле уроков (📌 заметка, ☑ чек, 🚫 запрет, ✅ верно, ❌ неверно)
+const MARK_RE = /^(📌|☑️?|🚫|✅|❌)\s*/u;
 
 // ── Контент главы (bold/буллеты/нумерация в стиле уроков) ──
 function inlineBold(s, T) {
@@ -25,7 +28,26 @@ function Content({ text, T, gold, dark }) {
         {keys.map((k, j) => <div key={j} style={{ display: "flex", justifyContent: "center", overflow: "hidden", borderRadius: 14 }}>{renderIll(k, gold, dark)}</div>)}
       </div>);
     }
-    if (t.startsWith("**") && t.endsWith("**")) return <div key={i} style={T.bold}>{t.replace(/\*\*/g, "")}</div>;
+    if (t.startsWith("**") && t.endsWith("**")) {
+      const { flag, rest } = splitLeadingFlag(t.replace(/\*\*/g, ""));
+      return flag
+        ? <div key={i} style={{ ...T.bold, display: "flex", alignItems: "center", gap: 9 }}>{flag}<span>{rest}</span></div>
+        : <div key={i} style={T.bold}>{rest}</div>;
+    }
+    const mk = t.match(MARK_RE);
+    if (mk) {
+      const m = mk[1].replace("\uFE0F", "");
+      const icon = m === "📌" ? UI_SVG.pin(gold, 14)
+        : m === "☑" ? UI_SVG.checkSquare("#C8A96E", 14)
+        : m === "🚫" ? UI_SVG.ban("#E07878", 14)
+        : m === "✅" ? UI_SVG.checkCircle("#5DBB8A", 14)
+        : UI_SVG.xCircle("#E07878", 14);
+      const st = m === "📌" ? T.note : m === "🚫" ? T.forbidden : m === "✅" ? T.good : m === "❌" ? T.bad : T.check;
+      return (<div key={i} style={{ ...(st || T.para), display: "flex", gap: 9, alignItems: "flex-start" }}>
+        <span style={{ flexShrink: 0, marginTop: 3, display: "inline-flex" }}>{icon}</span>
+        <span style={{ flex: 1 }}>{inlineBold(t.replace(MARK_RE, ""), T)}</span>
+      </div>);
+    }
     if (t.startsWith("• ")) return (<div key={i} style={{ ...T.para, display: "flex", gap: 8, marginBottom: 4 }}><span style={{ color: gold }}>•</span><span style={{ flex: 1 }}>{inlineBold(t.slice(2), T)}</span></div>);
     const num = t.match(/^(\d+)\.\s+(.*)/);
     if (num) return (<div key={i} style={{ ...T.para, display: "flex", gap: 8, marginBottom: 4 }}><b style={{ color: gold }}>{num[1]}.</b><span style={{ flex: 1 }}>{inlineBold(num[2], T)}</span></div>);
@@ -118,7 +140,9 @@ function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
       <div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 22, boxShadow: T.lessGlass.shadow, padding: "20px 18px", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur }}>
         <Content text={lesson.content} T={T} gold={gold} dark={dark} />
       </div>
-      {onNext && <button style={{ ...T.doneBtn, background: gold }} onClick={onNext}>{nextLabel} →</button>}
+      {onNext
+        ? <button style={{ ...T.doneBtn, background: gold }} onClick={onNext}>{nextLabel} →</button>
+        : <button style={{ ...T.doneBtn, background: gold }} onClick={onBack}>К программе курса</button>}
     </div>
   </div>);
 }

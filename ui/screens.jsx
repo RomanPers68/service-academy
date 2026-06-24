@@ -17,6 +17,7 @@ import { ReferenceSection } from "./ReferenceSection";
 import { Confetti, TimerBar, SayAloud } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 
 export function AchievementPopup({ ach, a11y, onClose }) {
   const [visible, setVisible] = React.useState(false);
@@ -33,13 +34,13 @@ export function AchievementPopup({ ach, a11y, onClose }) {
     setTimeout(() => onClose(), 380);
   };
 
-  const color = ach.color || "#C8A96E";
+  const color = ach.color || GOLD;
   const popupBg = a11y ? "rgba(220,200,165,0.55)" : "rgba(20,14,6,0.45)";
   const labelColor = a11y ? "rgba(120,85,30,0.55)" : "rgba(200,160,80,0.6)";
-  const titleColor = a11y ? "#6B4A10" : color;
+  const titleColor = a11y ? BROWN_GOLD : color;
 
   return (
-    <div onClick={handleClose}
+    <div onClick={handleClose} {...onActivate(handleClose)}
       style={{ position:"fixed", inset:0, background:"transparent", zIndex:999, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 16px 50px" }}>
       <div onClick={e => e.stopPropagation()}
         style={{
@@ -69,7 +70,7 @@ export function AchievementPopup({ ach, a11y, onClose }) {
             <div style={{ color:titleColor, fontSize:20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{ach.label}</div>
           </div>
         </div>
-        <div onClick={handleClose}
+        <div onClick={handleClose} {...onActivate(handleClose)}
           style={{ textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
           Закрыть ✕
         </div>
@@ -91,7 +92,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
   const isLast = !nextRole;
   const achivements = {
     seasonal: { icon:"🌱", title:"Новичок пройден!", badge:"Стажёр сервиса", desc:"Ты освоил базовые стандарты и готов к реальным сменам. Это только начало пути!", color:"#7C9E87" },
-    core:     { icon:"⭐", title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Твои стандарты — пример для новичков.", color:"#C8A96E" },
+    core:     { icon:"⭐", title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Твои стандарты — пример для новичков.", color:GOLD },
     manager:  { icon:"🎯", title:"Менеджер пройден!", badge:"Лидер зала", desc:"Управление командой, разрешение конфликтов, финансы — ты готов к большему.", color:"#8B7BAB" },
     service_manager: { icon:"🏛️", title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Ты прошёл весь путь. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
   };
@@ -110,11 +111,11 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
           ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО
         </div>
         <div style={{ display:"inline-block", background:"linear-gradient(135deg, rgba(212,168,90,0.25) 0%, rgba(212,168,90,0.05) 100%)", border:"1px solid rgba(212,168,90,0.5)", borderRadius:30, padding:"6px 20px", marginBottom:16 }}>
-          <span style={{ color:"#D4A85A", fontSize:13, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
+          <span style={{ color:GOLD_SOFT, fontSize:13, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
             ✦ {ach.badge}
           </span>
         </div>
-        <div style={{ color:"#F0E8D8", fontSize:26, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:8, letterSpacing:0.3 }}>
+        <div style={{ color:CREAM, fontSize:26, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:8, letterSpacing:0.3 }}>
           {ach.title}
         </div>
         <div style={{ color:"#8A7A6A", fontSize:14, lineHeight:1.7, maxWidth:300, margin:"0 auto" }}>
@@ -133,9 +134,9 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
       {phase >= 1 && !isLast && (
         <div className="sa-pop" style={{ width:"100%", maxWidth:340, marginBottom:24 }}>
           <div style={{ background:"linear-gradient(135deg, rgba(93,187,138,0.12) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(93,187,138,0.3)", borderRadius:20, padding:"16px 20px", textAlign:"center" }}>
-            <div style={{ fontSize:11, letterSpacing:3, color:"#5DBB8A", fontFamily:"monospace", marginBottom:8 }}>✦ РАЗБЛОКИРОВАНО</div>
+            <div style={{ fontSize:11, letterSpacing:3, color:GREEN, fontFamily:"monospace", marginBottom:8 }}>✦ РАЗБЛОКИРОВАНО</div>
             <div style={{ marginBottom:6, display:"flex", justifyContent:"center" }}>{ROLE_SVG[nextRole.id] ? ROLE_SVG[nextRole.id](nextRole.color, 30) : nextRole.icon}</div>
-            <div style={{ color:"#F0E8D8", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>{nextRole.label}</div>
+            <div style={{ color:CREAM, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>{nextRole.label}</div>
             <div style={{ color:"#8A7A6A", fontSize:12 }}>{nextRole.desc}</div>
           </div>
         </div>
@@ -144,8 +145,8 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
       {isLast && phase >= 1 && (
         <div className="sa-pop" style={{ width:"100%", maxWidth:340, marginBottom:24 }}>
           <div style={{ background:"linear-gradient(135deg, rgba(212,168,90,0.15) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(212,168,90,0.4)", borderRadius:20, padding:"16px 20px", textAlign:"center" }}>
-            <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{crownIcon("#D4A85A", 32)}</div>
-            <div style={{ color:"#D4A85A", fontSize:15, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>Мастер сервиса</div>
+            <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{crownIcon(GOLD_SOFT, 32)}</div>
+            <div style={{ color:GOLD_SOFT, fontSize:15, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>Мастер сервиса</div>
             <div style={{ color:"#8A7A6A", fontSize:12, lineHeight:1.6 }}>Ты прошёл весь путь Service Academy. Теперь ты — архитектор сервиса.</div>
           </div>
         </div>
@@ -154,7 +155,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
       <button
         onClick={onNext}
         className="sa-btn sa-btn-pulse"
-        style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"1px solid rgba(200,160,80,0.4)", background:"linear-gradient(135deg, rgba(200,160,80,0.2) 0%, rgba(200,160,80,0.08) 100%)", color:"#F0E8D8", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3 }}
+        style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"1px solid rgba(200,160,80,0.4)", background:"linear-gradient(135deg, rgba(200,160,80,0.2) 0%, rgba(200,160,80,0.08) 100%)", color:CREAM, fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3 }}
       >
         {isLast ? "К списку ролей →" : `Перейти к «${nextRole?.label}» →`}
       </button>
@@ -208,7 +209,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const allTabs = [
     { id:"waiter",  label:"Официанты", icon:"🍽️", color:"#7C9E87" },
     { id:"manager", label:"Менеджеры", icon:"🎯", color:"#8B7BAB" },
-    { id:"senior",  label:"Руководство", icon:"🏛️", color:"#C8A96E" },
+    { id:"senior",  label:"Руководство", icon:"🏛️", color:GOLD },
   ];
   const visibleTabs = (isAdmin || myPosition === "senior") ? allTabs : allTabs.filter(t => {
     if (myPosition === "waiter")  return t.id === "waiter";
@@ -220,7 +221,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const [detailTab, setDetailTab] = React.useState(false);
   const [selected, setSelected] = React.useState(null);
   const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:"#C8A96E", manager:"#8B7BAB", service_manager:"#7B8FAB" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, manager:"#8B7BAB", service_manager:"#7B8FAB" };
   const medals = ["🥇","🥈","🥉"];
 
   const getAchievements = (player, allPlayers, allScores) => {
@@ -319,9 +320,9 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           ) : filtered.map((p, i) => {
             const ach = getAchievements(p, leaderboard, scores);
             return (
-            <div key={i} onClick={() => { setSelected(p); setDetailTab(true); }}
+            <div key={i} onClick={() => { setSelected(p); setDetailTab(true); }} {...onActivate(() => { setSelected(p); setDetailTab(true); })}
               style={{ ...T.modCard, marginBottom:10, cursor:"pointer", gap:12 }}>
-              <div style={{ flexShrink:0, minWidth:28, display:"flex", alignItems:"center", justifyContent:"center" }}>{(() => { const med = [["#F0CE72","rgba(232,196,106,0.20)"],["#D2D7DE","rgba(200,205,212,0.16)"],["#D6A06A","rgba(214,160,106,0.18)"]][i]; const fg = med ? med[0] : (T.modTitle?.color||"#C8A96E"); const bg = med ? med[1] : (T.modSub?.color||"#9A8C74")+"22"; const bd = med ? med[0]+"99" : (T.modTitle?.color||"#C8A96E")+"44"; return <div style={{ width:27, height:27, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:bg, border:`1.5px solid ${bd}`, color:fg, fontSize:13, fontWeight:"bold" }}>{i+1}</div>; })()}</div>
+              <div style={{ flexShrink:0, minWidth:28, display:"flex", alignItems:"center", justifyContent:"center" }}>{(() => { const med = [["#F0CE72","rgba(232,196,106,0.20)"],["#D2D7DE","rgba(200,205,212,0.16)"],["#D6A06A","rgba(214,160,106,0.18)"]][i]; const fg = med ? med[0] : (T.modTitle?.color||GOLD); const bg = med ? med[1] : (T.modSub?.color||"#9A8C74")+"22"; const bd = med ? med[0]+"99" : (T.modTitle?.color||GOLD)+"44"; return <div style={{ width:27, height:27, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:bg, border:`1.5px solid ${bd}`, color:fg, fontSize:13, fontWeight:"bold" }}>{i+1}</div>; })()}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <div style={{ ...T.modTitle }}>{p.name} {p.surname}</div>
@@ -330,13 +331,13 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
                 <div style={{ color:T.modSub.color, fontSize:12, marginBottom:6 }}>{p.restaurant}</div>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <div style={{ flex:1, height:4, background:T.progBar.background, borderRadius:2, overflow:"hidden" }}>
-                    <div style={{ width:`${p.avg}%`, height:"100%", background:roleColor[p.role]||"#C8A96E", borderRadius:2 }} />
+                    <div style={{ width:`${p.avg}%`, height:"100%", background:roleColor[p.role]||GOLD, borderRadius:2 }} />
                   </div>
-                  <div style={{ color:roleColor[p.role]||"#C8A96E", fontSize:13, fontWeight:"bold", flexShrink:0 }}>{p.avg}%</div>
+                  <div style={{ color:roleColor[p.role]||GOLD, fontSize:13, fontWeight:"bold", flexShrink:0 }}>{p.avg}%</div>
                 </div>
               </div>
               <div style={{ color:T.modSub.color, fontSize:11, textAlign:"right", flexShrink:0 }}>
-                {p.position !== "senior" && <div style={{ color:roleColor[p.role]||"#C8A96E", marginBottom:2 }}>{roleLabel[p.role]||p.role}</div>}
+                {p.position !== "senior" && <div style={{ color:roleColor[p.role]||GOLD, marginBottom:2 }}>{roleLabel[p.role]||p.role}</div>}
                 <div>{p.total} тест{p.total>4?"ов":p.total>1?"а":""}</div>
               </div>
             </div>
@@ -348,7 +349,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           {(() => { const selAch = selected ? getAchievements(selected, leaderboard, scores) : []; return (
           <div style={{ ...T.modCard, marginBottom:16, flexDirection:"column", alignItems:"flex-start", gap:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, width:"100%" }}>
-              <div style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||"#C8A96E"}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||"#C8A96E", fontFamily:"Georgia, serif" }}>
+              <div style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||GOLD}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||GOLD, fontFamily:"Georgia, serif" }}>
                 {selected?.name?.[0]}{selected?.surname?.[0]}
               </div>
               <div style={{ flex:1 }}>
@@ -361,22 +362,22 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
                 {selAch.map((a, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:20, background:"rgba(200,160,80,0.1)", border:"1px solid rgba(200,160,80,0.3)" }}>
                     <span style={{ fontSize:14 }}>{a.icon}</span>
-                    <span style={{ color:"#C8A96E", fontSize:11, fontFamily:"Georgia, serif" }}>{a.label}</span>
+                    <span style={{ color:GOLD, fontSize:11, fontFamily:"Georgia, serif" }}>{a.label}</span>
                   </div>
                 ))}
               </div>
             )}
             <div style={{ display:"flex", gap:20, marginTop:4 }}>
               <div style={{ textAlign:"center" }}>
-                <div style={{ color:"#C8A96E", fontSize:22, fontWeight:"bold" }}>{selected?.avg}%</div>
+                <div style={{ color:GOLD, fontSize:22, fontWeight:"bold" }}>{selected?.avg}%</div>
                 <div style={{ color:T.modSub.color, fontSize:11 }}>средний балл</div>
               </div>
               <div style={{ textAlign:"center" }}>
-                <div style={{ color:"#C8A96E", fontSize:22, fontWeight:"bold" }}>{selected?.total}</div>
+                <div style={{ color:GOLD, fontSize:22, fontWeight:"bold" }}>{selected?.total}</div>
                 <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 13 }}>тестов</div>
               </div>
               <div style={{ textAlign:"center" }}>
-                <div style={{ color:roleColor[selected?.role]||"#C8A96E", fontSize:14, fontWeight:"bold", marginTop:4 }}>{selected?.position !== "senior" ? (roleLabel[selected?.role]||"") : ""}</div>
+                <div style={{ color:roleColor[selected?.role]||GOLD, fontSize:14, fontWeight:"bold", marginTop:4 }}>{selected?.position !== "senior" ? (roleLabel[selected?.role]||"") : ""}</div>
                 <div style={{ color:T.modSub.color, fontSize:11 }}>{selected?.position !== "senior" ? "роль" : ""}</div>
               </div>
             </div>
@@ -385,11 +386,11 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
             <div key={i} style={{ ...T.lessCard, marginBottom:8, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
               <div style={{ display:"flex", justifyContent:"space-between", width:"100%" }}>
                 <div style={{ ...T.lessTitle, fontSize:13, flex:1, marginRight:8 }}>{d.quizTitle}</div>
-                <div style={{ color: d.pct>=80?"#81C784":d.pct>=50?"#C8A96E":"#e57373", fontWeight:"bold", flexShrink:0 }}>{d.pct}%</div>
+                <div style={{ color: d.pct>=80?"#81C784":d.pct>=50?GOLD:"#e57373", fontWeight:"bold", flexShrink:0 }}>{d.pct}%</div>
               </div>
               <div style={{ color:T.modSub.color, fontSize:12 }}>{d.score} из {d.total} верно · {d.date}</div>
               <div style={{ width:"100%", height:3, background:T.progBar.background, borderRadius:2, overflow:"hidden" }}>
-                <div style={{ width:`${d.pct}%`, height:"100%", background: d.pct>=80?"#81C784":d.pct>=50?"#C8A96E":"#e57373" }} />
+                <div style={{ width:`${d.pct}%`, height:"100%", background: d.pct>=80?"#81C784":d.pct>=50?GOLD:"#e57373" }} />
               </div>
             </div>
           ))}
@@ -458,12 +459,12 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
 
         {/* Дата */}
         <div style={{ textAlign:"center", marginBottom:16 }}>
-          <div style={{ color:"#C8A96E", fontSize:12, letterSpacing:2, fontFamily:"monospace" }}>{today}</div>
+          <div style={{ color:GOLD, fontSize:12, letterSpacing:2, fontFamily:"monospace" }}>{today}</div>
           <div style={{ color:T.modSub.color, fontSize:12, marginTop:4 }}>3 задания обновляются каждый день</div>
         </div>
 
         {onReferenceLesson && refTask && (
-          <div onClick={() => onReferenceLesson(refTask.id)} style={{ ...T.modCard, marginBottom:12, gap:12, cursor:"pointer", border:"1px solid rgba(200,160,80,0.15)" }}>
+          <div onClick={() => onReferenceLesson(refTask.id)} {...onActivate(() => onReferenceLesson(refTask.id))} style={{ ...T.modCard, marginBottom:12, gap:12, cursor:"pointer", border:"1px solid rgba(200,160,80,0.15)" }}>
             <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C8A96E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
             </div>
@@ -474,7 +475,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
               <div style={{ ...T.modTitle, fontSize:15 }}>{refTask.title}</div>
               <div style={{ color:T.modSub.color, fontSize:12, marginTop:2 }}>Курс: Сервировка</div>
             </div>
-            <div style={{ color:"#C8A96E", fontSize:18, flexShrink:0 }}>›</div>
+            <div style={{ color:GOLD, fontSize:18, flexShrink:0 }}>›</div>
           </div>
         )}
 
@@ -488,11 +489,11 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
         ) : tasks.map((task, i) => {
           const isDone = task.type === "quiz" ? quizDone[task.id] : completed[task.id];
           return (
-            <div key={i} onClick={() => !isDone && onLesson(task, task.mod)}
+            <div key={i} onClick={() => !isDone && onLesson(task, task.mod)} {...onActivate(() => !isDone && onLesson(task, task.mod))}
               style={{ ...T.modCard, marginBottom:12, gap:12, opacity: isDone ? 0.6 : 1,
                 cursor: isDone ? "default" : "pointer",
                 border: isDone ? "1px solid rgba(93,187,138,0.3)" : "1px solid rgba(200,160,80,0.15)" }}>
-              <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{isDone ? UI_SVG.checkCircle("#5DBB8A", 26) : UI_SVG[taskTypeIcon[task.type]]("#C8A96E", 26)}</div>
+              <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{isDone ? UI_SVG.checkCircle(GREEN, 26) : UI_SVG[taskTypeIcon[task.type]](GOLD, 26)}</div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
                   <div style={{ color:"rgba(200,160,80,0.6)", fontSize:10, letterSpacing:2, fontFamily:"monospace" }}>ЗАДАНИЕ {i+1} · {taskTypeLabel[task.type]}</div>
@@ -500,7 +501,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
                 <div style={{ ...T.modTitle, fontSize:15 }}>{task.title}</div>
                 <div style={{ color:T.modSub.color, fontSize:12, marginTop:2 }}>{task.mod?.title}</div>
               </div>
-              {!isDone && <div style={{ color:"#C8A96E", fontSize:18, flexShrink:0 }}>›</div>}
+              {!isDone && <div style={{ color:GOLD, fontSize:18, flexShrink:0 }}>›</div>}
             </div>
           );
         })}
@@ -539,7 +540,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
   }, [player.name, player.surname]);
 
   const roleNames = { seasonal: "Новичок", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер" };
-  const roleColors = { seasonal: "#7C9E87", core: "#C8A96E", manager: "#8B7BAB", service_manager: "#5B8FA8" };
+  const roleColors = { seasonal: "#7C9E87", core: GOLD, manager: "#8B7BAB", service_manager: "#5B8FA8" };
 
   // Группируем прогресс по ролям — уроки + практики (без квизов)
   const byRole = {};
@@ -609,7 +610,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 80px" }}>
         {loading ? (
-          <div style={{ textAlign:"center", color: T.modSub?.color || "#7A6548", padding:"40px 0" }}>Загрузка...</div>
+          <div style={{ textAlign:"center", color: T.modSub?.color || BROWN, padding:"40px 0" }}>Загрузка...</div>
         ) : (
           <>
             {/* Общая сводка */}
@@ -621,9 +622,9 @@ export function PlayerDetailScreen({ player, T, onBack }) {
                 { icon:"diamond", value: uniqueScores.filter(s=>s.score===s.total).length, label:"На 100%" },
               ].map((s, i) => (
                 <div key={i} style={{ ...T.modCard, flexDirection:"column", alignItems:"center", padding:"12px", gap:4 }}>
-                  <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon]("#C8A96E", 22) : s.icon}</div>
-                  <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize:20, fontWeight:"bold" }}>{s.value}</div>
-                  <div style={{ color: T.modSub?.color || "#7A6548", fontSize:11, textAlign:"center" }}>{s.label}</div>
+                  <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon](GOLD, 22) : s.icon}</div>
+                  <div style={{ color: T.modTitle?.color || CREAM, fontSize:20, fontWeight:"bold" }}>{s.value}</div>
+                  <div style={{ color: T.modSub?.color || BROWN, fontSize:11, textAlign:"center" }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -638,17 +639,17 @@ export function PlayerDetailScreen({ player, T, onBack }) {
               const quizTotal = (MODULES[roleId] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz")).length;
               const total = lessonTotal + quizTotal;
               const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-              const color = roleColors[roleId] || "#C8A96E";
+              const color = roleColors[roleId] || GOLD;
               return (
                 <div key={roleId} style={{ ...T.modCard, flexDirection:"column", gap:8, marginBottom:8, padding:"12px 14px" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize:14, fontWeight:"bold" }}>{roleName}</div>
+                    <div style={{ color: T.modTitle?.color || CREAM, fontSize:14, fontWeight:"bold" }}>{roleName}</div>
                     <div style={{ color, fontSize:14, fontWeight:"bold" }}>{pct}%</div>
                   </div>
                   <div style={{ height:6, background:"rgba(255,255,255,0.08)", borderRadius:3 }}>
                     <div style={{ height:6, width:`${pct}%`, background:color, borderRadius:3, transition:"width 0.5s ease" }} />
                   </div>
-                  <div style={{ color: T.modSub?.color || "#7A6548", fontSize:12 }}>{count} из {total} уроков</div>
+                  <div style={{ color: T.modSub?.color || BROWN, fontSize:12 }}>{count} из {total} уроков</div>
                 </div>
               );
             })}
@@ -662,12 +663,12 @@ export function PlayerDetailScreen({ player, T, onBack }) {
                   return (
                     <div key={i} style={{ ...T.modCard, marginBottom:8, padding:"10px 14px", flexDirection:"column", gap:4 }}>
                       <div style={{ display:"flex", justifyContent:"space-between" }}>
-                        <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize:13, fontWeight:"bold", flex:1 }}>{s.role ? roleNames[s.role] || s.role : ""}</div>
-                        <div style={{ color: pct === 100 ? "#5DBB8A" : pct >= 70 ? "#C8A96E" : "#E07878", fontSize:14, fontWeight:"bold" }}>{pct}%</div>
+                        <div style={{ color: T.modTitle?.color || CREAM, fontSize:13, fontWeight:"bold", flex:1 }}>{s.role ? roleNames[s.role] || s.role : ""}</div>
+                        <div style={{ color: pct === 100 ? GREEN : pct >= 70 ? GOLD : RED, fontSize:14, fontWeight:"bold" }}>{pct}%</div>
                       </div>
-                      <div style={{ color: T.modSub?.color || "#7A6548", fontSize:11 }}>{s.score} из {s.total} верно · {new Date(s.updated_at).toLocaleDateString("ru-RU")}</div>
+                      <div style={{ color: T.modSub?.color || BROWN, fontSize:11 }}>{s.score} из {s.total} верно · {new Date(s.updated_at).toLocaleDateString("ru-RU")}</div>
                       <div style={{ height:3, background:"rgba(255,255,255,0.08)", borderRadius:2, marginTop:2 }}>
-                        <div style={{ height:3, width:`${pct}%`, background: pct === 100 ? "#5DBB8A" : pct >= 70 ? "#C8A96E" : "#E07878", borderRadius:2 }} />
+                        <div style={{ height:3, width:`${pct}%`, background: pct === 100 ? GREEN : pct >= 70 ? GOLD : RED, borderRadius:2 }} />
                       </div>
                     </div>
                   );
@@ -676,7 +677,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
             )}
 
             {uniqueLessonCount === 0 && uniqueScores.length === 0 && (
-              <div style={{ textAlign:"center", color: T.modSub?.color || "#7A6548", padding:"30px 0", fontSize:14 }}>
+              <div style={{ textAlign:"center", color: T.modSub?.color || BROWN, padding:"30px 0", fontSize:14 }}>
                 📭 Пока нет данных
               </div>
             )}
@@ -696,12 +697,12 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
           <div style={{ ...T.modTitle, fontSize:13 }}>{p.name} {p.surname}</div>
           <div style={{ color:T.modSub.color, fontSize:11 }}>{p.restaurant}</div>
         </div>
-        <div onClick={() => onViewPlayer && onViewPlayer(p)}
+        <div onClick={() => onViewPlayer && onViewPlayer(p)} {...onActivate(() => onViewPlayer && onViewPlayer(p))}
           style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
-            background:"rgba(200,169,110,0.12)", border:"1px solid rgba(200,169,110,0.3)", color:"#C8A96E" }}>
+            background:"rgba(200,169,110,0.12)", border:"1px solid rgba(200,169,110,0.3)", color:GOLD }}>
           📊
         </div>
-        <div onClick={() => setShowConfirm(s => !s)}
+        <div onClick={() => setShowConfirm(s => !s)} {...onActivate(() => setShowConfirm(s => !s))}
           style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
             background:"rgba(220,80,80,0.12)", border:"1px solid rgba(220,80,80,0.3)", color:"#e57373" }}>
           🗑 Сбросить
@@ -710,12 +711,12 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
       {showConfirm && (
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <div style={{ color:"#e57373", fontSize:12, flex:1 }}>Удалить все результаты?</div>
-          <div onClick={() => { onResetPlayer(p.name, p.surname); setShowConfirm(false); }}
+          <div onClick={() => { onResetPlayer(p.name, p.surname); setShowConfirm(false); }} {...onActivate(() => { onResetPlayer(p.name, p.surname); setShowConfirm(false); })}
             style={{ padding:"6px 14px", borderRadius:10, cursor:"pointer", fontSize:12,
               background:"rgba(220,80,80,0.25)", border:"1px solid rgba(220,80,80,0.5)", color:"#e57373", fontWeight:"bold" }}>
             Да
           </div>
-          <div onClick={() => setShowConfirm(false)}
+          <div onClick={() => setShowConfirm(false)} {...onActivate(() => setShowConfirm(false))}
             style={{ padding:"6px 14px", borderRadius:10, cursor:"pointer", fontSize:12,
               background:T.modCard.background, border:"1px solid rgba(255,255,255,0.08)", color:T.modSub.color }}>
             Нет
@@ -723,7 +724,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
         </div>
       )}
       {onUnlockQuiz && (
-        <div onClick={() => onUnlockQuiz(p.name, p.surname)}
+        <div onClick={() => onUnlockQuiz(p.name, p.surname)} {...onActivate(() => onUnlockQuiz(p.name, p.surname))}
           style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
             background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start" }}>
           🔓 Разблокировать тесты
@@ -736,7 +737,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
 export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:"#C8A96E", manager:"#8B7BAB", service_manager:"#7B8FAB" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, manager:"#8B7BAB", service_manager:"#7B8FAB" };
   const roleIcon  = { seasonal:"🌱", core:"⭐", manager:"🎯", service_manager:"🏛️" };
 
   const myScores = scores.filter(s => s.name === profile?.name && s.surname === profile?.surname);
@@ -760,8 +761,8 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
 
         {/* Профиль */}
         <div style={{ ...T.modCard, marginBottom:12, gap:12 }}>
-          <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:"bold", color:"#C8A96E", fontFamily:"Georgia, serif", flexShrink:0 }}>
-            {profile?.is_admin ? UI_SVG.crown("#C8A96E", 24) : `${profile?.name?.[0]}${(profile?.surname||"")[0]||""}`.toUpperCase()}
+          <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:"bold", color:GOLD, fontFamily:"Georgia, serif", flexShrink:0 }}>
+            {profile?.is_admin ? UI_SVG.crown(GOLD, 24) : `${profile?.name?.[0]}${(profile?.surname||"")[0]||""}`.toUpperCase()}
           </div>
           <div>
             <div style={{ ...T.modTitle }}>{`${profile?.name || ""} ${profile?.surname || ""}`}</div>
@@ -772,12 +773,12 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
         {/* Ключевые цифры */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
           {[
-            { label:"Средний балл", value:`${avgScore}%`, icon:"target", color:"#C8A96E" },
+            { label:"Средний балл", value:`${avgScore}%`, icon:"target", color:GOLD },
             { label:"Тестов пройдено", value:totalTests, icon:"quiz", color:"#7C9E87" },
             { label:"На 100%", value:perfect, icon:"diamond", color:"#8B7BAB" },
             { label:"Звёзды практики", value:`⭐ ${myStars}`, icon:"trophy", color:"#E8A020" },
             { label:"Уроков пройдено", value:completedLessons, icon:"book", color:"#7B8FAB" },
-            { label:"Ролей завершено", value:`${rolesCompleted}/4`, icon:"gradcap", color:"#C8A96E" },
+            { label:"Ролей завершено", value:`${rolesCompleted}/4`, icon:"gradcap", color:GOLD },
           ].map((s, i) => (
             <div key={i} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon](s.color, 22) : s.icon}</div>
@@ -829,11 +830,11 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
               <div key={i} style={{ ...T.lessCard, marginBottom:8, flexDirection:"column", gap:4 }}>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
                   <div style={{ ...T.lessTitle, fontSize:13, flex:1, marginRight:8 }}>{s.quizTitle}</div>
-                  <div style={{ color: s.pct>=80?"#81C784":s.pct>=50?"#C8A96E":"#e57373", fontWeight:"bold" }}>{s.pct}%</div>
+                  <div style={{ color: s.pct>=80?"#81C784":s.pct>=50?GOLD:"#e57373", fontWeight:"bold" }}>{s.pct}%</div>
                 </div>
                 <div style={{ color:T.modSub.color, fontSize:11 }}>{roleLabel[s.role]} · {s.date}</div>
                 <div style={{ height:3, background:T.progBar.background, borderRadius:2, overflow:"hidden" }}>
-                  <div style={{ width:`${s.pct}%`, height:"100%", background: s.pct>=80?"#81C784":s.pct>=50?"#C8A96E":"#e57373" }} />
+                  <div style={{ width:`${s.pct}%`, height:"100%", background: s.pct>=80?"#81C784":s.pct>=50?GOLD:"#e57373" }} />
                 </div>
               </div>
             ))}
@@ -941,10 +942,10 @@ export function ProfileScreen({ onDone, T }) {
             <img src={LOGO_SRC_DARK} alt="Service Academy" style={{ width:130, height:104, objectFit:"contain", display:"block", filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
           </div>
 
-          <div style={{ color:"#F0E8D8", fontSize:24, fontWeight:"bold", marginBottom:8, letterSpacing:0.3 }}>
+          <div style={{ color:CREAM, fontSize:24, fontWeight:"bold", marginBottom:8, letterSpacing:0.3 }}>
             Добро пожаловать
           </div>
-          <div style={{ color:"#756A58", fontSize:13, lineHeight:1.7 }}>
+          <div style={{ color:MUTED_2, fontSize:13, lineHeight:1.7 }}>
             Заполните данные — результаты тестов<br/>попадут в общий рейтинг команды
           </div>
         </div>
@@ -985,12 +986,16 @@ export function ProfileScreen({ onDone, T }) {
                   const next = !showPositionSheet;
                   setShowPositionSheet(next);
                   if (next) setTimeout(() => positionRef.current?.scrollIntoView({ behavior:"smooth", block:"start" }), 50);
-                }}
+                }} {...onActivate(() => {
+                  const next = !showPositionSheet;
+                  setShowPositionSheet(next);
+                  if (next) setTimeout(() => positionRef.current?.scrollIntoView({ behavior:"smooth", block:"start" }), 50);
+                })}
                 style={{ ...PS.fieldBase, ...(position ? PS.fieldFocus : PS.fieldNormal),
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                   cursor:"pointer", userSelect:"none" }}>
-                <span style={{ color: position ? "#F0E8D8" : "#9A8060", fontSize:15 }}>
-                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{POS_SVG[position] && POS_SVG[position]("#C8A96E", 16)}{({waiter:"Официант", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
+                <span style={{ color: position ? CREAM : "#9A8060", fontSize:15 }}>
+                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{POS_SVG[position] && POS_SVG[position](GOLD, 16)}{({waiter:"Официант", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
                 </span>
                 <span style={{ color:"#C8A870", fontSize:14, transition:"transform 0.2s", display:"inline-block", transform: showPositionSheet ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
               </div>
@@ -1001,18 +1006,18 @@ export function ProfileScreen({ onDone, T }) {
                     { id:"manager", icon:"🎯", label:"Менеджер",            sub:"Управление залом и командой" },
                     { id:"senior",  icon:"🏛️", label:"Руководящий состав", sub:"Управляющий, Директор" },
                   ].map(pos => (
-                    <div key={pos.id} onClick={() => { setPosition(pos.id); setShowPositionSheet(false); }}
+                    <div key={pos.id} onClick={() => { setPosition(pos.id); setShowPositionSheet(false); }} {...onActivate(() => { setPosition(pos.id); setShowPositionSheet(false); })}
                       style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", borderRadius:13, cursor:"pointer",
                         background: position === pos.id ? "linear-gradient(155deg, rgba(58,42,16,0.8), rgba(40,28,8,0.7))" : "linear-gradient(155deg, rgba(40,28,10,0.5), rgba(28,18,6,0.4))",
                         border: position === pos.id ? "1px solid rgba(200,160,80,0.45)" : "1px solid rgba(150,112,42,0.20)",
                         borderTop: position === pos.id ? "1px solid rgba(220,175,75,0.55)" : "1px solid rgba(180,140,50,0.15)",
                         boxShadow: position === pos.id ? "0 4px 14px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.15) inset" : "0 2px 8px rgba(0,0,0,0.25)" }}>
-                      <div style={{ display:"flex", alignItems:"center" }}>{POS_SVG[pos.id] ? POS_SVG[pos.id](position === pos.id ? "#C8A96E" : "#9A8060", 22) : pos.icon}</div>
+                      <div style={{ display:"flex", alignItems:"center" }}>{POS_SVG[pos.id] ? POS_SVG[pos.id](position === pos.id ? GOLD : "#9A8060", 22) : pos.icon}</div>
                       <div style={{ flex:1 }}>
-                        <div style={{ color: position === pos.id ? "#F0E8D8" : "#A89880", fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{pos.label}</div>
-                        <div style={{ color:"#756A58", fontSize:11, marginTop:1 }}>{pos.sub}</div>
+                        <div style={{ color: position === pos.id ? CREAM : "#A89880", fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{pos.label}</div>
+                        <div style={{ color:MUTED_2, fontSize:11, marginTop:1 }}>{pos.sub}</div>
                       </div>
-                      {position === pos.id && <div style={{ color:"#C8A96E", fontSize:16 }}>✓</div>}
+                      {position === pos.id && <div style={{ color:GOLD, fontSize:16 }}>✓</div>}
                     </div>
                   ))}
                 </div>
@@ -1038,7 +1043,7 @@ export function ProfileScreen({ onDone, T }) {
               width:"100%", padding:"16px", borderRadius:18,
               border: isValid ? "1px solid rgba(200,160,80,0.3)" : "1px solid rgba(255,255,255,0.05)",
               background: done ? "linear-gradient(155deg, rgba(60,140,80,0.5), rgba(40,100,60,0.4))" : isValid ? "linear-gradient(155deg, #3A2A10 0%, #2A1E0A 100%)" : "rgba(255,255,255,0.03)",
-              color: done ? "#5DBB8A" : isValid ? "#F0E8D8" : "#3C3428",
+              color: done ? GREEN : isValid ? CREAM : "#3C3428",
               fontSize:15, fontWeight:"bold", cursor: isValid ? "pointer" : "default",
               fontFamily:"Georgia, serif", letterSpacing:0.3, transition:"all 0.3s ease",
               boxShadow: isValid && !done ? "0 6px 22px rgba(0,0,0,0.4), 0 2px 0 rgba(210,170,70,0.22) inset, 0 -2px 4px rgba(0,0,0,0.38) inset" : "none",
@@ -1108,11 +1113,11 @@ export function TeamScreen({ T, profile, a11y }) {
   };
 
   const statusOf = (e) => {
-    if (e.status === "disabled") return { color:"#E07878", label:"Отключён" };
+    if (e.status === "disabled") return { color:RED, label:"Отключён" };
     if (e.has_pending_code && !e.has_session) return { color:"#D9C75B", label:"Ждёт код" };
     if (!e.last_seen_at || (Date.now() - new Date(e.last_seen_at).getTime()) > 7*86400000)
       return { color:"#9A8C74", label:"Неактивен" };
-    return { color:"#5DBB8A", label:"Активен" };
+    return { color:GREEN, label:"Активен" };
   };
 
   const shareCode = async (code, emp) => {
@@ -1217,7 +1222,7 @@ export function TeamScreen({ T, profile, a11y }) {
     width:"100%", padding:"13px 14px", borderRadius:12, fontSize:15,
     fontFamily:"Georgia, serif",
     background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
-    color: a11y ? "#3A2E1C" : "#F0E8D8",
+    color: a11y ? "#3A2E1C" : CREAM,
     border: a11y ? "1px solid rgba(160,120,60,0.45)" : "1px solid rgba(200,160,80,0.35)",
     outline:"none", boxSizing:"border-box"
   };
@@ -1239,7 +1244,7 @@ export function TeamScreen({ T, profile, a11y }) {
     padding:"13px", borderRadius:14, width:"100%", cursor:"pointer",
     border: a11y ? "1px solid rgba(139,106,48,0.55)" : "1px solid rgba(200,160,80,0.4)",
     background:"transparent",
-    color: a11y ? "#8B6A30" : "#C8A96E", fontSize:14, fontFamily:"Georgia, serif"
+    color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif"
   };
 
   // ── Сводка ──
@@ -1270,21 +1275,21 @@ export function TeamScreen({ T, profile, a11y }) {
     return (
       <div style={T.screen} className="sa-screen">
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"30px 24px 100px" }}>
-          <div style={{ marginBottom:14 }}>{UI_SVG.checkCircle("#5DBB8A", 40)}</div>
+          <div style={{ marginBottom:14 }}>{UI_SVG.checkCircle(GREEN, 40)}</div>
           <div style={{ color:T.modTitle.color, fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", textAlign:"center" }}>
             {issued.emp.name} {issued.emp.surname}
           </div>
           <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:4, marginBottom:24 }}>{issued.emp.restaurant}</div>
 
           <div style={{ color:"#9A8C74", fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:10 }}>КОД ДОСТУПА</div>
-          <div onClick={() => copyCode(issued.code)} style={{
-            fontSize:34, fontWeight:"bold", fontFamily:"Georgia, serif", letterSpacing:5, color: a11y ? "#4A3A20" : "#F0E8D8",
+          <div onClick={() => copyCode(issued.code)} {...onActivate(() => copyCode(issued.code))} style={{
+            fontSize:34, fontWeight:"bold", fontFamily:"Georgia, serif", letterSpacing:5, color: a11y ? "#4A3A20" : CREAM,
             padding:"18px 28px", borderRadius:18, cursor:"pointer",
             background:"rgba(200,169,110,0.12)", border:"1.5px solid rgba(200,160,80,0.5)",
             boxShadow:"0 6px 24px rgba(200,160,80,0.18)" }}>
             {issued.code}
           </div>
-          <div style={{ color: copied ? "#5DBB8A" : "#756A58", fontSize:11.5, marginTop:10, transition:"color 0.3s" }}>
+          <div style={{ color: copied ? GREEN : MUTED_2, fontSize:11.5, marginTop:10, transition:"color 0.3s" }}>
             {copied ? "✓ Скопировано" : "Нажми на код, чтобы скопировать"}
           </div>
 
@@ -1325,7 +1330,7 @@ export function TeamScreen({ T, profile, a11y }) {
             {RESTAURANTS.map(r => (
               <div key={r} className={"sa-btn" + (form.restaurant === r ? " sa-chip-on" : "")}
                 style={chip(form.restaurant === r)}
-                onClick={() => { vibrate("light"); setForm({ ...form, restaurant:r }); }}>{r}</div>
+                onClick={() => { vibrate("light"); setForm({ ...form, restaurant:r }); }} {...onActivate(() => { vibrate("light"); setForm({ ...form, restaurant:r }); })}>{r}</div>
             ))}
           </div>
 
@@ -1334,11 +1339,11 @@ export function TeamScreen({ T, profile, a11y }) {
             {Object.entries(POS_LABELS).map(([id, label]) => (
               <div key={id} className={"sa-btn" + (form.position === id ? " sa-chip-on" : "")}
                 style={chip(form.position === id)}
-                onClick={() => { vibrate("light"); setForm({ ...form, position:id }); }}>{label}</div>
+                onClick={() => { vibrate("light"); setForm({ ...form, position:id }); }} {...onActivate(() => { vibrate("light"); setForm({ ...form, position:id }); })}>{label}</div>
             ))}
           </div>
 
-          {actionError && <div className="sa-fast" style={{ color:"#E07878", fontSize:13, marginTop:16 }}>{actionError}</div>}
+          {actionError && <div className="sa-fast" style={{ color:RED, fontSize:13, marginTop:16 }}>{actionError}</div>}
 
           <button className="sa-btn" style={{ ...goldBtn, marginTop:24, opacity: form.name.trim().length < 2 ? 0.5 : 1 }}
             disabled={busy} onClick={submitAdd}>
@@ -1371,7 +1376,7 @@ export function TeamScreen({ T, profile, a11y }) {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color:T.modTitle.color, fontSize:16.5, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
                 {selected.name} {selected.surname}
-                {isSelf && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:"#C8A96E", border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
+                {isSelf && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
               </div>
               <div style={{ color:"#C8A870", fontSize:12.5, marginTop:3 }}>{selected.restaurant} · {POS_LABELS[selected.position] || selected.position}</div>
             </div>
@@ -1395,7 +1400,7 @@ export function TeamScreen({ T, profile, a11y }) {
             )}
           </div>
 
-          {actionError && <div className="sa-fast" style={{ color:"#E07878", fontSize:13, marginBottom:14 }}>{actionError}</div>}
+          {actionError && <div className="sa-fast" style={{ color:RED, fontSize:13, marginBottom:14 }}>{actionError}</div>}
 
           {isSelf ? (
             <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", padding:"0 10px" }}>
@@ -1422,7 +1427,7 @@ export function TeamScreen({ T, profile, a11y }) {
                 <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
                 <button className="sa-btn" disabled={busy} onClick={doToggle}
                   style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
-                    background: selected.status === "disabled" ? "#5DBB8A" : "#E07878", color:"#fff" }}>
+                    background: selected.status === "disabled" ? GREEN : RED, color:"#fff" }}>
                   {busy ? "..." : selected.status === "disabled" ? "Включить" : "Отключить"}
                 </button>
               </div>
@@ -1435,7 +1440,7 @@ export function TeamScreen({ T, profile, a11y }) {
               <div style={{ display:"flex", gap:10 }}>
                 <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
                 <button className="sa-btn" disabled={busy} onClick={doDelete}
-                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:"#E07878", color:"#fff" }}>
+                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:RED, color:"#fff" }}>
                   {busy ? "..." : "Удалить"}
                 </button>
               </div>
@@ -1448,11 +1453,11 @@ export function TeamScreen({ T, profile, a11y }) {
               <button className="sa-btn" onClick={() => setConfirm("toggle")}
                 style={{ ...ghostBtn,
                   border: selected.status === "disabled" ? "1px solid rgba(93,187,138,0.5)" : "1px solid rgba(224,120,120,0.45)",
-                  color: selected.status === "disabled" ? "#5DBB8A" : "#E07878" }}>
+                  color: selected.status === "disabled" ? GREEN : RED }}>
                 {selected.status === "disabled" ? "Включить доступ" : "Отключить доступ"}
               </button>
               <button className="sa-btn" onClick={() => setConfirm("delete")}
-                style={{ ...ghostBtn, border:"1px solid rgba(224,120,120,0.55)", color:"#E07878", marginTop:2 }}>
+                style={{ ...ghostBtn, border:"1px solid rgba(224,120,120,0.55)", color:RED, marginTop:2 }}>
                 Удалить из команды
               </button>
             </div>
@@ -1468,7 +1473,7 @@ export function TeamScreen({ T, profile, a11y }) {
       <div style={{ padding:"18px 18px 110px" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
           <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
-            {NAV_ICONS.team("#C8A96E")}<span>Команда</span>
+            {NAV_ICONS.team(GOLD)}<span>Команда</span>
           </div>
           <button className="sa-btn" onClick={() => { setActionError(null); setView("add"); }}
             style={{ padding:"9px 16px", borderRadius:20, border:"none", fontSize:13.5, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
@@ -1480,7 +1485,7 @@ export function TeamScreen({ T, profile, a11y }) {
         {summary && (
           <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
             {[
-              { n: summary.act,   label:"активных", c:"#5DBB8A" },
+              { n: summary.act,   label:"активных", c:GREEN },
               { n: summary.wait,  label:"ждут код", c:"#D9C75B" },
               { n: summary.sleep, label:"спят 7д+", c:"#9A8C74" },
             ].map((s, i) => (
@@ -1500,7 +1505,7 @@ export function TeamScreen({ T, profile, a11y }) {
 
         {loadError && (
           <div style={{ textAlign:"center", padding:"20px 0" }}>
-            <div style={{ color:"#E07878", fontSize:13, marginBottom:12 }}>Не получилось загрузить список.</div>
+            <div style={{ color:RED, fontSize:13, marginBottom:12 }}>Не получилось загрузить список.</div>
             <button className="sa-btn" style={{ ...ghostBtn, width:"auto", padding:"10px 24px" }} onClick={() => { setList(null); loadList(); }}>Повторить</button>
           </div>
         )}
@@ -1521,13 +1526,13 @@ export function TeamScreen({ T, profile, a11y }) {
               {emps.map(e => {
                 const st = statusOf(e);
                 return (
-                  <div key={e.id} className="sa-btn" onClick={() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); }}
+                  <div key={e.id} className="sa-btn" onClick={() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); }} {...onActivate(() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); })}
                     style={{ ...T.modCard, gap:12, cursor:"pointer", padding:"13px 14px" }}>
                     <span style={{ width:9, height:9, borderRadius:5, flexShrink:0, background:st.color, boxShadow:`0 0 8px ${st.color}55` }} />
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color:T.modTitle.color, fontSize:14.5, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {e.name} {e.surname}
-                        {e.is_admin && <span style={{ marginLeft:6, fontSize:8, letterSpacing:1, color:"#C8A96E", border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+                        {e.is_admin && <span style={{ marginLeft:6, fontSize:8, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
                       </div>
                       <div style={{ color:T.modSub.color, fontSize:11.5, marginTop:2 }}>
                         {POS_LABELS[e.position] || e.position} · {ago(e.last_seen_at)}
@@ -1589,7 +1594,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
     <div style={{ ...T.screen, justifyContent:"center", alignItems:"center", padding:"32px 24px",
       background:"linear-gradient(160deg, #241A0C 0%, #14100A 55%, #1C1509 100%)", minHeight:"100vh" }} className="sa-screen">
       <img src={LOGO_SRC_DARK} alt="Service Academy" style={{ width:180, marginBottom:8, filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
-      <div style={{ color:"#F0E8D8", fontSize:21, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:8, textAlign:"center" }}>
+      <div style={{ color:CREAM, fontSize:21, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:8, textAlign:"center" }}>
         Вход по приглашению
       </div>
       <div style={{ color:"#9A8C74", fontSize:13, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:26 }}>
@@ -1606,12 +1611,12 @@ export function CodeLoginScreen({ T, onSuccess }) {
         inputMode="text"
         style={{ width:"100%", maxWidth:280, padding:"16px 18px", borderRadius:16, textAlign:"center",
           fontSize:22, letterSpacing:4, fontFamily:"Georgia, serif", fontWeight:"bold",
-          background:"rgba(20,14,6,0.6)", color:"#F0E8D8", outline:"none",
+          background:"rgba(20,14,6,0.6)", color:CREAM, outline:"none",
           border: error ? "1.5px solid #E07878" : "1.5px solid rgba(200,160,80,0.45)",
           boxShadow:"0 4px 18px rgba(0,0,0,0.35) inset" }}
       />
       {error && (
-        <div className="sa-fast" style={{ color:"#E07878", fontSize:13, lineHeight:1.6, textAlign:"center", maxWidth:300, marginTop:12 }}>
+        <div className="sa-fast" style={{ color:RED, fontSize:13, lineHeight:1.6, textAlign:"center", maxWidth:300, marginTop:12 }}>
           {error}
         </div>
       )}
@@ -1623,7 +1628,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
           boxShadow:"0 4px 18px rgba(200,160,80,0.3)" }}>
         {busy ? "Проверяем..." : "Войти"}
       </button>
-      <div style={{ color:"#756A58", fontSize:11, marginTop:22, textAlign:"center", lineHeight:1.7 }}>
+      <div style={{ color:MUTED_2, fontSize:11, marginTop:22, textAlign:"center", lineHeight:1.7 }}>
         Нет кода? Спроси у администратора —<br/>он создаст тебя в системе за минуту.
       </div>
     </div>
@@ -1649,7 +1654,7 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ color:T.modTitle.color, fontSize:17, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
               {profile?.name} {profile?.surname}
-              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:"#C8A96E", border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
             </div>
             <div style={{ color:"#C8A870", fontSize:13, marginTop:4, display:"flex", alignItems:"center", gap:5 }}>
               {UI_SVG.building("#C8A870", 12)}<span>{profile?.restaurant}</span>
@@ -1664,7 +1669,7 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
 
         {!confirmOut ? (
           <button className="sa-btn" onClick={() => setConfirmOut(true)}
-            style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:"#E07878", fontSize:15, fontFamily:"Georgia, serif", cursor:"pointer" }}>
+            style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:RED, fontSize:15, fontFamily:"Georgia, serif", cursor:"pointer" }}>
             Выйти с этого устройства
           </button>
         ) : (
@@ -1674,11 +1679,11 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button className="sa-btn" onClick={() => setConfirmOut(false)}
-                style={{ flex:1, padding:"13px", borderRadius:14, border:"1px solid rgba(200,160,80,0.4)", background:"transparent", color:"#C8A96E", fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
+                style={{ flex:1, padding:"13px", borderRadius:14, border:"1px solid rgba(200,160,80,0.4)", background:"transparent", color:GOLD, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
                 Остаться
               </button>
               <button className="sa-btn" onClick={onLogout}
-                style={{ flex:1, padding:"13px", borderRadius:14, border:"none", background:"#E07878", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer" }}>
+                style={{ flex:1, padding:"13px", borderRadius:14, border:"none", background:RED, color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer" }}>
                 Выйти
               </button>
             </div>
@@ -1721,7 +1726,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color: T.modTitle.color, fontSize:15, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {`${profile.name} ${profile.surname}`}{isAdmin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:"#C8A96E", border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+                {`${profile.name} ${profile.surname}`}{isAdmin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
               </div>
               <div style={{ color:"#C8A870", fontSize:12, marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                 <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:5 }}>{UI_SVG.building("#C8A870", 12)}</span>{profile.restaurant}{profile.position ? ` · ${{waiter:"Официант", manager:"Менеджер", senior:"Руководящий состав"}[profile.position] || ""}` : ""}
@@ -1729,7 +1734,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             </div>
             <div style={{ display:"flex", gap:4, flexShrink:0 }}>
               {onProfile && (
-                <div onClick={onProfile} style={{ display:"flex", alignItems:"center", cursor:"pointer", padding:"4px 6px" }}>{UI_SVG.pencil(T.modSub.color, 17)}</div>
+                <div onClick={onProfile} {...onActivate(onProfile)} style={{ display:"flex", alignItems:"center", cursor:"pointer", padding:"4px 6px" }}>{UI_SVG.pencil(T.modSub.color, 17)}</div>
               )}
             </div>
           </div>
@@ -1756,7 +1761,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           return (
             <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:"0 14px 14px" }}>
               {tiles.map(t => (
-                <div key={t.key} onClick={t.onClick} style={{ flex:1, minWidth:0, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:16, padding:"12px 4px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:1, minWidth:0, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:16, padding:"12px 4px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
                   <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
                   <div style={{ fontSize:11, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.15, minHeight:25, display:"flex", alignItems:"center", justifyContent:"center" }}>{t.label}</div>
                 </div>
@@ -1766,7 +1771,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
         })()}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 20px 10px" }}>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D4A85A55, transparent)" }} />
-          <span style={{ color:"#D4A85A", fontSize:14 }}>✦</span>
+          <span style={{ color:GOLD_SOFT, fontSize:14 }}>✦</span>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to left, transparent, #D4A85A55, transparent)" }} />
         </div>
 
@@ -1793,7 +1798,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                 cursor: isUnlocked ? "pointer" : "default",
                 position: "relative", overflow:"hidden",
               }}
-              onClick={() => isUnlocked && onSelect(r.id)}
+              onClick={() => isUnlocked && onSelect(r.id)} {...onActivate(() => isUnlocked && onSelect(r.id))}
             >
               {isUnlocked && <div style={{ ...T.roleAccent, background: r.color }} />}
               <div style={{ ...T.roleIcon, background: isUnlocked ? r.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: isUnlocked ? `0 2px 8px ${r.color}44` : "none", filter: isUnlocked ? "none" : "grayscale(1)" }}>
@@ -1923,10 +1928,10 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
-        <div onClick={onBack} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:19, fontWeight:"bold" }}>Чек-листы смены</div>
-        {canEdit && !edit && <div onClick={startEdit} style={{ cursor:"pointer", color:C.gold, fontSize:13, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:20, padding:"5px 12px" }}>✎ Править</div>}
-        {edit && <div onClick={()=>setEdit(false)} style={{ cursor:"pointer", color:C.muted, fontSize:13, padding:"5px 10px" }}>Отмена</div>}
+        {canEdit && !edit && <div onClick={startEdit} {...onActivate(startEdit)} style={{ cursor:"pointer", color:C.gold, fontSize:13, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:20, padding:"5px 12px" }}>✎ Править</div>}
+        {edit && <div onClick={()=>setEdit(false)} {...onActivate(()=>setEdit(false))} style={{ cursor:"pointer", color:C.muted, fontSize:13, padding:"5px 10px" }}>Отмена</div>}
       </div>
 
       <div style={{ padding:"0 14px", marginBottom:14 }}>
@@ -1963,7 +1968,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
               <span style={{ color:C.muted, fontSize:12, fontWeight:"bold" }}>{doneCount}/{items.length}</span>
             </div>
             {items.map(it=>{ const on=checked.includes(it.id); return (
-              <div key={it.id} onClick={()=>toggle(it.id)} style={{ ...itemCard, padding:"13px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+              <div key={it.id} onClick={()=>toggle(it.id)} {...onActivate(()=>toggle(it.id))} style={{ ...itemCard, padding:"13px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
                 <div style={{ width:23, height:23, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:on?"radial-gradient(circle at 35% 30%, #4FB484, #2A6B45 72%)":"transparent", border:on?"none":`2px solid ${trackBg}`, color:"#fff", fontSize:13, fontWeight:"bold" }}>{on?"✓":""}</div>
                 <span style={{ flex:1, color:on?C.muted:C.text, fontSize:14.5, lineHeight:1.4, textDecoration:on?"line-through":"none" }}>{it.text}</span>
               </div>
@@ -2040,7 +2045,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
-        <div onClick={onBack} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:19, fontWeight:"bold" }}>{isNew && view==="me" ? "Первая неделя" : "Новички на онбординге"}</div>
       </div>
 
@@ -2070,7 +2075,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
               <div key={ph.day} style={{ marginBottom:14 }}>
                 <div style={{ color:C.gold, fontSize:10.5, letterSpacing:2, fontWeight:"bold", marginBottom:8, paddingLeft:2 }}>{ph.day}</div>
                 {ph.steps.map((s)=>{ const on=checked.includes(s.id); return (
-                  <div key={s.id} onClick={()=>toggle(s.id)} style={{ ...card, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, marginBottom:8, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+                  <div key={s.id} onClick={()=>toggle(s.id)} {...onActivate(()=>toggle(s.id))} style={{ ...card, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, marginBottom:8, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
                     <div style={{ width:23, height:23, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:on?"radial-gradient(circle at 35% 30%, #4FB484, #2A6B45 72%)":"transparent", border:on?"none":`2px solid ${trackBg}`, color:"#fff", fontSize:13, fontWeight:"bold" }}>{on?"✓":""}</div>
                     <span style={{ flex:1, color:on?C.muted:C.text, fontSize:14, lineHeight:1.4, textDecoration:on?"line-through":"none" }}>{s.text}</span>
                   </div>
@@ -2142,7 +2147,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 4px" }}>
-        <div onClick={onBack} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:26, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:19, fontWeight:"bold" }}>Аналитика</div>
       </div>
       <div style={{ padding:"0 16px 10px", color:C.muted, fontSize:12 }}>Охват: {scopeLabel}</div>
@@ -2203,10 +2208,10 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
 
 export function ContentEditorScreen({ T, a11y, onBack }) {
   const dark = !a11y;
-  const gold = dark ? "#C8A96E" : "#8B6A30";
-  const green = dark ? "#5DBB8A" : "#2A6B45";
-  const red = dark ? "#E07878" : "#8B3020";
-  const txt = dark ? "#F0E8D8" : "#2A1F0E";
+  const gold = dark ? GOLD : "#8B6A30";
+  const green = dark ? GREEN : GREEN_DARK;
+  const red = dark ? RED : RED_DARK;
+  const txt = dark ? CREAM : INK;
   const brd = dark ? "rgba(150,112,42,0.45)" : "rgba(180,145,70,0.35)";
   const SERIF = "Georgia, 'Times New Roman', serif";
   const ROLES = [{ id: "seasonal", label: "Новичок" }, { id: "core", label: "Ядро" }, { id: "manager", label: "Менеджер" }, { id: "service_manager", label: "Сервис-менеджер" }];
@@ -2374,7 +2379,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
 }
 
 export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack }) {
-  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const gold = a11y ? "#8B6A30" : GOLD;
   const [idx, setIdx] = React.useState(0);
   const [pick, setPick] = React.useState(null);
   const bank = mistakeBank;
@@ -2430,7 +2435,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack })
             else if (i === pick) st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878" };
             else st = { ...st, opacity: 0.5 };
           }
-          return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)}>{opt}</div>;
+          return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
         })}
         {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
         {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 14 }} onClick={next}>{pick === q.correct ? "Верно — убрать ✓" : "Дальше →"}</button>}
@@ -2460,11 +2465,11 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
       </div>
       <StreakCard streak={streak} a11y={a11y} />
       {mistakeBank.length > 0 && onMistakes && (() => {
-        const _g = a11y ? "#8B6A30" : "#C8A96E";
+        const _g = a11y ? "#8B6A30" : GOLD;
         const _n = mistakeBank.length;
         const _w = _n === 1 ? "вопрос" : (_n % 10 >= 2 && _n % 10 <= 4 && (_n % 100 < 10 || _n % 100 >= 20)) ? "вопроса" : "вопросов";
         return (
-          <div onClick={onMistakes} style={{ ...T.modCard, margin:"0 14px 12px" }}>
+          <div onClick={onMistakes} {...onActivate(onMistakes)} style={{ ...T.modCard, margin:"0 14px 12px" }}>
             <div style={{ ...T.modBar, background:_g }} />
             <div style={T.modIcon}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={_g} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
             <div style={{ flex:1, minWidth:0 }}>
@@ -2486,7 +2491,7 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
           const total = m.lessons.filter(l => l.type !== "result").length;
           const pct = total > 0 ? Math.round((done / total) * 100) : 0;
           return (
-            <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => onModule(m)}>
+            <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => onModule(m)} {...onActivate(() => onModule(m))}>
               <div style={{ ...T.modBar, background:m.color }} />
               <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{MOD_SVG[m.icon] ? MOD_SVG[m.icon](m.color, 28) : m.icon}</div>
               <div style={T.modInfo}>
@@ -2520,19 +2525,19 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
         {mod.lessons.map((l,i) => {
           const done = l.type === "quiz" ? quizDone[l.id] : completed[l.id];
           const typeMap = { lesson:"Урок", quiz:"Тест", practice:"Практика" };
-          const typeColor = { lesson:"#7C9E87", quiz:"#C8A96E", practice:"#8B7BAB" };
+          const typeColor = { lesson:"#7C9E87", quiz:GOLD, practice:"#8B7BAB" };
           return (
-            <div key={l.id} className="sa-card sa-glass" style={{ ...T.lessCard, opacity: 1 }} onClick={() => onLesson(l)}>
-              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? "#C8A96E" : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
-                {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz("#C8A96E", 15) : i+1}
+            <div key={l.id} className="sa-card sa-glass" style={{ ...T.lessCard, opacity: 1 }} onClick={() => onLesson(l)} {...onActivate(() => onLesson(l))}>
+              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
+                {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz(GOLD, 15) : i+1}
               </div>
               <div style={{ ...T.lessInfo, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ ...T.lessTitle, marginBottom:0, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? "#C8A96E" : T.lessTitle.color }}>
+                <div style={{ ...T.lessTitle, marginBottom:0, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : T.lessTitle.color }}>
                   {l.title}
                 </div>
                 {l.type === "lesson" && <div style={{ fontSize:10, letterSpacing:1, fontFamily:"monospace", color:typeColor[l.type], marginTop:2 }}>{typeMap[l.type]}</div>}
               </div>
-              <div style={T.lessArrow}>{l.type==="quiz" && quizDone[l.id] ? UI_SVG.trophy("#C8A96E", 16) : l.type==="quiz" && completed[l.id] ? "✓" : "›"}</div>
+              <div style={T.lessArrow}>{l.type==="quiz" && quizDone[l.id] ? UI_SVG.trophy(GOLD, 16) : l.type==="quiz" && completed[l.id] ? "✓" : "›"}</div>
             </div>
           );
         })}
@@ -2638,15 +2643,15 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div style={{ position:"relative", zIndex:1 }}>
           {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
-            <div style={{ background: T.modCard?.background || "linear-gradient(155deg, #382810 0%, #281C08 100%)", border:`1px solid ${color||"#C8A96E"}44`, borderTop:`1px solid ${color||"#C8A96E"}66`, borderRadius:18, padding:"14px 16px", marginBottom:18, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||"#C8A96E"}18 inset` }}>
+            <div style={{ background: T.modCard?.background || "linear-gradient(155deg, #382810 0%, #281C08 100%)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:18, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
                 <div style={{ fontSize:28 }}>💬</div>
                 <div style={{ flex:1 }}>
-                  <div style={{ color: color || "#C8A96E", fontSize: T.para?.fontSize || 15, fontWeight:"bold", fontFamily:"Georgia, serif" }}>В этом уроке есть живой диалог</div>
+                  <div style={{ color: color || GOLD, fontSize: T.para?.fontSize || 15, fontWeight:"bold", fontFamily:"Georgia, serif" }}>В этом уроке есть живой диалог</div>
                 </div>
               </div>
-              <div style={{ color: T.modSub?.color || "#7A6548", fontSize: T.modSub?.fontSize || 13, lineHeight:1.6, fontFamily:"Georgia, serif" }}>
-                Нажми на <span style={{ color: color||"#C8A96E", borderBottom:`1.5px dotted ${color||"#C8A96E"}`, fontWeight:"bold" }}>выделенное слово</span> в тексте — и отработай навык в живом диалоге с гостем
+              <div style={{ color: T.modSub?.color || BROWN, fontSize: T.modSub?.fontSize || 13, lineHeight:1.6, fontFamily:"Georgia, serif" }}>
+                Нажми на <span style={{ color: color||GOLD, borderBottom:`1.5px dotted ${color||GOLD}`, fontWeight:"bold" }}>выделенное слово</span> в тексте — и отработай навык в живом диалоге с гостем
               </div>
             </div>
           )}
@@ -2676,15 +2681,15 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 <span style={{ flex:1 }}>{highlightTerms(line.replace(MARKER_RE, "").replace(/\*\*/g, ""))}</span>
               </div>
             );
-            if (line.startsWith("☑")) return markerRow(T.check, UI_SVG.checkSquare("#C8A96E", 14));
-            if (line.startsWith("🚫")) return markerRow(T.forbidden, UI_SVG.ban("#E07878", 14));
-            if (line.startsWith("✅")) return markerRow(T.good, UI_SVG.checkCircle("#5DBB8A", 14));
-            if (line.startsWith("❌")) return markerRow(T.bad, UI_SVG.xCircle("#E07878", 14));
+            if (line.startsWith("☑")) return markerRow(T.check, UI_SVG.checkSquare(GOLD, 14));
+            if (line.startsWith("🚫")) return markerRow(T.forbidden, UI_SVG.ban(RED, 14));
+            if (line.startsWith("✅")) return markerRow(T.good, UI_SVG.checkCircle(GREEN, 14));
+            if (line.startsWith("❌")) return markerRow(T.bad, UI_SVG.xCircle(RED, 14));
             if (line.startsWith("📌")) return markerRow(T.note, UI_SVG.pin(color, 14));
             const keycap = line.match(/^([1-9])️⃣/);
             if (keycap) return markerRow(T.principle,
               <span style={{ width:19, height:19, borderRadius:10, border:`1.5px solid ${color}`, color, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10.5, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{keycap[1]}</span>);
-            const dotColor = { "🔵":"#5B8DD9", "🟢":"#5DBB8A", "🟡":"#D9C75B", "🟠":"#E0975B", "🔴":"#E07878" }[[...line][0]];
+            const dotColor = { "🔵":"#5B8DD9", "🟢":GREEN, "🟡":"#D9C75B", "🟠":"#E0975B", "🔴":RED }[[...line][0]];
             if (dotColor) return markerRow(T.principle,
               <span style={{ width:9, height:9, borderRadius:5, background:dotColor, marginTop:3, boxShadow:`0 0 8px ${dotColor}55`, display:"inline-block" }} />);
             if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
@@ -2698,7 +2703,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />
         )}
         {termPopup && (
-          <div onClick={() => setTermPopup(null)}
+          <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
             style={{ position:"fixed", inset:0, background:"transparent", zIndex:999, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 40px" }}>
             <div onClick={e => e.stopPropagation()}
               style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:20, padding:"20px 20px 24px", margin:"0 16px", maxWidth:440, width:"100%",
@@ -2712,13 +2717,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 {termPopup.def}
               </div>
               {DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()) && (
-                <div onClick={() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); }}
+                <div onClick={() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); }} {...onActivate(() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); })}
                   style={{ marginTop:14, padding:"11px 16px", borderRadius:12, background:color, cursor:"pointer",
                     textAlign:"center", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold" }}>
                   Отработать на практике →
                 </div>
               )}
-              <div onClick={() => setTermPopup(null)}
+              <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
                 style={{ marginTop:10, textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
                 Закрыть ✕
               </div>
@@ -2776,12 +2781,12 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               <div style={{ color:color, fontSize:40, fontWeight:"bold", marginBottom:4 }}>{practiceState.score}</div>
               <div style={{ color:T.modSub.color, fontSize:13, marginBottom:4 }}>очков</div>
               <div style={{ color:T.para.color, fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
-                {stars===3 ? UI_SVG.trophy("#C8A96E", 16) : stars===2 ? ROLE_SVG.core("#C8A96E", 16) : UI_SVG.book("#C8A96E", 16)}
+                {stars===3 ? UI_SVG.trophy(GOLD, 16) : stars===2 ? ROLE_SVG.core(GOLD, 16) : UI_SVG.book(GOLD, 16)}
                 <span>{stars===3?"Мастер сервиса!":stars===2?"Хороший результат!":"Тренируйся ещё!"}</span>
               </div>
             </div>
             <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-              {[{l:"Правильно",v:`${correct}/${total}`,c:"#5DBB8A"},{l:"Жизни",v:`${practiceState.lives}❤️`,c:"#E07878"},{l:"Очков",v:practiceState.score,c:color}].map((s,i)=>(
+              {[{l:"Правильно",v:`${correct}/${total}`,c:GREEN},{l:"Жизни",v:`${practiceState.lives}❤️`,c:RED},{l:"Очков",v:practiceState.score,c:color}].map((s,i)=>(
                 <div key={i} style={{ flex:1, background:T.simOpt.background, borderRadius:14, padding:"10px 6px", textAlign:"center", border:`2px solid ${T.simOpt.border}` }}>
                   <div style={{ color:s.c, fontSize:18, fontWeight:"bold" }}>{s.v}</div>
                   <div style={{ color:T.modSub.color, fontSize:10, marginTop:2 }}>{s.l}</div>
@@ -2791,10 +2796,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div style={{ marginBottom:14 }}>
               {situations.map((s,i) => practiceState.results[i]!==undefined && (
                 <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"8px 12px", background:practiceState.results[i]?"rgba(93,187,138,0.1)":"rgba(224,120,120,0.1)", borderRadius:12, marginBottom:6, border:`1px solid ${practiceState.results[i]?"#5DBB8A44":"#E0787844"}` }}>
-                  <div style={{ flexShrink:0, display:"flex", marginTop:1 }}>{practiceState.results[i] ? UI_SVG.checkCircle("#5DBB8A", 16) : UI_SVG.xCircle("#E07878", 16)}</div>
+                  <div style={{ flexShrink:0, display:"flex", marginTop:1 }}>{practiceState.results[i] ? UI_SVG.checkCircle(GREEN, 16) : UI_SVG.xCircle(RED, 16)}</div>
                   <div style={{ flex:1 }}>
                     <div style={{ color:T.modTitle.color, fontSize:12 }}>{s.emoji} {(s.scene||s.statement||"").substring(0,45)}...</div>
-                    <div style={{ color:practiceState.results[i]?"#5DBB8A":"#E07878", fontSize:11, marginTop:1 }}>{(practiceState.results[i]?s.win:s.fail||"").substring(0,55)}...</div>
+                    <div style={{ color:practiceState.results[i]?GREEN:RED, fontSize:11, marginTop:1 }}>{(practiceState.results[i]?s.win:s.fail||"").substring(0,55)}...</div>
                   </div>
                 </div>
               ))}
@@ -2820,12 +2825,12 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
 
     // Метаданные жанра
     const genreMeta = {
-      action:   { label:"ЧТО ДЕЛАЕШЬ?",   gicon:"clap",   color:"#5DBB8A" },
-      find:     { label:"НАЙДИ ОШИБКУ",   gicon:"search", color:"#D4A85A" },
-      timer:    { label:"БЫСТРЫЙ ВЫБОР",  gicon:"bolt",   color:"#E07878" },
+      action:   { label:"ЧТО ДЕЛАЕШЬ?",   gicon:"clap",   color:GREEN },
+      find:     { label:"НАЙДИ ОШИБКУ",   gicon:"search", color:GOLD_SOFT },
+      timer:    { label:"БЫСТРЫЙ ВЫБОР",  gicon:"bolt",   color:RED },
       truefalse:{ label:"ВЕРНО / НЕВЕРНО", gicon:"cards",  color:"#8B7BAB" },
       complete: { label:"СОБЕРИ ПРАВИЛО",  gicon:"link",   color:"#7B8FAB" },
-      empathy:  { label:"РОЛЬ ГОСТЯ",     gicon:"mask",   color:"#C8A96E" },
+      empathy:  { label:"РОЛЬ ГОСТЯ",     gicon:"mask",   color:GOLD },
     };
     const gm = genreMeta[genre] || genreMeta.action;
     const sayPhrase = sit.say || ((genre === "action" || genre === "empathy") && sit.options ? sit.options[sit.correct] : null);
@@ -2840,12 +2845,12 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               {[1,2,3].map(h=><span key={h} style={{ fontSize:16, opacity:h<=practiceState.lives?1:0.2, transition:"opacity 0.3s" }}>❤️</span>)}
             </div>
             <div style={{ background:"rgba(212,168,90,0.2)", borderRadius:20, padding:"4px 12px", border:"1px solid rgba(212,168,90,0.4)" }}>
-              <span style={{ color:"#D4A85A", fontSize:13, fontWeight:"bold" }}>⭐ {practiceState.score}</span>
+              <span style={{ color:GOLD_SOFT, fontSize:13, fontWeight:"bold" }}>⭐ {practiceState.score}</span>
             </div>
           </div>
           <div style={{ display:"flex", gap:3 }}>
             {situations.map((_,i)=>(
-              <div key={i} style={{ flex:1, height:3, borderRadius:2, background:i<practiceState.step?"#5DBB8A":i===practiceState.step?color:"rgba(255,255,255,0.12)", transition:"background 0.3s" }} />
+              <div key={i} style={{ flex:1, height:3, borderRadius:2, background:i<practiceState.step?GREEN:i===practiceState.step?color:"rgba(255,255,255,0.12)", transition:"background 0.3s" }} />
             ))}
           </div>
         </div>
@@ -2879,14 +2884,14 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 <div style={{ color:T.para.color, fontSize:15, lineHeight:1.7, fontStyle:"italic" }}>«{sit.statement}»</div>
               </div>
               <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-                {[{label:"Верно",gicon:"check",val:true,bg:"rgba(93,187,138,0.15)",bc:"#5DBB8A"},{label:"Неверно",gicon:"x",val:false,bg:"rgba(224,120,120,0.15)",bc:"#E07878"}].map((btn,i)=>{
+                {[{label:"Верно",gicon:"check",val:true,bg:"rgba(93,187,138,0.15)",bc:GREEN},{label:"Неверно",gicon:"x",val:false,bg:"rgba(224,120,120,0.15)",bc:RED}].map((btn,i)=>{
                   const chosen = answered && practiceState.choice===i;
                   const isRight = (btn.val===sit.isTrue) === (i===sit.correct);
                   const userWrong = answered && practiceState.choice!==sit.correct;
                   let bg = answered?(chosen&&i===sit.correct?"rgba(93,187,138,0.25)":chosen&&i!==sit.correct?"rgba(224,120,120,0.25)":!chosen&&i===sit.correct&&userWrong?"rgba(93,187,138,0.12)":T.simOpt.background):T.simOpt.background;
-                  let bc = answered?(chosen&&i===sit.correct?"#5DBB8A":chosen&&i!==sit.correct?"#E07878":!chosen&&i===sit.correct&&userWrong?"#5DBB8A":neutralBC):neutralBC;
+                  let bc = answered?(chosen&&i===sit.correct?GREEN:chosen&&i!==sit.correct?RED:!chosen&&i===sit.correct&&userWrong?GREEN:neutralBC):neutralBC;
                   return (
-                    <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)}
+                    <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))}
                       style={{ flex:1, background:bg, border:`2px solid ${bc}`, borderRadius:16, padding:"16px 10px", textAlign:"center", color:T.para.color, fontSize:16, fontWeight:"bold", cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>
                       <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:7 }}>{btn.gicon === "check" ? UI_SVG.checkCircle(btn.bc, 16) : UI_SVG.xCircle(btn.bc, 16)}{btn.label}</span>
                     </div>
@@ -2911,7 +2916,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 let bc = neutralBC;
                 let tc = T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -2920,7 +2925,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {genre==="empathy" && (
             <>
               <div className="sa-fast" style={{ ...T.simScen, background:"rgba(200,169,110,0.12)", borderRadius:16, padding:"14px", marginBottom:6, border:"1px solid rgba(200,169,110,0.25)" }}>
-                <div style={{ color:"#D4A85A", fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{GAME_SVG.thought("#D4A85A", 13)}<span>МЫСЛИ ГОСТЯ</span></div>
+                <div style={{ color:GOLD_SOFT, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{GAME_SVG.thought(GOLD_SOFT, 13)}<span>МЫСЛИ ГОСТЯ</span></div>
                 <div style={{ color:T.para.color, fontSize:14, lineHeight:1.7, fontStyle:"italic" }}>«{sit.guestThought}»</div>
               </div>
               <div className="sa-fast" style={{ ...T.simScen, borderRadius:14, padding:"12px", marginBottom:14, animationDelay:"0.08s" }}>
@@ -2933,7 +2938,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -2953,7 +2958,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color,prefix="";
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";prefix="❌ ";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
               })}
             </>
           )}
@@ -2962,11 +2967,11 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           
           {answered && (
             <div className="sa-fast" style={{ marginTop:10 }}>
-              <div style={{ background:isCorrectAnswer?"rgba(93,187,138,0.15)":"rgba(224,120,120,0.15)", border:`1.5px solid ${isCorrectAnswer?"#5DBB8A":"#E07878"}`, borderRadius:14, padding:"12px 14px", marginBottom:10 }}>
+              <div style={{ background:isCorrectAnswer?"rgba(93,187,138,0.15)":"rgba(224,120,120,0.15)", border:`1.5px solid ${isCorrectAnswer?GREEN:RED}`, borderRadius:14, padding:"12px 14px", marginBottom:10 }}>
                 <div style={{ fontSize:18, marginBottom:4 }}>
-                  {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock("#E07878", 15)}Время вышло!</span> : isCorrectAnswer ? `🎉 +${practiceState.combo>=2?20:10} очков!` : `😬 −1 ❤️ (осталось ${practiceState.lives})`}
+                  {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock(RED, 15)}Время вышло!</span> : isCorrectAnswer ? `🎉 +${practiceState.combo>=2?20:10} очков!` : `😬 −1 ❤️ (осталось ${practiceState.lives})`}
                 </div>
-                <div style={{ color:isCorrectAnswer?"#5DBB8A":"#E07878", fontSize:13, lineHeight:1.6 }}>
+                <div style={{ color:isCorrectAnswer?GREEN:RED, fontSize:13, lineHeight:1.6 }}>
                   {isCorrectAnswer ? sit.win : sit.fail||"Попробуй ещё раз в следующем раунде!"}
                 </div>
               </div>
@@ -3035,7 +3040,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:210, objectFit:"cover", borderRadius:14, display:"block", margin:"0 0 14px" }} />}
           <div style={T.quizQ}>{q.q}</div>
           {q.options.map((opt,i) => {
-            return <div key={i} className="sa-opt" style={{ ...T.quizOpt, cursor:"pointer" }} onClick={()=>onQuiz(i)}>{opt}</div>;
+            return <div key={i} className="sa-opt" style={{ ...T.quizOpt, cursor:"pointer" }} onClick={()=>onQuiz(i)} {...onActivate(()=>onQuiz(i))}>{opt}</div>;
           })}
         </div>
       </div>
@@ -3054,7 +3059,7 @@ export function GlossaryScreen({ T, onBack, color, a11y }) {
     <div style={T.screen}>
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
-        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.book(color || "#C8A96E", 18)}<span>Глоссарий</span></div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.book(color || GOLD, 18)}<span>Глоссарий</span></div>
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 40px" }}>
         <input
@@ -3063,7 +3068,7 @@ export function GlossaryScreen({ T, onBack, color, a11y }) {
           placeholder="Поиск термина..."
           style={{ width:"100%", padding:"10px 14px", borderRadius:12, border:`1px solid ${color}44`,
             background: T.modCard?.background || "rgba(255,255,255,0.05)",
-            color: T.para?.color || "#F0E8D8", fontSize:15, fontFamily:"Georgia, serif",
+            color: T.para?.color || CREAM, fontSize:15, fontFamily:"Georgia, serif",
             outline:"none", boxSizing:"border-box", marginBottom:14 }}
         />
         {filtered.length === 0 && (
@@ -3071,7 +3076,7 @@ export function GlossaryScreen({ T, onBack, color, a11y }) {
         )}
         {filtered.map((g, i) => (
           <div key={i} style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
-            <div style={{ color: a11y ? "#6B4A10" : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{g.term}</div>
+            <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{g.term}</div>
             <div style={{ ...T.modSub, color: a11y ? "#3A2A0E" : "#C8B898", fontSize:14, lineHeight:1.6 }}>{g.def}</div>
           </div>
         ))}
@@ -3192,13 +3197,13 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
       {/* Header */}
       <div style={{ padding:"12px 14px 10px", background:`linear-gradient(135deg, ${dColor}18, transparent)`, borderBottom:`1px solid ${dColor}22` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#7A6548", fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:BROWN, fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
           <div style={{ fontSize:20 }}>{dialogue.guest.avatar}</div>
           <div style={{ flex:1 }}>
-            <div style={{ color: T.modTitle?.color || "#F0E8D8", fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
+            <div style={{ color: T.modTitle?.color || CREAM, fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
             <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
           </div>
-          <div style={{ color: T.modTitle?.color || "#7A6548", fontSize: T.modSub?.fontSize || 13 }}>{score}/{totalChoices} ✓</div>
+          <div style={{ color: T.modTitle?.color || BROWN, fontSize: T.modSub?.fontSize || 13 }}>{score}/{totalChoices} ✓</div>
         </div>
         {/* Mood bar */}
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -3230,7 +3235,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
           if (msg.type === "waiter") return (
             <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
               <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingRight:4 }}>Ты</div>
-              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomRightRadius:4, background: msg.correct ? `${dColor}28` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.modTitle?.color || "#F0E8D8", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomRightRadius:4, background: msg.correct ? `${dColor}28` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.modTitle?.color || CREAM, fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "feedback") return (
@@ -3245,7 +3250,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
           <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
             <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
             <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(180,145,70,0.12)" : "rgba(200,160,80,0.10)", border: T.a11y ? "1px solid rgba(160,120,50,0.25)" : "1px solid rgba(200,160,80,0.20)", display:"flex", gap:5, alignItems:"center" }}>
-              {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:"#7A6548", animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
+              {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:BROWN, animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
             </div>
           </div>
         )}
@@ -3254,7 +3259,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
           <div style={{ marginTop:8 }}>
             <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}><span style={{ flexShrink:0, marginTop:2 }}>{MOD_SVG["💬"](T.modSub?.color || "#9A8060", 13)}</span><span>{dialogue.steps[stepIdx].prompt}</span></div>
             {dialogue.steps[stepIdx].options.map((opt, oi) => (
-              <div key={oi} onClick={() => choose(oi)} style={{ padding:"11px 14px", borderRadius:12, marginBottom:6, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"all 0.15s" }}>{opt.text}</div>
+              <div key={oi} onClick={() => choose(oi)} {...onActivate(() => choose(oi))} style={{ padding:"11px 14px", borderRadius:12, marginBottom:6, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"all 0.15s" }}>{opt.text}</div>
             ))}
           </div>
         )}
@@ -3272,7 +3277,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
             <div style={{ color:MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:2 }}>
               {moodC>=4 ? `${dialogue.guest.name} в восторге` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} не в духе`}
             </div>
-            <div style={{ color: T.modSub?.color || "#7A6548", fontSize:12, marginBottom:6 }}>{score} из {totalChoices} правильных ответов</div>
+            <div style={{ color: T.modSub?.color || BROWN, fontSize:12, marginBottom:6 }}>{score} из {totalChoices} правильных ответов</div>
             <div style={{ color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.5, marginBottom:8, fontStyle:"italic" }}>
               ✦ {dialogue.steps.find(s=>s.type==="result")?.tip}
             </div>
@@ -3282,7 +3287,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
             {messages.map((msg, i) => {
               if (msg.type === "action") return <div key={i} style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
               if (msg.type === "guest") return <div key={i} style={{ alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
-              if (msg.type === "waiter") return <div key={i} style={{ alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || "#F0E8D8", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
+              if (msg.type === "waiter") return <div key={i} style={{ alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || CREAM, fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
               if (msg.type === "feedback") return <div key={i} style={{ padding:"5px 10px", borderRadius:8, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
               return null;
             })}

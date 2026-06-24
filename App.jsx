@@ -16,6 +16,7 @@ import { ReferenceSection } from "./ui/ReferenceSection";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./ui/mood-cards";
+import { BG_DARK, CREAM, GOLD, GOLD_LOGO, SAND } from "./ui/tokens";
 import {
   AchievementPopup,
   RoleCompleteScreen,
@@ -96,7 +97,7 @@ function ServiceAcademy() {
   React.useEffect(() => {
     try {
       const tg = window.Telegram?.WebApp;
-      const bg = a11y ? "#E8DEC8" : "#14100A";
+      const bg = a11y ? SAND : BG_DARK;
       document.documentElement.style.background = bg;
       document.body.style.background = bg;
       if (!tg) return;
@@ -339,7 +340,7 @@ function ServiceAcademy() {
     mine.forEach(c => { const k = ((c.module || "").trim()) || "Свой раздел"; (groups[k] = groups[k] || []).push(c); });
     return Object.entries(groups).map(([name, list], mi) => ({
       id: "cms-" + role + "-" + mi, tag: "Своё", title: name, subtitle: "Раздел вашего ресторана",
-      icon: "📘", color: "#C8A96E", custom: true,
+      icon: "📘", color: GOLD, custom: true,
       lessons: list.flatMap(c => {
         const out = [{ id: "cms-l-" + c.id, title: c.title || "Урок", type: "lesson", content: c.content || "" }];
         if (Array.isArray(c.questions) && c.questions.length) out.push({ id: "cms-q-" + c.id, title: "Тест: " + (c.title || ""), type: "quiz", questions: c.questions });
@@ -649,7 +650,7 @@ function ServiceAcademy() {
       <div style={T.phone}>
         {!["profile","login"].includes(screen) && (
           <div style={T.a11yBar}>
-            <span style={{ ...T.a11yLabel, color:"#C8A050", fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
+            <span style={{ ...T.a11yLabel, color:GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
             <button style={{ ...T.a11yBtn, background: a11y ? "#7C9E87" : "#E8A020" }} onClick={() => setA11y(!a11y)}>
               <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>{a11y ? UI_SVG.moon("currentColor", 12) : UI_SVG.eye("currentColor", 12)}{a11y ? "Тёмная" : "Для чтения"}</span>
             </button>
@@ -731,7 +732,7 @@ function ServiceAcademy() {
               { id:"stats",      icon:"stats",       label:"Профиль" },
             ].map(tab => {
               const active = screen === tab.id;
-              const accentColor = a11y ? "#6B4E1A" : "#C8A96E";
+              const accentColor = a11y ? "#6B4E1A" : GOLD;
               const inactiveColor = a11y ? "#5C3D10" : "#9A8060";
               const goTab = () => { if (!active) vibrate("light"); navigate(tab.id); };
               return (
@@ -840,7 +841,7 @@ class ErrorBoundary extends React.Component {
       return (
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "'Georgia', serif" }}>
           <div style={{ fontSize: 44, marginBottom: 16 }}>🍷</div>
-          <div style={{ color: "#F0E8D8", fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Что-то пошло не так</div>
+          <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Что-то пошло не так</div>
           <div style={{ color: "#9A8060", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
             Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение.
           </div>

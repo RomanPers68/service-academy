@@ -14,6 +14,7 @@ export const Ico = {
   cam: (c, s = 15) => (<svg {...sv(c, s)}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>),
   check: (c, s = 18) => (<svg {...sv(c, s, 2.2)}><circle cx="12" cy="12" r="10" /><path d="M8 12l3 3 5-6" /></svg>),
   x: (c, s = 18) => (<svg {...sv(c, s, 2.2)}><circle cx="12" cy="12" r="10" /><path d="M9 9l6 6M15 9l-6 6" /></svg>),
+  pin: (c, s = 14) => (<svg {...sv(c, s, 1.7)}><circle cx="12" cy="6.6" r="3" /><path d="M9.6 8.4H14.4M10.4 8.4L11.4 13H12.6L13.6 8.4M12 13V20.5" /></svg>),
 };
 
 // ── Бокалы ──
@@ -36,21 +37,29 @@ function Glass({ type = "red", c, dark, size = 76 }) {
   </svg>);
 }
 function Snifter({ c, dark, size = 64 }) {
-  const liq = dark ? "rgba(175,95,42,0.45)" : "rgba(160,90,40,0.42)";
-  return (<svg width={size} height={size * 1.7} viewBox="0 0 80 130" fill="none">
-    <path d="M24 56 Q24 72 40 78 Q56 72 56 56 Q40 62 24 56" fill={liq} />
-    <path d="M18 44 Q18 74 40 82 Q62 74 62 44 Q40 34 18 44 Z" stroke={c} strokeWidth="2.1" fill="none" />
-    <line x1="40" y1="82" x2="40" y2="104" stroke={c} strokeWidth="2.1" strokeLinecap="round" />
-    <ellipse cx="40" cy="106" rx="17" ry="3.2" stroke={c} strokeWidth="2.1" fill="none" />
+  const liq = dark ? "rgba(190,110,50,0.50)" : "rgba(165,95,40,0.45)";
+  // Коньячный снифтер: широкий низ, плавное сужение к устью, короткая ножка, широкое основание
+  return (<svg width={size} height={size * 1.36} viewBox="0 0 88 120" fill="none">
+    <path d="M16 66 Q18 82 44 86 Q70 82 72 66 Q44 73 16 66" fill={liq} />
+    <path d="M23 22 Q9 33 8 60 Q9 80 44 86 Q79 80 80 60 Q79 33 65 22" stroke={c} strokeWidth="2.2" fill="none" strokeLinejoin="round" />
+    <path d="M23 22 Q44 30 65 22" stroke={c} strokeWidth="2" fill="none" strokeLinecap="round" />
+    <line x1="44" y1="86" x2="44" y2="105" stroke={c} strokeWidth="3" strokeLinecap="round" />
+    <path d="M26 108 Q44 103 62 108" stroke={c} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+    <ellipse cx="44" cy="108" rx="20" ry="3.4" stroke={c} strokeWidth="2.2" fill="none" />
   </svg>);
 }
 function Rocks({ c, dark, size = 56 }) {
-  const liq = dark ? "rgba(180,110,40,0.42)" : "rgba(160,95,35,0.40)";
-  return (<svg width={size} height={size * 1.6} viewBox="0 0 80 120" fill="none">
-    <path d="M26 78 L28 108 Q40 112 52 108 L54 78 Q40 84 26 78" fill={liq} />
-    <path d="M24 50 L28 108 Q40 113 52 108 L56 50" stroke={c} strokeWidth="2.1" fill="none" strokeLinejoin="round" />
-    <ellipse cx="40" cy="50" rx="16" ry="4" stroke={c} strokeWidth="2.1" fill="none" />
-    <rect x="33" y="64" width="13" height="13" rx="2" transform="rotate(12 39 70)" stroke={c} strokeWidth="1.6" fill="none" opacity="0.7" />
+  const liq = dark ? "rgba(205,130,45,0.46)" : "rgba(170,100,38,0.42)";
+  const ice = dark ? "#EAE0CC" : "#7A5F37";
+  // Виски-рокс: низкий широкий тумблер с толстым дном и кубиками льда
+  return (<svg width={size} height={size * 0.875} viewBox="0 0 96 84" fill="none">
+    <path d="M18 30 Q48 38 78 30 L80 68 Q48 77 16 68 Z" fill={liq} />
+    <rect x="29" y="26" width="14" height="14" rx="2" transform="rotate(-10 36 33)" stroke={ice} strokeWidth="1.6" fill="none" opacity="0.8" />
+    <rect x="50" y="32" width="16" height="16" rx="2" transform="rotate(12 58 40)" stroke={ice} strokeWidth="1.6" fill="none" opacity="0.65" />
+    <rect x="42" y="45" width="14" height="14" rx="2" transform="rotate(-6 49 52)" stroke={ice} strokeWidth="1.6" fill="none" opacity="0.55" />
+    <path d="M14 16 L16 68 Q48 77 80 68 L82 16" stroke={c} strokeWidth="2.3" fill="none" strokeLinejoin="round" />
+    <ellipse cx="48" cy="16" rx="34" ry="7" stroke={c} strokeWidth="2.3" fill="none" />
+    <path d="M22 62 Q48 70 74 62" stroke={c} strokeWidth="1.6" fill="none" opacity="0.6" strokeLinecap="round" />
   </svg>);
 }
 
@@ -170,3 +179,61 @@ export const ILL = {
 Object.keys(REFERENCE_PHOTOS).forEach((k) => { ILL[k] = () => (k.indexOf("wine_") === 0 ? <PhotoSmall src={REFERENCE_PHOTOS[k]} /> : <Photo src={REFERENCE_PHOTOS[k]} />); });
 
 export const renderIll = (key, gold, dark) => (ILL[key] ? ILL[key](gold, dark) : null);
+
+
+// ── Флаги стран для заголовков «Школы сервировки» ──────────────────────────
+// Мини-SVG вместо эмодзи-флагов: выглядят одинаково на iOS/Android/desktop,
+// в едином стиле с золотой рамкой. Ближневосточная (🕌) — региональный бейдж.
+export const FLAGS = {
+  'fr': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_fr"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_fr)"><rect x="0.00" y="0" width="8.00" height="16" fill="#0055A4"/><rect x="8.00" y="0" width="8.00" height="16" fill="#FFFFFF"/><rect x="16.00" y="0" width="8.00" height="16" fill="#EF4135"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+  'gb': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_gb"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_gb)"><rect width="24" height="16" fill="#012169"/><line x1="0" y1="0" x2="24" y2="16" stroke="#FFFFFF" strokeWidth="3.2"/><line x1="24" y1="0" x2="0" y2="16" stroke="#FFFFFF" strokeWidth="3.2"/><line x1="0" y1="0" x2="24" y2="16" stroke="#C8102E" strokeWidth="1.4"/><line x1="24" y1="0" x2="0" y2="16" stroke="#C8102E" strokeWidth="1.4"/><rect x="9.4" y="0" width="5.2" height="16" fill="#FFFFFF"/><rect x="0" y="5.4" width="24" height="5.2" fill="#FFFFFF"/><rect x="10.4" y="0" width="3.2" height="16" fill="#C8102E"/><rect x="0" y="6.4" width="24" height="3.2" fill="#C8102E"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+  'us': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_us"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_us)"><rect x="0" y="0.00" width="24" height="2.29" fill="#B22234"/><rect x="0" y="2.29" width="24" height="2.29" fill="#FFFFFF"/><rect x="0" y="4.57" width="24" height="2.29" fill="#B22234"/><rect x="0" y="6.86" width="24" height="2.29" fill="#FFFFFF"/><rect x="0" y="9.14" width="24" height="2.29" fill="#B22234"/><rect x="0" y="11.43" width="24" height="2.29" fill="#FFFFFF"/><rect x="0" y="13.71" width="24" height="2.29" fill="#B22234"/><rect x="0" y="0" width="10" height="9.14" fill="#3C3B6E"/><circle cx="1.30" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="3.70" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="6.10" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="8.50" cy="1.60" r="0.5" fill="#FFFFFF"/><circle cx="1.30" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="3.70" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="6.10" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="8.50" cy="4.20" r="0.5" fill="#FFFFFF"/><circle cx="1.30" cy="6.80" r="0.5" fill="#FFFFFF"/><circle cx="3.70" cy="6.80" r="0.5" fill="#FFFFFF"/><circle cx="6.10" cy="6.80" r="0.5" fill="#FFFFFF"/><circle cx="8.50" cy="6.80" r="0.5" fill="#FFFFFF"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+  'it': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_it"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_it)"><rect x="0.00" y="0" width="8.00" height="16" fill="#009246"/><rect x="8.00" y="0" width="8.00" height="16" fill="#FFFFFF"/><rect x="16.00" y="0" width="8.00" height="16" fill="#CE2B37"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+  'jp': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_jp"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_jp)"><rect width="24" height="16" fill="#FFFFFF"/><circle cx="12" cy="8" r="4.4" fill="#BC002D"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+  'cn': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_cn"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_cn)"><rect width="24" height="16" fill="#DE2910"/><polygon points="4.20,1.90 4.85,3.61 6.67,3.70 5.25,4.84 5.73,6.60 4.20,5.60 2.67,6.60 3.15,4.84 1.73,3.70 3.55,3.61" fill="#FFDE00"/><polygon points="8.08,0.92 7.98,1.62 8.58,1.98 7.89,2.11 7.73,2.79 7.40,2.17 6.70,2.23 7.19,1.72 6.91,1.07 7.55,1.38" fill="#FFDE00"/><polygon points="9.78,2.98 9.42,3.58 9.83,4.15 9.15,3.99 8.73,4.56 8.67,3.86 8.00,3.64 8.65,3.37 8.65,2.66 9.11,3.20" fill="#FFDE00"/><polygon points="9.20,5.22 9.31,5.92 9.99,6.09 9.37,6.41 9.42,7.11 8.92,6.61 8.26,6.88 8.58,6.25 8.13,5.71 8.83,5.82" fill="#FFDE00"/><polygon points="7.40,7.02 7.77,7.62 8.47,7.51 8.02,8.05 8.34,8.68 7.68,8.41 7.18,8.91 7.23,8.21 6.61,7.89 7.29,7.72" fill="#FFDE00"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+  '_me': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_me"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_me)"><rect width="24" height="16" fill="#1F6E54"/><circle cx="9.5" cy="8" r="5" fill="#E8C56A"/><circle cx="11.3" cy="7.2" r="5" fill="#1F6E54"/><polygon points="15.00,5.90 15.50,7.31 17.00,7.35 15.81,8.26 16.23,9.70 15.00,8.85 13.77,9.70 14.19,8.26 13.00,7.35 14.50,7.31" fill="#E8C56A"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+  'ru': (size=22) => (<svg viewBox="0 0 24 16" width={size} height={size*2/3} style={{display:"inline-block",verticalAlign:"-3px",flexShrink:0}}>
+    <defs><clipPath id="fl_ru"><rect x="0.5" y="0.5" width="23" height="15" rx="2.6"/></clipPath></defs>
+    <g clipPath="url(#fl_ru)"><rect x="0" y="0.00" width="24" height="5.33" fill="#FFFFFF"/><rect x="0" y="5.33" width="24" height="5.33" fill="#0039A6"/><rect x="0" y="10.67" width="24" height="5.33" fill="#D52B1E"/></g>
+    <rect x="0.6" y="0.6" width="22.8" height="14.8" rx="2.5" fill="none" stroke="#C8A96E" strokeWidth="0.7"/></svg>),
+};
+
+// Снимает ведущий эмодзи-флаг (пара regional-indicator) или 🕌 и отдаёт SVG + остаток строки.
+const _RI = 0x1F1E6;
+export function splitLeadingFlag(text, size = 22) {
+  const cps = Array.from(text || "");
+  if (!cps.length) return { flag: null, rest: text };
+  const c0 = cps[0].codePointAt(0);
+  let code = null, len = 0;
+  if (c0 === 0x1F54C) { code = "_me"; len = 1; }                       // 🕌 — Ближневосточная
+  else if (c0 >= _RI && c0 <= 0x1F1FF && cps[1]) {
+    const c1 = cps[1].codePointAt(0);
+    if (c1 >= _RI && c1 <= 0x1F1FF) {
+      code = (String.fromCharCode(65 + c0 - _RI) + String.fromCharCode(65 + c1 - _RI)).toLowerCase();
+      len = 2;
+    }
+  }
+  if (!code || !FLAGS[code]) return { flag: null, rest: text };
+  return { flag: FLAGS[code](size), rest: cps.slice(len).join("").replace(/^\s+/, "") };
+}

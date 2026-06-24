@@ -1766,7 +1766,9 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
               {tiles.map(t => (
                 <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:1, minWidth:0, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:16, padding:"12px 4px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
                   <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
-                  <div style={{ fontSize:11, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.15, minHeight:25, display:"flex", alignItems:"center", justifyContent:"center" }}>{t.label}</div>
+                  <div style={{ minHeight:25, width:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ fontSize:11, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.15, overflowWrap:"break-word", wordBreak:"break-word", hyphens:"auto", maxWidth:"100%" }}>{t.label}</span>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1694,7 +1694,7 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
   );
 }
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor }) {
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -1753,6 +1753,9 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           )});
           if (onReference) tiles.push({ key:"sp", label:"Справочник", onClick:onReference, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
+          )});
+          if (onCertificates) tiles.push({ key:"cert", label:"Сертификаты", onClick:onCertificates, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.8L8 22l4-2.2L16 22l-1-9.2"/></svg>
           )});
           if (onContentEditor && (["manager","senior"].includes(profile?.position) || profile?.is_admin)) tiles.push({ key:"ce", label:"Редактор", onClick:onContentEditor, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z"/><path d="M14.5 6.5l3 3"/></svg>
@@ -3049,12 +3052,15 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   return null;
 }
 
-export function GlossaryScreen({ T, onBack, color, a11y }) {
+export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {}, onToggleFav = () => {}, onSetNote = () => {} }) {
   const [search, setSearch] = React.useState("");
-  const filtered = GLOSSARY.filter(g =>
-    g.term.toLowerCase().includes(search.toLowerCase()) ||
-    g.def.toLowerCase().includes(search.toLowerCase())
-  );
+  const [favOnly, setFavOnly] = React.useState(false);
+  const isSaved = (term) => { const e = saved[term.toLowerCase()]; return !!(e && (e.fav || e.note)); };
+  const filtered = GLOSSARY.filter(g => {
+    const matchText = g.term.toLowerCase().includes(search.toLowerCase()) ||
+      g.def.toLowerCase().includes(search.toLowerCase());
+    return matchText && (!favOnly || isSaved(g.term));
+  });
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
@@ -3071,15 +3077,43 @@ export function GlossaryScreen({ T, onBack, color, a11y }) {
             color: T.para?.color || CREAM, fontSize:15, fontFamily:"Georgia, serif",
             outline:"none", boxSizing:"border-box", marginBottom:14 }}
         />
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+          <button onClick={() => setFavOnly(v => !v)} aria-pressed={favOnly}
+            style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:20, cursor:"pointer",
+              border:`1px solid ${color}${favOnly ? "" : "55"}`,
+              background: favOnly ? color : "transparent",
+              color: favOnly ? "#1A1008" : (T.para?.color || "#C8B898"),
+              fontSize:13, fontFamily:"Georgia, serif", fontWeight:"bold", transition:"all 0.15s" }}>
+            {favOnly ? "★" : "☆"} Только избранное
+          </button>
+        </div>
         {filtered.length === 0 && (
           <div style={{ ...T.para, textAlign:"center", opacity:0.5 }}>Ничего не найдено</div>
         )}
-        {filtered.map((g, i) => (
+        {filtered.map((g, i) => {
+          const k = g.term.toLowerCase();
+          const entry = saved[k] || {};
+          const fav = !!entry.fav;
+          const note = entry.note || "";
+          return (
           <div key={i} style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
-            <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{g.term}</div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, width:"100%" }}>
+              <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15, flex:1 }}>{g.term}</div>
+              <button onClick={() => onToggleFav(k)} aria-label={fav ? "Убрать из избранного" : "В избранное"} title={fav ? "Убрать из избранного" : "В избранное"}
+                style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, lineHeight:1, padding:"0 2px", color: fav ? color : (a11y ? "#9A8A6A" : "#6B5E48") }}>
+                {fav ? "★" : "☆"}
+              </button>
+            </div>
             <div style={{ ...T.modSub, color: a11y ? "#3A2A0E" : "#C8B898", fontSize:14, lineHeight:1.6 }}>{g.def}</div>
+            {(fav || note) && (
+              <textarea value={note} onChange={e => onSetNote(k, e.target.value)} placeholder="Моя заметка..." rows={2}
+                style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px solid ${color}33`,
+                  background: T.modCard?.background || "rgba(255,255,255,0.04)", color: T.para?.color || "#F0E8D8",
+                  fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />
+            )}
           </div>
-        ))}
+          );
+        })}
         <div style={{ ...T.para, textAlign:"center", opacity:0.4, fontSize:12, marginTop:8 }}>{GLOSSARY.length} терминов</div>
       </div>
     </div>
@@ -3319,6 +3353,233 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
     @keyframes dlgPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }
     @keyframes dlgOverlayIn { from{opacity:0} to{opacity:1;transition-duration:0.8s} }
     @keyframes dlgSheetIn { from{transform:translateY(100%)} to{transform:translateY(0)} }`}</style>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #2 — Экзамен на роль и сертификат.
+// Вопросы собираются прямо из квизов уроков роли (MODULES), поэтому новый
+// контент автоматически попадает в экзамен — ничего захардкоженного.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EXAM_PASS = 0.8;   // порог сдачи — 80%
+const EXAM_COUNT = 10;   // вопросов в одной попытке (или меньше, если их мало)
+const _CERT_ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
+
+// Собрать все вопросы квизов роли
+function collectRoleQuestions(roleId) {
+  const mods = MODULES[roleId];
+  if (!Array.isArray(mods)) return [];
+  const out = [];
+  mods.forEach(m => {
+    (m && Array.isArray(m.lessons) ? m.lessons : []).forEach(l => {
+      if (l && l.type === "quiz" && Array.isArray(l.questions)) {
+        l.questions.forEach(q => {
+          if (q && q.q && Array.isArray(q.options) && q.options.length > 1 && typeof q.correct === "number") {
+            out.push({ q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "" });
+          }
+        });
+      }
+    });
+  });
+  return out;
+}
+
+export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
+  const color = roleObj?.color || GOLD;
+  const pool = useMemo(() => collectRoleQuestions(roleId), [roleId]);
+  const [attempt, setAttempt] = React.useState(0);
+  const questions = useMemo(() => shuffleArray([...pool]).slice(0, Math.min(EXAM_COUNT, pool.length)), [pool, attempt]);
+  const [step, setStep] = React.useState(0);
+  const [picked, setPicked] = React.useState(null);
+  const [correctCount, setCorrectCount] = React.useState(0);
+  const [phase, setPhase] = React.useState("quiz");
+
+  if (!questions.length) {
+    return (
+      <div style={T.screen}>
+        <div style={T.lessHead}>
+          <button style={T.backBtn2} onClick={onExit}>‹</button>
+          <div style={{ ...T.lessHeadTitle }}>Экзамен</div>
+        </div>
+        <div style={{ ...T.lessBody, padding:"40px 24px", textAlign:"center" }}>
+          <div style={{ ...T.para, opacity:0.7 }}>Для этой роли пока нет вопросов для экзамена.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const total = questions.length;
+  const cur = questions[step];
+  const answered = picked !== null;
+  const isLast = step >= total - 1;
+
+  const choose = (i) => {
+    if (answered) return;
+    setPicked(i);
+    if (i === cur.correct) setCorrectCount(c => c + 1);
+  };
+  const next = () => {
+    if (isLast) {
+      const finalCorrect = correctCount;
+      const passed = (finalCorrect / total) >= EXAM_PASS;
+      const score = Math.round((finalCorrect / total) * 100);
+      setPhase("done");
+      onFinish && onFinish(roleId, { passed, score, correct: finalCorrect, total, date: new Date().toISOString() });
+    } else {
+      setStep(s => s + 1);
+      setPicked(null);
+    }
+  };
+
+  if (phase === "done") {
+    const score = Math.round((correctCount / total) * 100);
+    const passed = (correctCount / total) >= EXAM_PASS;
+    return (
+      <div style={T.screen}>
+        <div style={{ ...T.lessBody, padding:"48px 24px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:18 }}>
+          <div style={{ fontSize:64 }}>{passed ? "🎓" : "📚"}</div>
+          <div style={{ color: passed ? color : (a11y ? "#8B3020" : "#E07878"), fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:24 }}>
+            {passed ? "Экзамен сдан!" : "Почти получилось"}
+          </div>
+          <div style={{ ...T.para, fontSize:18 }}>Результат: <b style={{ color }}>{score}%</b> ({correctCount} из {total})</div>
+          <div style={{ ...T.para, opacity:0.7, fontSize:14, maxWidth:300 }}>
+            {passed ? "Сертификат уже в твоём профиле." : `Нужно ${Math.round(EXAM_PASS*100)}% и выше. Повтори материал и попробуй ещё раз.`}
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:10, width:"100%", maxWidth:320, marginTop:6 }}>
+            {passed
+              ? <button onClick={onExit} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>К сертификату</button>
+              : <>
+                  <button onClick={() => { setAttempt(a => a + 1); setStep(0); setPicked(null); setCorrectCount(0); setPhase("quiz"); }} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>Пересдать</button>
+                  <button onClick={onExit} style={{ padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Позже</button>
+                </>
+            }
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={T.screen}>
+      <div style={T.lessHead}>
+        <button style={T.backBtn2} onClick={onExit}>‹</button>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}><span>Экзамен · {roleObj?.label || ""}</span></div>
+      </div>
+      <div style={{ ...T.lessBody, padding:"14px 16px 40px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
+          <div style={{ flex:1, height:6, borderRadius:3, background:"rgba(255,255,255,0.08)", overflow:"hidden" }}>
+            <div style={{ width:`${(step/total)*100}%`, height:"100%", background:color, transition:"width 0.3s" }} />
+          </div>
+          <div style={{ ...T.para, fontSize:13, opacity:0.7, whiteSpace:"nowrap" }}>{step+1} / {total}</div>
+        </div>
+        <div style={{ ...T.modCard, padding:"16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:14 }}>
+          <div style={{ color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontSize:16, lineHeight:1.5 }}>{cur.q}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8, width:"100%" }}>
+            {cur.options.map((opt, i) => {
+              const isCorrect = i === cur.correct;
+              const isPicked = i === picked;
+              let bg = "rgba(255,255,255,0.04)", bd = `${color}22`, col = T.para?.color || "#D8CCB4";
+              if (answered) {
+                if (isCorrect) { bg = a11y ? "rgba(45,107,69,0.18)" : "rgba(93,187,138,0.16)"; bd = "#5DBB8A"; col = a11y ? "#2A6B45" : "#9EE0BE"; }
+                else if (isPicked) { bg = a11y ? "rgba(139,48,32,0.15)" : "rgba(224,120,120,0.14)"; bd = "#E07878"; col = a11y ? "#8B3020" : "#F0B0B0"; }
+              }
+              return (
+                <button key={i} onClick={() => choose(i)} disabled={answered}
+                  style={{ textAlign:"left", padding:"12px 14px", borderRadius:12, border:`1px solid ${bd}`, background:bg, color:col,
+                    fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.45, cursor: answered ? "default" : "pointer", transition:"all 0.15s" }}>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+          {answered && cur.explanation && (
+            <div style={{ ...T.para, fontSize:13, opacity:0.85, lineHeight:1.55, borderLeft:`2px solid ${color}`, paddingLeft:12 }}>{cur.explanation}</div>
+          )}
+        </div>
+        {answered && (
+          <button onClick={next} className="sa-btn" style={{ width:"100%", marginTop:16, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>
+            {isLast ? "Завершить" : "Далее"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function CertificateScreen({ T, a11y, profile, roleObj, result, onExit, onShare }) {
+  const color = roleObj?.color || GOLD;
+  const name = profile ? `${profile.name} ${profile.surname || ""}`.trim() : "—";
+  let dateStr = "";
+  try { dateStr = new Date(result?.date || Date.now()).toLocaleDateString("ru-RU", { day:"numeric", month:"long", year:"numeric" }); } catch(e) {}
+  return (
+    <div style={T.screen}>
+      <div style={T.lessHead}>
+        <button style={T.backBtn2} onClick={onExit}>‹</button>
+        <div style={{ ...T.lessHeadTitle }}>Сертификат</div>
+      </div>
+      <div style={{ ...T.lessBody, padding:"24px 20px 40px", display:"flex", flexDirection:"column", alignItems:"center", gap:20 }}>
+        <div style={{ width:"100%", maxWidth:380, borderRadius:20, padding:"28px 22px",
+          background: a11y ? "rgba(245,238,220,0.7)" : "linear-gradient(160deg, rgba(58,42,16,0.5) 0%, rgba(30,22,10,0.6) 100%)",
+          border:`2px solid ${color}`, boxShadow:`0 8px 30px ${color}22, inset 0 1px 0 ${color}33`,
+          display:"flex", flexDirection:"column", alignItems:"center", gap:14, textAlign:"center" }}>
+          <div style={{ fontSize:46 }}>🎓</div>
+          <div style={{ letterSpacing:3, fontSize:11, color, fontFamily:"Georgia, serif", textTransform:"uppercase" }}>Service Academy</div>
+          <div style={{ width:40, height:2, background:color, borderRadius:2 }} />
+          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>Настоящим подтверждается, что</div>
+          <div style={{ fontSize:22, color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontWeight:"bold", lineHeight:1.3 }}>{name}</div>
+          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>успешно сдал(а) экзамен на роль</div>
+          <div style={{ fontSize:18, color, fontFamily:"Georgia, serif", fontWeight:"bold" }}>{roleObj?.label || ""}</div>
+          {typeof result?.score === "number" && (
+            <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif" }}>Результат: {result.score}%</div>
+          )}
+          <div style={{ width:40, height:2, background:`${color}66`, borderRadius:2, marginTop:4 }} />
+          <div style={{ fontSize:12, color: T.para?.color || "#A89878", fontFamily:"Georgia, serif", opacity:0.7 }}>{dateStr}</div>
+        </div>
+        <button onClick={onShare} className="sa-btn" style={{ width:"100%", maxWidth:380, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>Поделиться</button>
+        <button onClick={onExit} style={{ width:"100%", maxWidth:380, padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Готово</button>
+      </div>
+    </div>
+  );
+}
+
+export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(), examResults = {}, onExam, onCertificate, onExit }) {
+  return (
+    <div style={T.screen}>
+      <div style={T.lessHead}>
+        <button style={T.backBtn2} onClick={onExit}>‹</button>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}><span>🎓 Сертификаты</span></div>
+      </div>
+      <div style={{ ...T.lessBody, padding:"14px 16px 40px", display:"flex", flexDirection:"column", gap:12 }}>
+        {_CERT_ROLE_ORDER.map(id => {
+          const r = ROLES.find(x => x.id === id);
+          if (!r) return null;
+          const color = r.color || GOLD;
+          const res = examResults[id];
+          const passed = !!(res && res.passed);
+          const eligible = completedRoles && completedRoles.has ? completedRoles.has(id) : false;
+          const hasQuestions = collectRoleQuestions(id).length > 0;
+          return (
+            <div key={id} style={{ ...T.modCard, padding:"14px 16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:10 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, width:"100%" }}>
+                <div style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{passed ? "🎓" : r.icon}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{r.label}</div>
+                  <div style={{ ...T.modSub, fontSize:12 }}>{passed ? `Сдано · ${res.score}%` : eligible ? "Доступен экзамен" : "Сначала пройди роль"}</div>
+                </div>
+              </div>
+              {passed
+                ? <button onClick={() => onCertificate && onCertificate(id)} {...onActivate(() => onCertificate && onCertificate(id))} style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:`1px solid ${color}`, background:"transparent", color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Открыть сертификат</button>
+                : (eligible && hasQuestions)
+                  ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:color, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Сдать экзамен</button>
+                  : null
+              }
+            </div>
+          );
+        })}
+        <div style={{ ...T.para, textAlign:"center", opacity:0.5, fontSize:13, marginTop:8 }}>Сдай экзамен на роль, чтобы получить сертификат.</div>
       </div>
     </div>
   );

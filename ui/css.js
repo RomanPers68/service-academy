@@ -7,6 +7,12 @@ export const injectStyles = () => {
   const style = document.createElement("style");
   style.id = "sa-styles";
   style.textContent = `
+    /* Убираем мерцающий «квадрат»/системную подсветку при тапе на мобильных */
+    * { -webkit-tap-highlight-color: transparent; }
+    /* Фокус-рамку у кнопок и тап-элементов прячем при тапе/мыши, но оставляем для клавиатуры (доступность) */
+    button:focus:not(:focus-visible),
+    [role="button"]:focus:not(:focus-visible),
+    [tabindex]:focus:not(:focus-visible) { outline: none; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }

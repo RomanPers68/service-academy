@@ -3,7 +3,7 @@
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
 import React from "react";
 import { Ico, renderIll } from "./reference-illustrations";
-import { REFERENCE_COURSE } from "../data/reference";
+import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -43,10 +43,11 @@ function Figure({ T, children }) {
 // ── Хаб ──
 function Hub({ T, gold, dark, openCourse, onExit }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
+  const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
   const cards = [
     { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} · с фото`, icon: Ico.serving, on: true },
-    { id: "wine", t: "Вина", s: "скоро", icon: Ico.wine },
+    { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
     { id: "coffee", t: "Кофе", s: "скоро", icon: Ico.coffee },
     { id: "bar", t: "Бар и коктейли", s: "скоро", icon: Ico.bar },
   ];
@@ -61,7 +62,7 @@ function Hub({ T, gold, dark, openCourse, onExit }) {
     </div>
     <div style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
-        <div key={c.id} onClick={c.on ? openCourse : undefined} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
+        <div key={c.id} onClick={c.on ? () => openCourse(c.id) : undefined} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
           <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
           <div style={T.modIcon}>{c.icon(gold, 24)}</div>
           <div style={{ flex: 1 }}>
@@ -77,16 +78,16 @@ function Hub({ T, gold, dark, openCourse, onExit }) {
 }
 
 // ── Курс ──
-function Course({ T, gold, openLesson, onBack }) {
+function Course({ T, gold, course, openLesson, onBack }) {
   return (<div style={T.screen}>
     <Head T={T} title="Справочник" onBack={onBack} />
     <div style={{ padding: "14px 18px 4px" }}>
-      <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: "bold", color: T.modTitle.color }}>{REFERENCE_COURSE.title}</div>
-      <div style={{ color: T.modSub.color, fontSize: 13, marginTop: 5, lineHeight: 1.5 }}>{REFERENCE_COURSE.subtitle}</div>
+      <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: "bold", color: T.modTitle.color }}>{course.title}</div>
+      <div style={{ color: T.modSub.color, fontSize: 13, marginTop: 5, lineHeight: 1.5 }}>{course.subtitle}</div>
     </div>
     <div style={T.secTitle}>ПРОГРАММА</div>
     <div style={T.lessList}>
-      {REFERENCE_COURSE.lessons.map((l, i) => {
+      {course.lessons.map((l, i) => {
         const isQuiz = l.type === "quiz";
         return (<div key={l.id} style={T.lessCard} onClick={() => openLesson(l)}>
           <div style={{ ...T.lessNum, color: isQuiz ? gold : (T.lessNumColor || "#C8B898"), fontWeight: T.lessNumColor ? "bold" : "normal", border: isQuiz ? "1.5px solid rgba(200,169,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
@@ -164,18 +165,28 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 export function ReferenceSection({ T, a11y, onExit, startLessonId }) {
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const dark = !a11y;
-  const lessons = REFERENCE_COURSE.lessons;
-  const startIdx = startLessonId ? lessons.findIndex(l => l.id === startLessonId) : -1;
+  const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE };
+  let startCourseId = "serving", startIdx = -1;
+  if (startLessonId) {
+    for (const cid of Object.keys(COURSES)) {
+      const i = COURSES[cid].lessons.findIndex(l => l.id === startLessonId);
+      if (i >= 0) { startCourseId = cid; startIdx = i; break; }
+    }
+  }
+  const [courseId, setCourseId] = R.useState(startCourseId);
+  const course = COURSES[courseId] || REFERENCE_COURSE;
+  const lessons = course.lessons;
   const [view, setView] = R.useState(startIdx >= 0 ? "read" : "hub");
   const [idx, setIdx] = R.useState(startIdx >= 0 ? startIdx : 0);
   const lesson = lessons[idx];
+  const openCourse = (cid) => { setCourseId(cid); setIdx(0); setView("course"); };
   const openLesson = (l) => { setIdx(lessons.indexOf(l)); setView("read"); };
   const next = idx < lessons.length - 1 ? lessons[idx + 1] : null;
   const goNext = next ? () => { setIdx(idx + 1); setView("read"); } : null;
   const nextLabel = next ? (next.type === "quiz" ? "К фото-вопросам" : "Следующая глава") : null;
 
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={() => setView("course")} onExit={onExit} />;
-  if (view === "course") return <Course T={T} gold={gold} openLesson={openLesson} onBack={() => setView("hub")} />;
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} onExit={onExit} />;
+  if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
   return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
@@ -183,6 +194,6 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId }) {
 
 // Задание дня из Справочника: одна глава/тест, меняется по дате (seed).
 ReferenceSection.dailyTask = (seed) => {
-  const ls = REFERENCE_COURSE.lessons;
+  const ls = [...REFERENCE_COURSE.lessons, ...REFERENCE_WINE_COURSE.lessons];
   return ls[((seed % ls.length) + ls.length) % ls.length];
 };

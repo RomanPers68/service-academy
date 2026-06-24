@@ -146,6 +146,7 @@ function SceneOyster({ c }) {
 
 function Row({ children }) { return <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 14, padding: "6px 0" }}>{children}</div>; }
 function Photo({ src }) { return <img src={src} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 190, objectFit: "cover", borderRadius: 14, display: "block" }} />; }
+function PhotoSmall({ src }) { return <img src={src} alt="" loading="lazy" decoding="async" style={{ width: "auto", maxWidth: 152, maxHeight: 190, objectFit: "contain", borderRadius: 12, display: "block", margin: "0 auto", imageRendering: "auto" }} />; }
 
 // ── Реестр иллюстраций ──
 export const ILL = {
@@ -166,6 +167,6 @@ export const ILL = {
   glass_flute: (c, d) => <Glass type="flute" c={c} dark={d} size={88} />,
 };
 // Фото национальных школ (school_russian_1 … school_french_2)
-Object.keys(REFERENCE_PHOTOS).forEach((k) => { ILL[k] = () => <Photo src={REFERENCE_PHOTOS[k]} />; });
+Object.keys(REFERENCE_PHOTOS).forEach((k) => { ILL[k] = () => (k.indexOf("wine_") === 0 ? <PhotoSmall src={REFERENCE_PHOTOS[k]} /> : <Photo src={REFERENCE_PHOTOS[k]} />); });
 
 export const renderIll = (key, gold, dark) => (ILL[key] ? ILL[key](gold, dark) : null);

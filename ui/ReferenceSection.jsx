@@ -2,7 +2,7 @@
 // Раздел «Справочник»: хаб → курс → глава → фото-тест.
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
 import React from "react";
-import { Ico, renderIll } from "./reference-illustrations";
+import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
 
 const R = React;
@@ -25,7 +25,12 @@ function Content({ text, T, gold, dark }) {
         {keys.map((k, j) => <div key={j} style={{ display: "flex", justifyContent: "center", overflow: "hidden", borderRadius: 14 }}>{renderIll(k, gold, dark)}</div>)}
       </div>);
     }
-    if (t.startsWith("**") && t.endsWith("**")) return <div key={i} style={T.bold}>{t.replace(/\*\*/g, "")}</div>;
+    if (t.startsWith("**") && t.endsWith("**")) {
+      const { flag, rest } = splitLeadingFlag(t.replace(/\*\*/g, ""));
+      return flag
+        ? <div key={i} style={{ ...T.bold, display: "flex", alignItems: "center", gap: 9 }}>{flag}<span>{rest}</span></div>
+        : <div key={i} style={T.bold}>{rest}</div>;
+    }
     if (t.startsWith("• ")) return (<div key={i} style={{ ...T.para, display: "flex", gap: 8, marginBottom: 4 }}><span style={{ color: gold }}>•</span><span style={{ flex: 1 }}>{inlineBold(t.slice(2), T)}</span></div>);
     const num = t.match(/^(\d+)\.\s+(.*)/);
     if (num) return (<div key={i} style={{ ...T.para, display: "flex", gap: 8, marginBottom: 4 }}><b style={{ color: gold }}>{num[1]}.</b><span style={{ flex: 1 }}>{inlineBold(num[2], T)}</span></div>);

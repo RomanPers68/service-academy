@@ -2709,6 +2709,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             const dotColor = { "🔵":"#5B8DD9", "🟢":GREEN, "🟡":"#D9C75B", "🟠":"#E0975B", "🔴":RED }[[...line][0]];
             if (dotColor) return markerRow(T.principle,
               <span style={{ width:9, height:9, borderRadius:5, background:dotColor, marginTop:3, boxShadow:`0 0 8px ${dotColor}55`, display:"inline-block" }} />);
+            if (line.startsWith("🌟")) return markerRow(T.principle,
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={GOLD} stroke={GOLD} strokeWidth="1" strokeLinejoin="round" style={{ marginTop:1 }}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 21.4l1.4-6.8L2.2 9.9l6.9-.8z"/></svg>);
+            if (line.startsWith("🔹")) return markerRow(T.principle,
+              <span style={{ width:8, height:8, background:"#5B8DD9", transform:"rotate(45deg)", borderRadius:1, marginTop:4, boxShadow:"0 0 6px #5B8DD955", display:"inline-block" }} />);
             if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
             return <div key={i} style={T.para}>{highlightTerms(line, T.para)}</div>;
           })}

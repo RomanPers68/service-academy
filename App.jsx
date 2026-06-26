@@ -414,6 +414,7 @@ function ServiceAcademy() {
   const openModule = useCallback((m) => { setActiveModule(m); setScreen("module"); }, []);
   const openLesson = (l) => {
     if (l.type === "quiz" && quizDone[l.id]) return;
+    if (l.type === "dialogue") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
     const originalLesson = role ? (MODULES[role] || []).flatMap(m => m.lessons).find(lesson => lesson.id === l.id) || l : l;
     let initQuestions = originalLesson.questions || [];
     let lessonToOpen = originalLesson;
@@ -566,11 +567,12 @@ function ServiceAcademy() {
       // 4. Пройдена ли вся роль? (используем СВЕЖИЕ newCompleted / newQuizDone)
       const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
       const allDone = allLessons.every(l => l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]);
-      const nextIdx = ROLE_ORDER.indexOf(role) + 1;
-      const nextRole = ROLE_ORDER[nextIdx];
-      if (allDone && nextRole && !completedRoles.has(nextRole)) { // открываем следующую роль, если она ещё закрыта
+      const roleIdx = ROLE_ORDER.indexOf(role);
+      const nextRole = roleIdx >= 0 ? ROLE_ORDER[roleIdx + 1] : undefined; // роли вне лестницы (напр. СПГ) — без следующей ступени
+      const firstCompletion = nextRole ? !completedRoles.has(nextRole) : !completedRoles.has(role);
+      if (allDone && firstCompletion) { // роль пройдена впервые (для ролей вне лестницы nextRole может отсутствовать)
         const updatedRoles = new Set([...completedRoles, role]);
-        updatedRoles.add(nextRole); // разблокируем следующую
+        if (nextRole) updatedRoles.add(nextRole); // разблокируем следующую, если есть
         try { localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...updatedRoles])); } catch(e) {}
         setCompletedRoles(updatedRoles);
         if (profile) {
@@ -741,8 +743,9 @@ function ServiceAcademy() {
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onBack={() => navigate(prevScreen || "home")} />}
         {screen === "module" && <div style={{paddingBottom:88}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
-        {screen === "lesson" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
-        {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1])} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
+        {screen === "lesson" && activeLesson?.type === "dialogue" && <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />}
+        {screen === "lesson" && activeLesson?.type !== "dialogue" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
+        {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} />}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
         {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) openCertificate(id); }} onExit={() => navigate("certificates")} />}

@@ -48,6 +48,15 @@ export const ROLE_SVG = {
       <path d="M4.5 20.5h15" />
     </svg>
   ),
+  spg: (c, s=30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 16.5a7.5 7.5 0 0 1 15 0" />
+      <path d="M2.5 16.5h19" />
+      <path d="M5 19.5h14" />
+      <path d="M12 9V6.6" />
+      <circle cx="12" cy="5.3" r="1.3" />
+    </svg>
+  ),
   lock: (c, s=26) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <rect x="5.5" y="11" width="13" height="9" rx="2.2" />
@@ -93,6 +102,12 @@ export const UI_SVG = {
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2.8" y="8" width="18.4" height="9.6" rx="4.8" /><path d="M8 10.8v3.2M6.4 12.4h3.2" />
       <circle cx="15.6" cy="11.2" r="0.85" fill={c} stroke="none" /><circle cx="18" cy="13.6" r="0.85" fill={c} stroke="none" />
+    </svg>
+  ),
+  dialog: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.2V16.5H4A1.5 1.5 0 0 1 2.5 15V7A1.5 1.5 0 0 1 4 5.5Z" />
+      <circle cx="8.5" cy="11" r="0.9" fill={c} stroke="none" /><circle cx="12" cy="11" r="0.9" fill={c} stroke="none" /><circle cx="15.5" cy="11" r="0.9" fill={c} stroke="none" />
     </svg>
   ),
   diamond: (c, s=20) => (

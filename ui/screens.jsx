@@ -95,6 +95,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
     core:     { icon:"⭐", title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Твои стандарты — пример для новичков.", color:GOLD },
     manager:  { icon:"🎯", title:"Менеджер пройден!", badge:"Лидер зала", desc:"Управление командой, разрешение конфликтов, финансы — ты готов к большему.", color:"#8B7BAB" },
     service_manager: { icon:"🏛️", title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Ты прошёл весь путь. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
+    spg: { icon:"🛎️", title:"Хостес пройдена!", badge:"Лицо ресторана", desc:"Ты — первое и последнее впечатление гостя. Встреча, поток и атмосфера у входа теперь твоя стихия.", color:"#C8917A" },
   };
   const ach = achivements[role?.id] || achivements.seasonal;
 
@@ -142,7 +143,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
         </div>
       )}
 
-      {isLast && phase >= 1 && (
+      {isLast && phase >= 1 && role?.id !== "spg" && (
         <div className="sa-pop" style={{ width:"100%", maxWidth:340, marginBottom:24 }}>
           <div style={{ background:"linear-gradient(135deg, rgba(212,168,90,0.15) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(212,168,90,0.4)", borderRadius:20, padding:"16px 20px", textAlign:"center" }}>
             <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{crownIcon(GOLD_SOFT, 32)}</div>
@@ -251,6 +252,17 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       const maxAvg = Math.max(...allPlayers.map(getAvg), 0);
       if (myAvg > 0 && myAvg === maxAvg && allPlayers.length > 1) {
         achievements.push({ icon:"⭐", label:"Ядро команды" });
+      }
+    }
+
+    // 🛎️ Лучший хостес — лучший средний % в роли spg (Хостес)
+    const spgScores = allScores.filter(s => s.role === "spg");
+    if (spgScores.length > 0) {
+      const getAvgS = (p) => { const ps = spgScores.filter(s => s.name === p.name && s.surname === p.surname); return ps.length > 0 ? ps.reduce((sum, s) => sum + s.pct, 0) / ps.length : 0; };
+      const myAvgS = getAvgS(player);
+      const maxAvgS = Math.max(...allPlayers.map(getAvgS), 0);
+      if (myAvgS > 0 && myAvgS === maxAvgS && allPlayers.length > 1) {
+        achievements.push({ icon:"🛎️", label:"Лучший хостес" });
       }
     }
 
@@ -539,8 +551,8 @@ export function PlayerDetailScreen({ player, T, onBack }) {
     }).catch(() => setLoading(false));
   }, [player.name, player.surname]);
 
-  const roleNames = { seasonal: "Новичок", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер" };
-  const roleColors = { seasonal: "#7C9E87", core: GOLD, manager: "#8B7BAB", service_manager: "#5B8FA8" };
+  const roleNames = { seasonal: "Новичок", spg: "СПГ", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер" };
+  const roleColors = { seasonal: "#7C9E87", spg: "#C8917A", core: GOLD, manager: "#8B7BAB", service_manager: "#5B8FA8" };
 
   // Группируем прогресс по ролям — уроки + практики (без квизов)
   const byRole = {};
@@ -1701,7 +1713,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
   const position = profile?.position || "waiter";
 
   // Роли доступные сразу по должности (без прохождения)
-  const baseUnlocked = new Set(["seasonal"]);
+  const baseUnlocked = new Set(["seasonal", "spg"]);
   if (isAdmin || position === "senior") {
     ROLE_ORDER.forEach(r => baseUnlocked.add(r));
   } else if (position === "manager") {
@@ -2533,11 +2545,11 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
           const typeColor = { lesson:"#7C9E87", quiz:GOLD, practice:"#8B7BAB" };
           return (
             <div key={l.id} className="sa-card sa-glass" style={{ ...T.lessCard, opacity: 1 }} onClick={() => onLesson(l)} {...onActivate(() => onLesson(l))}>
-              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
-                {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz(GOLD, 15) : i+1}
+              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz"||l.type==="dialogue") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : l.type==="dialogue" ? "1.5px solid rgba(127,176,160,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
+                {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz(GOLD, 15) : l.type==="dialogue" ? UI_SVG.dialog("#7FB0A0", 15) : i+1}
               </div>
               <div style={{ ...T.lessInfo, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ ...T.lessTitle, marginBottom:0, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : T.lessTitle.color }}>
+                <div style={{ ...T.lessTitle, marginBottom:0, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : T.lessTitle.color }}>
                   {l.title}
                 </div>
                 {l.type === "lesson" && <div style={{ fontSize:10, letterSpacing:1, fontFamily:"monospace", color:typeColor[l.type], marginTop:2 }}>{typeMap[l.type]}</div>}
@@ -3122,7 +3134,8 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
   );
 }
 
-export function LiveDialogue({ dialogueId, T, onClose, color }) {
+const dlgLastByTerm = {};
+export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const initial = DIALOGUES_DATA.find(d => d.id === dialogueId);
   // Группа = все сценарии одной темы (один termKey). Позволяет ротацию вариантов.
   const group = React.useMemo(
@@ -3133,9 +3146,17 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
   const [currentId, setCurrentId] = React.useState(() => {
     if (!initial) return dialogueId;
     const grp = DIALOGUES_DATA.filter(d => d.termKey === initial.termKey);
-    return grp.length ? grp[Math.floor(Math.random() * grp.length)].id : dialogueId;
+    if (!grp.length) return dialogueId;
+    let pick = grp[Math.floor(Math.random() * grp.length)].id;
+    if (grp.length > 1 && pick === dlgLastByTerm[initial.termKey]) {
+      const others = grp.filter(d => d.id !== dlgLastByTerm[initial.termKey]);
+      pick = others[Math.floor(Math.random() * others.length)].id;
+    }
+    dlgLastByTerm[initial.termKey] = pick;
+    return pick;
   });
   const dialogue = group.find(d => d.id === currentId) || initial;
+  const idxOf = (sid) => sid === "result" ? dialogue.steps.findIndex(s => s.type === "result") : dialogue.steps.findIndex(s => s.id === sid);
   const [visible, setVisible] = React.useState(false);
   const [messages, setMessages] = React.useState([]);
 
@@ -3145,9 +3166,11 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
   const [stepIdx, setStepIdx] = React.useState(0);
   const [chosen, setChosen] = React.useState(null);
   const [score, setScore] = React.useState(0);
+  const [choicesFaced, setChoicesFaced] = React.useState(0);
   const [mood, setMood] = React.useState(dialogue?.guest.mood || 3);
   const [typing, setTyping] = React.useState(false);
   const [done, setDone] = React.useState(false);
+  const [walkedOut, setWalkedOut] = React.useState(false);
   const bottomRef = React.useRef(null);
   const scrollRef = React.useRef(null);
   const runningRef = React.useRef(false);
@@ -3188,7 +3211,8 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
       await addMsg({ ...step });
       await sleep(350);
       runningRef.current = false;
-      if (step.type !== "result") setStepIdx(i => i + 1);
+      const nxt = step.next ? idxOf(step.next) : stepIdx + 1;
+      if (step.type !== "result") { if (dialogue.steps[nxt] && dialogue.steps[nxt].type === "result") setDone(true); else setStepIdx(nxt); }
     };
     run();
   }, [stepIdx]);
@@ -3199,11 +3223,17 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
     const opt = step.options[optIdx];
     setChosen(optIdx);
     if (opt.correct) setScore(s => s + 1);
-    setMood(m => Math.max(1, Math.min(5, m + opt.moodDelta)));
+    setChoicesFaced(c => c + 1);
+    const nm = Math.max(1, Math.min(5, mood + opt.moodDelta));
+    setMood(nm);
     await addMsg({ type: "waiter", text: opt.text, correct: opt.correct });
     await sleep(500);
     await addMsg({ type: "feedback", text: opt.feedback, correct: opt.correct });
     await sleep(700);
+    if (pro && !opt.correct) {
+      const best = step.options.find(o => o.correct);
+      if (best) { await addMsg({ type: "hint", text: best.text }); await sleep(600); }
+    }
     if (opt.reaction) {
       setTyping(true);
       await sleep(800);
@@ -3211,9 +3241,13 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
       await addMsg({ type: "guest", text: opt.reaction });
       await sleep(450);
     }
+    if (pro && nm <= 1 && !opt.correct && !opt.goto) {
+      await addMsg({ type: "action", text: dialogue.guest.name + " не выдержал и уходит, не дождавшись хорошего приёма." });
+      setWalkedOut(true); setChosen(null); setDone(true); return;
+    }
     setChosen(null);
-    const next = stepIdx + 1;
-    if (dialogue.steps[next]?.type === "result") { setDone(true); return; }
+    const next = opt.goto ? idxOf(opt.goto) : stepIdx + 1;
+    if (next < 0 || dialogue.steps[next]?.type === "result") { setDone(true); return; }
     runningRef.current = false;
     setStepIdx(next);
   };
@@ -3279,6 +3313,11 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
               {msg.correct ? "✓ " : "✗ "}{msg.text}
             </div>
           );
+          if (msg.type === "hint") return (
+            <div key={i} style={{ padding:"7px 12px", borderRadius:10, background: dColor+"14", border:"1px solid "+dColor+"33", color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.55 }}>
+              💡 Лучше: {msg.text}
+            </div>
+          );
           return null;
         })}
 
@@ -3309,11 +3348,14 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
         <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
           {/* Итог */}
           <div style={{ padding:"12px 14px 8px", borderTop:`1px solid ${dColor}22`, textAlign:"center", flexShrink:0 }}>
-            <div style={{ fontSize:32, marginBottom:4 }}>{MOOD_EMOJI_D[moodC-1]}</div>
-            <div style={{ color:MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:2 }}>
-              {moodC>=4 ? `${dialogue.guest.name} в восторге` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} не в духе`}
+            <div style={{ fontSize:32, marginBottom:4 }}>{walkedOut ? "🚪" : MOOD_EMOJI_D[moodC-1]}</div>
+            <div style={{ color: walkedOut ? "#E05858" : MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:2 }}>
+              {walkedOut ? `${dialogue.guest.name} ушёл` : moodC>=4 ? `${dialogue.guest.name} в восторге` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} не в духе`}
             </div>
-            <div style={{ color: T.modSub?.color || BROWN, fontSize:12, marginBottom:6 }}>{score} из {totalChoices} правильных ответов</div>
+            {pro && (() => { const den = choicesFaced || totalChoices; const stars = walkedOut ? 0 : (score===den && moodC>=4) ? 3 : (score>=Math.ceil(den*0.6) && moodC>=3) ? 2 : (score>0 ? 1 : 0); return (
+              <div style={{ fontSize:17, letterSpacing:3, marginBottom:3 }}><span style={{ color:dColor }}>{"★".repeat(stars)}</span><span style={{ color:"rgba(255,255,255,0.15)" }}>{"★".repeat(3-stars)}</span></div>
+            ); })()}
+            <div style={{ color: T.modSub?.color || BROWN, fontSize:12, marginBottom:6 }}>{score} из {choicesFaced || totalChoices} правильных ответов</div>
             <div style={{ color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.5, marginBottom:8, fontStyle:"italic" }}>
               ✦ {dialogue.steps.find(s=>s.type==="result")?.tip}
             </div>
@@ -3325,6 +3367,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
               if (msg.type === "guest") return <div key={i} style={{ alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
               if (msg.type === "waiter") return <div key={i} style={{ alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || CREAM, fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
               if (msg.type === "feedback") return <div key={i} style={{ padding:"5px 10px", borderRadius:8, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
+              if (msg.type === "hint") return <div key={i} style={{ padding:"5px 10px", borderRadius:8, background: dColor+"12", color:dColor, fontSize:11, lineHeight:1.5 }}>💡 Лучше: {msg.text}</div>;
               return null;
             })}
           </div>
@@ -3337,8 +3380,8 @@ export function LiveDialogue({ dialogueId, T, onClose, color }) {
                   nextId = others[Math.floor(Math.random() * others.length)].id;
                 }
                 const next = group.find(d => d.id === nextId) || dialogue;
-                setCurrentId(nextId);
-                setMessages([]); setStepIdx(0); setChosen(null); setScore(0); setMood(next?.guest.mood || 3); setDone(false); runningRef.current=false;
+                setCurrentId(nextId); dlgLastByTerm[dialogue.termKey] = nextId;
+                setMessages([]); setStepIdx(0); setChosen(null); setScore(0); setChoicesFaced(0); setMood(next?.guest.mood || 3); setDone(false); setWalkedOut(false); runningRef.current=false;
               }}
               style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
               ↺ Ещё раз

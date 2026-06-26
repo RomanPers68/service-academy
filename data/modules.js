@@ -4,7 +4,10 @@
 // Перенесено из App.jsx (строки 86–4051) без изменений — добавлен только export.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { SPG_MODULES } from "./modules-spg";
+
 export const MODULES = {
+  spg: SPG_MODULES,
   seasonal: [
     {
       id: "s0", tag: "Урок 0", title: "Психология первого дня", subtitle: "Стресс, адаптация и первые шаги", icon: "🧭", color: "#7C9E87",

@@ -209,11 +209,13 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   // Доступные вкладки по должности
   const allTabs = [
     { id:"waiter",  label:"Официанты", icon:"🍽️", color:"#7C9E87" },
+    { id:"hostess", label:"Хостес", icon:"🛎️", color:"#C8917A" },
     { id:"manager", label:"Менеджеры", icon:"🎯", color:"#8B7BAB" },
     { id:"senior",  label:"Руководство", icon:"🏛️", color:GOLD },
   ];
   const visibleTabs = (isAdmin || myPosition === "senior") ? allTabs : allTabs.filter(t => {
     if (myPosition === "waiter")  return t.id === "waiter";
+    if (myPosition === "hostess") return t.id === "hostess";
     if (myPosition === "manager") return t.id === "waiter" || t.id === "manager";
     return true;
   });
@@ -221,8 +223,8 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const [tab, setTab] = React.useState(visibleTabs[0]?.id || "waiter");
   const [detailTab, setDetailTab] = React.useState(false);
   const [selected, setSelected] = React.useState(null);
-  const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, manager:"#8B7BAB", service_manager:"#7B8FAB" };
+  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
   const medals = ["🥇","🥈","🥉"];
 
   const getAchievements = (player, allPlayers, allScores) => {
@@ -748,8 +750,8 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
 
 export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
-  const roleLabel = { seasonal:"Новичок", core:"Ядро", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, manager:"#8B7BAB", service_manager:"#7B8FAB" };
+  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
   const roleIcon  = { seasonal:"🌱", core:"⭐", manager:"🎯", service_manager:"🏛️" };
 
   const myScores = scores.filter(s => s.name === profile?.name && s.surname === profile?.surname);
@@ -1007,7 +1009,7 @@ export function ProfileScreen({ onDone, T }) {
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                   cursor:"pointer", userSelect:"none" }}>
                 <span style={{ color: position ? CREAM : "#9A8060", fontSize:15 }}>
-                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{POS_SVG[position] && POS_SVG[position](GOLD, 16)}{({waiter:"Официант", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
+                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{POS_SVG[position] && POS_SVG[position](GOLD, 16)}{({waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
                 </span>
                 <span style={{ color:"#C8A870", fontSize:14, transition:"transform 0.2s", display:"inline-block", transform: showPositionSheet ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
               </div>
@@ -1015,6 +1017,7 @@ export function ProfileScreen({ onDone, T }) {
                 <div className="sa-fast" style={{ marginTop:8, display:"flex", flexDirection:"column", gap:6 }}>
                   {[
                     { id:"waiter",  icon:"🍽️", label:"Официант",           sub:"Обслуживание гостей" },
+                    { id:"hostess", icon:"🛎️", label:"Хостес",             sub:"Служба приёма гостей" },
                     { id:"manager", icon:"🎯", label:"Менеджер",            sub:"Управление залом и командой" },
                     { id:"senior",  icon:"🏛️", label:"Руководящий состав", sub:"Управляющий, Директор" },
                   ].map(pos => (
@@ -1075,7 +1078,7 @@ export function ProfileScreen({ onDone, T }) {
 
 export const APP_SHARE_URL = "https://service-academy-16te.vercel.app";
 
-export const POS_LABELS = { waiter:"Официант", manager:"Менеджер", senior:"Руководящий состав" };
+export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав" };
 
 export function TeamScreen({ T, profile, a11y }) {
   const [view, setView] = React.useState("list");        // list | add | card | code
@@ -1649,7 +1652,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
 
 export function AccountScreen({ profile, T, onBack, onLogout }) {
   const [confirmOut, setConfirmOut] = React.useState(false);
-  const posLabel = { waiter:"Официант", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
+  const posLabel = { waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
@@ -1741,7 +1744,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                 {`${profile.name} ${profile.surname}`}{isAdmin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
               </div>
               <div style={{ color:"#C8A870", fontSize:12, marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:5 }}>{UI_SVG.building("#C8A870", 12)}</span>{profile.restaurant}{profile.position ? ` · ${{waiter:"Официант", manager:"Менеджер", senior:"Руководящий состав"}[profile.position] || ""}` : ""}
+                <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:5 }}>{UI_SVG.building("#C8A870", 12)}</span>{profile.restaurant}{profile.position ? ` · ${{waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав"}[profile.position] || ""}` : ""}
               </div>
             </div>
             <div style={{ display:"flex", gap:4, flexShrink:0 }}>

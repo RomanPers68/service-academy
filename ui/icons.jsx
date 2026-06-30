@@ -164,7 +164,7 @@ export const UI_SVG = {
   target: (c, s=20) => ROLE_SVG.manager(c, s),
 };
 // Иконки должностей
-export const POS_SVG = { waiter: UI_SVG.cloche, manager: (c,s)=>ROLE_SVG.manager(c,s), senior: (c,s)=>ROLE_SVG.service_manager(c,s) };
+export const POS_SVG = { waiter: UI_SVG.cloche, hostess: (c,s)=>ROLE_SVG.spg(c,s), manager: (c,s)=>ROLE_SVG.manager(c,s), senior: (c,s)=>ROLE_SVG.service_manager(c,s) };
 
 // SVG-иконки модулей — ключ это эмодзи из данных, рисуем в цвет модуля; нет в карте — показываем эмодзи
 export const MOD_SVG = {

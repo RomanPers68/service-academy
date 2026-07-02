@@ -20,6 +20,17 @@ const saveCustom = (obj) => { try { localStorage.setItem(CUSTOM_KEY, JSON.string
 const loadHide = () => { try { return JSON.parse(localStorage.getItem(HIDE_SAMPLES_KEY) || "{}"); } catch (e) { return {}; } };
 const saveHide = (obj) => { try { localStorage.setItem(HIDE_SAMPLES_KEY, JSON.stringify(obj)); } catch (e) {} };
 
+// Фирменная «стеклянная» плашка — те же токены, что у карточек уроков (обе темы)
+const glass = (T) => ({
+  background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+  border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+  borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+  boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset",
+  backdropFilter: T.lessGlass?.blur || "none",
+  WebkitBackdropFilter: T.lessGlass?.blur || "none",
+  borderRadius: 18,
+});
+
 export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const green = "#5DBB8A";
@@ -122,7 +133,7 @@ function DishBack({ d, T, gold }) {
   const Row = ({ label, children }) => (
     <div style={{ marginBottom: 10 }}>
       <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 14, lineHeight: 1.5 }}>{children}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.5, color: T.para?.color }}>{children}</div>
     </div>
   );
   return (
@@ -171,11 +182,11 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant }) {
       {Head("Флеш-карточки")}
       <div style={{ padding: "6px 18px", color: T.modSub.color, fontSize: 12 }}>Осталось в колоде: {deck.length} · {restaurant}</div>
       <div style={{ padding: "8px 16px" }}>
-        <div className="sa-card" style={{ borderRadius: 18, border: `1px solid ${gold}55`, background: "rgba(255,255,255,0.04)", padding: "22px 18px", minHeight: 220 }}>
+        <div className="sa-card" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default" }}>
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{d.cat || "БЛЮДО"}</div>
-          <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 14 }}>{d.name}</div>
+          <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 14, color: T.bold?.color }}>{d.name}</div>
           {!flipped ? (
-            <div style={{ color: T.modSub.color, fontSize: 14, lineHeight: 1.6 }}>
+            <div style={{ color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>
               Вспомни: состав, аллергены, как описать гостю и с чем сочетать. Потом переверни и сверься.
             </div>
           ) : <DishBack d={d} T={T} gold={gold} />}
@@ -295,21 +306,21 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
     <div style={T.screen} className="sa-screen">
       {Head("Опиши за 60 секунд")}
       <div style={{ padding: "8px 16px" }}>
-        <div className="sa-card" style={{ borderRadius: 18, border: `1px solid ${gold}55`, background: "rgba(255,255,255,0.04)", padding: "22px 18px" }}>
+        <div style={{ ...glass(T), padding: "22px 18px" }}>
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{dish.cat || "БЛЮДО"} · {restaurant}</div>
-          <div style={{ fontSize: 22, fontWeight: "bold", marginBottom: 12 }}>{dish.name}</div>
+          <div style={{ fontSize: 22, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{dish.name}</div>
 
           {phase === "ready" && (
-            <div style={{ color: T.modSub.color, fontSize: 14, lineHeight: 1.65 }}>
+            <div style={{ color: T.para?.color, fontSize: 14, lineHeight: 1.65 }}>
               Представь: гость спрашивает «а что это за блюдо?». У тебя минута, чтобы описать его так, чтобы захотелось заказать.
-              <br /><br />Говори <b>вслух</b> — как в зале. Про вкус, текстуру и подачу, а не только про состав.
+              <br /><br />Говори <b style={{ color: gold }}>вслух</b> — как в зале. Про вкус, текстуру и подачу, а не только про состав.
             </div>
           )}
 
           {phase === "speaking" && (
             <div>
               <TimerBar key={timerKey} duration={60} color={gold} onExpire={() => setPhase("compare")} />
-              <div style={{ color: T.modSub.color, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
+              <div style={{ color: T.para?.color, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
                 🎙 Говори! Вкус → текстура → из чего → с чем сочетается.
               </div>
             </div>
@@ -318,7 +329,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
           {phase === "compare" && (
             <div>
               <div style={{ fontSize: 10, letterSpacing: 1.5, color: green, fontFamily: "monospace", marginBottom: 4 }}>ЭТАЛОННОЕ ОПИСАНИЕ</div>
-              <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14, fontStyle: "italic" }}>{dish.desc || "Эталон не задан — добавь описание в редакторе меню."}</div>
+              <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14, fontStyle: "italic", color: T.para?.color }}>{dish.desc || "Эталон не задан — добавь описание в редакторе меню."}</div>
               <DishBack d={{ ...dish, desc: "" }} T={T} gold={gold} />
               <div style={{ color: T.modSub.color, fontSize: 13, lineHeight: 1.55, marginTop: 4 }}>
                 Сравни: упомянул(а) вкус? текстуру? сочетание? Чего не хватило — то и запомни.
@@ -341,7 +352,7 @@ function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, s
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
   const list = custom[restaurant] || [];
-  const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}55`, background: a11y ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
+  const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
 
   const save = () => {
     if (!form.name.trim()) return;
@@ -385,7 +396,8 @@ function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, s
       <div style={{ padding: "10px 16px 0" }}>
         <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%" }} onClick={() => setForm({ ...empty })}>+ Добавить блюдо</button>
         <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] }))}
-          style={{ margin: "12px 0 4px", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}44`, fontSize: 13.5, color: T.modSub.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          className="sa-card"
+          style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 13.5, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Примеры-заготовки в тренажёре</span>
           <b style={{ color: hideSamples[restaurant] ? red : "#5DBB8A" }}>{hideSamples[restaurant] ? "скрыты" : "видны"}</b>
         </div>

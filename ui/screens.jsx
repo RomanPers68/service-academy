@@ -3699,7 +3699,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
     <div style={T.screen}>
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onExit}>‹</button>
-        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gradcap(GOLD, 19)}<span>Сертификаты</span></div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gradcap(a11y ? "#8B6A30" : GOLD, 19)}<span>Сертификаты</span></div>
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 40px", display:"flex", flexDirection:"column", gap:12 }}>
         {_CERT_ROLE_ORDER.map(id => {

@@ -57,21 +57,21 @@ export function SearchScreen({ T, a11y, role, modules = [], onOpen, onBack }) {
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpenTerm(null); }}
           placeholder="Глютен, прожарки, жалоба, стоп-лист…"
-          style={{ width: "100%", boxSizing: "border-box", padding: "13px 15px", borderRadius: 14, border: `1px solid ${gold}66`, background: a11y ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)", color: textColor, fontSize: 16, outline: "none" }}
+          style={{ width: "100%", boxSizing: "border-box", padding: "13px 15px", borderRadius: 14, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, outline: "none" }}
         />
       </div>
 
       {query.length < 2 && (
-        <div style={{ textAlign: "center", padding: "44px 24px", color: T.modSub.color }}>
+        <div style={{ textAlign: "center", padding: "44px 24px" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔎</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6 }}>Введи минимум 2 буквы — найду по всем урокам твоей роли и по глоссарию.</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Введи минимум 2 буквы — найду по всем урокам твоей роли и по глоссарию.</div>
         </div>
       )}
 
       {query.length >= 2 && results.terms.length === 0 && results.lessons.length === 0 && (
-        <div style={{ textAlign: "center", padding: "44px 24px", color: T.modSub.color }}>
+        <div style={{ textAlign: "center", padding: "44px 24px" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
-          <div style={{ fontSize: 14 }}>Ничего не нашлось. Попробуй другое слово или его часть.</div>
+          <div style={{ fontSize: 14, color: T.para?.color }}>Ничего не нашлось. Попробуй другое слово или его часть.</div>
         </div>
       )}
 
@@ -91,7 +91,7 @@ export function SearchScreen({ T, a11y, role, modules = [], onOpen, onBack }) {
               <div style={T.modArrow}>{openTerm === g.term ? "˅" : "›"}</div>
             </div>
             {openTerm === g.term && (
-              <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.55, marginTop: 8, paddingLeft: 10, borderLeft: `2px solid ${gold}` }}>{g.def}</div>
+              <div style={{ fontSize: 13.5, color: T.para?.color, whiteSpace: "normal", lineHeight: 1.55, marginTop: 8, paddingLeft: 10, borderLeft: `2px solid ${gold}` }}>{g.def}</div>
             )}
           </div>
         ))}

@@ -16,6 +16,17 @@ const keyFor = (profile) => `sa_skills_${(profile?.name || "guest")}|${(profile?
 const load = (profile) => { try { return JSON.parse(localStorage.getItem(keyFor(profile)) || "{}"); } catch (e) { return {}; } };
 const save = (profile, obj) => { try { localStorage.setItem(keyFor(profile), JSON.stringify(obj)); } catch (e) {} };
 
+// Фирменная «стеклянная» плашка — те же токены, что у карточек уроков (обе темы)
+const glass = (T) => ({
+  background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+  border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+  borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+  boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset",
+  backdropFilter: T.lessGlass?.blur || "none",
+  WebkitBackdropFilter: T.lessGlass?.blur || "none",
+  borderRadius: 18,
+});
+
 export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const green = "#5DBB8A";
@@ -55,16 +66,16 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
         <div style={T.lessHeadTitle}>Допуск наставника</div>
       </div>
 
-      <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13.5, lineHeight: 1.55 }}>
+      <div style={{ padding: "8px 18px 0", color: T.para?.color, fontSize: 13.5, lineHeight: 1.55 }}>
         Тесты показывают <b style={{ color: gold }}>знание</b>. Здесь наставник подтверждает <b style={{ color: gold }}>умение</b> — то, что он видел своими глазами в зале.
       </div>
 
-      <div style={{ margin: "14px 16px 4px", padding: "16px", borderRadius: 16, border: `1px solid ${allDone ? green : gold}55`, background: allDone ? "rgba(93,187,138,0.08)" : "rgba(255,255,255,0.04)" }}>
+      <div style={{ ...glass(T), margin: "14px 16px 4px", padding: "16px", ...(allDone ? { border: `1px solid ${green}77`, borderTop: `1px solid ${green}99` } : {}) }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: T.modSub.color }}>{roleObj?.label || ""} · допуск</span>
-          <b style={{ color: allDone ? green : gold }}>{doneCount} / {skills.length}</b>
+          <span style={{ fontSize: 13, color: T.para?.color }}>{roleObj?.label || ""} · допуск</span>
+          <b style={{ color: allDone ? green : gold, fontSize: 15 }}>{doneCount} / {skills.length}</b>
         </div>
-        <div style={{ height: 7, borderRadius: 4, background: "rgba(128,128,128,0.2)", overflow: "hidden" }}>
+        <div style={{ height: 7, borderRadius: 4, background: "rgba(128,128,128,0.22)", overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${pct}%`, background: allDone ? green : gold, transition: "width .4s" }} />
         </div>
         {allDone && <div style={{ marginTop: 10, color: green, fontWeight: "bold", fontSize: 14.5 }}>🎓 Допущен(а) к самостоятельной работе</div>}
@@ -95,25 +106,25 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
 
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={() => setModal(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", background: a11y ? "#F2E9D8" : "#22180F", borderRadius: "22px 22px 0 0", padding: "22px 18px 30px", color: textColor }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", background: a11y ? "linear-gradient(165deg, #FAF3E3 0%, #EFE3CB 100%)" : "linear-gradient(165deg, #3A2A12 0%, #241806 100%)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px 30px", color: textColor }}>
             <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ПОДТВЕРЖДЕНИЕ НАВЫКА</div>
-            <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6 }}>{modal.label}</div>
-            <div style={{ fontSize: 13.5, color: a11y ? "#5a4a35" : "#c8b898", lineHeight: 1.5, marginBottom: 16 }}>
-              📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык только если <b>лично видел</b> его выполнение в зале.
+            <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6, color: T.bold?.color }}>{modal.label}</div>
+            <div style={{ fontSize: 13.5, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
+              📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
             </div>
             <input
               value={mentorName}
               onChange={e => setMentorName(e.target.value)}
               placeholder="Фамилия и имя наставника"
-              style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.07)", color: textColor, fontSize: 15.5, outline: "none", marginBottom: 12 }}
+              style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15.5, outline: "none", marginBottom: 12 }}
             />
             <div onClick={() => setAgree(a => !a)} {...onActivate(() => setAgree(a => !a))} style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", marginBottom: 16 }}>
-              <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${agree ? green : gold + "88"}`, background: agree ? green : "transparent", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{agree ? "✓" : ""}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.45, color: a11y ? "#5a4a35" : "#c8b898" }}>Подтверждаю: наблюдал(а) выполнение этого навыка сотрудником в реальной работе.</div>
+              <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${agree ? green : gold}`, background: agree ? green : "transparent", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{agree ? "✓" : ""}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.45, color: T.para?.color }}>Подтверждаю: наблюдал(а) выполнение этого навыка сотрудником в реальной работе.</div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}66`, color: textColor }} onClick={() => setModal(null)}>Отмена</button>
-              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: mentorName.trim() && agree ? green : "rgba(128,128,128,0.35)" }} onClick={confirm}>Подтвердить ✓</button>
+              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setModal(null)}>Отмена</button>
+              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: mentorName.trim() && agree ? green : gold + "55", color: mentorName.trim() && agree ? "#fff" : (a11y ? "#7a6a4a" : "#e8dcc0"), transition: "background .25s" }} onClick={confirm}>Подтвердить ✓</button>
             </div>
           </div>
         </div>

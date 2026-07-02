@@ -7,6 +7,7 @@
 // (SQL для сервера — в файле supabase-stage2.sql в корне проекта).
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { ROLE_SKILLS } from "../data/skills";
 import { onActivate, vibrate } from "../lib/utils";
 import { rpcSync, saToken } from "../api/supabase";
@@ -60,7 +61,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
 
   return (
     <div style={T.screen} className="sa-screen">
-      {allDone && <Confetti />}
+      {allDone && createPortal(<Confetti />, document.body)}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Допуск наставника</div>
@@ -104,9 +105,9 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
         })}
       </div>
 
-      {modal && (
+      {modal && createPortal(
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={() => setModal(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", background: a11y ? "linear-gradient(165deg, #FAF3E3 0%, #EFE3CB 100%)" : "linear-gradient(165deg, #3A2A12 0%, #241806 100%)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px 30px", color: textColor }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto", background: a11y ? "linear-gradient(165deg, #FAF3E3 0%, #EFE3CB 100%)" : "linear-gradient(165deg, #3A2A12 0%, #241806 100%)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px", paddingBottom: "max(30px, env(safe-area-inset-bottom))", color: textColor }}>
             <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ПОДТВЕРЖДЕНИЕ НАВЫКА</div>
             <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6, color: T.bold?.color }}>{modal.label}</div>
             <div style={{ fontSize: 13.5, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
@@ -115,6 +116,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
             <input
               value={mentorName}
               onChange={e => setMentorName(e.target.value)}
+              onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
               placeholder="Фамилия и имя наставника"
               style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15.5, outline: "none", marginBottom: 12 }}
             />
@@ -127,7 +129,8 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
               <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: mentorName.trim() && agree ? green : gold + "55", color: mentorName.trim() && agree ? "#fff" : (a11y ? "#7a6a4a" : "#e8dcc0"), transition: "background .25s" }} onClick={confirm}>Подтвердить ✓</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

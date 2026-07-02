@@ -13,6 +13,9 @@ import { injectStyles } from "./ui/css";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./ui/icons";
 import { S, A } from "./ui/styles";
 import { ReferenceSection } from "./ui/ReferenceSection";
+import { SearchScreen } from "./ui/search";
+import { MenuTrainerScreen } from "./ui/menu-trainer";
+import { MentorScreen } from "./ui/mentor";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./ui/mood-cards";
@@ -73,7 +76,10 @@ injectStyles();
 
 // #2 — Фича «Сертификаты и экзамен» полностью готова в коде, но временно скрыта из интерфейса.
 // Чтобы вернуть: поставь true — снова появятся плитка «Сертификаты» и вход к экзамену.
-const CERTIFICATES_ENABLED = false;
+const CERTIFICATES_ENABLED = true;
+
+// Этап 1 — интервальное повторение: через сколько дней вопрос возвращается после верного ответа
+const SR_DAYS = [1, 3, 7, 30];
 
 function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
@@ -112,6 +118,17 @@ function ServiceAcademy() {
       document.body.style.background = bg;
       if (!tg) return;
       tg.ready?.();
+      // Этап 3 — напоминания: запоминаем Telegram ID и отправляем на сервер.
+      // Если RPC sa_set_tg ещё не создан (см. UPGRADE_NOTES.md) — очередь безвредно отбросит вызов.
+      const _tgId = tg.initDataUnsafe?.user?.id;
+      if (_tgId) {
+        try {
+          if (localStorage.getItem("sa_tg_id") !== String(_tgId)) {
+            localStorage.setItem("sa_tg_id", String(_tgId));
+            if (saToken()) rpcSync("sa_set_tg", { p_token: saToken(), p_tg_id: _tgId });
+          }
+        } catch (e) {}
+      }
       tg.expand?.();
       tg.setBackgroundColor?.(bg);
       tg.setHeaderColor?.(bg);
@@ -603,7 +620,7 @@ function ServiceAcademy() {
     if (isCorrect) vibrate("light");
     else {
       vibrate("error");
-      const _qe = { q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "", img: q.img || null, lessonTitle: (activeLesson && activeLesson.title) || "" };
+      const _qe = { q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "", img: q.img || null, lessonTitle: (activeLesson && activeLesson.title) || "", stage: 0, due: Date.now() };
       setMistakeBank(prev => {
         if (prev.some(m => m.q === q.q)) return prev;
         const nx = [...prev, _qe].slice(-200);
@@ -617,9 +634,23 @@ function ServiceAcademy() {
     }
     setQuizState({ step: done ? quizState.step : quizState.step + 1, answers, done, mistakes: newMistakes, blocked: false });
   }, [quizState, activeLesson]);
+  // Верный ответ: вопрос уходит на следующий интервал (1→3→7→30 дней). После 4 верных подряд — закреплён и удаляется.
   const resolveMistake = useCallback((qText) => {
     setMistakeBank(prev => {
-      const next = prev.filter(m => m.q !== qText);
+      const next = prev.map(m => {
+        if (m.q !== qText) return m;
+        const stage = (m.stage || 0) + 1;
+        if (stage > SR_DAYS.length) return null; // вопрос закреплён
+        return { ...m, stage, due: Date.now() + SR_DAYS[stage - 1] * 24 * 3600 * 1000 };
+      }).filter(Boolean);
+      try { localStorage.setItem("sa_mistakes", JSON.stringify(next)); } catch(e) {}
+      return next;
+    });
+  }, []);
+  // Неверный ответ при повторе: прогресс сгорает, вопрос снова доступен сразу
+  const failMistake = useCallback((qText) => {
+    setMistakeBank(prev => {
+      const next = prev.map(m => m.q === qText ? { ...m, stage: 0, due: Date.now() } : m);
       try { localStorage.setItem("sa_mistakes", JSON.stringify(next)); } catch(e) {}
       return next;
     });
@@ -737,11 +768,14 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} /></div>}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} /></div>}
-        {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onBack={() => navigate(prevScreen || "home")} />}
+        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
+        {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => navigate(prevScreen || "home")} />}
+        {screen === "search" && <div style={{paddingBottom:88}}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onBack={() => navigate(prevScreen || "home")} /></div>}
+        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} /></div>}
+        {screen === "mentor" && <div style={{paddingBottom:88}}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => navigate(prevScreen || "roleSelect")} /></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && activeLesson?.type === "dialogue" && <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />}
         {screen === "lesson" && activeLesson?.type !== "dialogue" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}

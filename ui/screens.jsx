@@ -1709,7 +1709,7 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
   );
 }
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates }) {
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -1769,6 +1769,12 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           if (onReference) tiles.push({ key:"sp", label:"Справочник", onClick:onReference, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
           )});
+          if (onMenuTrainer) tiles.push({ key:"menu", label:"Меню", onClick:onMenuTrainer, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3v7a2 2 0 0 0 2 2h0V3"/><path d="M11 3v18"/><path d="M7 12v9"/><path d="M17 3c-1.7 0-3 2.2-3 5s1.3 5 3 5v8"/></svg>
+          )});
+          if (onMentor && role) tiles.push({ key:"skill", label:"Допуск", onClick:onMentor, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 7.7l5.4-.8z"/><path d="M9.5 12l1.8 1.8 3.2-3.3"/></svg>
+          )});
           if (onCertificates) tiles.push({ key:"cert", label:"Сертификаты", onClick:onCertificates, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.8L8 22l4-2.2L16 22l-1-9.2"/></svg>
           )});
@@ -1777,9 +1783,9 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           )});
           if (!tiles.length) return null;
           return (
-            <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:"0 14px 14px" }}>
+            <div style={{ display:"flex", alignItems:"stretch", flexWrap:"wrap", gap:10, padding:"0 14px 14px" }}>
               {tiles.map(t => (
-                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:1, minWidth:0, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:16, padding:"12px 4px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"1 1 20%", minWidth:72, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:16, padding:"12px 4px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
                   <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
                   <div style={{ minHeight:25, width:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <span style={{ fontSize:11, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.15, overflowWrap:"break-word", wordBreak:"break-word", hyphens:"auto", maxWidth:"100%" }}>{t.label}</span>
@@ -2398,11 +2404,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   );
 }
 
-export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack }) {
+export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack }) {
   const gold = a11y ? "#8B6A30" : GOLD;
   const [idx, setIdx] = React.useState(0);
   const [pick, setPick] = React.useState(null);
-  const bank = mistakeBank;
+  // Интервальное повторение: показываем только вопросы, у которых подошёл срок (due <= сейчас)
+  const [nowTs] = React.useState(() => Date.now());
+  const bank = React.useMemo(() => mistakeBank.filter(m => !m.due || m.due <= nowTs), [mistakeBank, nowTs]);
+  const waiting = mistakeBank.length - bank.length; // закреплённые, ждут следующего интервала
   const weak = React.useMemo(() => {
     const m = {};
     bank.forEach(qq => { const k = qq.lessonTitle || "Без темы"; m[k] = (m[k] || 0) + 1; });
@@ -2411,16 +2420,24 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack })
 
   const Head = (<div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
 
-  if (bank.length === 0) return (
-    <div style={T.screen}>
-      {Head}
-      <div style={{ textAlign: "center", padding: "60px 24px", color: T.modSub.color }}>
-        <div style={{ fontSize: 44, marginBottom: 14 }}>🎉</div>
-        <div style={{ ...T.bold, marginBottom: 6 }}>Ошибок нет</div>
-        <div style={{ fontSize: 14, lineHeight: 1.6 }}>Заваленные в тестах вопросы будут попадать сюда — прорешаешь их ещё раз и закрепишь.</div>
+  if (bank.length === 0) {
+    const nextDue = mistakeBank.reduce((min, m) => (m.due && m.due > nowTs && (!min || m.due < min)) ? m.due : min, null);
+    const nextStr = nextDue ? new Date(nextDue).toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) : null;
+    return (
+      <div style={T.screen}>
+        {Head}
+        <div style={{ textAlign: "center", padding: "60px 24px", color: T.modSub.color }}>
+          <div style={{ fontSize: 44, marginBottom: 14 }}>🎉</div>
+          <div style={{ ...T.bold, marginBottom: 6 }}>{waiting > 0 ? "Всё повторено по расписанию" : "Ошибок нет"}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+            {waiting > 0
+              ? `${waiting} вопрос(ов) закрепляются по интервалам 1 → 3 → 7 → 30 дней. Следующее повторение — ${nextStr}.`
+              : "Заваленные в тестах вопросы будут попадать сюда — прорешаешь их ещё раз и закрепишь."}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   const q = bank[Math.min(idx, bank.length - 1)];
   const answer = (i) => { if (pick !== null) return; setPick(i); vibrate(i === q.correct ? "light" : "error"); };
@@ -2428,7 +2445,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack })
     const wasCorrect = pick === q.correct;
     setPick(null);
     if (wasCorrect) onResolve(q.q);
-    else setIdx(i => (i + 1) % bank.length);
+    else { if (onFail) onFail(q.q); setIdx(i => (i + 1) % bank.length); }
   };
 
   return (
@@ -2445,7 +2462,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack })
         </div>
       </div>
       <div key={q.q} style={T.quizWrap}>
-        <div style={T.quizProgress}>Осталось повторить: {bank.length}</div>
+        <div style={T.quizProgress}>Сейчас на повторе: {bank.length} · этап закрепления {(q.stage || 0) + 1} из {5}{waiting > 0 ? ` · ${waiting} ждут своего дня` : ""}</div>
         {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 210, objectFit: "cover", borderRadius: 14, display: "block", margin: "0 0 14px" }} />}
         <div style={T.quizQ}>{q.q}</div>
         {q.options.map((opt, i) => {
@@ -2464,13 +2481,26 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onBack })
   );
 }
 
-export function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [] }) {
+// Этап 1 — оценка времени: ~900 знаков в минуту чтения + надбавка за вопросы и практику
+const _estMins = (l) => Math.max(1, Math.round((((l.content || "").length) + ((l.questions || []).length * 250) + ((l.situations || []).length * 300)) / 900));
+const _fmtMins = (mins) => mins < 60 ? `${mins} мин` : `${Math.floor(mins / 60)} ч ${mins % 60 ? (mins % 60) + " мин" : ""}`.trim();
+
+export function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [], onSearch }) {
+  // Сколько минут осталось до конца программы (по незавершённым разделам)
+  const leftMins = React.useMemo(() =>
+    [...modules, ...customModules].reduce((s, m) =>
+      s + (m.lessons || []).filter(l => l.type !== "result").reduce((a, l) =>
+        a + ((l.type === "quiz" ? quizDone[l.id] : completed[l.id]) ? 0 : _estMins(l)), 0), 0),
+    [modules, customModules, completed, quizDone]);
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.homeHead}>
         <div style={T.homeTopRow}>
           <div style={T.logoRow}><span style={{ color:role.color, fontSize:20 }}>✦</span><span style={T.logoText}>SERVICE ACADEMY</span></div>
-          <button style={T.changeRoleBtn} onClick={onChangeRole}>Сменить</button>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {onSearch && <button style={T.changeRoleBtn} onClick={onSearch} aria-label="Поиск">🔍</button>}
+            <button style={T.changeRoleBtn} onClick={onChangeRole}>Сменить</button>
+          </div>
         </div>
         <div style={{ ...T.homeRoleBadge, background:role.color+"22", borderColor:role.color+"66" }}>
           <span style={{ display:"inline-flex", alignItems:"center" }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
@@ -2481,12 +2511,12 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
       <div style={T.progCard}>
         <div style={T.progTop}><span style={T.progLabel}>Прогресс</span><span style={{ ...T.progPct, color:role.color }}>{progress}%</span></div>
         <div style={T.progBar}><div style={{ ...T.progFill, width:`${progress}%`, background:role.color }} /></div>
-        <div style={T.progSub}>{doneCount} из {totalLessons} разделов завершено</div>
+        <div style={T.progSub}>{doneCount} из {totalLessons} разделов завершено{leftMins > 0 ? ` · осталось ≈ ${_fmtMins(leftMins)}` : " · программа пройдена 🎓"}</div>
       </div>
       <StreakCard streak={streak} a11y={a11y} />
-      {mistakeBank.length > 0 && onMistakes && (() => {
+      {mistakeBank.filter(m => !m.due || m.due <= Date.now()).length > 0 && onMistakes && (() => {
         const _g = a11y ? "#8B6A30" : GOLD;
-        const _n = mistakeBank.length;
+        const _n = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
         const _w = _n === 1 ? "вопрос" : (_n % 10 >= 2 && _n % 10 <= 4 && (_n % 100 < 10 || _n % 100 >= 20)) ? "вопроса" : "вопросов";
         return (
           <div onClick={onMistakes} {...onActivate(onMistakes)} style={{ ...T.modCard, margin:"0 14px 12px" }}>
@@ -2515,7 +2545,7 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
               <div style={{ ...T.modBar, background:m.color }} />
               <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{MOD_SVG[m.icon] ? MOD_SVG[m.icon](m.color, 28) : m.icon}</div>
               <div style={T.modInfo}>
-                <div style={{ ...T.modTag, color:m.color }}>{m.tag}</div>
+                <div style={{ ...T.modTag, color:m.color }}>{m.tag} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
                 <div style={T.modTitle}>{m.title}</div>
                 <div style={T.modSub}>{m.subtitle}</div>
               </div>
@@ -2572,6 +2602,40 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   const [scrollPct, setScrollPct] = React.useState(0);
   const [termPopup, setTermPopup] = React.useState(null);
   const [dialogueScreen, setDialogueScreen] = React.useState(null); // dialogue id to show
+  // ── Этап 3 — режим карточек: урок листается «экранами» вместо длинной ленты ──
+  // По умолчанию — привычная лента (визуал как раньше); карточки включаются кнопкой 🗂 и выбор запоминается
+  const [cardMode, setCardMode] = React.useState(() => { try { return localStorage.getItem("sa_lesson_cards") === "1"; } catch (e) { return false; } });
+  const [cardIdx, setCardIdx] = React.useState(0);
+  const touchRef = React.useRef(null);
+  React.useEffect(() => { setCardIdx(0); }, [lesson.id]);
+  // Делим контент на блоки по пустым строкам и группируем в карточки ~500 знаков
+  const cards = React.useMemo(() => {
+    const lines = (lesson.content || "").split("\n");
+    const blocks = []; let cur = [];
+    for (const ln of lines) { if (!ln.trim()) { if (cur.length) { blocks.push(cur); cur = []; } } else cur.push(ln); }
+    if (cur.length) blocks.push(cur);
+    const out = []; let acc = []; let len = 0;
+    for (const b of blocks) {
+      const bLen = b.join(" ").length;
+      if (acc.length && len + bLen > 500) { out.push(acc); acc = []; len = 0; }
+      acc = acc.concat(acc.length ? [""] : [], b); len += bLen;
+    }
+    if (acc.length) out.push(acc);
+    return out.length ? out : [lines];
+  }, [lesson.content]);
+  const goCard = React.useCallback((d) => {
+    setCardIdx(i => Math.max(0, Math.min(cards.length - 1, i + d)));
+    vibrate("light");
+    try { if (bodyRef.current) bodyRef.current.scrollTop = 0; } catch (e) {}
+  }, [cards.length]);
+  const onCardTouchStart = (e) => { touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
+  const onCardTouchEnd = (e) => {
+    if (!cardMode || !touchRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchRef.current.y;
+    touchRef.current = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) goCard(dx < 0 ? 1 : -1);
+  };
   const handleScroll = React.useCallback(() => {
     const el = bodyRef.current;
     if (!el) return;
@@ -2638,9 +2702,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   if (lesson.type === "lesson") {
     return (
       <div style={T.screen}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div></div>
-        <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:2 }} /></div>
-        <div ref={bodyRef} onScroll={handleScroll} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
+        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div><button onClick={() => { setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", color, fontSize: 17, cursor: "pointer", padding: "4px 10px", flexShrink: 0 }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode ? "☰" : "🗂"}</button></div>
+        <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${cardMode ? Math.round(((cardIdx + 1) / cards.length) * 100) : scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:2 }} /></div>
+        <div ref={bodyRef} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
           {/* Стеклянная подложка для текста урока */}
           <div style={{
             background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
@@ -2675,7 +2739,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               </div>
             </div>
           )}
-          {lesson.content.split("\n").map((line,i) => {
+          {(cardMode ? (cards[Math.min(cardIdx, cards.length - 1)] || []) : lesson.content.split("\n")).map((line,i) => {
             if (!line.trim()) return <div key={i} style={{ height:10 }} />;
             // Тег мимодзи [mm:name] — крупная иллюстрация по центру
             if (line.trim().startsWith("[mm:") && line.trim().endsWith("]")) {
@@ -2721,7 +2785,16 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           })}
             </div>{/* конец zIndex:1 */}
           </div>{/* конец стеклянной подложки */}
-          <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
+          {cardMode ? (
+            <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
+              <button className="sa-btn" disabled={cardIdx === 0} onClick={() => goCard(-1)} style={{ ...T.doneBtn, flex: "0 0 30%", background: "transparent", border: `1px solid ${color}66`, color: T.para?.color || "#F5EFE2", opacity: cardIdx === 0 ? 0.35 : 1 }}>‹ Назад</button>
+              {cardIdx < cards.length - 1
+                ? <button className="sa-btn sa-btn-pulse" onClick={() => goCard(1)} style={{ ...T.doneBtn, flex: 1, background: color }}>Дальше · {cardIdx + 1} / {cards.length}</button>
+                : <button className="sa-btn sa-btn-pulse" onClick={onComplete} style={{ ...T.doneBtn, flex: 1, background: color }}>Урок пройден ✓</button>}
+            </div>
+          ) : (
+            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
+          )}
         </div>
         {dialogueScreen && (
           <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />

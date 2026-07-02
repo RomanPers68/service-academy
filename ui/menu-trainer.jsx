@@ -9,6 +9,7 @@ import React from "react";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
+import { GAME_SVG, UI_SVG } from "./icons";
 import { TimerBar } from "./widgets";
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
@@ -74,10 +75,11 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
 
   // ── Главная тренажёра ──────────────────────────────────────────────────────
   const modes = [
-    { key: "cards", icon: "🃏", title: "Флеш-карточки", sub: "Состав, аллергены, сочетания — вспомни и проверь себя" },
-    { key: "quiz", icon: "❓", title: "Викторина по меню", sub: "Автоматические вопросы по блюдам ресторана" },
-    { key: "60sec", icon: "⏱", title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
+    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Флеш-карточки", sub: "Состав, аллергены, сочетания — вспомни и проверь себя" },
+    { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Автоматические вопросы по блюдам ресторана" },
+    { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
   ];
+  const iconBox = { width: 38, height: 38, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
   return (
     <div style={T.screen} className="sa-screen">
       {Head(restaurant)}
@@ -90,7 +92,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
           <div key={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: dishes.length ? 1 : 0.45 }}
             onClick={() => dishes.length && setMode(m.key)} {...onActivate(() => dishes.length && setMode(m.key))}>
             <div style={{ ...T.modBar, background: gold }} />
-            <div style={{ fontSize: 24, marginRight: 4 }}>{m.icon}</div>
+            <div style={iconBox}>{m.icon(gold)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={T.modTitle}>{m.title}</div>
               <div style={{ ...T.modSub, whiteSpace: "normal" }}>{m.sub}</div>
@@ -101,7 +103,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
         {canEdit && (
           <div className="sa-card" style={{ ...T.modCard, margin: "14px 0 10px", border: `1px dashed ${gold}88` }}
             onClick={() => setMode("edit")} {...onActivate(() => setMode("edit"))}>
-            <div style={{ fontSize: 22, marginRight: 6 }}>✏️</div>
+            <div style={{ ...iconBox, marginLeft: 2 }}>{UI_SVG.pencil(gold, 19)}</div>
             <div style={{ flex: 1 }}>
               <div style={T.modTitle}>Редактор меню</div>
               <div style={{ ...T.modSub, whiteSpace: "normal" }}>Добавь реальные блюда ресторана и скрой примеры</div>
@@ -181,7 +183,7 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant }) {
       </div>
       <div style={{ padding: "4px 16px 20px", display: "flex", gap: 10 }}>
         {!flipped ? (
-          <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setFlipped(true)}>Перевернуть 🔄</button>
+          <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setFlipped(true)}>Перевернуть ↻</button>
         ) : (
           <>
             <button className="sa-btn" style={{ ...T.doneBtn, background: red, flex: 1 }} onClick={() => answer(false)}>Не знал ↻</button>
@@ -326,7 +328,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
         </div>
       </div>
       <div style={{ padding: "4px 16px 20px", display: "flex", gap: 10 }}>
-        {phase === "ready" && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setPhase("speaking")}>Старт ⏱</button>}
+        {phase === "ready" && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setPhase("speaking")}>Старт ›</button>}
         {phase === "speaking" && <button className="sa-btn" style={{ ...T.doneBtn, background: green, flex: 1 }} onClick={() => setPhase("compare")}>Я закончил(а)</button>}
         {phase === "compare" && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={nextDish}>Следующее блюдо →</button>}
       </div>

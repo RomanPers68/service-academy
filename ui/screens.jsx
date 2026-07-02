@@ -2498,7 +2498,7 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
         <div style={T.homeTopRow}>
           <div style={T.logoRow}><span style={{ color:role.color, fontSize:20 }}>✦</span><span style={T.logoText}>SERVICE ACADEMY</span></div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            {onSearch && <button style={T.changeRoleBtn} onClick={onSearch} aria-label="Поиск">🔍</button>}
+            {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center" }} onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
             <button style={T.changeRoleBtn} onClick={onChangeRole}>Сменить</button>
           </div>
         </div>
@@ -2603,24 +2603,35 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   const [termPopup, setTermPopup] = React.useState(null);
   const [dialogueScreen, setDialogueScreen] = React.useState(null); // dialogue id to show
   // ── Этап 3 — режим карточек: урок листается «экранами» вместо длинной ленты ──
-  // По умолчанию — привычная лента (визуал как раньше); карточки включаются кнопкой 🗂 и выбор запоминается
-  const [cardMode, setCardMode] = React.useState(() => { try { return localStorage.getItem("sa_lesson_cards") === "1"; } catch (e) { return false; } });
+  const [cardMode, setCardMode] = React.useState(() => { try { return localStorage.getItem("sa_lesson_cards") !== "0"; } catch (e) { return true; } });
   const [cardIdx, setCardIdx] = React.useState(0);
   const touchRef = React.useRef(null);
   React.useEffect(() => { setCardIdx(0); }, [lesson.id]);
-  // Делим контент на блоки по пустым строкам и группируем в карточки ~500 знаков
+  // Делим контент на смысловые карточки: новые начинаются на заголовках/стикерах,
+  // лимит ~700 знаков, а короткие «хвосты» приклеиваются к предыдущей — мысль не обрывается
   const cards = React.useMemo(() => {
     const lines = (lesson.content || "").split("\n");
     const blocks = []; let cur = [];
     for (const ln of lines) { if (!ln.trim()) { if (cur.length) { blocks.push(cur); cur = []; } } else cur.push(ln); }
     if (cur.length) blocks.push(cur);
+    const blockLen = (b) => b.join(" ").length;
+    const isHeader = (b) => {
+      const t = (b[0] || "").trim();
+      if (t.startsWith("**") && t.endsWith("**")) return true;
+      if (t.startsWith("[mm:")) return true;
+      return /^[\p{Extended_Pictographic}\s\uFE0F\u200D]+$/u.test(t) && t.length <= 12;
+    };
     const out = []; let acc = []; let len = 0;
     for (const b of blocks) {
-      const bLen = b.join(" ").length;
-      if (acc.length && len + bLen > 500) { out.push(acc); acc = []; len = 0; }
-      acc = acc.concat(acc.length ? [""] : [], b); len += bLen;
+      const L = blockLen(b);
+      if (acc.length && (len + L > 700 || (isHeader(b) && len > 250))) { out.push(acc); acc = []; len = 0; }
+      acc = acc.concat(acc.length ? [""] : [], b); len += L;
     }
     if (acc.length) out.push(acc);
+    for (let i = out.length - 1; i > 0; i--) {
+      if (out[i].join(" ").length < 140) { out[i - 1] = out[i - 1].concat([""], out[i]); out.splice(i, 1); }
+    }
+    if (out.length > 1 && out[0].join(" ").length < 140) { out[1] = out[0].concat([""], out[1]); out.splice(0, 1); }
     return out.length ? out : [lines];
   }, [lesson.content]);
   const goCard = React.useCallback((d) => {
@@ -2702,7 +2713,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   if (lesson.type === "lesson") {
     return (
       <div style={T.screen}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div><button onClick={() => { setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", color, fontSize: 17, cursor: "pointer", padding: "4px 10px", flexShrink: 0 }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode ? "☰" : "🗂"}</button></div>
+        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div><button onClick={() => { setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
+          ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+          : GAME_SVG.cards(color, 17)}</button></div>
         <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${cardMode ? Math.round(((cardIdx + 1) / cards.length) * 100) : scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:2 }} /></div>
         <div ref={bodyRef} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
           {/* Стеклянная подложка для текста урока */}
@@ -2786,11 +2799,22 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             </div>{/* конец zIndex:1 */}
           </div>{/* конец стеклянной подложки */}
           {cardMode ? (
-            <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
-              <button className="sa-btn" disabled={cardIdx === 0} onClick={() => goCard(-1)} style={{ ...T.doneBtn, flex: "0 0 30%", background: "transparent", border: `1px solid ${color}66`, color: T.para?.color || "#F5EFE2", opacity: cardIdx === 0 ? 0.35 : 1 }}>‹ Назад</button>
-              {cardIdx < cards.length - 1
-                ? <button className="sa-btn sa-btn-pulse" onClick={() => goCard(1)} style={{ ...T.doneBtn, flex: 1, background: color }}>Дальше · {cardIdx + 1} / {cards.length}</button>
-                : <button className="sa-btn sa-btn-pulse" onClick={onComplete} style={{ ...T.doneBtn, flex: 1, background: color }}>Урок пройден ✓</button>}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0 0 6px", userSelect: "none" }}>
+                <span onClick={() => goCard(-1)} {...onActivate(() => goCard(-1))} style={{ color, opacity: cardIdx === 0 ? 0.22 : 0.8, fontSize: 24, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>‹</span>
+                {cards.length <= 10
+                  ? <div style={{ display: "flex", gap: 6, alignItems: "center" }}>{cards.map((_, i) => (
+                      <span key={i} style={{ width: i === cardIdx ? 18 : 6, height: 6, borderRadius: 3, background: i === cardIdx ? color : color + "44", transition: "all .25s" }} />
+                    ))}</div>
+                  : <span style={{ color, fontSize: 12.5, fontFamily: "monospace", letterSpacing: 1 }}>{cardIdx + 1} / {cards.length}</span>}
+                <span onClick={() => goCard(1)} {...onActivate(() => goCard(1))} style={{ color, opacity: cardIdx === cards.length - 1 ? 0.22 : 0.8, fontSize: 24, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>›</span>
+              </div>
+              {cardIdx === 0 && cards.length > 1 && (
+                <div style={{ textAlign: "center", color: T.modSub.color, fontSize: 12, fontStyle: "italic", opacity: 0.75, marginBottom: 8 }}>листай свайпом ← →</div>
+              )}
+              {cardIdx === cards.length - 1 && (
+                <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 6 }} onClick={onComplete}>Урок пройден ✓</button>
+              )}
             </div>
           ) : (
             <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
@@ -3675,7 +3699,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
     <div style={T.screen}>
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onExit}>‹</button>
-        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}><span>🎓 Сертификаты</span></div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gradcap(GOLD, 19)}<span>Сертификаты</span></div>
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 40px", display:"flex", flexDirection:"column", gap:12 }}>
         {_CERT_ROLE_ORDER.map(id => {
@@ -3689,7 +3713,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
           return (
             <div key={id} style={{ ...T.modCard, padding:"14px 16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, width:"100%" }}>
-                <div style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{passed ? "🎓" : r.icon}</div>
+                <div style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{passed ? UI_SVG.gradcap(color, 19) : (ROLE_SVG[r.id] ? ROLE_SVG[r.id](color, 19) : r.icon)}</div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{r.label}</div>
                   <div style={{ ...T.modSub, fontSize:12 }}>{passed ? `Сдано · ${res.score}%` : eligible ? "Доступен экзамен" : "Сначала пройди роль"}</div>

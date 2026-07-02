@@ -294,13 +294,15 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
     <div style={T.screen} className="sa-screen">
       {Head("Флеш-карточки")}
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
-        <div style={{ fontSize: 44, marginBottom: 12 }}>🏆</div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div style={{ width: 76, height: 76, borderRadius: "50%", background: `${gold}1F`, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>{UI_SVG.trophy(gold, 38)}</div>
+        </div>
         <div style={{ ...T.bold, marginBottom: 8 }}>Колода пройдена!</div>
         <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>Знал сразу: {known} из {total}{repeats ? ` · повторов: ${repeats}` : ""}</div>
         {onLearned && (
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: green, width: "100%", marginBottom: 10 }} onClick={onLearned}>Выучил новинки ✓</button>
         )}
-        <button className="sa-btn" style={{ ...T.doneBtn, background: onLearned ? "transparent" : gold, border: onLearned ? `1px solid ${gold}88` : "none", color: onLearned ? (T.para?.color) : undefined, padding: "13px 30px", width: onLearned ? "100%" : undefined }} onClick={() => { setDeck(shuffleArray(dishes)); setKnown(0); setRepeats(0); setFlipped(false); }}>Ещё раз</button>
+        <button className="sa-btn" style={{ ...T.doneBtn, background: onLearned ? "transparent" : gold, border: onLearned ? `1px solid ${gold}88` : "none", color: onLearned ? (T.para?.color || "#F5EFE2") : (T.doneBtn?.color || "#fff"), padding: "13px 30px", width: "100%" }} onClick={() => { setDeck(shuffleArray(dishes)); setKnown(0); setRepeats(0); setFlipped(false); }}>Ещё раз</button>
       </div>
     </div>
   );
@@ -410,7 +412,11 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
       <div style={T.screen} className="sa-screen">
         {Head("Викторина")}
         <div style={{ textAlign: "center", padding: "60px 24px" }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>{pct >= 80 ? "🏆" : pct >= 50 ? "💪" : "📖"}</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+            <div style={{ width: 76, height: 76, borderRadius: "50%", background: `${pct >= 80 ? gold : pct >= 50 ? green : red}1F`, border: `1px solid ${pct >= 80 ? gold : pct >= 50 ? green : red}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {pct >= 80 ? UI_SVG.trophy(gold, 38) : pct >= 50 ? UI_SVG.target(green, 36) : UI_SVG.book(red, 36)}
+            </div>
+          </div>
           <div style={{ ...T.bold, fontSize: 20, marginBottom: 8 }}>{score} из {questions.length}</div>
           <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>{pct >= 80 ? "Отлично знаешь меню!" : pct >= 50 ? "Неплохо, но повтори флеш-карточки." : "Пройди флеш-карточки — и возвращайся."}</div>
           <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "13px 30px" }} onClick={() => { setQuestions(buildQuiz(dishes)); setStep(0); setScore(0); setPick(null); }}>Ещё раз</button>

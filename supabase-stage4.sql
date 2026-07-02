@@ -1,11 +1,7 @@
 -- supabase-stage4.sql — Этап 4: общее меню ресторана + «кто выучил новинки».
--- Выполни в Supabase → SQL Editor. Без этого файла приложение работает как раньше
--- (меню локально на устройстве), вызовы тихо отбрасываются офлайн-очередью.
---
--- ВАЖНО: в menu_set и menu_progress_set подставь СВОЮ связку токен→сотрудник —
--- посмотри, как это сделано в твоих существующих RPC-функциях записи (как в stage2).
+-- Версия под вашу базу: связка токен→сотрудник через вашу же функцию whoami(p_token),
+-- которой приложение уже пользуется при входе. Ничего адаптировать не нужно.
 
--- Общее меню ресторана: менеджер публикует, все устройства подтягивают
 create table if not exists restaurant_menu (
   restaurant text primary key,
   dishes jsonb not null default '[]',
@@ -15,25 +11,29 @@ create table if not exists restaurant_menu (
 
 create or replace function menu_get(p_restaurant text)
 returns jsonb language sql stable as $$
-  select coalesce((select dishes from restaurant_menu where restaurant = p_restaurant), '[]'::jsonb);
+  select coalesce((select dishes from restaurant_menu
+    where restaurant = p_restaurant), '[]'::jsonb);
 $$;
 
 create or replace function menu_set(p_token text, p_restaurant text, p_dishes text)
 returns json language plpgsql security definer as $$
-declare v_employee text;
+declare v jsonb; v_employee text;
 begin
-  -- ← ЗАМЕНИ на свою проверку токена и получение имени сотрудника:
-  select name || ' ' || surname into v_employee from profiles where session_token = p_token;
-  if v_employee is null then return json_build_object('ok', false, 'error', 'auth'); end if;
+  v := to_jsonb(whoami(p_token));
+  if coalesce((v->>'ok')::boolean, false) is not true then
+    return json_build_object('ok', false, 'error', 'auth');
+  end if;
+  v_employee := trim((v->'employee'->>'name') || ' ' || coalesce(v->'employee'->>'surname', ''));
 
   insert into restaurant_menu (restaurant, dishes, updated_by, updated_at)
   values (p_restaurant, p_dishes::jsonb, v_employee, now())
   on conflict (restaurant) do update
-    set dishes = excluded.dishes, updated_by = excluded.updated_by, updated_at = now();
+    set dishes = excluded.dishes,
+        updated_by = excluded.updated_by,
+        updated_at = now();
   return json_build_object('ok', true);
 end; $$;
 
--- Кто открыл и кто выучил волну новинок (wave = метка партии новых блюд)
 create table if not exists menu_progress (
   id bigserial primary key,
   restaurant text not null,
@@ -45,20 +45,24 @@ create table if not exists menu_progress (
   unique (restaurant, employee, wave, status)
 );
 
-create or replace function menu_progress_set(p_token text, p_restaurant text, p_wave text, p_status text, p_score int)
+create or replace function menu_progress_set(p_token text, p_restaurant text,
+  p_wave text, p_status text, p_score int)
 returns json language plpgsql security definer as $$
-declare v_employee text;
+declare v jsonb; v_employee text;
 begin
-  select name || ' ' || surname into v_employee from profiles where session_token = p_token;  -- ← своя связка
-  if v_employee is null then return json_build_object('ok', false, 'error', 'auth'); end if;
+  v := to_jsonb(whoami(p_token));
+  if coalesce((v->>'ok')::boolean, false) is not true then
+    return json_build_object('ok', false, 'error', 'auth');
+  end if;
+  v_employee := trim((v->'employee'->>'name') || ' ' || coalesce(v->'employee'->>'surname', ''));
 
   insert into menu_progress (restaurant, employee, wave, status, score)
   values (p_restaurant, v_employee, p_wave, p_status, p_score)
-  on conflict (restaurant, employee, wave, status) do update set ts = now(), score = excluded.score;
+  on conflict (restaurant, employee, wave, status)
+    do update set ts = now(), score = excluded.score;
   return json_build_object('ok', true);
 end; $$;
 
--- Картина для менеджера: по каждому сотруднику — лучший статус последней волны
 create or replace function menu_progress_list(p_restaurant text)
 returns table (employee text, status text, score int, ts timestamptz, wave text)
 language sql stable as $$

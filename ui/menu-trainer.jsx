@@ -31,6 +31,33 @@ const glass = (T) => ({
   borderRadius: 18,
 });
 
+// Фото блюда в карточках
+const DishPhoto = ({ src, h = 170 }) => src ? (
+  <img src={src} alt="" loading="lazy" decoding="async"
+    style={{ width: "calc(100% + 36px)", margin: "-22px -18px 14px", height: h, objectFit: "cover", borderRadius: "17px 17px 0 0", display: "block" }} />
+) : null;
+
+// Сжатие фото с телефона перед сохранением (localStorage не резиновый)
+const readPhoto = (file, cb) => {
+  try {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const max = 700;
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      let data = c.toDataURL("image/jpeg", 0.72);
+      if (data.length > 400000) data = c.toDataURL("image/jpeg", 0.55); // крупные — жмём сильнее
+      cb(data);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); };
+    img.src = url;
+  } catch (e) {}
+};
+
 export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const green = "#5DBB8A";
@@ -182,7 +209,8 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant }) {
       {Head("Флеш-карточки")}
       <div style={{ padding: "6px 18px", color: T.modSub.color, fontSize: 12 }}>Осталось в колоде: {deck.length} · {restaurant}</div>
       <div style={{ padding: "8px 16px" }}>
-        <div className="sa-card" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default" }}>
+        <div className="sa-card" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default", overflow: "hidden" }}>
+          <DishPhoto src={d.img} h={flipped ? 120 : 175} />
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{d.cat || "БЛЮДО"}</div>
           <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 14, color: T.bold?.color }}>{d.name}</div>
           {!flipped ? (
@@ -306,7 +334,8 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
     <div style={T.screen} className="sa-screen">
       {Head("Опиши за 60 секунд")}
       <div style={{ padding: "8px 16px" }}>
-        <div style={{ ...glass(T), padding: "22px 18px" }}>
+        <div style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
+          <DishPhoto src={dish.img} h={165} />
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{dish.cat || "БЛЮДО"} · {restaurant}</div>
           <div style={{ fontSize: 22, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{dish.name}</div>
 
@@ -349,7 +378,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 
 // ── Редактор меню (для менеджеров) ───────────────────────────────────────────
 function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, setCustom, hideSamples, setHideSamples }) {
-  const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "" };
+  const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
   const list = custom[restaurant] || [];
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
@@ -364,10 +393,20 @@ function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, s
 
   if (form) {
     const toggleAl = (al) => setForm(f => ({ ...f, allergens: f.allergens.includes(al) ? f.allergens.filter(x => x !== al) : [...f.allergens, al] }));
+    const onPhoto = (e) => { const file = e.target.files && e.target.files[0]; if (file) readPhoto(file, (data) => setForm(f => ({ ...f, img: data }))); e.target.value = ""; };
     return (
       <div style={T.screen} className="sa-screen">
         {Head(form.id ? "Изменить блюдо" : "Новое блюдо")}
         <div style={{ padding: "10px 16px 24px" }}>
+          {form.img
+            ? <div style={{ position: "relative", marginBottom: 12 }}>
+                <img src={form.img} alt="" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 14, display: "block", border: `1px solid ${gold}44` }} />
+                <div onClick={() => setForm(f => ({ ...f, img: "" }))} {...onActivate(() => setForm(f => ({ ...f, img: "" })))} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>✕</div>
+              </div>
+            : <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "22px 13px", borderRadius: 14, border: `1.5px dashed ${gold}77`, color: T.para?.color, fontSize: 14, cursor: "pointer", marginBottom: 12 }}>
+                {GAME_SVG.cards(gold, 18)} Добавить фото блюда
+                <input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
+              </label>}
           <input style={inputSt} placeholder="Название блюда *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           <input style={inputSt} placeholder="Категория (Стейки, Супы…)" value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} />
           <input style={inputSt} placeholder="Состав через запятую" value={form.ingredients} onChange={e => setForm(f => ({ ...f, ingredients: e.target.value }))} />
@@ -408,7 +447,8 @@ function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, s
         {list.map(d => (
           <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
             <div style={{ ...T.modBar, background: gold }} />
-            <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ ...d, ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ ...d, ingredients: (d.ingredients || []).join(", ") }))}>
+            {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+            <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") }))}>
               <div style={T.modTitle}>{d.name}</div>
               <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
             </div>

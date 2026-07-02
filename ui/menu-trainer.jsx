@@ -9,6 +9,7 @@ import React from "react";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
+import { rpc, rpcSync, saToken } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
 import { TimerBar } from "./widgets";
 
@@ -67,19 +68,56 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
 
   const [restaurant, setRestaurant] = React.useState(() =>
     RESTAURANTS.includes(profile?.restaurant) ? profile.restaurant : null);
-  const [mode, setMode] = React.useState(null); // null | "cards" | "quiz" | "60sec" | "edit"
+  const [mode, setMode] = React.useState(null); // null | "cards" | "quiz" | "60sec" | "edit" | "team"
   const [custom, setCustom] = React.useState(loadCustom);
   const [hideSamples, setHideSamples] = React.useState(loadHide);
 
+  // ── Этап 4: общее меню ресторана с сервера (публикует менеджер) ────────────
+  // Если RPC menu_get ещё не создан (supabase-stage4.sql) — тихо работаем как раньше, только локально.
+  const [shared, setShared] = React.useState([]);
+  const [focusNew, setFocusNew] = React.useState(false);
+  React.useEffect(() => {
+    if (!restaurant) return;
+    let alive = true;
+    rpc("menu_get", { p_restaurant: restaurant }).then(res => {
+      const arr = typeof res === "string" ? JSON.parse(res) : res;
+      if (alive && Array.isArray(arr)) setShared(arr);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [restaurant]);
+
   const dishes = React.useMemo(() => {
     if (!restaurant) return [];
+    const own = custom[restaurant] || [];
+    const ownIds = new Set(own.map(d => d.id));
+    const team = shared.filter(d => d && d.id && !ownIds.has(d.id)); // своя локальная правка важнее серверной
     const samples = hideSamples[restaurant] ? [] : (RESTAURANT_MENUS[restaurant] || []);
-    return [...(custom[restaurant] || []), ...samples];
-  }, [restaurant, custom, hideSamples]);
+    return [...own, ...team, ...samples];
+  }, [restaurant, custom, shared, hideSamples]);
+
+  // Новые позиции: помечены isNew и добавлены за последние 30 дней
+  const newDishes = React.useMemo(() =>
+    dishes.filter(d => d.isNew && d.addedAt && Date.now() - d.addedAt < 30 * 864e5), [dishes]);
+  const wave = React.useMemo(() =>
+    String(newDishes.reduce((m, d) => Math.max(m, d.addedAt || 0), 0)), [newDishes]);
+  const [learnedWave, setLearnedWave] = React.useState(() => { try { return localStorage.getItem("sa_menu_learned_" + (restaurant || "")) || ""; } catch (e) { return ""; } });
+  React.useEffect(() => { try { setLearnedWave(localStorage.getItem("sa_menu_learned_" + (restaurant || "")) || ""); } catch (e) {} }, [restaurant]);
+  const learned = wave !== "0" && learnedWave === wave;
+
+  const startNew = () => {
+    setFocusNew(true); setMode("cards");
+    if (saToken()) rpcSync("menu_progress_set", { p_token: saToken(), p_restaurant: restaurant, p_wave: wave, p_status: "opened", p_score: null });
+  };
+  const markLearned = () => {
+    try { localStorage.setItem("sa_menu_learned_" + restaurant, wave); } catch (e) {}
+    setLearnedWave(wave);
+    if (saToken()) rpcSync("menu_progress_set", { p_token: saToken(), p_restaurant: restaurant, p_wave: wave, p_status: "passed", p_score: null });
+    vibrate("light"); setMode(null); setFocusNew(false);
+  };
 
   const Head = (title) => (
     <div style={T.lessHead}>
-      <button style={T.backBtn2} onClick={() => (mode ? setMode(null) : restaurant && !RESTAURANTS.includes(profile?.restaurant) ? setRestaurant(null) : onBack())}>‹</button>
+      <button style={T.backBtn2} onClick={() => { if (mode) { setMode(null); setFocusNew(false); } else if (restaurant && !RESTAURANTS.includes(profile?.restaurant)) setRestaurant(null); else onBack(); }}>‹</button>
       <div style={T.lessHeadTitle}>{title}</div>
     </div>
   );
@@ -102,11 +140,12 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   );
 
   // ── Режимы тренировки ──────────────────────────────────────────────────────
-  if (mode === "cards") return <FlashCards T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
+  if (mode === "cards") return <FlashCards T={T} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} Head={Head} restaurant={restaurant} onLearned={focusNew && !learned ? markLearned : null} />;
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
+  if (mode === "team") return <TeamProgress T={T} gold={gold} green={green} Head={Head} restaurant={restaurant} />;
   if (mode === "edit") return (
-    <MenuEditor T={T} gold={gold} red={red} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
+    <MenuEditor T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
       custom={custom} setCustom={(v) => { setCustom(v); saveCustom(v); }}
       hideSamples={hideSamples} setHideSamples={(v) => { setHideSamples(v); saveHide(v); }} />
   );
@@ -126,6 +165,18 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
       </div>
       <div style={{ ...T.secTitle }}>Тренировка</div>
       <div style={{ padding: "0 14px" }}>
+        {newDishes.length > 0 && (
+          <div className="sa-card" style={{ ...T.modCard, margin: "0 0 12px", border: `1px solid ${learned ? green : gold}${learned ? "77" : "AA"}` }}
+            onClick={startNew} {...onActivate(startNew)}>
+            <div style={{ ...T.modBar, background: learned ? green : gold }} />
+            <div style={{ ...iconBox, background: learned ? "rgba(93,187,138,0.14)" : iconBox.background }}>{learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20)}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>Новые позиции{!learned && <span style={{ fontSize: 9.5, letterSpacing: 1.5, fontFamily: "monospace", color: "#1c1206", background: gold, borderRadius: 6, padding: "2px 6px" }}>NEW</span>}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{learned ? `Выучено ✓ · ${newDishes.length} блюд — повтори при желании` : `${newDishes.length} блюд · выучи к смене`}</div>
+            </div>
+            <div style={T.modArrow}>›</div>
+          </div>
+        )}
         {modes.map(m => (
           <div key={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: dishes.length ? 1 : 0.45 }}
             onClick={() => dishes.length && setMode(m.key)} {...onActivate(() => dishes.length && setMode(m.key))}>
@@ -149,8 +200,63 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
             <div style={T.modArrow}>›</div>
           </div>
         )}
+        {canEdit && (
+          <div className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}
+            onClick={() => setMode("team")} {...onActivate(() => setMode("team"))}>
+            <div style={{ ...T.modBar, background: gold }} />
+            <div style={iconBox}>{UI_SVG.eye(gold, 19)}</div>
+            <div style={{ flex: 1 }}>
+              <div style={T.modTitle}>Кто выучил новинки</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Открыл · выучил — картина по команде</div>
+            </div>
+            <div style={T.modArrow}>›</div>
+          </div>
+        )}
         {!dishes.length && <div style={{ textAlign: "center", padding: "20px", color: T.modSub.color, fontSize: 13 }}>Меню пустое — попроси менеджера добавить блюда в редакторе.</div>}
       </div>
+    </div>
+  );
+}
+
+// ── Этап 4: картина по команде — кто открыл и выучил новинки ─────────────────
+function TeamProgress({ T, gold, green, Head, restaurant }) {
+  const [rows, setRows] = React.useState(null); // null=грузим, []=пусто, [...]=данные
+  const [err, setErr] = React.useState(false);
+  React.useEffect(() => {
+    let alive = true;
+    rpc("menu_progress_list", { p_restaurant: restaurant })
+      .then(res => { if (!alive) return; Array.isArray(res) ? setRows(res) : setErr(true); })
+      .catch(() => alive && setErr(true));
+    return () => { alive = false; };
+  }, [restaurant]);
+  const fmtDate = (ts) => { try { return new Date(ts).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }); } catch (e) { return ""; } };
+  return (
+    <div style={T.screen} className="sa-screen">
+      {Head("Кто выучил новинки")}
+      {err && (
+        <div style={{ textAlign: "center", padding: "44px 24px" }}>
+          <div style={{ fontSize: 38, marginBottom: 12 }}>🔌</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. UPGRADE_NOTES.md) — и здесь появится картина по каждому сотруднику.</div>
+        </div>
+      )}
+      {!err && rows === null && <div style={{ textAlign: "center", padding: "44px", color: T.modSub.color }}>Загружаю…</div>}
+      {!err && rows && !rows.length && (
+        <div style={{ textAlign: "center", padding: "44px 24px", color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>Пока никто не открывал новинки. Скажи команде на брифинге: «Зайдите в приложение — выучите новые позиции» 😉</div>
+      )}
+      {!err && rows && rows.length > 0 && (
+        <div style={{ padding: "10px 14px" }}>
+          {rows.map((r, i) => (
+            <div key={i} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
+              <div style={{ ...T.modBar, background: r.status === "passed" ? green : gold }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={T.modTitle}>{r.employee || "Сотрудник"}</div>
+                <div style={{ ...T.modSub, whiteSpace: "normal" }}>{r.status === "passed" ? "Выучил ✓" : "Открыл, ещё учит"} · {fmtDate(r.ts)}</div>
+              </div>
+              <div style={{ fontSize: 18 }}>{r.status === "passed" ? UI_SVG.checkCircle(green, 20) : UI_SVG.eye(gold, 18)}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -177,7 +283,7 @@ function DishBack({ d, T, gold }) {
 }
 
 // ── Режим 1: флеш-карточки ───────────────────────────────────────────────────
-function FlashCards({ T, gold, green, red, dishes, Head, restaurant }) {
+function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }) {
   const [deck, setDeck] = React.useState(() => shuffleArray(dishes));
   const [flipped, setFlipped] = React.useState(false);
   const [known, setKnown] = React.useState(0);
@@ -191,7 +297,10 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant }) {
         <div style={{ fontSize: 44, marginBottom: 12 }}>🏆</div>
         <div style={{ ...T.bold, marginBottom: 8 }}>Колода пройдена!</div>
         <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>Знал сразу: {known} из {total}{repeats ? ` · повторов: ${repeats}` : ""}</div>
-        <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "13px 30px" }} onClick={() => { setDeck(shuffleArray(dishes)); setKnown(0); setRepeats(0); setFlipped(false); }}>Ещё раз</button>
+        {onLearned && (
+          <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: green, width: "100%", marginBottom: 10 }} onClick={onLearned}>Выучил новинки ✓</button>
+        )}
+        <button className="sa-btn" style={{ ...T.doneBtn, background: onLearned ? "transparent" : gold, border: onLearned ? `1px solid ${gold}88` : "none", color: onLearned ? (T.para?.color) : undefined, padding: "13px 30px", width: onLearned ? "100%" : undefined }} onClick={() => { setDeck(shuffleArray(dishes)); setKnown(0); setRepeats(0); setFlipped(false); }}>Ещё раз</button>
       </div>
     </div>
   );
@@ -222,7 +331,7 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant }) {
       </div>
       <div style={{ padding: "4px 16px 20px", display: "flex", gap: 10 }}>
         {!flipped ? (
-          <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setFlipped(true)}>Перевернуть ↻</button>
+          <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setFlipped(true)}>Развернуть ↻</button>
         ) : (
           <>
             <button className="sa-btn" style={{ ...T.doneBtn, background: red, flex: 1 }} onClick={() => answer(false)}>Не знал ↻</button>
@@ -249,10 +358,26 @@ function buildQuiz(dishes) {
     }
   });
   // Тип Б: что входит в состав блюда
+  const _n = (s) => String(s || "").toLowerCase().replace(/ё/g, "е").trim();
   dishes.forEach(d => {
-    const ing = (d.ingredients || [])[Math.floor(Math.random() * (d.ingredients || []).length)];
+    const own = d.ingredients || [];
+    // Правильный ответ — простой ингредиент (без скобок и длинных составных описаний)
+    const simpleOwn = own.filter(i => i.length <= 34 && !i.includes("("));
+    const pool = simpleOwn.length ? simpleOwn : own;
+    const ing = pool[Math.floor(Math.random() * pool.length)];
     if (!ing) return;
-    const foreign = shuffleArray([...new Set(others(d).flatMap(x => x.ingredients || []).filter(i => !(d.ingredients || []).includes(i)))]).slice(0, 3);
+    const dText = _n(own.join(" · ")); // весь состав одной строкой, включая содержимое скобок
+    const seen = new Set([_n(ing)]);
+    const foreign = shuffleArray([...new Set(others(d).flatMap(x => x.ingredients || []))])
+      .filter(i => {
+        const n = _n(i);
+        if (!n || n.length > 34 || i.includes("(")) return false; // только простые варианты
+        if (seen.has(n)) return false;                             // без дублей (в т.ч. по регистру)
+        if (dText.includes(n)) return false;                       // компонент есть в блюде (даже внутри составного) → не годится как «неправильный»
+        seen.add(n);
+        return true;
+      })
+      .slice(0, 3);
     if (foreign.length < 3) return;
     const opts = shuffleArray([ing, ...foreign]);
     qs.push({ q: `Что входит в состав блюда «${d.name}»?`, options: opts, correct: opts.indexOf(ing), explanation: `Полный состав: ${(d.ingredients || []).join(", ")}` });
@@ -377,15 +502,59 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 }
 
 // ── Редактор меню (для менеджеров) ───────────────────────────────────────────
-function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, setCustom, hideSamples, setHideSamples }) {
+function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, hideSamples, setHideSamples }) {
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
   const list = custom[restaurant] || [];
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
 
+  // ── Этап 4: AI-импорт из PDF (серверная функция /api/menu-import + ключ в Vercel) ──
+  const [importing, setImporting] = React.useState(false);
+  const [importErr, setImportErr] = React.useState("");
+  const [preview, setPreview] = React.useState(null); // список блюд из PDF на подтверждение
+  const onPdf = (e) => {
+    const file = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    setImportErr(""); setImporting(true);
+    const fr = new FileReader();
+    fr.onload = () => {
+      const pdfBase64 = String(fr.result).split(",")[1];
+      fetch("/api/menu-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdfBase64 }) })
+        .then(r => r.json().then(j => ({ ok: r.ok, j })))
+        .then(({ ok, j }) => {
+          setImporting(false);
+          if (!ok || !Array.isArray(j.dishes)) { setImportErr(j.error || "Не получилось разобрать PDF. Настроен ли ANTHROPIC_API_KEY в Vercel? (см. UPGRADE_NOTES.md)"); return; }
+          setPreview(j.dishes);
+        })
+        .catch(() => { setImporting(false); setImportErr("Сеть недоступна или функция /api/menu-import не развёрнута."); });
+    };
+    fr.readAsDataURL(file);
+  };
+  const acceptImport = () => {
+    const now = Date.now();
+    const added = (preview || []).map((d, i) => ({
+      img: "", pairing: "", note: "", cat: "", desc: "", ...d,
+      ingredients: Array.isArray(d.ingredients) ? d.ingredients : String(d.ingredients || "").split(",").map(s => s.trim()).filter(Boolean),
+      allergens: Array.isArray(d.allergens) ? d.allergens.filter(a => ALLERGENS_LIST.includes(a)) : [],
+      id: "i" + now + "_" + i, isNew: true, addedAt: now,
+    }));
+    setCustom({ ...custom, [restaurant]: [...added, ...list] });
+    setPreview(null); vibrate("light");
+  };
+
+  // ── Этап 4: публикация меню всей команде (RPC menu_set; без SQL — тихо в очередь) ──
+  const [pubState, setPubState] = React.useState("");
+  const publish = () => {
+    if (!saToken()) { setPubState("Нужен вход по коду"); return; }
+    rpcSync("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(list) });
+    setPubState("Отправлено команде ✓"); vibrate("light");
+    setTimeout(() => setPubState(""), 3500);
+  };
+
   const save = () => {
     if (!form.name.trim()) return;
     const dish = { ...form, id: form.id || "c" + Date.now(), name: form.name.trim(), ingredients: form.ingredients.split(",").map(s => s.trim()).filter(Boolean) };
+    if (!form.id) { dish.isNew = true; dish.addedAt = Date.now(); } // новое блюдо → в «Новые позиции» на 30 дней
     const next = { ...custom, [restaurant]: form.id ? list.map(d => d.id === form.id ? dish : d) : [dish, ...list] };
     setCustom(next); setForm(null); vibrate("light");
   };
@@ -432,8 +601,34 @@ function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, s
   return (
     <div style={T.screen} className="sa-screen">
       {Head("Редактор меню")}
+      {preview ? (
+        <div style={{ padding: "10px 16px 24px" }}>
+          <div style={{ ...glass(T), padding: "14px 15px", marginBottom: 12 }}>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>AI РАЗОБРАЛ PDF</div>
+            <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.55 }}>Нашёл <b style={{ color: gold }}>{preview.length}</b> блюд. Проверь названия — и добавляй. Составы и аллергены можно уточнить после, тапнув по блюду. Фото добавь с телефона.</div>
+          </div>
+          {preview.map((d, i) => (
+            <div key={i} style={{ ...glass(T), padding: "11px 14px", marginBottom: 8 }}>
+              <div style={{ ...T.modTitle }}>{d.name || "Без названия"}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{d.cat || "—"} · аллергены: {(d.allergens || []).join(", ") || "не указаны"}</div>
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setPreview(null)}>Отмена</button>
+            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, flex: 1, background: green, color: "#fff" }} onClick={acceptImport}>Добавить ({preview.length}) ✓</button>
+          </div>
+        </div>
+      ) : (<>
       <div style={{ padding: "10px 16px 0" }}>
         <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%" }} onClick={() => setForm({ ...empty })}>+ Добавить блюдо</button>
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <label className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
+            {importing ? "Читаю PDF…" : "⚡ Импорт из PDF"}
+            <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
+          </label>
+          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color }} onClick={publish} disabled={!list.length}>{pubState || "Опубликовать команде"}</button>
+        </div>
+        {importErr && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: red }}>{importErr}</div>}
         <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] }))}
           className="sa-card"
           style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 13.5, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -456,6 +651,7 @@ function MenuEditor({ T, gold, red, textColor, a11y, Head, restaurant, custom, s
           </div>
         ))}
       </div>
+      </>)}
     </div>
   );
 }

@@ -13,6 +13,7 @@ export const injectStyles = () => {
     button:focus:not(:focus-visible),
     [role="button"]:focus:not(:focus-visible),
     [tabindex]:focus:not(:focus-visible) { outline: none; }
+    input, textarea, select, button { font-family: inherit; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }

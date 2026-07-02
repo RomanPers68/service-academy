@@ -75,14 +75,18 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   // ── Этап 4: общее меню ресторана с сервера (публикует менеджер) ────────────
   // Если RPC menu_get ещё не создан (supabase-stage4.sql) — тихо работаем как раньше, только локально.
   const [shared, setShared] = React.useState([]);
+  const [shareErr, setShareErr] = React.useState(false);
   const [focusNew, setFocusNew] = React.useState(false);
   React.useEffect(() => {
     if (!restaurant) return;
     let alive = true;
+    setShareErr(false);
     rpc("menu_get", { p_restaurant: restaurant }).then(res => {
+      if (!alive) return;
       const arr = typeof res === "string" ? JSON.parse(res) : res;
-      if (alive && Array.isArray(arr)) setShared(arr);
-    }).catch(() => {});
+      if (Array.isArray(arr)) setShared(arr);
+      else setShareErr(true); // сервер ответил не списком — вероятно, RPC ещё не создан
+    }).catch(() => { if (alive) setShareErr(true); });
     return () => { alive = false; };
   }, [restaurant]);
 
@@ -161,7 +165,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
     <div style={T.screen} className="sa-screen">
       {Head(restaurant)}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{canEdit ? " · ты можешь редактировать меню" : ""}
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""}
+        {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Не удалось получить меню команды с сервера — проверь связь или обнови приложение</div>}
       </div>
       <div style={{ ...T.secTitle }}>Тренировка</div>
       <div style={{ padding: "0 14px" }}>

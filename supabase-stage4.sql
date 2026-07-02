@@ -23,7 +23,7 @@ begin
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
-  v_employee := trim((v->'employee'->>'name') || ' ' || coalesce(v->'employee'->>'surname', ''));
+  v_employee := trim(concat_ws(' ', v->'employee'->>'name', v->'employee'->>'surname'));
 
   insert into restaurant_menu (restaurant, dishes, updated_by, updated_at)
   values (p_restaurant, p_dishes::jsonb, v_employee, now())
@@ -54,7 +54,7 @@ begin
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
-  v_employee := trim((v->'employee'->>'name') || ' ' || coalesce(v->'employee'->>'surname', ''));
+  v_employee := trim(concat_ws(' ', v->'employee'->>'name', v->'employee'->>'surname'));
 
   insert into menu_progress (restaurant, employee, wave, status, score)
   values (p_restaurant, v_employee, p_wave, p_status, p_score)

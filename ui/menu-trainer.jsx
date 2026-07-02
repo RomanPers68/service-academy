@@ -548,13 +548,26 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     setPreview(null); vibrate("light");
   };
 
-  // ── Этап 4: публикация меню всей команде (RPC menu_set; без SQL — тихо в очередь) ──
-  const [pubState, setPubState] = React.useState("");
+  // ── Этап 4: публикация меню всей команде — честный вызов с ответом сервера ──
+  const [pubBusy, setPubBusy] = React.useState(false);
+  const [pubMsg, setPubMsg] = React.useState(null); // { ok, text }
+  const _showPub = (ok, text) => { setPubMsg({ ok, text }); setTimeout(() => setPubMsg(null), 8000); };
   const publish = () => {
-    if (!saToken()) { setPubState("Нужен вход по коду"); return; }
-    rpcSync("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(list) });
-    setPubState("Отправлено команде ✓"); vibrate("light");
-    setTimeout(() => setPubState(""), 3500);
+    if (!saToken()) { _showPub(false, "Нужен вход по коду сотрудника"); return; }
+    setPubBusy(true);
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(list) })
+      .then(res => {
+        setPubBusy(false);
+        if (res && res.ok === true) { _showPub(true, "Опубликовано ✓ — команда увидит меню при следующем открытии тренажёра"); vibrate("light"); }
+        else if (res && res.ok === false) _showPub(false, res.error === "auth" ? "Сервер не подтвердил сессию — выйди и зайди по коду заново" : "Сервер отклонил: " + (res.error || "неизвестно"));
+        else if (res && res.message) _showPub(false, "Ошибка сервера: " + String(res.message).slice(0, 140));
+        else _showPub(false, "Неожиданный ответ сервера");
+      })
+      .catch(() => {
+        setPubBusy(false);
+        rpcSync("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(list) });
+        _showPub(false, "Нет сети — публикация отправится автоматически, когда связь появится");
+      });
   };
 
   const save = () => {
@@ -632,8 +645,9 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             {importing ? "Читаю PDF…" : "⚡ Импорт из PDF"}
             <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
           </label>
-          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color }} onClick={publish} disabled={!list.length}>{pubState || "Опубликовать команде"}</button>
+          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color, opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={!list.length || pubBusy}>{pubBusy ? "Отправляю…" : "Опубликовать команде"}</button>
         </div>
+        {pubMsg && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: pubMsg.ok ? green : red }}>{pubMsg.text}</div>}
         {importErr && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: red }}>{importErr}</div>}
         <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] }))}
           className="sa-card"

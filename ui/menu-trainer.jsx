@@ -151,6 +151,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   if (mode === "edit") return (
     <MenuEditor T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
       custom={custom} setCustom={(v) => { setCustom(v); saveCustom(v); }}
+      shared={shared} onPublished={(d) => setShared(d)}
       hideSamples={hideSamples} setHideSamples={(v) => { setHideSamples(v); saveHide(v); }} />
   );
 
@@ -165,7 +166,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
     <div style={T.screen} className="sa-screen">
       {Head(restaurant)}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v15</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v17</span>
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
       </div>
       <div style={{ ...T.secTitle }}>Тренировка</div>
@@ -513,10 +514,13 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 }
 
 // ── Редактор меню (для менеджеров) ───────────────────────────────────────────
-function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, hideSamples, setHideSamples }) {
+function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples }) {
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
   const list = custom[restaurant] || [];
+  // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя
+  // ни поправить, ни удалить, пока не «заберёшь» в редактор
+  const orphanShared = (shared || []).filter(s => s && s.id && !list.some(d => d.id === s.id));
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
 
   // ── Этап 4: AI-импорт из PDF (серверная функция /api/menu-import + ключ в Vercel) ──
@@ -563,7 +567,11 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(list) })
       .then(res => {
         setPubBusy(false);
-        if (res && res.ok === true) { _showPub(true, "Опубликовано ✓ — команда увидит меню при следующем открытии тренажёра"); vibrate("light"); }
+        if (res && res.ok === true) {
+          _showPub(true, list.length ? "Опубликовано ✓ — команда увидит меню при следующем открытии тренажёра" : "Опубликовано ✓ — серверное меню очищено");
+          if (onPublished) onPublished(list);
+          vibrate("light");
+        }
         else if (res && res.ok === false) _showPub(false, res.error === "auth" ? "Сервер не подтвердил сессию — выйди и зайди по коду заново" : "Сервер отклонил: " + (res.error || "неизвестно"));
         else if (res && res.message) _showPub(false, "Ошибка сервера: " + String(res.message).slice(0, 140));
         else _showPub(false, "Неожиданный ответ сервера");
@@ -650,10 +658,20 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             {importing ? "Читаю PDF…" : "⚡ Импорт из PDF"}
             <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
           </label>
-          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color, opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={!list.length || pubBusy}>{pubBusy ? "Отправляю…" : "Опубликовать команде"}</button>
+          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color, opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={pubBusy}>{pubBusy ? "Отправляю…" : "Опубликовать команде"}</button>
         </div>
         {pubMsg && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: pubMsg.ok ? green : red }}>{pubMsg.text}</div>}
         {importErr && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: red }}>{importErr}</div>}
+        {orphanShared.length > 0 && (
+          <div style={{ ...glass(T), padding: "13px 14px", marginTop: 12, fontSize: 13, color: T.para?.color, lineHeight: 1.55 }}>
+            На сервере команды опубликовано <b style={{ color: gold }}>{orphanShared.length}</b> блюд, которых нет в твоём редакторе — их нельзя изменить или удалить, пока не заберёшь сюда.
+            <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", border: `1px solid ${gold}88`, color: T.para?.color }}
+              onClick={() => { setCustom({ ...custom, [restaurant]: [...list, ...orphanShared] }); vibrate("light"); }}
+              {...onActivate(() => { setCustom({ ...custom, [restaurant]: [...list, ...orphanShared] }); })}>
+              Забрать в редактор ({orphanShared.length})
+            </button>
+          </div>
+        )}
         <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] }))}
           className="sa-card"
           style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 13.5, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>

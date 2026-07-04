@@ -15,6 +15,7 @@ import { S, A } from "./ui/styles";
 import { ReferenceSection } from "./ui/ReferenceSection";
 import { SearchScreen } from "./ui/search";
 import { MenuTrainerScreen } from "./ui/menu-trainer";
+import { TodayScreen, RefHubScreen } from "./ui/today";
 import { MentorScreen } from "./ui/mentor";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
@@ -82,7 +83,9 @@ const CERTIFICATES_ENABLED = true;
 const SR_DAYS = [1, 3, 7, 30];
 
 function ServiceAcademy() {
-  const [screen, setScreen] = useState("roleSelect");
+  // Упрощение навигации: приложение открывается на ленте «Сегодня».
+  // Старый вариант (главная = выбор роли): useState("roleSelect")
+  const [screen, setScreen] = useState("today");
   const [prevScreen, setPrevScreen] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState(null);
   const [profile, setProfile] = useState(null);
@@ -305,7 +308,8 @@ function ServiceAcademy() {
       if (data && data.length > 0 && data[0].last_role) {
         setRole(data[0].last_role);
         try { localStorage.setItem("sa_last_role", JSON.stringify(data[0].last_role)); } catch(e) {}
-        setScreen("home");
+        // Раньше здесь был переход на "home" — теперь пользователь остаётся на «Сегодня»,
+        // а лента сама подхватит роль и покажет план дня.
       }
     }).catch(() => {});
   }, [profile, role]);
@@ -407,7 +411,7 @@ function ServiceAcademy() {
       localStorage.setItem("sa_profile", JSON.stringify(prof));
     } catch(e) {}
     setProfile(prof);
-    setScreen("roleSelect");
+    setScreen("today"); // раньше: "roleSelect" — теперь встречает лента дня
   }, []);
   const handleLogout = useCallback(() => {
     try {
@@ -724,14 +728,36 @@ function ServiceAcademy() {
           </div>
         )}
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
+        {/* ── «Сегодня»: умная лента дня (новая главная) ── */}
+        {screen === "today" && <div style={{paddingBottom:88}}><TodayScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} modules={[...(MODULES[role] || []), ...(customModules || [])]} completed={completed} quizDone={quizDone} mistakeBank={mistakeBank} streak={streak}
+          onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }}
+          onMistakes={() => navigate("mistakes")}
+          onMenuTrainer={() => navigate("menuTrainer")}
+          onChecklist={() => navigate("checklist")}
+          onDaily={() => navigate("daily")}
+          onGoLearn={() => navigate("roleSelect")}
+          onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} /></div>}
+        {/* ── «Справочник»: хаб всех инструментов за 2 тапа ── */}
+        {screen === "refHub" && <div style={{paddingBottom:88}}><RefHubScreen T={T} a11y={a11y} profile={profile} role={role}
+          onGlossary={() => navigate("glossary")}
+          onReference={() => { setRefStart(null); navigate("reference"); }}
+          onMenuTrainer={() => navigate("menuTrainer")}
+          onChecklist={() => navigate("checklist")}
+          onMentor={() => navigate("mentor")}
+          onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined}
+          onLeaderboard={() => navigate("leaderboard")}
+          onOnboarding={() => navigate("onboarding")}
+          onAnalytics={() => navigate("analytics")}
+          onContentEditor={() => navigate("contentEditor")}
+          onSearch={role ? () => navigate("search") : undefined} /></div>}
         {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} />}
-        {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} />}
+        {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "today")} /></div>}
+        {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate(prevScreen || "today")} /></div>}
+        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate(prevScreen || "refHub")} /></div>}
+        {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate(prevScreen || "refHub"); }} />}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
-        {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+        {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("today")}
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             if (profile && profile.name === name && profile.surname === surname) {
@@ -767,10 +793,10 @@ function ServiceAcademy() {
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
-        {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} /></div>}
-        {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate(prevScreen || "today")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveLesson(lesson); setActiveModule(mod); navigate("lesson"); }} />}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} hideTiles={true} /></div>}
+        {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate(prevScreen || "refHub")} color="#C8A96E" saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
+        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate(prevScreen || "refHub")} /></div>}
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => navigate(prevScreen || "home")} />}
         {screen === "search" && <div style={{paddingBottom:88}}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onBack={() => navigate(prevScreen || "home")} /></div>}
@@ -781,12 +807,12 @@ function ServiceAcademy() {
         {screen === "lesson" && activeLesson?.type !== "dialogue" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} />}
-        {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
+        {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate(prevScreen === "roleComplete" ? "roleSelect" : (prevScreen || "refHub"))} />}
         {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) openCertificate(id); }} onExit={() => navigate("certificates")} />}
         {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}
 
         {/* Нижняя навигация — только на основных экранах */}
-        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && (
+        {["today","refHub","roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && (
           <div style={{
             position:"fixed", bottom:0, left:0, right:0, zIndex:200,
             background: a11y ? "rgba(242,234,216,0.9)" : "linear-gradient(160deg, rgba(58,42,16,0.84) 0%, rgba(42,30,10,0.86) 100%)",
@@ -798,17 +824,18 @@ function ServiceAcademy() {
             boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -4px 24px rgba(0,0,0,0.55), 0 -1px 0 rgba(210,170,70,0.20)",
           }}>
             {[
-              { id:"roleSelect", icon:"home",        label:"Главная" },
-              { id:"daily",      icon:"daily",       label:"Задания" },
-              { id:"glossary",   icon:"glossary",    label:"Глоссарий" },
-              { id:"leaderboard",icon:"leaderboard", label:"Рейтинг" },
-              ...(profile?.is_admin ? [{ id:"team", icon:"team", label:"Команда" }] : []),
-              { id:"stats",      icon:"stats",       label:"Профиль" },
+              // Упрощённая навигация: 3 смысловые вкладки вместо 5-6 разрозненных.
+              // match — на каких экранах вкладка подсвечивается активной.
+              { id:"today",   icon:"daily",    label:"Сегодня",    match:["today","daily","mistakes"] },
+              { id:"learn",   icon:"home",     label:"Учёба",      match:["home","roleSelect","module"], go:() => navigate(role ? "home" : "roleSelect") },
+              { id:"refHub",  icon:"glossary", label:"Справочник", match:["refHub","glossary","leaderboard"] },
+              ...(profile?.is_admin ? [{ id:"team", icon:"team", label:"Команда", match:["team"] }] : []),
+              { id:"stats",   icon:"stats",    label:"Профиль",    match:["stats","playerDetail"] },
             ].map(tab => {
-              const active = screen === tab.id;
+              const active = (tab.match || [tab.id]).includes(screen);
               const accentColor = a11y ? "#6B4E1A" : GOLD;
               const inactiveColor = a11y ? "#5C3D10" : "#9A8060";
-              const goTab = () => { if (!active) vibrate("light"); navigate(tab.id); };
+              const goTab = () => { if (!active) vibrate("light"); tab.go ? tab.go() : navigate(tab.id); };
               return (
                 <div key={tab.id} onClick={goTab} {...onActivate(goTab)} aria-label={tab.label}
                   style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",

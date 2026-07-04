@@ -1709,7 +1709,7 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
   );
 }
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, hideTiles = false }) {
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -1754,9 +1754,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             </div>
           </div>
         )}
-        {/* Плитки инструментов: скрыты при hideTiles — всё это теперь во вкладке
-            «Справочник». Ничего не удалено: убери hideTiles в App.jsx — вернутся. */}
-        {!hideTiles && (() => {
+        {(() => {
           const Cc = moodPalette(a11y);
           const tiles = [];
           if (onChecklist) tiles.push({ key:"cl", label:"Чек-листы", onClick:onChecklist, icon:(

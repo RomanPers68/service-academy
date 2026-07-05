@@ -1807,7 +1807,8 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const done = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0);
           const total = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0);
           const prog = total ? Math.round((done / total) * 100) : 0;
-          const GRN = a11y ? "#4E7A58" : "#8FB890", GRN2 = a11y ? "#5E8A66" : "#7C9E87";
+          const RC = roleObj?.color || (a11y ? "#4E7A58" : "#8FB890"); // цвет роли
+          const GRN = RC, GRN2 = RC;
           let title, sub, cta, go, gold = false;
           if (next) { title = `Твой трек · ${roleObj?.label || ""}`; sub = `Следующий: «${next.lesson.title}» · ≈ ${_estMins(next.lesson)} мин`; cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod); }
           else if (dueM > 0 && onMistakes) { title = "Трек пройден · закрепи"; sub = `${dueM} вопрос${dueM === 1 ? "" : dueM < 5 ? "а" : "ов"} вернулись на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
@@ -1817,16 +1818,16 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
               <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, padding:1.5, background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)", cursor:"pointer" }}>
                 <div style={{ borderRadius:14.5, padding:"12px 13px", background: saInner(a11y) }}>
                   <div style={{ display:"flex", alignItems:"center", gap:11 }}>
-                    <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? "rgba(200,169,110,0.13)" : (a11y ? "rgba(94,138,102,.14)" : "rgba(124,158,135,.15)"), display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? "rgba(200,169,110,0.13)" : `${RC}26`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       {gold
                         ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>
-                        : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GRN} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>}
+                        : (ROLE_SVG[role] ? ROLE_SVG[role](RC, 20) : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={RC} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>)}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color: gold ? GOLD : GRN, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{title}</div>
                       <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sub}</div>
                     </div>
-                    <div style={{ fontFamily:"monospace", flexShrink:0, fontSize:9, letterSpacing:1, color: a11y ? "#FFF8EC" : "#14100A", background: gold ? `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)` : `linear-gradient(135deg, ${GRN}, ${GRN2})`, borderRadius:12, padding:"6px 11px" }}>{cta} ›</div>
+                    <div style={{ fontFamily:"monospace", flexShrink:0, fontSize:9, letterSpacing:1, color: "#14100A", background: gold ? `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)` : RC, borderRadius:12, padding:"6px 11px" }}>{cta} ›</div>
                   </div>
                   {next && (
                     <div style={{ height:3.5, borderRadius:2, background: a11y ? "rgba(120,90,40,0.15)" : "rgba(255,255,255,0.07)", marginTop:9 }}>
@@ -1907,7 +1908,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
               {tiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 return (
-                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ width:"calc(25% - 5.25px)", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
+                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ width:"calc(25% - 5.25px)", boxSizing:"border-box", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
                     <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: saInner(a11y) }}>
                       <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.5)" : "rgba(255,245,220,0.09)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
                       <TokenEyelet />

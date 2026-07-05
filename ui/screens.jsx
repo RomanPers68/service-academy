@@ -304,7 +304,9 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={detailTab ? () => { setDetailTab(false); setSelected(null); } : onBack}>‹</button>
-        <div style={T.lessHeadTitle}>📊 Рейтинг сотрудников</div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>
+          <span>Рейтинг сотрудников</span></div>
         <div style={{ width:24 }} />
       </div>
 
@@ -785,7 +787,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
             {/* Звание из Книги отзывов */}
             {(() => { const bs = bookStats(MODULES, completed, quizDone, examResults); return (
               <div style={{ display:"inline-flex", alignItems:"center", gap:5, marginTop:5, border:`1px solid ${GOLD}55`, background:"rgba(200,169,110,0.08)", borderRadius:12, padding:"3px 9px" }}>
-                <span style={{ fontSize:11 }}>🖋️</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="1.6"/></svg>
                 <span style={{ color:GOLD, fontSize:11, fontWeight:"bold" }}>{bs.rank.label}</span>
                 <span style={{ color:T.modSub.color, fontSize:10 }}>· {bs.pages} стр.</span>
               </div>
@@ -1795,12 +1797,14 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           )});
           if (!tiles.length) return null;
           return (
-            <div style={{ display:"flex", alignItems:"stretch", flexWrap:"wrap", gap:10, padding:"0 14px 14px" }}>
+            /* Компактная лента инструментов: один ряд, горизонтальная прокрутка.
+               Экономит ~2/3 высоты — роли и уроки видны сразу. */
+            <div style={{ display:"flex", overflowX:"auto", gap:8, padding:"0 14px 12px", WebkitOverflowScrolling:"touch", scrollbarWidth:"none" }} className="sa-tiles-strip">
               {tiles.map(t => (
-                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"1 1 20%", minWidth:72, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:16, padding:"12px 4px 10px", display:"flex", flexDirection:"column", alignItems:"center", gap:6, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
-                  <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
-                  <div style={{ minHeight:25, width:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <span style={{ fontSize:11, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.15, overflowWrap:"break-word", wordBreak:"break-word", hyphens:"auto", maxWidth:"100%" }}>{t.label}</span>
+                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:80, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:14, padding:"9px 4px 7px", display:"flex", flexDirection:"column", alignItems:"center", gap:5, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+                  <div style={{ width:32, height:32, borderRadius:9, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
+                  <div style={{ minHeight:22, width:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ fontSize:9.5, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.15, overflowWrap:"break-word", maxWidth:"100%" }}>{t.label}</span>
                   </div>
                 </div>
               ))}

@@ -56,6 +56,7 @@ export const injectStyles = () => {
     .sa-pop      { animation: popIn 0.4s cubic-bezier(0.16,1,0.3,1) both; }
     .sa-fast     { animation: fadeInFast 0.2s ease both; }
 
+    .sa-tiles-strip::-webkit-scrollbar { display: none; }
     .sa-card {
       transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
     }

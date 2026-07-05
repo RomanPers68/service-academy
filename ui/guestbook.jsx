@@ -11,7 +11,7 @@ import { MODULES } from "../data/modules";
 import { ROLES } from "../data/roles";
 import {
   MODULE_REVIEWS, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
-  moduleDone, bookStats, weeklyLessonId, weeklyDialogueId,
+  moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
 } from "../data/reviews";
 
 const GOLD_SOFT = "#D4A85A", PAPER = "#FBF5E8", PAPER_DIM = "#EFE6D2",
@@ -46,7 +46,7 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates) {
   const lg = LEGEND_REVIEWS[roleId];
   if (lg) {
     if (examResults?.[roleId]?.passed) pages.push({ kind: "legend", key: "lg_" + roleId, ...lg, source: "ЭКЗАМЕН РОЛИ · СДАН", date: dates["lg_" + roleId] ? ruDate(dates["lg_" + roleId]) : "" });
-    else pages.push({ kind: "locked", key: "lg_" + roleId, legend: true, source: "ЛЕГЕНДАРНАЯ СТРАНИЦА", hint: "Сдай экзамен роли — и её займёт гость, о котором рассказывают историю. С печатью." });
+    else pages.push({ kind: "locked", key: "lg_" + roleId, legend: true, source: "ЛЕГЕНДАРНАЯ СТРАНИЦА", hint: "Сдай экзамен роли — и её займёт гость, о котором рассказывают истории. С печатью." });
   }
   return pages;
 }

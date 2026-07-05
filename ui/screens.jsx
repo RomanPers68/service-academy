@@ -14,7 +14,7 @@ import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituati
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A } from "./styles";
 import { ReferenceSection } from "./ReferenceSection";
-import { bookStats } from "../data/reviews";
+import { bookStats, countNewDishes } from "../data/reviews";
 import { Confetti, TimerBar, SayAloud } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
@@ -1720,7 +1720,45 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
   );
 }
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook }) {
+
+// ═══ Детали фирменного стиля главной: сургуч, люверс, оправа ═══
+const _WAX_BLOB = "M12 1.9c2.3-.3 4.5.7 6.1 2.2 1.6 1.5 2.9 3.5 3.5 5.6.6 2.2.2 4.6-1 6.5-1.1 1.9-3 3.5-5.1 4.4-2.1.9-4.6 1-6.7.1-2.1-.8-3.9-2.5-5-4.5-1.1-2-1.5-4.4-.9-6.6C3.5 7.4 5 5.4 6.9 4 8.4 2.9 10.2 2.1 12 1.9Z";
+const WaxSealMini = ({ size = 15, rot = 0 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ transform: `rotate(${rot}deg)`, filter: "drop-shadow(0 1.2px 1.2px rgba(0,0,0,0.4))", flexShrink: 0 }}>
+    <defs><radialGradient id="saWax" cx="35%" cy="30%" r="75%"><stop offset="0%" stopColor="#C25538"/><stop offset="45%" stopColor="#96331F"/><stop offset="80%" stopColor="#6E2314"/><stop offset="100%" stopColor="#521708"/></radialGradient></defs>
+    <path d={_WAX_BLOB} fill="url(#saWax)" /><circle cx="12" cy="12" r="7.2" fill="none" stroke="rgba(60,12,4,0.75)" strokeWidth="1.4" />
+    <path d="M12 8.4l1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z" fill="#F2D7B8" opacity="0.9" />
+    <ellipse cx="8.6" cy="6.6" rx="3" ry="1.7" fill="rgba(255,235,210,0.28)" transform="rotate(-28 8.6 6.6)" />
+  </svg>
+);
+const EmptySealSlot = ({ a11y }) => (
+  <div style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0, background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.28)", boxShadow: "inset 0 1.5px 3px rgba(0,0,0,0.35)" }} />
+);
+const TokenEyelet = () => (
+  <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", width: 9, height: 9, borderRadius: "50%", zIndex: 2, background: "radial-gradient(circle at 35% 30%, #E8C87A, #8B6A30 70%)", boxShadow: "0 1px 2px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ width: 4.5, height: 4.5, borderRadius: "50%", background: "rgba(20,14,6,0.8)", boxShadow: "inset 0 1px 1.5px rgba(0,0,0,0.8)" }} />
+  </div>
+);
+// Оправы (проба золота): full — герой, mid — рабочие элементы
+const saFrame = (a11y, level = "mid") => {
+  const al = level === "full" ? 1 : 0.75;
+  return a11y
+    ? `linear-gradient(160deg, rgba(217,179,104,${al}) 0%, rgba(139,106,48,${al}) 45%, rgba(190,148,64,${al}) 100%)`
+    : `linear-gradient(160deg, rgba(224,188,114,${al}) 0%, rgba(139,106,48,${al}) 45%, rgba(200,160,80,${al}) 100%)`;
+};
+const saInner = (a11y) => a11y
+  ? "linear-gradient(155deg, rgba(252,246,232,0.92) 0%, rgba(243,232,208,0.94) 100%)"
+  : "linear-gradient(155deg, rgba(48,35,14,0.93) 0%, rgba(30,21,8,0.95) 100%)";
+// Первый непройденный урок роли — для карточки «Твой трек»
+const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
+  for (const m of mods) for (const l of (m.lessons || [])) {
+    if (l.type === "result") continue;
+    if (!(l.type === "quiz" ? quizDone[l.id] : completed[l.id])) return { lesson: l, mod: m };
+  }
+  return null;
+};
+
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -1745,32 +1783,96 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"20px 24px 10px" }}>
           <img src={a11y ? LOGO_SRC_DARK : LOGO_SRC_DARK} alt="Service Academy" style={{ width:198, height:158, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         </div>
-        {profile && (
-          <div style={{ margin:"0 14px 14px", padding:"12px 16px", borderRadius:16, background: T.modCard.background, border:"1px solid rgba(160,120,60,0.12)", boxShadow: T.modCard.boxShadow, display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
-              <span style={{ color:"#fff", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>{isAdmin ? UI_SVG.crown("#fff", 22) : initials}</span>
-            </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ color: T.modTitle.color, fontSize:15, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {`${profile.name} ${profile.surname}`}{isAdmin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+        {/* ═══ Приветствие по часам (профиль-карточка переехала в «Профиль») ═══ */}
+        {profile && (() => {
+          const h = new Date().getHours();
+          const hello = h < 6 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
+          return (
+            <div style={{ padding:"2px 20px 12px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
+              <div style={{ color: T.modTitle.color, fontSize:19, fontFamily:"Georgia, serif", minWidth:0 }}>
+                {hello}, <span style={{ color: GOLD }}>{profile.name}</span>
+                {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
               </div>
-              <div style={{ color:"#C8A870", fontSize:12, marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:5 }}>{UI_SVG.building("#C8A870", 12)}</span>{profile.restaurant}{profile.position ? ` · ${{waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав"}[profile.position] || ""}` : ""}
+              <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
+            </div>
+          );
+        })()}
+
+        {/* ═══ Карточка «Твой трек»: урок → ошибки → гость недели ═══ */}
+        {role && onContinueLesson && (() => {
+          const roleObj = ROLES.find(r => r.id === role);
+          const mods = MODULES[role] || [];
+          const next = nextLessonOf(mods, completed, quizDone);
+          const dueM = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
+          const done = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0);
+          const total = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0);
+          const prog = total ? Math.round((done / total) * 100) : 0;
+          const GRN = a11y ? "#4E7A58" : "#8FB890", GRN2 = a11y ? "#5E8A66" : "#7C9E87";
+          let title, sub, cta, go, gold = false;
+          if (next) { title = `Твой трек · ${roleObj?.label || ""}`; sub = `Следующий: «${next.lesson.title}» · ≈ ${_estMins(next.lesson)} мин`; cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod); }
+          else if (dueM > 0 && onMistakes) { title = "Трек пройден · закрепи"; sub = `${dueM} вопрос${dueM === 1 ? "" : dueM < 5 ? "а" : "ов"} вернулись на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
+          else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
+          return (
+            <div style={{ padding:"0 14px 9px" }}>
+              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, padding:1.5, background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)", cursor:"pointer" }}>
+                <div style={{ borderRadius:14.5, padding:"12px 13px", background: saInner(a11y) }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+                    <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? "rgba(200,169,110,0.13)" : (a11y ? "rgba(94,138,102,.14)" : "rgba(124,158,135,.15)"), display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      {gold
+                        ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>
+                        : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GRN} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ color: gold ? GOLD : GRN, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{title}</div>
+                      <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sub}</div>
+                    </div>
+                    <div style={{ fontFamily:"monospace", flexShrink:0, fontSize:9, letterSpacing:1, color: a11y ? "#FFF8EC" : "#14100A", background: gold ? `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)` : `linear-gradient(135deg, ${GRN}, ${GRN2})`, borderRadius:12, padding:"6px 11px" }}>{cta} ›</div>
+                  </div>
+                  {next && (
+                    <div style={{ height:3.5, borderRadius:2, background: a11y ? "rgba(120,90,40,0.15)" : "rgba(255,255,255,0.07)", marginTop:9 }}>
+                      <div style={{ width:`${prog}%`, height:"100%", borderRadius:2, background:`linear-gradient(90deg, ${GRN}, ${GRN2})` }} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <div style={{ display:"flex", gap:4, flexShrink:0 }}>
-              {onProfile && (
-                <div onClick={onProfile} {...onActivate(onProfile)} style={{ display:"flex", alignItems:"center", cursor:"pointer", padding:"4px 6px" }}>{UI_SVG.pencil(T.modSub.color, 17)}</div>
-              )}
+          );
+        })()}
+
+        {/* ═══ Книга отзывов — слим-витрина: монограмма, печати, золотая нить ═══ */}
+        {onGuestBook && profile && (() => {
+          const bs = bookStats(MODULES, completed, quizDone, examResults);
+          return (
+            <div style={{ padding:"0 14px 9px" }}>
+              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ borderRadius:15, padding:1.5, background: saFrame(a11y, "full"), boxShadow: a11y ? "0 4px 14px rgba(120,85,25,0.3)" : "0 6px 18px rgba(0,0,0,0.5)", cursor:"pointer" }}>
+                <div style={{ overflow:"hidden", position:"relative", background: saInner(a11y), borderRadius:13.5 }}>
+                  {/* ляссе */}
+                  <div style={{ position:"absolute", right:16, top:0, width:7, height:20, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />
+                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px 8px" }}>
+                    <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, border:`1.2px solid ${GOLD}88`, background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)", display:"flex", alignItems:"center", justifyContent:"center", color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif" }}>{(profile.name || "?")[0]}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
+                        <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
+                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:8 }}>{bs.pages}/{bs.total}</span>
+                      </div>
+                      <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:7.5, letterSpacing:2, marginTop:1, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>ЛИЧНАЯ · {profile.name} · {bs.rank.label}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:3.5, alignItems:"center", paddingRight:10, flexShrink:0 }}>
+                      {[0,1,2,3,4].map(i => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6][i]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
+                    </div>
+                  </div>
+                  <div style={{ height:2.5, background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.45)" }}>
+                    <div style={{ width:`${bs.total ? Math.round((bs.pages / bs.total) * 100) : 0}%`, height:"100%", background:`linear-gradient(90deg, ${GOLD_SOFT}, ${GOLD})`, boxShadow:`0 0 6px ${GOLD}88` }} />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
+
         {(() => {
           const Cc = moodPalette(a11y);
           const tiles = [];
-          if (onGuestBook) tiles.push({ key:"book", label:"Книга отзывов", onClick:onGuestBook, icon:(
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/><path d="M15 8h2M15 11h2"/></svg>
-          )});
           if (onChecklist) tiles.push({ key:"cl", label:"Чек-листы", onClick:onChecklist, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v2H9z"/><path d="M8.5 12l2 2 3.5-3.5"/></svg>
           )});
@@ -1796,17 +1898,26 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z"/><path d="M14.5 6.5l3 3"/></svg>
           )});
           if (!tiles.length) return null;
+          // Бейджи-события: новинки меню (реальные данные)
+          const menuNew = countNewDishes(profile?.restaurant);
           return (
-            /* Инструменты — компактные чипы-пилюли: иконка + текст в строку.
-               Без горизонтальной прокрутки (Telegram перехватывает свайпы),
-               всё видно сразу, высота блока минимальна. */
-            <div style={{ display:"flex", flexWrap:"wrap", gap:7, padding:"0 14px 12px" }}>
-              {tiles.map(t => (
-                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"7px 12px 7px 9px", borderRadius:18, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
-                  <span style={{ display:"inline-flex", flexShrink:0 }}>{React.cloneElement(t.icon, { width:15, height:15 })}</span>
-                  <span style={{ fontSize:11, color:Cc.text, fontWeight:"bold", whiteSpace:"nowrap" }}>{t.label}</span>
-                </div>
-              ))}
+            /* Инструменты — жетоны в золотой оправе с люверсами.
+               Неполный последний ряд центрируется. */
+            <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:7, padding:"0 14px 12px" }}>
+              {tiles.map(t => {
+                const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
+                return (
+                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ width:"calc(25% - 5.25px)", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
+                    <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: saInner(a11y) }}>
+                      <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.5)" : "rgba(255,245,220,0.09)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
+                      <TokenEyelet />
+                      <div style={{ marginTop:4, position:"relative", display:"inline-flex" }}>{React.cloneElement(t.icon, { width:16, height:16 })}</div>
+                      <span style={{ position:"relative", fontSize:8.5, color: Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1, maxWidth:"100%", overflowWrap:"break-word" }}>{t.label}</span>
+                    </div>
+                    {badge && <div style={{ position:"absolute", top:-5, right:-3, zIndex:3, background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, color:"#1C1204", fontSize:8, fontWeight:"bold", fontFamily:"monospace", borderRadius:9, padding:"2px 6px", boxShadow:"0 2px 6px rgba(0,0,0,0.4)" }}>{badge}</div>}
+                  </div>
+                );
+              })}
             </div>
           );
         })()}
@@ -1819,7 +1930,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
 
 
         <div style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ ...T.roleSubtitle }}>Выбери свою роль</div>
+          <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
         </div>
       </div>
 

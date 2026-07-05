@@ -14,6 +14,7 @@ import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituati
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A } from "./styles";
 import { ReferenceSection } from "./ReferenceSection";
+import { bookStats } from "../data/reviews";
 import { Confetti, TimerBar, SayAloud } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
@@ -748,7 +749,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
   );
 }
 
-export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
+export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
   const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
@@ -781,6 +782,14 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
           <div>
             <div style={{ ...T.modTitle }}>{`${profile?.name || ""} ${profile?.surname || ""}`}</div>
             <div style={{ color:T.modSub.color, fontSize:12 }}>{profile?.restaurant}</div>
+            {/* Звание из Книги отзывов */}
+            {(() => { const bs = bookStats(MODULES, completed, quizDone, examResults); return (
+              <div style={{ display:"inline-flex", alignItems:"center", gap:5, marginTop:5, border:`1px solid ${GOLD}55`, background:"rgba(200,169,110,0.08)", borderRadius:12, padding:"3px 9px" }}>
+                <span style={{ fontSize:11 }}>🖋️</span>
+                <span style={{ color:GOLD, fontSize:11, fontWeight:"bold" }}>{bs.rank.label}</span>
+                <span style={{ color:T.modSub.color, fontSize:10 }}>· {bs.pages} стр.</span>
+              </div>
+            ); })()}
           </div>
         </div>
 
@@ -1709,7 +1718,7 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
   );
 }
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor }) {
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -1757,6 +1766,9 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
         {(() => {
           const Cc = moodPalette(a11y);
           const tiles = [];
+          if (onGuestBook) tiles.push({ key:"book", label:"Книга отзывов", onClick:onGuestBook, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/><path d="M15 8h2M15 11h2"/></svg>
+          )});
           if (onChecklist) tiles.push({ key:"cl", label:"Чек-листы", onClick:onChecklist, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v2H9z"/><path d="M8.5 12l2 2 3.5-3.5"/></svg>
           )});

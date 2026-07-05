@@ -1797,15 +1797,14 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           )});
           if (!tiles.length) return null;
           return (
-            /* Компактная лента инструментов: один ряд, горизонтальная прокрутка.
-               Экономит ~2/3 высоты — роли и уроки видны сразу. */
-            <div style={{ display:"flex", overflowX:"auto", gap:8, padding:"0 14px 12px", WebkitOverflowScrolling:"touch", scrollbarWidth:"none" }} className="sa-tiles-strip">
+            /* Инструменты — компактные чипы-пилюли: иконка + текст в строку.
+               Без горизонтальной прокрутки (Telegram перехватывает свайпы),
+               всё видно сразу, высота блока минимальна. */
+            <div style={{ display:"flex", flexWrap:"wrap", gap:7, padding:"0 14px 12px" }}>
               {tiles.map(t => (
-                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:80, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, borderRadius:14, padding:"9px 4px 7px", display:"flex", flexDirection:"column", alignItems:"center", gap:5, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
-                  <div style={{ width:32, height:32, borderRadius:9, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:a11y?"rgba(200,150,50,0.14)":"rgba(200,169,110,0.13)" }}>{t.icon}</div>
-                  <div style={{ minHeight:22, width:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <span style={{ fontSize:9.5, color:Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.15, overflowWrap:"break-word", maxWidth:"100%" }}>{t.label}</span>
-                  </div>
+                <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"7px 12px 7px 9px", borderRadius:18, background:Cc.cardBg, border:`1px solid ${Cc.border}`, borderTop:`1px solid ${Cc.top}`, boxShadow:Cc.shadow, cursor:"pointer", WebkitTapHighlightColor:"transparent", backdropFilter:a11y?"blur(18px) saturate(128%)":"none", WebkitBackdropFilter:a11y?"blur(18px) saturate(128%)":"none" }}>
+                  <span style={{ display:"inline-flex", flexShrink:0 }}>{React.cloneElement(t.icon, { width:15, height:15 })}</span>
+                  <span style={{ fontSize:11, color:Cc.text, fontWeight:"bold", whiteSpace:"nowrap" }}>{t.label}</span>
                 </div>
               ))}
             </div>
@@ -2620,6 +2619,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   const [dialogueScreen, setDialogueScreen] = React.useState(null); // dialogue id to show
   // ── Этап 3 — режим карточек: урок листается «экранами» вместо длинной ленты ──
   const [cardMode, setCardMode] = React.useState(() => { try { return localStorage.getItem("sa_lesson_cards") !== "0"; } catch (e) { return true; } });
+  // Одноразовая подсказка про переключатель «карточки ↔ лента»
+  const [modeHint, setModeHint] = React.useState(() => { try { return !localStorage.getItem("sa_mode_hint"); } catch (e) { return false; } });
+  const dismissModeHint = React.useCallback(() => { setModeHint(false); try { localStorage.setItem("sa_mode_hint", "1"); } catch (e) {} }, []);
+  React.useEffect(() => { if (!modeHint) return; const t = setTimeout(dismissModeHint, 7000); return () => clearTimeout(t); }, [modeHint, dismissModeHint]);
   const [cardIdx, setCardIdx] = React.useState(0);
   const touchRef = React.useRef(null);
   React.useEffect(() => { setCardIdx(0); }, [lesson.id]);
@@ -2728,11 +2731,20 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   }, [onPracticeChoice]);
   if (lesson.type === "lesson") {
     return (
-      <div style={T.screen}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div><button onClick={() => { setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
+      <div style={{ ...T.screen, position: "relative" }}>
+        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div><button onClick={() => { dismissModeHint(); setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center", borderRadius: 12, animation: modeHint ? "pulse 2s infinite" : "none" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
           ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
           : GAME_SVG.cards(color, 17)}</button></div>
         <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${cardMode ? Math.round(((cardIdx + 1) / cards.length) * 100) : scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:2 }} /></div>
+        {modeHint && (
+          <div onClick={dismissModeHint} style={{ position: "absolute", top: 92, right: 10, zIndex: 30, maxWidth: 230, cursor: "pointer" }}>
+            <div style={{ position: "absolute", top: -5, right: 16, width: 10, height: 10, transform: "rotate(45deg)", background: "rgba(46,34,14,0.97)", borderLeft: `1px solid ${GOLD}66`, borderTop: `1px solid ${GOLD}66` }} />
+            <div style={{ background: "rgba(46,34,14,0.97)", border: `1px solid ${GOLD}66`, borderRadius: 12, padding: "9px 12px", boxShadow: "0 8px 22px rgba(0,0,0,0.5)" }}>
+              <div style={{ color: GOLD, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>Карточки ↔ лента</div>
+              <div style={{ color: "#BDB09A", fontSize: 11.5, lineHeight: 1.5, marginTop: 2 }}>Эта кнопка меняет вид урока. Твой выбор запомнится.</div>
+            </div>
+          </div>
+        )}
         <div ref={bodyRef} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
           {/* Стеклянная подложка для текста урока */}
           <div style={{

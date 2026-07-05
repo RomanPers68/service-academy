@@ -918,11 +918,12 @@ class ErrorBoundary extends React.Component {
     super(props);
     this.state = { hasError: false };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, errMsg: String(error && (error.message || error)) };
   }
   componentDidCatch(error, info) {
     console.error("ServiceAcademy crashed:", error, info);
+    try { this.setState({ errStack: String((info && info.componentStack || "").split("\n").slice(0, 4).join(" · ")) }); } catch (e) {}
   }
   handleReload = () => {
     try { window.location.reload(); } catch (e) { this.setState({ hasError: false }); }
@@ -939,6 +940,13 @@ class ErrorBoundary extends React.Component {
           <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "'Georgia', serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
             Перезагрузить
           </button>
+          {/* Диагностика: текст ошибки для скриншота в поддержку */}
+          {(this.state.errMsg || this.state.errStack) && (
+            <div style={{ marginTop: 22, maxWidth: 330, padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(140,106,38,0.3)", background: "rgba(0,0,0,0.25)" }}>
+              <div style={{ color: "#756A58", fontSize: 9, letterSpacing: 2, fontFamily: "monospace", marginBottom: 5 }}>ДЛЯ ПОДДЕРЖКИ · СДЕЛАЙ СКРИНШОТ</div>
+              <div style={{ color: "#9A8060", fontSize: 10.5, fontFamily: "monospace", lineHeight: 1.6, wordBreak: "break-word" }}>{this.state.errMsg}{this.state.errStack ? " | " + this.state.errStack : ""}</div>
+            </div>
+          )}
         </div>
       );
     }

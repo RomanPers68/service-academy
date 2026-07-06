@@ -73,7 +73,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   const [hideSamples, setHideSamples] = React.useState(loadHide);
 
   // ── Этап 4: общее меню ресторана с сервера (публикует менеджер) ────────────
-  // Если RPC menu_get ещё не создан (supabase-stage4.sql) — тихо работаем как раньше, только локально.
+  // Если RPC menu_get ещё не создан (supabase/supabase-stage4.sql) — тихо работаем как раньше, только локально.
   const [shared, setShared] = React.useState([]);
   const [shareErr, setShareErr] = React.useState(null); // текст ошибки загрузки меню команды
   const [focusNew, setFocusNew] = React.useState(false);
@@ -242,7 +242,7 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
       {err && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
           <div style={{ fontSize: 38, marginBottom: 12 }}>🔌</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. UPGRADE_NOTES.md) — и здесь появится картина по каждому сотруднику.</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase/supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. docs/UPGRADE_NOTES.md) — и здесь появится картина по каждому сотруднику.</div>
         </div>
       )}
       {!err && rows === null && <div style={{ textAlign: "center", padding: "44px", color: T.modSub.color }}>Загружаю…</div>}
@@ -538,7 +538,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
         .then(r => r.json().then(j => ({ ok: r.ok, j })))
         .then(({ ok, j }) => {
           setImporting(false);
-          if (!ok || !Array.isArray(j.dishes)) { setImportErr(j.error || "Не получилось разобрать PDF. Настроен ли ANTHROPIC_API_KEY в Vercel? (см. UPGRADE_NOTES.md)"); return; }
+          if (!ok || !Array.isArray(j.dishes)) { setImportErr(j.error || "Не получилось разобрать PDF. Настроен ли ANTHROPIC_API_KEY в Vercel? (см. docs/UPGRADE_NOTES.md)"); return; }
           setPreview(j.dishes);
         })
         .catch(() => { setImporting(false); setImportErr("Сеть недоступна или функция /api/menu-import не развёрнута."); });

@@ -4,7 +4,7 @@
 // наставник тут же в телефоне сотрудника подтверждает навык своей фамилией.
 // Хранение: localStorage (sa_skills_<имя|фамилия>) + попытка синка в Supabase
 // через rpcSync("confirm_skill") — очередь безопасно отбросит вызов, если RPC ещё не создан
-// (SQL для сервера — в файле supabase-stage2.sql в корне проекта).
+// (SQL для сервера — в файле supabase/supabase-stage2.sql).
 
 import React from "react";
 import { createPortal } from "react-dom";

@@ -6,7 +6,7 @@
 //
 // Актуальные модели и цены: https://docs.claude.com/en/api/overview
 // На старте — claude-sonnet-4-6; при росте нагрузки простые вопросы можно
-// уводить на haiku (см. UPGRADE_NOTES.md, раздел «Корни под AI»).
+// уводить на haiku (см. docs/UPGRADE_NOTES.md, раздел «Корни под AI»).
 
 export const config = { api: { bodyParser: { sizeLimit: "1mb" } } };
 

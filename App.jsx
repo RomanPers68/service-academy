@@ -122,7 +122,7 @@ function ServiceAcademy() {
       if (!tg) return;
       tg.ready?.();
       // Этап 3 — напоминания: запоминаем Telegram ID и отправляем на сервер.
-      // Если RPC sa_set_tg ещё не создан (см. UPGRADE_NOTES.md) — очередь безвредно отбросит вызов.
+      // Если RPC sa_set_tg ещё не создан (см. docs/UPGRADE_NOTES.md) — очередь безвредно отбросит вызов.
       const _tgId = tg.initDataUnsafe?.user?.id;
       if (_tgId) {
         try {

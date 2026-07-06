@@ -472,11 +472,11 @@ function ServiceAcademy() {
     // 🌟 Бог сервиса — все 4 роли пройдены + все тесты 100%
     const allRolesDone = ROLE_ORDER.every(r => newCompletedRoles.has(r));
     const allPerfect = myScores.length > 0 && myScores.every(s => s.pct === 100);
-    if (allRolesDone && allPerfect) achieved.push({ icon:"🌟", label:"Бог сервиса", key:"god" });
+    if (allRolesDone && allPerfect) achieved.push({ icon:"sparkle", label:"Бог сервиса", key:"god" });
 
     // 🏆 Мастер практики — больше всех звёздочек
     if (myStars > 0 && myStars === maxStars && Object.keys(newPracticeStars).length > 1) {
-      achieved.push({ icon:"🏆", label:"Мастер практики", key:"master" });
+      achieved.push({ icon:"trophy", label:"Мастер практики", key:"master" });
     }
 
     // ⭐ Ядро команды — лучший средний % в роли core
@@ -490,7 +490,7 @@ function ServiceAcademy() {
       });
       const maxAvg = Math.max(...allAvgs, 0);
       if (myAvg > 0 && myAvg === maxAvg && allAvgs.filter(a => a > 0).length > 1) {
-        achieved.push({ icon:"⭐", label:"Ядро команды", key:"core" });
+        achieved.push({ icon:"star", label:"Ядро команды", key:"core" });
       }
     }
 

@@ -65,7 +65,7 @@ export function AchievementPopup({ ach, a11y, onClose }) {
             display:"flex", alignItems:"center", justifyContent:"center", fontSize:32,
             boxShadow:`0 0 24px ${color}40, inset 0 1px 0 rgba(255,255,255,0.1)`,
             animation:"achIconPulse 2s ease-in-out infinite",
-          }}>{ach.icon}</div>
+          }}>{UI_SVG[ach.icon] ? UI_SVG[ach.icon](color, 34) : ach.icon}</div>
           <div>
             <div style={{ color:labelColor, fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:5 }}>✦ НОВАЯ АЧИВКА</div>
             <div style={{ color:titleColor, fontSize:20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{ach.label}</div>
@@ -237,14 +237,14 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
     const rolesWithScores = new Set(playerScores.map(s => s.role));
     const allRolesCovered = ["seasonal","core","manager","service_manager"].every(r => rolesWithScores.has(r));
     if (allRolesCovered && playerScores.length > 0 && playerScores.every(s => s.pct === 100)) {
-      achievements.push({ icon:"🌟", label:"Бог сервиса" });
+      achievements.push({ icon:"sparkle", label:"Бог сервиса" });
     }
 
     // 🏆 Мастер практики — больше всех звёздочек практики
     const myStars = Object.values(practiceStars[key] || {}).reduce((a, b) => a + b, 0);
     const maxStars = Math.max(...allPlayers.map(p => Object.values(practiceStars[`${p.name}|${p.surname}`] || {}).reduce((a, b) => a + b, 0)), 0);
     if (myStars > 0 && myStars === maxStars && allPlayers.length > 1) {
-      achievements.push({ icon:"🏆", label:"Мастер практики" });
+      achievements.push({ icon:"trophy", label:"Мастер практики" });
     }
 
     // ⭐ Ядро команды — лучший средний % в роли core
@@ -254,7 +254,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       const myAvg = getAvg(player);
       const maxAvg = Math.max(...allPlayers.map(getAvg), 0);
       if (myAvg > 0 && myAvg === maxAvg && allPlayers.length > 1) {
-        achievements.push({ icon:"⭐", label:"Ядро команды" });
+        achievements.push({ icon:"star", label:"Ядро команды" });
       }
     }
 
@@ -265,7 +265,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       const myAvgS = getAvgS(player);
       const maxAvgS = Math.max(...allPlayers.map(getAvgS), 0);
       if (myAvgS > 0 && myAvgS === maxAvgS && allPlayers.length > 1) {
-        achievements.push({ icon:"🛎️", label:"Лучший хостес" });
+        achievements.push({ icon:"bell", label:"Лучший хостес" });
       }
     }
 
@@ -274,7 +274,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       const myEarliest = playerScores.map(s => s.date).sort()[0];
       const globalEarliest = allScores.map(s => s.date).sort()[0];
       if (myEarliest === globalEarliest && allPlayers.length > 1) {
-        achievements.push({ icon:"🚀", label:"Первопроходец" });
+        achievements.push({ icon:"rocket", label:"Первопроходец" });
       }
     }
 
@@ -331,7 +331,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           <WeekStar weekly={weekStar} T={T} />
           {filtered.length === 0 ? (
             <div style={{ textAlign:"center", padding:"60px 0", color:T.modSub.color, fontSize:14 }}>
-              <div style={{ fontSize:40, marginBottom:12 }}>📭</div>
+              <div style={{ marginBottom:12, display:"flex", justifyContent:"center" }}>{UI_SVG.inbox(GOLD, 40)}</div>
               <div>Пока нет результатов</div>
             </div>
           ) : filtered.map((p, i) => {
@@ -343,7 +343,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <div style={{ ...T.modTitle }}>{p.name} {p.surname}</div>
-                  {ach.map((a, ai) => <span key={ai} title={a.label} style={{ fontSize:15 }}>{a.icon}</span>)}
+                  {ach.map((a, ai) => <span key={ai} title={a.label} style={{ display:"inline-flex", alignItems:"center" }}>{UI_SVG[a.icon] ? UI_SVG[a.icon](GOLD, 15) : a.icon}</span>)}
                 </div>
                 <div style={{ color:T.modSub.color, fontSize:12, marginBottom:6 }}>{p.restaurant}</div>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -378,7 +378,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:2 }}>
                 {selAch.map((a, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:20, background:"rgba(200,160,80,0.1)", border:"1px solid rgba(200,160,80,0.3)" }}>
-                    <span style={{ fontSize:14 }}>{a.icon}</span>
+                    <span style={{ display:"inline-flex", alignItems:"center" }}>{UI_SVG[a.icon] ? UI_SVG[a.icon](GOLD, 14) : a.icon}</span>
                     <span style={{ color:GOLD, fontSize:11, fontFamily:"Georgia, serif" }}>{a.label}</span>
                   </div>
                 ))}
@@ -453,11 +453,11 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
-        <div style={T.lessHeadTitle}>🎯 Задания дня</div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
         <div style={{ width:24 }} />
       </div>
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, gap:12 }}>
-        <div style={{ fontSize:48 }}>🎯</div>
+        <div style={{ display:"flex", justifyContent:"center" }}>{UI_SVG.target(GOLD, 48)}</div>
         <div style={{ color:T.modTitle.color, fontSize:16, fontFamily:"Georgia, serif", textAlign:"center" }}>Сначала выбери роль</div>
         <div style={{ color:T.modSub.color, fontSize:13, textAlign:"center" }}>Вернись и выбери роль — тогда появятся ежедневные задания</div>
       </div>
@@ -468,7 +468,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
-        <div style={T.lessHeadTitle}>🎯 Задания дня</div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
         <div style={{ width:24 }} />
       </div>
 
@@ -525,7 +525,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
 
         {/* Мотивация */}
         <div style={{ ...T.modCard, marginTop:8, flexDirection:"column", alignItems:"center", gap:6, padding:"14px", background:"rgba(200,160,80,0.05)" }}>
-          <div style={{ fontSize:24 }}>💡</div>
+          <div style={{ display:"flex", justifyContent:"center" }}>{UI_SVG.bulb(GOLD, 24)}</div>
           <div style={{ color:T.modSub.color, fontSize:12, textAlign:"center", lineHeight:1.6 }}>
             Выполняй задания каждый день — маленькие шаги формируют большой результат
           </div>
@@ -623,7 +623,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
     <div style={T.screen}>
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
-        <div style={T.lessHeadTitle}>📊 {player.name} {player.surname}</div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.barChart(GOLD, 18)} {player.name} {player.surname}</div>
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 80px" }}>
         {loading ? (
@@ -694,8 +694,8 @@ export function PlayerDetailScreen({ player, T, onBack }) {
             )}
 
             {uniqueLessonCount === 0 && uniqueScores.length === 0 && (
-              <div style={{ textAlign:"center", color: T.modSub?.color || BROWN, padding:"30px 0", fontSize:14 }}>
-                📭 Пока нет данных
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, color: T.modSub?.color || BROWN, padding:"30px 0", fontSize:14 }}>
+                {UI_SVG.inbox(GOLD, 15)} Пока нет данных
               </div>
             )}
           </>
@@ -716,13 +716,13 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
         </div>
         <div onClick={() => onViewPlayer && onViewPlayer(p)} {...onActivate(() => onViewPlayer && onViewPlayer(p))}
           style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
-            background:"rgba(200,169,110,0.12)", border:"1px solid rgba(200,169,110,0.3)", color:GOLD }}>
-          📊
+            background:"rgba(200,169,110,0.12)", border:"1px solid rgba(200,169,110,0.3)", color:GOLD, display:"flex", alignItems:"center" }}>
+          {UI_SVG.barChart(GOLD, 15)}
         </div>
         <div onClick={() => setShowConfirm(s => !s)} {...onActivate(() => setShowConfirm(s => !s))}
           style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
-            background:"rgba(220,80,80,0.12)", border:"1px solid rgba(220,80,80,0.3)", color:"#e57373" }}>
-          🗑 Сбросить
+            background:"rgba(220,80,80,0.12)", border:"1px solid rgba(220,80,80,0.3)", color:"#e57373", display:"flex", alignItems:"center", gap:6 }}>
+          {UI_SVG.trash("#e57373", 13)} Сбросить
         </div>
       </div>
       {showConfirm && (
@@ -743,8 +743,8 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
       {onUnlockQuiz && (
         <div onClick={() => onUnlockQuiz(p.name, p.surname)} {...onActivate(() => onUnlockQuiz(p.name, p.surname))}
           style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
-            background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start" }}>
-          🔓 Разблокировать тесты
+            background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start", display:"flex", alignItems:"center", gap:6 }}>
+          {UI_SVG.lockOpen("#81C784", 13)} Разблокировать тесты
         </div>
       )}
     </div>
@@ -770,7 +770,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
-        <div style={T.lessHeadTitle}>📈 Моя статистика</div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.chartLine(GOLD, 18)} Моя статистика</div>
         <div style={{ width:24 }} />
       </div>
 
@@ -801,7 +801,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
             { label:"Средний балл", value:`${avgScore}%`, icon:"target", color:GOLD },
             { label:"Тестов пройдено", value:totalTests, icon:"quiz", color:"#7C9E87" },
             { label:"На 100%", value:perfect, icon:"diamond", color:"#8B7BAB" },
-            { label:"Звёзды практики", value:`⭐ ${myStars}`, icon:"trophy", color:"#E8A020" },
+            { label:"Звёзды практики", value: myStars, icon:"star", color:"#E8A020" },
             { label:"Уроков пройдено", value:completedLessons, icon:"book", color:"#7B8FAB" },
             { label:"Ролей завершено", value:`${rolesCompleted}/4`, icon:"gradcap", color:GOLD },
           ].map((s, i) => (
@@ -868,7 +868,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
 
         {myScores.length === 0 && (
           <div style={{ textAlign:"center", padding:"32px 0", color:T.modSub.color }}>
-            <div style={{ fontSize:40, marginBottom:8 }}>📭</div>
+            <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{UI_SVG.inbox(GOLD, 40)}</div>
             <div>Пока нет результатов</div>
             <div style={{ fontSize:12, marginTop:4 }}>Пройди первый тест!</div>
           </div>
@@ -3512,7 +3512,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       <div style={{ padding:"12px 14px 10px", background:`linear-gradient(135deg, ${dColor}18, transparent)`, borderBottom:`1px solid ${dColor}22` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
           <button onClick={onClose} style={{ background:"none", border:"none", color:BROWN, fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
-          <div style={{ fontSize:20 }}>{dialogue.guest.avatar}</div>
+          <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`${dColor}1e`, border:`1px solid ${dColor}55`, display:"flex", alignItems:"center", justifyContent:"center", color:dColor, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{(dialogue.guest.name || "?").trim()[0].toUpperCase()}</div>
           <div style={{ flex:1 }}>
             <div style={{ color: T.modTitle?.color || CREAM, fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
             <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>

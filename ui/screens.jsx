@@ -425,7 +425,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
   // Генерируем 3 задания на сегодня из непройденных уроков
   const allLessons = React.useMemo(() => {
     if (!modules) return [];
-    return modules.flatMap(m => m.lessons.map(l => ({ ...l, mod: m })));
+    return modules.flatMap(m => (m.lessons || []).filter(l => l.type !== "result").map(l => ({ ...l, mod: m })));
   }, [modules]);
 
   const tasks = React.useMemo(() => {
@@ -446,8 +446,8 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
     return picked;
   }, [allLessons, completed, quizDone, seed]);
 
-  const taskTypeIcon = { lesson:"book", quiz:"quiz", practice:"gamepad" };
-  const taskTypeLabel = { lesson:"Урок", quiz:"Тест", practice:"Практика" };
+  const taskTypeIcon = { lesson:"book", quiz:"quiz", practice:"gamepad", dialogue:"dialog" };
+  const taskTypeLabel = { lesson:"Урок", quiz:"Тест", practice:"Практика", dialogue:"Диалог" };
 
   if (!role) return (
     <div style={T.screen}>
@@ -510,10 +510,10 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
               style={{ ...T.modCard, marginBottom:12, gap:12, opacity: isDone ? 0.6 : 1,
                 cursor: isDone ? "default" : "pointer",
                 border: isDone ? "1px solid rgba(93,187,138,0.3)" : "1px solid rgba(200,160,80,0.15)" }}>
-              <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{isDone ? UI_SVG.checkCircle(GREEN, 26) : UI_SVG[taskTypeIcon[task.type]](GOLD, 26)}</div>
+              <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{isDone ? UI_SVG.checkCircle(GREEN, 26) : (UI_SVG[taskTypeIcon[task.type]] || UI_SVG.book)(GOLD, 26)}</div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                  <div style={{ color:"rgba(200,160,80,0.6)", fontSize:10, letterSpacing:2, fontFamily:"monospace" }}>ЗАДАНИЕ {i+1} · {taskTypeLabel[task.type]}</div>
+                  <div style={{ color:"rgba(200,160,80,0.6)", fontSize:10, letterSpacing:2, fontFamily:"monospace" }}>ЗАДАНИЕ {i+1} · {taskTypeLabel[task.type] || "Урок"}</div>
                 </div>
                 <div style={{ ...T.modTitle, fontSize:15 }}>{task.title}</div>
                 <div style={{ color:T.modSub.color, fontSize:12, marginTop:2 }}>{task.mod?.title}</div>

@@ -73,10 +73,34 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
 }
 
 // ── Экран книги ──
-export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, onBack, onWeekly }) {
+export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, onBack, onWeekly, focusId }) {
   const [tab, setTab] = React.useState(role && MODULES[role] ? role : "seasonal");
   const [idx, setIdx] = React.useState(0);
   const [dir, setDir] = React.useState("r");
+
+  // Открытие по уведомлению: листаем к заработанной странице
+  React.useEffect(() => {
+    if (!focusId) return;
+    for (const [rid, mods] of Object.entries(MODULES)) {
+      if ((mods || []).some(m => m.id === focusId)) {
+        const p = buildRolePages(rid, completed, quizDone, examResults, loadDates());
+        const i = p.findIndex(pg => pg.key === focusId);
+        if (i >= 0) { setTab(rid); setIdx(i); setDir("r"); }
+        return;
+      }
+    }
+  }, [focusId]);
+
+  // Свайп по листу: влево — вперёд, вправо — назад
+  const touchRef = React.useRef(null);
+  const onSwipeStart = (e) => { const t = e.touches && e.touches[0]; if (t) touchRef.current = { x: t.clientX, y: t.clientY }; };
+  const onSwipeEnd = (e) => {
+    const st = touchRef.current; touchRef.current = null;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!st || !t) return;
+    const dx = t.clientX - st.x, dy = t.clientY - st.y;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) go(dx < 0 ? 1 : -1);
+  };
 
   // Даты: фиксируем момент первого появления заработанных страниц
   const dates = React.useMemo(() => {
@@ -152,7 +176,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
       {/* Книга */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 16px 6px" }}>
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative" }} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
           {/* стопка страниц позади */}
           <div style={{ position: "absolute", inset: "8px -5px -7px -5px", borderRadius: 14, background: "#E8DCC2", transform: "rotate(-1.1deg)", opacity: .45 }} />
           <div style={{ position: "absolute", inset: "5px -3px -4px -3px", borderRadius: 14, background: "#F2E8D0", transform: "rotate(.7deg)", opacity: .65 }} />

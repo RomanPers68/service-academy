@@ -122,6 +122,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const [tab, setTab] = React.useState(role && MODULES[role] ? role : "seasonal");
   const [idx, setIdx] = React.useState(0);
   const [dir, setDir] = React.useState("r");
+  const [readList, setReadList] = React.useState(loadRead); // прочитанные страницы (живое состояние для подсветки)
 
   // Открытие по уведомлению: листаем к заработанной странице
   React.useEffect(() => {
@@ -135,6 +136,20 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       }
     }
   }, [focusId]);
+
+  // Открытие с плитки (без фокуса): сразу листаем к первой непрочитанной странице —
+  // бейдж становится «кликабельным»: тапнул — увидел, что именно не прочитано.
+  React.useEffect(() => {
+    if (focusId) return;
+    const read = loadRead();
+    const d = loadDates();
+    for (const r of ROLES) {
+      if (!MODULES[r.id] || !(MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])) continue;
+      const p = buildRolePages(r.id, completed, quizDone, examResults, d);
+      const i = p.findIndex(pg => (pg.kind === "earned" || pg.kind === "legend") && !read.includes(pg.key));
+      if (i >= 0) { setTab(r.id); setIdx(i); setDir("r"); return; }
+    }
+  }, []);
 
   // Свайп по листу: влево — вперёд, вправо — назад
   const touchRef = React.useRef(null);
@@ -175,7 +190,10 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   // Страница считается прочитанной только когда реально показана на экране
   React.useEffect(() => {
     const p = pages[Math.min(idx, pages.length - 1)];
-    if (p && (p.kind === "earned" || p.kind === "legend")) markRead(p.key);
+    if (p && (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key)) {
+      markRead(p.key);
+      setReadList(loadRead());
+    }
   }, [pages, idx]);
 
   const page = pages[Math.min(idx, pages.length - 1)] || pages[0];
@@ -183,6 +201,16 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
 
   const chips = [...ROLES.filter(r => MODULES[r.id] && (MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])).map(r => ({ id: r.id, label: r.shortLabel || r.label })), { id: "weekly", label: "✦ Гость недели" }];
+  // В каких вкладках есть непрочитанные страницы — для золотой точки на вкладке
+  const unreadByTab = React.useMemo(() => {
+    const d = loadDates(); const map = {};
+    for (const r of ROLES) {
+      if (!MODULES[r.id]) continue;
+      const p = buildRolePages(r.id, completed, quizDone, examResults, d);
+      map[r.id] = p.some(pg => (pg.kind === "earned" || pg.kind === "legend") && !readList.includes(pg.key));
+    }
+    return map;
+  }, [completed, quizDone, examResults, readList]);
   const earnedInTab = pages.filter(p => p.kind !== "locked" && p.kind !== "challenge").length;
 
   return (
@@ -221,6 +249,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
           <button key={c.id} onClick={() => setTabSafe(c.id)}
             style={{ ...MONO, flexShrink: 0, fontSize: 10, letterSpacing: .5, padding: "7px 12px", borderRadius: 20, cursor: "pointer", border: `1px solid ${tab === c.id ? GOLD : (a11y ? "rgba(140,105,40,.35)" : "#3A2E1E")}`, background: tab === c.id ? "rgba(200,169,110,.15)" : "transparent", color: tab === c.id ? GOLD : T.modSub.color }}>
             {c.label}
+            {unreadByTab[c.id] && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: GOLD, marginLeft: 5, boxShadow: `0 0 5px ${GOLD}`, verticalAlign: "middle" }} />}
           </button>
         ))}
       </div>
@@ -284,10 +313,13 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, padding: "0 4px" }}>
             <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", maxWidth: 220 }}>
-              {pages.map((p, i) => (
+              {pages.map((p, i) => {
+                const isUnread = (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key);
+                return (
                 <div key={p.key} onClick={() => { if (i !== idx) vibrate("light"); setDir(i > idx ? "r" : "l"); setIdx(i); }}
-                  style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all .25s ease", background: i === idx ? GOLD : p.kind === "locked" ? (a11y ? "rgba(120,100,60,.3)" : "#3A2E1E") : p.kind === "legend" ? WAX : "rgba(200,169,110,.45)" }} />
-              ))}
+                  style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all .25s ease", background: i === idx ? GOLD : p.kind === "locked" ? (a11y ? "rgba(120,100,60,.3)" : "#3A2E1E") : p.kind === "legend" ? WAX : "rgba(200,169,110,.45)", boxShadow: isUnread ? `0 0 7px ${GOLD}` : undefined }} />
+                );
+              })}
             </div>
             <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
           </div>

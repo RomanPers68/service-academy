@@ -10,7 +10,7 @@ import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "../data/dialogues";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate } from "../lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A } from "./styles";
 import { ReferenceSection } from "./ReferenceSection";
@@ -2545,6 +2545,10 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [bank]);
 
+  // Перемешиваем варианты при каждом показе — чтобы не запоминалась позиция ответа.
+  // Хук стоит до условных return (правила хуков); на пустом банке вернёт undefined — ниже не используется.
+  const q = React.useMemo(() => shuffleQuizOptions(bank[Math.min(idx, bank.length - 1)]), [bank, idx]);
+
   const Head = (<div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
 
   if (bank.length === 0) {
@@ -2566,7 +2570,6 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
     );
   }
 
-  const q = bank[Math.min(idx, bank.length - 1)];
   const answer = (i) => { if (pick !== null) return; setPick(i); vibrate(i === q.correct ? "light" : "error"); };
   const next = () => {
     const wasCorrect = pick === q.correct;
@@ -3399,7 +3402,16 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     dlgLastByTerm[initial.termKey] = pick;
     return pick;
   });
-  const dialogue = group.find(d => d.id === currentId) || initial;
+  // Перемешивание вариантов: правильный ответ больше не стоит первым.
+  // Пересобирается при каждом запуске сценария и при «Ещё раз» (shuffleKey).
+  const [shuffleKey, setShuffleKey] = React.useState(0);
+  const dialogue = React.useMemo(() => {
+    const base = group.find(d => d.id === currentId) || initial;
+    if (!base) return base;
+    return { ...base, steps: base.steps.map(s =>
+      (s.type === "choice" && Array.isArray(s.options)) ? { ...s, options: shuffleArray([...s.options]) } : s
+    )};
+  }, [group, currentId, initial, shuffleKey]);
   const idxOf = (sid) => sid === "result" ? dialogue.steps.findIndex(s => s.type === "result") : dialogue.steps.findIndex(s => s.id === sid);
   const [visible, setVisible] = React.useState(false);
   const [messages, setMessages] = React.useState([]);
@@ -3682,7 +3694,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
                 }
                 const next = group.find(d => d.id === nextId) || dialogue;
                 setCurrentId(nextId); dlgLastByTerm[dialogue.termKey] = nextId;
-                setMessages([]); setStepIdx(0); setChosen(null); setPicked(null); setScore(0); setChoicesFaced(0); setMood(next?.guest.mood || 3); setDone(false); setWalkedOut(false); runningRef.current=false;
+                setMessages([]); setStepIdx(0); setChosen(null); setPicked(null); setShuffleKey(k => k + 1); setScore(0); setChoicesFaced(0); setMood(next?.guest.mood || 3); setDone(false); setWalkedOut(false); runningRef.current=false;
               }}
               style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
               ↺ Ещё раз
@@ -3749,7 +3761,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
   const color = roleObj?.color || GOLD;
   const pool = useMemo(() => collectRoleQuestions(roleId), [roleId]);
   const [attempt, setAttempt] = React.useState(0);
-  const questions = useMemo(() => shuffleArray([...pool]).slice(0, Math.min(EXAM_COUNT, pool.length)), [pool, attempt]);
+  const questions = useMemo(() => shuffleArray([...pool]).slice(0, Math.min(EXAM_COUNT, pool.length)).map(shuffleQuizOptions), [pool, attempt]);
   const [step, setStep] = React.useState(0);
   const [picked, setPicked] = React.useState(null);
   const [correctCount, setCorrectCount] = React.useState(0);

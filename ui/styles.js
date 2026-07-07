@@ -101,6 +101,7 @@ export const S = {
 
 export const A = {
   ...S,
+  a11y: true, // флаг светлой темы: компоненты проверяют T.a11y для светлых вариантов стилей
   app:        { ...S.app, background:SAND, fontFamily:"'Georgia', serif" },
   phone:      { ...S.phone, background:CREAM_SOFT },
   screen:     { ...S.screen, background:CREAM_SOFT },

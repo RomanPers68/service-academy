@@ -4,7 +4,7 @@
 
 import React from "react";
 import { GLOSSARY } from "../data/glossary";
-import { onActivate } from "../lib/utils";
+import { onActivate, vibrate } from "../lib/utils";
 
 const norm = (s) => (s || "").toLowerCase().replace(/ё/g, "е");
 
@@ -82,8 +82,8 @@ export function SearchScreen({ T, a11y, role, modules = [], onOpen, onBack }) {
             key={g.term}
             className="sa-card"
             style={{ ...T.modCard, margin: "0 0 10px", flexDirection: "column", alignItems: "stretch", cursor: "pointer" }}
-            onClick={() => setOpenTerm(openTerm === g.term ? null : g.term)}
-            {...onActivate(() => setOpenTerm(openTerm === g.term ? null : g.term))}
+            onClick={() => { vibrate("light"); setOpenTerm(openTerm === g.term ? null : g.term); }}
+            {...onActivate(() => { vibrate("light"); setOpenTerm(openTerm === g.term ? null : g.term); })}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ ...T.modBar, background: gold }} />
@@ -104,8 +104,8 @@ export function SearchScreen({ T, a11y, role, modules = [], onOpen, onBack }) {
             key={l.id}
             className="sa-card"
             style={{ ...T.modCard, margin: "0 0 10px" }}
-            onClick={() => onOpen(m, l)}
-            {...onActivate(() => onOpen(m, l))}
+            onClick={() => { vibrate("light"); onOpen(m, l); }}
+            {...onActivate(() => { vibrate("light"); onOpen(m, l); })}
           >
             <div style={{ ...T.modBar, background: m.color }} />
             <div style={{ flex: 1, minWidth: 0, padding: "2px 0" }}>

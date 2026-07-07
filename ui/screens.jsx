@@ -3461,6 +3461,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   // чтобы был виден финал диалога, а не его начало.
   React.useEffect(() => {
     if (!done) return;
+    vibrate(walkedOut ? "error" : (mood >= 4 ? "success" : "light")); // тактильный аккорд финала
     const t = setTimeout(() => {
       const el = recapRef.current;
       if (!el) return;
@@ -3505,6 +3506,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     const opt = step.options[optIdx];
     // Фаза 1: выбранный вариант подсвечивается, остальные плавно тают
     setPicked(optIdx);
+    vibrate(opt.correct ? "light" : "error");
     await sleep(360);
     // Фаза 2: блок вариантов плавно складывается по высоте — лента не дёргается
     const box = optsRef.current;
@@ -3789,6 +3791,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
   const choose = (i) => {
     if (answered) return;
     setPicked(i);
+    vibrate(i === cur.correct ? "light" : "error");
     if (i === cur.correct) setCorrectCount(c => c + 1);
   };
   const next = () => {
@@ -3796,6 +3799,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
       const finalCorrect = correctCount;
       const passed = (finalCorrect / total) >= EXAM_PASS;
       const score = Math.round((finalCorrect / total) * 100);
+      vibrate(passed ? "success" : "error"); // тактильный вердикт экзамена
       setPhase("done");
       onFinish && onFinish(roleId, { passed, score, correct: finalCorrect, total, date: new Date().toISOString() });
     } else {

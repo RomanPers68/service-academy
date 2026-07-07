@@ -6,7 +6,7 @@
 
 import React from "react";
 import { GOLD } from "./tokens";
-import { onActivate } from "../lib/utils";
+import { onActivate, vibrate } from "../lib/utils";
 import { MODULES } from "../data/modules";
 import { ROLES } from "../data/roles";
 import {
@@ -62,8 +62,8 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   if (seen.includes(mod.id)) return null;
   const remember = () => { try { localStorage.setItem("sa_book_seen2", JSON.stringify([...seen, mod.id])); } catch (e) {} };
   // ✕ скрывает баннер только до следующего запуска — навсегда гасит лишь «ЧИТАТЬ»
-  const dismiss = () => { setLeaving(true); setTimeout(() => setHidden(true), 380); };
-  const open = () => { remember(); onOpen && onOpen(); };
+  const dismiss = () => { vibrate("light"); setLeaving(true); setTimeout(() => setHidden(true), 380); };
+  const open = () => { vibrate("medium"); remember(); onOpen && onOpen(); };
   const lt = !!T?.a11y; // светлая тема: стекло из светлого «пергамента» вместо тёмного дыма
   return (
     <div className="sa-bookbanner" style={{
@@ -159,8 +159,8 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   }, [tab, completed, quizDone, examResults, dates, wid]);
 
   const page = pages[Math.min(idx, pages.length - 1)] || pages[0];
-  const go = (d) => { setDir(d > 0 ? "r" : "l"); setIdx(i => Math.min(pages.length - 1, Math.max(0, i + d))); };
-  const setTabSafe = (t) => { setTab(t); setIdx(0); setDir("r"); };
+  const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };
+  const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
 
   const chips = [...ROLES.filter(r => MODULES[r.id] && (MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])).map(r => ({ id: r.id, label: r.shortLabel || r.label })), { id: "weekly", label: "✦ Гость недели" }];
   const earnedInTab = pages.filter(p => p.kind !== "locked" && p.kind !== "challenge").length;
@@ -265,7 +265,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
             <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", maxWidth: 220 }}>
               {pages.map((p, i) => (
-                <div key={p.key} onClick={() => { setDir(i > idx ? "r" : "l"); setIdx(i); }}
+                <div key={p.key} onClick={() => { if (i !== idx) vibrate("light"); setDir(i > idx ? "r" : "l"); setIdx(i); }}
                   style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all .25s ease", background: i === idx ? GOLD : p.kind === "locked" ? (a11y ? "rgba(120,100,60,.3)" : "#3A2E1E") : p.kind === "legend" ? WAX : "rgba(200,169,110,.45)" }} />
               ))}
             </div>

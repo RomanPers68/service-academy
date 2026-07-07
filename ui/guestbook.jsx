@@ -34,6 +34,21 @@ const BOOK_CSS = `
 const loadDates = () => { try { return JSON.parse(localStorage.getItem("sa_book_dates") || "{}"); } catch (e) { return {}; } };
 const ruDate = (ts) => new Date(ts).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
+// ── Прочитанные страницы: страница считается прочитанной, когда реально показана в книге ──
+const loadRead = () => { try { return JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) { return []; } };
+const markRead = (key) => { try { const r = loadRead(); if (!r.includes(key)) localStorage.setItem("sa_book_read", JSON.stringify([...r, key])); } catch (e) {} };
+
+// Сколько заработанных, но ещё не прочитанных страниц (для бейджа на плитке «Книга»)
+export function countUnreadPages(completed, quizDone, examResults) {
+  const read = loadRead();
+  let n = 0;
+  for (const [rid, mods] of Object.entries(MODULES)) {
+    for (const m of (mods || [])) if (MODULE_REVIEWS[m.id] && moduleDone(m, completed, quizDone) && !read.includes(m.id)) n++;
+    if (LEGEND_REVIEWS[rid] && examResults?.[rid]?.passed && !read.includes("lg_" + rid)) n++;
+  }
+  return n;
+}
+
 // ── Сборка страниц одной роли ──
 function buildRolePages(roleId, completed, quizDone, examResults, dates) {
   const pages = [];
@@ -56,14 +71,13 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   const [hidden, setHidden] = React.useState(false);
   const [leaving, setLeaving] = React.useState(false); // плавный уход при скрытии
   if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleDone(mod, completed, quizDone)) return null;
-  let seen = [];
-  // Ключ v2: старый sa_book_seen «сгорал» и при нажатии ✕ — обнуляем историю, уведомления вернутся
-  try { seen = JSON.parse(localStorage.getItem("sa_book_seen2") || "[]"); } catch (e) {}
-  if (seen.includes(mod.id)) return null;
-  const remember = () => { try { localStorage.setItem("sa_book_seen2", JSON.stringify([...seen, mod.id])); } catch (e) {} };
-  // ✕ скрывает баннер только до следующего запуска — навсегда гасит лишь «ЧИТАТЬ»
+  let read = [];
+  // Баннер живёт, пока страница реально не прочитана в книге (см. markRead в GuestBookScreen)
+  try { read = JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) {}
+  if (read.includes(mod.id)) return null;
+  // ✕ скрывает баннер только до следующего захода — навсегда гасит лишь реальное прочтение
   const dismiss = () => { vibrate("light"); setLeaving(true); setTimeout(() => setHidden(true), 380); };
-  const open = () => { vibrate("medium"); remember(); onOpen && onOpen(); };
+  const open = () => { vibrate("medium"); onOpen && onOpen(); };
   const lt = !!T?.a11y; // светлая тема: стекло из светлого «пергамента» вместо тёмного дыма
   return (
     <div className="sa-bookbanner" style={{
@@ -157,6 +171,12 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
     }
     return buildRolePages(tab, completed, quizDone, examResults, dates);
   }, [tab, completed, quizDone, examResults, dates, wid]);
+
+  // Страница считается прочитанной только когда реально показана на экране
+  React.useEffect(() => {
+    const p = pages[Math.min(idx, pages.length - 1)];
+    if (p && (p.kind === "earned" || p.kind === "legend")) markRead(p.key);
+  }, [pages, idx]);
 
   const page = pages[Math.min(idx, pages.length - 1)] || pages[0];
   const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };

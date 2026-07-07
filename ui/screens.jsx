@@ -15,6 +15,7 @@ import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_IC
 import { S, A } from "./styles";
 import { ReferenceSection } from "./ReferenceSection";
 import { bookStats, countNewDishes } from "../data/reviews";
+import { countUnreadPages } from "./guestbook";
 import { Confetti, TimerBar, SayAloud } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
@@ -1843,9 +1844,18 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
         {/* ═══ Книга отзывов — слим-витрина: монограмма, печати, золотая нить ═══ */}
         {onGuestBook && profile && (() => {
           const bs = bookStats(MODULES, completed, quizDone, examResults);
+          const unread = countUnreadPages(completed, quizDone, examResults);
           return (
             <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ borderRadius:15, padding:1.5, background: saFrame(a11y, "full"), boxShadow: a11y ? "0 4px 14px rgba(120,85,25,0.3)" : "0 6px 18px rgba(0,0,0,0.5)", cursor:"pointer" }}>
+              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ position:"relative", borderRadius:15, padding:1.5, background: saFrame(a11y, "full"), boxShadow: a11y ? "0 4px 14px rgba(120,85,25,0.3)" : "0 6px 18px rgba(0,0,0,0.5)", cursor:"pointer" }}>
+                {unread > 0 && (
+                  <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #8B6A30 100%)",
+                    color:"#14100A", fontSize:10, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
+                    border: a11y ? "1.5px solid #FBF5E8" : "1.5px solid #14100A",
+                    boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
+                )}
                 <div style={{ overflow:"hidden", position:"relative", background: saInner(a11y), borderRadius:13.5 }}>
                   {/* ляссе */}
                   <div style={{ position:"absolute", right:16, top:0, width:7, height:20, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />

@@ -3409,6 +3409,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   }, []);
   const [stepIdx, setStepIdx] = React.useState(0);
   const [chosen, setChosen] = React.useState(null);
+  const [picked, setPicked] = React.useState(null); // выбранный вариант в фазе плавного ухода остальных
   const [score, setScore] = React.useState(0);
   const [choicesFaced, setChoicesFaced] = React.useState(0);
   const [mood, setMood] = React.useState(dialogue?.guest.mood || 3);
@@ -3472,10 +3473,15 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   }, [stepIdx]);
 
   const choose = async (optIdx) => {
-    if (chosen !== null) return;
+    if (chosen !== null || picked !== null) return;
     const step = dialogue.steps[stepIdx];
     const opt = step.options[optIdx];
+    // Фаза 1: выбранный вариант подсвечивается, остальные плавно тают
+    setPicked(optIdx);
+    await sleep(360);
+    // Фаза 2: варианты уходят, ответ въезжает в чат (в одном кадре, но варианты уже прозрачны)
     setChosen(optIdx);
+    setPicked(null);
     if (opt.correct) setScore(s => s + 1);
     setChoicesFaced(c => c + 1);
     const nm = Math.max(1, Math.min(5, mood + opt.moodDelta));
@@ -3587,9 +3593,22 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         {dialogue.steps[stepIdx]?.type === "choice" && !typing && messages.length > 0 && chosen === null && !done && (
           <div style={{ marginTop:8 }}>
             <div className="dlg-in" style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}><span style={{ flexShrink:0, marginTop:2 }}>{MOD_SVG["💬"](T.modSub?.color || "#9A8060", 13)}</span><span>{dialogue.steps[stepIdx].prompt}</span></div>
-            {dialogue.steps[stepIdx].options.map((opt, oi) => (
-              <div key={oi} className="dlg-in dlg-opt" onClick={() => choose(oi)} {...onActivate(() => choose(oi))} style={{ padding:"11px 14px", borderRadius:12, marginBottom:6, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"transform 0.15s ease, background 0.15s ease", animationDelay:`${0.12 + oi * 0.09}s` }}>{opt.text}</div>
-            ))}
+            {dialogue.steps[stepIdx].options.map((opt, oi) => {
+              const isPicked = picked === oi;
+              const isFading = picked !== null && !isPicked;
+              return (
+              <div key={oi}
+                className={(picked === null ? "dlg-in " : "") + "dlg-opt" + (isFading ? " dlg-opt-out" : "") + (isPicked ? " dlg-opt-picked" : "")}
+                onClick={() => choose(oi)} {...onActivate(() => choose(oi))}
+                style={{ padding:"11px 14px", borderRadius:12, marginBottom:6,
+                  background: isPicked ? `${dColor}26` : "rgba(255,255,255,0.04)",
+                  border:`1px solid ${isPicked ? dColor + "AA" : dColor + "33"}`,
+                  color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6,
+                  cursor: picked === null ? "pointer" : "default",
+                  transition:"transform 0.3s cubic-bezier(0.22,1,0.36,1), background 0.25s ease, border-color 0.25s ease, opacity 0.3s ease",
+                  animationDelay: picked === null ? `${0.12 + oi * 0.09}s` : "0s" }}>{opt.text}</div>
+              );
+            })}
           </div>
         )}
         <div ref={bottomRef} style={{ height:8 }} />
@@ -3635,7 +3654,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
                 }
                 const next = group.find(d => d.id === nextId) || dialogue;
                 setCurrentId(nextId); dlgLastByTerm[dialogue.termKey] = nextId;
-                setMessages([]); setStepIdx(0); setChosen(null); setScore(0); setChoicesFaced(0); setMood(next?.guest.mood || 3); setDone(false); setWalkedOut(false); runningRef.current=false;
+                setMessages([]); setStepIdx(0); setChosen(null); setPicked(null); setScore(0); setChoicesFaced(0); setMood(next?.guest.mood || 3); setDone(false); setWalkedOut(false); runningRef.current=false;
               }}
               style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
               ↺ Ещё раз
@@ -3659,6 +3678,8 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     .dlg-in-left { animation-name: dlgMsgInL; }
     .dlg-in-right { animation-name: dlgMsgInR; }
     .dlg-opt:active { transform: scale(0.975); background: rgba(255,255,255,0.08) !important; }
+    .dlg-opt-out { opacity: 0; transform: translateY(-6px) scale(0.97); pointer-events: none; }
+    .dlg-opt-picked { transform: scale(1.02); pointer-events: none; }
     @media (prefers-reduced-motion: reduce) { .dlg-in { animation-duration: 0.01s; } }`}</style>
       </div>
     </div>

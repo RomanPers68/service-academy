@@ -3419,21 +3419,31 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const scrollRef = React.useRef(null);
   const runningRef = React.useRef(false);
 
-  React.useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  // Плавный автоскролл к низу ленты
+  const scrollToBottom = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (typeof el.scrollTo === "function") {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      el.scrollTop = el.scrollHeight; // старые WebView без smooth
     }
-    const t = setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [messages, typing]);
+  }, []);
+
+  // Срабатывает на всё, что меняет высоту ленты: сообщения, «печатает…»,
+  // появление вариантов ответа (stepIdx/chosen). Двойной rAF ждёт, пока
+  // новый элемент реально отрисуется и получит высоту.
+  React.useEffect(() => {
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(scrollToBottom);
+    });
+    const t = setTimeout(scrollToBottom, 380); // страховка после анимации появления
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); clearTimeout(t); };
+  }, [messages, typing, stepIdx, chosen, done, scrollToBottom]);
 
   const addMsg = (msg) => new Promise(r => {
     setMessages(prev => [...prev, msg]);
-    setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight + 999; }, 50);
     setTimeout(r, 100);
   });
 
@@ -3535,30 +3545,30 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       </div>
 
       {/* Messages */}
-      {!done && <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8 }}>
+      {!done && <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
         {messages.map((msg, i) => {
           if (msg.type === "action") return (
-            <div key={i} style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
+            <div key={i} className="dlg-in" style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
           );
           if (msg.type === "guest") return (
-            <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
+            <div key={i} className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
               <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
               <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(180,145,70,0.12)" : "rgba(200,160,80,0.10)", border: T.a11y ? "1px solid rgba(160,120,50,0.25)" : "1px solid rgba(200,160,80,0.20)", color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "waiter") return (
-            <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
+            <div key={i} className="dlg-in dlg-in-right" style={{ display:"flex", flexDirection:"column", alignItems:"flex-end" }}>
               <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingRight:4 }}>Ты</div>
               <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomRightRadius:4, background: msg.correct ? `${dColor}28` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.modTitle?.color || CREAM, fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "feedback") return (
-            <div key={i} style={{ padding:"8px 12px", borderRadius:10, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", border:`1px solid ${msg.correct ? "rgba(93,187,138,0.2)" : "rgba(224,120,120,0.2)"}`, color: msg.correct ? "#2DBB6A" : "#E05858", fontSize: T.modSub?.fontSize || 12, fontWeight:"bold", lineHeight:1.6 }}>
+            <div key={i} className="dlg-in" style={{ padding:"8px 12px", borderRadius:10, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", border:`1px solid ${msg.correct ? "rgba(93,187,138,0.2)" : "rgba(224,120,120,0.2)"}`, color: msg.correct ? "#2DBB6A" : "#E05858", fontSize: T.modSub?.fontSize || 12, fontWeight:"bold", lineHeight:1.6 }}>
               {msg.correct ? "✓ " : "✗ "}{msg.text}
             </div>
           );
           if (msg.type === "hint") return (
-            <div key={i} style={{ padding:"7px 12px", borderRadius:10, background: dColor+"14", border:"1px solid "+dColor+"33", color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.55 }}>
+            <div key={i} className="dlg-in" style={{ padding:"7px 12px", borderRadius:10, background: dColor+"14", border:"1px solid "+dColor+"33", color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.55 }}>
               💡 Лучше: {msg.text}
             </div>
           );
@@ -3566,7 +3576,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         })}
 
         {typing && (
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
+          <div className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
             <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
             <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(180,145,70,0.12)" : "rgba(200,160,80,0.10)", border: T.a11y ? "1px solid rgba(160,120,50,0.25)" : "1px solid rgba(200,160,80,0.20)", display:"flex", gap:5, alignItems:"center" }}>
               {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:BROWN, animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
@@ -3576,9 +3586,9 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
 
         {dialogue.steps[stepIdx]?.type === "choice" && !typing && messages.length > 0 && chosen === null && !done && (
           <div style={{ marginTop:8 }}>
-            <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}><span style={{ flexShrink:0, marginTop:2 }}>{MOD_SVG["💬"](T.modSub?.color || "#9A8060", 13)}</span><span>{dialogue.steps[stepIdx].prompt}</span></div>
+            <div className="dlg-in" style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}><span style={{ flexShrink:0, marginTop:2 }}>{MOD_SVG["💬"](T.modSub?.color || "#9A8060", 13)}</span><span>{dialogue.steps[stepIdx].prompt}</span></div>
             {dialogue.steps[stepIdx].options.map((opt, oi) => (
-              <div key={oi} onClick={() => choose(oi)} {...onActivate(() => choose(oi))} style={{ padding:"11px 14px", borderRadius:12, marginBottom:6, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"all 0.15s" }}>{opt.text}</div>
+              <div key={oi} className="dlg-in dlg-opt" onClick={() => choose(oi)} {...onActivate(() => choose(oi))} style={{ padding:"11px 14px", borderRadius:12, marginBottom:6, background:"rgba(255,255,255,0.04)", border:`1px solid ${dColor}33`, color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6, cursor:"pointer", transition:"transform 0.15s ease, background 0.15s ease", animationDelay:`${0.12 + oi * 0.09}s` }}>{opt.text}</div>
             ))}
           </div>
         )}
@@ -3641,7 +3651,15 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       <style>{`@keyframes achIconPulse { 0%,100%{box-shadow:0 0 24px rgba(200,160,80,0.4)} 50%{box-shadow:0 0 40px rgba(200,160,80,0.7)} }
     @keyframes dlgPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }
     @keyframes dlgOverlayIn { from{opacity:0} to{opacity:1;transition-duration:0.8s} }
-    @keyframes dlgSheetIn { from{transform:translateY(100%)} to{transform:translateY(0)} }`}</style>
+    @keyframes dlgSheetIn { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    @keyframes dlgMsgIn { from{opacity:0; transform:translateY(12px) scale(0.97)} to{opacity:1; transform:translateY(0) scale(1)} }
+    @keyframes dlgMsgInL { from{opacity:0; transform:translateX(-14px) translateY(6px)} to{opacity:1; transform:translateX(0) translateY(0)} }
+    @keyframes dlgMsgInR { from{opacity:0; transform:translateX(14px) translateY(6px)} to{opacity:1; transform:translateX(0) translateY(0)} }
+    .dlg-in { animation: dlgMsgIn 0.4s cubic-bezier(0.22,1,0.36,1) both; will-change: transform, opacity; }
+    .dlg-in-left { animation-name: dlgMsgInL; }
+    .dlg-in-right { animation-name: dlgMsgInR; }
+    .dlg-opt:active { transform: scale(0.975); background: rgba(255,255,255,0.08) !important; }
+    @media (prefers-reduced-motion: reduce) { .dlg-in { animation-duration: 0.01s; } }`}</style>
       </div>
     </div>
   );

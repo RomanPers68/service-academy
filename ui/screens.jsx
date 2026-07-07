@@ -3418,6 +3418,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const [walkedOut, setWalkedOut] = React.useState(false);
   const bottomRef = React.useRef(null);
   const scrollRef = React.useRef(null);
+  const recapRef = React.useRef(null); // история диалога на финальном экране
   const runningRef = React.useRef(false);
 
   // Плавный автоскролл к низу ленты
@@ -3442,6 +3443,19 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     const t = setTimeout(scrollToBottom, 380); // страховка после анимации появления
     return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); clearTimeout(t); };
   }, [messages, typing, stepIdx, chosen, done, scrollToBottom]);
+
+  // Финальный экран: плавно прокручиваем историю к последним репликам,
+  // чтобы был виден финал диалога, а не его начало.
+  React.useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => {
+      const el = recapRef.current;
+      if (!el) return;
+      if (typeof el.scrollTo === "function") el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      else el.scrollTop = el.scrollHeight;
+    }, 350); // даём экрану итога появиться, затем «проматываем» историю к концу
+    return () => clearTimeout(t);
+  }, [done]);
 
   const addMsg = (msg) => new Promise(r => {
     setMessages(prev => [...prev, msg]);
@@ -3499,7 +3513,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       await sleep(800);
       setTyping(false);
       await addMsg({ type: "guest", text: opt.reaction });
-      await sleep(450);
+      await sleep(950); // реплика гостя успевает доехать и прочитаться до смены экрана
     }
     if (pro && nm <= 1 && !opt.correct && !opt.goto) {
       await addMsg({ type: "action", text: dialogue.guest.name + " не выдержал и уходит, не дождавшись хорошего приёма." });
@@ -3618,9 +3632,9 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
 
       {/* Result */}
       {done && (
-        <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
+        <div className="dlg-fade" style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
           {/* Итог */}
-          <div style={{ padding:"12px 14px 8px", borderTop:`1px solid ${dColor}22`, textAlign:"center", flexShrink:0 }}>
+          <div className="dlg-in" style={{ padding:"12px 14px 8px", borderTop:`1px solid ${dColor}22`, textAlign:"center", flexShrink:0 }}>
             <div style={{ fontSize:32, marginBottom:4 }}>{walkedOut ? "🚪" : MOOD_EMOJI_D[moodC-1]}</div>
             <div style={{ color: walkedOut ? "#E05858" : MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:2 }}>
               {walkedOut ? `${dialogue.guest.name} ушёл` : moodC>=4 ? `${dialogue.guest.name} в восторге` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} не в духе`}
@@ -3634,13 +3648,14 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
             </div>
           </div>
           {/* История диалога */}
-          <div style={{ flex:1, overflowY:"auto", padding:"8px 14px 8px", display:"flex", flexDirection:"column", gap:6, borderTop:`1px solid ${dColor}11` }}>
+          <div ref={recapRef} style={{ flex:1, overflowY:"auto", padding:"8px 14px 8px", display:"flex", flexDirection:"column", gap:6, borderTop:`1px solid ${dColor}11`, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
             {messages.map((msg, i) => {
-              if (msg.type === "action") return <div key={i} style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
-              if (msg.type === "guest") return <div key={i} style={{ alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
-              if (msg.type === "waiter") return <div key={i} style={{ alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || CREAM, fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
-              if (msg.type === "feedback") return <div key={i} style={{ padding:"5px 10px", borderRadius:8, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
-              if (msg.type === "hint") return <div key={i} style={{ padding:"5px 10px", borderRadius:8, background: dColor+"12", color:dColor, fontSize:11, lineHeight:1.5 }}>💡 Лучше: {msg.text}</div>;
+              const dl = { animationDelay: `${Math.min(0.1 + i * 0.05, 0.7)}s` };
+              if (msg.type === "action") return <div key={i} className="dlg-in" style={{ ...dl, textAlign:"center", color: T.para?.color || "#C8A870", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
+              if (msg.type === "guest") return <div key={i} className="dlg-in dlg-in-left" style={{ ...dl, alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
+              if (msg.type === "waiter") return <div key={i} className="dlg-in dlg-in-right" style={{ ...dl, alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || CREAM, fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
+              if (msg.type === "feedback") return <div key={i} className="dlg-in" style={{ ...dl, padding:"5px 10px", borderRadius:8, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
+              if (msg.type === "hint") return <div key={i} className="dlg-in" style={{ ...dl, padding:"5px 10px", borderRadius:8, background: dColor+"12", color:dColor, fontSize:11, lineHeight:1.5 }}>💡 Лучше: {msg.text}</div>;
               return null;
             })}
           </div>
@@ -3672,6 +3687,8 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     @keyframes dlgOverlayIn { from{opacity:0} to{opacity:1;transition-duration:0.8s} }
     @keyframes dlgSheetIn { from{transform:translateY(100%)} to{transform:translateY(0)} }
     @keyframes dlgMsgIn { from{opacity:0; transform:translateY(12px) scale(0.97)} to{opacity:1; transform:translateY(0) scale(1)} }
+    @keyframes dlgFadeIn { from{opacity:0} to{opacity:1} }
+    .dlg-fade { animation: dlgFadeIn 0.5s ease both; }
     @keyframes dlgMsgInL { from{opacity:0; transform:translateX(-14px) translateY(6px)} to{opacity:1; transform:translateX(0) translateY(0)} }
     @keyframes dlgMsgInR { from{opacity:0; transform:translateX(14px) translateY(6px)} to{opacity:1; transform:translateX(0) translateY(0)} }
     .dlg-in { animation: dlgMsgIn 0.4s cubic-bezier(0.22,1,0.36,1) both; will-change: transform, opacity; }

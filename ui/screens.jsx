@@ -3419,6 +3419,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const bottomRef = React.useRef(null);
   const scrollRef = React.useRef(null);
   const recapRef = React.useRef(null); // история диалога на финальном экране
+  const optsRef = React.useRef(null); // блок вариантов — для плавного схлопывания после выбора
   const runningRef = React.useRef(false);
 
   // Плавный автоскролл к низу ленты
@@ -3493,7 +3494,19 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     // Фаза 1: выбранный вариант подсвечивается, остальные плавно тают
     setPicked(optIdx);
     await sleep(360);
-    // Фаза 2: варианты уходят, ответ въезжает в чат (в одном кадре, но варианты уже прозрачны)
+    // Фаза 2: блок вариантов плавно складывается по высоте — лента не дёргается
+    const box = optsRef.current;
+    if (box) {
+      box.style.height = box.scrollHeight + "px";
+      box.style.overflow = "hidden";
+      box.style.transition = "height 0.34s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease, margin 0.34s ease";
+      void box.offsetHeight; // фиксируем стартовую высоту перед анимацией
+      box.style.height = "0px";
+      box.style.opacity = "0";
+      box.style.marginTop = "0px";
+      await sleep(340);
+    }
+    // Фаза 3: варианты уходят из DOM (уже невидимы и без высоты), ответ въезжает в чат
     setChosen(optIdx);
     setPicked(null);
     if (opt.correct) setScore(s => s + 1);
@@ -3535,7 +3548,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
       background: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",
       transition:"background 0.8s ease" }}>
-      <div style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", borderTop:"1px solid rgba(210,170,70,0.55)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset", margin:"0 16px 40px",
+      <div style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", borderTop:"1px solid rgba(210,170,70,0.55)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset", margin:"0 16px 40px",
         transform: visible ? "translateY(0)" : "translateY(120%)",
         transition:"transform 1.1s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Header */}
@@ -3605,7 +3618,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         )}
 
         {dialogue.steps[stepIdx]?.type === "choice" && !typing && messages.length > 0 && chosen === null && !done && (
-          <div style={{ marginTop:8 }}>
+          <div ref={optsRef} style={{ marginTop:8 }}>
             <div className="dlg-in" style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}><span style={{ flexShrink:0, marginTop:2 }}>{MOD_SVG["💬"](T.modSub?.color || "#9A8060", 13)}</span><span>{dialogue.steps[stepIdx].prompt}</span></div>
             {dialogue.steps[stepIdx].options.map((opt, oi) => {
               const isPicked = picked === oi;

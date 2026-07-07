@@ -57,10 +57,12 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   const [leaving, setLeaving] = React.useState(false); // плавный уход при скрытии
   if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleDone(mod, completed, quizDone)) return null;
   let seen = [];
-  try { seen = JSON.parse(localStorage.getItem("sa_book_seen") || "[]"); } catch (e) {}
+  // Ключ v2: старый sa_book_seen «сгорал» и при нажатии ✕ — обнуляем историю, уведомления вернутся
+  try { seen = JSON.parse(localStorage.getItem("sa_book_seen2") || "[]"); } catch (e) {}
   if (seen.includes(mod.id)) return null;
-  const remember = () => { try { localStorage.setItem("sa_book_seen", JSON.stringify([...seen, mod.id])); } catch (e) {} };
-  const dismiss = () => { remember(); setLeaving(true); setTimeout(() => setHidden(true), 380); };
+  const remember = () => { try { localStorage.setItem("sa_book_seen2", JSON.stringify([...seen, mod.id])); } catch (e) {} };
+  // ✕ скрывает баннер только до следующего запуска — навсегда гасит лишь «ЧИТАТЬ»
+  const dismiss = () => { setLeaving(true); setTimeout(() => setHidden(true), 380); };
   const open = () => { remember(); onOpen && onOpen(); };
   const lt = !!T?.a11y; // светлая тема: стекло из светлого «пергамента» вместо тёмного дыма
   return (

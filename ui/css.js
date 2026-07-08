@@ -114,6 +114,12 @@ export const injectStyles = () => {
     .sa-dot-active { transform: scale(1.3); }
     html, body { overflow-x: hidden !important; touch-action: pan-y; }
     * { touch-action: pan-y !important; }
+    /* Плавное перелистывание карточек (уроки, тренажёры): въезд с той стороны, куда листаешь */
+    @keyframes saCardR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+    @keyframes saCardL { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+    .sa-cardpage-r { animation: saCardR .34s cubic-bezier(.16,1,.3,1) both; }
+    .sa-cardpage-l { animation: saCardL .34s cubic-bezier(.16,1,.3,1) both; }
+    @media (prefers-reduced-motion: reduce) { .sa-cardpage-r, .sa-cardpage-l { animation: none; } }
     /* Исключение: горизонтальные ленты (вкладки книги и т.п.) можно листать пальцем */
     .sa-hscroll, .sa-hscroll * { touch-action: pan-x pan-y !important; }
   `;

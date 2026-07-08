@@ -326,7 +326,7 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
       {Head("Флеш-карточки")}
       <div style={{ padding: "6px 18px", color: T.modSub.color, fontSize: 12 }}>Осталось в колоде: {deck.length} · {restaurant}</div>
       <div style={{ padding: "8px 16px" }}>
-        <div className="sa-card" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default", overflow: "hidden" }}>
+        <div key={`${deck.length}_${d.name || ""}`} className="sa-card sa-cardpage-r" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default", overflow: "hidden" }}>
           <DishPhoto src={d.img} h={flipped ? 120 : 175} />
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{d.cat || "БЛЮДО"}</div>
           <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 14, color: T.bold?.color }}>{d.name}</div>
@@ -436,7 +436,7 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
   return (
     <div style={T.screen} className="sa-screen">
       {Head("Викторина")}
-      <div style={T.quizWrap}>
+      <div key={step} className="sa-cardpage-r" style={T.quizWrap}>
         <div style={T.quizProgress}>Вопрос {step + 1} из {questions.length} · {restaurant}</div>
         <div style={T.quizQ}>{q.q}</div>
         {q.options.map((opt, i) => {
@@ -471,7 +471,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
     <div style={T.screen} className="sa-screen">
       {Head("Опиши за 60 секунд")}
       <div style={{ padding: "8px 16px" }}>
-        <div style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
+        <div key={dish.name} className="sa-cardpage-r" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
           <DishPhoto src={dish.img} h={165} />
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{dish.cat || "БЛЮДО"} · {restaurant}</div>
           <div style={{ fontSize: 22, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{dish.name}</div>

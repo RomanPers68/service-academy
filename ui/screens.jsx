@@ -2668,7 +2668,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
           ))}
         </div>
       </div>
-      <div key={q.q} style={T.quizWrap}>
+      <div key={q.q} className="sa-cardpage-r" style={T.quizWrap}>
         <div style={T.quizProgress}>Сейчас на повторе: {bank.length} · этап закрепления {(q.stage || 0) + 1} из {5}{waiting > 0 ? ` · ${waiting} ждут своего дня` : ""}</div>
         {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 210, objectFit: "cover", borderRadius: 14, display: "block", margin: "0 0 14px" }} />}
         <div style={T.quizQ}>{q.q}</div>
@@ -2816,6 +2816,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   const dismissModeHint = React.useCallback(() => { setModeHint(false); try { localStorage.setItem("sa_mode_hint", "1"); } catch (e) {} }, []);
   React.useEffect(() => { if (!modeHint) return; const t = setTimeout(dismissModeHint, 7000); return () => clearTimeout(t); }, [modeHint, dismissModeHint]);
   const [cardIdx, setCardIdx] = React.useState(0);
+  const [cardDir, setCardDir] = React.useState("r"); // направление перелистывания для анимации
   const touchRef = React.useRef(null);
   React.useEffect(() => { setCardIdx(0); }, [lesson.id]);
   // Делим контент на смысловые карточки: новые начинаются на заголовках/стикерах,
@@ -2846,10 +2847,12 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     return out.length ? out : [lines];
   }, [lesson.content]);
   const goCard = React.useCallback((d) => {
-    setCardIdx(i => Math.max(0, Math.min(cards.length - 1, i + d)));
+    const n = Math.max(0, Math.min(cards.length - 1, cardIdx + d));
+    if (n === cardIdx) return; // край — не дёргаемся и не вибрируем
+    setCardDir(d > 0 ? "r" : "l");
+    setCardIdx(n);
     vibrate("light");
-    try { if (bodyRef.current) bodyRef.current.scrollTop = 0; } catch (e) {}
-  }, [cards.length]);
+  }, [cards.length, cardIdx]);
   const onCardTouchStart = (e) => { touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
   const onCardTouchEnd = (e) => {
     if (!cardMode || !touchRef.current) return;
@@ -2937,7 +2940,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             </div>
           </div>
         )}
-        <div ref={bodyRef} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
+        <div ref={bodyRef} key={cardMode ? "card" + cardIdx : "feed"} className={cardMode ? (cardDir === "l" ? "sa-cardpage-l" : "sa-cardpage-r") : undefined} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
           {/* Стеклянная подложка для текста урока */}
           <div style={{
             background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
@@ -3378,7 +3381,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="12" height="18" rx="2"/><path d="M8 8h4.5M8 12h3.5"/><path d="M13.2 17.4l6.2-6.2 2.2 2.2-6.2 6.2-2.7.5z"/></svg>
           <span>Тест</span></div></div>
-        <div key={quizState.step} style={T.quizWrap}>
+        <div key={quizState.step} className="sa-cardpage-r" style={T.quizWrap}>
           <div style={T.quizProgress}>{quizState.step+1} / {lesson.questions.length}</div>
           {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:210, objectFit:"cover", borderRadius:14, display:"block", margin:"0 0 14px" }} />}
           <div style={T.quizQ}>{q.q}</div>
@@ -3928,7 +3931,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
           </div>
           <div style={{ ...T.para, fontSize:13, opacity:0.7, whiteSpace:"nowrap" }}>{step+1} / {total}</div>
         </div>
-        <div style={{ ...T.modCard, padding:"16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:14 }}>
+        <div key={step} className="sa-cardpage-r" style={{ ...T.modCard, padding:"16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:14 }}>
           <div style={{ color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontSize:16, lineHeight:1.5 }}>{cur.q}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8, width:"100%" }}>
             {cur.options.map((opt, i) => {

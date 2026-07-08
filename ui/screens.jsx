@@ -195,8 +195,18 @@ export function WeekStar({ weekly, T }) {
       {rest.length > 0 && (
         <div style={{ display:"flex", gap:14, marginTop:12, paddingTop:10, borderTop:`1px solid ${gold}22`, flexWrap:"wrap" }}>
           {rest.map((p, i) => (
-            <div key={i} style={{ color:T.modSub.color, fontSize:12 }}>
-              <span style={{ marginRight:4 }}>{i===0?"🥈":"🥉"}</span>{p.name} {p.surname ? p.surname[0]+"." : ""} <span style={{ color:gold, fontWeight:"bold" }}>{p.pts}</span>
+            <div key={i} style={{ color:T.modSub.color, fontSize:12, display:"flex", alignItems:"center" }}>
+              {(() => { const mc = i === 0 ? "#AEB4BE" : "#C98B5F"; return (
+                <span style={{ marginRight:5, display:"inline-flex" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24">
+                    <path d="M8.2 2h3l1.6 5-2.9.8z" fill={mc} opacity="0.5"/>
+                    <path d="M15.8 2h-3l-1.6 5 2.9.8z" fill={mc} opacity="0.8"/>
+                    <circle cx="12" cy="14.5" r="6" fill="none" stroke={mc} strokeWidth="2"/>
+                    <circle cx="12" cy="14.5" r="2.3" fill={mc} opacity="0.55"/>
+                  </svg>
+                </span>
+              ); })()}
+              {p.name} {p.surname ? p.surname[0]+"." : ""} <span style={{ color:gold, fontWeight:"bold", marginLeft:4 }}>{p.pts}</span>
             </div>
           ))}
         </div>
@@ -227,7 +237,6 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const [selected, setSelected] = React.useState(null);
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
   const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
-  const medals = ["🥇","🥈","🥉"];
 
   const getAchievements = (player, allPlayers, allScores) => {
     const achievements = [];
@@ -3366,7 +3375,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     const answered = quizState.answers[quizState.step];
     return (
       <div style={T.screen}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>📝 Тест</div></div>
+        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="12" height="18" rx="2"/><path d="M8 8h4.5M8 12h3.5"/><path d="M13.2 17.4l6.2-6.2 2.2 2.2-6.2 6.2-2.7.5z"/></svg>
+          <span>Тест</span></div></div>
         <div key={quizState.step} style={T.quizWrap}>
           <div style={T.quizProgress}>{quizState.step+1} / {lesson.questions.length}</div>
           {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:210, objectFit:"cover", borderRadius:14, display:"block", margin:"0 0 14px" }} />}

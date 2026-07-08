@@ -3398,6 +3398,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
 export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {}, onToggleFav = () => {}, onSetNote = () => {} }) {
   const [search, setSearch] = React.useState("");
   const [favOnly, setFavOnly] = React.useState(false);
+  const [editingNote, setEditingNote] = React.useState(null); // ключ термина, чья заметка сейчас редактируется
   const isSaved = (term) => { const e = saved[term.toLowerCase()]; return !!(e && (e.fav || e.note)); };
   const filtered = GLOSSARY.filter(g => {
     const matchText = g.term.toLowerCase().includes(search.toLowerCase()) ||
@@ -3458,11 +3459,38 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
               </button>
             </div>
             <div style={{ ...T.modSub, color: a11y ? "#3A2A0E" : "#C8B898", fontSize:14, lineHeight:1.6 }}>{g.def}</div>
-            {(fav || note) && (
-              <textarea value={note} onChange={e => onSetNote(k, e.target.value)} placeholder="Моя заметка..." rows={2}
-                style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px solid ${color}33`,
-                  background: T.modCard?.background || "rgba(255,255,255,0.04)", color: T.para?.color || "#F0E8D8",
-                  fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />
+            {/* Заметка: не обязательна — появляется только по кнопке */}
+            {editingNote === k ? (
+              <div style={{ width:"100%" }}>
+                <textarea autoFocus value={note} onChange={e => onSetNote(k, e.target.value)} placeholder="Моя заметка..." rows={2}
+                  style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px solid ${color}55`,
+                    background: T.modCard?.background || "rgba(255,255,255,0.04)", color: T.para?.color || "#F0E8D8",
+                    fontSize:16, fontFamily:"Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />
+                <div style={{ display:"flex", justifyContent:"flex-end", gap:14, marginTop:6, width:"100%" }}>
+                  {note && (
+                    <button onClick={() => { onSetNote(k, ""); setEditingNote(null); }}
+                      style={{ background:"none", border:"none", cursor:"pointer", color: a11y ? "#8A5A3A" : "#B07A6A", fontSize:13, fontFamily:"Georgia, serif", padding:"4px 2px" }}>
+                      Удалить
+                    </button>
+                  )}
+                  <button onClick={() => setEditingNote(null)}
+                    style={{ background:"none", border:"none", cursor:"pointer", color: color || GOLD, fontSize:13, fontFamily:"Georgia, serif", fontWeight:"bold", padding:"4px 2px" }}>
+                    Готово
+                  </button>
+                </div>
+              </div>
+            ) : note ? (
+              <div onClick={() => setEditingNote(k)} {...onActivate(() => setEditingNote(k))}
+                style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px dashed ${color}44`,
+                  color: T.para?.color || "#F0E8D8", fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.5, cursor:"pointer", whiteSpace:"pre-wrap", boxSizing:"border-box" }}>
+                <span style={{ display:"block", fontSize:10, letterSpacing:1, opacity:0.55, marginBottom:3 }}>✎ МОЯ ЗАМЕТКА</span>
+                {note}
+              </div>
+            ) : (
+              <button onClick={() => setEditingNote(k)}
+                style={{ background:"none", border:"none", cursor:"pointer", color: `${color || GOLD}99`, fontSize:12.5, fontFamily:"Georgia, serif", padding:"2px 0", marginTop:2 }}>
+                + Добавить заметку
+              </button>
             )}
           </div>
           </React.Fragment>

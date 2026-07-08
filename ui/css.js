@@ -114,16 +114,20 @@ export const injectStyles = () => {
     .sa-dot-active { transform: scale(1.3); }
     html, body { overflow-x: hidden !important; touch-action: pan-y; }
     * { touch-action: pan-y !important; }
+    /* Исключение: горизонтальные ленты (вкладки книги и т.п.) можно листать пальцем */
+    .sa-hscroll, .sa-hscroll * { touch-action: pan-x pan-y !important; }
   `;
   document.head.appendChild(style);
 
-  // Блокируем горизонтальный свайп через JS
-  let startX = 0, startY = 0;
+  // Блокируем горизонтальный свайп через JS (кроме лент с классом sa-hscroll)
+  let startX = 0, startY = 0, inHScroll = false;
   document.addEventListener("touchstart", e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    inHScroll = !!(e.target && e.target.closest && e.target.closest(".sa-hscroll"));
   }, { passive: true });
   document.addEventListener("touchmove", e => {
+    if (inHScroll) return; // внутри горизонтальной ленты жест отдаём браузеру
     const dx = Math.abs(e.touches[0].clientX - startX);
     const dy = Math.abs(e.touches[0].clientY - startY);
     if (dx > dy) e.preventDefault();

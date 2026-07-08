@@ -244,7 +244,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       </div>
 
       {/* Разделы книги */}
-      <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "12px 16px 2px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", maskImage: "linear-gradient(90deg, #000 0%, #000 calc(100% - 26px), transparent 100%)", WebkitMaskImage: "linear-gradient(90deg, #000 0%, #000 calc(100% - 26px), transparent 100%)" }}>
+      <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "12px 16px 2px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
         {chips.map(c => (
           <button key={c.id} onClick={() => setTabSafe(c.id)}
             style={{ ...MONO, flexShrink: 0, fontSize: 10, letterSpacing: .5, padding: "7px 12px", borderRadius: 20, cursor: "pointer", border: `1px solid ${tab === c.id ? GOLD : (a11y ? "rgba(140,105,40,.35)" : "#3A2E1E")}`, background: tab === c.id ? "rgba(200,169,110,.15)" : "transparent", color: tab === c.id ? GOLD : T.modSub.color }}>

@@ -10,7 +10,7 @@ import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "../data/dialogues";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions } from "../lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A } from "./styles";
 import { ReferenceSection } from "./ReferenceSection";
@@ -1088,7 +1088,7 @@ export function ProfileScreen({ onDone, T }) {
   );
 }
 
-export const APP_SHARE_URL = "https://service-academy-16te.vercel.app";
+export const APP_SHARE_URL = "https://t.me/SA_RestaurantBot";
 
 export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав" };
 
@@ -1148,7 +1148,9 @@ export function TeamScreen({ T, profile, a11y }) {
   };
 
   const shareCode = async (code, emp) => {
-    const text = `Service Academy — твой код входа: ${code}\n\nОткрой приложение и введи его один раз:\n${APP_SHARE_URL}`;
+    // Ссылка ведёт в мини-приложение в Telegram; код зашит в startapp и подставится сам.
+    // Код дублируем текстом — на случай входа с другого устройства.
+    const text = `Service Academy — твой код входа: ${code}\n\nОткрой по ссылке — приложение запустится в Telegram, код подставится сам:\n${APP_SHARE_URL}?startapp=${encodeStartParam(code)}`;
     try {
       if (navigator.share) { await navigator.share({ text }); return; }
     } catch(e) { if (e && e.name === "AbortError") return; }
@@ -1222,6 +1224,31 @@ export function TeamScreen({ T, profile, a11y }) {
         setSelected({ ...selected, status: next });
         setConfirm(null); loadList();
       } else { vibrate("error"); setActionError("Не получилось. Попробуй ещё раз."); }
+    } catch(e) { vibrate("error"); setActionError("Нет связи. Попробуй ещё раз."); }
+    setBusy(false);
+  };
+
+  const [editNS, setEditNS] = React.useState({ name: "", surname: "" }); // форма «Изменить имя»
+
+  const doRename = async () => {
+    if (busy || !selected) return;
+    const nm = editNS.name.trim(), sn = editNS.surname.trim();
+    if (nm.length < 2) return;
+    if (isDemo) {
+      vibrate("success");
+      setSelected({ ...selected, name: nm, surname: sn });
+      setList(l => (l || []).map(e => e.id === selected.id ? { ...e, name: nm, surname: sn } : e));
+      setConfirm(null);
+      return;
+    }
+    setBusy(true); setActionError(null);
+    try {
+      const res = await rpc("admin_update_employee", { p_token: token, p_employee_id: selected.id, p_name: nm, p_surname: sn });
+      if (res && res.ok) {
+        vibrate("success");
+        setSelected({ ...selected, name: nm, surname: sn });
+        setConfirm(null); loadList();
+      } else { vibrate("error"); setActionError("Не получилось. Проверь, что на сервере добавлена функция admin_update_employee."); }
     } catch(e) { vibrate("error"); setActionError("Нет связи. Попробуй ещё раз."); }
     setBusy(false);
   };
@@ -1459,6 +1486,23 @@ export function TeamScreen({ T, profile, a11y }) {
                 </button>
               </div>
             </div>
+          ) : confirm === "edit" ? (
+            <div className="sa-fast">
+              <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+                Как правильно зовут сотрудника? Имя показывается в приветствии, рейтинге и книге отзывов.
+              </div>
+              <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+                <input style={{ ...inputStyle, flex:1 }} placeholder="Имя" value={editNS.name} onChange={e => setEditNS(s => ({ ...s, name: e.target.value }))} />
+                <input style={{ ...inputStyle, flex:1 }} placeholder="Фамилия" value={editNS.surname} onChange={e => setEditNS(s => ({ ...s, surname: e.target.value }))} />
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
+                <button className="sa-btn" disabled={busy} onClick={doRename}
+                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:GOLD, color:"#1A1008", opacity: editNS.name.trim().length < 2 ? 0.5 : 1 }}>
+                  {busy ? "..." : "Сохранить"}
+                </button>
+              </div>
+            </div>
           ) : confirm === "delete" ? (
             <div className="sa-fast">
               <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
@@ -1476,6 +1520,9 @@ export function TeamScreen({ T, profile, a11y }) {
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               <button className="sa-btn" style={goldBtn} onClick={() => setConfirm("reset")}>
                 Сбросить код (новое устройство)
+              </button>
+              <button className="sa-btn" style={ghostBtn} onClick={() => { setEditNS({ name: selected.name || "", surname: selected.surname || "" }); setConfirm("edit"); }}>
+                Изменить имя и фамилию
               </button>
               <button className="sa-btn" onClick={() => setConfirm("toggle")}
                 style={{ ...ghostBtn,
@@ -1581,6 +1628,17 @@ export function CodeLoginScreen({ T, onSuccess }) {
   const [code, setCode] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
+
+  // Если открыто по ссылке-приглашению (t.me/...?startapp=КОД) — код подставляется сам
+  React.useEffect(() => {
+    try {
+      const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+      if (sp) {
+        const dec = decodeStartParam(sp);
+        if (dec) { setCode(format(dec)); vibrate("light"); }
+      }
+    } catch (e) {}
+  }, []);
 
   // Умное поле: верхний регистр, дефис подставляется сам
   const format = (raw) => {

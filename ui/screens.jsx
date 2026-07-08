@@ -3434,12 +3434,22 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           <div style={{ ...T.para, textAlign:"center", opacity:0.5 }}>Ничего не найдено</div>
         )}
         {filtered.map((g, i) => {
+          // Заголовок раздела — перед первым термином каждой категории
+          const showCat = g.cat && (i === 0 || filtered[i - 1].cat !== g.cat);
+          const catHeader = showCat && (
+            <div key={"cat_" + g.cat} style={{ fontFamily:"monospace", color: color || GOLD, fontSize:10, letterSpacing:2.5, textTransform:"uppercase", margin: i === 0 ? "2px 2px 10px" : "22px 2px 10px", opacity:0.85, display:"flex", alignItems:"center", gap:8 }}>
+              <span>{g.cat}</span>
+              <span style={{ flex:1, height:1, background:`${color || GOLD}33` }} />
+            </div>
+          );
           const k = g.term.toLowerCase();
           const entry = saved[k] || {};
           const fav = !!entry.fav;
           const note = entry.note || "";
           return (
-          <div key={i} style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
+          <React.Fragment key={i}>
+          {catHeader}
+          <div style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, width:"100%" }}>
               <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15, flex:1 }}>{g.term}</div>
               <button onClick={() => onToggleFav(k)} aria-label={fav ? "Убрать из избранного" : "В избранное"} title={fav ? "Убрать из избранного" : "В избранное"}
@@ -3455,6 +3465,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
                   fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />
             )}
           </div>
+          </React.Fragment>
           );
         })}
         <div style={{ ...T.para, textAlign:"center", opacity:0.4, fontSize:12, marginTop:8 }}>{GLOSSARY.length} терминов</div>

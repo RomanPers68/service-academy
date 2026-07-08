@@ -3578,7 +3578,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       {/* Header */}
       <div style={{ padding:"12px 14px 10px", background:`linear-gradient(135deg, ${dColor}18, transparent)`, borderBottom:`1px solid ${dColor}22` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:BROWN, fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
+          <button onClick={() => onClose(done && !walkedOut)} style={{ background:"none", border:"none", color:BROWN, fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
           <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`${dColor}1e`, border:`1px solid ${dColor}55`, display:"flex", alignItems:"center", justifyContent:"center", color:dColor, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{(dialogue.guest.name || "?").trim()[0].toUpperCase()}</div>
           <div style={{ flex:1 }}>
             <div style={{ color: T.modTitle?.color || CREAM, fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
@@ -3711,7 +3711,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
               style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
               ↺ Ещё раз
             </button>
-            <button onClick={onClose}
+            <button onClick={() => onClose(!walkedOut)}
               style={{ flex:1, padding:"12px", borderRadius:12, background:dColor, border:"none", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer", fontWeight:"bold" }}>
               Закрыть
             </button>

@@ -728,13 +728,14 @@ function ServiceAcademy() {
         )}
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {/* ── Книга отзывов ── */}
-        {screen === "guestbook" && <GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} focusId={bookFocus} onBack={() => { setBookFocus(null); navigate(prevScreen || "roleSelect"); }} onWeekly={() => navigate("weeklyGuest")} />}
+        {screen === "guestbook" && <GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} focusId={bookFocus} onBack={() => { setBookFocus(null); navigate(prevScreen && prevScreen !== "weeklyGuest" && prevScreen !== "guestbook" ? prevScreen : "roleSelect"); }} onWeekly={() => navigate("weeklyGuest")} />}
         {/* «Гость недели»: живой диалог из книги; завершение = страница в книге */}
-        {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyDialogueId()} T={T} color={"#C8A96E"} onClose={() => {
+        {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyDialogueId()} T={T} color={"#C8A96E"} onClose={(finished) => {
           try {
             const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
             const wid = weeklyLessonId();
-            if (!completed[wid]) {
+            // Испытание засчитывается только если диалог реально доведён до конца (и гость не ушёл)
+            if (finished === true && !completed[wid]) {
               const nc = { ...completed, [wid]: true };
               setCompleted(nc);
               try { localStorage.setItem("sa_completed"+uk, JSON.stringify(nc)); } catch(e) {}

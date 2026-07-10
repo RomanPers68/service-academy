@@ -3347,7 +3347,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               </div>
               <div style={T.resultTxt}>
                 {quizState.blocked?"Тест завершён — много ошибок. Перечитай уроки и попробуй снова!":
-                  score===lesson.questions.length?<span><Mm id="star_eyes" size={24} style={{marginRight:4}}/>Отлично! Все верно</span>:
+                  score===lesson.questions.length?<span><Mm id="star_eyes" size={24} style={{marginRight:4}}/>Отлично! Всё верно</span>:
                   score>=lesson.questions.length*0.7?<span><Mm id="thumbs_up" size={24} style={{marginRight:4}}/>Хорошо! Есть над чем поработать</span>:<span><Mm id="pensive" size={24} style={{marginRight:4}}/>Нужно повторить материал</span>}
               </div>
             </div>

@@ -159,7 +159,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
       <div style={{ ...T.resultCircle, borderColor: GREEN }}>
         <div style={{ ...T.resultScore, color: GREEN }}>{score}/{qs.length}</div>
       </div>
-      <div style={T.resultTxt}>{score === qs.length ? "Отлично! Все верно" : "Неплохо — повтори главу"}</div>
+      <div style={T.resultTxt}>{score === qs.length ? "Отлично! Всё верно" : "Неплохо — повтори главу"}</div>
       <button style={{ ...T.doneBtn, background: gold, marginTop: 4 }} onClick={onNext || onBack}>{onNext ? nextLabel + " →" : "К программе курса"}</button>
     </div>
   </div>);

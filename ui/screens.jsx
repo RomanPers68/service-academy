@@ -81,7 +81,7 @@ export function AchievementPopup({ ach, a11y, onClose }) {
   );
 }
 
-export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
+export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
   const [showConfetti, setShowConfetti] = React.useState(true);
   const [phase, setPhase] = React.useState(0); // 0=celebrate, 1=next unlock
 
@@ -155,9 +155,18 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext }) {
         </div>
       )}
 
+      {onExam && (
+        <button
+          onClick={onExam}
+          className="sa-btn sa-btn-pulse"
+          style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"none", background:"linear-gradient(135deg, #D4A85A 0%, #8B6A30 100%)", color:"#1A1008", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3, marginBottom:12 }}
+        >
+          🎓 Сдать экзамен роли
+        </button>
+      )}
       <button
         onClick={onNext}
-        className="sa-btn sa-btn-pulse"
+        className="sa-btn"
         style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"1px solid rgba(200,160,80,0.4)", background:"linear-gradient(135deg, rgba(200,160,80,0.2) 0%, rgba(200,160,80,0.08) 100%)", color:CREAM, fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3 }}
       >
         {isLast ? "К списку ролей →" : `Перейти к «${nextRole?.label}» →`}
@@ -763,9 +772,10 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
 
 export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
+  const STAT_ROLES = ["spg", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
   const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
-  const roleIcon  = { seasonal:"🌱", core:"⭐", manager:"🎯", service_manager:"🏛️" };
+  const roleIcon  = { seasonal:"🌱", core:"⭐", spg:"🛎️", manager:"🎯", service_manager:"🏛️" };
 
   const myScores = scores.filter(s => s.name === profile?.name && s.surname === profile?.surname);
   const totalTests = myScores.length;
@@ -825,7 +835,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
 
         {/* Прогресс по ролям */}
         <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:3, fontFamily:"monospace", marginBottom:8 }}>ПРОГРЕСС ПО РОЛЯМ</div>
-        {ROLE_ORDER.map(r => {
+        {STAT_ROLES.map(r => {
           const roleScores = myScores.filter(s => s.role === r);
           const avg = roleScores.length > 0 ? Math.round(roleScores.reduce((s, x) => s + x.pct, 0) / roleScores.length) : 0;
           const done = completedRoles.has(r) && roleScores.length > 0;
@@ -3859,7 +3869,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
 
 const EXAM_PASS = 0.8;   // порог сдачи — 80%
 const EXAM_COUNT = 10;   // вопросов в одной попытке (или меньше, если их мало)
-const _CERT_ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
+const _CERT_ROLE_ORDER = ["spg", "seasonal", "core", "manager", "service_manager"];
 
 // Собрать все вопросы квизов роли
 function collectRoleQuestions(roleId) {
@@ -4040,7 +4050,13 @@ export function CertificateScreen({ T, a11y, profile, roleObj, result, onExit, o
   );
 }
 
-export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(), examResults = {}, onExam, onCertificate, onExit }) {
+export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(), examResults = {}, completed = {}, quizDone = {}, onExam, onCertificate, onExit }) {
+  // Роль считается пройденной, если она в completedRoles ИЛИ все её уроки фактически пройдены
+  // (страховка для прогресса, сохранённого до появления флага роли)
+  const roleAllDone = (id) => {
+    const ls = (MODULES[id] || []).flatMap(m => (m && m.lessons) || []).filter(l => l.type !== "result");
+    return ls.length > 0 && ls.every(l => (l.type === "quiz" ? quizDone[l.id] : completed[l.id]));
+  };
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
@@ -4054,7 +4070,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
           const color = r.color || GOLD;
           const res = examResults[id];
           const passed = !!(res && res.passed);
-          const eligible = completedRoles && completedRoles.has ? completedRoles.has(id) : false;
+          const eligible = (completedRoles && completedRoles.has ? completedRoles.has(id) : false) || roleAllDone(id);
           const hasQuestions = collectRoleQuestions(id).length > 0;
           return (
             <div key={id} style={{ ...T.modCard, padding:"14px 16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:10 }}>

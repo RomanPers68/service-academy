@@ -70,11 +70,38 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates) {
 export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   const [hidden, setHidden] = React.useState(false);
   const [leaving, setLeaving] = React.useState(false); // плавный уход при скрытии
-  if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleContentDone(mod, completed, quizDone)) return null;
+  // ⚠️ ВРЕМЕННАЯ ДИАГНОСТИКА — жёлтая плашка. Скажи Клоду, что на ней написано, и он её уберёт.
+  const _diag = (() => {
+    try {
+      let read = [];
+      try { read = JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) {}
+      return {
+        modId: mod ? mod.id : "НЕТ mod",
+        hasReview: mod ? !!MODULE_REVIEWS[mod.id] : false,
+        contentDone: mod ? moduleContentDone(mod, completed, quizDone) : false,
+        fullDone: mod ? moduleDone(mod, completed, quizDone) : false,
+        alreadyRead: mod ? read.includes(mod.id) : false,
+        lessons: mod ? (mod.lessons || []).map(l => `${l.type}:${(l.type === "quiz" ? quizDone[l.id] : completed[l.id]) ? "✓" : "·"}`).join(" ") : "",
+      };
+    } catch (e) { return { err: String(e) }; }
+  })();
+  const DiagBox = (
+    <div style={{ margin: "12px 16px 0", padding: "10px 12px", borderRadius: 12, background: "#3a2f10", border: "1px solid #C8A96E", color: "#F0E4C0", fontSize: 11, fontFamily: "monospace", lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+      {"🔧 ДИАГНОСТИКА КНИГИ\n"}
+      {"mod.id: " + _diag.modId + "\n"}
+      {"есть отзыв: " + _diag.hasReview + "\n"}
+      {"материал пройден: " + _diag.contentDone + "\n"}
+      {"весь модуль (с тестом): " + _diag.fullDone + "\n"}
+      {"уже прочитан в книге: " + _diag.alreadyRead + "\n"}
+      {"уроки: " + _diag.lessons}
+    </div>
+  );
+
+  if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleContentDone(mod, completed, quizDone)) return DiagBox;
   let read = [];
   // Баннер живёт, пока страница реально не прочитана в книге (см. markRead в GuestBookScreen)
   try { read = JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) {}
-  if (read.includes(mod.id)) return null;
+  if (read.includes(mod.id)) return DiagBox;
   // ✕ скрывает баннер только до следующего захода — навсегда гасит лишь реальное прочтение
   const dismiss = () => { vibrate("light"); setLeaving(true); setTimeout(() => setHidden(true), 380); };
   const open = () => { vibrate("medium"); onOpen && onOpen(); };

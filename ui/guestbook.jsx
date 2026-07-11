@@ -11,7 +11,7 @@ import { MODULES } from "../data/modules";
 import { ROLES } from "../data/roles";
 import {
   MODULE_REVIEWS, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
-  moduleDone, moduleContentDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
+  moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
 } from "../data/reviews";
 
 const GOLD_SOFT = "#D4A85A", PAPER = "#FBF5E8", PAPER_DIM = "#EFE6D2",
@@ -37,15 +37,6 @@ const ruDate = (ts) => new Date(ts).toLocaleDateString("ru-RU", { day: "numeric"
 // ── Прочитанные страницы: страница считается прочитанной, когда реально показана в книге ──
 const loadRead = () => { try { return JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) { return []; } };
 const markRead = (key) => { try { const r = loadRead(); if (!r.includes(key)) localStorage.setItem("sa_book_read", JSON.stringify([...r, key])); } catch (e) {} };
-
-// ── Показанные баннеры: отдельный от «прочитано» список ──
-// Раньше баннер гасился меткой sa_book_read, а её ставил автопрыжок книги к первой
-// непрочитанной странице. Роль хостес идёт в ROLES первой, поэтому любой заход в книгу
-// мгновенно «съедал» её свежие страницы — и баннер не показывался никогда.
-// Теперь баннер гаснет только осознанно: по кнопке «Читать», по ✕ или после того,
-// как страницу действительно подержали открытой в книге.
-const loadSeen = () => { try { return JSON.parse(localStorage.getItem("sa_book_banner") || "[]"); } catch (e) { return []; } };
-const markSeen = (key) => { try { const s = loadSeen(); if (!s.includes(key)) localStorage.setItem("sa_book_banner", JSON.stringify([...s, key])); } catch (e) {} };
 
 // Сколько заработанных, но ещё не прочитанных страниц (для бейджа на плитке «Книга»)
 export function countUnreadPages(completed, quizDone, examResults) {
@@ -79,12 +70,14 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates) {
 export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   const [hidden, setHidden] = React.useState(false);
   const [leaving, setLeaving] = React.useState(false); // плавный уход при скрытии
-  if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleContentDone(mod, completed, quizDone)) return null;
-  // Баннер живёт, пока его не погасили осознанно (кнопкой, крестиком или реальным чтением в книге)
-  if (loadSeen().includes(mod.id)) return null;
-  // ✕ гасит баннер по этой странице: гость своё сказал, повторно не навязываемся
-  const dismiss = () => { vibrate("light"); markSeen(mod.id); setLeaving(true); setTimeout(() => setHidden(true), 380); };
-  const open = () => { vibrate("medium"); markSeen(mod.id); onOpen && onOpen(); };
+  if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleDone(mod, completed, quizDone)) return null;
+  let read = [];
+  // Баннер живёт, пока страница реально не прочитана в книге (см. markRead в GuestBookScreen)
+  try { read = JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) {}
+  if (read.includes(mod.id)) return null;
+  // ✕ скрывает баннер только до следующего захода — навсегда гасит лишь реальное прочтение
+  const dismiss = () => { vibrate("light"); setLeaving(true); setTimeout(() => setHidden(true), 380); };
+  const open = () => { vibrate("medium"); onOpen && onOpen(); };
   const lt = !!T?.a11y; // светлая тема: стекло из светлого «пергамента» вместо тёмного дыма
   return (
     <div className="sa-bookbanner" style={{
@@ -194,18 +187,14 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
     return buildRolePages(tab, completed, quizDone, examResults, dates);
   }, [tab, completed, quizDone, examResults, dates, wid]);
 
-  // Страница считается прочитанной, только если её реально подержали открытой (не «мазнули»)
+  // Страница считается прочитанной только когда реально показана на экране
   React.useEffect(() => {
     const p = pages[Math.min(idx, pages.length - 1)];
-    if (!p || (p.kind !== "earned" && p.kind !== "legend")) return;
-    if (readList.includes(p.key) && loadSeen().includes(p.key)) return;
-    const t = setTimeout(() => {
-      markRead(p.key);   // для бейджа и золотых точек
-      markSeen(p.key);   // и баннер по этой странице больше не нужен — гость её показал
+    if (p && (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key)) {
+      markRead(p.key);
       setReadList(loadRead());
-    }, 1200);
-    return () => clearTimeout(t);
-  }, [pages, idx, readList]);
+    }
+  }, [pages, idx]);
 
   const page = pages[Math.min(idx, pages.length - 1)] || pages[0];
   const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };

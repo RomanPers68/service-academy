@@ -117,19 +117,6 @@ export const moduleDone = (mod, completed = {}, quizDone = {}) => {
   return ls.length > 0 && ls.every(l => (l.type === "quiz" ? quizDone[l.id] : completed[l.id]));
 };
 
-// Пройден ли «содержательный» костяк модуля — все уроки и диалоги, тест не обязателен.
-// Используется для баннера книги отзывов: страница гостя зарабатывается за пройденный
-// материал, не дожидаясь финального теста (в некоторых ролях, напр. Хостес, тест
-// проходят отдельно/позже — иначе баннер про новую страницу не появлялся бы вовремя).
-export const moduleContentDone = (mod, completed = {}, quizDone = {}) => {
-  const ls = (mod.lessons || []).filter(l => l.type !== "result");
-  if (ls.length === 0) return false;
-  const core = ls.filter(l => l.type !== "quiz");
-  // если у модуля вообще нет квиза — ведём себя как moduleDone
-  if (core.length === 0) return ls.every(l => quizDone[l.id]);
-  return core.every(l => completed[l.id]);
-};
-
 // Сводка для профиля/рейтинга: страницы, печати, звание
 export function bookStats(modulesByRole, completed = {}, quizDone = {}, examResults = {}) {
   let pages = 0, total = 0;

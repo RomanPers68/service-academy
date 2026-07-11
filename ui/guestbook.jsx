@@ -11,7 +11,7 @@ import { MODULES } from "../data/modules";
 import { ROLES } from "../data/roles";
 import {
   MODULE_REVIEWS, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
-  moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
+  moduleDone, moduleContentDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
 } from "../data/reviews";
 
 const GOLD_SOFT = "#D4A85A", PAPER = "#FBF5E8", PAPER_DIM = "#EFE6D2",
@@ -70,7 +70,7 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates) {
 export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   const [hidden, setHidden] = React.useState(false);
   const [leaving, setLeaving] = React.useState(false); // плавный уход при скрытии
-  if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleDone(mod, completed, quizDone)) return null;
+  if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleContentDone(mod, completed, quizDone)) return null;
   let read = [];
   // Баннер живёт, пока страница реально не прочитана в книге (см. markRead в GuestBookScreen)
   try { read = JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) {}

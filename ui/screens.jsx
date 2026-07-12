@@ -277,14 +277,14 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       }
     }
 
-    // 🛎️ Лучшая хостес — лучший средний % в роли spg (Хостес)
+    // 🛎️ Лучший хостес — лучший средний % в роли spg (Хостес)
     const spgScores = allScores.filter(s => s.role === "spg");
     if (spgScores.length > 0) {
       const getAvgS = (p) => { const ps = spgScores.filter(s => s.name === p.name && s.surname === p.surname); return ps.length > 0 ? ps.reduce((sum, s) => sum + s.pct, 0) / ps.length : 0; };
       const myAvgS = getAvgS(player);
       const maxAvgS = Math.max(...allPlayers.map(getAvgS), 0);
       if (myAvgS > 0 && myAvgS === maxAvgS && allPlayers.length > 1) {
-        achievements.push({ icon:"bell", label:"Лучшая хостес" });
+        achievements.push({ icon:"bell", label:"Лучший хостес" });
       }
     }
 
@@ -1889,7 +1889,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const GRN = RC, GRN2 = RC;
           let title, sub, cta, go, gold = false;
           if (next) { title = `Твой трек · ${roleObj?.label || ""}`; sub = `Следующий: «${next.lesson.title}» · ≈ ${_estMins(next.lesson)} мин`; cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod); }
-          else if (dueM > 0 && onMistakes) { const _d10 = dueM % 10, _d100 = dueM % 100; const _q = (_d10 === 1 && _d100 !== 11) ? "вопрос вернулся" : (_d10 >= 2 && _d10 <= 4 && (_d100 < 12 || _d100 > 14)) ? "вопроса вернулись" : "вопросов вернулись"; title = "Трек пройден · закрепи"; sub = `${dueM} ${_q} на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
+          else if (dueM > 0 && onMistakes) { title = "Трек пройден · закрепи"; sub = `${dueM} вопрос${dueM === 1 ? "" : dueM < 5 ? "а" : "ов"} вернулись на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           return (
             <div style={{ padding:"0 14px 9px" }}>

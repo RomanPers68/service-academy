@@ -145,6 +145,7 @@ export const A = {
   lessNumBorder: "2px solid rgba(120,80,20,0.6)",
 
   lessHead:   { ...S.lessHead, background:SAND, borderBottom:"1px solid rgba(160,120,60,0.2)" },
+  backBtn:    { ...S.backBtn, color:"rgba(100,70,25,0.65)" },
   backBtn2:   { ...S.backBtn2, color:BROWN, fontSize:22 },
   lessHeadTitle:{ ...S.lessHeadTitle, color:INK, fontSize:17, fontWeight:"bold" },
   lessBody:   { ...S.lessBody, background:CREAM_SOFT },

@@ -10,7 +10,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { ROLE_SKILLS } from "../data/skills";
 import { onActivate, vibrate } from "../lib/utils";
-import { rpcSync, saToken } from "../api/supabase";
+import { rpc, rpcSync, saToken } from "../api/supabase";
 import { Confetti } from "./widgets";
 
 const keyFor = (profile) => `sa_skills_${(profile?.name || "guest")}|${(profile?.surname || "")}`.toLowerCase();
@@ -36,6 +36,10 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
   const [confirmed, setConfirmed] = React.useState(() => load(profile));
   const [modal, setModal] = React.useState(null); // skill объект
   const [mentorName, setMentorName] = React.useState("");
+  const [pin, setPin] = React.useState("");
+  const [byName, setByName] = React.useState(false); // запасной режим «по фамилии»
+  const [pinErr, setPinErr] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
   const [agree, setAgree] = React.useState(false);
   const canRevoke = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
 
@@ -43,15 +47,44 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
   const allDone = skills.length > 0 && doneCount === skills.length;
   const pct = skills.length ? Math.round((doneCount / skills.length) * 100) : 0;
 
+  const closeModal = () => { setModal(null); setMentorName(""); setPin(""); setPinErr(""); setByName(false); setBusy(false); setAgree(false); };
+
+  const finishLocal = (rec) => {
+    const next = { ...confirmed, [modal.id]: rec };
+    setConfirmed(next); save(profile, next);
+    vibrate("light");
+    closeModal();
+  };
+
+  // Основной путь: PIN наставника, проверка на сервере (stage 6).
+  const confirmByPin = async () => {
+    if (!/^[0-9]{4,6}$/.test(pin) || !agree || busy) return;
+    setBusy(true); setPinErr("");
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const resp = await rpc("confirm_skill_pin", { p_token: saToken(), p_role: role, p_skill: modal.id, p_skill_label: modal.label, p_pin: pin, p_date: today });
+      if (resp && resp.ok) {
+        finishLocal({ mentor: resp.mentor, date: today, verified: true });
+        return;
+      }
+      setBusy(false);
+      setPinErr(resp && resp.error === "auth" ? "Сессия устарела — перезайди по коду" : "Неверный PIN. Проверь и попробуй ещё раз.");
+      vibrate("error");
+    } catch (e) {
+      // Функции ещё нет на сервере (stage 6 не применён) или нет сети —
+      // мягко откатываемся на прежний режим «по фамилии».
+      setBusy(false);
+      setByName(true);
+      setPinErr("");
+    }
+  };
+
+  // Запасной путь: как раньше — фамилия + галочка (синк через очередь, как в stage 2)
   const confirm = () => {
     if (!mentorName.trim() || !agree) return;
     const rec = { mentor: mentorName.trim(), date: new Date().toISOString().slice(0, 10) };
-    const next = { ...confirmed, [modal.id]: rec };
-    setConfirmed(next); save(profile, next);
-    // Синк на сервер (безопасно: если RPC нет — очередь отбросит без последствий)
     try { rpcSync("confirm_skill", { p_token: saToken(), p_role: role, p_skill: modal.id, p_skill_label: modal.label, p_mentor: rec.mentor, p_date: rec.date }); } catch (e) {}
-    vibrate("light");
-    setModal(null); setMentorName(""); setAgree(false);
+    finishLocal(rec);
   };
 
   const revoke = (id) => {
@@ -95,7 +128,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
               <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <div style={{ ...T.modTitle, color: rec ? green : T.modTitle.color }}>{s.label}</div>
                 <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.45 }}>{s.hint}</div>
-                {rec && <div style={{ fontSize: 11.5, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}</div>}
+                {rec && <div style={{ fontSize: 11.5, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ marginLeft: 6, fontSize: 8.5, letterSpacing: 1, color: green, border: `1px solid ${green}66`, borderRadius: 7, padding: "1px 6px", fontFamily: "monospace", verticalAlign: "1px" }}>PIN ✓</span>}</div>}
               </div>
               {rec && canRevoke
                 ? <div style={{ padding: "4px 8px", color: "#E07878", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); revoke(s.id); }} {...onActivate(() => revoke(s.id))}>✕</div>
@@ -106,27 +139,49 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
       </div>
 
       {modal && createPortal(
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={() => setModal(null)}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={closeModal}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto", background: a11y ? "linear-gradient(165deg, #FAF3E3 0%, #EFE3CB 100%)" : "linear-gradient(165deg, #3A2A12 0%, #241806 100%)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px", paddingBottom: "max(30px, env(safe-area-inset-bottom))", color: textColor }}>
             <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ПОДТВЕРЖДЕНИЕ НАВЫКА</div>
             <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6, color: T.bold?.color }}>{modal.label}</div>
             <div style={{ fontSize: 13.5, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
               📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
             </div>
-            <input
-              value={mentorName}
-              onChange={e => setMentorName(e.target.value)}
-              onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
-              placeholder="Фамилия и имя наставника"
-              style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15.5, outline: "none", marginBottom: 12 }}
-            />
+            {!byName ? (
+              <>
+                <input
+                  value={pin}
+                  onChange={e => { setPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 6)); setPinErr(""); }}
+                  onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
+                  inputMode="numeric" pattern="[0-9]*" type="password" autoComplete="one-time-code"
+                  placeholder="PIN наставника (4–6 цифр)"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${pinErr ? "#E07878" : gold + "88"}`, borderTop: `1px solid ${pinErr ? "#E07878" : gold + "55"}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 17, letterSpacing: 6, textAlign: "center", fontFamily: "monospace", outline: "none", marginBottom: pinErr ? 6 : 12 }}
+                />
+                {pinErr && <div style={{ color: "#E07878", fontSize: 12, marginBottom: 10, textAlign: "center" }}>{pinErr}</div>}
+                <div onClick={() => { setByName(true); setPinErr(""); }} {...onActivate(() => { setByName(true); setPinErr(""); })} style={{ fontSize: 12, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                  У наставника нет PIN — подтвердить по фамилии
+                </div>
+              </>
+            ) : (
+              <>
+                <input
+                  value={mentorName}
+                  onChange={e => setMentorName(e.target.value)}
+                  onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
+                  placeholder="Фамилия и имя наставника"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15.5, outline: "none", marginBottom: 8 }}
+                />
+                <div onClick={() => setByName(false)} {...onActivate(() => setByName(false))} style={{ fontSize: 12, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                  ‹ Вернуться к подтверждению по PIN
+                </div>
+              </>
+            )}
             <div onClick={() => setAgree(a => !a)} {...onActivate(() => setAgree(a => !a))} style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", marginBottom: 16 }}>
               <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${agree ? green : gold}`, background: agree ? green : "transparent", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{agree ? "✓" : ""}</div>
               <div style={{ fontSize: 13, lineHeight: 1.45, color: T.para?.color }}>Подтверждаю: наблюдал(а) выполнение этого навыка сотрудником в реальной работе.</div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setModal(null)}>Отмена</button>
-              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: mentorName.trim() && agree ? green : gold + "55", color: mentorName.trim() && agree ? "#fff" : (a11y ? "#7a6a4a" : "#e8dcc0"), transition: "background .25s" }} onClick={confirm}>Подтвердить ✓</button>
+              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={closeModal}>Отмена</button>
+              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? green : gold + "55", color: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? "#fff" : (a11y ? "#7a6a4a" : "#e8dcc0"), transition: "background .25s" }} onClick={byName ? confirm : confirmByPin}>{busy ? "Проверяю…" : "Подтвердить ✓"}</button>
             </div>
           </div>
         </div>,

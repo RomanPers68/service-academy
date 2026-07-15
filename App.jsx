@@ -18,6 +18,8 @@ import { MenuTrainerScreen } from "./ui/menu-trainer";
 import { GuestBookScreen, NewPageBanner } from "./ui/guestbook";
 import { weeklyDialogueId, weeklyLessonId } from "./data/reviews";
 import { MentorScreen } from "./ui/mentor";
+import { SOSScreen } from "./ui/sos";
+import { TrainingCardScreen } from "./ui/training-card";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./ui/mood-cards";
@@ -617,6 +619,8 @@ function ServiceAcademy() {
     if (quizState.blocked) return;
     const q = activeLesson.questions[quizState.step];
     const isCorrect = idx === q.correct;
+    // Аналитика вопросов (stage 7): очередь тихо отбросит вызов, если RPC ещё не создан
+    try { rpcSync("log_quiz_answer", { p_token: saToken(), p_role: role, p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_correct: isCorrect }); } catch(e) {}
     const newMistakes = quizState.mistakes + (isCorrect ? 0 : 1);
     const answers = [...quizState.answers, { idx, isCorrect }];
     const done = quizState.step + 1 >= activeLesson.questions.length;
@@ -636,7 +640,7 @@ function ServiceAcademy() {
       return;
     }
     setQuizState({ step: done ? quizState.step : quizState.step + 1, answers, done, mistakes: newMistakes, blocked: false });
-  }, [quizState, activeLesson]);
+  }, [quizState, activeLesson, role]);
   // Верный ответ: вопрос уходит на следующий интервал (1→3→7→30 дней). После 4 верных подряд — закреплён и удаляется.
   const resolveMistake = useCallback((qText) => {
     setMistakeBank(prev => {
@@ -748,7 +752,7 @@ function ServiceAcademy() {
         {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} />}
-        {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} />}
+        {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onResetPlayer={isAdmin ? (name, surname) => {
@@ -787,13 +791,15 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveLesson(shuffleLessonQuestions(lesson)); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveLesson(shuffleLessonQuestions(l)); setActiveModule(m); navigate("lesson"); }} onMistakes={() => navigate("mistakes")} /></div>}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveLesson(shuffleLessonQuestions(l)); setActiveModule(m); navigate("lesson"); }} onMistakes={() => navigate("mistakes")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => navigate(prevScreen || "home")} />}
-        {screen === "search" && <div style={{paddingBottom:88}}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onBack={() => navigate(prevScreen || "home")} /></div>}
+        {screen === "search" && <div style={{paddingBottom:88}}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => navigate(prevScreen || "home")} /></div>}
         {screen === "menuTrainer" && <div style={{paddingBottom:88}}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} /></div>}
+        {screen === "trainingCard" && <TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} />}
+        {screen === "sos" && <div style={{paddingBottom:88}}><SOSScreen T={T} a11y={a11y} onBack={() => navigate(prevScreen || "roleSelect")} /></div>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => navigate(prevScreen || "roleSelect")} /></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {screen === "lesson" && activeLesson?.type === "dialogue" && <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />}

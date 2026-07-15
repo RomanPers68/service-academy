@@ -277,14 +277,14 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       }
     }
 
-    // 🛎️ Лучший хостес — лучший средний % в роли spg (Хостес)
+    // 🛎️ Лучшая хостес — лучший средний % в роли spg (Хостес)
     const spgScores = allScores.filter(s => s.role === "spg");
     if (spgScores.length > 0) {
       const getAvgS = (p) => { const ps = spgScores.filter(s => s.name === p.name && s.surname === p.surname); return ps.length > 0 ? ps.reduce((sum, s) => sum + s.pct, 0) / ps.length : 0; };
       const myAvgS = getAvgS(player);
       const maxAvgS = Math.max(...allPlayers.map(getAvgS), 0);
       if (myAvgS > 0 && myAvgS === maxAvgS && allPlayers.length > 1) {
-        achievements.push({ icon:"bell", label:"Лучший хостес" });
+        achievements.push({ icon:"bell", label:"Лучшая хостес" });
       }
     }
 
@@ -1739,7 +1739,50 @@ export function CodeLoginScreen({ T, onSuccess }) {
   );
 }
 
-export function AccountScreen({ profile, T, onBack, onLogout }) {
+// ═══ PIN наставника: руководящий состав задаёт себе 4–6 цифр, которыми заверяет
+//     допуски сотрудников (проверка на сервере — supabase-stage6-mentor-pin.sql).
+//     Пока stage 6 не применён, честно сообщаем об этом. ═══
+function MentorPinBlock({ T, gold }) {
+  const [pin, setPin] = React.useState("");
+  const [state, setState] = React.useState(null); // null | "saving" | "ok" | "err:<msg>"
+  const canSave = /^[0-9]{4,6}$/.test(pin) && state !== "saving";
+  const savePin = async () => {
+    if (!canSave) return;
+    setState("saving");
+    try {
+      const resp = await rpc("set_mentor_pin", { p_token: saToken(), p_pin: pin });
+      if (resp && resp.ok) { setState("ok"); setPin(""); vibrate("success"); }
+      else setState("err:" + (resp?.error === "not_mentor" ? "PIN доступен только руководящему составу." : resp?.error === "auth" ? "Сессия устарела — перезайди по коду." : "Не получилось. Попробуй ещё раз."));
+    } catch (e) {
+      setState("err:Функция появится после обновления сервера (stage 6).");
+    }
+  };
+  return (
+    <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:10, marginBottom:20 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v2.5"/></svg>
+        <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold" }}>PIN наставника</span>
+      </div>
+      <div style={{ color: T.modSub.color, fontSize:12, lineHeight:1.55 }}>
+        Этим PIN ты заверяешь допуски сотрудников — вводи его только сам(а) и никому не сообщай. 4–6 цифр.
+      </div>
+      <div style={{ display:"flex", gap:8 }}>
+        <input value={pin}
+          onChange={e => { setPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 6)); setState(null); }}
+          inputMode="numeric" pattern="[0-9]*" type="password" autoComplete="new-password" placeholder="••••"
+          style={{ flex:1, minWidth:0, boxSizing:"border-box", padding:"11px 13px", borderRadius:12, border:`1px solid ${gold}66`, background:"rgba(0,0,0,0.12)", color: T.modTitle.color, fontSize:16, letterSpacing:5, textAlign:"center", fontFamily:"monospace", outline:"none" }} />
+        <button className="sa-btn" onClick={savePin} {...onActivate(savePin)}
+          style={{ flexShrink:0, padding:"11px 16px", borderRadius:12, border:"none", background: canSave ? gold : gold+"44", color:"#1A1008", fontWeight:"bold", fontSize:13, cursor: canSave ? "pointer" : "default" }}>
+          {state === "saving" ? "…" : "Сохранить"}
+        </button>
+      </div>
+      {state === "ok" && <div style={{ color:"#5DBB8A", fontSize:12 }}>✓ PIN сохранён. Старый PIN больше не действует.</div>}
+      {typeof state === "string" && state.startsWith("err:") && <div style={{ color:"#E07878", fontSize:12 }}>{state.slice(4)}</div>}
+    </div>
+  );
+}
+
+export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) {
   const [confirmOut, setConfirmOut] = React.useState(false);
   const posLabel = { waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
   return (
@@ -1770,6 +1813,28 @@ export function AccountScreen({ profile, T, onBack, onLogout }) {
         <div style={{ color:T.modSub.color, fontSize:12, lineHeight:1.7, padding:"0 4px", marginBottom:20 }}>
           Данные профиля привязаны к твоему коду доступа. Если что-то указано неверно — обратись к администратору.
         </div>
+
+        {/* ═══ PIN наставника — только руководящий состав. Этим PIN заверяются допуски. ═══ */}
+        {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && (() => {
+          const gold = GOLD;
+          return <MentorPinBlock T={T} gold={gold} />;
+        })()}
+
+        {/* ═══ Карта обучения — печатный документ для личного дела ═══ */}
+        {onTrainingCard && (
+          <div className="sa-card" style={{ ...T.modCard, marginBottom:20, cursor:"pointer" }}
+            onClick={onTrainingCard} {...onActivate(onTrainingCard)}>
+            <div style={{ ...T.modBar, background: GOLD }} />
+            <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,169,110,0.13)" }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h10v6H7z"/><path d="M5 9h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/><path d="M7 15h10"/></svg>
+            </div>
+            <div style={{ flex:1, minWidth:0, paddingLeft:6 }}>
+              <div style={T.modTitle}>Карта обучения</div>
+              <div style={{ ...T.modSub, whiteSpace:"normal" }}>Печатный документ для личного дела: треки, экзамены, допуски</div>
+            </div>
+            <div style={T.modArrow}>›</div>
+          </div>
+        )}
 
         {!confirmOut ? (
           <button className="sa-btn" onClick={() => setConfirmOut(true)}
@@ -1836,7 +1901,7 @@ const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
   return null;
 };
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -1888,8 +1953,15 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const RC = roleObj?.color || (a11y ? "#4E7A58" : "#8FB890"); // цвет роли
           const GRN = RC, GRN2 = RC;
           let title, sub, cta, go, gold = false;
-          if (next) { title = `Твой трек · ${roleObj?.label || ""}`; sub = `Следующий: «${next.lesson.title}» · ≈ ${_estMins(next.lesson)} мин`; cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod); }
-          else if (dueM > 0 && onMistakes) { title = "Трек пройден · закрепи"; sub = `${dueM} вопрос${dueM === 1 ? "" : dueM < 5 ? "а" : "ов"} вернулись на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
+          if (next && done === 0) {
+            // ═══ Первый заход: «Начни здесь» + честная карта времени всего пути ═══
+            const totalMins = mods.reduce((a, m) => a + (m.lessons || []).filter(l => l.type !== "result").reduce((s, l) => s + _estMins(l), 0), 0);
+            title = "Начни здесь";
+            sub = `«${next.lesson.title}» · весь путь ≈ ${_fmtMins(totalMins)}`;
+            cta = "НАЧАТЬ"; go = () => onContinueLesson(next.lesson, next.mod);
+          }
+          else if (next) { title = `Твой трек · ${roleObj?.label || ""}`; sub = `Следующий: «${next.lesson.title}» · ≈ ${_estMins(next.lesson)} мин`; cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod); }
+          else if (dueM > 0 && onMistakes) { const _d10 = dueM % 10, _d100 = dueM % 100; const _q = (_d10 === 1 && _d100 !== 11) ? "вопрос вернулся" : (_d10 >= 2 && _d10 <= 4 && (_d100 < 12 || _d100 > 14)) ? "вопроса вернулись" : "вопросов вернулись"; title = "Трек пройден · закрепи"; sub = `${dueM} ${_q} на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           return (
             <div style={{ padding:"0 14px 9px" }}>
@@ -1960,7 +2032,11 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
 
         {(() => {
           const Cc = moodPalette(a11y);
+          const sosR = a11y ? "#A03828" : "#E07878";
           const tiles = [];
+          if (onSOS) tiles.push({ key:"sos", label:"SOS", red:true, onClick:onSOS, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sosR} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M12 8.5v4"/><path d="M12 15.6v.1"/></svg>
+          )});
           if (onChecklist) tiles.push({ key:"cl", label:"Чек-листы", onClick:onChecklist, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v2H9z"/><path d="M8.5 12l2 2 3.5-3.5"/></svg>
           )});
@@ -1986,13 +2062,21 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z"/><path d="M14.5 6.5l3 3"/></svg>
           )});
           if (!tiles.length) return null;
+          // ═══ Прогрессивное раскрытие: новичку без прогресса — только самое нужное.
+          //     Остальные жетоны появляются после первого пройденного урока.
+          //     Менеджеров, старших и админов это не касается. ═══
+          const isStaff = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
+          const anyDone = Object.keys(completed || {}).length > 0 || Object.keys(quizDone || {}).length > 0;
+          const newbie = !isStaff && !anyDone;
+          const visibleTiles = newbie ? tiles.filter(t => ["sos", "ob", "sp"].includes(t.key)) : tiles;
           // Бейджи-события: новинки меню (реальные данные)
           const menuNew = countNewDishes(profile?.restaurant);
           return (
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
+            <>
             <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:7, padding:"0 14px 12px" }}>
-              {tiles.map(t => {
+              {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 return (
                   <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ width:"calc(25% - 5.25px)", boxSizing:"border-box", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
@@ -2000,13 +2084,19 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                       <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.5)" : "rgba(255,245,220,0.09)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
                       <TokenEyelet />
                       <div style={{ marginTop:4, position:"relative", display:"inline-flex" }}>{React.cloneElement(t.icon, { width:16, height:16 })}</div>
-                      <span style={{ position:"relative", fontSize:8.5, color: Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1, maxWidth:"100%", overflowWrap:"break-word" }}>{t.label}</span>
+                      <span style={{ position:"relative", fontSize:8.5, color: t.red ? sosR : Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1, maxWidth:"100%", overflowWrap:"break-word", letterSpacing: t.red ? 1 : 0 }}>{t.label}</span>
                     </div>
                     {badge && <div style={{ position:"absolute", top:-5, right:-3, zIndex:3, background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, color:"#1C1204", fontSize:8, fontWeight:"bold", fontFamily:"monospace", borderRadius:9, padding:"2px 6px", boxShadow:"0 2px 6px rgba(0,0,0,0.4)" }}>{badge}</div>}
                   </div>
                 );
               })}
             </div>
+            {newbie && (
+              <div style={{ textAlign:"center", padding:"0 24px 12px", marginTop:-4 }}>
+                <span style={{ color: T.modSub.color, fontSize:10.5, fontStyle:"italic" }}>✨ Остальные инструменты откроются после первого урока</span>
+              </div>
+            )}
+            </>
           );
         })()}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 20px 10px" }}>
@@ -2061,6 +2151,43 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             </div>
           );
         })}
+      </div>
+
+      {/* ═══ На подходе — анонсы новых треков и функций, стиль заблокированных ролей ═══ */}
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 14px 8px" }}>
+        <div style={{ ...T.roleSubtitle }}>На подходе</div>
+        <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, #D4A85A33, transparent)" }} />
+      </div>
+      <div style={{ padding:"0 16px", display:"flex", flexDirection:"column", gap:8 }}>
+        {[
+          { key:"bar", label:"Бар", sub:"Классика коктейлей, кофе, подача напитков", icon:(c)=>(
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16l-8 9-8-9z"/><path d="M12 13v7"/><path d="M8 21h8"/><path d="M7.2 7.5h9.6"/></svg>
+          )},
+          { key:"kitchen", label:"Кухня", sub:"Заготовки, техника, санитария, работа на раздаче", icon:(c)=>(
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 9a4 4 0 0 1 1-7.5A4.5 4.5 0 0 1 12 3a4.5 4.5 0 0 1 4-1.5A4 4 0 0 1 17 9v9H7V9z"/><path d="M7 15h10"/><path d="M7 18v3h10v-3"/></svg>
+          )},
+          { key:"ai", label:"AI-наставник", sub:"Ответы по меню и стандартам прямо в смене", icon:(c)=>(
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4V6z"/><path d="M12 7.5l.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3z"/></svg>
+          )},
+          { key:"audio", label:"Аудио-уроки", sub:"Слушай по дороге на смену", icon:(c)=>(
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4v-6z"/><path d="M20 14h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2v-6z"/></svg>
+          )},
+        ].map(s => (
+          <div key={s.key} style={{
+            display:"flex", alignItems:"center", gap:12, padding:"11px 13px",
+            borderRadius:15, opacity:0.5, position:"relative", overflow:"hidden",
+            background: T.roleCard?.background, border:"1px solid rgba(255,255,255,0.06)",
+          }}>
+            <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter:"grayscale(0.6)" }}>
+              {s.icon(a11y ? "#8B6A30" : "#8A8070")}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ color: T.modSub.color, fontSize:13.5, fontWeight:"bold" }}>{s.label}</div>
+              <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:1, opacity:0.85 }}>{s.sub}</div>
+            </div>
+            <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:8, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+          </div>
+        ))}
       </div>
 
       <div style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D4A85A44" }}>
@@ -2361,6 +2488,14 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   const C = moodPalette(a11y);
   const serif = "Georgia, 'Times New Roman', serif";
   const [view, setView] = React.useState("weak");
+  const [hardQ, setHardQ] = React.useState(null); // null=не грузили | "loading" | "off" | []
+  React.useEffect(() => {
+    if (view !== "questions" || hardQ !== null) return;
+    setHardQ("loading");
+    rpc("quiz_hard_questions", { p_token: saToken() })
+      .then(rows => setHardQ(Array.isArray(rows) ? rows : []))
+      .catch(() => setHardQ("off")); // stage 7 ещё не применён
+  }, [view, hardQ]);
   const allScope = !!(profile && (profile.is_admin || profile.position === "senior"));
   const scoped = React.useMemo(() => (scores||[]).filter(s => allScope || s.restaurant === profile?.restaurant), [scores, allScope, profile]);
   const titleById = React.useMemo(() => { const m={}; try { Object.values(MODULES).forEach(mods=>(mods||[]).forEach(md=>((md.lessons||md.items||[])).forEach(l=>{ if(l&&l.id) m[l.id]=l.title||l.name||l.id; }))); } catch(e){} return m; }, []);
@@ -2394,14 +2529,33 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
 
       <div style={{ padding:"0 14px", marginBottom:14 }}>
         <div style={{ display:"flex", gap:4, padding:4, borderRadius:12, background:a11y?"rgba(140,105,40,0.12)":"rgba(160,120,60,0.14)" }}>
-          {[["weak","Слабые места"],["digest","Сводка недели"]].map(([k,l])=>(
+          {[["weak","Темы"],["questions","Вопросы"],["digest","Сводка"]].map(([k,l])=>(
             <button key={k} onClick={()=>setView(k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", fontFamily:serif, fontSize:13, fontWeight:"bold", cursor:"pointer", background:view===k?"linear-gradient(135deg,#C8A96E,#8B6A30)":"transparent", color:view===k?"#fff":C.muted }}>{l}</button>
           ))}
         </div>
       </div>
 
       <div style={{ padding:"0 14px" }}>
-        {scoped.length === 0 ? (
+        {view === "questions" ? (
+          <>
+            <div style={{ color:C.muted, fontSize:12, marginBottom:10, lineHeight:1.5 }}>Вопросы, которые команда чаще всего заваливает (за 30 дней). Каждый — готовая тема для брифинга.</div>
+            {hardQ === "loading" && <div style={{ color:C.muted, fontSize:13, padding:"8px 2px" }}>Загружаю…</div>}
+            {hardQ === "off" && <div style={{ color:C.muted, fontSize:13, padding:"8px 2px", lineHeight:1.5 }}>Серверная часть ещё не включена — примени supabase-stage7-quiz-analytics.sql, и здесь появятся вопросы с наибольшим процентом ошибок.</div>}
+            {Array.isArray(hardQ) && hardQ.length === 0 && <div style={{ color:C.muted, fontSize:13, padding:"8px 2px", lineHeight:1.5 }}>Пока нет трудных вопросов — либо данных мало (нужно минимум 3 ответа на вопрос), либо команда отвечает без ошибок. 🎉</div>}
+            {Array.isArray(hardQ) && hardQ.map((q,i)=>{ const col=q.fail_pct>=50?"#D9764A":q.fail_pct>=25?"#D6A33A":"#4FB07A"; return (
+              <div key={i} style={{ ...cardBase, padding:"12px 14px", marginBottom:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
+                  <span style={{ color:C.text, fontSize:13.5, fontWeight:"bold", flex:1, minWidth:0, lineHeight:1.4 }}>{q.question}</span>
+                  <span style={{ color:col, fontFamily:serif, fontSize:16, fontWeight:"bold", flexShrink:0 }}>{q.fail_pct}%</span>
+                </div>
+                <div style={{ height:6, borderRadius:4, background:trackBg, overflow:"hidden", margin:"8px 0 4px" }}>
+                  <div style={{ width:`${q.fail_pct}%`, height:"100%", background:col }} />
+                </div>
+                <div style={{ color:C.dim, fontSize:11 }}>{q.fails} из {q.total} ответов — мимо{titleById[q.lesson_id] ? ` · ${titleById[q.lesson_id]}` : ""}</div>
+              </div>
+            );})}
+          </>
+        ) : scoped.length === 0 ? (
           <div style={{ color:C.muted, fontSize:13, padding:"8px 2px", lineHeight:1.5 }}>Пока нет данных по тестам{allScope?"":" в вашем ресторане"}. Аналитика появится, когда команда начнёт проходить тесты.</div>
         ) : view === "weak" ? (
           <>
@@ -4072,16 +4226,39 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
           const passed = !!(res && res.passed);
           const eligible = (completedRoles && completedRoles.has ? completedRoles.has(id) : false) || roleAllDone(id);
           const hasQuestions = collectRoleQuestions(id).length > 0;
+          // ═══ Переаттестация: сертификат «живёт» 12 месяцев ═══
+          const VALID_MONTHS = 12;
+          let validUntil = null, expired = false, expiring = false;
+          if (passed && res.date) {
+            const d = new Date(res.date);
+            if (!isNaN(d)) {
+              validUntil = new Date(d); validUntil.setMonth(validUntil.getMonth() + VALID_MONTHS);
+              const leftDays = Math.floor((validUntil - Date.now()) / 86400000);
+              expired = leftDays < 0;
+              expiring = !expired && leftDays <= 30;
+            }
+          }
+          const untilStr = validUntil ? validUntil.toLocaleDateString("ru-RU") : null;
+          const amber = a11y ? "#8B6A30" : "#E0B060";
+          const redC = a11y ? "#A03828" : "#E07878";
+          const statusLine = !passed
+            ? (eligible ? "Доступен экзамен" : "Сначала пройди роль")
+            : expired ? `Сдано · ${res.score}% · срок истёк — пересдай`
+            : expiring ? `Сдано · ${res.score}% · до ${untilStr} — скоро переаттестация`
+            : untilStr ? `Сдано · ${res.score}% · действует до ${untilStr}`
+            : `Сдано · ${res.score}%`;
           return (
             <div key={id} style={{ ...T.modCard, padding:"14px 16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, width:"100%" }}>
                 <div style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{passed ? UI_SVG.gradcap(color, 19) : (ROLE_SVG[r.id] ? ROLE_SVG[r.id](color, 19) : r.icon)}</div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{r.label}</div>
-                  <div style={{ ...T.modSub, fontSize:12 }}>{passed ? `Сдано · ${res.score}%` : eligible ? "Доступен экзамен" : "Сначала пройди роль"}</div>
+                  <div style={{ ...T.modSub, fontSize:12, color: passed && expired ? redC : passed && expiring ? amber : T.modSub.color }}>{statusLine}</div>
                 </div>
               </div>
-              {passed
+              {passed && expired && hasQuestions
+                ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:redC, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Пересдать экзамен</button>
+                : passed
                 ? <button onClick={() => onCertificate && onCertificate(id)} {...onActivate(() => onCertificate && onCertificate(id))} style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:`1px solid ${color}`, background:"transparent", color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Открыть сертификат</button>
                 : (eligible && hasQuestions)
                   ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:color, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Сдать экзамен</button>

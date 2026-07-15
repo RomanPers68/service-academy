@@ -5,7 +5,8 @@
 
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
-import { GOLD } from "./tokens";
+import { GOLD, GREEN, RED } from "./tokens";
+import { UI_SVG, MARKER_RE } from "./icons";
 
 // Красный акцент SOS: в тёмной теме мягкий, в светлой — глубже (читаемость на крем-фоне)
 const sosRed = (a11y) => (a11y ? "#A03828" : "#E07878");
@@ -203,11 +204,23 @@ export function SOSScreen({ T, a11y, onBack }) {
                 </div>
                 {isOpen && (
                   <div style={{ padding: "0 14px 14px 62px" }}>
-                    {c.lines.map((line, i) => (
-                      <div key={i} style={{ color: text, fontSize: 13.5, lineHeight: 1.55, marginBottom: 7, opacity: line.startsWith("🚫") ? 0.92 : 1 }}>
-                        {line}
-                      </div>
-                    ))}
+                    {c.lines.map((line, i) => {
+                      // Маркеры — те же перерисованные иконки, что в уроках
+                      const keycap = line.match(/^([1-9])️⃣/);
+                      const icon = line.startsWith("✅") ? UI_SVG.checkCircle(GREEN, 14)
+                        : line.startsWith("🚫") ? UI_SVG.ban(red, 14)
+                        : line.startsWith("📌") ? UI_SVG.pin(gold, 14)
+                        : keycap ? (
+                            <span style={{ width: 19, height: 19, borderRadius: 10, border: `1.5px solid ${red}`, color: red, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: "bold", fontFamily: "Georgia, serif" }}>{keycap[1]}</span>
+                          )
+                        : null;
+                      return (
+                        <div key={i} style={{ color: text, fontSize: 13.5, lineHeight: 1.55, marginBottom: 7, display: "flex", gap: 9, alignItems: "flex-start", opacity: line.startsWith("🚫") ? 0.92 : 1 }}>
+                          {icon && <span style={{ flexShrink: 0, marginTop: 3, display: "inline-flex" }}>{icon}</span>}
+                          <span style={{ flex: 1 }}>{line.replace(MARKER_RE, "")}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

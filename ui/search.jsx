@@ -8,6 +8,7 @@ import { GLOSSARY } from "../data/glossary";
 import { RESTAURANT_MENUS } from "../data/menu";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
 import { onActivate, vibrate } from "../lib/utils";
+import { UI_SVG } from "./icons";
 
 const norm = (s) => (s || "").toLowerCase().replace(/ё/g, "е");
 
@@ -150,7 +151,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
                     </div>
                   )}
                   {d.note && <div style={{ fontSize: 12, color: T.modSub.color, fontStyle: "italic", lineHeight: 1.5, whiteSpace: "normal" }}>{d.note}</div>}
-                  <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 8, whiteSpace: "normal" }}>📌 Сомневаешься в аллергенах — подтверди у шефа. База — подсказка, не замена протоколу.</div>
+                  <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 8, whiteSpace: "normal", display: "flex", gap: 7, alignItems: "flex-start" }}><span style={{ flexShrink: 0, marginTop: 1, display: "inline-flex" }}>{UI_SVG.pin(gold, 12)}</span><span style={{ flex: 1 }}>Сомневаешься в аллергенах — подтверди у шефа. База — подсказка, не замена протоколу.</span></div>
                 </div>
               )}
             </div>

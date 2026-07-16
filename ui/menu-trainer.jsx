@@ -11,7 +11,7 @@ import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
 import { rpc, rpcSync, saToken } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
-import { TimerBar } from "./widgets";
+import { TimerBar, LiquidSegment } from "./widgets";
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
 const HIDE_SAMPLES_KEY = "sa_menu_hide_samples"; // { [restaurant]: true }
@@ -165,6 +165,14 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   return (
     <div style={T.screen} className="sa-screen">
       {Head(restaurant)}
+      {/* Быстрая смена ресторана — «линза» скользит по чипсам */}
+      <div style={{ padding: "10px 14px 0" }}>
+        <LiquidSegment a11y={a11y} equal={false} scroll accent={gold} muted={T.modSub.color}
+          itemStyle={{ fontSize: 12, padding: "7px 12px" }}
+          items={RESTAURANTS.map(r => ({ id: r, label: r }))}
+          activeId={restaurant}
+          onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
+      </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
         В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v17</span>
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}

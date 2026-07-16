@@ -7,6 +7,7 @@
 import React from "react";
 import { GOLD } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
+import { LiquidSegment } from "./widgets";
 import { MODULES } from "../data/modules";
 import { ROLES } from "../data/roles";
 import {
@@ -244,14 +245,15 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       </div>
 
       {/* Разделы книги */}
-      <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "12px 16px 2px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
-        {chips.map(c => (
-          <button key={c.id} onClick={() => setTabSafe(c.id)}
-            style={{ ...MONO, flexShrink: 0, fontSize: 10, letterSpacing: .5, padding: "7px 12px", borderRadius: 20, cursor: "pointer", border: `1px solid ${tab === c.id ? GOLD : (a11y ? "rgba(140,105,40,.35)" : "#3A2E1E")}`, background: tab === c.id ? "rgba(200,169,110,.15)" : "transparent", color: tab === c.id ? GOLD : T.modSub.color }}>
+      <div style={{ padding: "12px 16px 2px" }}>
+        <LiquidSegment a11y={a11y} equal={false} scroll accent={GOLD} muted={T.modSub.color}
+          itemStyle={{ ...MONO, fontSize: 10, letterSpacing: .5, padding: "7px 12px" }}
+          items={chips.map(c => ({ id: c.id, render: () => (<>
             {c.label}
             {unreadByTab[c.id] && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: GOLD, marginLeft: 5, boxShadow: `0 0 5px ${GOLD}`, verticalAlign: "middle" }} />}
-          </button>
-        ))}
+          </>) }))}
+          activeId={tab}
+          onSelect={setTabSafe} />
       </div>
 
       {/* Книга */}

@@ -16,7 +16,7 @@ import { S, A } from "./styles";
 import { ReferenceSection } from "./ReferenceSection";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook";
-import { Confetti, TimerBar, SayAloud } from "./widgets";
+import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
@@ -2302,11 +2302,10 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
       </div>
 
       <div style={{ padding:"0 14px", marginBottom:14 }}>
-        <div style={{ display:"flex", gap:4, padding:4, borderRadius:12, background:a11y?"rgba(140,105,40,0.12)":"rgba(160,120,60,0.14)" }}>
-          {CL_KINDS.map(([k,label]) => (
-            <button key={k} onClick={()=>{ setTab(k); setEdit(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", fontFamily:serif, fontSize:13, fontWeight:"bold", cursor:"pointer", background: tab===k ? "linear-gradient(135deg,#C8A96E,#8B6A30)" : "transparent", color: tab===k ? "#fff" : C.muted }}>{label}</button>
-          ))}
-        </div>
+        <LiquidSegment a11y={a11y} equal
+          items={CL_KINDS.map(([k,label]) => ({ id:k, label }))}
+          activeId={tab}
+          onSelect={(k)=>{ setTab(k); setEdit(false); }} />
       </div>
 
       <div style={{ padding:"0 14px" }}>
@@ -2528,11 +2527,10 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
       <div style={{ padding:"0 16px 10px", color:C.muted, fontSize:12 }}>Охват: {scopeLabel}</div>
 
       <div style={{ padding:"0 14px", marginBottom:14 }}>
-        <div style={{ display:"flex", gap:4, padding:4, borderRadius:12, background:a11y?"rgba(140,105,40,0.12)":"rgba(160,120,60,0.14)" }}>
-          {[["weak","Темы"],["questions","Вопросы"],["digest","Сводка"]].map(([k,l])=>(
-            <button key={k} onClick={()=>setView(k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", fontFamily:serif, fontSize:13, fontWeight:"bold", cursor:"pointer", background:view===k?"linear-gradient(135deg,#C8A96E,#8B6A30)":"transparent", color:view===k?"#fff":C.muted }}>{l}</button>
-          ))}
-        </div>
+        <LiquidSegment a11y={a11y} equal
+          items={[["weak","Темы"],["questions","Вопросы"],["digest","Сводка"]].map(([k,l]) => ({ id:k, label:l }))}
+          activeId={view}
+          onSelect={setView} />
       </div>
 
       <div style={{ padding:"0 14px" }}>
@@ -3562,12 +3560,14 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
 export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {}, onToggleFav = () => {}, onSetNote = () => {} }) {
   const [search, setSearch] = React.useState("");
   const [favOnly, setFavOnly] = React.useState(false);
+  const [cat, setCat] = React.useState("Все"); // фильтр по разделу глоссария
   const [editingNote, setEditingNote] = React.useState(null); // ключ термина, чья заметка сейчас редактируется
+  const cats = React.useMemo(() => ["Все", ...new Set(GLOSSARY.map(g => g.cat).filter(Boolean))], []);
   const isSaved = (term) => { const e = saved[term.toLowerCase()]; return !!(e && (e.fav || e.note)); };
   const filtered = GLOSSARY.filter(g => {
     const matchText = g.term.toLowerCase().includes(search.toLowerCase()) ||
       g.def.toLowerCase().includes(search.toLowerCase());
-    return matchText && (!favOnly || isSaved(g.term));
+    return matchText && (!favOnly || isSaved(g.term)) && (cat === "Все" || g.cat === cat);
   });
   return (
     <div style={T.screen}>
@@ -3583,8 +3583,15 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           style={{ width:"100%", padding:"10px 14px", borderRadius:12, border:`1px solid ${color}44`,
             background: T.modCard?.background || "rgba(255,255,255,0.05)",
             color: T.para?.color || CREAM, fontSize:15, fontFamily:"Georgia, serif",
-            outline:"none", boxSizing:"border-box", marginBottom:14 }}
+            outline:"none", boxSizing:"border-box", marginBottom:12 }}
         />
+        <div style={{ marginBottom:10 }}>
+          <LiquidSegment a11y={a11y} equal={false} scroll accent={color}
+            itemStyle={{ fontSize:12, padding:"7px 12px" }}
+            items={cats.map(c => ({ id:c, label:c }))}
+            activeId={cat}
+            onSelect={setCat} />
+        </div>
         <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
           <button onClick={() => setFavOnly(v => !v)} aria-pressed={favOnly}
             style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:20, cursor:"pointer",

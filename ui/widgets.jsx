@@ -98,3 +98,88 @@ export function SayAloud({ phrase, T, color }) {
     </div>
   );
 }
+
+// ── «Жидкое стекло»: сегмент-переключатель с плавающей линзой ────────
+// Стеклянная «линза» пружинисто скользит к активному пункту, слегка
+// растягиваясь в полёте (стиль liquid glass, как в нижней навигации).
+// equal=true — пункты одинаковой ширины (flex:1);
+// equal=false — чипсы своей ширины, можно с горизонтальным скроллом (scroll).
+export function LiquidSegment({
+  items, activeId, onSelect, a11y = false,
+  equal = true, scroll = false,
+  accent, muted,
+  trackStyle = {}, itemStyle = {},
+}) {
+  const itemRefs = React.useRef({});
+  const [rect, setRect] = React.useState(null);
+  const acc = accent || (a11y ? "#6B4E1A" : GOLD);
+  const dim = muted || (a11y ? "#5C3D10" : "#9A8060");
+
+  const measure = React.useCallback(() => {
+    const el = itemRefs.current[activeId];
+    if (!el) { setRect(null); return; }
+    setRect({ left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
+  }, [activeId]);
+
+  React.useLayoutEffect(() => { measure(); }, [measure, items.length]);
+  React.useEffect(() => {
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [measure]);
+
+  return (
+    <div className={scroll ? "sa-hscroll" : undefined} style={{
+      position:"relative", display:"flex", gap:4, padding:4, borderRadius:16,
+      background: a11y ? "rgba(140,105,40,0.12)" : "rgba(160,120,60,0.14)",
+      overflowX: scroll ? "auto" : "visible",
+      WebkitOverflowScrolling:"touch", scrollbarWidth:"none",
+      ...trackStyle,
+    }}>
+      <style>{`@keyframes saLensStretch{0%{transform:scaleX(1) scaleY(1)}35%{transform:scaleX(1.22) scaleY(0.86)}68%{transform:scaleX(0.96) scaleY(1.03)}100%{transform:scaleX(1) scaleY(1)}}`}</style>
+      {rect && (
+        <div aria-hidden style={{
+          position:"absolute", zIndex:0, pointerEvents:"none",
+          left:rect.left, top:rect.top, width:rect.width, height:rect.height,
+          transition:"left 0.5s cubic-bezier(0.3,1.3,0.45,1), width 0.5s cubic-bezier(0.3,1.3,0.45,1), top 0.35s ease, height 0.35s ease",
+        }}>
+          <div key={activeId} style={{
+            position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
+            animation:"saLensStretch 0.5s cubic-bezier(0.33,1,0.68,1)",
+            background: a11y
+              ? "linear-gradient(180deg, rgba(107,78,26,0.14), rgba(107,78,26,0.07))"
+              : "rgba(250,240,215,0.12)",
+            backdropFilter:"blur(6px) saturate(150%)",
+            WebkitBackdropFilter:"blur(6px) saturate(150%)",
+            boxShadow: a11y
+              ? "inset 0 1px 1px rgba(255,255,255,0.55), 0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(107,78,26,0.20)"
+              : "inset 0 0 0 1px rgba(255,255,255,0.16), 0 2px 8px rgba(0,0,0,0.22)",
+          }}>
+            {/* тонкая световая кромка сверху — плоское стекло */}
+            <div style={{ position:"absolute", top:1, left:"12%", right:"12%", height:1.5, borderRadius:999,
+              background:`linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,${a11y ? 0.5 : 0.25}), rgba(255,255,255,0))` }} />
+          </div>
+        </div>
+      )}
+      {items.map(it => {
+        const active = it.id === activeId;
+        return (
+          <button key={it.id} ref={el => { itemRefs.current[it.id] = el; }}
+            onClick={() => { if (!active) onSelect(it.id); }}
+            style={{
+              position:"relative", zIndex:1, border:"none", background:"transparent", cursor:"pointer",
+              flex: equal ? 1 : "0 0 auto", whiteSpace: equal ? undefined : "nowrap",
+              padding:"8px 12px", borderRadius:999,
+              fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold",
+              color: active ? acc : dim,
+              opacity: active ? 1 : 0.75,
+              transform: active ? "scale(1.05)" : "scale(1)",
+              transition:"color 0.3s ease, opacity 0.3s ease, transform 0.45s cubic-bezier(0.34,1.56,0.64,1)",
+              ...itemStyle,
+            }}>
+            {it.render ? it.render(active) : it.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

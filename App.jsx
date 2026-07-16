@@ -832,82 +832,155 @@ function ServiceAcademy() {
 }
 
 // ── НИЖНЯЯ НАВИГАЦИЯ: «ЖИДКОЕ СТЕКЛО» ───────────────────────────────
-// Одна стеклянная «линза» скользит к активной вкладке с пружиной,
-// слегка растягиваясь в полёте, — стиль liquid glass (iOS).
+// Плавающий пилл + стеклянная «линза», которая по-настоящему увеличивает
+// содержимое под собой: внутри линзы отрисована увеличенная копия бара.
+// Линзу можно тянуть пальцем вдоль бара — она следует за пальцем и с
+// пружиной прилипает к ближайшей вкладке (стиль liquid glass, iOS).
 function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   const n = tabs.length;
-  const idx = tabs.findIndex(t => t.id === activeId);
-  const lastIdxRef = useRef(idx >= 0 ? idx : 0);
-  if (idx >= 0) lastIdxRef.current = idx;
-  const shownIdx = idx >= 0 ? idx : lastIdxRef.current;
-  const accentColor = a11y ? "#6B4E1A" : GOLD;
-  const inactiveColor = a11y ? "#5C3D10" : "#9A8060";
+  const activeIdx = tabs.findIndex(t => t.id === activeId);
+  const lastIdxRef = useRef(activeIdx >= 0 ? activeIdx : 0);
+  if (activeIdx >= 0) lastIdxRef.current = activeIdx;
+  const restIdx = activeIdx >= 0 ? activeIdx : lastIdxRef.current;
+
+  const barRef = useRef(null);
+  const [barW, setBarW] = useState(0);
+  useEffect(() => {
+    const m = () => { if (barRef.current) setBarW(barRef.current.clientWidth); };
+    m();
+    window.addEventListener("resize", m);
+    return () => window.removeEventListener("resize", m);
+  }, []);
+
+  const [dragX, setDragX] = useState(null); // x центра линзы, пока её тянут пальцем
+  const drag = useRef(null);
+
+  const BAR_H = 58, MAG = 1.22, OVER = 7; // OVER — насколько линза выпирает за пилл
+  const cellW = barW > 0 ? barW / n : 0;
+  const lensW = cellW ? Math.min(cellW + 16, barW) : 0;
+  const rawC = dragX !== null ? dragX : (restIdx + 0.5) * cellW;
+  const cx = cellW ? Math.max(lensW / 2 - 2, Math.min(barW - lensW / 2 + 2, rawC)) : 0;
+  const litIdx = dragX !== null
+    ? Math.max(0, Math.min(n - 1, Math.floor(dragX / cellW)))
+    : activeIdx; // -1 — ничего не подсвечено (экран вне вкладок)
+  const lensVisible = cellW > 0 && (dragX !== null || activeIdx >= 0);
+
+  const accent = a11y ? "#6B4E1A" : GOLD;
+  const dim = a11y ? "#5C3D10" : "#9A8060";
+  const spring = "cubic-bezier(0.3,1.3,0.45,1)";
+
+  const evX = (e) => {
+    const r = barRef.current ? barRef.current.getBoundingClientRect() : { left: 0 };
+    return (e.clientX != null ? e.clientX : 0) - r.left;
+  };
+  const onDown = (e) => {
+    if (!cellW) return;
+    drag.current = { x0: evX(e), moved: false, last: null };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+  };
+  const onMove = (e) => {
+    if (!drag.current) return;
+    const x = evX(e);
+    if (!drag.current.moved && Math.abs(x - drag.current.x0) < 6) return;
+    drag.current.moved = true;
+    setDragX(x);
+    const hi = Math.max(0, Math.min(n - 1, Math.floor(x / cellW)));
+    if (drag.current.last !== null && drag.current.last !== hi) vibrate("light");
+    drag.current.last = hi;
+  };
+  const onUp = (e) => {
+    if (!drag.current) return;
+    const x = evX(e);
+    drag.current = null;
+    setDragX(null);
+    const i = Math.max(0, Math.min(n - 1, Math.floor(x / cellW)));
+    if (tabs[i]) onTab(tabs[i].id);
+  };
+  const onCancel = () => { drag.current = null; setDragX(null); };
+
+  // Ячейки бара; copy=true — версия внутри линзы (без интерактива)
+  const cells = (copy) => tabs.map((tab, i) => {
+    const lit = i === litIdx;
+    return (
+      <div key={tab.id}
+        aria-hidden={copy || undefined}
+        role={copy ? undefined : "button"} tabIndex={copy ? undefined : 0}
+        aria-label={copy ? undefined : tab.label}
+        onKeyDown={copy ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTab(tab.id); } }}
+        style={{ flex:1, minWidth:0, height:"100%", display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center", gap:2, outline:"none",
+          cursor: copy ? undefined : "pointer" }}>
+        <div style={{ height:24, display:"flex", alignItems:"center", justifyContent:"center",
+          opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
+          {NAV_ICONS[tab.icon](lit ? accent : dim)}
+        </div>
+        <div style={{ fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
+          whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
+          color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
+          transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
+      </div>
+    );
+  });
+
   return (
-    <div style={{
-      position:"fixed", bottom:0, left:0, right:0, zIndex:200,
-      background: a11y ? "rgba(242,234,216,0.9)" : "linear-gradient(160deg, rgba(58,42,16,0.84) 0%, rgba(42,30,10,0.86) 100%)",
-      borderTop: a11y ? "1px solid rgba(160,120,60,0.3)" : "1px solid rgba(210,170,70,0.45)",
-      paddingBottom:"max(env(safe-area-inset-bottom, 0px), 14px)",
-      backdropFilter:"blur(20px) saturate(160%)",
-      WebkitBackdropFilter:"blur(20px) saturate(160%)",
-      boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -4px 24px rgba(0,0,0,0.55), 0 -1px 0 rgba(210,170,70,0.20)",
-    }}>
-      <style>{`@keyframes saLensStretch{0%{transform:scaleX(1) scaleY(1)}35%{transform:scaleX(1.22) scaleY(0.86)}68%{transform:scaleX(0.96) scaleY(1.03)}100%{transform:scaleX(1) scaleY(1)}}`}</style>
-      <div style={{ position:"relative", display:"flex", alignItems:"stretch" }}>
-        {/* Стеклянная «линза» над активной вкладкой */}
+    <div style={{ position:"fixed", left:10, right:10, zIndex:200,
+      bottom:"calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)" }}>
+      {/* Разрешаем горизонтальный жест на баре: обходим глобальные touch-action и JS-блокировку свайпов */}
+      <style>{`.sa-lensbar.sa-hscroll, .sa-lensbar.sa-hscroll * { touch-action: none !important; }`}</style>
+      {/* Плавающий пилл */}
+      <div ref={barRef} className="sa-lensbar sa-hscroll"
+        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
+        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch",
+          background: a11y ? "rgba(242,234,216,0.92)" : "linear-gradient(160deg, rgba(52,38,15,0.88) 0%, rgba(38,27,10,0.90) 100%)",
+          border: a11y ? "1px solid rgba(160,120,60,0.35)" : "1px solid rgba(210,170,70,0.35)",
+          boxShadow: a11y ? "0 6px 20px rgba(0,0,0,0.18)" : "0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,235,190,0.10)",
+          backdropFilter:"blur(20px) saturate(160%)",
+          WebkitBackdropFilter:"blur(20px) saturate(160%)",
+          userSelect:"none", WebkitUserSelect:"none" }}>
+        {cells(false)}
+      </div>
+      {/* Стеклянная линза — сестра пилла, а не его ребёнок: блюр не вкладывается в блюр */}
+      {lensVisible && (
         <div aria-hidden style={{
-          position:"absolute", top:4, bottom:3, zIndex:0, pointerEvents:"none",
-          left:`calc(${shownIdx} * (100% / ${n}) + 6px)`,
-          width:`calc(100% / ${n} - 12px)`,
-          transition:"left 0.5s cubic-bezier(0.3,1.3,0.45,1), opacity 0.35s ease",
-          opacity: idx >= 0 ? 1 : 0,
+          position:"absolute", top:-OVER, height:BAR_H + OVER*2, zIndex:2, pointerEvents:"none",
+          left: cx - lensW/2, width: lensW,
+          transition: dragX !== null ? "none" : `left 0.5s ${spring}`,
         }}>
-          <div key={shownIdx} style={{
+          <div style={{
             position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
-            animation:"saLensStretch 0.5s cubic-bezier(0.33,1,0.68,1)",
-            background: a11y
-              ? "linear-gradient(180deg, rgba(107,78,26,0.14), rgba(107,78,26,0.07))"
-              : "linear-gradient(180deg, rgba(255,244,214,0.13), rgba(255,236,200,0.05))",
-            backdropFilter:"blur(6px) saturate(170%) brightness(1.1)",
-            WebkitBackdropFilter:"blur(6px) saturate(170%) brightness(1.1)",
+            transform: dragX !== null ? "scale(1.05)" : "scale(1)",
+            transition:"transform 0.25s ease",
+            background: a11y ? "rgba(248,241,224,0.55)" : "rgba(250,240,215,0.13)",
+            backdropFilter:"blur(3px) saturate(150%)",
+            WebkitBackdropFilter:"blur(3px) saturate(150%)",
             boxShadow: a11y
-              ? "inset 0 1px 1px rgba(255,255,255,0.55), 0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(107,78,26,0.20)"
-              : "inset 0 1px 1px rgba(255,255,255,0.26), inset 0 -1px 2px rgba(255,255,255,0.05), 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.10)",
+              ? "inset 0 1px 2px rgba(255,255,255,0.8), inset 0 0 0 1px rgba(107,78,26,0.25), 0 8px 22px rgba(0,0,0,0.22)"
+              : "inset 0 0 0 1px rgba(255,255,255,0.20), inset 0 1px 0 rgba(255,255,255,0.16), 0 4px 14px rgba(0,0,0,0.30)",
           }}>
-            {/* блик по верхней кромке линзы */}
+            {/* Увеличенная копия бара — настоящая «лупа» */}
             <div style={{
-              position:"absolute", top:2, left:"14%", right:"14%", height:"36%", borderRadius:999,
-              background:"linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0))",
-              filter:"blur(1px)",
+              position:"absolute", left:0, top:OVER, width:barW, height:BAR_H,
+              transformOrigin:"0% 50%",
+              transform:`translateX(${lensW/2 - MAG*cx}px) scale(${MAG})`,
+              transition: dragX !== null ? "none" : `transform 0.5s ${spring}`,
+              display:"flex", alignItems:"stretch",
+            }}>
+              {cells(true)}
+            </div>
+            {/* Хроматическая (радужная) кромка */}
+            <div style={{
+              position:"absolute", inset:0, borderRadius:999, padding:1.5, opacity: a11y ? 0.55 : 0.4,
+              background:"conic-gradient(from 210deg, rgba(255,90,90,0.6), rgba(255,205,70,0.55), rgba(120,235,160,0.5), rgba(95,175,255,0.6), rgba(200,125,255,0.55), rgba(255,90,90,0.6))",
+              WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+              WebkitMaskComposite:"xor", maskComposite:"exclude",
+              filter:"blur(0.6px)",
             }} />
+            {/* Тонкая световая кромка сверху — плоское стекло, без «выпуклости» */}
+            <div style={{ position:"absolute", top:1, left:"12%", right:"12%", height:1.5, borderRadius:999,
+              background:`linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,${a11y ? 0.55 : 0.28}), rgba(255,255,255,0))` }} />
           </div>
         </div>
-        {tabs.map(tab => {
-          const active = activeId === tab.id;
-          const go = () => onTab(tab.id);
-          return (
-            <div key={tab.id} onClick={go} {...onActivate(go)} aria-label={tab.label}
-              style={{ flex:1, zIndex:1, display:"flex", flexDirection:"column", alignItems:"center",
-                justifyContent:"center", padding:"6px 4px 6px", cursor:"pointer" }}>
-              <div style={{
-                width:46, height:28, marginBottom:3,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                transform: active ? "scale(1.12) translateY(-1px)" : "scale(1)",
-                transition:"transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease",
-                opacity: active ? 1 : 0.6,
-              }}>
-                {NAV_ICONS[tab.icon](active ? accentColor : inactiveColor)}
-              </div>
-              <div style={{
-                fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3,
-                color: active ? accentColor : inactiveColor, fontWeight:"bold",
-                opacity: active ? 1 : 0.72,
-                transition:"color 0.3s ease, opacity 0.3s ease",
-              }}>{tab.label}</div>
-            </div>
-          );
-        })}
-      </div>
+      )}
     </div>
   );
 }

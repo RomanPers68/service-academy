@@ -812,60 +812,101 @@ function ServiceAcademy() {
 
         {/* Нижняя навигация — только на основных экранах */}
         {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && (
-          <div style={{
-            position:"fixed", bottom:0, left:0, right:0, zIndex:200,
-            background: a11y ? "rgba(242,234,216,0.9)" : "linear-gradient(160deg, rgba(58,42,16,0.84) 0%, rgba(42,30,10,0.86) 100%)",
-            borderTop: a11y ? "1px solid rgba(160,120,60,0.3)" : "1px solid rgba(210,170,70,0.45)",
-            display:"flex", alignItems:"stretch",
-            paddingBottom:"max(env(safe-area-inset-bottom, 0px), 14px)",
-            backdropFilter:"blur(20px) saturate(160%)",
-            WebkitBackdropFilter:"blur(20px) saturate(160%)",
-            boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -4px 24px rgba(0,0,0,0.55), 0 -1px 0 rgba(210,170,70,0.20)",
-          }}>
-            {[
+          <LiquidTabBar
+            a11y={a11y}
+            activeId={screen}
+            onTab={(id) => { if (screen !== id) vibrate("light"); navigate(id); }}
+            tabs={[
               { id:"roleSelect", icon:"home",        label:"Главная" },
               { id:"daily",      icon:"daily",       label:"Задания" },
               { id:"glossary",   icon:"glossary",    label:"Глоссарий" },
               { id:"leaderboard",icon:"leaderboard", label:"Рейтинг" },
               ...(profile?.is_admin ? [{ id:"team", icon:"team", label:"Команда" }] : []),
               { id:"stats",      icon:"stats",       label:"Профиль" },
-            ].map(tab => {
-              const active = screen === tab.id;
-              const accentColor = a11y ? "#6B4E1A" : GOLD;
-              const inactiveColor = a11y ? "#5C3D10" : "#9A8060";
-              const goTab = () => { if (!active) vibrate("light"); navigate(tab.id); };
-              return (
-                <div key={tab.id} onClick={goTab} {...onActivate(goTab)} aria-label={tab.label}
-                  style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
-                    justifyContent:"center", padding:"6px 4px 6px", cursor:"pointer" }}>
-                  {/* Золотая «таблетка» за активной иконкой */}
-                  <div style={{
-                    width:46, height:28, borderRadius:14, marginBottom:3,
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    background: active ? (a11y ? "rgba(107,78,26,0.14)" : "rgba(200,169,110,0.16)") : "transparent",
-                    boxShadow: active && !a11y ? "0 0 0 1px rgba(200,169,110,0.22) inset" : "none",
-                    transform: active ? "scale(1.08) translateY(-1px)" : "scale(1)",
-                    transition:"background 0.3s ease, box-shadow 0.3s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1)",
-                    opacity: active ? 1 : 0.6,
-                  }}>
-                    {NAV_ICONS[tab.icon](active ? accentColor : inactiveColor)}
-                  </div>
-                  <div style={{
-                    fontSize:9.5,
-                    fontFamily:"Georgia, serif",
-                    letterSpacing:0.3,
-                    color: active ? accentColor : inactiveColor,
-                    fontWeight:"bold",
-                    opacity: active ? 1 : 0.72,
-                    transition:"color 0.3s ease, opacity 0.3s ease",
-                  }}>
-                    {tab.label}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            ]}
+          />
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── НИЖНЯЯ НАВИГАЦИЯ: «ЖИДКОЕ СТЕКЛО» ───────────────────────────────
+// Одна стеклянная «линза» скользит к активной вкладке с пружиной,
+// слегка растягиваясь в полёте, — стиль liquid glass (iOS).
+function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
+  const n = tabs.length;
+  const idx = tabs.findIndex(t => t.id === activeId);
+  const lastIdxRef = useRef(idx >= 0 ? idx : 0);
+  if (idx >= 0) lastIdxRef.current = idx;
+  const shownIdx = idx >= 0 ? idx : lastIdxRef.current;
+  const accentColor = a11y ? "#6B4E1A" : GOLD;
+  const inactiveColor = a11y ? "#5C3D10" : "#9A8060";
+  return (
+    <div style={{
+      position:"fixed", bottom:0, left:0, right:0, zIndex:200,
+      background: a11y ? "rgba(242,234,216,0.9)" : "linear-gradient(160deg, rgba(58,42,16,0.84) 0%, rgba(42,30,10,0.86) 100%)",
+      borderTop: a11y ? "1px solid rgba(160,120,60,0.3)" : "1px solid rgba(210,170,70,0.45)",
+      paddingBottom:"max(env(safe-area-inset-bottom, 0px), 14px)",
+      backdropFilter:"blur(20px) saturate(160%)",
+      WebkitBackdropFilter:"blur(20px) saturate(160%)",
+      boxShadow: a11y ? "0 -2px 16px rgba(0,0,0,0.12)" : "0 -4px 24px rgba(0,0,0,0.55), 0 -1px 0 rgba(210,170,70,0.20)",
+    }}>
+      <style>{`@keyframes saLensStretch{0%{transform:scaleX(1) scaleY(1)}35%{transform:scaleX(1.22) scaleY(0.86)}68%{transform:scaleX(0.96) scaleY(1.03)}100%{transform:scaleX(1) scaleY(1)}}`}</style>
+      <div style={{ position:"relative", display:"flex", alignItems:"stretch" }}>
+        {/* Стеклянная «линза» над активной вкладкой */}
+        <div aria-hidden style={{
+          position:"absolute", top:4, bottom:3, zIndex:0, pointerEvents:"none",
+          left:`calc(${shownIdx} * (100% / ${n}) + 6px)`,
+          width:`calc(100% / ${n} - 12px)`,
+          transition:"left 0.5s cubic-bezier(0.3,1.3,0.45,1), opacity 0.35s ease",
+          opacity: idx >= 0 ? 1 : 0,
+        }}>
+          <div key={shownIdx} style={{
+            position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
+            animation:"saLensStretch 0.5s cubic-bezier(0.33,1,0.68,1)",
+            background: a11y
+              ? "linear-gradient(180deg, rgba(107,78,26,0.14), rgba(107,78,26,0.07))"
+              : "linear-gradient(180deg, rgba(255,244,214,0.13), rgba(255,236,200,0.05))",
+            backdropFilter:"blur(6px) saturate(170%) brightness(1.1)",
+            WebkitBackdropFilter:"blur(6px) saturate(170%) brightness(1.1)",
+            boxShadow: a11y
+              ? "inset 0 1px 1px rgba(255,255,255,0.55), 0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(107,78,26,0.20)"
+              : "inset 0 1px 1px rgba(255,255,255,0.26), inset 0 -1px 2px rgba(255,255,255,0.05), 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.10)",
+          }}>
+            {/* блик по верхней кромке линзы */}
+            <div style={{
+              position:"absolute", top:2, left:"14%", right:"14%", height:"36%", borderRadius:999,
+              background:"linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0))",
+              filter:"blur(1px)",
+            }} />
+          </div>
+        </div>
+        {tabs.map(tab => {
+          const active = activeId === tab.id;
+          const go = () => onTab(tab.id);
+          return (
+            <div key={tab.id} onClick={go} {...onActivate(go)} aria-label={tab.label}
+              style={{ flex:1, zIndex:1, display:"flex", flexDirection:"column", alignItems:"center",
+                justifyContent:"center", padding:"6px 4px 6px", cursor:"pointer" }}>
+              <div style={{
+                width:46, height:28, marginBottom:3,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                transform: active ? "scale(1.12) translateY(-1px)" : "scale(1)",
+                transition:"transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease",
+                opacity: active ? 1 : 0.6,
+              }}>
+                {NAV_ICONS[tab.icon](active ? accentColor : inactiveColor)}
+              </div>
+              <div style={{
+                fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3,
+                color: active ? accentColor : inactiveColor, fontWeight:"bold",
+                opacity: active ? 1 : 0.72,
+                transition:"color 0.3s ease, opacity 0.3s ease",
+              }}>{tab.label}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

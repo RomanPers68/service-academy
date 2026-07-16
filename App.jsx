@@ -832,10 +832,10 @@ function ServiceAcademy() {
 }
 
 // ── НИЖНЯЯ НАВИГАЦИЯ: «ЖИДКОЕ СТЕКЛО» ───────────────────────────────
-// Плавающий пилл + стеклянная «линза», которая по-настоящему увеличивает
-// содержимое под собой: внутри линзы отрисована увеличенная копия бара.
-// Линзу можно тянуть пальцем вдоль бара — она следует за пальцем и с
-// пружиной прилипает к ближайшей вкладке (стиль liquid glass, iOS).
+// Плавающий пилл + прозрачная стеклянная «линза» в размер бара.
+// Линзу можно тянуть пальцем — она следует за пальцем и с пружиной
+// прилипает к ближайшей вкладке. При нажатии вкладка под линзой плавно
+// увеличивается (без слоя-копии — ничего не двоится).
 function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   const n = tabs.length;
   const activeIdx = tabs.findIndex(t => t.id === activeId);
@@ -853,13 +853,14 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   }, []);
 
   const [dragX, setDragX] = useState(null); // x центра линзы, пока её тянут пальцем
+  const [pressed, setPressed] = useState(false); // палец на баре
   const drag = useRef(null);
 
-  const BAR_H = 58, MAG = 1.22, OVER = 7; // OVER — насколько линза выпирает за пилл
+  const BAR_H = 58;
   const cellW = barW > 0 ? barW / n : 0;
-  const lensW = cellW ? Math.min(cellW + 16, barW) : 0;
+  const lensW = cellW ? Math.max(44, cellW - 6) : 0; // компактнее ячейки
   const rawC = dragX !== null ? dragX : (restIdx + 0.5) * cellW;
-  const cx = cellW ? Math.max(lensW / 2 - 2, Math.min(barW - lensW / 2 + 2, rawC)) : 0;
+  const cx = cellW ? Math.max(lensW / 2 + 4, Math.min(barW - lensW / 2 - 4, rawC)) : 0;
   const litIdx = dragX !== null
     ? Math.max(0, Math.min(n - 1, Math.floor(dragX / cellW)))
     : activeIdx; // -1 — ничего не подсвечено (экран вне вкладок)
@@ -875,6 +876,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   };
   const onDown = (e) => {
     if (!cellW) return;
+    setPressed(true);
     drag.current = { x0: evX(e), moved: false, last: null };
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
   };
@@ -893,34 +895,11 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
     const x = evX(e);
     drag.current = null;
     setDragX(null);
+    setPressed(false);
     const i = Math.max(0, Math.min(n - 1, Math.floor(x / cellW)));
     if (tabs[i]) onTab(tabs[i].id);
   };
-  const onCancel = () => { drag.current = null; setDragX(null); };
-
-  // Ячейки бара; copy=true — версия внутри линзы (без интерактива)
-  const cells = (copy) => tabs.map((tab, i) => {
-    const lit = i === litIdx;
-    return (
-      <div key={tab.id}
-        aria-hidden={copy || undefined}
-        role={copy ? undefined : "button"} tabIndex={copy ? undefined : 0}
-        aria-label={copy ? undefined : tab.label}
-        onKeyDown={copy ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTab(tab.id); } }}
-        style={{ flex:1, minWidth:0, height:"100%", display:"flex", flexDirection:"column",
-          alignItems:"center", justifyContent:"center", gap:2, outline:"none",
-          cursor: copy ? undefined : "pointer" }}>
-        <div style={{ height:24, display:"flex", alignItems:"center", justifyContent:"center",
-          opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
-          {NAV_ICONS[tab.icon](lit ? accent : dim)}
-        </div>
-        <div style={{ fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
-          whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
-          color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
-          transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
-      </div>
-    );
-  });
+  const onCancel = () => { drag.current = null; setDragX(null); setPressed(false); };
 
   return (
     <div style={{ position:"fixed", left:10, right:10, zIndex:200,
@@ -937,50 +916,62 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
           backdropFilter:"blur(20px) saturate(160%)",
           WebkitBackdropFilter:"blur(20px) saturate(160%)",
           userSelect:"none", WebkitUserSelect:"none" }}>
-        {cells(false)}
-      </div>
-      {/* Стеклянная линза — сестра пилла, а не его ребёнок: блюр не вкладывается в блюр */}
-      {lensVisible && (
-        <div aria-hidden style={{
-          position:"absolute", top:-OVER, height:BAR_H + OVER*2, zIndex:2, pointerEvents:"none",
-          left: cx - lensW/2, width: lensW,
-          transition: dragX !== null ? "none" : `left 0.5s ${spring}`,
-        }}>
-          <div style={{
-            position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
-            transform: dragX !== null ? "scale(1.05)" : "scale(1)",
-            transition:"transform 0.25s ease",
-            background: a11y ? "rgba(248,241,224,0.55)" : "rgba(250,240,215,0.13)",
-            backdropFilter:"blur(3px) saturate(150%)",
-            WebkitBackdropFilter:"blur(3px) saturate(150%)",
-            boxShadow: a11y
-              ? "inset 0 1px 2px rgba(255,255,255,0.8), inset 0 0 0 1px rgba(107,78,26,0.25), 0 8px 22px rgba(0,0,0,0.22)"
-              : "inset 0 0 0 1px rgba(255,255,255,0.20), inset 0 1px 0 rgba(255,255,255,0.16), 0 4px 14px rgba(0,0,0,0.30)",
-          }}>
-            {/* Увеличенная копия бара — настоящая «лупа» */}
-            <div style={{
-              position:"absolute", left:0, top:OVER, width:barW, height:BAR_H,
-              transformOrigin:"0% 50%",
-              transform:`translateX(${lensW/2 - MAG*cx}px) scale(${MAG})`,
-              transition: dragX !== null ? "none" : `transform 0.5s ${spring}`,
-              display:"flex", alignItems:"stretch",
-            }}>
-              {cells(true)}
+        {tabs.map((tab, i) => {
+          const lit = i === litIdx;
+          return (
+            <div key={tab.id} role="button" tabIndex={0} aria-label={tab.label}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTab(tab.id); } }}
+              style={{ flex:1, minWidth:0, height:"100%", display:"flex", alignItems:"center",
+                justifyContent:"center", cursor:"pointer", outline:"none" }}>
+              {/* при нажатии вкладка под линзой плавно растёт */}
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, maxWidth:"100%",
+                transform: (pressed && lit) ? "scale(1.16)" : "scale(1)",
+                transition:`transform 0.3s ${spring}` }}>
+                <div style={{ height:24, display:"flex", alignItems:"center", justifyContent:"center",
+                  opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
+                  {NAV_ICONS[tab.icon](lit ? accent : dim)}
+                </div>
+                <div style={{ fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
+                  whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
+                  color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
+                  transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
+              </div>
             </div>
-            {/* Хроматическая (радужная) кромка */}
+          );
+        })}
+        {/* Прозрачная линза в размер бара — те же стили, что в сегментах */}
+        {lensVisible && (
+          <div aria-hidden style={{
+            position:"absolute", top:5, left: cx - lensW/2, width: lensW, height:BAR_H - 10,
+            zIndex:2, pointerEvents:"none",
+            transition: dragX !== null ? "none" : `left 0.5s ${spring}`,
+          }}>
             <div style={{
-              position:"absolute", inset:0, borderRadius:999, padding:1.5, opacity: a11y ? 0.55 : 0.4,
-              background:"conic-gradient(from 210deg, rgba(255,90,90,0.6), rgba(255,205,70,0.55), rgba(120,235,160,0.5), rgba(95,175,255,0.6), rgba(200,125,255,0.55), rgba(255,90,90,0.6))",
-              WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-              WebkitMaskComposite:"xor", maskComposite:"exclude",
-              filter:"blur(0.6px)",
-            }} />
-            {/* Тонкая световая кромка сверху — плоское стекло, без «выпуклости» */}
-            <div style={{ position:"absolute", top:1, left:"12%", right:"12%", height:1.5, borderRadius:999,
-              background:`linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,${a11y ? 0.55 : 0.28}), rgba(255,255,255,0))` }} />
+              position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
+              transform: pressed ? "scale(1.04)" : "scale(1)",
+              transition:"transform 0.25s ease",
+              background: a11y
+                ? "linear-gradient(180deg, rgba(107,78,26,0.10), rgba(107,78,26,0.05))"
+                : "rgba(250,240,215,0.04)",
+              boxShadow: a11y
+                ? "inset 0 1px 1px rgba(255,255,255,0.40), 0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(107,78,26,0.15)"
+                : "inset 0 0 0 1px rgba(255,255,255,0.13), inset 0 1px 0 rgba(255,255,255,0.10), 0 3px 10px rgba(0,0,0,0.22)",
+            }}>
+              {/* хроматическая (радужная) кромка */}
+              <div style={{
+                position:"absolute", inset:0, borderRadius:999, padding:1.5, opacity: a11y ? 0.4 : 0.3,
+                background:"conic-gradient(from 210deg, rgba(255,90,90,0.6), rgba(255,205,70,0.55), rgba(120,235,160,0.5), rgba(95,175,255,0.6), rgba(200,125,255,0.55), rgba(255,90,90,0.6))",
+                WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+                WebkitMaskComposite:"xor", maskComposite:"exclude",
+                filter:"blur(0.6px)",
+              }} />
+              {/* тонкая световая кромка сверху */}
+              <div style={{ position:"absolute", top:1, left:"12%", right:"12%", height:1.5, borderRadius:999,
+                background:`linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,${a11y ? 0.4 : 0.18}), rgba(255,255,255,0))` }} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

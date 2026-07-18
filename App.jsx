@@ -4,6 +4,7 @@ import React from "react";
 // ── Вынесенные модули ──────────────────────────────────────────────
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
 import { MODULES } from "./data/modules";
+import { CandidateScreen } from "./ui/candidate";
 import { ROLES, RESTAURANTS } from "./data/roles";
 import { GLOSSARY } from "./data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "./data/dialogues";
@@ -747,7 +748,8 @@ function ServiceAcademy() {
           } catch(e) {}
           navigate("guestbook");
         }} pro={true} />}
-        {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} />}
+        {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} />}
+        {screen === "candidate" && profile?.is_admin && <CandidateScreen T={T} a11y={a11y} customLessons={customLessons} onBack={() => navigate("team")} />}
         {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} /></div>}

@@ -1111,7 +1111,7 @@ export const APP_SHARE_URL = "https://t.me/SA_RestaurantBot";
 
 export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав" };
 
-export function TeamScreen({ T, profile, a11y }) {
+export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const [view, setView] = React.useState("list");        // list | add | card | code
   const [list, setList] = React.useState(null);           // null = загрузка
   const [loadError, setLoadError] = React.useState(false);
@@ -1574,6 +1574,18 @@ export function TeamScreen({ T, profile, a11y }) {
             + Добавить
           </button>
         </div>
+
+        {onCandidate && (
+          <button className="sa-btn" onClick={() => { vibrate("light"); onCandidate(); }}
+            style={{ width:"100%", marginBottom:14, padding:"13px 16px", borderRadius:14, cursor:"pointer",
+              border:"1px solid rgba(200,160,80,0.35)", background:"rgba(200,169,110,0.08)",
+              fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", textAlign:"left", color:GOLD,
+              display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ display:"flex", flexShrink:0 }}>{UI_SVG.dialog(GOLD, 17)}</span>
+            <span style={{ flex:1 }}>Собеседование кандидата</span>
+            <span style={{ color:"#9A8C74", fontWeight:"normal", fontSize:11.5 }}>тест до разговора</span>
+          </button>
+        )}
 
         {summary && (
           <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>

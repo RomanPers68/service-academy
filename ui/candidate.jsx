@@ -144,7 +144,7 @@ function QTimer({ seconds, onExpire }) {
     return () => clearTimeout(t);
   }, [left, onExpire]);
   const pct = Math.max(0, (left / seconds) * 100);
-  const color = pct > 50 ? GREEN : pct > 22 ? GOLD_SOFT : RED;
+  const color = pct > 60 ? GREEN : pct > 30 ? GOLD_SOFT : RED;
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
@@ -216,6 +216,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
     border: a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E",
     background: a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.18)",
   };
+  // Подпись секции — фирменный monospace-капс приложения
+  const secLabel = { ...T.secTitle, padding: 0, margin: "0 2px 10px" };
+  const optNote = { textTransform: "none", letterSpacing: 0, fontFamily: "Georgia, serif" };
 
   const level = exp ? exp.level : "pro";
   const score = answers.reduce((s, a) => s + a.pts, 0);
@@ -371,9 +374,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
 
             {results.length > 0 && (
               <>
-                <div style={{ color: "#9A8C74", fontSize: 10.5, letterSpacing: 2, fontFamily: "monospace", margin: "22px 2px 10px" }}>
-                  ИСТОРИЯ · {results.length}
-                </div>
+                <div style={{ ...secLabel, margin: "22px 2px 10px" }}>История · {results.length}</div>
                 {results.map(r => {
                   const v = verdictOf(r.pct, r.level || "pro");
                   const open = openedResult === r.id;
@@ -417,41 +418,40 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
         {/* ── ИМЯ И РОЛЬ ── */}
         {phase === "setup" && (
           <>
-            <div style={{ ...T.modSub, color: sub, lineHeight: 1.5, marginBottom: 14 }}>Кого собеседуем?</div>
+            <div style={secLabel}>Кого собеседуем</div>
             <input
               style={{ ...inputStyle, marginBottom: 16 }}
               placeholder="Имя кандидата" value={name} maxLength={40}
               onChange={e => setName(e.target.value)} />
             {TEST_ROLES.map(rl => (
               <div key={rl.id} className="sa-btn" onClick={() => { vibrate("light"); setRole(rl); }} {...onActivate(() => setRole(rl))}
-                style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12,
-                  borderColor: role.id === rl.id ? gold : "rgba(200,160,80,0.25)",
-                  boxShadow: role.id === rl.id ? `0 0 0 1px ${gold}` : "none" }}>
+                style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
+                  alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
+                  ...(role.id === rl.id ? { border: a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E" } : {}) }}>
+                {role.id === rl.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <span style={{ display: "flex", flexShrink: 0 }}>{ROLE_ICO[rl.id](role.id === rl.id ? gold : sub)}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ ...T.bold, marginTop: 0 }}>{rl.label}</div>
+                  <div style={{ ...T.bold, marginTop: 0, marginBottom: 2 }}>{rl.label}</div>
                   <div style={{ color: sub, fontSize: 12 }}>{rl.desc}</div>
                 </div>
-                <span style={{ width: 18, height: 18, borderRadius: 10, flexShrink: 0,
-                  border: `2px solid ${role.id === rl.id ? gold : "rgba(200,160,80,0.4)"}`,
-                  background: role.id === rl.id ? gold : "transparent" }} />
+                <span style={{ display: "flex", flexShrink: 0, width: 20, justifyContent: "center" }}>
+                  {role.id === rl.id ? UI_SVG.checkCircle(gold, 20) : null}
+                </span>
               </div>
             ))}
             {customQs.length > 0 && (
-              <div className="sa-btn" onClick={() => { vibrate("light"); setUseCustom(v => !v); }} {...onActivate(() => setUseCustom(v => !v))}
-                style={{ ...glass, padding: "13px 14px", marginTop: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.star(gold, 18)}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ ...T.bold, marginTop: 0 }}>Вопросы твоего ресторана</div>
-                  <div style={{ color: sub, fontSize: 11.5, lineHeight: 1.45 }}>
-                    Доступно {customQs.length} — в тест войдёт до {MAX_CUSTOM_Q}. Включай, если кандидат из твоей сети и должен знать регламент.
-                  </div>
+              <div style={{ marginTop: 6 }}>
+                <button className="sa-btn" onClick={() => { vibrate("light"); setUseCustom(v => !v); }}
+                  style={{ padding: "9px 14px", borderRadius: 18, cursor: "pointer",
+                    border: `1px solid ${gold}${useCustom ? "" : "55"}`,
+                    background: useCustom ? gold : "transparent",
+                    color: useCustom ? "#1A1008" : sub,
+                    fontSize: 13, fontFamily: "Georgia, serif", fontWeight: "bold", transition: "all 0.15s" }}>
+                  {useCustom ? "★" : "☆"} Вопросы твоего ресторана
+                </button>
+                <div style={{ color: sub, fontSize: 11.5, lineHeight: 1.45, margin: "6px 2px 0" }}>
+                  Доступно {customQs.length}, в тест войдёт до {MAX_CUSTOM_Q}. Включай для кандидатов из твоей сети, которые должны знать регламент.
                 </div>
-                <span style={{ width: 40, height: 23, borderRadius: 12, flexShrink: 0, position: "relative",
-                  background: useCustom ? gold : "rgba(160,120,60,0.3)", transition: "background 0.25s ease" }}>
-                  <span style={{ position: "absolute", top: 2.5, left: useCustom ? 19.5 : 2.5, width: 18, height: 18,
-                    borderRadius: 10, background: "#fff", transition: "left 0.25s ease" }} />
-                </span>
               </div>
             )}
             <button className="sa-btn" style={{ ...goldBtn, marginTop: 12, opacity: name.trim().length < 2 ? 0.5 : 1 }}
@@ -467,24 +467,25 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
             <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 14 }}>
               Пара вопросов о кандидате — от этого зависит, какой тест он получит. Можно заполнить вместе с ним.
             </div>
-            <div style={{ ...T.bold, marginTop: 0, marginBottom: 8 }}>Опыт в сфере гостеприимства и гастрономии</div>
+            <div style={secLabel}>Опыт в гостеприимстве и гастрономии</div>
             {EXPERIENCE.map(x => (
               <div key={x.id} className="sa-btn" onClick={() => { vibrate("light"); setExp(x); }} {...onActivate(() => setExp(x))}
-                style={{ ...glass, padding: "12px 14px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 12,
-                  borderColor: exp?.id === x.id ? gold : "rgba(200,160,80,0.25)",
-                  boxShadow: exp?.id === x.id ? `0 0 0 1px ${gold}` : "none" }}>
+                style={{ ...glass, padding: "12px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
+                  alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
+                  ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E" } : {}) }}>
+                {exp?.id === x.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <div style={{ flex: 1 }}>
-                  <div style={{ ...T.bold, marginTop: 0 }}>{x.label}</div>
+                  <div style={{ ...T.bold, marginTop: 0, marginBottom: 2 }}>{x.label}</div>
                   <div style={{ color: sub, fontSize: 11.5 }}>{x.note}</div>
                 </div>
-                <span style={{ width: 18, height: 18, borderRadius: 10, flexShrink: 0,
-                  border: `2px solid ${exp?.id === x.id ? gold : "rgba(200,160,80,0.4)"}`,
-                  background: exp?.id === x.id ? gold : "transparent" }} />
+                <span style={{ display: "flex", flexShrink: 0, width: 20, justifyContent: "center" }}>
+                  {exp?.id === x.id ? UI_SVG.checkCircle(gold, 20) : null}
+                </span>
               </div>
             ))}
             {exp && exp.id !== "none" && (
               <>
-                <div style={{ ...T.bold, marginTop: 0, margin: "14px 0 8px" }}>Где был опыт <span style={{ color: sub, fontWeight: "normal" }}>(необязательно)</span></div>
+                <div style={{ ...secLabel, margin: "16px 2px 10px" }}>Где был опыт <span style={optNote}>(необязательно)</span></div>
                 <LiquidSegment a11y={a11y} equal={false} scroll accent={gold} muted={sub}
                   itemStyle={{ fontSize: 12.5, padding: "8px 13px" }}
                   items={[{ id: "__none", label: "Не указано" }, ...PLACES.map(p => ({ id: p, label: p }))]}
@@ -492,7 +493,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
                   onSelect={(id) => { vibrate("light"); setPlace(id === "__none" ? null : id); }} />
               </>
             )}
-            <div style={{ ...T.bold, marginTop: 0, margin: "14px 0 8px" }}>Возраст <span style={{ color: sub, fontWeight: "normal" }}>(необязательно)</span></div>
+            <div style={{ ...secLabel, margin: "16px 2px 10px" }}>Возраст <span style={optNote}>(необязательно)</span></div>
             <LiquidSegment a11y={a11y} equal accent={gold} muted={sub}
               itemStyle={{ fontSize: 12.5, padding: "8px 4px" }}
               items={[{ id: "__none", label: "—" }, ...AGES.map(a => ({ id: a, label: a }))]}
@@ -530,12 +531,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
               <span style={{ ...T.quizProgress, marginBottom: 0 }}>ВОПРОС {qIdx + 1} / {test.length}</span>
               <span style={{ color: sub, fontSize: 12 }}>{name.trim()}</span>
             </div>
-            <div style={{ height: 3, borderRadius: 2, background: "rgba(160,120,60,0.18)", marginBottom: 14, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: ((qIdx) / test.length) * 100 + "%", background: gold, transition: "width 0.3s ease" }} />
-            </div>
             <QTimer key={qIdx} seconds={SECONDS_PER_Q} onExpire={onExpire} />
             {q.scene && (
-              <div style={{ ...glass, marginBottom: 12, fontSize: T.quizQ.fontSize - 1, lineHeight: 1.7, color: T.quizQ.color }}>
+              <div style={T.simScen}>
                 {q.scene}
               </div>
             )}
@@ -617,13 +615,18 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
           const cal = calibrationOf(selfBand, pct);
           return (
             <>
-              <div style={{ ...glass, textAlign: "center", padding: "26px 20px", marginBottom: 14 }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 40, fontWeight: "bold", color: v.color }}>{pct}%</div>
-                <div style={{ color: sub, fontSize: 13, marginBottom: 8 }}>
-                  {name.trim()} · {role.label} · опыт: {exp ? exp.label.toLowerCase() : "?"}{place ? ` (${place.toLowerCase()})` : ""}{age ? ` · ${age}` : ""}
+              <div style={{ ...glass, marginBottom: 14, padding: "22px 16px 16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div style={{ ...T.resultCircle, borderColor: v.color }}>
+                    <span style={{ ...T.resultScore, color: v.color }}>{pct}%</span>
+                    <span style={{ color: "#a09080", fontSize: 12 }}>верно</span>
+                  </div>
+                  <div style={{ ...T.resultTxt, fontWeight: "bold", color: v.color }}>{v.label}</div>
                 </div>
-                <div style={{ color: v.color, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 16, marginBottom: 8 }}>{v.label}</div>
-                <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>{v.note}</div>
+                <div style={{ ...secLabel, textAlign: "center", margin: "0 0 10px" }}>
+                  {name.trim()} · {role.label} · {exp ? exp.label : "?"}{place ? ` · ${place}` : ""}{age ? ` · ${age}` : ""}
+                </div>
+                <div style={{ ...T.modSub, color: sub, lineHeight: 1.6, textAlign: "center" }}>{v.note}</div>
               </div>
 
               {cal && (

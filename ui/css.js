@@ -14,13 +14,6 @@ export const injectStyles = () => {
     [role="button"]:focus:not(:focus-visible),
     [tabindex]:focus:not(:focus-visible) { outline: none; }
     input, textarea, select, button { font-family: inherit; }
-    /* Оптическая калибровка Spectral: у Georgia очень высокие строчные буквы,
-       у Spectral — книжные, ниже. font-size-adjust выравнивает высоту строчных
-       под Georgia (0.48) — Spectral отрисовывается на ~8–9% крупнее и занимает
-       в макете ровно то место, под которое дизайн верстался. Бонус: в момент
-       подмены шрифта (swap) текст не «прыгает» — обе гарнитуры одной оптики.
-       Старые браузеры без поддержки просто покажут как есть. */
-    html { font-size-adjust: 0.48; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -136,9 +129,7 @@ export const injectStyles = () => {
     /* Мерцающий скелетон стеклянных карточек на время ленивой подгрузки */
     @keyframes saShimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
     .sa-skel { background: linear-gradient(100deg, rgba(200,169,110,0.07) 40%, rgba(230,200,140,0.16) 50%, rgba(200,169,110,0.07) 60%); background-size:200% 100%; animation: saShimmer 1.4s linear infinite; }
-    @keyframes saPulse { 0%,100% { opacity:.35; } 50% { opacity:.85; } }
-    .sa-pulse { animation: saPulse 1.15s ease-in-out infinite; }
-    @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse { animation:none; } }
+    @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel { animation:none; } }
   `;
   document.head.appendChild(style);
 

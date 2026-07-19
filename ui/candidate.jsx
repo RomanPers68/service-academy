@@ -241,7 +241,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   // Кнопки, поле ввода и «выбранный вариант» — те же, что в разделе «Команда»
   const goldBtn = {
     padding:"14px", borderRadius: RADIUS.md, border:"none", width:"100%",
-    fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
+    fontSize:16, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor:"pointer",
     color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
     boxShadow:"0 4px 18px rgba(200,160,80,0.25)",
   };
@@ -249,11 +249,11 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     padding:"13px", borderRadius: RADIUS.md, width:"100%", cursor:"pointer",
     border: a11y ? "1px solid rgba(139,106,48,0.55)" : "1px solid rgba(200,160,80,0.4)",
     background:"transparent",
-    color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif",
+    color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"'Spectral', Georgia, serif",
   };
   const inputStyle = {
     width:"100%", padding:"13px 14px", borderRadius: RADIUS.sm, fontSize:15,
-    fontFamily:"Georgia, serif",
+    fontFamily:"'Spectral', Georgia, serif",
     background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
     color: a11y ? "#3A2E1C" : "#F0E8D8",
     border: a11y ? "1px solid rgba(160,120,60,0.45)" : "1px solid rgba(200,160,80,0.35)",
@@ -265,7 +265,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   };
   // Подпись секции — фирменный monospace-капс приложения
   const secLabel = { ...T.secTitle, padding: 0, margin: "0 2px 10px" };
-  const optNote = { textTransform: "none", letterSpacing: 0, fontFamily: "Georgia, serif" };
+  const optNote = { textTransform: "none", letterSpacing: 0, fontFamily: "'Spectral', Georgia, serif" };
 
   const level = exp ? exp.level : "pro";
   const score = answers.reduce((s, a) => s + a.pts, 0);
@@ -436,7 +436,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                       onClick={() => { vibrate("light"); setOpenedResult(open ? null : r.id); }}
                       {...onActivate(() => setOpenedResult(open ? null : r.id))}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 40, textAlign: "center", color: v.color, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 16 }}>{r.pct}%</div>
+                        <div style={{ width: 40, textAlign: "center", color: v.color, fontFamily: "'Spectral', Georgia, serif", fontWeight: "bold", fontSize: 16 }}>{r.pct}%</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ ...T.bold, marginTop: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
                           <div style={{ color: sub, fontSize: 11.5 }}>{r.roleLabel} · {r.expLabel || "?"} · {dateFmt(r.date)}</div>
@@ -498,7 +498,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                     border: `1px solid ${gold}${useCustom ? "" : "55"}`,
                     background: useCustom ? gold : "transparent",
                     color: useCustom ? "#1A1008" : sub,
-                    fontSize: 13, fontFamily: "Georgia, serif", fontWeight: "bold", transition: "all 0.15s" }}>
+                    fontSize: 13, fontFamily: "'Spectral', Georgia, serif", fontWeight: "bold", transition: "all 0.15s" }}>
                   {useCustom ? "★" : "☆"} Вопросы твоего ресторана
                 </button>
                 <div style={{ color: sub, fontSize: 11.5, lineHeight: 1.45, margin: "6px 2px 0" }}>
@@ -598,9 +598,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   return (
                     <button key={i} className="sa-btn sa-opt" onClick={() => tapOrder(i)}
                       style={{ ...T.quizOpt, display: "flex", alignItems: "center", gap: 12, width: "100%",
-                        textAlign: "left", fontFamily: "Georgia, serif", ...(pos >= 0 ? optSel : {}) }}>
+                        textAlign: "left", fontFamily: "'Spectral', Georgia, serif", ...(pos >= 0 ? optSel : {}) }}>
                       <span style={{ width: 26, height: 26, borderRadius: 13, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13,
+                        fontFamily: "'Spectral', Georgia, serif", fontWeight: "bold", fontSize: 13,
                         border: `1.5px solid ${pos >= 0 ? gold : "rgba(200,160,80,0.4)"}`,
                         background: pos >= 0 ? gold : "transparent", color: pos >= 0 ? "#fff" : sub }}>
                         {pos >= 0 ? pos + 1 : ""}
@@ -619,7 +619,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               q.options.map((opt, i) => (
                 <button key={i} className="sa-btn sa-opt" onClick={() => answer(i)}
                   style={{ ...T.quizOpt, display: "block", width: "100%", textAlign: "left",
-                    fontFamily: "Georgia, serif", ...(chosen === i ? optSel : {}) }}>
+                    fontFamily: "'Spectral', Georgia, serif", ...(chosen === i ? optSel : {}) }}>
                   {opt}
                 </button>
               ))
@@ -640,7 +640,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             {SELF_BANDS.map(b => (
               <button key={b.id} className="sa-btn" onClick={() => { vibrate("light"); setSelfBand(b.id); setTimeout(() => setPhase("gate"), 260); }}
                 style={{ ...T.quizOpt, display: "block", width: "100%", textAlign: "left",
-                  fontFamily: "Georgia, serif", ...(selfBand === b.id ? optSel : {}) }}>
+                  fontFamily: "'Spectral', Georgia, serif", ...(selfBand === b.id ? optSel : {}) }}>
                 {b.label}
               </button>
             ))}

@@ -162,7 +162,7 @@ export function SOSScreen({ T, a11y, onBack }) {
             <span style={{ color: red, fontSize: 12, fontWeight: "bold", fontFamily: "monospace", letterSpacing: 1 }}>SOS</span>
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: text, fontSize: 21, fontWeight: "bold", fontFamily: "Georgia, serif", lineHeight: 1.15 }}>SOS в смене</div>
+            <div style={{ color: text, fontSize: 21, fontWeight: "bold", fontFamily: "'Spectral', Georgia, serif", lineHeight: 1.15 }}>SOS в смене</div>
             <div style={{ color: sub, fontSize: 12, marginTop: 2 }}>Только действия. Открой нужное — и действуй.</div>
           </div>
         </div>
@@ -211,7 +211,7 @@ export function SOSScreen({ T, a11y, onBack }) {
                         : line.startsWith("🚫") ? UI_SVG.ban(red, 14)
                         : line.startsWith("📌") ? UI_SVG.pin(gold, 14)
                         : keycap ? (
-                            <span style={{ width: 19, height: 19, borderRadius: 10, border: `1.5px solid ${red}`, color: red, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: "bold", fontFamily: "Georgia, serif" }}>{keycap[1]}</span>
+                            <span style={{ width: 19, height: 19, borderRadius: 10, border: `1.5px solid ${red}`, color: red, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: "bold", fontFamily: "'Spectral', Georgia, serif" }}>{keycap[1]}</span>
                           )
                         : null;
                       return (

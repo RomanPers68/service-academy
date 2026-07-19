@@ -5,7 +5,7 @@
 import { GOLD, GOLD_LOGO, GOLD_SOFT, GREEN, GREEN_DARK, RED, RED_DARK, CREAM, CREAM_SOFT, SAND, SAND_DEEP, PAPER, INK, INK_DEEP, BROWN, BROWN_GOLD, BROWN_NOTE, MUTED, MUTED_2, MUTED_3, CLAY, BG_DARK, PANEL, PANEL_2 } from "./tokens";
 
 export const S = {
-  app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:`radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, ${BG_DARK} 0%, #1C1509 50%, #14110A 100%)`, fontFamily:"'Georgia', serif", overflowX:"hidden" },
+  app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:`radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, ${BG_DARK} 0%, #1C1509 50%, #14110A 100%)`, fontFamily:"'Spectral', Georgia, serif", overflowX:"hidden" },
   phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh" },
   screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"transparent", overflowX:"hidden" },
 
@@ -31,7 +31,7 @@ export const S = {
 
   homeHead: { padding:"36px 18px 12px", background:PANEL },
   homeTopRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 },
-  changeRoleBtn: { background:"transparent", border:"1px solid #4A3525", borderRadius:20, color:MUTED, fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"Georgia, serif" },
+  changeRoleBtn: { background:"transparent", border:"1px solid #4A3525", borderRadius:20, color:MUTED, fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"'Spectral', Georgia, serif" },
   homeRoleBadge: { display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, border:"1px solid" },
 
   progCard: { margin:"6px 14px", background:"linear-gradient(150deg, #332510 0%, #231908 100%) padding-box, linear-gradient(160deg, rgba(224,188,114,0.7) 0%, rgba(139,106,48,0.7) 45%, rgba(200,160,80,0.7) 100%) border-box", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 1px 0 rgba(190,152,56,0.12) inset", borderRadius:16, padding:"12px 16px", border:"1.5px solid transparent" },
@@ -80,7 +80,7 @@ export const S = {
   note: { color:GOLD_LOGO, fontSize:12, fontStyle:"italic", marginBottom:5, marginTop:6, lineHeight:1.65, padding:"10px 14px", background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", borderRadius:12, border:"1px solid rgba(200,160,60,0.20)", borderTop:"1px solid rgba(210,170,70,0.28)", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.12) inset" },
   principle: { color:SAND_DEEP, fontSize:15, lineHeight:1.85, marginBottom:6 },
   quote: { color:GOLD_LOGO, fontSize:13, fontStyle:"italic", paddingLeft:14, borderLeft:"2px solid rgba(210,170,70,0.5)", margin:"12px 0", lineHeight:1.85, background:"linear-gradient(150deg, rgba(58,42,16,0.6) 0%, rgba(40,28,8,0.4) 100%)", borderRadius:"0 10px 10px 0", padding:"10px 14px", boxShadow:"0 2px 10px rgba(0,0,0,0.25)" },
-  doneBtn: { width:"100%", padding:"14px", border:"1px solid rgba(255,255,255,0.2)", borderRadius:16, color:"#fff", fontSize:15, fontWeight:"bold", cursor:"pointer", marginTop:24, fontFamily:"Georgia, serif", letterSpacing:0.3, boxShadow:"0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25)" },
+  doneBtn: { width:"100%", padding:"14px", border:"1px solid rgba(255,255,255,0.2)", borderRadius:16, color:"#fff", fontSize:15, fontWeight:"bold", cursor:"pointer", marginTop:24, fontFamily:"'Spectral', Georgia, serif", letterSpacing:0.3, boxShadow:"0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25)" },
 
   quizWrap: { flex:1, padding:"16px 18px 36px" },
   quizProgress: { color:MUTED_3, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
@@ -102,7 +102,7 @@ export const S = {
 export const A = {
   ...S,
   a11y: true, // флаг светлой темы: компоненты проверяют T.a11y для светлых вариантов стилей
-  app:        { ...S.app, background:`radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), ${SAND}`, fontFamily:"'Georgia', serif" },
+  app:        { ...S.app, background:`radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), ${SAND}`, fontFamily:"'Spectral', Georgia, serif" },
   phone:      { ...S.phone, background:CREAM_SOFT },
   screen:     { ...S.screen, background:CREAM_SOFT },
 

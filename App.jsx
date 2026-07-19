@@ -978,7 +978,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
                   opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
                   {NAV_ICONS[tab.icon](lit ? accent : dim)}
                 </div>
-                <div style={{ fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
+                <div style={{ fontSize:9.5, fontFamily:"'Spectral', Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
                   whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
                   color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
                   transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
@@ -1091,13 +1091,13 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "'Georgia', serif" }}>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "'Spectral', Georgia, serif" }}>
           <div style={{ fontSize: 44, marginBottom: 16 }}>🍷</div>
           <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Что-то пошло не так</div>
           <div style={{ color: "#9A8060", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
             Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение.
           </div>
-          <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "'Georgia', serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
+          <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "'Spectral', Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
             Перезагрузить
           </button>
           {/* Диагностика: текст ошибки для скриншота в поддержку */}

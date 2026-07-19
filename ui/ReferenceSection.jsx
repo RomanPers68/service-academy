@@ -8,7 +8,7 @@ import { onActivate } from "../lib/utils";
 import { GOLD, GREEN, RED } from "./tokens";
 
 const R = React;
-const SERIF = "Georgia, 'Times New Roman', serif";
+const SERIF = "'Spectral', Georgia, 'Times New Roman', serif";
 // Маркеры-иконки в стиле уроков (📌 заметка, ☑ чек, 🚫 запрет, ✅ верно, ❌ неверно)
 const MARK_RE = /^(📌|☑️?|🚫|✅|❌)\s*/u;
 

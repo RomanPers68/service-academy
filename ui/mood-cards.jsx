@@ -33,7 +33,7 @@ export function StreakCard({ streak, a11y }) {
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(235,207,142,0.28), rgba(200,169,110,0.06) 70%)",
         done:"radial-gradient(circle at 35% 30%, #EBCF8E, #C8A96E 70%)", check:"#3a2c10",
         miss:"rgba(160,120,60,0.18)", future:"rgba(160,120,60,0.16)", div:"rgba(160,120,60,0.2)" };
-  const serif = "Georgia, 'Times New Roman', serif";
+  const serif = "'Spectral', Georgia, 'Times New Roman', serif";
   const ymd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
   const set = new Set(streak.days || []);
   const today = new Date(); const todayStr = ymd(today);
@@ -94,7 +94,7 @@ export function StreakCard({ streak, a11y }) {
 
 export function MoodCheckCard({ a11y }) {
   const C = moodPalette(a11y);
-  const serif = "Georgia, 'Times New Roman', serif";
+  const serif = "'Spectral', Georgia, 'Times New Roman', serif";
   const today = _moodYmd(new Date());
   const key = "sa_mood_" + today;
   const [picked, setPicked] = React.useState(() => { try { return localStorage.getItem(key); } catch(e) { return null; } });
@@ -136,7 +136,7 @@ export function MoodCheckCard({ a11y }) {
 
 export function TeamMoodCard({ a11y }) {
   const C = moodPalette(a11y);
-  const serif = "Georgia, 'Times New Roman', serif";
+  const serif = "'Spectral', Georgia, 'Times New Roman', serif";
   const [data, setData] = React.useState(null);
   const [hide, setHide] = React.useState(false);
   React.useEffect(() => {

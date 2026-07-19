@@ -235,7 +235,7 @@ export function LiquidSegment({
               position:"relative", zIndex:1, border:"none", background:"transparent", cursor:"pointer",
               flex: equal ? 1 : "0 0 auto", whiteSpace: equal ? undefined : "nowrap",
               padding:"8px 12px", borderRadius:999,
-              fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold",
+              fontFamily:"'Spectral', Georgia, serif", fontSize:13, fontWeight:"bold",
               color: active ? acc : dim,
               opacity: active ? 1 : 0.75,
               transform: active ? "scale(1.05)" : "scale(1)",

@@ -79,7 +79,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
         background: "linear-gradient(170deg, #FBF5E8 0%, #F2E8D2 100%)",
         border: "1px solid rgba(139,106,48,0.45)",
         boxShadow: a11y ? "0 4px 16px rgba(120,85,25,0.22)" : "0 8px 26px rgba(0,0,0,0.5)",
-        color: ink, fontFamily: "Georgia, 'Times New Roman', serif",
+        color: ink, fontFamily: "'Spectral', Georgia, 'Times New Roman', serif",
       }}>
         {/* Шапка документа */}
         <div style={{ textAlign: "center", borderBottom: `2px solid ${gold}`, paddingBottom: 12, marginBottom: 14 }}>
@@ -155,7 +155,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
       {/* Кнопка печати — на экране, но не на бумаге */}
       <div style={{ padding: "0 16px 26px" }} className="sa-no-print">
         <button className="sa-btn" onClick={doPrint} {...onActivate(doPrint)}
-          style={{ width: "100%", padding: "13px", borderRadius: 13, border: "none", background: `linear-gradient(135deg, ${GOLD}, #8B6A30)`, color: "#1A1008", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 15, cursor: "pointer" }}>
+          style={{ width: "100%", padding: "13px", borderRadius: 13, border: "none", background: `linear-gradient(135deg, ${GOLD}, #8B6A30)`, color: "#1A1008", fontFamily: "'Spectral', Georgia, serif", fontWeight: "bold", fontSize: 15, cursor: "pointer" }}>
           <span style={{ display: "inline-flex", verticalAlign: "-3px", marginRight: 8 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1A1008" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h10v6H7z"/><path d="M5 9h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/><path d="M7 15h10"/></svg>
           </span>Распечатать · сохранить в PDF

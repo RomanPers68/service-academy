@@ -217,7 +217,5 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId }) {
 }
 
 // Задание дня из Справочника: одна глава/тест, меняется по дате (seed).
-ReferenceSection.dailyTask = (seed) => {
-  const ls = [...REFERENCE_COURSE.lessons, ...REFERENCE_WINE_COURSE.lessons];
-  return ls[((seed % ls.length) + ls.length) % ls.length];
-};
+import { referenceDailyTask } from "./reference-daily";
+ReferenceSection.dailyTask = referenceDailyTask;

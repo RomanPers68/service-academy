@@ -13,12 +13,13 @@ export default defineConfig({
         // Благодаря этому обновление кода приложения не заставляет браузер
         // перекачивать ~800 КБ контента и сам React заново.
         manualChunks(id) {
-          if (id.includes("/data/modules") || id.includes("/data/dialogues")) {
-            return "content-data";
-          }
-          if (id.includes("node_modules/react")) {
-            return "vendor";
-          }
+          // Ленивые данные — отдельными чанками, чтобы они не склеивались
+          // со стартовым контентом и грузились только по dynamic import:
+          if (id.includes("data/modules-spg")) return "content-spg";
+          if (id.includes("data/dialogues.js")) return "content-dialogues";
+          // Стартовый контент (уроки официанта/менеджера) — кэшируемый чанк
+          if (id.includes("/data/modules")) return "content-core";
+          if (id.includes("node_modules/react")) return "vendor";
         },
       },
     },

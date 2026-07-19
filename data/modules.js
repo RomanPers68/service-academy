@@ -4,10 +4,10 @@
 // Перенесено из App.jsx (строки 86–4051) без изменений — добавлен только export.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { SPG_MODULES } from "./modules-spg";
+// СПГ-модули (≈180 КБ) подгружаются лениво — см. loadSpgModules в конце файла.
 
 export const MODULES = {
-  spg: SPG_MODULES,
+  spg: [], // заполняется loadSpgModules() сразу после старта
   seasonal: [
     {
       id: "s0", tag: "Урок 0", title: "Психология первого дня", subtitle: "Стресс, адаптация и первые шаги", icon: "🧭", color: "#7C9E87",
@@ -5351,3 +5351,8 @@ manager: [
 },
   ],
 };
+
+// Ленивая догрузка СПГ-модулей после первой отрисовки (вызывается из App).
+export function loadSpgModules() {
+  return import("./modules-spg").then(m => { MODULES.spg = m.SPG_MODULES; });
+}

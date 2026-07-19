@@ -12,8 +12,9 @@
 // ─────────────────────────────────────────────────────────────────────
 import React from "react";
 import { CANDIDATE_QUESTIONS } from "../data/candidate-questions";
-import { GOLD, GREEN, RED, GOLD_SOFT } from "./tokens";
+import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS } from "./tokens";
 import { shuffleArray, vibrate, onActivate } from "../lib/utils";
+import { rpc, saToken } from "../api/supabase";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { LiquidSegment } from "./widgets";
 
@@ -157,7 +158,7 @@ function QTimer({ seconds, onExpire }) {
   );
 }
 
-export function CandidateScreen({ T, a11y, onBack, customLessons }) {
+export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   // intro | setup | profile | handoff | test | selfcheck | gate | result
   const [phase, setPhase] = React.useState("intro");
   const [name, setName] = React.useState("");
@@ -174,6 +175,52 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
   const [selfBand, setSelfBand] = React.useState(null);
   const [results, setResults] = React.useState(loadResults);
   const [openedResult, setOpenedResult] = React.useState(null);
+  const restaurant = profile?.restaurant || null;
+
+  // ── Облако: история собеседований хранится на сервере в рамках ресторана ──
+  // (переживает смену телефона; видна всем админам ресторана). При отсутствии
+  // сети всё работает локально, а несинхронизированные записи дозаливаются.
+  const uploadResult = React.useCallback((rec) => {
+    const t = saToken();
+    if (!t || !restaurant) return;
+    rpc("candidate_save", { p_token: t, p_restaurant: restaurant, p_result: JSON.stringify(rec) })
+      .then(d => {
+        if (!d || !d.ok) return;
+        setResults(prev => {
+          const next = prev.map(r => r.id === rec.id ? { ...r, srvId: d.id } : r);
+          saveResults(next);
+          return next;
+        });
+      })
+      .catch(() => {});
+  }, [restaurant]);
+
+  React.useEffect(() => {
+    const t = saToken();
+    if (!t || !restaurant) return;
+    rpc("candidate_list", { p_token: t, p_restaurant: restaurant })
+      .then(d => {
+        if (!d || !d.ok || !Array.isArray(d.items)) return;
+        const cloud = d.items.map(row => ({
+          ...(row.payload || {}),
+          srvId: row.id,
+          by: row.created_by || "",
+          date: (row.payload && row.payload.date) || row.created_at,
+        }));
+        const cloudIds = new Set(cloud.map(r => r.id).filter(Boolean));
+        setResults(prev => {
+          // локальные, ещё не долетевшие до сервера — оставляем и дозаливаем
+          const pending = prev.filter(r => !r.srvId && !cloudIds.has(r.id));
+          const merged = [...cloud, ...pending]
+            .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+            .slice(0, 100);
+          saveResults(merged);
+          pending.forEach(uploadResult);
+          return merged;
+        });
+      })
+      .catch(() => {});
+  }, [restaurant, uploadResult]);
   const [confirmLeave, setConfirmLeave] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const lock = React.useRef(false);
@@ -189,23 +236,23 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
     boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset",
     backdropFilter: T.lessGlass?.blur || "none",
     WebkitBackdropFilter: T.lessGlass?.blur || "none",
-    borderRadius: 18, padding: "16px 16px",
+    borderRadius: RADIUS.lg, padding: "16px 16px",
   };
   // Кнопки, поле ввода и «выбранный вариант» — те же, что в разделе «Команда»
   const goldBtn = {
-    padding:"14px", borderRadius:14, border:"none", width:"100%",
+    padding:"14px", borderRadius: RADIUS.md, border:"none", width:"100%",
     fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
     color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
     boxShadow:"0 4px 18px rgba(200,160,80,0.25)",
   };
   const ghostBtn = {
-    padding:"13px", borderRadius:14, width:"100%", cursor:"pointer",
+    padding:"13px", borderRadius: RADIUS.md, width:"100%", cursor:"pointer",
     border: a11y ? "1px solid rgba(139,106,48,0.55)" : "1px solid rgba(200,160,80,0.4)",
     background:"transparent",
     color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif",
   };
   const inputStyle = {
-    width:"100%", padding:"13px 14px", borderRadius:12, fontSize:15,
+    width:"100%", padding:"13px 14px", borderRadius: RADIUS.sm, fontSize:15,
     fontFamily:"Georgia, serif",
     background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
     color: a11y ? "#3A2E1C" : "#F0E8D8",
@@ -310,11 +357,16 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
       };
       const next = [rec, ...results];
       setResults(next); saveResults(next); setSaved(true);
+      uploadResult(rec); // в облако — с тихим повтором при следующем открытии, если нет сети
     }
     setPhase("result");
   };
 
   const removeResult = (id) => {
+    const rec = results.find(r => r.id === id);
+    if (rec?.srvId && restaurant) {
+      rpc("candidate_delete", { p_token: saToken(), p_restaurant: restaurant, p_id: rec.srvId }).catch(() => {});
+    }
     const next = results.filter(r => r.id !== id);
     setResults(next); saveResults(next);
     if (openedResult === id) setOpenedResult(null);
@@ -394,7 +446,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
                       {open && (
                         <div style={{ marginTop: 12, borderTop: "1px solid rgba(200,160,80,0.2)", paddingTop: 10 }}>
                           <div style={{ color: sub, fontSize: 12, marginBottom: 8 }}>
-                            {r.score} из {r.total} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}
+                            {r.score} из {r.total} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}{r.by ? ` · провёл(а): ${r.by}` : ""}{r.srvId ? " · ☁" : ""}
                             {cal ? <> · самооценка: <b style={{ color: cal.color }}>{cal.label}</b></> : null}
                           </div>
                           {(r.topics || []).map((t, i) => (
@@ -442,7 +494,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons }) {
             {customQs.length > 0 && (
               <div style={{ marginTop: 6 }}>
                 <button className="sa-btn" onClick={() => { vibrate("light"); setUseCustom(v => !v); }}
-                  style={{ padding: "9px 14px", borderRadius: 18, cursor: "pointer",
+                  style={{ padding: "9px 14px", borderRadius: RADIUS.lg, cursor: "pointer",
                     border: `1px solid ${gold}${useCustom ? "" : "55"}`,
                     background: useCustom ? gold : "transparent",
                     color: useCustom ? "#1A1008" : sub,

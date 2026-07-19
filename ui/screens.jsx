@@ -8,14 +8,14 @@ import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase
 import { MODULES } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
-import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "../data/dialogues";
+import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A } from "./styles";
-import { ReferenceSection } from "./ReferenceSection";
+import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
-import { countUnreadPages } from "./guestbook";
+import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
@@ -439,7 +439,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
 export function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson }) {
   const today = new Date().toLocaleDateString("ru-RU");
   const seed = today.split(".").reduce((a, v) => a + parseInt(v), 0);
-  const refTask = ReferenceSection.dailyTask(seed);
+  const refTask = referenceDailyTask(seed);
 
   // Генерируем 3 задания на сегодня из непройденных уроков
   const allLessons = React.useMemo(() => {

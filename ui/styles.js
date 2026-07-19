@@ -5,7 +5,7 @@
 import { GOLD, GOLD_LOGO, GOLD_SOFT, GREEN, GREEN_DARK, RED, RED_DARK, CREAM, CREAM_SOFT, SAND, SAND_DEEP, PAPER, INK, INK_DEEP, BROWN, BROWN_GOLD, BROWN_NOTE, MUTED, MUTED_2, MUTED_3, CLAY, BG_DARK, PANEL, PANEL_2 } from "./tokens";
 
 export const S = {
-  app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:`linear-gradient(160deg, ${BG_DARK} 0%, #1C1509 50%, #14110A 100%)`, fontFamily:"'Georgia', serif", overflowX:"hidden" },
+  app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:`radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, ${BG_DARK} 0%, #1C1509 50%, #14110A 100%)`, fontFamily:"'Georgia', serif", overflowX:"hidden" },
   phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh" },
   screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"transparent", overflowX:"hidden" },
 
@@ -102,7 +102,7 @@ export const S = {
 export const A = {
   ...S,
   a11y: true, // флаг светлой темы: компоненты проверяют T.a11y для светлых вариантов стилей
-  app:        { ...S.app, background:SAND, fontFamily:"'Georgia', serif" },
+  app:        { ...S.app, background:`radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), ${SAND}`, fontFamily:"'Georgia', serif" },
   phone:      { ...S.phone, background:CREAM_SOFT },
   screen:     { ...S.screen, background:CREAM_SOFT },
 

@@ -24,17 +24,37 @@ const CandidateScreen = lazy(() => import("./ui/candidate").then(m => ({ default
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
-  const card = {
-    borderRadius: 18, height: 92, marginBottom: 12,
-    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.30)",
-    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.38)",
+  // Скелетон-макет будущего экрана: фирменное стекло, ступенчатое появление,
+  // мерцающие строки «текста» и пульсирующий знак SA внизу.
+  const glass = {
+    background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+    boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset",
+    borderRadius: 18, padding: 16, marginBottom: 12,
   };
+  // Режим «для чтения»: реальные тексты там крупнее (заголовки 19, абзацы 15),
+  // поэтому и полоски-заготовки выше — контент не «прыгает» после загрузки.
+  const up = T.a11y ? 3 : 0;
+  const line = (w, h = 12, last = false) => ({ height: h + up, width: w, borderRadius: 7, marginBottom: last ? 0 : 10 + up / 2 });
+  const later = (i) => ({ animationDelay: (i * 0.09) + "s" });
+  const headW = ["62%", "48%", "70%"], tailW = ["76%", "84%", "58%"];
   return (
-    <div style={{ ...T.screen, padding: "24px 18px" }} className="sa-screen">
-      <div className="sa-skel" style={{ ...card, height: 54, width: "62%" }} />
-      <div className="sa-skel" style={card} />
-      <div className="sa-skel" style={card} />
-      <div className="sa-skel" style={{ ...card, opacity: 0.6 }} />
+    <div style={{ ...T.screen, padding: "18px 16px" }} className="sa-screen">
+      <div className="sa-pagein" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, ...later(0) }}>
+        <div className="sa-skel" style={{ width: 36, height: 36, borderRadius: 18, flexShrink: 0 }} />
+        <div className="sa-skel" style={line("46%", 16, true)} />
+      </div>
+      {[1, 2, 3].map(i => (
+        <div key={i} className="sa-pagein" style={{ ...glass, ...later(i) }}>
+          <div className="sa-skel" style={line(headW[i - 1], 14)} />
+          <div className="sa-skel" style={line("94%")} />
+          <div className="sa-skel" style={line(tailW[i - 1], 12, true)} />
+        </div>
+      ))}
+      <div className="sa-pagein" style={{ textAlign: "center", marginTop: 22, ...later(4) }}>
+        <span className="sa-pulse" style={{ color: T.a11y ? "#8B6A30" : "#C8A96E", fontFamily: "monospace", fontSize: T.a11y ? 13 : 11, letterSpacing: 4 }}>✦ SA</span>
+      </div>
     </div>
   );
 }
@@ -744,7 +764,24 @@ function ServiceAcademy() {
   // интерфейс, когда данные готовы.
   const [, bumpLazyData] = useState(0);
   useEffect(() => {
+    // 1) Сначала данные, без которых главные экраны неполные
     Promise.all([loadSpgModules(), loadDialogues()]).then(() => bumpLazyData(x => x + 1));
+    // 2) Затем тихо прогреваем ленивые экраны: пока человек смотрит на главную,
+    //    их код доезжает фоном — и первое открытие любого раздела мгновенно,
+    //    скелетон остаётся только для очень медленной сети в первые секунды.
+    const warm = setTimeout(() => {
+      [
+        () => import("./ui/menu-trainer"),
+        () => import("./ui/guestbook"),
+        () => import("./ui/ReferenceSection"),
+        () => import("./ui/search"),
+        () => import("./ui/sos"),
+        () => import("./ui/mentor"),
+        () => import("./ui/training-card"),
+        () => import("./ui/candidate"),
+      ].reduce((p, load) => p.then(() => load().catch(() => {})), Promise.resolve());
+    }, 1500);
+    return () => clearTimeout(warm);
   }, []);
 
   if (!storageLoaded) return (

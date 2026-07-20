@@ -8,11 +8,13 @@
     <meta http-equiv="Expires" content="0" />
     <title>Service Academy</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Фирменный шрифт Spectral (кириллица, 400/500/700). display=swap:
-         до загрузки показывается Georgia — тексты видны сразу, без миганий. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;700&display=swap">
+    <!-- Акцентный шрифт Piazzolla (заголовки и цифры). Загрузка неблокирующая:
+         приложение стартует сразу на Georgia, шрифт подъезжает фоном.
+         Основной источник jsDelivr, при недоступности — Google Fonts. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://cdn.jsdelivr.net/npm/@fontsource/piazzolla@5/700.css"
+      onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Piazzolla:opsz,wght@8..30,700&display=swap';document.head.appendChild(l)">
   </head>
   <body>
     <!-- Брендовый сплэш: виден с первой миллисекунды, до загрузки JS.

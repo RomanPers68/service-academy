@@ -24,23 +24,135 @@ const CandidateScreen = lazy(() => import("./ui/candidate").then(m => ({ default
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
-  const card = {
-    borderRadius: 18, height: 92, marginBottom: 12,
-    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.30)",
-    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.38)",
+  // Скелетон-макет будущего экрана: фирменное стекло, ступенчатое появление,
+  // мерцающие строки «текста» и пульсирующий знак SA внизу.
+  const glass = {
+    background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+    boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset",
+    borderRadius: 18, padding: 16, marginBottom: 12,
+  };
+  // Режим «для чтения»: реальные тексты там крупнее (заголовки 19, абзацы 15),
+  // поэтому и полоски-заготовки выше — контент не «прыгает» после загрузки.
+  const up = T.a11y ? 3 : 0;
+  const line = (w, h = 12, last = false) => ({ height: h + up, width: w, borderRadius: 7, marginBottom: last ? 0 : 10 + up / 2 });
+  const later = (i) => ({ animationDelay: (i * 0.09) + "s" });
+  const headW = ["62%", "48%", "70%"], tailW = ["76%", "84%", "58%"];
+  return (
+    <div style={{ ...T.screen, padding: "18px 16px" }} className="sa-screen">
+      <div className="sa-pagein" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, ...later(0) }}>
+        <div className="sa-skel" style={{ width: 36, height: 36, borderRadius: 18, flexShrink: 0 }} />
+        <div className="sa-skel" style={line("46%", 16, true)} />
+      </div>
+      {[1, 2, 3].map(i => (
+        <div key={i} className="sa-pagein" style={{ ...glass, ...later(i) }}>
+          <div className="sa-skel" style={line(headW[i - 1], 14)} />
+          <div className="sa-skel" style={line("94%")} />
+          <div className="sa-skel" style={line(tailW[i - 1], 12, true)} />
+        </div>
+      ))}
+      <div className="sa-pagein" style={{ textAlign: "center", marginTop: 22, ...later(4) }}>
+        <span className="sa-pulse" style={{ color: T.a11y ? "#8B6A30" : "#C8A96E", fontFamily: "monospace", fontSize: T.a11y ? 13 : 11, letterSpacing: 4 }}>✦ SA</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Первое знакомство: три карточки при самом первом входе в жизни ──
+// Показывается один раз (sa_welcome_seen), листается свайпом и кнопкой.
+// Задача — снять тревогу «куда я попал», а не обучить: детали человек
+// узнает по контекстным подсказкам в момент, когда они станут нужны.
+// Карточка для менеджеров и руководства — добавляется четвёртой
+const WELCOME_ADMIN_CARD = {
+  icon: (c) => NAV_ICONS.team(c, 28),
+  title: "Твой штаб — «Команда»",
+  text: "Сотрудники и коды входа, аналитика прогресса, чек-листы смен и собеседование кандидатов — всё управление живёт во вкладке «Команда».",
+};
+
+const WELCOME_CARDS = [
+  { icon: (c) => UI_SVG.cloche(c, 28), title: "Твой трек",
+    text: "Учись по шагам: уроки открываются по порядку, а приложение само подскажет, куда дальше. Кнопка «ДАЛЬШЕ» на главной — твой компас." },
+  { icon: (c) => UI_SVG.target(c, 28), title: "Ошибки — это план",
+    text: "Неверный ответ — не приговор: вопрос попадёт в «Работу над ошибками» и вернётся сам — через день, три, неделю. Бейдж покажет, когда пора." },
+  { icon: (c) => UI_SVG.sparkle(c, 28), title: "Инструменты рядом",
+    text: "В нижней панели живут тренажёр меню, книга твоего пути, SOS-шпаргалки для смены и поиск по всему приложению." },
+];
+
+function WelcomeIntro({ T, a11y, isAdmin, onClose }) {
+  const cards = isAdmin ? [...WELCOME_CARDS, WELCOME_ADMIN_CARD] : WELCOME_CARDS;
+  const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState("r");      // направление листания — карточка въезжает с нужной стороны
+  const [leaving, setLeaving] = useState(false); // плавное закрытие вместо резкого исчезновения
+  const touchX = useRef(null);
+  const go = (delta) => {
+    vibrate("light");
+    setDir(delta > 0 ? "r" : "l");
+    setIdx(i => i + delta);
+  };
+  const close = () => {
+    if (leaving) return;
+    vibrate("light");
+    setLeaving(true);
+    setTimeout(onClose, 280);
+  };
+  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const last = idx === cards.length - 1;
+  const card = cards[idx];
+  const glass = {
+    background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+    boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50)",
+    borderRadius: 22, padding: "26px 22px",
   };
   return (
-    <div style={{ ...T.screen, padding: "24px 18px" }} className="sa-screen">
-      <div className="sa-skel" style={{ ...card, height: 54, width: "62%" }} />
-      <div className="sa-skel" style={card} />
-      <div className="sa-skel" style={card} />
-      <div className="sa-skel" style={{ ...card, opacity: 0.6 }} />
+    <div className="sa-fadein" style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        background: a11y ? "rgba(90,70,40,0.35)" : "rgba(10,7,3,0.72)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
+        opacity: leaving ? 0 : 1, transition: "opacity .28s ease" }}
+      onTouchStart={e => { touchX.current = e.touches[0].clientX; }}
+      onTouchEnd={e => {
+        if (touchX.current == null) return;
+        const d = e.changedTouches[0].clientX - touchX.current;
+        touchX.current = null;
+        if (d < -40 && !last) go(1);
+        if (d > 40 && idx > 0) go(-1);
+      }}>
+      <div key={idx} className={dir === "l" ? "sa-cardpage-l" : "sa-cardpage-r"}
+        style={{ ...glass, maxWidth: 400, width: "100%",
+          transform: leaving ? "translateY(10px) scale(0.98)" : undefined, transition: "transform .28s ease" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div className="sa-pop" style={{ width: 58, height: 58, borderRadius: 29, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55`, animationDelay: "0.08s" }}>{card.icon(gold)}</div>
+        </div>
+        <div style={{ color: T.lessHeadTitle?.color || "#F0E8D8", fontFamily: ACCENT_SERIF, fontSize: a11y ? 21 : 19, fontWeight: "bold", textAlign: "center", marginBottom: 10 }}>{card.title}</div>
+        <div style={{ color: T.modSub?.color || "#C8B898", fontSize: a11y ? 15 : 13.5, lineHeight: 1.7, textAlign: "center", marginBottom: 18 }}>{card.text}</div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 7, marginBottom: 18 }}>
+          {cards.map((_, i) => (
+            <span key={i} style={{ width: i === idx ? 20 : 7, height: 7, borderRadius: 4,
+              background: i === idx ? gold : "rgba(160,130,80,0.35)", transition: "all .25s ease" }} />
+          ))}
+        </div>
+        <button className="sa-btn" onClick={() => { if (last) close(); else go(1); }}
+          style={{ padding: "14px", borderRadius: 14, border: "none", width: "100%", fontSize: 16, fontFamily: "Georgia, serif",
+            fontWeight: "bold", cursor: "pointer", color: "#fff",
+            background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", boxShadow: "0 4px 18px rgba(200,160,80,0.25)" }}>
+          {last ? "Начать" : "Дальше"}
+        </button>
+        {!last && (
+          <button className="sa-btn" onClick={close}
+            style={{ marginTop: 8, padding: "11px", borderRadius: 14, width: "100%", cursor: "pointer", border: "none",
+              background: "transparent", color: T.modSub?.color || "#9A8C74", fontSize: 13, fontFamily: "Georgia, serif" }}>
+            Пропустить
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 import { injectStyles } from "./ui/css";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./ui/icons";
-import { S, A } from "./ui/styles";
+import { S, A, ACCENT_SERIF } from "./ui/styles";
 import { NewPageBanner } from "./ui/guestbook-lite";
 import { weeklyDialogueId, weeklyLessonId } from "./data/reviews";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
@@ -742,9 +854,59 @@ function ServiceAcademy() {
   // Тяжёлые данные (СПГ-модули, живые диалоги) догружаются после первой
   // отрисовки — старт приложения их не ждёт. Тик состояния перерисовывает
   // интерфейс, когда данные готовы.
+  // ── Онбординг: приветствие один раз в жизни + подсказка о повторении ──
+  const [welcome, setWelcome] = useState(false);
+  const [mistakeHint, setMistakeHint] = useState(false);
+  useEffect(() => {
+    if (!profile || !storageLoaded) return;
+    try { if (localStorage.getItem("sa_welcome_seen") !== "1") setWelcome(true); } catch (e) {}
+  }, [profile, storageLoaded]);
+  const closeWelcome = () => {
+    try { localStorage.setItem("sa_welcome_seen", "1"); } catch (e) {}
+    vibrate("light");
+    setWelcome(false);
+  };
+  // Контекстная подсказка: появляется в момент, когда впервые есть что повторить
+  const dueMistakes = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
+  useEffect(() => {
+    if (welcome || !profile) return;
+    if (dueMistakes > 0 && ["home", "roleSelect"].includes(screen)) {
+      try { if (localStorage.getItem("sa_hint_mistakes") !== "1") setMistakeHint(true); } catch (e) {}
+    }
+  }, [dueMistakes, screen, welcome, profile]);
+  const [hintLeaving, setHintLeaving] = useState(false);
+  const closeMistakeHint = (go) => {
+    if (hintLeaving) return;
+    try { localStorage.setItem("sa_hint_mistakes", "1"); } catch (e) {}
+    if (go) vibrate("light");
+    setHintLeaving(true); // плавный уход вниз, затем размонтирование
+    setTimeout(() => {
+      setMistakeHint(false);
+      setHintLeaving(false);
+      if (go) navigate("mistakes");
+    }, 240);
+  };
+
   const [, bumpLazyData] = useState(0);
   useEffect(() => {
+    // 1) Сначала данные, без которых главные экраны неполные
     Promise.all([loadSpgModules(), loadDialogues()]).then(() => bumpLazyData(x => x + 1));
+    // 2) Затем тихо прогреваем ленивые экраны: пока человек смотрит на главную,
+    //    их код доезжает фоном — и первое открытие любого раздела мгновенно,
+    //    скелетон остаётся только для очень медленной сети в первые секунды.
+    const warm = setTimeout(() => {
+      [
+        () => import("./ui/menu-trainer"),
+        () => import("./ui/guestbook"),
+        () => import("./ui/ReferenceSection"),
+        () => import("./ui/search"),
+        () => import("./ui/sos"),
+        () => import("./ui/mentor"),
+        () => import("./ui/training-card"),
+        () => import("./ui/candidate"),
+      ].reduce((p, load) => p.then(() => load().catch(() => {})), Promise.resolve());
+    }, 1500);
+    return () => clearTimeout(warm);
   }, []);
 
   if (!storageLoaded) return (
@@ -856,6 +1018,28 @@ function ServiceAcademy() {
         {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) openCertificate(id); }} onExit={() => navigate("certificates")} />}
         {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}
         </div>
+
+        {/* Онбординг: приветствие при первом входе */}
+        {welcome && <WelcomeIntro T={T} a11y={a11y} isAdmin={!!profile?.is_admin} onClose={closeWelcome} />}
+        {/* Контекстная подсказка о повторении — над навбаром, показывается один раз */}
+        {mistakeHint && !welcome && (
+          <div className="sa-hintin" style={{ position: "fixed", left: 16, right: 16, bottom: 104, zIndex: 400,
+              maxWidth: 420, margin: "0 auto", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 16,
+              opacity: hintLeaving ? 0 : 1, transform: hintLeaving ? "translateY(14px)" : undefined,
+              transition: "opacity .24s ease, transform .24s ease",
+              background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+              border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+              borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+              boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.5)" }}>
+            <span className="sa-pulse" style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.target(a11y ? "#8B6A30" : "#C8A96E", 18)}</span>
+            <div onClick={() => closeMistakeHint(true)} {...onActivate(() => closeMistakeHint(true))}
+              style={{ flex: 1, cursor: "pointer", color: T.modSub?.color || "#C8B898", fontSize: a11y ? 14 : 12.5, lineHeight: 1.5 }}>
+              Появились вопросы на повторение — загляни в «Работу над ошибками»
+            </div>
+            <button className="sa-btn" onClick={() => closeMistakeHint(false)}
+              style={{ border: "none", background: "transparent", color: T.modSub?.color || "#9A8C74", fontSize: 15, cursor: "pointer", padding: 4, flexShrink: 0 }}>✕</button>
+          </div>
+        )}
 
         {/* Нижняя навигация — только на основных экранах */}
         {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && (
@@ -978,7 +1162,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
                   opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
                   {NAV_ICONS[tab.icon](lit ? accent : dim)}
                 </div>
-                <div style={{ fontSize:9.5, fontFamily:"'Spectral', Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
+                <div style={{ fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
                   whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
                   color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
                   transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
@@ -1091,13 +1275,13 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "'Spectral', Georgia, serif" }}>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "Georgia, serif" }}>
           <div style={{ fontSize: 44, marginBottom: 16 }}>🍷</div>
           <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Что-то пошло не так</div>
           <div style={{ color: "#9A8060", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
             Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение.
           </div>
-          <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "'Spectral', Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
+          <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
             Перезагрузить
           </button>
           {/* Диагностика: текст ошибки для скриншота в поддержку */}

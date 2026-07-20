@@ -253,7 +253,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
         {/* Листание */}
         {pages.length > 1 && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, padding: "0 4px" }}>
-            <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === 0 ? "default" : "pointer", fontFamily: "'Spectral', Georgia, serif" }}>‹</button>
+            <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", maxWidth: 220 }}>
               {pages.map((p, i) => {
                 const isUnread = (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key);
@@ -263,7 +263,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                 );
               })}
             </div>
-            <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "'Spectral', Georgia, serif" }}>›</button>
+            <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
           </div>
         )}
         <div style={{ ...MONO, color: T.modSub.color, fontSize: 9, letterSpacing: 1, textAlign: "center", marginTop: 10, opacity: .8 }}>

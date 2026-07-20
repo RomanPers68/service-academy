@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
+import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
@@ -12,7 +13,7 @@ import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "../data/dialogues-l
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
-import { S, A } from "./styles";
+import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
@@ -69,11 +70,11 @@ export function AchievementPopup({ ach, a11y, onClose }) {
           }}>{UI_SVG[ach.icon] ? UI_SVG[ach.icon](color, 34) : ach.icon}</div>
           <div>
             <div style={{ color:labelColor, fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:5 }}>✦ НОВАЯ АЧИВКА</div>
-            <div style={{ color:titleColor, fontSize:20, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>{ach.label}</div>
+            <div style={{ color:titleColor, fontSize:20, fontWeight:"bold", fontFamily:ACCENT_SERIF }}>{ach.label}</div>
           </div>
         </div>
         <div onClick={handleClose} {...onActivate(handleClose)}
-          style={{ textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"'Spectral', Georgia, serif" }}>
+          style={{ textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
           Закрыть ✕
         </div>
       </div>
@@ -114,11 +115,11 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
           ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО
         </div>
         <div style={{ display:"inline-block", background:"linear-gradient(135deg, rgba(212,168,90,0.25) 0%, rgba(212,168,90,0.05) 100%)", border:"1px solid rgba(212,168,90,0.5)", borderRadius:30, padding:"6px 20px", marginBottom:16 }}>
-          <span style={{ color:GOLD_SOFT, fontSize:13, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>
+          <span style={{ color:GOLD_SOFT, fontSize:13, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
             ✦ {ach.badge}
           </span>
         </div>
-        <div style={{ color:CREAM, fontSize:26, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", marginBottom:8, letterSpacing:0.3 }}>
+        <div style={{ color:CREAM, fontSize:26, fontWeight:"bold", fontFamily:ACCENT_SERIF, marginBottom:8, letterSpacing:0.3 }}>
           {ach.title}
         </div>
         <div style={{ color:"#8A7A6A", fontSize:14, lineHeight:1.7, maxWidth:300, margin:"0 auto" }}>
@@ -139,7 +140,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
           <div style={{ background:"linear-gradient(135deg, rgba(93,187,138,0.12) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(93,187,138,0.3)", borderRadius:20, padding:"16px 20px", textAlign:"center" }}>
             <div style={{ fontSize:11, letterSpacing:3, color:GREEN, fontFamily:"monospace", marginBottom:8 }}>✦ РАЗБЛОКИРОВАНО</div>
             <div style={{ marginBottom:6, display:"flex", justifyContent:"center" }}>{ROLE_SVG[nextRole.id] ? ROLE_SVG[nextRole.id](nextRole.color, 30) : nextRole.icon}</div>
-            <div style={{ color:CREAM, fontSize:16, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", marginBottom:4 }}>{nextRole.label}</div>
+            <div style={{ color:CREAM, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>{nextRole.label}</div>
             <div style={{ color:"#8A7A6A", fontSize:12 }}>{nextRole.desc}</div>
           </div>
         </div>
@@ -149,7 +150,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
         <div className="sa-pop" style={{ width:"100%", maxWidth:340, marginBottom:24 }}>
           <div style={{ background:"linear-gradient(135deg, rgba(212,168,90,0.15) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(212,168,90,0.4)", borderRadius:20, padding:"16px 20px", textAlign:"center" }}>
             <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{crownIcon(GOLD_SOFT, 32)}</div>
-            <div style={{ color:GOLD_SOFT, fontSize:15, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", marginBottom:4 }}>Мастер сервиса</div>
+            <div style={{ color:GOLD_SOFT, fontSize:15, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>Мастер сервиса</div>
             <div style={{ color:"#8A7A6A", fontSize:12, lineHeight:1.6 }}>Ты прошёл весь путь Service Academy. Теперь ты — архитектор сервиса.</div>
           </div>
         </div>
@@ -159,7 +160,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
         <button
           onClick={onExam}
           className="sa-btn sa-btn-pulse"
-          style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"none", background:"linear-gradient(135deg, #D4A85A 0%, #8B6A30 100%)", color:"#1A1008", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"'Spectral', Georgia, serif", letterSpacing:0.3, marginBottom:12 }}
+          style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"none", background:"linear-gradient(135deg, #D4A85A 0%, #8B6A30 100%)", color:"#1A1008", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3, marginBottom:12 }}
         >
           🎓 Сдать экзамен роли
         </button>
@@ -167,7 +168,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
       <button
         onClick={onNext}
         className="sa-btn"
-        style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"1px solid rgba(200,160,80,0.4)", background:"linear-gradient(135deg, rgba(200,160,80,0.2) 0%, rgba(200,160,80,0.08) 100%)", color:CREAM, fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"'Spectral', Georgia, serif", letterSpacing:0.3 }}
+        style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"1px solid rgba(200,160,80,0.4)", background:"linear-gradient(135deg, rgba(200,160,80,0.2) 0%, rgba(200,160,80,0.08) 100%)", color:CREAM, fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3 }}
       >
         {isLast ? "К списку ролей →" : `Перейти к «${nextRole?.label}» →`}
       </button>
@@ -197,7 +198,7 @@ export function WeekStar({ weekly, T }) {
           <div style={{ color:T.modSub.color, fontSize:12 }}>{top.restaurant || ""}</div>
         </div>
         <div style={{ textAlign:"right", flexShrink:0 }}>
-          <div style={{ color:gold, fontFamily:"'Spectral', Georgia, serif", fontSize:22, fontWeight:"bold", lineHeight:1 }}>{top.pts}</div>
+          <div style={{ color:gold, fontFamily:ACCENT_SERIF, fontSize:22, fontWeight:"bold", lineHeight:1 }}>{top.pts}</div>
           <div style={{ color:T.modSub.color, fontSize:10 }}>очков</div>
         </div>
       </div>
@@ -333,7 +334,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       {!detailTab && (
         <div style={{ display:"flex", margin:"12px 16px 0", gap:6 }}>
           {visibleTabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border: tab === t.id ? `1px solid ${t.color}55` : "1px solid transparent", borderTop: tab === t.id ? `1px solid ${t.color}88` : "1px solid transparent", cursor:"pointer", fontFamily:"'Spectral', Georgia, serif", fontSize:12, fontWeight:"bold", transition:"all 0.25s ease",
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border: tab === t.id ? `1px solid ${t.color}55` : "1px solid transparent", borderTop: tab === t.id ? `1px solid ${t.color}88` : "1px solid transparent", cursor:"pointer", fontFamily:"Georgia, serif", fontSize:12, fontWeight:"bold", transition:"all 0.25s ease",
               background: tab === t.id
                 ? `linear-gradient(155deg, ${t.color}28, ${t.color}10)`
                 : T.modCard.background,
@@ -385,7 +386,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           {(() => { const selAch = selected ? getAchievements(selected, leaderboard, scores) : []; return (
           <div style={{ ...T.modCard, marginBottom:16, flexDirection:"column", alignItems:"flex-start", gap:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, width:"100%" }}>
-              <div style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||GOLD}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||GOLD, fontFamily:"'Spectral', Georgia, serif" }}>
+              <div style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||GOLD}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||GOLD, fontFamily:"Georgia, serif" }}>
                 {selected?.name?.[0]}{selected?.surname?.[0]}
               </div>
               <div style={{ flex:1 }}>
@@ -398,7 +399,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
                 {selAch.map((a, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:20, background:"rgba(200,160,80,0.1)", border:"1px solid rgba(200,160,80,0.3)" }}>
                     <span style={{ display:"inline-flex", alignItems:"center" }}>{UI_SVG[a.icon] ? UI_SVG[a.icon](GOLD, 14) : a.icon}</span>
-                    <span style={{ color:GOLD, fontSize:11, fontFamily:"'Spectral', Georgia, serif" }}>{a.label}</span>
+                    <span style={{ color:GOLD, fontSize:11, fontFamily:"Georgia, serif" }}>{a.label}</span>
                   </div>
                 ))}
               </div>
@@ -477,7 +478,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
       </div>
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, gap:12 }}>
         <div style={{ display:"flex", justifyContent:"center" }}>{UI_SVG.target(GOLD, 48)}</div>
-        <div style={{ color:T.modTitle.color, fontSize:16, fontFamily:"'Spectral', Georgia, serif", textAlign:"center" }}>Сначала выбери роль</div>
+        <div style={{ color:T.modTitle.color, fontSize:16, fontFamily:"Georgia, serif", textAlign:"center" }}>Сначала выбери роль</div>
         <div style={{ color:T.modSub.color, fontSize:13, textAlign:"center" }}>Вернись и выбери роль — тогда появятся ежедневные задания</div>
       </div>
     </div>
@@ -519,7 +520,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
         {tasks.length === 0 ? (
           <div style={{ textAlign:"center", padding:"40px 0", color:T.modSub.color }}>
             <div style={{ fontSize:48, marginBottom:8 }}>🏆</div>
-            <div style={{ fontSize:16, color:T.modTitle.color, fontFamily:"'Spectral', Georgia, serif" }}>Все уроки пройдены!</div>
+            <div style={{ fontSize:16, color:T.modTitle.color, fontFamily:"Georgia, serif" }}>Все уроки пройдены!</div>
             <div style={{ fontSize:12, marginTop:4 }}>Ты настоящий мастер сервиса</div>
           </div>
         ) : tasks.map((task, i) => {
@@ -734,12 +735,12 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
           <div style={{ color:T.modSub.color, fontSize:11 }}>{p.restaurant}</div>
         </div>
         <div onClick={() => onViewPlayer && onViewPlayer(p)} {...onActivate(() => onViewPlayer && onViewPlayer(p))}
-          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"'Spectral', Georgia, serif",
+          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
             background:"rgba(200,169,110,0.12)", border:"1px solid rgba(200,169,110,0.3)", color:GOLD, display:"flex", alignItems:"center" }}>
           {UI_SVG.barChart(GOLD, 15)}
         </div>
         <div onClick={() => setShowConfirm(s => !s)} {...onActivate(() => setShowConfirm(s => !s))}
-          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"'Spectral', Georgia, serif",
+          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
             background:"rgba(220,80,80,0.12)", border:"1px solid rgba(220,80,80,0.3)", color:"#e57373", display:"flex", alignItems:"center", gap:6 }}>
           {UI_SVG.trash("#e57373", 13)} Сбросить
         </div>
@@ -761,7 +762,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
       )}
       {onUnlockQuiz && (
         <div onClick={() => onUnlockQuiz(p.name, p.surname)} {...onActivate(() => onUnlockQuiz(p.name, p.surname))}
-          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"'Spectral', Georgia, serif",
+          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
             background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start", display:"flex", alignItems:"center", gap:6 }}>
           {UI_SVG.lockOpen("#81C784", 13)} Разблокировать тесты
         </div>
@@ -798,7 +799,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
 
         {/* Профиль */}
         <div style={{ ...T.modCard, marginBottom:12, gap:12 }}>
-          <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:"bold", color:GOLD, fontFamily:"'Spectral', Georgia, serif", flexShrink:0 }}>
+          <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:"bold", color:GOLD, fontFamily:"Georgia, serif", flexShrink:0 }}>
             {profile?.is_admin ? UI_SVG.crown(GOLD, 24) : `${profile?.name?.[0]}${(profile?.surname||"")[0]||""}`.toUpperCase()}
           </div>
           <div>
@@ -827,7 +828,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
           ].map((s, i) => (
             <div key={i} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon](s.color, 22) : s.icon}</div>
-              <div style={{ color:s.color, fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 10 : 20, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>{s.value}</div>
+              <div style={{ color:s.color, fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 10 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
               <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15 }}>{s.label}</div>
             </div>
           ))}
@@ -915,7 +916,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
 }
 
 export const PS = {
-  fieldBase: { width:"100%", padding:"14px 16px", borderRadius:14, color:"#EEE4CC", fontSize:15, fontFamily:"'Spectral', Georgia, serif", outline:"none", boxSizing:"border-box", transition:"all 0.25s ease" },
+  fieldBase: { width:"100%", padding:"14px 16px", borderRadius:14, color:"#EEE4CC", fontSize:15, fontFamily:"Georgia, serif", outline:"none", boxSizing:"border-box", transition:"all 0.25s ease" },
   fieldNormal: { border:"1px solid rgba(180,138,55,0.45)", borderTop:"1px solid rgba(210,165,65,0.38)", background:"linear-gradient(155deg, rgba(55,40,16,0.65) 0%, rgba(38,26,10,0.55) 100%)", boxShadow:"0 4px 14px rgba(0,0,0,0.3), 0 1px 0 rgba(200,160,60,0.14) inset" },
   fieldFocus:  { border:"1px solid rgba(200,160,80,0.6)", borderTop:"1px solid rgba(220,175,75,0.7)", background:"linear-gradient(155deg, rgba(58,42,16,0.7) 0%, rgba(40,28,8,0.6) 100%)", boxShadow:"0 0 0 3px rgba(200,160,80,0.1), 0 4px 14px rgba(0,0,0,0.3), 0 1px 0 rgba(200,160,60,0.15) inset" },
   lblEmpty:  { color:"#8A7055",             fontSize:10, letterSpacing:2.5, fontFamily:"monospace", textTransform:"uppercase", marginBottom:7, display:"block" },
@@ -1060,7 +1061,7 @@ export function ProfileScreen({ onDone, T }) {
                         boxShadow: position === pos.id ? "0 4px 14px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.15) inset" : "0 2px 8px rgba(0,0,0,0.25)" }}>
                       <div style={{ display:"flex", alignItems:"center" }}>{POS_SVG[pos.id] ? POS_SVG[pos.id](position === pos.id ? GOLD : "#9A8060", 22) : pos.icon}</div>
                       <div style={{ flex:1 }}>
-                        <div style={{ color: position === pos.id ? CREAM : "#A89880", fontSize:14, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>{pos.label}</div>
+                        <div style={{ color: position === pos.id ? CREAM : "#A89880", fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{pos.label}</div>
                         <div style={{ color:MUTED_2, fontSize:11, marginTop:1 }}>{pos.sub}</div>
                       </div>
                       {position === pos.id && <div style={{ color:GOLD, fontSize:16 }}>✓</div>}
@@ -1091,7 +1092,7 @@ export function ProfileScreen({ onDone, T }) {
               background: done ? "linear-gradient(155deg, rgba(60,140,80,0.5), rgba(40,100,60,0.4))" : isValid ? "linear-gradient(155deg, #3A2A10 0%, #2A1E0A 100%)" : "rgba(255,255,255,0.03)",
               color: done ? GREEN : isValid ? CREAM : "#3C3428",
               fontSize:15, fontWeight:"bold", cursor: isValid ? "pointer" : "default",
-              fontFamily:"'Spectral', Georgia, serif", letterSpacing:0.3, transition:"all 0.3s ease",
+              fontFamily:"Georgia, serif", letterSpacing:0.3, transition:"all 0.3s ease",
               boxShadow: isValid && !done ? "0 6px 22px rgba(0,0,0,0.4), 0 2px 0 rgba(210,170,70,0.22) inset, 0 -2px 4px rgba(0,0,0,0.38) inset" : "none",
               borderTop: isValid && !done ? "1px solid rgba(220,175,75,0.50)" : "1px solid rgba(255,255,255,0.05)",
             }}>
@@ -1293,14 +1294,14 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
   const inputStyle = {
     width:"100%", padding:"13px 14px", borderRadius:12, fontSize:15,
-    fontFamily:"'Spectral', Georgia, serif",
+    fontFamily:"Georgia, serif",
     background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
     color: a11y ? "#3A2E1C" : CREAM,
     border: a11y ? "1px solid rgba(160,120,60,0.45)" : "1px solid rgba(200,160,80,0.35)",
     outline:"none", boxSizing:"border-box"
   };
   const chip = (active) => ({
-    padding:"8px 13px", borderRadius:20, fontSize:12.5, fontFamily:"'Spectral', Georgia, serif", cursor:"pointer",
+    padding:"8px 13px", borderRadius:20, fontSize:12.5, fontFamily:"Georgia, serif", cursor:"pointer",
     border: active ? (a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E") : (a11y ? "1px solid rgba(160,120,60,0.4)" : "1px solid rgba(200,160,80,0.3)"),
     background: active ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.18)") : "transparent",
     color: active ? (a11y ? "#6B4E1A" : "#E8D9B8") : (a11y ? "#7A6A50" : "#9A8C74"),
@@ -1309,7 +1310,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   });
   const goldBtn = {
     padding:"14px", borderRadius:14, border:"none", width:"100%",
-    fontSize:16, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor:"pointer",
+    fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
     color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
     boxShadow:"0 4px 18px rgba(200,160,80,0.25)"
   };
@@ -1317,7 +1318,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     padding:"13px", borderRadius:14, width:"100%", cursor:"pointer",
     border: a11y ? "1px solid rgba(139,106,48,0.55)" : "1px solid rgba(200,160,80,0.4)",
     background:"transparent",
-    color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"'Spectral', Georgia, serif"
+    color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif"
   };
 
   // ── Сводка ──
@@ -1349,14 +1350,14 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
       <div style={T.screen} className="sa-screen">
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"30px 24px 100px" }}>
           <div style={{ marginBottom:14 }}>{UI_SVG.checkCircle(GREEN, 40)}</div>
-          <div style={{ color:T.modTitle.color, fontSize:18, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", textAlign:"center" }}>
+          <div style={{ color:T.modTitle.color, fontSize:18, fontWeight:"bold", fontFamily:ACCENT_SERIF, textAlign:"center" }}>
             {issued.emp.name} {issued.emp.surname}
           </div>
           <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:4, marginBottom:24 }}>{issued.emp.restaurant}</div>
 
           <div style={{ color:"#9A8C74", fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:10 }}>КОД ДОСТУПА</div>
           <div onClick={() => copyCode(issued.code)} {...onActivate(() => copyCode(issued.code))} style={{
-            fontSize:34, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", letterSpacing:5, color: a11y ? "#4A3A20" : CREAM,
+            fontSize:34, fontWeight:"bold", fontFamily:"Georgia, serif", letterSpacing:5, color: a11y ? "#4A3A20" : CREAM,
             padding:"18px 28px", borderRadius:18, cursor:"pointer",
             background:"rgba(200,169,110,0.12)", border:"1.5px solid rgba(200,160,80,0.5)",
             boxShadow:"0 6px 24px rgba(200,160,80,0.18)" }}>
@@ -1442,12 +1443,12 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             <div style={{ width:50, height:50, borderRadius:"50%", flexShrink:0,
               background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
               display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ color:"#fff", fontSize:16, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", display:"inline-flex", alignItems:"center" }}>
+              <span style={{ color:"#fff", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
                 {selected.is_admin ? UI_SVG.crown("#fff", 22) : `${selected.name?.[0] || ""}${(selected.surname||"")[0]||""}`.toUpperCase()}
               </span>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ color:T.modTitle.color, fontSize:16.5, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>
+              <div style={{ color:T.modTitle.color, fontSize:16.5, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
                 {selected.name} {selected.surname}
                 {isSelf && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
               </div>
@@ -1499,7 +1500,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               <div style={{ display:"flex", gap:10 }}>
                 <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
                 <button className="sa-btn" disabled={busy} onClick={doToggle}
-                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor:"pointer",
+                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
                     background: selected.status === "disabled" ? GREEN : RED, color:"#fff" }}>
                   {busy ? "..." : selected.status === "disabled" ? "Включить" : "Отключить"}
                 </button>
@@ -1517,7 +1518,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               <div style={{ display:"flex", gap:10 }}>
                 <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
                 <button className="sa-btn" disabled={busy} onClick={doRename}
-                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor:"pointer", background:GOLD, color:"#1A1008", opacity: editNS.name.trim().length < 2 ? 0.5 : 1 }}>
+                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:GOLD, color:"#1A1008", opacity: editNS.name.trim().length < 2 ? 0.5 : 1 }}>
                   {busy ? "..." : "Сохранить"}
                 </button>
               </div>
@@ -1530,7 +1531,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               <div style={{ display:"flex", gap:10 }}>
                 <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
                 <button className="sa-btn" disabled={busy} onClick={doDelete}
-                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor:"pointer", background:RED, color:"#fff" }}>
+                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:RED, color:"#fff" }}>
                   {busy ? "..." : "Удалить"}
                 </button>
               </div>
@@ -1569,7 +1570,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             {NAV_ICONS.team(GOLD)}<span>Команда</span>
           </div>
           <button className="sa-btn" onClick={() => { setActionError(null); setView("add"); }}
-            style={{ padding:"9px 16px", borderRadius:20, border:"none", fontSize:13.5, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor:"pointer",
+            style={{ padding:"9px 16px", borderRadius:20, border:"none", fontSize:13.5, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
               color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", boxShadow:"0 3px 12px rgba(200,160,80,0.3)" }}>
             + Добавить
           </button>
@@ -1579,7 +1580,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           <button className="sa-btn" onClick={() => { vibrate("light"); onCandidate(); }}
             style={{ width:"100%", marginBottom:14, padding:"13px 16px", borderRadius:14, cursor:"pointer",
               border:"1px solid rgba(200,160,80,0.35)", background:"rgba(200,169,110,0.08)",
-              fontFamily:"'Spectral', Georgia, serif", fontSize:14, fontWeight:"bold", textAlign:"left", color:GOLD,
+              fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", textAlign:"left", color:GOLD,
               display:"flex", alignItems:"center", gap:10 }}>
             <span style={{ display:"flex", flexShrink:0 }}>{UI_SVG.dialog(GOLD, 17)}</span>
             <span style={{ flex:1 }}>Собеседование кандидата</span>
@@ -1596,7 +1597,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             ].map((s, i) => (
               <div key={i} style={{ flex:1, minWidth:88, textAlign:"center", padding:"10px 6px", borderRadius:14,
                 background:"rgba(200,169,110,0.07)", border:"1px solid rgba(200,160,80,0.2)" }}>
-                <div style={{ color:s.c, fontSize:20, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>{s.n}</div>
+                <div style={{ color:s.c, fontSize:20, fontWeight:"bold", fontFamily:ACCENT_SERIF }}>{s.n}</div>
                 <div style={{ color:T.modSub.color, fontSize:10.5, marginTop:2 }}>{s.label}</div>
               </div>
             ))}
@@ -1635,7 +1636,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                     style={{ ...T.modCard, gap:12, cursor:"pointer", padding:"13px 14px" }}>
                     <span style={{ width:9, height:9, borderRadius:5, flexShrink:0, background:st.color, boxShadow:`0 0 8px ${st.color}55` }} />
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ color:T.modTitle.color, fontSize:14.5, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                      <div style={{ color:T.modTitle.color, fontSize:14.5, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {e.name} {e.surname}
                         {e.is_admin && <span style={{ marginLeft:6, fontSize:8, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
                       </div>
@@ -1710,7 +1711,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
     <div style={{ ...T.screen, justifyContent:"center", alignItems:"center", padding:"32px 24px",
       background:"linear-gradient(160deg, #241A0C 0%, #14100A 55%, #1C1509 100%)", minHeight:"100vh" }} className="sa-screen">
       <img src={LOGO_SRC_DARK} alt="Service Academy" style={{ width:180, marginBottom:8, filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
-      <div style={{ color:CREAM, fontSize:21, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", marginBottom:8, textAlign:"center" }}>
+      <div style={{ color:CREAM, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF, marginBottom:8, textAlign:"center" }}>
         Вход по приглашению
       </div>
       <div style={{ color:"#9A8C74", fontSize:13, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:26 }}>
@@ -1726,7 +1727,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         spellCheck={false}
         inputMode="text"
         style={{ width:"100%", maxWidth:280, padding:"16px 18px", borderRadius:16, textAlign:"center",
-          fontSize:22, letterSpacing:4, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold",
+          fontSize:22, letterSpacing:4, fontFamily:"Georgia, serif", fontWeight:"bold",
           background:"rgba(20,14,6,0.6)", color:CREAM, outline:"none",
           border: error ? "1.5px solid #E07878" : "1.5px solid rgba(200,160,80,0.45)",
           boxShadow:"0 4px 18px rgba(0,0,0,0.35) inset" }}
@@ -1739,7 +1740,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
       <button className="sa-btn sa-btn-pulse" onClick={submit}
         disabled={busy}
         style={{ marginTop:20, width:"100%", maxWidth:280, padding:"15px", borderRadius:16, border:"none",
-          fontSize:17, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor: busy ? "default" : "pointer",
+          fontSize:17, fontFamily:"Georgia, serif", fontWeight:"bold", cursor: busy ? "default" : "pointer",
           color:"#fff", background: busy ? "rgba(200,169,110,0.4)" : "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
           boxShadow:"0 4px 18px rgba(200,160,80,0.3)" }}>
         {busy ? "Проверяем..." : "Войти"}
@@ -1806,12 +1807,12 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
       <div style={{ flex:1, padding:"20px 18px 40px" }}>
         <div style={{ ...T.modCard, gap:14, marginBottom:14 }}>
           <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
-            <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", display:"inline-flex", alignItems:"center" }}>
+            <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown("#fff", 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
             </span>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ color:T.modTitle.color, fontSize:17, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>
+            <div style={{ color:T.modTitle.color, fontSize:17, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
               {profile?.name} {profile?.surname}
               {profile?.is_admin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
             </div>
@@ -1850,7 +1851,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
 
         {!confirmOut ? (
           <button className="sa-btn" onClick={() => setConfirmOut(true)}
-            style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:RED, fontSize:15, fontFamily:"'Spectral', Georgia, serif", cursor:"pointer" }}>
+            style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:RED, fontSize:15, fontFamily:"Georgia, serif", cursor:"pointer" }}>
             Выйти с этого устройства
           </button>
         ) : (
@@ -1860,11 +1861,11 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button className="sa-btn" onClick={() => setConfirmOut(false)}
-                style={{ flex:1, padding:"13px", borderRadius:14, border:"1px solid rgba(200,160,80,0.4)", background:"transparent", color:GOLD, fontSize:14, fontFamily:"'Spectral', Georgia, serif", cursor:"pointer" }}>
+                style={{ flex:1, padding:"13px", borderRadius:14, border:"1px solid rgba(200,160,80,0.4)", background:"transparent", color:GOLD, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
                 Остаться
               </button>
               <button className="sa-btn" onClick={onLogout}
-                style={{ flex:1, padding:"13px", borderRadius:14, border:"none", background:RED, color:"#fff", fontSize:14, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", cursor:"pointer" }}>
+                style={{ flex:1, padding:"13px", borderRadius:14, border:"none", background:RED, color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer" }}>
                 Выйти
               </button>
             </div>
@@ -1944,7 +1945,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const hello = h < 6 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
           return (
             <div style={{ padding:"2px 20px 12px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
-              <div style={{ color: T.modTitle.color, fontSize:19, fontFamily:"'Spectral', Georgia, serif", minWidth:0 }}>
+              <div style={{ color: T.modTitle.color, fontSize:19, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: GOLD }}>{profile.name}</span>
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
               </div>
@@ -1986,7 +1987,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                         : (ROLE_SVG[role] ? ROLE_SVG[role](RC, 20) : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={RC} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>)}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ color: gold ? GOLD : GRN, fontSize:16, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>{title}</div>
+                      <div style={{ color: gold ? GOLD : GRN, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{title}</div>
                       <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sub}</div>
                     </div>
                     <div style={{ fontFamily:"monospace", flexShrink:0, fontSize:9, letterSpacing:1, color: "#14100A", background: gold ? `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)` : RC, borderRadius:12, padding:"6px 11px" }}>{cta} ›</div>
@@ -2013,7 +2014,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                   <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
                     display:"flex", alignItems:"center", justifyContent:"center",
                     background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #8B6A30 100%)",
-                    color:"#14100A", fontSize:10, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", lineHeight:1,
+                    color:"#14100A", fontSize:10, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
                     border: a11y ? "1.5px solid #FBF5E8" : "1.5px solid #14100A",
                     boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
                 )}
@@ -2021,10 +2022,10 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                   {/* ляссе */}
                   <div style={{ position:"absolute", right:16, top:0, width:7, height:20, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />
                   <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px 8px" }}>
-                    <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, border:`1.2px solid ${GOLD}88`, background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)", display:"flex", alignItems:"center", justifyContent:"center", color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"'Spectral', Georgia, serif" }}>{(profile.name || "?")[0]}</div>
+                    <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, border:`1.2px solid ${GOLD}88`, background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)", display:"flex", alignItems:"center", justifyContent:"center", color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif" }}>{(profile.name || "?")[0]}</div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
-                        <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
+                        <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
                         <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:8 }}>{bs.pages}/{bs.total}</span>
                       </div>
                       <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:7.5, letterSpacing:2, marginTop:1, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>ЛИЧНАЯ · {profile.name} · {bs.rank.label}</div>
@@ -2249,7 +2250,7 @@ export const _clId = () => Math.random().toString(36).slice(2,8);
 
 export function ChecklistScreen({ T, a11y, profile, onBack }) {
   const C = moodPalette(a11y);
-  const serif = "'Spectral', Georgia, 'Times New Roman', serif";
+  const serif = "Georgia, 'Times New Roman', serif";
   const today = _clYmd(new Date());
   const canEdit = !!(profile && (profile.is_admin || ["manager","senior"].includes(profile.position)));
   const [tab, setTab] = React.useState("open");
@@ -2392,7 +2393,7 @@ export const ONB_TOTAL = DEFAULT_ONBOARDING.reduce((n,p)=>n+p.steps.length,0);
 
 export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
   const C = moodPalette(a11y);
-  const serif = "'Spectral', Georgia, 'Times New Roman', serif";
+  const serif = "Georgia, 'Times New Roman', serif";
   const isLeader = !!(profile && (profile.is_admin || ["manager","senior"].includes(profile.position)));
   const isNew = role === "seasonal";
   const [view, setView] = React.useState(isNew ? "me" : "mentor");
@@ -2497,7 +2498,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
 
 export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   const C = moodPalette(a11y);
-  const serif = "'Spectral', Georgia, 'Times New Roman', serif";
+  const serif = "Georgia, 'Times New Roman', serif";
   const [view, setView] = React.useState("weak");
   const [hardQ, setHardQ] = React.useState(null); // null=не грузили | "loading" | "off" | []
   React.useEffect(() => {
@@ -2617,7 +2618,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const red = dark ? RED : RED_DARK;
   const txt = dark ? CREAM : INK;
   const brd = dark ? "rgba(150,112,42,0.45)" : "rgba(180,145,70,0.35)";
-  const SERIF = "'Spectral', Georgia, 'Times New Roman', serif";
+  const SERIF = "Georgia, 'Times New Roman', serif";
   const ROLES = [{ id: "seasonal", label: "Новичок" }, { id: "core", label: "Ядро" }, { id: "manager", label: "Менеджер" }, { id: "service_manager", label: "Сервис-менеджер" }];
   const token = (() => { try { return localStorage.getItem("sa_session_token"); } catch (e) { return null; } })();
   const uid = () => Math.random().toString(36).slice(2, 9);
@@ -2977,6 +2978,52 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
   );
 }
 
+// Позиционирует всплывающее окошко у точки тапа: сначала пытается встать
+// под словом, при нехватке места — над ним, и всегда остаётся в пределах
+// экрана (отступ 16px). Без координат (клавиатура) — центр экрана.
+function TapAnchored({ x, y, T, children }) {
+  const ref = React.useRef(null);
+  const [pos, setPos] = React.useState({ top: -9999, left: 16, ready: false, below: true, tailLeft: 24 });
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const r = el.getBoundingClientRect();
+    const hasTap = typeof x === "number" && typeof y === "number";
+    const tapX = hasTap ? x : vw / 2;
+    const tapY = hasTap ? y : vh / 2 - r.height / 2;
+    let left = Math.min(Math.max(16, tapX - r.width / 2), Math.max(16, vw - r.width - 16));
+    let below = true;
+    let top = tapY + 16;                                        // под словом (+ место хвостику)
+    if (top + r.height > vh - 16) { below = false; top = tapY - r.height - 16; } // над словом
+    top = Math.min(Math.max(16, top), Math.max(16, vh - r.height - 16));
+    // хвостик по горизонтали — ровно под точкой тапа, но не на скруглении карточки
+    const tailLeft = Math.min(Math.max(18, tapX - left - 6), r.width - 32);
+    setPos({ top, left, ready: true, below, tailLeft, hasTap });
+  }, [x, y]);
+  // Ромбик той же фактуры, что карточка; чуть плотнее фон — иначе на стыке
+  // двоится блюр и виден шов. Две грани без рамки смотрят внутрь карточки.
+  const a11y = !!T?.a11y;
+  const tail = {
+    position: "absolute", width: 13, height: 13, left: pos.tailLeft, zIndex: 1,
+    background: a11y ? "rgba(252,246,232,0.99)" : "rgba(24,17,8,0.96)",
+    border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,169,110,0.35)"}`,
+    borderRight: "none", borderBottom: "none",
+    ...(pos.below
+      ? { top: -7, transform: "rotate(45deg)", borderTopColor: a11y ? "rgba(139,106,48,0.55)" : "rgba(200,169,110,0.5)" }
+      : { bottom: -7, transform: "rotate(225deg)" }),
+  };
+  return (
+    <div ref={ref} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 1000,
+      maxWidth: 440, width: "calc(100vw - 32px)",
+      opacity: pos.ready ? 1 : 0, transform: pos.ready ? "none" : "translateY(6px)",
+      transition: "opacity .18s ease, transform .18s ease" }}>
+      {children}
+      {pos.hasTap && <div style={tail} />}
+    </div>
+  );
+}
+
 export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T }) {
   const nextBtnRef = React.useRef(null);
   const bodyRef = React.useRef(null);
@@ -3085,7 +3132,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           if (part.isPlain) return <span key={idx}>{part.text}</span>;
           return (
             <span key={idx}
-              onClick={e => { e.stopPropagation(); setTermPopup({ term: part.term.term, def: part.term.def }); }}
+              onClick={e => { e.stopPropagation(); setTermPopup({ term: part.term.term, def: part.term.def, x: e.clientX, y: e.clientY }); }}
               style={{ color, borderBottom:`1.5px dotted ${color}`, cursor:"pointer", fontWeight:"bold" }}>
               {part.text}
             </span>
@@ -3109,7 +3156,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           <div onClick={dismissModeHint} style={{ position: "absolute", top: 92, right: 10, zIndex: 30, maxWidth: 230, cursor: "pointer" }}>
             <div style={{ position: "absolute", top: -5, right: 16, width: 10, height: 10, transform: "rotate(45deg)", background: "rgba(46,34,14,0.97)", borderLeft: `1px solid ${GOLD}66`, borderTop: `1px solid ${GOLD}66` }} />
             <div style={{ background: "rgba(46,34,14,0.97)", border: `1px solid ${GOLD}66`, borderRadius: 12, padding: "9px 12px", boxShadow: "0 8px 22px rgba(0,0,0,0.5)" }}>
-              <div style={{ color: GOLD, fontSize: 12, fontFamily: "'Spectral', Georgia, serif", lineHeight: 1.5 }}>Карточки ↔ лента</div>
+              <div style={{ color: GOLD, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>Карточки ↔ лента</div>
               <div style={{ color: "#BDB09A", fontSize: 11.5, lineHeight: 1.5, marginTop: 2 }}>Эта кнопка меняет вид урока. Твой выбор запомнится.</div>
             </div>
           </div>
@@ -3141,10 +3188,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
                 <div style={{ fontSize:28 }}>💬</div>
                 <div style={{ flex:1 }}>
-                  <div style={{ color: color || GOLD, fontSize: T.para?.fontSize || 15, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>В этом уроке есть живой диалог</div>
+                  <div style={{ color: color || GOLD, fontSize: T.para?.fontSize || 15, fontWeight:"bold", fontFamily:"Georgia, serif" }}>В этом уроке есть живой диалог</div>
                 </div>
               </div>
-              <div style={{ color: T.modSub?.color || BROWN, fontSize: T.modSub?.fontSize || 13, lineHeight:1.6, fontFamily:"'Spectral', Georgia, serif" }}>
+              <div style={{ color: T.modSub?.color || BROWN, fontSize: T.modSub?.fontSize || 13, lineHeight:1.6, fontFamily:"Georgia, serif" }}>
                 Нажми на <span style={{ color: color||GOLD, borderBottom:`1.5px dotted ${color||GOLD}`, fontWeight:"bold" }}>выделенное слово</span> в тексте — и отработай навык в живом диалоге с гостем
               </div>
             </div>
@@ -3182,7 +3229,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             if (line.startsWith("📌")) return markerRow(T.note, UI_SVG.pin(color, 14));
             const keycap = line.match(/^([1-9])️⃣/);
             if (keycap) return markerRow(T.principle,
-              <span style={{ width:19, height:19, borderRadius:10, border:`1.5px solid ${color}`, color, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10.5, fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif" }}>{keycap[1]}</span>);
+              <span style={{ width:19, height:19, borderRadius:10, border:`1.5px solid ${color}`, color, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10.5, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{keycap[1]}</span>);
             const dotColor = { "🔵":"#5B8DD9", "🟢":GREEN, "🟡":"#D9C75B", "🟠":"#E0975B", "🔴":RED }[[...line][0]];
             if (dotColor) return markerRow(T.principle,
               <span style={{ width:9, height:9, borderRadius:5, background:dotColor, marginTop:3, boxShadow:`0 0 8px ${dotColor}55`, display:"inline-block" }} />);
@@ -3217,37 +3264,41 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
           )}
         </div>
-        {dialogueScreen && (
+        {/* Порталы в body: у свайп-страниц transform, который делает position:fixed
+            локальным — оверлеи должны жить вне трансформированного поддерева */}
+        {dialogueScreen && createPortal(
           <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />
-        )}
-        {termPopup && (
+        , document.body)}
+        {termPopup && createPortal(
           <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
-            style={{ position:"fixed", inset:0, background:"transparent", zIndex:999, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 40px" }}>
+            style={{ position:"fixed", inset:0, background:"transparent", zIndex:999 }}>
+            <TapAnchored x={termPopup.x} y={termPopup.y} T={T}>
             <div onClick={e => e.stopPropagation()}
-              style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:20, padding:"20px 20px 24px", margin:"0 16px", maxWidth:440, width:"100%",
+              style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:20, padding:"20px 20px 24px", width:"100%", boxSizing:"border-box",
                 border:`1px solid ${color}55`, borderTop:`1px solid ${color}77`,
                 backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
                 boxShadow:`0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset` }}>
-              <div style={{ color, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
+              <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
                 <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:7 }}>{UI_SVG.book(color, 16)}</span>{termPopup.term}
               </div>
-              <div style={{ color: T.modSub?.color || "#C8B898", fontSize:15, lineHeight:1.7, fontFamily:"'Spectral', Georgia, serif" }}>
+              <div style={{ color: T.modSub?.color || "#C8B898", fontSize:15, lineHeight:1.7, fontFamily:"Georgia, serif" }}>
                 {termPopup.def}
               </div>
               {DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()) && (
                 <div onClick={() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); }} {...onActivate(() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); })}
                   style={{ marginTop:14, padding:"11px 16px", borderRadius:12, background:color, cursor:"pointer",
-                    textAlign:"center", color:"#fff", fontSize:14, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold" }}>
+                    textAlign:"center", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold" }}>
                   Отработать на практике →
                 </div>
               )}
               <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
-                style={{ marginTop:10, textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"'Spectral', Georgia, serif" }}>
+                style={{ marginTop:10, textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
                 Закрыть ✕
               </div>
             </div>
+            </TapAnchored>
           </div>
-        )}
+        , document.body)}
       </div>
     );
   }
@@ -3594,7 +3645,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           placeholder="Поиск термина..."
           style={{ width:"100%", padding:"10px 14px", borderRadius:12, border:`1px solid ${color}44`,
             background: T.modCard?.background || "rgba(255,255,255,0.05)",
-            color: T.para?.color || CREAM, fontSize:15, fontFamily:"'Spectral', Georgia, serif",
+            color: T.para?.color || CREAM, fontSize:15, fontFamily:"Georgia, serif",
             outline:"none", boxSizing:"border-box", marginBottom:12 }}
         />
         <div style={{ marginBottom:10 }}>
@@ -3610,7 +3661,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
               border:`1px solid ${color}${favOnly ? "" : "55"}`,
               background: favOnly ? color : "transparent",
               color: favOnly ? "#1A1008" : (T.para?.color || "#C8B898"),
-              fontSize:13, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", transition:"all 0.15s" }}>
+              fontSize:13, fontFamily:"Georgia, serif", fontWeight:"bold", transition:"all 0.15s" }}>
             {favOnly ? "★" : "☆"} Только избранное
           </button>
         </div>
@@ -3635,7 +3686,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           {catHeader}
           <div style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, width:"100%" }}>
-              <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:15, flex:1 }}>{g.term}</div>
+              <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15, flex:1 }}>{g.term}</div>
               <button onClick={() => onToggleFav(k)} aria-label={fav ? "Убрать из избранного" : "В избранное"} title={fav ? "Убрать из избранного" : "В избранное"}
                 style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, lineHeight:1, padding:"0 2px", color: fav ? color : (a11y ? "#9A8A6A" : "#6B5E48") }}>
                 {fav ? "★" : "☆"}
@@ -3648,16 +3699,16 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
                 <textarea autoFocus value={note} onChange={e => onSetNote(k, e.target.value)} placeholder="Моя заметка..." rows={2}
                   style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px solid ${color}55`,
                     background: T.modCard?.background || "rgba(255,255,255,0.04)", color: T.para?.color || "#F0E8D8",
-                    fontSize:16, fontFamily:"'Spectral', Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />
+                    fontSize:16, fontFamily:"Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />
                 <div style={{ display:"flex", justifyContent:"flex-end", gap:14, marginTop:6, width:"100%" }}>
                   {note && (
                     <button onClick={() => { onSetNote(k, ""); setEditingNote(null); }}
-                      style={{ background:"none", border:"none", cursor:"pointer", color: a11y ? "#8A5A3A" : "#B07A6A", fontSize:13, fontFamily:"'Spectral', Georgia, serif", padding:"4px 2px" }}>
+                      style={{ background:"none", border:"none", cursor:"pointer", color: a11y ? "#8A5A3A" : "#B07A6A", fontSize:13, fontFamily:"Georgia, serif", padding:"4px 2px" }}>
                       Удалить
                     </button>
                   )}
                   <button onClick={() => setEditingNote(null)}
-                    style={{ background:"none", border:"none", cursor:"pointer", color: color || GOLD, fontSize:13, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", padding:"4px 2px" }}>
+                    style={{ background:"none", border:"none", cursor:"pointer", color: color || GOLD, fontSize:13, fontFamily:"Georgia, serif", fontWeight:"bold", padding:"4px 2px" }}>
                     Готово
                   </button>
                 </div>
@@ -3665,13 +3716,13 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
             ) : note ? (
               <div onClick={() => setEditingNote(k)} {...onActivate(() => setEditingNote(k))}
                 style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px dashed ${color}44`,
-                  color: T.para?.color || "#F0E8D8", fontSize:14, fontFamily:"'Spectral', Georgia, serif", lineHeight:1.5, cursor:"pointer", whiteSpace:"pre-wrap", boxSizing:"border-box" }}>
+                  color: T.para?.color || "#F0E8D8", fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.5, cursor:"pointer", whiteSpace:"pre-wrap", boxSizing:"border-box" }}>
                 <span style={{ display:"block", fontSize:10, letterSpacing:1, opacity:0.55, marginBottom:3 }}>✎ МОЯ ЗАМЕТКА</span>
                 {note}
               </div>
             ) : (
               <button onClick={() => setEditingNote(k)}
-                style={{ background:"none", border:"none", cursor:"pointer", color: `${color || GOLD}99`, fontSize:12.5, fontFamily:"'Spectral', Georgia, serif", padding:"2px 0", marginTop:2 }}>
+                style={{ background:"none", border:"none", cursor:"pointer", color: `${color || GOLD}99`, fontSize:12.5, fontFamily:"Georgia, serif", padding:"2px 0", marginTop:2 }}>
                 + Добавить заметку
               </button>
             )}
@@ -3873,7 +3924,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       <div style={{ padding:"12px 14px 10px", background:`linear-gradient(135deg, ${dColor}18, transparent)`, borderBottom:`1px solid ${dColor}22` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
           <button onClick={() => onClose(done && !walkedOut)} style={{ background:"none", border:"none", color:BROWN, fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
-          <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`${dColor}1e`, border:`1px solid ${dColor}55`, display:"flex", alignItems:"center", justifyContent:"center", color:dColor, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:15 }}>{(dialogue.guest.name || "?").trim()[0].toUpperCase()}</div>
+          <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`${dColor}1e`, border:`1px solid ${dColor}55`, display:"flex", alignItems:"center", justifyContent:"center", color:dColor, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{(dialogue.guest.name || "?").trim()[0].toUpperCase()}</div>
           <div style={{ flex:1 }}>
             <div style={{ color: T.modTitle?.color || CREAM, fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
             <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
@@ -4002,11 +4053,11 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
                 setCurrentId(nextId); dlgLastByTerm[dialogue.termKey] = nextId;
                 setMessages([]); setStepIdx(0); setChosen(null); setPicked(null); setShuffleKey(k => k + 1); setScore(0); setChoicesFaced(0); setMood(next?.guest.mood || 3); setDone(false); setWalkedOut(false); runningRef.current=false;
               }}
-              style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"'Spectral', Georgia, serif", cursor:"pointer" }}>
+              style={{ flex:1, padding:"12px", borderRadius:12, background:"transparent", border:`1px solid ${dColor}55`, color:dColor, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
               ↺ Ещё раз
             </button>
             <button onClick={() => onClose(!walkedOut)}
-              style={{ flex:1, padding:"12px", borderRadius:12, background:dColor, border:"none", color:"#fff", fontSize:14, fontFamily:"'Spectral', Georgia, serif", cursor:"pointer", fontWeight:"bold" }}>
+              style={{ flex:1, padding:"12px", borderRadius:12, background:dColor, border:"none", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer", fontWeight:"bold" }}>
               Закрыть
             </button>
           </div>
@@ -4119,7 +4170,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
       <div style={T.screen}>
         <div style={{ ...T.lessBody, padding:"48px 24px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:18 }}>
           <div style={{ fontSize:64 }}>{passed ? "🎓" : "📚"}</div>
-          <div style={{ color: passed ? color : (a11y ? "#8B3020" : "#E07878"), fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:24 }}>
+          <div style={{ color: passed ? color : (a11y ? "#8B3020" : "#E07878"), fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:24 }}>
             {passed ? "Экзамен сдан!" : "Почти получилось"}
           </div>
           <div style={{ ...T.para, fontSize:18 }}>Результат: <b style={{ color }}>{score}%</b> ({correctCount} из {total})</div>
@@ -4128,10 +4179,10 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:10, width:"100%", maxWidth:320, marginTop:6 }}>
             {passed
-              ? <button onClick={onExit} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", fontSize:15, cursor:"pointer" }}>К сертификату</button>
+              ? <button onClick={onExit} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>К сертификату</button>
               : <>
-                  <button onClick={() => { setAttempt(a => a + 1); setStep(0); setPicked(null); setCorrectCount(0); setPhase("quiz"); }} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", fontSize:15, cursor:"pointer" }}>Пересдать</button>
-                  <button onClick={onExit} style={{ padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"'Spectral', Georgia, serif", fontSize:14, cursor:"pointer" }}>Позже</button>
+                  <button onClick={() => { setAttempt(a => a + 1); setStep(0); setPicked(null); setCorrectCount(0); setPhase("quiz"); }} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>Пересдать</button>
+                  <button onClick={onExit} style={{ padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Позже</button>
                 </>
             }
           </div>
@@ -4154,7 +4205,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
           <div style={{ ...T.para, fontSize:13, opacity:0.7, whiteSpace:"nowrap" }}>{step+1} / {total}</div>
         </div>
         <div key={step} className="sa-cardpage-r" style={{ ...T.modCard, padding:"16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:14 }}>
-          <div style={{ color: T.modTitle?.color || "#F0E8D8", fontFamily:"'Spectral', Georgia, serif", fontSize:16, lineHeight:1.5 }}>{cur.q}</div>
+          <div style={{ color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontSize:16, lineHeight:1.5 }}>{cur.q}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8, width:"100%" }}>
             {cur.options.map((opt, i) => {
               const isCorrect = i === cur.correct;
@@ -4167,7 +4218,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
               return (
                 <button key={i} onClick={() => choose(i)} disabled={answered}
                   style={{ textAlign:"left", padding:"12px 14px", borderRadius:12, border:`1px solid ${bd}`, background:bg, color:col,
-                    fontSize:14, fontFamily:"'Spectral', Georgia, serif", lineHeight:1.45, cursor: answered ? "default" : "pointer", transition:"all 0.15s" }}>
+                    fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.45, cursor: answered ? "default" : "pointer", transition:"all 0.15s" }}>
                   {opt}
                 </button>
               );
@@ -4178,7 +4229,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
           )}
         </div>
         {answered && (
-          <button onClick={next} className="sa-btn" style={{ width:"100%", marginTop:16, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", fontSize:15, cursor:"pointer" }}>
+          <button onClick={next} className="sa-btn" style={{ width:"100%", marginTop:16, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>
             {isLast ? "Завершить" : "Далее"}
           </button>
         )}
@@ -4204,20 +4255,20 @@ export function CertificateScreen({ T, a11y, profile, roleObj, result, onExit, o
           border:`2px solid ${color}`, boxShadow:`0 8px 30px ${color}22, inset 0 1px 0 ${color}33`,
           display:"flex", flexDirection:"column", alignItems:"center", gap:14, textAlign:"center" }}>
           <div style={{ fontSize:46 }}>🎓</div>
-          <div style={{ letterSpacing:3, fontSize:11, color, fontFamily:"'Spectral', Georgia, serif", textTransform:"uppercase" }}>Service Academy</div>
+          <div style={{ letterSpacing:3, fontSize:11, color, fontFamily:"Georgia, serif", textTransform:"uppercase" }}>Service Academy</div>
           <div style={{ width:40, height:2, background:color, borderRadius:2 }} />
-          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"'Spectral', Georgia, serif", opacity:0.8 }}>Настоящим подтверждается, что</div>
-          <div style={{ fontSize:22, color: T.modTitle?.color || "#F0E8D8", fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", lineHeight:1.3 }}>{name}</div>
-          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"'Spectral', Georgia, serif", opacity:0.8 }}>успешно сдал(а) экзамен на роль</div>
-          <div style={{ fontSize:18, color, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold" }}>{roleObj?.label || ""}</div>
+          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>Настоящим подтверждается, что</div>
+          <div style={{ fontSize:22, color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontWeight:"bold", lineHeight:1.3 }}>{name}</div>
+          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>успешно сдал(а) экзамен на роль</div>
+          <div style={{ fontSize:18, color, fontFamily:"Georgia, serif", fontWeight:"bold" }}>{roleObj?.label || ""}</div>
           {typeof result?.score === "number" && (
-            <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"'Spectral', Georgia, serif" }}>Результат: {result.score}%</div>
+            <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif" }}>Результат: {result.score}%</div>
           )}
           <div style={{ width:40, height:2, background:`${color}66`, borderRadius:2, marginTop:4 }} />
-          <div style={{ fontSize:12, color: T.para?.color || "#A89878", fontFamily:"'Spectral', Georgia, serif", opacity:0.7 }}>{dateStr}</div>
+          <div style={{ fontSize:12, color: T.para?.color || "#A89878", fontFamily:"Georgia, serif", opacity:0.7 }}>{dateStr}</div>
         </div>
-        <button onClick={onShare} className="sa-btn" style={{ width:"100%", maxWidth:380, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"'Spectral', Georgia, serif", fontSize:15, cursor:"pointer" }}>Поделиться</button>
-        <button onClick={onExit} style={{ width:"100%", maxWidth:380, padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"'Spectral', Georgia, serif", fontSize:14, cursor:"pointer" }}>Готово</button>
+        <button onClick={onShare} className="sa-btn" style={{ width:"100%", maxWidth:380, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>Поделиться</button>
+        <button onClick={onExit} style={{ width:"100%", maxWidth:380, padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Готово</button>
       </div>
     </div>
   );
@@ -4271,16 +4322,16 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
               <div style={{ display:"flex", alignItems:"center", gap:10, width:"100%" }}>
                 <div style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{passed ? UI_SVG.gradcap(color, 19) : (ROLE_SVG[r.id] ? ROLE_SVG[r.id](color, 19) : r.icon)}</div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ color, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:15 }}>{r.label}</div>
+                  <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{r.label}</div>
                   <div style={{ ...T.modSub, fontSize:12, color: passed && expired ? redC : passed && expiring ? amber : T.modSub.color }}>{statusLine}</div>
                 </div>
               </div>
               {passed && expired && hasQuestions
-                ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:redC, color:"#1A1008", fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Пересдать экзамен</button>
+                ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:redC, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Пересдать экзамен</button>
                 : passed
-                ? <button onClick={() => onCertificate && onCertificate(id)} {...onActivate(() => onCertificate && onCertificate(id))} style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:`1px solid ${color}`, background:"transparent", color, fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Открыть сертификат</button>
+                ? <button onClick={() => onCertificate && onCertificate(id)} {...onActivate(() => onCertificate && onCertificate(id))} style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:`1px solid ${color}`, background:"transparent", color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Открыть сертификат</button>
                 : (eligible && hasQuestions)
-                  ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:color, color:"#1A1008", fontFamily:"'Spectral', Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Сдать экзамен</button>
+                  ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:color, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Сдать экзамен</button>
                   : null
               }
             </div>

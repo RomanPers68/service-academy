@@ -58,7 +58,7 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
         boxShadow: lt ? "0 0 14px rgba(180,140,60,0.25)" : `0 0 18px ${GOLD}30` }}>📖</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...MONO, color: lt ? "#8B6A30" : GOLD_SOFT, fontSize: 9, letterSpacing: 2 }}>КНИГА ОТЗЫВОВ</div>
-        <div style={{ color: T?.modTitle?.color || "#F0E8D8", fontFamily: "'Spectral', Georgia, serif", fontSize: 14.5, marginTop: 3 }}>Гость оставил тебе новую страницу</div>
+        <div style={{ color: T?.modTitle?.color || "#F0E8D8", fontFamily: "Georgia, serif", fontSize: 14.5, marginTop: 3 }}>Гость оставил тебе новую страницу</div>
       </div>
       <button onClick={open} {...onActivate(open)} style={{ ...MONO, flexShrink: 0, fontSize: 10, letterSpacing: 1.5, color: lt ? "#FFF8EC" : "#14100A",
         background: `linear-gradient(135deg, ${lt ? "#A8823E" : GOLD} 0%, #8B6A30 100%)`, border: "none", borderRadius: 14, padding: "9px 13px",

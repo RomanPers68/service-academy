@@ -3964,7 +3964,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     <div className="sa-dlg" style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
       background: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",
       transition:"background 0.8s ease" }}>
-      <div style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", borderTop:"1px solid rgba(210,170,70,0.55)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
+      <div style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(210,170,70,0.28) inset", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
         transform: visible ? "translateY(0)" : "translateY(120%)",
         transition:"transform 1.1s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Header */}

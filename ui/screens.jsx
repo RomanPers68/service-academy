@@ -3796,6 +3796,16 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const [walkedOut, setWalkedOut] = React.useState(false);
   const bottomRef = React.useRef(null);
   const scrollRef = React.useRef(null);
+
+  // Telegram: пока открыт диалог, глушим жест «потяни вниз — сверни приложение».
+  // Иначе вертикальные свайпы по шторке (шапка, варианты, края) утекают
+  // в Telegram, и он дёргает всё мини-приложение вниз-вверх — тот самый «нырок».
+  // При закрытии диалога жест возвращается как был.
+  React.useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    try { tg?.disableVerticalSwipes?.(); } catch (e) {}
+    return () => { try { tg?.enableVerticalSwipes?.(); } catch (e) {} };
+  }, []);
   const recapRef = React.useRef(null); // история диалога на финальном экране
   const optsRef = React.useRef(null); // блок вариантов — для плавного схлопывания после выбора
   const runningRef = React.useRef(false);

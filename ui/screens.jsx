@@ -3783,7 +3783,14 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const [messages, setMessages] = React.useState([]);
 
   React.useEffect(() => {
-    setTimeout(() => setVisible(true), 20);
+    // Двойной requestAnimationFrame вместо setTimeout(20): гарантирует, что
+    // браузер успел отрисовать стартовое положение шторки (translateY(120%))
+    // до переключения на translateY(0) — иначе на занятом главном потоке
+    // (открытие из списка уроков: монтируется целый экран) transition
+    // стартует с середины пути, и вход выглядит телепортом.
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setVisible(true)); });
+    return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2); };
   }, []);
   const [stepIdx, setStepIdx] = React.useState(0);
   const [chosen, setChosen] = React.useState(null);

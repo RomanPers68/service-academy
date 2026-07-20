@@ -3006,6 +3006,7 @@ function TapAnchored({ x, y, T, children }) {
   const a11y = !!T?.a11y;
   const tail = {
     position: "absolute", width: 13, height: 13, left: pos.tailLeft, zIndex: 1,
+    clipPath: "polygon(0 0, 100% 0, 0 100%)", // только остриё, без внутренней половины
     background: a11y ? "rgba(252,246,232,0.99)" : "rgba(24,17,8,0.96)",
     border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,169,110,0.35)"}`,
     borderRight: "none", borderBottom: "none",
@@ -3988,8 +3989,8 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       </div>
 
       {/* Progress */}
-      <div style={{ height:2, background:"rgba(255,255,255,0.05)" }}>
-        <div style={{ height:2, width:`${(stepIdx/(dialogue.steps.length-1))*100}%`, background:dColor, transition:"width 0.4s ease" }} />
+      <div style={{ height:3, margin:"0 14px", borderRadius:2, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${(stepIdx/(dialogue.steps.length-1))*100}%`, background:dColor, opacity:0.55, borderRadius:2, transition:"width 0.4s ease" }} />
       </div>
 
       {/* Messages */}

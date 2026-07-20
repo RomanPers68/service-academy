@@ -9,7 +9,7 @@ import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase
 import { MODULES } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
-import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D } from "../data/dialogues-lazy";
+import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
@@ -3268,9 +3268,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             внутри контейнера приложения (в body его скролл гоняет всю страницу).
             Портал в body — только у поппапа термина ниже: ему нужен настоящий
             viewport из-за transform свайп-страниц. */}
-        {dialogueScreen && (
+        {dialogueScreen && createPortal(
           <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />
-        )}
+        , document.body)}
         {termPopup && createPortal(
           <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
             style={{ position:"fixed", inset:0, background:"transparent", zIndex:999 }}>
@@ -3746,6 +3746,15 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     () => initial ? DIALOGUES_DATA.filter(d => d.termKey === initial.termKey) : [],
     [initial]
   );
+  // Страховка: диалоги грузятся лениво. Если сценария ещё нет (чанк едет
+  // по медленной сети или не загрузился) — дотягиваем и перерисовываемся.
+  const [, dataTick] = React.useState(0);
+  React.useEffect(() => {
+    if (initial) return;
+    let alive = true;
+    loadDialogues().then(() => { if (alive) dataTick(x => x + 1); }).catch(() => {});
+    return () => { alive = false; };
+  }, [initial]);
   // При каждом открытии — случайный сценарий из группы (пока вариант один — он же и откроется)
   const [currentId, setCurrentId] = React.useState(() => {
     if (!initial) return dialogueId;
@@ -3915,6 +3924,24 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const totalChoices = dialogue.steps.filter(s => s.type === "choice").length;
   const dColor = dialogue.color;
 
+  if (!initial) return (
+    <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center",
+        background:"rgba(0,0,0,0.35)", padding:20 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background:T.termPopupBg || "rgba(20,14,6,0.85)", border:"1px solid rgba(200,160,60,0.45)",
+          borderRadius:18, padding:"18px 20px", textAlign:"center", maxWidth:300 }}>
+        <div className="sa-pulse" style={{ color:"#C8A96E", fontFamily:"Georgia, serif", fontWeight:"bold", marginBottom:6 }}>Диалог загружается…</div>
+        <div style={{ color:"#9A8C74", fontSize:12.5, lineHeight:1.55, marginBottom:12 }}>
+          Подтягиваем сценарий. Если сеть медленная — секунду-другую.
+        </div>
+        <button className="sa-btn" onClick={onClose}
+          style={{ padding:"10px 18px", borderRadius:12, cursor:"pointer", border:"1px solid rgba(200,160,80,0.4)",
+            background:"transparent", color:"#C8A96E", fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold" }}>
+          Закрыть
+        </button>
+      </div>
+    </div>
+  );
   return (
     <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
       background: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",

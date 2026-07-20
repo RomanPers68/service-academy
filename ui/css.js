@@ -117,15 +117,15 @@ export const injectStyles = () => {
     /* Плавное перелистывание карточек (уроки, тренажёры): въезд с той стороны, куда листаешь */
     @keyframes saCardR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
     @keyframes saCardL { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
-    .sa-cardpage-r { animation: saCardR .34s cubic-bezier(.16,1,.3,1) both; }
-    .sa-cardpage-l { animation: saCardL .34s cubic-bezier(.16,1,.3,1) both; }
+    .sa-cardpage-r { animation: saCardR .34s cubic-bezier(.16,1,.3,1) backwards; }
+    .sa-cardpage-l { animation: saCardL .34s cubic-bezier(.16,1,.3,1) backwards; }
     @media (prefers-reduced-motion: reduce) { .sa-cardpage-r, .sa-cardpage-l { animation: none; } }
     /* Исключение: горизонтальные ленты (вкладки книги и т.п.) можно листать пальцем */
     .sa-hscroll, .sa-hscroll * { touch-action: pan-x pan-y !important; }
 
     /* Переход между экранами: каждый мягко въезжает (fade + сдвиг) */
     @keyframes saPageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
-    .sa-pagein { animation: saPageIn .28s cubic-bezier(.16,1,.3,1) both; }
+    .sa-pagein { animation: saPageIn .28s cubic-bezier(.16,1,.3,1) backwards; }
     /* Мерцающий скелетон стеклянных карточек на время ленивой подгрузки */
     @keyframes saShimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
     .sa-skel { background: linear-gradient(100deg, rgba(200,169,110,0.07) 40%, rgba(230,200,140,0.16) 50%, rgba(200,169,110,0.07) 60%); background-size:200% 100%; animation: saShimmer 1.4s linear infinite; }

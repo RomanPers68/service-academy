@@ -122,6 +122,11 @@ export const injectStyles = () => {
     @media (prefers-reduced-motion: reduce) { .sa-cardpage-r, .sa-cardpage-l { animation: none; } }
     /* Исключение: горизонтальные ленты (вкладки книги и т.п.) можно листать пальцем */
     .sa-hscroll, .sa-hscroll * { touch-action: pan-x pan-y !important; }
+    /* Живой диалог: под шторкой страница не должна «резинить» (iOS rubber-band).
+       Жесты запрещены везде, кроме ленты реплик — ей разрешена только вертикаль. */
+    .sa-dlg, .sa-dlg * { touch-action: none !important; }
+    .sa-dlg .sa-dlgscroll, .sa-dlg .sa-dlgscroll * { touch-action: pan-y !important; }
+    html, body { overscroll-behavior: none; }
 
     /* Переход между экранами: каждый мягко въезжает (fade + сдвиг) */
     @keyframes saPageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }

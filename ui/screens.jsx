@@ -3935,7 +3935,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const dColor = dialogue.color;
 
   if (!initial) return (
-    <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center",
+    <div className="sa-dlg" style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center",
         background:"rgba(0,0,0,0.35)", padding:20 }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         style={{ background:T.termPopupBg || "rgba(20,14,6,0.85)", border:"1px solid rgba(200,160,60,0.45)",
@@ -3953,7 +3953,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     </div>
   );
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
+    <div className="sa-dlg" style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
       background: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",
       transition:"background 0.8s ease" }}>
       <div style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", borderTop:"1px solid rgba(210,170,70,0.55)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset", margin:"0 16px 40px",
@@ -3986,7 +3986,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       </div>
 
       {/* Messages */}
-      {!done && <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
+      {!done && <div ref={scrollRef} className="sa-dlgscroll" style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
         {messages.map((msg, i) => {
           if (msg.type === "action") return (
             <div key={i} className="dlg-in" style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
@@ -4069,7 +4069,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
             </div>
           </div>
           {/* История диалога */}
-          <div ref={recapRef} style={{ flex:1, overflowY:"auto", padding:"8px 14px 8px", display:"flex", flexDirection:"column", gap:6, borderTop:`1px solid ${dColor}11`, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
+          <div ref={recapRef} className="sa-dlgscroll" style={{ flex:1, overflowY:"auto", padding:"8px 14px 8px", display:"flex", flexDirection:"column", gap:6, borderTop:`1px solid ${dColor}11`, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
             {messages.map((msg, i) => {
               const dl = { animationDelay: `${Math.min(0.1 + i * 0.05, 0.7)}s` };
               if (msg.type === "action") return <div key={i} className="dlg-in" style={{ ...dl, textAlign:"center", color: T.para?.color || "#C8A870", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;

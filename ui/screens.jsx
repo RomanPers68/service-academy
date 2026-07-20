@@ -3264,11 +3264,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
           )}
         </div>
-        {/* Порталы в body: у свайп-страниц transform, который делает position:fixed
-            локальным — оверлеи должны жить вне трансформированного поддерева */}
-        {dialogueScreen && createPortal(
+        {/* Живой диалог — полноэкранный «экран» с автопрокруткой: он должен жить
+            внутри контейнера приложения (в body его скролл гоняет всю страницу).
+            Портал в body — только у поппапа термина ниже: ему нужен настоящий
+            viewport из-за transform свайп-страниц. */}
+        {dialogueScreen && (
           <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />
-        , document.body)}
+        )}
         {termPopup && createPortal(
           <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
             style={{ position:"fixed", inset:0, background:"transparent", zIndex:999 }}>

@@ -266,7 +266,12 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       </div>
 
       {/* ── Оверлеи под шапкой: подтверждение очистки и список чатов ──
-          Абсолютные, поверх ленты — видны при любой длине переписки */}
+          Абсолютные, поверх ленты — видны при любой длине переписки.
+          Подложка-ловушка: тап мимо панели закрывает её */}
+      {(showChats || confirmClear) && (
+        <div onClick={() => { setShowChats(false); setConfirmClear(false); setDelArm(null); }}
+          style={{ position: "absolute", inset: 0, zIndex: 5 }} />
+      )}
       {confirmClear && (
         <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
             ...glass, padding: 14, borderColor: RED, boxShadow: "0 14px 40px rgba(0,0,0,0.5)" }}>

@@ -7,6 +7,7 @@
 // экран честно объясняет, что настроить (supabase/AI-SETUP.md).
 // ─────────────────────────────────────────────────────────────────────
 import React from "react";
+import { createPortal } from "react-dom";
 import { GOLD, RED, RADIUS } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
 import { SUPABASE_URL, SUPABASE_KEY, saToken } from "../api/supabase";
@@ -80,6 +81,13 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
     borderRadius: RADIUS.lg,
   };
 
+  // Пока чат открыт — глушим жест «потяни вниз, чтобы свернуть» у Telegram
+  React.useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    try { tg?.disableVerticalSwipes?.(); } catch (e) {}
+    return () => { try { tg?.enableVerticalSwipes?.(); } catch (e) {} };
+  }, []);
+
   // автопрокрутка к последним репликам
   React.useEffect(() => {
     const el = listRef.current;
@@ -129,8 +137,12 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
 
   const lastUser = [...msgs].reverse().find(m => m.role === "user");
 
-  return (
-    <div style={{ ...T.screen, display: "flex", flexDirection: "column", height: "100vh", boxSizing: "border-box" }} className="sa-screen">
+  return createPortal(
+    <div className="sa-screen sa-dlg"
+      style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box",
+        background: a11y
+          ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
+          : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)" }}>
       {/* ── Шапка ── */}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
@@ -257,5 +269,5 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
         </button>
       </div>
     </div>
-  );
+  , document.body);
 }

@@ -1228,7 +1228,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
             transition: dragX !== null ? "none" : `left 0.5s ${spring}`,
           }}>
             <div style={{
-              position:"relative", width:"100%", height:"100%", borderRadius:15, overflow:"hidden",
+              position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
               transform: pressed ? "scale(1.04)" : "scale(1)",
               transition:"transform 0.25s ease",
               background: a11y
@@ -1240,7 +1240,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
             }}>
               {/* хроматическая (радужная) кромка */}
               <div style={{
-                position:"absolute", inset:0, borderRadius:15, padding:1.5, opacity: a11y ? 0.4 : 0.3,
+                position:"absolute", inset:0, borderRadius:999, padding:1.5, opacity: a11y ? 0.4 : 0.3,
                 background:"conic-gradient(from 210deg, rgba(255,90,90,0.6), rgba(255,205,70,0.55), rgba(120,235,160,0.5), rgba(95,175,255,0.6), rgba(200,125,255,0.55), rgba(255,90,90,0.6))",
                 WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
                 WebkitMaskComposite:"xor", maskComposite:"exclude",

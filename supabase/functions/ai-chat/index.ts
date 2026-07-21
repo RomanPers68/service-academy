@@ -49,6 +49,32 @@ function buildSystem(emp: { name?: string; position?: string; restaurant?: strin
   ].join("\n");
 }
 
+// ── Живой список бесплатных моделей ──────────────────────────────────
+// Спрашиваем у самого OpenRouter, какие free-модели существуют СЕЙЧАС
+// (их регулярно переименовывают). Кэш на час. Приоритет — сильные в
+// русском семейства: DeepSeek → Qwen → Gemini → Llama/Mistral → прочие.
+let freeCache: { ids: string[]; at: number } | null = null;
+let winner: string | null = null; // модель, ответившая в прошлый раз — её пробуем первой
+async function liveFreeModels(): Promise<string[]> {
+  if (freeCache && Date.now() - freeCache.at < 3600_000) return freeCache.ids;
+  try {
+    const r = await fetch("https://openrouter.ai/api/v1/models");
+    const j = await r.json();
+    const items = Array.isArray(j?.data) ? j.data : [];
+    const score = (id: string) =>
+      /deepseek/.test(id) ? 0 : /qwen/.test(id) ? 1 : /gemini/.test(id) ? 2 :
+      /llama|mistral/.test(id) ? 3 : 4;
+    const ids = items
+      .map((m: { id?: string }) => String(m?.id || ""))
+      .filter((id: string) => id.endsWith(":free"))
+      .sort((a: string, b: string) => score(a) - score(b));
+    if (ids.length) freeCache = { ids, at: Date.now() };
+    return ids;
+  } catch (_e) {
+    return [];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, error: "method" }, 405);
@@ -75,7 +101,17 @@ Deno.serve(async (req) => {
     // ── Ключ провайдера ──
     const API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     if (!API_KEY) return json({ ok: false, error: "not_configured" });
-    const MODEL = Deno.env.get("OPENROUTER_MODEL") || "deepseek/deepseek-chat-v3-0324:free";
+
+    // Кандидаты: секрет OPENROUTER_MODEL (строго он) → живой список с
+    // OpenRouter → статический запас на случай, если каталог не ответил.
+    const MODEL = Deno.env.get("OPENROUTER_MODEL");
+    let candidates = MODEL ? [MODEL] : await liveFreeModels();
+    if (!MODEL && winner) candidates = [winner, ...candidates.filter((id) => id !== winner)];
+    if (!candidates.length) candidates = [
+      "deepseek/deepseek-r1-0528:free",
+      "qwen/qwen3-235b-a22b:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+    ];
 
     // ── История: последние 14 реплик, каждая не длиннее 2000 символов ──
     const history = messages
@@ -87,33 +123,41 @@ Deno.serve(async (req) => {
         content: m.content.slice(0, 2000),
       }));
 
-    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://service-academy.app",
-        "X-Title": "Service Academy",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: "system", content: buildSystem(emp) }, ...history],
-        max_tokens: 700,
-        temperature: 0.6,
-      }),
-    });
-
-    if (!resp.ok) {
+    // Пробуем до четырёх моделей подряд: живой каталог не гарантирует,
+    // что у конкретной модели прямо сейчас есть свободные мощности.
+    let lastErr = "provider";
+    for (const m of candidates.slice(0, 4)) {
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://service-academy.app",
+          "X-Title": "Service Academy",
+        },
+        body: JSON.stringify({
+          model: m,
+          messages: [{ role: "system", content: buildSystem(emp) }, ...history],
+          max_tokens: 520,
+          temperature: 0.6,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const reply = data?.choices?.[0]?.message?.content?.trim();
+        if (reply) { winner = m; return json({ ok: true, reply, model: data?.model || m }); }
+        console.error("openrouter", m, "empty_reply");
+        lastErr = "empty";
+        continue;
+      }
       const detail = await resp.text().catch(() => "");
-      // 402/429 у бесплатных моделей = кончился дневной лимит
-      const err = resp.status === 429 || resp.status === 402 ? "rate_limit" : "provider";
-      console.error("openrouter", resp.status, detail.slice(0, 300));
-      return json({ ok: false, error: err });
+      console.error("openrouter", m, resp.status, detail.slice(0, 200));
+      if (m === winner) winner = null; // прошлый чемпион пал — забываем
+      // 402/429 = лимит; 404 = модель ушла из free — в любом случае пробуем следующую
+      if (resp.status === 429 || resp.status === 402) lastErr = "rate_limit";
+      else lastErr = "provider";
     }
-    const data = await resp.json();
-    const reply = data?.choices?.[0]?.message?.content?.trim();
-    if (!reply) return json({ ok: false, error: "empty" });
-    return json({ ok: true, reply, model: MODEL });
+    return json({ ok: false, error: lastErr });
   } catch (e) {
     console.error("ai-chat", e);
     return json({ ok: false, error: "server" }, 500);

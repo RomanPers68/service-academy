@@ -172,7 +172,7 @@ function AiFab({ a11y, onClick }) {
       style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
         width: 58, height: 58, borderRadius: 29, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: a11y ? "rgba(250,244,228,0.85)" : "rgba(250,240,215,0.17)",
+        background: a11y ? "rgba(255,250,238,0.40)" : "rgba(250,240,215,0.17)",
         backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
         boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.55)" : "rgba(255,255,255,0.26)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.16)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.22 : 0.5}), 0 0 18px ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.28)"}` }}>
       {!seen && (
@@ -289,6 +289,9 @@ function ServiceAcademy() {
   React.useEffect(() => {
     try {
       try { localStorage.setItem("sa_a11y", a11y ? "1" : "0"); } catch (e) {}
+      // Класс темы на корне: позволяет CSS красить псевдоэлементы
+      // (плейсхолдеры, каретки) под тему во всём приложении разом
+      try { document.documentElement.classList.toggle("sa-light", a11y); } catch (e) {}
       const tg = window.Telegram?.WebApp;
       const bg = a11y ? SAND : BG_DARK;
       document.documentElement.style.background = bg;

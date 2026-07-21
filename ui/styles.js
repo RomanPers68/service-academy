@@ -16,7 +16,7 @@ export const S = {
 
   a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:PANEL_2, borderBottom:"1px solid #4A3525" },
   a11yLabel: { color:"#A09080", fontSize:11, fontFamily:"monospace", letterSpacing:1 },
-  a11yBtn: { border:"none", borderRadius:20, color:"#fff", fontSize:11, padding:"4px 12px", cursor:"pointer", fontFamily:"monospace" },
+  a11yBtn: { border:"none", borderRadius:11, color:"#fff", fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"monospace", boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 8px rgba(0,0,0,0.25)" },
 
   roleHeader: { background:PANEL },
   logoText: { color:GOLD_LOGO, fontSize:14, letterSpacing:5, fontFamily:"monospace" },

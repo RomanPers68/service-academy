@@ -22,6 +22,7 @@ const SOSScreen = lazy(() => import("./ui/sos").then(m => ({ default: m.SOSScree
 const TrainingCardScreen = lazy(() => import("./ui/training-card").then(m => ({ default: m.TrainingCardScreen })));
 const ReferenceSection = lazy(() => import("./ui/ReferenceSection").then(m => ({ default: m.ReferenceSection })));
 const CandidateScreen = lazy(() => import("./ui/candidate").then(m => ({ default: m.CandidateScreen })));
+const AssistantScreen = lazy(() => import("./ui/assistant").then(m => ({ default: m.AssistantScreen })));
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -148,6 +149,40 @@ function WelcomeIntro({ T, a11y, isAdmin, onClose }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Плавающая кнопка AI-ассистента: стеклянная линза в правом нижнем углу.
+// Живёт на основных экранах поверх контента, над навбаром. До первого
+// открытия пульсирует золотым кольцом-приглашением, после — спокойная.
+function AiFab({ a11y, onClick }) {
+  const [seen, setSeen] = useState(() => {
+    try { return localStorage.getItem("sa_ai_fab") === "1"; } catch (e) { return true; }
+  });
+  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const tap = () => {
+    try { localStorage.setItem("sa_ai_fab", "1"); } catch (e) {}
+    setSeen(true);
+    vibrate("light");
+    onClick();
+  };
+  return (
+    <div className="sa-pop" onClick={tap} {...onActivate(tap)} role="button" aria-label="AI-ассистент"
+      style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
+        width: 58, height: 58, borderRadius: 17, cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: a11y ? "rgba(250,244,228,0.85)" : "rgba(250,240,215,0.17)",
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.55)" : "rgba(255,255,255,0.26)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.16)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.22 : 0.5}), 0 0 18px ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.28)"}` }}>
+      {!seen && (
+        <span className="sa-pulse" style={{ position: "absolute", inset: -5, borderRadius: 21,
+          border: `1.5px solid ${gold}`, pointerEvents: "none" }} />
+      )}
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z"/>
+        <path d="M12 7.8l1 2.1 2.2.3-1.6 1.6.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.6 2.2-.3z"/>
+      </svg>
     </div>
   );
 }
@@ -905,6 +940,7 @@ function ServiceAcademy() {
         () => import("./ui/mentor"),
         () => import("./ui/training-card"),
         () => import("./ui/candidate"),
+        () => import("./ui/assistant"),
       ].reduce((p, load) => p.then(() => load().catch(() => {})), Promise.resolve());
     }, 1500);
     return () => clearTimeout(warm);
@@ -1003,7 +1039,7 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveLesson(shuffleLessonQuestions(lesson)); setActiveModule(mod); navigate("lesson"); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveLesson(shuffleLessonQuestions(l)); setActiveModule(m); navigate("lesson"); }} onMistakes={() => navigate("mistakes")} /></div>}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveLesson(shuffleLessonQuestions(l)); setActiveModule(m); navigate("lesson"); }} onMistakes={() => navigate("mistakes")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
@@ -1012,6 +1048,7 @@ function ServiceAcademy() {
         {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
         {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
+        {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
@@ -1047,6 +1084,11 @@ function ServiceAcademy() {
             <button className="sa-btn" onClick={() => closeMistakeHint(false)}
               style={{ border: "none", background: "transparent", color: T.modSub?.color || "#9A8C74", fontSize: 15, cursor: "pointer", padding: 4, flexShrink: 0 }}>✕</button>
           </div>
+        )}
+
+        {/* Плавающий AI-ассистент — главный вход во флагманскую фичу */}
+        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && !welcome && !mistakeHint && (
+          <AiFab a11y={a11y} onClick={() => navigate("assistant")} />
         )}
 
         {/* Нижняя навигация — только на основных экранах */}
@@ -1148,7 +1190,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
       {/* Плавающий пилл */}
       <div ref={barRef} className="sa-lensbar sa-hscroll"
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
-        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch",
+        style={{ position:"relative", height:BAR_H, borderRadius:22, display:"flex", alignItems:"stretch",
           background: a11y ? "rgba(242,234,216,0.92)" : "linear-gradient(160deg, rgba(52,38,15,0.88) 0%, rgba(38,27,10,0.90) 100%)",
           border: a11y ? "1px solid rgba(160,120,60,0.35)" : "1px solid rgba(210,170,70,0.35)",
           boxShadow: a11y ? "0 6px 20px rgba(0,0,0,0.18)" : "0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,235,190,0.10)",
@@ -1186,7 +1228,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
             transition: dragX !== null ? "none" : `left 0.5s ${spring}`,
           }}>
             <div style={{
-              position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
+              position:"relative", width:"100%", height:"100%", borderRadius:15, overflow:"hidden",
               transform: pressed ? "scale(1.04)" : "scale(1)",
               transition:"transform 0.25s ease",
               background: a11y
@@ -1198,7 +1240,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
             }}>
               {/* хроматическая (радужная) кромка */}
               <div style={{
-                position:"absolute", inset:0, borderRadius:999, padding:1.5, opacity: a11y ? 0.4 : 0.3,
+                position:"absolute", inset:0, borderRadius:15, padding:1.5, opacity: a11y ? 0.4 : 0.3,
                 background:"conic-gradient(from 210deg, rgba(255,90,90,0.6), rgba(255,205,70,0.55), rgba(120,235,160,0.5), rgba(95,175,255,0.6), rgba(200,125,255,0.55), rgba(255,90,90,0.6))",
                 WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
                 WebkitMaskComposite:"xor", maskComposite:"exclude",

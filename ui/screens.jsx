@@ -332,15 +332,15 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
 
       {/* Вкладки категорий */}
       {!detailTab && (
-        <div style={{ display:"flex", margin:"12px 16px 0", gap:6 }}>
+        <div style={{ display:"flex", margin:"12px 16px 0", gap:4 }}>
           {visibleTabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"9px 4px", borderRadius:12, border: tab === t.id ? `1px solid ${t.color}55` : "1px solid transparent", borderTop: tab === t.id ? `1px solid ${t.color}88` : "1px solid transparent", cursor:"pointer", fontFamily:"Georgia, serif", fontSize:12, fontWeight:"bold", transition:"all 0.25s ease",
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, minWidth:0, padding:"9px 2px", borderRadius:12, border: tab === t.id ? `1px solid ${t.color}55` : "1px solid transparent", borderTop: tab === t.id ? `1px solid ${t.color}88` : "1px solid transparent", cursor:"pointer", fontFamily:"Georgia, serif", fontSize:11.5, fontWeight:"bold", transition:"all 0.25s ease",
               background: tab === t.id
                 ? `linear-gradient(155deg, ${t.color}28, ${t.color}10)`
                 : T.modCard.background,
               color: tab === t.id ? t.color : T.progLabel.color,
               boxShadow: tab === t.id ? `0 4px 14px rgba(0,0,0,0.3), 0 1px 0 ${t.color}22 inset` : "none" }}>
-              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:5 }}>{POS_SVG[t.id] ? POS_SVG[t.id](tab === t.id ? t.color : T.progLabel.color, 13) : null}{t.label}</span>
+              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:4, whiteSpace:"nowrap", maxWidth:"100%" }}>{POS_SVG[t.id] ? POS_SVG[t.id](tab === t.id ? t.color : T.progLabel.color, 13) : null}{t.label}</span>
             </button>
           ))}
         </div>
@@ -1914,7 +1914,7 @@ const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
   return null;
 };
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -2047,6 +2047,9 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const Cc = moodPalette(a11y);
           const sosR = a11y ? "#A03828" : "#E07878";
           const tiles = [];
+          if (onAssistant) tiles.push({ key:"ai", label:"Ассистент", onClick:onAssistant, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z"/><path d="M12 7.8l1 2.1 2.2.3-1.6 1.6.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.6 2.2-.3z"/></svg>
+          )});
           if (onSOS) tiles.push({ key:"sos", label:"SOS", red:true, onClick:onSOS, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sosR} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M12 8.5v4"/><path d="M12 15.6v.1"/></svg>
           )});
@@ -2081,7 +2084,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const isStaff = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
           const anyDone = Object.keys(completed || {}).length > 0 || Object.keys(quizDone || {}).length > 0;
           const newbie = !isStaff && !anyDone;
-          const visibleTiles = newbie ? tiles.filter(t => ["sos", "ob", "sp"].includes(t.key)) : tiles;
+          const visibleTiles = newbie ? tiles.filter(t => ["ai", "sos", "ob", "sp"].includes(t.key)) : tiles;
           // Бейджи-события: новинки меню (реальные данные)
           const menuNew = countNewDishes(profile?.restaurant);
           return (

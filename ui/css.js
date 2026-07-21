@@ -122,6 +122,9 @@ export const injectStyles = () => {
     @media (prefers-reduced-motion: reduce) { .sa-cardpage-r, .sa-cardpage-l { animation: none; } }
     /* Исключение: горизонтальные ленты (вкладки книги и т.п.) можно листать пальцем */
     .sa-hscroll, .sa-hscroll * { touch-action: pan-x pan-y !important; }
+    /* Лента жетонов: скроллбар прячем, свайп остаётся */
+    .sa-tilesrow { scrollbar-width: none; }
+    .sa-tilesrow::-webkit-scrollbar { display: none; }
     /* Живой диалог: под шторкой страница не должна «резинить» (iOS rubber-band).
        Жесты запрещены везде, кроме ленты реплик — ей разрешена только вертикаль. */
     .sa-dlg, .sa-dlg * { touch-action: none !important; }

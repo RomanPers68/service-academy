@@ -2091,11 +2091,12 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
             <>
-            <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:7, padding:"0 14px 12px" }}>
+            <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 14px 12px", overflowX:"auto",
+                WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", overscrollBehaviorX:"contain" }}>
               {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 return (
-                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ width:"calc(25% - 5.25px)", boxSizing:"border-box", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
+                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:88, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
                     <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: saInner(a11y) }}>
                       <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.5)" : "rgba(255,245,220,0.09)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
                       <TokenEyelet />

@@ -154,6 +154,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
   return createPortal(
     <div className="sa-screen sa-dlg"
       style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
+        transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
         background: a11y
           ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
           : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)" }}>

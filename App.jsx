@@ -170,13 +170,13 @@ function AiFab({ a11y, onClick }) {
   return (
     <div className="sa-pop" onClick={tap} {...onActivate(tap)} role="button" aria-label="AI-ассистент"
       style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
-        width: 58, height: 58, borderRadius: 17, cursor: "pointer",
+        width: 58, height: 58, borderRadius: 29, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
         background: a11y ? "rgba(250,244,228,0.85)" : "rgba(250,240,215,0.17)",
         backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
         boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.55)" : "rgba(255,255,255,0.26)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.16)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.22 : 0.5}), 0 0 18px ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.28)"}` }}>
       {!seen && (
-        <span className="sa-pulse" style={{ position: "absolute", inset: -5, borderRadius: 21,
+        <span className="sa-pulse" style={{ position: "absolute", inset: -5, borderRadius: 34,
           border: `1.5px solid ${gold}`, pointerEvents: "none" }} />
       )}
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -1190,7 +1190,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
       {/* Плавающий пилл */}
       <div ref={barRef} className="sa-lensbar sa-hscroll"
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
-        style={{ position:"relative", height:BAR_H, borderRadius:22, display:"flex", alignItems:"stretch",
+        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch",
           background: a11y ? "rgba(242,234,216,0.92)" : "linear-gradient(160deg, rgba(52,38,15,0.88) 0%, rgba(38,27,10,0.90) 100%)",
           border: a11y ? "1px solid rgba(160,120,60,0.35)" : "1px solid rgba(210,170,70,0.35)",
           boxShadow: a11y ? "0 6px 20px rgba(0,0,0,0.18)" : "0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,235,190,0.10)",

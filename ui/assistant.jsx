@@ -14,20 +14,42 @@ import { SUPABASE_URL, SUPABASE_KEY, saToken } from "../api/supabase";
 import { UI_SVG } from "./icons";
 import { ACCENT_SERIF } from "./styles";
 
-const STORE = "sa_ai_chat_v1";
-const MAX_STORED = 60;   // сколько реплик держим на устройстве
-const MAX_SENT = 12;     // сколько последних реплик уходит в контекст
+const STORE = "sa_ai_chats_v2"; // сессии чатов: { uid: { sessions: [...], activeId } }
+const OLD_STORE = "sa_ai_chat_v1";
+const MAX_STORED = 60;   // реплик на чат храним на устройстве
+const MAX_SENT = 12;     // последних реплик уходит в контекст
+const MAX_CHATS = 20;    // чатов в списке
 
-const load = (uid) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(STORE) || "{}");
-    return Array.isArray(all[uid]) ? all[uid] : [];
-  } catch (e) { return []; }
+const freshSession = () => ({
+  id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+  title: "Новый чат", msgs: [], updatedAt: Date.now(),
+});
+const titleOf = (msgs) => {
+  const u = msgs.find(m => m.role === "user");
+  if (!u) return "Новый чат";
+  return u.content.length > 34 ? u.content.slice(0, 34) + "…" : u.content;
 };
-const save = (uid, msgs) => {
+const loadStore = (uid) => {
   try {
     const all = JSON.parse(localStorage.getItem(STORE) || "{}");
-    all[uid] = msgs.slice(-MAX_STORED);
+    if (all[uid]?.sessions?.length) return all[uid];
+  } catch (e) {}
+  // миграция старой одиночной истории в первый чат
+  let msgs = [];
+  try {
+    const old = JSON.parse(localStorage.getItem(OLD_STORE) || "{}");
+    if (Array.isArray(old[uid])) msgs = old[uid];
+  } catch (e) {}
+  const s = { ...freshSession(), title: titleOf(msgs), msgs };
+  return { sessions: [s], activeId: s.id };
+};
+const saveStore = (uid, st) => {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORE) || "{}");
+    all[uid] = {
+      activeId: st.activeId,
+      sessions: st.sessions.slice(0, MAX_CHATS).map(s => ({ ...s, msgs: s.msgs.slice(-MAX_STORED) })),
+    };
     localStorage.setItem(STORE, JSON.stringify(all));
   } catch (e) {}
 };
@@ -65,7 +87,49 @@ const ERRORS = {
 
 export function AssistantScreen({ T, a11y, onBack, profile }) {
   const uid = String(profile?.id || "anon");
-  const [msgs, setMsgs] = React.useState(() => load(uid));
+  const [store, setStore] = React.useState(() => loadStore(uid));
+  const active = store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
+  const msgs = active.msgs;
+  const [showChats, setShowChats] = React.useState(false);
+  const [delArm, setDelArm] = React.useState(null); // чат, «взведённый» на удаление
+  // обновить реплики активного чата (+ заголовок и время) и сохранить
+  const updMsgs = React.useCallback((nextMsgs) => {
+    setStore(st => {
+      const sessions = st.sessions.map(s =>
+        s.id === st.activeId ? { ...s, msgs: nextMsgs, title: titleOf(nextMsgs), updatedAt: Date.now() } : s);
+      const next = { ...st, sessions };
+      saveStore(uid, next);
+      return next;
+    });
+  }, [uid]);
+  const newChat = () => {
+    vibrate("light");
+    setShowChats(false); setError(null);
+    if (msgs.length === 0) return; // текущий и так пустой
+    setStore(st => {
+      const s = freshSession();
+      const next = { activeId: s.id, sessions: [s, ...st.sessions].slice(0, MAX_CHATS) };
+      saveStore(uid, next);
+      return next;
+    });
+  };
+  const switchChat = (id) => {
+    vibrate("light");
+    setError(null);
+    setStore(st => { const next = { ...st, activeId: id }; saveStore(uid, next); return next; });
+    setShowChats(false);
+  };
+  const deleteChat = (id) => {
+    vibrate("light");
+    setStore(st => {
+      let sessions = st.sessions.filter(s => s.id !== id);
+      if (!sessions.length) sessions = [freshSession()];
+      const activeId = st.activeId === id ? sessions[0].id : st.activeId;
+      const next = { sessions, activeId };
+      saveStore(uid, next);
+      return next;
+    });
+  };
   const [input, setInput] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState(null);
@@ -115,7 +179,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
     setError(null);
     setInput("");
     const next = [...msgs, { role: "user", content: text, t: Date.now() }];
-    setMsgs(next); save(uid, next);
+    updMsgs(next);
     setSending(true);
     fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
       method: "POST",
@@ -133,7 +197,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       .then(d => {
         if (d?.ok && d.reply) {
           const done = [...next, { role: "assistant", content: d.reply, t: Date.now() }];
-          setMsgs(done); save(uid, done);
+          updMsgs(done);
           vibrate("light");
         } else {
           setError(ERRORS[d?.error] || ERRORS.server);
@@ -141,15 +205,27 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       })
       .catch(() => setError(ERRORS.network))
       .finally(() => setSending(false));
-  }, [input, msgs, sending, uid]);
+  }, [input, msgs, sending, uid, updMsgs]);
 
   const clearChat = () => {
     vibrate("light");
-    setMsgs([]); save(uid, []);
+    updMsgs([]);
     setConfirmClear(false); setError(null);
   };
 
   const lastUser = [...msgs].reverse().find(m => m.role === "user");
+
+  const miniBtn = {
+    width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    background: a11y ? "rgba(139,106,48,0.10)" : "rgba(250,240,215,0.08)",
+    border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,160,80,0.35)"}`,
+  };
+  const fmtWhen = (ts) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) + " · " +
+           d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  };
 
   return createPortal(
     <div className="sa-screen sa-dlg"
@@ -165,37 +241,80 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
           Наставник
           <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI · БЕТА</span>
         </div>
-        {msgs.length > 0 && (
-          <button className="sa-btn" onClick={() => setConfirmClear(true)} {...onActivate(() => setConfirmClear(true))}
-            aria-label="Очистить переписку"
-            style={{ width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: a11y ? "rgba(139,106,48,0.10)" : "rgba(250,240,215,0.08)",
-              border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,160,80,0.35)"}` }}>
+        <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+          <button className="sa-btn" style={miniBtn} aria-label="Список чатов"
+            onClick={() => { vibrate("light"); setConfirmClear(false); setDelArm(null); setShowChats(v => !v); }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+              <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>
             </svg>
           </button>
-        )}
+          <button className="sa-btn" style={miniBtn} aria-label="Новый чат" onClick={newChat}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14"/><path d="M5 12h14"/>
+            </svg>
+          </button>
+          {msgs.length > 0 && (
+            <button className="sa-btn" style={miniBtn} aria-label="Очистить переписку"
+              onClick={() => { setShowChats(false); setConfirmClear(true); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* ── Оверлеи под шапкой: подтверждение очистки и список чатов ──
+          Абсолютные, поверх ленты — видны при любой длине переписки */}
+      {confirmClear && (
+        <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
+            ...glass, padding: 14, borderColor: RED, boxShadow: "0 14px 40px rgba(0,0,0,0.5)" }}>
+          <div style={{ ...T.bold, marginTop: 0, marginBottom: 6 }}>Очистить переписку?</div>
+          <div style={{ color: sub, fontSize: 12.5, marginBottom: 12 }}>История хранится только на этом устройстве и восстановлению не подлежит.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="sa-btn" onClick={() => setConfirmClear(false)}
+              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Оставить</button>
+            <button className="sa-btn" onClick={clearChat}
+              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${RED}66`, background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Очистить</button>
+          </div>
+        </div>
+      )}
+      {showChats && (
+        <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
+            ...glass, padding: "6px 6px", maxHeight: "55vh", overflowY: "auto", WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain", boxShadow: "0 14px 40px rgba(0,0,0,0.5)" }} >
+          {store.sessions.map(s => (
+            <div key={s.id}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 10px", borderRadius: RADIUS.md, cursor: "pointer",
+                border: s.id === store.activeId ? `1px solid ${gold}66` : "1px solid transparent",
+                background: s.id === store.activeId ? (a11y ? "rgba(139,106,48,0.08)" : "rgba(200,169,110,0.07)") : "transparent" }}>
+              <div onClick={() => openChat(s.id)} {...onActivate(() => openChat(s.id))} style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: T.modTitle.color, fontSize: 13, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                <div style={{ color: sub, fontSize: 10.5, marginTop: 2, fontFamily: "monospace" }}>{fmtWhen(s.updatedAt)}{s.msgs.length ? ` · ${s.msgs.length}` : " · пусто"}</div>
+              </div>
+              {delArm === s.id ? (
+                <button className="sa-btn" onClick={() => deleteChat(s.id)}
+                  style={{ flexShrink: 0, padding: "7px 10px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${RED}66`,
+                    background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 11.5, fontWeight: "bold" }}>Удалить?</button>
+              ) : (
+                <button className="sa-btn" onClick={() => { vibrate("light"); setDelArm(s.id); }} aria-label="Удалить чат"
+                  style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 14, cursor: "pointer", border: "none",
+                    background: "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={sub} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Лента ── */}
       <div ref={listRef} className="sa-dlgscroll"
         style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", padding: "14px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
-
-        {confirmClear && (
-          <div className="sa-pagein" style={{ ...glass, padding: 14, borderColor: RED }}>
-            <div style={{ ...T.bold, marginTop: 0, marginBottom: 6 }}>Очистить переписку?</div>
-            <div style={{ color: sub, fontSize: 12.5, marginBottom: 12 }}>История хранится только на этом устройстве и восстановлению не подлежит.</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="sa-btn" onClick={() => setConfirmClear(false)}
-                style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Оставить</button>
-              <button className="sa-btn" onClick={clearChat}
-                style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${RED}66`, background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Очистить</button>
-            </div>
-          </div>
-        )}
 
         {msgs.length === 0 && !confirmClear && (
           <div className="sa-pagein" style={{ ...glass, padding: "20px 18px" }}>
@@ -255,7 +374,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
           <div className="sa-pagein" style={{ ...glass, padding: "12px 14px", borderColor: `${RED}66` }}>
             <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginBottom: lastUser ? 10 : 0 }}>{error}</div>
             {lastUser && (
-              <button className="sa-btn" onClick={() => { setMsgs(m => m.filter((_, i) => i !== m.length - 1 || m[i].role !== "user")); send(lastUser.content); }}
+              <button className="sa-btn" onClick={() => send(lastUser.content)}
                 style={{ padding: "9px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>
                 ↻ Повторить
               </button>

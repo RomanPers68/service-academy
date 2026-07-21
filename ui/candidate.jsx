@@ -14,7 +14,7 @@ import React from "react";
 import { CANDIDATE_QUESTIONS } from "../data/candidate-questions";
 import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS } from "./tokens";
 import { shuffleArray, vibrate, onActivate } from "../lib/utils";
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { LiquidSegment } from "./widgets";
 
@@ -298,6 +298,94 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     setPhase("test");
   };
 
+  // ── AI-интервью (бета): свободные ответы, уточняющие вопросы, вердикт ──
+  const [aiMsgs, setAiMsgs] = React.useState([]);
+  const [aiInput, setAiInput] = React.useState("");
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiErr, setAiErr] = React.useState(null);
+  const [aiVerdict, setAiVerdict] = React.useState(null);
+  const aiListRef = React.useRef(null);
+  const aiAnswered = aiMsgs.filter(m => m.role === "user").length;
+
+  React.useEffect(() => {
+    const el = aiListRef.current;
+    if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }, [aiMsgs, aiBusy]);
+
+  const callHr = React.useCallback((mode, msgs) =>
+    fetch(`${SUPABASE_URL}/functions/v1/ai-hr`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({
+        token: saToken(), mode, role: role?.id,
+        candidate: { name: name.trim(), expLabel: exp?.label || "", place: place || "" },
+        messages: msgs.map(m => ({ role: m.role, content: m.content })),
+      }),
+    }).then(r => r.json()), [role, name, exp, place]);
+
+  const aiTurn = React.useCallback((msgs) => {
+    setAiBusy(true); setAiErr(null);
+    callHr("chat", msgs)
+      .then(d => {
+        if (d?.ok && d.reply) setAiMsgs([...msgs, { role: "assistant", content: d.reply }]);
+        else setAiErr(d?.error === "not_configured"
+          ? "AI-интервью не подключено на сервере (функция ai-hr). Пока можно пройти обычный тест."
+          : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан — попробуйте позже или пройдите обычный тест."
+          : "ИИ временно недоступен. Попробуйте ещё раз или пройдите обычный тест.");
+      })
+      .catch(() => setAiErr("Нет связи с сервером. Проверьте интернет."))
+      .finally(() => setAiBusy(false));
+  }, [callHr]);
+
+  const startAi = () => {
+    vibrate("light");
+    setAiMsgs([]); setAiInput(""); setAiErr(null); setAiVerdict(null);
+    setAnswers([]); setTest([]);
+    setPhase("ai");
+    aiTurn([]);
+  };
+
+  const aiSend = () => {
+    const text = aiInput.trim();
+    if (!text || aiBusy) return;
+    vibrate("light");
+    setAiInput("");
+    aiTurn([...aiMsgs, { role: "user", content: text }]);
+  };
+
+  const finishAi = () => {
+    if (aiBusy) return;
+    vibrate("light");
+    setAiBusy(true); setAiErr(null);
+    callHr("assess", aiMsgs)
+      .then(d => {
+        if (!d?.ok || !d.scores) {
+          setAiErr("Не удалось получить оценку. Попробуйте «Завершить» ещё раз.");
+          return;
+        }
+        const entries = Object.entries(d.scores);
+        const synth = entries.map(([topic, s]) => ({ pts: Math.max(0, Math.min(1, s / 100)), topic }));
+        const avg = Math.round(entries.reduce((a, [, s]) => a + s, 0) / Math.max(1, entries.length));
+        const rec = {
+          id: Date.now().toString(36),
+          name: name.trim(), roleLabel: role.label + " · AI-интервью", date: new Date().toISOString(),
+          expLabel: exp ? exp.label : "", place: place || "", age: age || "",
+          score: Math.round(synth.reduce((a, x) => a + x.pts, 0) * 10) / 10, total: entries.length, pct: avg,
+          level, selfBand: null,
+          topics: entries.map(([topic, s]) => ({ topic, ok: s / 100, n: 1 })),
+          aiVerdict: d.verdict || "", aiStrengths: d.strengths || [], aiRisks: d.risks || [],
+        };
+        const next = [rec, ...results];
+        setResults(next); saveResults(next); setSaved(true);
+        uploadResult(rec);
+        setAnswers(synth);
+        setAiVerdict({ verdict: d.verdict, strengths: d.strengths, risks: d.risks });
+        setPhase("result");
+      })
+      .catch(() => setAiErr("Нет связи с сервером. Попробуйте ещё раз."))
+      .finally(() => setAiBusy(false));
+  };
+
   const advance = React.useCallback((rec) => {
     setAnswers(a => [...a, rec]);
     setChosen(null); setOrdSeq([]);
@@ -449,6 +537,11 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                             {r.score} из {r.total} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}{r.by ? ` · провёл(а): ${r.by}` : ""}{r.srvId ? " · ☁" : ""}
                             {cal ? <> · самооценка: <b style={{ color: cal.color }}>{cal.label}</b></> : null}
                           </div>
+                      {r.aiVerdict && (
+                        <div style={{ ...T.modSub, color: sub, fontSize: 12, lineHeight: 1.55, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${gold}22` }}>
+                          <b style={{ color: gold }}>ИИ:</b> {r.aiVerdict}
+                        </div>
+                      )}
                           {(r.topics || []).map((t, i) => (
                             <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, padding: "3px 0" }}>
                               <span style={{ color: T.modTitle.color, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.topic}</span>
@@ -573,6 +666,78 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               </div>
             </div>
             <button className="sa-btn" style={goldBtn} onClick={startTest}>Я готов(а) — начать</button>
+            <button className="sa-btn" onClick={startAi}
+              style={{ ...goldBtn, marginTop: 10, background: "transparent", color: gold,
+                border: `1px solid ${gold}66`, boxShadow: "none" }}>
+              🤖 AI-интервью · бета
+            </button>
+            <div style={{ ...T.modSub, color: sub, fontSize: 11.5, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+              В AI-режиме кандидат отвечает своими словами, а ИИ задаёт уточняющие вопросы
+              и оценивает по тем же компетенциям
+            </div>
+          </>
+        )}
+
+        {/* ── AI-ИНТЕРВЬЮ ── */}
+        {phase === "ai" && (
+          <>
+            <div style={{ ...secLabel, display: "flex", justifyContent: "space-between", margin: "0 2px 10px" }}>
+              <span>AI-ИНТЕРВЬЮ · {name.trim()}</span>
+              <span>ОТВЕТОВ: {aiAnswered}</span>
+            </div>
+            <div ref={aiListRef} className="sa-dlgscroll"
+              style={{ ...glass, padding: 12, marginBottom: 12, maxHeight: "46vh", overflowY: "auto",
+                WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
+                display: "flex", flexDirection: "column", gap: 8 }}>
+              {aiMsgs.map((m, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                  <div style={{ maxWidth: "88%", padding: "9px 12px", fontSize: 13.5, lineHeight: 1.55, fontFamily: "Georgia, serif",
+                    ...(m.role === "user"
+                      ? { background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", borderRadius: "14px 14px 4px 14px" }
+                      : { background: "rgba(160,120,60,0.14)", color: T.modTitle.color, borderRadius: "14px 14px 14px 4px", border: `1px solid ${gold}33` }) }}>
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+              {aiBusy && (
+                <div style={{ display: "flex", gap: 5, padding: "8px 4px" }}>
+                  {[0, 1, 2].map(i => <span key={i} className="sa-pulse" style={{ width: 6, height: 6, borderRadius: 3, background: gold, animationDelay: (i * 0.18) + "s" }} />)}
+                </div>
+              )}
+              {aiErr && (
+                <div style={{ color: RED, fontSize: 12.5, lineHeight: 1.5, padding: "4px 2px" }}>
+                  {aiErr}
+                  <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                    <button className="sa-btn" onClick={() => aiTurn(aiMsgs)}
+                      style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12, fontWeight: "bold" }}>↻ Повторить</button>
+                    <button className="sa-btn" onClick={() => { setPhase("handoff"); }}
+                      style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: "none", background: "transparent", color: sub, fontFamily: "Georgia, serif", fontSize: 12 }}>Назад</button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <input
+                value={aiInput}
+                onChange={e => setAiInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") aiSend(); }}
+                placeholder="Ответ кандидата…"
+                maxLength={800}
+                style={{ ...inputStyle, flex: 1, minWidth: 0, marginBottom: 0 }}
+              />
+              <button className="sa-btn" onClick={aiSend} disabled={aiBusy || !aiInput.trim()}
+                style={{ width: 46, alignSelf: "stretch", borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: aiInput.trim() && !aiBusy ? "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)" : "rgba(160,120,60,0.25)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              </button>
+            </div>
+            {aiAnswered >= 4 && !aiBusy && (
+              <button className="sa-btn" style={goldBtn} onClick={finishAi}>Завершить интервью → оценка</button>
+            )}
+            <div style={{ ...T.modSub, color: sub, fontSize: 10.5, textAlign: "center", marginTop: 8, opacity: 0.75, fontFamily: "monospace", letterSpacing: 1 }}>
+              ИИ МОЖЕТ ОШИБАТЬСЯ · РЕШЕНИЕ ВСЕГДА ЗА МЕНЕДЖЕРОМ
+            </div>
           </>
         )}
 
@@ -690,6 +855,26 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                     </div>
                     <div style={{ ...T.modSub, color: sub, lineHeight: 1.55 }}>{cal.note}</div>
                   </div>
+                </div>
+              )}
+
+              {aiVerdict && (
+                <div style={{ ...glass, marginBottom: 14 }}>
+                  <div style={{ ...T.bold, marginTop: 0, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                    Вердикт ИИ
+                    <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span>
+                  </div>
+                  <div style={{ ...T.modSub, color: sub, lineHeight: 1.6, marginBottom: aiVerdict.strengths?.length || aiVerdict.risks?.length ? 10 : 0 }}>{aiVerdict.verdict}</div>
+                  {aiVerdict.strengths?.length > 0 && (
+                    <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 6 }}>
+                      <b style={{ color: GREEN }}>Сильное:</b> {aiVerdict.strengths.join("; ")}
+                    </div>
+                  )}
+                  {aiVerdict.risks?.length > 0 && (
+                    <div style={{ ...T.modSub, color: sub, lineHeight: 1.55 }}>
+                      <b style={{ color: RED }}>Риски:</b> {aiVerdict.risks.join("; ")}
+                    </div>
+                  )}
                 </div>
               )}
 

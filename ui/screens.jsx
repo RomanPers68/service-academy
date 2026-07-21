@@ -2091,8 +2091,8 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
             <>
-            <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 14px 12px", overflowX:"auto",
-                WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", overscrollBehaviorX:"contain" }}>
+            <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 16px 12px", overflowX:"auto",
+                WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", scrollPaddingLeft:16, scrollPaddingRight:16, overscrollBehaviorX:"contain" }}>
               {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 return (
@@ -2182,9 +2182,6 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           )},
           { key:"kitchen", label:"Кухня", sub:"Заготовки, техника, санитария, работа на раздаче", icon:(c)=>(
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 9a4 4 0 0 1 1-7.5A4.5 4.5 0 0 1 12 3a4.5 4.5 0 0 1 4-1.5A4 4 0 0 1 17 9v9H7V9z"/><path d="M7 15h10"/><path d="M7 18v3h10v-3"/></svg>
-          )},
-          { key:"ai", label:"AI-наставник", sub:"Ответы по меню и стандартам прямо в смене", icon:(c)=>(
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4V6z"/><path d="M12 7.5l.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3z"/></svg>
           )},
           { key:"audio", label:"Аудио-уроки", sub:"Слушай по дороге на смену", icon:(c)=>(
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4v-6z"/><path d="M20 14h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2v-6z"/></svg>

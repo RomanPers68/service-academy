@@ -166,8 +166,17 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
           <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI · БЕТА</span>
         </div>
         {msgs.length > 0 && (
-          <button onClick={() => setConfirmClear(true)} {...onActivate(() => setConfirmClear(true))}
-            style={{ border: "none", background: "transparent", color: sub, fontSize: 16, cursor: "pointer", padding: "4px 6px" }}>⌫</button>
+          <button className="sa-btn" onClick={() => setConfirmClear(true)} {...onActivate(() => setConfirmClear(true))}
+            aria-label="Очистить переписку"
+            style={{ width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: a11y ? "rgba(139,106,48,0.10)" : "rgba(250,240,215,0.08)",
+              border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,160,80,0.35)"}` }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+            </svg>
+          </button>
         )}
       </div>
 

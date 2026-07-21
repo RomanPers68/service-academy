@@ -88,11 +88,25 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
     return () => { try { tg?.enableVerticalSwipes?.(); } catch (e) {} };
   }, []);
 
+  // Клавиатура iOS выезжает ПОВЕРХ fixed-элементов — следим за видимой
+  // областью (visualViewport) и приподнимаем низ экрана на её высоту,
+  // чтобы строка ввода всегда оставалась над клавиатурой.
+  const [kb, setKb] = React.useState(0);
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const measure = () => setKb(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    vv.addEventListener("resize", measure);
+    vv.addEventListener("scroll", measure);
+    measure();
+    return () => { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); };
+  }, []);
+
   // автопрокрутка к последним репликам
   React.useEffect(() => {
     const el = listRef.current;
     if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
-  }, [msgs, sending]);
+  }, [msgs, sending, kb]);
 
   const send = React.useCallback((textArg) => {
     const text = (textArg ?? input).trim();
@@ -139,7 +153,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
 
   return createPortal(
     <div className="sa-screen sa-dlg"
-      style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box",
+      style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
         background: a11y
           ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
           : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)" }}>

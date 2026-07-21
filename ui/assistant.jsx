@@ -273,12 +273,14 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       {/* ── Ввод ── */}
       <div style={{ display: "flex", gap: 8, padding: "10px 16px calc(14px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${a11y ? "rgba(139,106,48,0.25)" : "rgba(200,160,80,0.18)"}` }}>
         <input
+          className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") send(); }}
           placeholder="Спроси наставника…"
           maxLength={600}
           style={{ flex: 1, minWidth: 0, padding: "12px 14px", borderRadius: RADIUS.pill, fontSize: 15, fontFamily: "Georgia, serif",
+            caretColor: a11y ? "#8B6A30" : "#C8A96E",
             background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
             color: a11y ? "#3A2E1C" : "#F0E8D8",
             border: a11y ? "1px solid rgba(160,120,60,0.45)" : "1px solid rgba(200,160,80,0.35)",

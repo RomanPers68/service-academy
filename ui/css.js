@@ -125,6 +125,9 @@ export const injectStyles = () => {
     /* Лента жетонов: скроллбар прячем, свайп остаётся */
     .sa-tilesrow { scrollbar-width: none; }
     .sa-tilesrow::-webkit-scrollbar { display: none; }
+    /* Поле ввода ассистента: читаемый плейсхолдер в обеих темах */
+    .sa-aiinput-dark::placeholder { color: rgba(200, 180, 152, 0.65); opacity: 1; }
+    .sa-aiinput-light::placeholder { color: rgba(90, 70, 50, 0.60); opacity: 1; }
     /* Живой диалог: под шторкой страница не должна «резинить» (iOS rubber-band).
        Жесты запрещены везде, кроме ленты реплик — ей разрешена только вертикаль. */
     .sa-dlg, .sa-dlg * { touch-action: none !important; }

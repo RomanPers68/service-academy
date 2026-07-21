@@ -61,9 +61,14 @@ async function liveFreeModels(): Promise<string[]> {
     const r = await fetch("https://openrouter.ai/api/v1/models");
     const j = await r.json();
     const items = Array.isArray(j?.data) ? j.data : [];
-    const score = (id: string) =>
-      /deepseek/.test(id) ? 0 : /qwen/.test(id) ? 1 : /gemini/.test(id) ? 2 :
-      /llama|mistral/.test(id) ? 3 : 4;
+    const score = (id: string) => {
+      // Reasoning-модели (R1, QwQ) молча рассуждают перед ответом и
+      // отвечают в разы дольше — для живого чата им место в конце очереди.
+      const slow = /r1|reason|think|qwq/i.test(id) ? 100 : 0;
+      const family = /deepseek/.test(id) ? 0 : /qwen/.test(id) ? 1 : /gemini/.test(id) ? 2 :
+        /llama|mistral/.test(id) ? 3 : 4;
+      return slow + family;
+    };
     const ids = items
       .map((m: { id?: string }) => String(m?.id || ""))
       .filter((id: string) => id.endsWith(":free"))

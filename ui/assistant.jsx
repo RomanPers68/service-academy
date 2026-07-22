@@ -215,6 +215,19 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
 
   const lastUser = [...msgs].reverse().find(m => m.role === "user");
 
+  // Модальные панели (список чатов, подтверждение): плотное стекло,
+  // накрывающее контент — в отличие от карточного lessGlass, которое
+  // в светлой теме слишком прозрачно и «тонет» в переписке
+  const panel = {
+    borderRadius: RADIUS.lg,
+    background: a11y ? "rgba(250,246,236,0.94)" : "rgba(30,22,10,0.94)",
+    backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+    border: a11y ? "1px solid rgba(139,106,48,0.45)" : "1px solid rgba(200,160,80,0.42)",
+    boxShadow: a11y
+      ? "inset 0 1px 0 rgba(255,255,255,0.9), 0 14px 40px rgba(70,50,15,0.28)"
+      : "inset 0 1px 0 rgba(255,255,255,0.10), 0 14px 40px rgba(0,0,0,0.55)",
+  };
+
   const miniBtn = {
     width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -274,7 +287,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       )}
       {confirmClear && (
         <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
-            ...glass, padding: 14, borderColor: RED, boxShadow: "0 14px 40px rgba(0,0,0,0.5)" }}>
+            ...panel, padding: 14, borderColor: RED }}>
           <div style={{ ...T.bold, marginTop: 0, marginBottom: 6 }}>Очистить переписку?</div>
           <div style={{ color: sub, fontSize: 12.5, marginBottom: 12 }}>История хранится только на этом устройстве и восстановлению не подлежит.</div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -287,8 +300,8 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       )}
       {showChats && (
         <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
-            ...glass, padding: "6px 6px", maxHeight: "55vh", overflowY: "auto", WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain", boxShadow: "0 14px 40px rgba(0,0,0,0.5)" }} >
+            ...panel, padding: "6px 6px", maxHeight: "55vh", overflowY: "auto", WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain" }} >
           {store.sessions.map(s => (
             <div key={s.id}
               style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 10px", borderRadius: RADIUS.md, cursor: "pointer",

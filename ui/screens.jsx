@@ -3021,8 +3021,7 @@ function TapAnchored({ x, y, T, children }) {
   return (
     <div ref={ref} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 1000,
       maxWidth: 440, width: "calc(100vw - 32px)",
-      opacity: pos.ready ? 1 : 0, transform: pos.ready ? "none" : "translateY(6px)",
-      transition: "opacity .18s ease, transform .18s ease" }}>
+      opacity: pos.ready ? 1 : 0 }}>
       {children}
       {pos.hasTap && <div style={tail} />}
     </div>

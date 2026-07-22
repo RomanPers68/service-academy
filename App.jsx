@@ -1075,10 +1075,12 @@ function ServiceAcademy() {
               maxWidth: 420, margin: "0 auto", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 16,
               opacity: hintLeaving ? 0 : 1, transform: hintLeaving ? "translateY(14px)" : undefined,
               transition: "opacity .24s ease, transform .24s ease",
-              background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
-              border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
-              borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
-              boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.5)" }}>
+              background: a11y ? "rgba(250,246,236,0.94)" : "rgba(30,22,10,0.94)",
+              backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+              border: a11y ? "1px solid rgba(139,106,48,0.45)" : "1px solid rgba(200,160,80,0.42)",
+              boxShadow: a11y
+                ? "inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 30px rgba(70,50,15,0.25)"
+                : "inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px rgba(0,0,0,0.5)" }}>
             <span className="sa-pulse" style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.target(a11y ? "#8B6A30" : "#C8A96E", 18)}</span>
             <div onClick={() => closeMistakeHint(true)} {...onActivate(() => closeMistakeHint(true))}
               style={{ flex: 1, cursor: "pointer", color: T.modSub?.color || "#C8B898", fontSize: a11y ? 14 : 12.5, lineHeight: 1.5 }}>

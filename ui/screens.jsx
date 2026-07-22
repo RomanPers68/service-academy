@@ -1914,7 +1914,7 @@ const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
   return null;
 };
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
@@ -2049,6 +2049,9 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const tiles = [];
           if (onAssistant) tiles.push({ key:"ai", label:"Ассистент", onClick:onAssistant, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z"/><path d="M12 7.8l1 2.1 2.2.3-1.6 1.6.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.6 2.2-.3z"/></svg>
+          )});
+          if (onCandidate) tiles.push({ key:"hire", label:"Собеседование", onClick:onCandidate, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 3.5a4 4 0 0 1 0 7"/><path d="M19 8h4M21 6v4"/></svg>
           )});
           if (onSOS) tiles.push({ key:"sos", label:"SOS", red:true, onClick:onSOS, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sosR} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M12 8.5v4"/><path d="M12 15.6v.1"/></svg>
@@ -3965,7 +3968,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     <div className="sa-dlg" style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
       background: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",
       transition:"background 0.8s ease" }}>
-      <div style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(210,170,70,0.28) inset", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
+      <div className="sa-dlgpath" style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(210,170,70,0.28) inset", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
         transform: visible ? "translateY(0)" : "translateY(120%)",
         transition:"transform 1.1s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Header */}

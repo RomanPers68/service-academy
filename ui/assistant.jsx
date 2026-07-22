@@ -294,7 +294,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
               style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 10px", borderRadius: RADIUS.md, cursor: "pointer",
                 border: s.id === store.activeId ? `1px solid ${gold}66` : "1px solid transparent",
                 background: s.id === store.activeId ? (a11y ? "rgba(139,106,48,0.08)" : "rgba(200,169,110,0.07)") : "transparent" }}>
-              <div onClick={() => openChat(s.id)} {...onActivate(() => openChat(s.id))} style={{ flex: 1, minWidth: 0 }}>
+              <div onClick={() => switchChat(s.id)} {...onActivate(() => switchChat(s.id))} style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: T.modTitle.color, fontSize: 13, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
                 <div style={{ color: sub, fontSize: 10.5, marginTop: 2, fontFamily: "monospace" }}>{fmtWhen(s.updatedAt)}{s.msgs.length ? ` · ${s.msgs.length}` : " · пусто"}</div>
               </div>
@@ -394,29 +394,33 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
         )}
       </div>
 
-      {/* ── Ввод ── */}
-      <div style={{ display: "flex", gap: 8, padding: "10px 16px calc(14px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${a11y ? "rgba(139,106,48,0.25)" : "rgba(200,160,80,0.18)"}` }}>
-        <input
-          className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") send(); }}
-          placeholder="Спроси наставника…"
-          maxLength={600}
-          style={{ flex: 1, minWidth: 0, padding: "12px 14px", borderRadius: RADIUS.pill, fontSize: 15, fontFamily: "Georgia, serif",
-            caretColor: a11y ? "#8B6A30" : "#C8A96E",
-            background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
-            color: a11y ? "#3A2E1C" : "#F0E8D8",
-            border: a11y ? "1px solid rgba(160,120,60,0.45)" : "1px solid rgba(200,160,80,0.35)",
-            outline: "none" }}
-        />
-        <button className="sa-btn" onClick={() => send()} disabled={sending || !input.trim()}
-          style={{ width: 46, height: 46, borderRadius: 23, border: "none", cursor: "pointer", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: input.trim() && !sending ? "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)" : "rgba(160,120,60,0.25)",
-            boxShadow: input.trim() && !sending ? "0 4px 14px rgba(200,160,80,0.3)" : "none", transition: "all 0.2s ease" }}>
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-        </button>
+      {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
+      <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 29,
+            background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
+            backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",
+            boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)"}, 0 6px 22px rgba(0,0,0,${a11y ? 0.10 : 0.38})` }}>
+          <input
+            className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") send(); }}
+            placeholder="Спроси наставника…"
+            maxLength={600}
+            style={{ flex: 1, minWidth: 0, padding: "11px 0", fontSize: 15, fontFamily: "Georgia, serif",
+              caretColor: a11y ? "#8B6A30" : "#C8A96E",
+              background: "transparent", border: "none", outline: "none",
+              color: a11y ? "#3A2E1C" : "#F0E8D8" }}
+          />
+          <button className="sa-btn" onClick={() => send()} disabled={sending || !input.trim()}
+            style={{ width: 44, height: 44, borderRadius: 22, border: "none", cursor: "pointer", flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: input.trim() && !sending ? "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)" : "rgba(160,120,60,0.22)",
+              boxShadow: input.trim() && !sending ? "0 4px 14px rgba(200,160,80,0.3)" : "none", transition: "all 0.2s ease" }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   , document.body);

@@ -135,6 +135,10 @@ export const injectStyles = () => {
        Жесты запрещены везде, кроме ленты реплик — ей разрешена только вертикаль. */
     .sa-dlg, .sa-dlg * { touch-action: none !important; }
     .sa-dlg .sa-dlgscroll, .sa-dlg .sa-dlgscroll * { touch-action: pan-y !important; }
+    /* Android строже iOS: жест требует разрешения по ВСЕЙ цепочке предков
+       скролл-зоны. Корню шторки и промежуточным контейнерам (sa-dlgpath)
+       разрешаем вертикаль; мёртвые зоны (шапка, кнопки) остаются none. */
+    .sa-dlg, .sa-dlg .sa-dlgpath { touch-action: pan-y !important; }
     html, body { overscroll-behavior: none; }
 
     /* Переход между экранами: каждый мягко въезжает (fade + сдвиг) */
@@ -149,7 +153,7 @@ export const injectStyles = () => {
     @keyframes saFadeIn { from { opacity:0; } to { opacity:1; } }
     .sa-fadein { animation: saFadeIn .3s ease both; }
     @keyframes saPop { from { opacity:0; transform:scale(0.7); } 60% { transform:scale(1.06); } to { opacity:1; transform:scale(1); } }
-    .sa-pop { animation: saPop .45s cubic-bezier(.16,1,.3,1) both; }
+    .sa-pop { animation: saPop .45s cubic-bezier(.16,1,.3,1) backwards; }
     @keyframes saHintIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
     .sa-hintin { animation: saHintIn .38s cubic-bezier(.16,1,.3,1) both; }
     @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin { animation:none; } }

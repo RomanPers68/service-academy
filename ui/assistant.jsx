@@ -147,9 +147,9 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
 
   // Пока чат открыт — глушим жест «потяни вниз, чтобы свернуть» у Telegram
   React.useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    try { tg?.disableVerticalSwipes?.(); } catch (e) {}
-    return () => { try { tg?.enableVerticalSwipes?.(); } catch (e) {} };
+    // Жесты Telegram настраиваются глобально при старте (index.html):
+    // expand + disableVerticalSwipes. Локально не переключаем, чтобы уход
+    // с экрана не возвращал жест сворачивания.
   }, []);
 
   // Клавиатура iOS выезжает ПОВЕРХ fixed-элементов — следим за видимой

@@ -3813,9 +3813,9 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   // в Telegram, и он дёргает всё мини-приложение вниз-вверх — тот самый «нырок».
   // При закрытии диалога жест возвращается как был.
   React.useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    try { tg?.disableVerticalSwipes?.(); } catch (e) {}
-    return () => { try { tg?.enableVerticalSwipes?.(); } catch (e) {} };
+    // Жесты Telegram настраиваются глобально при старте (index.html):
+    // expand + disableVerticalSwipes. Локально не переключаем, чтобы уход
+    // с экрана не возвращал жест сворачивания.
   }, []);
   const recapRef = React.useRef(null); // история диалога на финальном экране
   const optsRef = React.useRef(null); // блок вариантов — для плавного схлопывания после выбора

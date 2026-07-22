@@ -172,7 +172,7 @@ function AiFab({ a11y, onClick }) {
       style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
         width: 58, height: 58, borderRadius: 29, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: a11y ? "rgba(139,106,48,0.10)" : "rgba(250,240,215,0.14)",
+        background: a11y ? "rgba(139,106,48,0.16)" : "rgba(250,240,215,0.20)",
         boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.55)" : "rgba(255,255,255,0.26)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.16)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.22 : 0.5}), 0 0 18px ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.28)"}` }}>
       {!seen && (
         <span className="sa-pulse" style={{ position: "absolute", inset: -5, borderRadius: 34,

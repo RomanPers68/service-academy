@@ -112,7 +112,13 @@ export const injectStyles = () => {
     }
     .sa-dot { transition: background 0.2s ease, transform 0.2s ease; }
     .sa-dot-active { transform: scale(1.3); }
-    html, body { overflow-x: hidden !important; touch-action: pan-y; }
+    /* Скролл живёт в контейнере #root, а не в документе: на Android
+       Telegram-шторка перехватывает вертикальные жесты документа (и на
+       старых клиентах disableVerticalSwipes отсутствует). Контейнерный
+       скролл она не трогает — работает на любой версии клиента. */
+    html, body { height: 100%; overflow: hidden !important; touch-action: pan-y; }
+    #root { height: 100%; overflow-y: auto; overflow-x: hidden;
+      -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; }
     * { touch-action: pan-y !important; }
     /* Плавное перелистывание карточек (уроки, тренажёры): въезд с той стороны, куда листаешь */
     @keyframes saCardR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }

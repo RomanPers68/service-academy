@@ -129,7 +129,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
 function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
   const bodyRef = R.useRef(null);
   R.useEffect(() => {
-    if (typeof window !== "undefined") { try { window.scrollTo(0, 0); } catch (e) {} }
+    if (typeof document !== "undefined") { try { (document.getElementById("root") || window).scrollTo(0, 0); } catch (e) {} }
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
   }, [lesson.id]);
   return (<div style={T.screen}>

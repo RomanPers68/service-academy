@@ -65,6 +65,30 @@ function ScreenLoader({ T }) {
 // Показывается один раз (sa_welcome_seen), листается свайпом и кнопкой.
 // Задача — снять тревогу «куда я попал», а не обучить: детали человек
 // узнает по контекстным подсказкам в момент, когда они станут нужны.
+// Карточка AI-наставника — для всех, флагманская фича
+const WELCOME_AI_CARD = {
+  icon: (c) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z"/>
+      <path d="M12 7.8l1 2.1 2.2.3-1.6 1.6.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.6 2.2-.3z"/>
+    </svg>
+  ),
+  title: "Наставник всегда рядом",
+  text: "Стеклянная кнопка в правом нижнем углу — AI-наставник. Спроси про жалобу гостя, запару или подачу — ответит по стандартам академии, как старший коллега. Любой вопрос — нормальный вопрос.",
+};
+
+// Карточка AI-собеседования — менеджерам и руководству
+const WELCOME_HIRE_CARD = {
+  icon: (c) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M16 3.5a4 4 0 0 1 0 7"/><path d="M19 8h4M21 6v4"/>
+    </svg>
+  ),
+  title: "AI-собеседование",
+  text: "В жетоне «Собеседование» живёт ИИ-интервьюер: дай кандидату телефон — он задаст рабочие ситуации и вернёт оценку по компетенциям с вердиктом. Решение о найме всегда за тобой.",
+};
+
 // Карточка для менеджеров и руководства — добавляется четвёртой
 const WELCOME_ADMIN_CARD = {
   icon: (c) => NAV_ICONS.team(c, 28),
@@ -81,8 +105,12 @@ const WELCOME_CARDS = [
     text: "В нижней панели живут тренажёр меню, книга твоего пути, SOS-шпаргалки для смены и поиск по всему приложению." },
 ];
 
-function WelcomeIntro({ T, a11y, isAdmin, onClose }) {
-  const cards = isAdmin ? [...WELCOME_CARDS, WELCOME_ADMIN_CARD] : WELCOME_CARDS;
+function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
+  const cards = [
+    ...WELCOME_CARDS.slice(0, 2), WELCOME_AI_CARD, ...WELCOME_CARDS.slice(2),
+    ...(canHire ? [WELCOME_HIRE_CARD] : []),
+    ...(isAdmin ? [WELCOME_ADMIN_CARD] : []),
+  ];
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState("r");      // направление листания — карточка въезжает с нужной стороны
   const [leaving, setLeaving] = useState(false); // плавное закрытие вместо резкого исчезновения
@@ -172,7 +200,7 @@ function AiFab({ a11y, onClick }) {
       style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
         width: 58, height: 58, borderRadius: 29, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: a11y ? "rgba(139,106,48,0.16)" : "rgba(250,240,215,0.20)",
+        background: a11y ? "rgba(139,106,48,0.30)" : "rgba(250,240,215,0.34)",
         boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.55)" : "rgba(255,255,255,0.26)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.16)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.22 : 0.5}), 0 0 18px ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.28)"}` }}>
       {!seen && (
         <span className="sa-pulse" style={{ position: "absolute", inset: -5, borderRadius: 34,
@@ -897,10 +925,10 @@ function ServiceAcademy() {
   const [mistakeHint, setMistakeHint] = useState(false);
   useEffect(() => {
     if (!profile || !storageLoaded) return;
-    try { if (localStorage.getItem("sa_welcome_seen") !== "1") setWelcome(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_welcome_seen_v2") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v2", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };
@@ -1067,7 +1095,7 @@ function ServiceAcademy() {
         </div>
 
         {/* Онбординг: приветствие при первом входе */}
-        {welcome && <WelcomeIntro T={T} a11y={a11y} isAdmin={!!profile?.is_admin} onClose={closeWelcome} />}
+        {welcome && <WelcomeIntro T={T} a11y={a11y} isAdmin={!!profile?.is_admin} canHire={!!profile?.is_admin || ["manager","senior"].includes(profile?.position)} onClose={closeWelcome} />}
         {/* Контекстная подсказка о повторении — над навбаром, показывается один раз */}
         {mistakeHint && !welcome && (
           <div className="sa-hintin" style={{ position: "fixed", left: 16, right: 16, bottom: 104, zIndex: 400,

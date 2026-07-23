@@ -10,7 +10,7 @@ import { BROWN, GOLD, GREEN, GREEN_DARK, INK } from "./tokens";
 export function moodPalette(a11y) {
   return a11y
     ? { cardBg:"rgba(255,252,244,0.26)", border:"rgba(139,106,48,0.30)", top:"rgba(255,255,255,0.85)", shadow:"inset 0 0 20px rgba(255,255,255,0.5), 0 3px 12px rgba(120,90,30,0.10)", text:INK, muted:BROWN, dim:"#9A8060", gold:"#8B6A30", green:GREEN_DARK, barTop:GOLD, barBot:"#8B6A30" }
-    : { cardBg:"rgba(255,250,238,0.10)", border:"rgba(255,255,255,0.24)", top:"rgba(255,255,255,0.32)", shadow:"inset 0 0 20px rgba(255,248,230,0.13), inset 0 1px 0 rgba(255,255,255,0.20), 0 5px 16px rgba(0,0,0,0.32)", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:GOLD, green:GREEN, barTop:"#E8C87A", barBot:GOLD };
+    : { cardBg:"rgba(255,250,238,0.05)", border:"rgba(255,255,255,0.13)", top:"rgba(255,255,255,0.20)", shadow:"inset 0 0 20px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 5px 16px rgba(0,0,0,0.32)", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:GOLD, green:GREEN, barTop:"#E8C87A", barBot:GOLD };
 }
 
 export const MOOD_FACES = [{lvl:1,l:"Тяжело"},{lvl:2,l:"Так себе"},{lvl:3,l:"Норм"},{lvl:4,l:"Хорошо"},{lvl:5,l:"Отлично"}];
@@ -28,7 +28,7 @@ export function StreakCard({ streak, a11y }) {
         done:"radial-gradient(circle at 35% 30%, #E8C173, #C2912F 72%)", check:"#3a2c10",
         miss:"rgba(140,105,40,0.28)", future:"rgba(140,105,40,0.2)", div:"rgba(140,105,40,0.25)" }
     : { gold:GOLD, num:"#EBCF8E", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354",
-        cardBg:"rgba(255,250,238,0.10)", border:"rgba(255,255,255,0.24)", top:"rgba(255,255,255,0.32)", shadow:"inset 0 0 20px rgba(255,248,230,0.13), inset 0 1px 0 rgba(255,255,255,0.20), 0 5px 16px rgba(0,0,0,0.32)",
+        cardBg:"rgba(255,250,238,0.05)", border:"rgba(255,255,255,0.13)", top:"rgba(255,255,255,0.20)", shadow:"inset 0 0 20px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 5px 16px rgba(0,0,0,0.32)",
         glow:"radial-gradient(circle, rgba(200,169,110,0.16) 0%, transparent 70%)",
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(235,207,142,0.28), rgba(200,169,110,0.06) 70%)",
         done:"radial-gradient(circle at 35% 30%, #EBCF8E, #C8A96E 70%)", check:"#3a2c10",

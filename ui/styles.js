@@ -14,11 +14,11 @@ export const S = {
   phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh" },
   screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"transparent", overflowX:"hidden" },
 
-  a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:PANEL_2, borderBottom:"1px solid #4A3525" },
+  a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.08)" },
   a11yLabel: { color:"#A09080", fontSize:11, fontFamily:"monospace", letterSpacing:1 },
   a11yBtn: { border:"none", borderRadius:11, color:"#fff", fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"monospace", boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 8px rgba(0,0,0,0.25)" },
 
-  roleHeader: { background:PANEL },
+  roleHeader: { background:"transparent" },
   logoText: { color:GOLD_LOGO, fontSize:14, letterSpacing:5, fontFamily:"monospace" },
   logoRow: { display:"flex", alignItems:"center", gap:8, marginBottom:4 },
   logoStar: { color:GOLD_LOGO, fontSize:16 },
@@ -34,7 +34,7 @@ export const S = {
   roleArrow: { color:"#3C3428", fontSize:20 },
   roleQuote: { margin:"2px 14px 14px", padding:"10px 14px", borderLeft:"2px solid #D4A85A44", color:MUTED, fontSize:12, fontStyle:"italic", lineHeight:1.7 },
 
-  homeHead: { padding:"36px 18px 12px", background:PANEL },
+  homeHead: { padding:"36px 18px 12px", background:"transparent" },
   homeTopRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 },
   changeRoleBtn: { background:"transparent", border:"1px solid #4A3525", borderRadius:20, color:MUTED, fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"Georgia, serif" },
   homeRoleBadge: { display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, border:"1px solid" },
@@ -68,7 +68,7 @@ export const S = {
   lessTitle: { color:CREAM, fontSize:14, marginBottom:2, fontWeight:"600" },
   lessArrow: { color:"#3E3428", fontSize:16 },
 
-  lessHead: { display:"flex", alignItems:"center", gap:10, padding:"44px 18px 14px", background:PANEL_2, borderBottom:"1px solid #3D2C1A" },
+  lessHead: { display:"flex", alignItems:"center", gap:10, padding:"44px 18px 14px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.10)" },
   backBtn2: { background:"none", border:"none", color:MUTED_3, fontSize:26, cursor:"pointer", padding:0, lineHeight:1 },
   lessHeadTitle: { color:CREAM, fontSize:15, fontWeight:"bold", flex:1, lineHeight:1.3, fontFamily:ACCENT_SERIF },
   lessBody: { flex:1, padding:"18px 18px 44px", overflowY:"auto", background:"transparent" },
@@ -93,7 +93,7 @@ export const S = {
   quizOpt: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
   explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 12px 12px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.10) inset" },
   resultWrap: { display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 18px 20px", gap:16 },
-  resultCircle: { width:100, height:100, borderRadius:"50%", background:"#1E1A16", border:"3px solid", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", boxShadow:"0 0 24px rgba(200,160,80,0.18)" },
+  resultCircle: { width:100, height:100, borderRadius:"50%", background:"rgba(255,250,238,0.05)", border:"3px solid", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), 0 0 24px rgba(200,160,80,0.18)" },
   resultScore: { fontSize:28, fontWeight:"bold", fontFamily:ACCENT_SERIF },
   resultTxt: { color:SAND_DEEP, fontSize:15, textAlign:"center", lineHeight:1.6 },
 
@@ -109,12 +109,12 @@ export const A = {
   a11y: true, // флаг светлой темы: компоненты проверяют T.a11y для светлых вариантов стилей
   app:        { ...S.app, background:`radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), ${SAND}`, fontFamily:"Georgia, serif" },
   phone:      { ...S.phone, background:"transparent" },
-  screen:     { ...S.screen, background:CREAM_SOFT },
+  screen:     { ...S.screen, background:"transparent" },
 
-  a11yBar:    { ...S.a11yBar, background:SAND, borderBottom:"1px solid rgba(160,120,60,0.25)" },
+  a11yBar:    { ...S.a11yBar, background:"transparent", borderBottom:"1px solid rgba(160,120,60,0.25)" },
   a11yLabel:  { ...S.a11yLabel, color:BROWN, fontSize:12 },
 
-  roleHeader: { ...S.roleHeader, background:CREAM_SOFT },
+  roleHeader: { ...S.roleHeader, background:"transparent" },
   roleSubtitle:{ ...S.roleSubtitle, color:INK, fontSize:22, fontWeight:"bold" },
   roleList:   { ...S.roleList, gap:10 },
   roleCard:   { ...S.roleCard, background:"rgba(255,252,244,0.22)", border:"1px solid rgba(139,106,48,0.30)", boxShadow:"inset 0 0 22px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.85), 0 4px 16px rgba(120,90,30,0.10)", borderRadius:20 },
@@ -124,7 +124,7 @@ export const A = {
   roleArrow:  { ...S.roleArrow, color:CLAY },
   roleQuote:  { ...S.roleQuote, color:BROWN, fontSize:15 },
 
-  homeHead:   { ...S.homeHead, background:CREAM_SOFT },
+  homeHead:   { ...S.homeHead, background:"transparent" },
   changeRoleBtn:{ ...S.changeRoleBtn, background:"transparent", border:"1px solid rgba(160,120,60,0.3)", color:BROWN },
   homeRoleBadge:{ ...S.homeRoleBadge },
 
@@ -149,11 +149,11 @@ export const A = {
   lessNumColor: "#5A3E1B",
   lessNumBorder: "2px solid rgba(120,80,20,0.6)",
 
-  lessHead:   { ...S.lessHead, background:SAND, borderBottom:"1px solid rgba(160,120,60,0.2)" },
+  lessHead:   { ...S.lessHead, background:"transparent", borderBottom:"1px solid rgba(160,120,60,0.2)" },
   backBtn:    { ...S.backBtn, color:"rgba(100,70,25,0.65)" },
   backBtn2:   { ...S.backBtn2, color:BROWN, fontSize:22 },
   lessHeadTitle:{ ...S.lessHeadTitle, color:INK, fontSize:17, fontWeight:"bold" },
-  lessBody:   { ...S.lessBody, background:CREAM_SOFT },
+  lessBody:   { ...S.lessBody, background:"transparent" },
   termPopupBg: "rgba(255,252,244,0.30)",
   lessGlass:  { bg:"rgba(250,242,222,0.60)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", shadow:"inset 0 0 22px rgba(255,250,235,0.55), inset 0 1px 0 rgba(255,252,240,0.9), 0 4px 16px rgba(120,90,30,0.10)", glare:"linear-gradient(180deg, rgba(255,248,230,0.40) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,246,225,0.5) 0%, transparent 60%)", blur:"none" },
 
@@ -169,12 +169,12 @@ export const A = {
   quote:      { ...S.quote, color:BROWN_GOLD, fontSize:16, background:"rgba(232,215,180,0.60)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderLeft:"2px solid rgba(160,120,50,0.5)", boxShadow:"0 2px 10px rgba(120,90,30,0.08), 0 1px 0 rgba(255,245,210,0.5) inset" },
   doneBtn:    { ...S.doneBtn, fontSize:17, padding:"16px", border:"1px solid rgba(160,120,60,0.3)", color:"#fff", boxShadow:"0 4px 20px rgba(100,70,20,0.2), inset 0 1px 0 rgba(255,220,140,0.2)" },
 
-  quizWrap:      { ...S.quizWrap, background:CREAM_SOFT },
+  quizWrap:      { ...S.quizWrap, background:"transparent" },
   quizProgress:  { ...S.quizProgress, color:"#9A8060", fontSize:14 },
   quizQ:         { ...S.quizQ, color:INK, fontSize:18, lineHeight:1.9 },
   quizOpt:       { ...S.quizOpt, background:"rgba(250,242,222,0.55)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", boxShadow:"inset 0 0 18px rgba(255,250,235,0.5)", color:INK, fontSize:16, padding:"14px 16px", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset" },
   explain:       { ...S.explain, color:INK, background:"rgba(235,220,192,0.75)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.20)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },
-  resultCircle:  { ...S.resultCircle, background:PAPER, border:"2px solid" },
+  resultCircle:  { ...S.resultCircle, background:"rgba(250,242,222,0.55)", border:"2px solid", boxShadow:"inset 0 0 22px rgba(255,250,235,0.5), 0 0 24px rgba(200,160,80,0.15)" },
   resultTxt:     { ...S.resultTxt, color:INK, fontSize:17 },
 
   simScen:  { ...S.simScen, background:"rgba(235,220,192,0.70)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:INK, border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", boxShadow:"0 3px 14px rgba(120,90,30,0.11), 0 1px 0 rgba(255,248,230,0.68) inset", fontSize:15 },

@@ -699,8 +699,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                         : { background: "rgba(200,169,110,0.10)", border: "1px solid rgba(214,178,102,0.35)",
                             boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#F5E9CE" })
                       : (a11y
-                        ? { background: "rgba(255,252,244,0.22)", border: "1px solid rgba(139,106,48,0.30)",
-                            boxShadow: "inset 0 0 22px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.85)", color: "#3A2E1C" }
+                        ? { background: "rgba(250,242,222,0.55)", border: "1px solid rgba(139,106,48,0.30)",
+                            boxShadow: "inset 0 0 22px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)", color: "#3A2E1C" }
                         : { background: "rgba(255,250,238,0.05)", border: "1px solid rgba(255,255,255,0.13)",
                             boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#EFE6D2" })),
                     borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px" }}>

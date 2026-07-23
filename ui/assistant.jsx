@@ -222,12 +222,12 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
   // в светлой теме слишком прозрачно и «тонет» в переписке
   const panel = {
     borderRadius: RADIUS.lg,
-    background: a11y ? "rgba(250,246,236,0.94)" : "rgba(30,22,10,0.94)",
+    background: a11y ? "rgba(250,242,222,0.86)" : "rgba(28,20,8,0.90)",
     backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-    border: a11y ? "1px solid rgba(139,106,48,0.45)" : "1px solid rgba(200,160,80,0.42)",
+    border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(255,255,255,0.16)",
     boxShadow: a11y
-      ? "inset 0 1px 0 rgba(255,255,255,0.9), 0 14px 40px rgba(70,50,15,0.28)"
-      : "inset 0 1px 0 rgba(255,255,255,0.10), 0 14px 40px rgba(0,0,0,0.55)",
+      ? "inset 0 0 26px rgba(255,250,235,0.6), inset 0 1px 0 rgba(255,252,240,0.9), 0 14px 40px rgba(70,50,15,0.28)"
+      : "inset 0 0 26px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.14), 0 14px 40px rgba(0,0,0,0.55)",
   };
 
   // «Морозный лёд»: прозрачное стекло с внутренним инеем — морозность
@@ -236,8 +236,8 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
     ? (mine
       ? { background: "rgba(139,106,48,0.09)", border: "1px solid rgba(139,106,48,0.42)",
           boxShadow: "inset 0 0 22px rgba(255,255,255,0.40), inset 0 1px 0 rgba(255,255,255,0.70)", color: "#3A2E1C" }
-      : { background: "rgba(255,252,244,0.22)", border: "1px solid rgba(139,106,48,0.30)",
-          boxShadow: "inset 0 0 22px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.85)", color: "#3A2E1C" })
+      : { background: "rgba(250,242,222,0.55)", border: "1px solid rgba(139,106,48,0.30)",
+          boxShadow: "inset 0 0 22px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)", color: "#3A2E1C" })
     : (mine
       ? { background: "rgba(200,169,110,0.10)", border: "1px solid rgba(214,178,102,0.35)",
           boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#F5E9CE" }

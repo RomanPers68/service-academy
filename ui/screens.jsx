@@ -3288,7 +3288,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
                 <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:7 }}>{UI_SVG.book(color, 16)}</span>{termPopup.term}
               </div>
-              <div style={{ color: T.modSub?.color || "#C8B898", fontSize:15, lineHeight:1.7, fontFamily:"Georgia, serif" }}>
+              <div style={{ color: T.a11y ? "#3A2E1C" : "#E8DCC4", fontSize:15, lineHeight:1.7, fontFamily:"Georgia, serif" }}>
                 {termPopup.def}
               </div>
               {DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()) && (
@@ -4006,7 +4006,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
           if (msg.type === "guest") return (
             <div key={i} className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
               <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(255,252,244,0.26)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,255,255,0.45), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.20)", color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(250,242,222,0.75)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.35)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.20)", color: T.a11y ? "#2E2412" : (T.modTitle?.color || "#C8B898"), fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "waiter") return (
@@ -4031,7 +4031,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         {typing && (
           <div className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
             <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(255,252,244,0.26)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,255,255,0.45)" : "inset 0 0 18px rgba(255,248,230,0.06)", display:"flex", gap:5, alignItems:"center" }}>
+            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(250,242,222,0.75)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.35)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5)" : "inset 0 0 18px rgba(255,248,230,0.06)", display:"flex", gap:5, alignItems:"center" }}>
               {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:BROWN, animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
             </div>
           </div>

@@ -24,7 +24,7 @@ export const S = {
   logoStar: { color:GOLD_LOGO, fontSize:16 },
   roleSubtitle: { color:CREAM, fontSize:17, fontWeight:"bold", marginTop:0 },
   roleList: { padding:"2px 14px 4px", display:"flex", flexDirection:"column", gap:8 },
-  roleCard: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 8px 26px rgba(0,0,0,0.35)", borderRadius:22, padding:"10px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", position:"relative", overflow:"hidden" },
+  roleCard: { background:"rgba(255,250,238,0.10)", border:"1px solid rgba(255,255,255,0.24)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.14), inset 0 1px 0 rgba(255,255,255,0.20), 0 8px 26px rgba(0,0,0,0.35)", borderRadius:22, padding:"10px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", position:"relative", overflow:"hidden" },
   roleAccent: { position:"absolute", left:0, top:0, bottom:0, width:3, borderRadius:"3px 0 0 3px" },
   roleIcon: { fontSize:38, flexShrink:0, width:54, height:54, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:14 },
   roleInfo: { flex:1 },
@@ -39,7 +39,7 @@ export const S = {
   changeRoleBtn: { background:"transparent", border:"1px solid #4A3525", borderRadius:20, color:MUTED, fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"Georgia, serif" },
   homeRoleBadge: { display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, border:"1px solid" },
 
-  progCard: { margin:"6px 14px", background:"rgba(255,250,238,0.05)", border:"1px solid rgba(214,178,102,0.28)", boxShadowExtra:"none", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 1px 0 rgba(190,152,56,0.12) inset", borderRadius:16, padding:"12px 16px", border:"1.5px solid transparent" },
+  progCard: { margin:"6px 14px", background:"rgba(255,250,238,0.10)", border:"1px solid rgba(214,178,102,0.28)", boxShadowExtra:"none", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 1px 0 rgba(190,152,56,0.12) inset", borderRadius:16, padding:"12px 16px", border:"1.5px solid transparent" },
   progTop: { display:"flex", justifyContent:"space-between", marginBottom:8 },
   progLabel: { color:MUTED, fontSize:12 },
   progPct: { fontSize:14, fontWeight:"bold" },
@@ -49,7 +49,7 @@ export const S = {
   secTitle: { color:MUTED_2, fontSize:9, letterSpacing:4, padding:"14px 20px 6px", fontFamily:"monospace", textTransform:"uppercase" },
 
   modList: { padding:"0 14px 32px", display:"flex", flexDirection:"column", gap:8 },
-  modCard: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(214,178,102,0.28)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 20px rgba(0,0,0,0.35)", borderRadius:20, padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", position:"relative", overflow:"hidden" },
+  modCard: { background:"rgba(255,250,238,0.10)", border:"1px solid rgba(214,178,102,0.28)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.14), inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 20px rgba(0,0,0,0.35)", borderRadius:20, padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", position:"relative", overflow:"hidden" },
   modBar: { position:"absolute", left:0, top:0, bottom:0, width:3 },
   modIcon: { fontSize:22, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:10, flexShrink:0 },
   modInfo: { flex:1 },
@@ -62,7 +62,7 @@ export const S = {
   modHead: { padding:"44px 18px 20px", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)" },
   backBtn: { background:"none", border:"none", color:"rgba(255,255,255,0.4)", fontSize:14, cursor:"pointer", padding:0, marginBottom:18, display:"flex", alignItems:"center", gap:8 },
   lessList: { padding:"10px 14px 28px", flex:1 },
-  lessCard: { display:"flex", alignItems:"center", gap:10, background:"rgba(255,250,238,0.05)", boxShadow:"inset 0 0 20px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 5px 16px rgba(0,0,0,0.32)", borderRadius:18, padding:"11px 14px", marginBottom:6, cursor:"pointer", border:"1px solid rgba(145,108,40,0.36)", borderTop:"1px solid rgba(210,168,65,0.44)" },
+  lessCard: { display:"flex", alignItems:"center", gap:10, background:"rgba(255,250,238,0.10)", boxShadow:"inset 0 0 20px rgba(255,248,230,0.13), inset 0 1px 0 rgba(255,255,255,0.20), 0 5px 16px rgba(0,0,0,0.32)", borderRadius:18, padding:"11px 14px", marginBottom:6, cursor:"pointer", border:"1px solid rgba(145,108,40,0.36)", borderTop:"1px solid rgba(210,168,65,0.44)" },
   lessNum: { width:28, height:28, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", flexShrink:0 },
   lessInfo: { flex:1 },
   lessTitle: { color:CREAM, fontSize:14, marginBottom:2, fontWeight:"600" },
@@ -72,8 +72,8 @@ export const S = {
   backBtn2: { background:"none", border:"none", color:MUTED_3, fontSize:26, cursor:"pointer", padding:0, lineHeight:1 },
   lessHeadTitle: { color:CREAM, fontSize:15, fontWeight:"bold", flex:1, lineHeight:1.3, fontFamily:ACCENT_SERIF },
   lessBody: { flex:1, padding:"18px 18px 44px", overflowY:"auto", background:"transparent" },
-  termPopupBg: "rgba(255,250,238,0.07)",
-  lessGlass: { bg:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", shadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.35)", glare:"linear-gradient(180deg, rgba(255,250,235,0.05) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 60%)", blur:"none" },
+  termPopupBg: "rgba(255,250,238,0.12)",
+  lessGlass: { bg:"rgba(255,250,238,0.10)", border:"1px solid rgba(255,255,255,0.24)", borderTop:"1px solid rgba(255,255,255,0.32)", shadow:"inset 0 0 22px rgba(255,248,230,0.14), inset 0 1px 0 rgba(255,255,255,0.20), 0 6px 20px rgba(0,0,0,0.35)", glare:"linear-gradient(180deg, rgba(255,250,235,0.05) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,255,255,0.20) 0%, transparent 60%)", blur:"none" },
 
   para: { color:SAND_DEEP, fontSize:15, lineHeight:1.85, marginBottom:5 },
   bold: { color:CREAM, fontSize:15, fontWeight:"bold", marginBottom:6, marginTop:16, letterSpacing:0.1 },
@@ -90,7 +90,7 @@ export const S = {
   quizWrap: { flex:1, padding:"16px 18px 36px" },
   quizProgress: { color:MUTED_3, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
   quizQ: { color:CREAM, fontSize:15, lineHeight:1.75, marginBottom:18, fontWeight:"bold", whiteSpace:"pre-wrap" },
-  quizOpt: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  quizOpt: { background:"rgba(255,250,238,0.10)", border:"1px solid rgba(255,255,255,0.24)", borderTop:"1px solid rgba(255,255,255,0.32)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.13)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
   explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 12px 12px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.10) inset" },
   resultWrap: { display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 18px 20px", gap:16 },
   resultCircle: { width:100, height:100, borderRadius:"50%", background:"#1E1A16", border:"3px solid", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", boxShadow:"0 0 24px rgba(200,160,80,0.18)" },
@@ -98,9 +98,9 @@ export const S = {
   resultTxt: { color:SAND_DEEP, fontSize:15, textAlign:"center", lineHeight:1.6 },
 
   simWrap: { flex:1, padding:"14px 18px 36px" },
-  simScen: { background:"rgba(255,250,238,0.05)", borderRadius:12, padding:"13px", color:"#C8B89A", fontSize:13, lineHeight:1.8, marginBottom:13, border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 12px rgba(0,0,0,0.30)" },
+  simScen: { background:"rgba(255,250,238,0.10)", borderRadius:12, padding:"13px", color:"#C8B89A", fontSize:13, lineHeight:1.8, marginBottom:13, border:"1px solid rgba(255,255,255,0.24)", borderTop:"1px solid rgba(255,255,255,0.32)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.13), 0 4px 12px rgba(0,0,0,0.30)" },
   simQ: { color:CREAM, fontSize:14, fontWeight:"bold", marginBottom:13 },
-  simOpt: { border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", background:"rgba(255,250,238,0.05)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:13, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.38), 0 1px 0 rgba(195,155,58,0.12) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  simOpt: { border:"1px solid rgba(255,255,255,0.24)", borderTop:"1px solid rgba(255,255,255,0.32)", background:"rgba(255,250,238,0.10)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.13)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:13, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.38), 0 1px 0 rgba(195,155,58,0.12) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
   simFb: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, margin:"0 0 8px", background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 10px 10px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35)" },
 };
 

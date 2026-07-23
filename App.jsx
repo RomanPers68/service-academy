@@ -200,8 +200,8 @@ function AiFab({ a11y, onClick }) {
       style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
         width: 58, height: 58, borderRadius: 29, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.12)",
-        boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.5)" : "rgba(214,178,102,0.42)"}, inset 0 0 18px ${a11y ? "rgba(255,255,255,0.45)" : "rgba(255,230,170,0.10)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.18 : 0.45})` }}>
+        background: a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.20)",
+        boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.5)" : "rgba(214,178,102,0.58)"}, inset 0 0 18px ${a11y ? "rgba(255,255,255,0.45)" : "rgba(255,230,170,0.18)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.18 : 0.45})` }}>
       {!seen && (
         <span className="sa-pulse" style={{ position: "absolute", inset: -5, borderRadius: 34,
           border: `1.5px solid ${gold}`, pointerEvents: "none" }} />
@@ -1224,11 +1224,11 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
       <div ref={barRef} className="sa-lensbar sa-hscroll"
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
         style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch",
-          background: a11y ? "rgba(255,252,244,0.30)" : "rgba(255,250,238,0.06)",
-          border: a11y ? "1px solid rgba(139,106,48,0.32)" : "1px solid rgba(255,255,255,0.14)",
+          background: a11y ? "rgba(255,252,244,0.30)" : "rgba(255,250,238,0.11)",
+          border: a11y ? "1px solid rgba(139,106,48,0.32)" : "1px solid rgba(255,255,255,0.24)",
           boxShadow: a11y
             ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 20px rgba(120,90,30,0.14)"
-            : "inset 0 0 22px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px rgba(0,0,0,0.5)",
+            : "inset 0 0 24px rgba(255,248,230,0.13), inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 30px rgba(0,0,0,0.55)",
 
           userSelect:"none", WebkitUserSelect:"none" }}>
         {tabs.map((tab, i) => {
@@ -1267,7 +1267,7 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
               transition:"transform 0.25s ease",
               background: a11y
                 ? "linear-gradient(180deg, rgba(139,106,48,0.15), rgba(139,106,48,0.07))"
-                : "linear-gradient(180deg, rgba(200,169,110,0.16), rgba(200,169,110,0.08))",
+                : "linear-gradient(180deg, rgba(200,169,110,0.26), rgba(200,169,110,0.13))",
               boxShadow: a11y
                 ? "inset 0 1px 1px rgba(255,255,255,0.40), 0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(107,78,26,0.15)"
                 : "inset 0 0 0 1px rgba(255,255,255,0.13), inset 0 1px 0 rgba(255,255,255,0.10), 0 3px 10px rgba(0,0,0,0.22)",

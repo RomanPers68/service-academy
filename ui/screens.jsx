@@ -1899,9 +1899,9 @@ const TokenEyelet = () => (
 // «Морозный лёд»: оправа — светящаяся золотисто-белая кромка,
 // уровень full — ярче (парадные витрины), mid — деликатнее (жетоны)
 const saFrame = (a11y, level = "mid") => {
-  // Единая ровная кромка (как в демо): один цвет для всех кнопок главной
+  // Демо-кромка .ice: ровная, один цвет для всех кнопок главной
   const k = level === "full" ? 1 : 0.85;
-  return a11y ? `rgba(139,106,48,${0.38 * k})` : `rgba(255,255,255,${0.15 * k})`;
+  return a11y ? `rgba(139,106,48,${0.30 * k})` : `rgba(255,255,255,${0.13 * k})`;
 };
 const saInner = (a11y) => a11y
   ? "rgba(255,252,244,0.30)"
@@ -2102,7 +2102,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                 return (
                   <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:88, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
                     <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: saInner(a11y) }}>
-                      <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.5)" : "rgba(255,245,220,0.09)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
+                      <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.20)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
                       <TokenEyelet />
                       <div style={{ marginTop:4, position:"relative", display:"inline-flex" }}>{React.cloneElement(t.icon, { width:16, height:16 })}</div>
                       <span style={{ position:"relative", fontSize:8.5, color: t.red ? sosR : Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1, maxWidth:"100%", overflowWrap:"break-word", letterSpacing: t.red ? 1 : 0 }}>{t.label}</span>
@@ -3284,7 +3284,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:20, padding:"20px 20px 24px", width:"100%", boxSizing:"border-box",
                 border:`1px solid ${color}55`, borderTop:`1px solid ${color}77`,
                 backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
-                boxShadow:`inset 0 0 20px ${a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.07)"}, inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.12)"}, 0 8px 32px rgba(0,0,0,0.4)` }}>
+                boxShadow:`inset 0 0 20px ${T.a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.07)"}, inset 0 1px 0 ${T.a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.12)"}, 0 8px 32px rgba(0,0,0,0.4)` }}>
               <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
                 <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:7 }}>{UI_SVG.book(color, 16)}</span>{termPopup.term}
               </div>

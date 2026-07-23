@@ -155,7 +155,7 @@ export const A = {
   lessHeadTitle:{ ...S.lessHeadTitle, color:INK, fontSize:17, fontWeight:"bold" },
   lessBody:   { ...S.lessBody, background:CREAM_SOFT },
   termPopupBg: "rgba(255,252,244,0.30)",
-  lessGlass:  { bg:"rgba(255,252,244,0.26)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,255,255,0.85)", shadow:"inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 4px 16px rgba(120,90,30,0.10)", glare:"linear-gradient(180deg, rgba(255,255,255,0.30) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,255,255,0.45) 0%, transparent 60%)", blur:"none" },
+  lessGlass:  { bg:"rgba(255,252,244,0.22)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,255,255,0.85)", shadow:"inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 4px 16px rgba(120,90,30,0.10)", glare:"linear-gradient(180deg, rgba(255,255,255,0.30) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,255,255,0.45) 0%, transparent 60%)", blur:"none" },
 
   para:       { ...S.para, color:INK, fontSize:18, lineHeight:2.1 },
   bold:       { ...S.bold, color:INK_DEEP, fontSize:19, marginTop:18 },

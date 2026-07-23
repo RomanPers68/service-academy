@@ -1904,8 +1904,8 @@ const saFrame = (a11y, level = "mid") => {
   return a11y ? `rgba(139,106,48,${0.30 * k})` : `rgba(255,255,255,${0.13 * k})`;
 };
 const saInner = (a11y) => a11y
-  ? "rgba(255,252,244,0.30)"
-  : "rgba(255,250,238,0.05)";
+  ? "rgba(250,242,222,0.60)"
+  : "rgba(226,186,116,0.11)";
 // Первый непройденный урок роли — для карточки «Твой трек»
 const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
   for (const m of mods) for (const l of (m.lessons || [])) {
@@ -1979,8 +1979,8 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           return (
             <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, padding:1.5, background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)", cursor:"pointer" }}>
-                <div style={{ borderRadius:14.5, padding:"12px 13px", background: saInner(a11y) }}>
+              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)", cursor:"pointer" }}>
+                <div style={{ borderRadius:14.5, padding:"12px 13px", background: "transparent" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:11 }}>
                     <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? "rgba(200,169,110,0.13)" : `${RC}26`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       {gold
@@ -2010,7 +2010,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const unread = countUnreadPages(completed, quizDone, examResults);
           return (
             <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ position:"relative", borderRadius:15, padding:1.5, background: saFrame(a11y, "full"), boxShadow: a11y ? "0 4px 14px rgba(120,85,25,0.3)" : "0 6px 18px rgba(0,0,0,0.5)", cursor:"pointer" }}>
+              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ position:"relative", borderRadius:15, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "full")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 14px rgba(120,85,25,0.2)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 6px 18px rgba(0,0,0,0.45)", cursor:"pointer" }}>
                 {unread > 0 && (
                   <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
                     display:"flex", alignItems:"center", justifyContent:"center",
@@ -2019,7 +2019,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                     border: a11y ? "1.5px solid #FBF5E8" : "1.5px solid #14100A",
                     boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
                 )}
-                <div style={{ overflow:"hidden", position:"relative", background: saInner(a11y), borderRadius:13.5 }}>
+                <div style={{ overflow:"hidden", position:"relative", background: "transparent", borderRadius:13.5 }}>
                   {/* ляссе */}
                   <div style={{ position:"absolute", right:16, top:0, width:7, height:20, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />
                   <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px 8px" }}>
@@ -2100,8 +2100,8 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
               {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 return (
-                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:88, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, padding:1.5, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saFrame(a11y, "mid"), boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.28)" : "0 5px 16px rgba(0,0,0,0.5)" }}>
-                    <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: saInner(a11y) }}>
+                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:88, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
+                    <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: "transparent" }}>
                       <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.20)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
                       <TokenEyelet />
                       <div style={{ marginTop:4, position:"relative", display:"inline-flex" }}>{React.cloneElement(t.icon, { width:16, height:16 })}</div>

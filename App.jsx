@@ -1004,9 +1004,10 @@ function ServiceAcademy() {
 
         {/* Ключ по экрану: каждый переход мягко въезжает (см. .sa-pagein в css.js) */}
         {/* Ключ включает тему: переключение «Тёмная/Для чтения» перерисовывает
-            экран начисто — лечит iOS-призраки старого рендера под стеклом
-            с блюром (задвоение текста), и смена темы получает мягкий переход */}
-        <div key={screen + (a11y ? "|r" : "|d")} className="sa-pagein">
+            экран начисто — лечит iOS-призраки старого рендера под стеклом.
+            Исключение — «Собеседование»: там живёт прогресс интервью,
+            перемонтаж его уничтожил бы (тема переключается без пересборки) */}
+        <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {/* ── Книга отзывов ── */}
         {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} focusId={bookFocus} onBack={() => { setBookFocus(null); navigate(prevScreen && prevScreen !== "weeklyGuest" && prevScreen !== "guestbook" ? prevScreen : "roleSelect"); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}

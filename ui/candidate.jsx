@@ -669,7 +669,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             <button className="sa-btn" onClick={startAi}
               style={{ ...goldBtn, marginTop: 10, background: "transparent", color: gold,
                 border: `1px solid ${gold}66`, boxShadow: "none" }}>
-              🤖 AI-интервью · бета
+              AI-интервью · бета
             </button>
             <div style={{ ...T.modSub, color: sub, fontSize: 11.5, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
               В AI-режиме кандидат отвечает своими словами, а ИИ задаёт уточняющие вопросы
@@ -717,16 +717,21 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               )}
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-              <input
+              <textarea
                 value={aiInput}
-                onChange={e => setAiInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") aiSend(); }}
+                rows={1}
+                onChange={e => {
+                  setAiInput(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 110) + "px";
+                }}
                 placeholder="Ответ кандидата…"
                 maxLength={800}
-                style={{ ...inputStyle, flex: 1, minWidth: 0, marginBottom: 0 }}
+                style={{ ...inputStyle, flex: 1, minWidth: 0, marginBottom: 0,
+                  lineHeight: 1.45, resize: "none", maxHeight: 110, overflowY: "auto" }}
               />
               <button className="sa-btn" onClick={aiSend} disabled={aiBusy || !aiInput.trim()}
-                style={{ width: 46, alignSelf: "stretch", borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
+                style={{ width: 46, height: 46, alignSelf: "flex-end", borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   background: aiInput.trim() && !aiBusy ? "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)" : "rgba(160,120,60,0.25)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>

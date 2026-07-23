@@ -135,6 +135,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
   const [error, setError] = React.useState(null);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const listRef = React.useRef(null);
+  const inputRef = React.useRef(null);
   const gold = a11y ? "#8B6A30" : GOLD;
   const sub = T.modSub.color;
 
@@ -178,6 +179,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
     vibrate("light");
     setError(null);
     setInput("");
+    if (inputRef.current) inputRef.current.style.height = "auto";
     const next = [...msgs, { role: "user", content: text, t: Date.now() }];
     updMsgs(next);
     setSending(true);
@@ -409,19 +411,26 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
 
       {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
       <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 29,
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 29,
             background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
             backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
             border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",
             boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)"}, 0 6px 22px rgba(0,0,0,${a11y ? 0.10 : 0.38})` }}>
-          <input
+          <textarea
+            ref={inputRef}
             className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") send(); }}
+            rows={1}
+            onChange={e => {
+              setInput(e.target.value);
+              // авто-рост: до ~5 строк, дальше — внутренний скролл
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 122) + "px";
+            }}
             placeholder="Спроси наставника…"
             maxLength={600}
             style={{ flex: 1, minWidth: 0, padding: "11px 0", fontSize: 15, fontFamily: "Georgia, serif",
+              lineHeight: 1.45, resize: "none", maxHeight: 122, overflowY: "auto",
               caretColor: a11y ? "#8B6A30" : "#C8A96E",
               background: "transparent", border: "none", outline: "none",
               color: a11y ? "#3A2E1C" : "#F0E8D8" }}

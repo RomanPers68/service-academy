@@ -321,9 +321,22 @@ function ServiceAcademy() {
       // (плейсхолдеры, каретки) под тему во всём приложении разом
       try { document.documentElement.classList.toggle("sa-light", a11y); } catch (e) {}
       const tg = window.Telegram?.WebApp;
-      const bg = a11y
+      const bg = a11y ? "#E8DEC8" : "#14110A";
+      // Сцена: фиксированный слой-фон под всем приложением. Не зависит от
+      // высоты контента и капризов body — разнотемье исключено.
+      const scene = a11y
         ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
-        : BG_DARK;
+        : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)";
+      try {
+        let sc = document.getElementById("sa-scene");
+        if (!sc) {
+          sc = document.createElement("div");
+          sc.id = "sa-scene";
+          sc.style.cssText = "position:fixed;inset:0;z-index:-1;pointer-events:none;";
+          document.body.prepend(sc);
+        }
+        sc.style.background = scene;
+      } catch (e) {}
       document.documentElement.style.background = bg;
       document.body.style.background = bg;
       if (!tg) return;

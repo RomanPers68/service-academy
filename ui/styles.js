@@ -108,7 +108,7 @@ export const A = {
   ...S,
   a11y: true, // флаг светлой темы: компоненты проверяют T.a11y для светлых вариантов стилей
   app:        { ...S.app, background:`radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), ${SAND}`, fontFamily:"Georgia, serif" },
-  phone:      { ...S.phone, background:CREAM_SOFT },
+  phone:      { ...S.phone, background:"transparent" },
   screen:     { ...S.screen, background:CREAM_SOFT },
 
   a11yBar:    { ...S.a11yBar, background:SAND, borderBottom:"1px solid rgba(160,120,60,0.25)" },

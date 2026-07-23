@@ -22,7 +22,7 @@ export const MUTED = "#948872";
 export const MUTED_2 = "#756A58";
 export const MUTED_3 = "#686050";
 export const CLAY = "#B09060";
-export const BG_DARK = "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%) #14110A";
+export const BG_DARK = "#14110A";
 export const PANEL = "#141210";
 export const PANEL_2 = "#1A1612";
 

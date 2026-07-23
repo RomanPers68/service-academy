@@ -119,6 +119,8 @@ export const injectStyles = () => {
     html, body { height: 100%; overflow: hidden !important; touch-action: pan-y; }
     #root { height: 100%; overflow-y: auto; overflow-x: hidden;
       -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; }
+    #root { scrollbar-width: none; }
+    #root::-webkit-scrollbar { display: none; }
     * { touch-action: pan-y !important; }
     /* Плавное перелистывание карточек (уроки, тренажёры): въезд с той стороны, куда листаешь */
     @keyframes saCardR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }

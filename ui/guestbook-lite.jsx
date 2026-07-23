@@ -41,8 +41,8 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
       position: "sticky", top: 10, zIndex: 40,
       margin: "12px 16px 0", borderRadius: 18, padding: "12px 14px",
       display: "flex", alignItems: "center", gap: 12,
-      background: lt ? "rgba(252,246,232,0.72)" : "rgba(24,17,8,0.55)",
-      backdropFilter: "blur(10px) saturate(1.15)", WebkitBackdropFilter: "blur(10px) saturate(1.15)",
+      background: lt ? "rgba(255,252,244,0.30)" : "rgba(255,250,238,0.06)",
+
       border: lt ? "1px solid rgba(160,120,50,0.45)" : "1px solid rgba(200,160,60,0.5)",
       borderTop: lt ? "1px solid rgba(255,250,235,0.9)" : "1px solid rgba(220,180,95,0.65)",
       boxShadow: lt

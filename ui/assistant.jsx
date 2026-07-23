@@ -140,7 +140,7 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
   const sub = T.modSub.color;
 
   const glass = {
-    background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+    background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
     border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
     boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset",
     borderRadius: RADIUS.lg,

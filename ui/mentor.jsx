@@ -19,7 +19,7 @@ const save = (profile, obj) => { try { localStorage.setItem(keyFor(profile), JSO
 
 // Фирменная «стеклянная» плашка — те же токены, что у карточек уроков (обе темы)
 const glass = (T) => ({
-  background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+  background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
   border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
   borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
   boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset",
@@ -140,7 +140,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
 
       {modal && createPortal(
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={closeModal}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto", background: a11y ? "linear-gradient(165deg, #FAF3E3 0%, #EFE3CB 100%)" : "linear-gradient(165deg, #3A2A12 0%, #241806 100%)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px", paddingBottom: "max(30px, env(safe-area-inset-bottom))", color: textColor }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto", background: a11y ? "rgba(250,246,236,0.96)" : "rgba(30,22,10,0.96)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px", paddingBottom: "max(30px, env(safe-area-inset-bottom))", color: textColor }}>
             <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ПОДТВЕРЖДЕНИЕ НАВЫКА</div>
             <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6, color: T.bold?.color }}>{modal.label}</div>
             <div style={{ fontSize: 13.5, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>

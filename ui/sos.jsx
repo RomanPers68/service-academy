@@ -14,7 +14,7 @@ const sosRed = (a11y) => (a11y ? "#A03828" : "#E07878");
 
 // Стеклянная плашка — те же токены, что у карточек уроков (обе темы), красная оправа
 const glass = (T, a11y, open) => ({
-  background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+  background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
   border: open
     ? `1px solid ${a11y ? "rgba(160,56,40,0.45)" : "rgba(224,120,120,0.42)"}`
     : (T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)"),

@@ -29,7 +29,7 @@ function ScreenLoader({ T }) {
   // Скелетон-макет будущего экрана: фирменное стекло, ступенчатое появление,
   // мерцающие строки «текста» и пульсирующий знак SA внизу.
   const glass = {
-    background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+    background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
     border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
     borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
     boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset",
@@ -130,7 +130,7 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
   const last = idx === cards.length - 1;
   const card = cards[idx];
   const glass = {
-    background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+    background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
     border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
     borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
     boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50)",
@@ -200,8 +200,8 @@ function AiFab({ a11y, onClick }) {
       style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
         width: 58, height: 58, borderRadius: 29, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: a11y ? "rgba(139,106,48,0.30)" : "rgba(250,240,215,0.34)",
-        boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.55)" : "rgba(255,255,255,0.26)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.16)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.22 : 0.5}), 0 0 18px ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.28)"}` }}>
+        background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.12)",
+        boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.5)" : "rgba(214,178,102,0.42)"}, inset 0 0 18px ${a11y ? "rgba(255,255,255,0.45)" : "rgba(255,230,170,0.10)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)"}, 0 8px 24px rgba(0,0,0,${a11y ? 0.18 : 0.45})` }}>
       {!seen && (
         <span className="sa-pulse" style={{ position: "absolute", inset: -5, borderRadius: 34,
           border: `1.5px solid ${gold}`, pointerEvents: "none" }} />
@@ -1224,11 +1224,12 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
       <div ref={barRef} className="sa-lensbar sa-hscroll"
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
         style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch",
-          background: a11y ? "rgba(242,234,216,0.92)" : "linear-gradient(160deg, rgba(52,38,15,0.88) 0%, rgba(38,27,10,0.90) 100%)",
-          border: a11y ? "1px solid rgba(160,120,60,0.35)" : "1px solid rgba(210,170,70,0.35)",
-          boxShadow: a11y ? "0 6px 20px rgba(0,0,0,0.18)" : "0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,235,190,0.10)",
-          backdropFilter:"blur(20px) saturate(160%)",
-          WebkitBackdropFilter:"blur(20px) saturate(160%)",
+          background: a11y ? "rgba(255,252,244,0.30)" : "rgba(255,250,238,0.06)",
+          border: a11y ? "1px solid rgba(139,106,48,0.32)" : "1px solid rgba(255,255,255,0.14)",
+          boxShadow: a11y
+            ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 20px rgba(120,90,30,0.14)"
+            : "inset 0 0 22px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px rgba(0,0,0,0.5)",
+
           userSelect:"none", WebkitUserSelect:"none" }}>
         {tabs.map((tab, i) => {
           const lit = i === litIdx;
@@ -1265,8 +1266,8 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
               transform: pressed ? "scale(1.04)" : "scale(1)",
               transition:"transform 0.25s ease",
               background: a11y
-                ? "linear-gradient(180deg, rgba(107,78,26,0.10), rgba(107,78,26,0.05))"
-                : "rgba(250,240,215,0.04)",
+                ? "linear-gradient(180deg, rgba(139,106,48,0.15), rgba(139,106,48,0.07))"
+                : "linear-gradient(180deg, rgba(200,169,110,0.16), rgba(200,169,110,0.08))",
               boxShadow: a11y
                 ? "inset 0 1px 1px rgba(255,255,255,0.40), 0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(107,78,26,0.15)"
                 : "inset 0 0 0 1px rgba(255,255,255,0.13), inset 0 1px 0 rgba(255,255,255,0.10), 0 3px 10px rgba(0,0,0,0.22)",

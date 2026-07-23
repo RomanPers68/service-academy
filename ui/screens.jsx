@@ -999,7 +999,7 @@ export function ProfileScreen({ onDone, T }) {
         {/* Форма */}
         <div style={{ flex:1, padding:"0 24px 40px" }}>
 
-          <div style={{ background:"linear-gradient(155deg, #382810 0%, #281C08 100%)", borderRadius:22, padding:"24px 20px",
+          <div style={{ background:"rgba(255,250,238,0.05)", borderRadius:22, padding:"24px 20px",
             border:"1px solid rgba(150,112,42,0.38)", borderTop:"1px solid rgba(215,170,68,0.46)",
             boxShadow:"0 8px 28px rgba(0,0,0,0.55), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset", marginBottom:16 }}>
 
@@ -1896,15 +1896,17 @@ const TokenEyelet = () => (
   </div>
 );
 // Оправы (проба золота): full — герой, mid — рабочие элементы
+// «Морозный лёд»: оправа — светящаяся золотисто-белая кромка,
+// уровень full — ярче (парадные витрины), mid — деликатнее (жетоны)
 const saFrame = (a11y, level = "mid") => {
-  const al = level === "full" ? 1 : 0.75;
+  const k = level === "full" ? 1 : 0.72;
   return a11y
-    ? `linear-gradient(160deg, rgba(217,179,104,${al}) 0%, rgba(139,106,48,${al}) 45%, rgba(190,148,64,${al}) 100%)`
-    : `linear-gradient(160deg, rgba(224,188,114,${al}) 0%, rgba(139,106,48,${al}) 45%, rgba(200,160,80,${al}) 100%)`;
+    ? `linear-gradient(135deg, rgba(255,255,255,${0.95 * k}), rgba(139,106,48,${0.4 * k}) 50%, rgba(139,106,48,${0.14 * k}))`
+    : `linear-gradient(135deg, rgba(255,255,255,${0.34 * k}), rgba(214,178,102,${0.24 * k}) 45%, rgba(255,255,255,${0.07 * k}))`;
 };
 const saInner = (a11y) => a11y
-  ? "linear-gradient(155deg, rgba(252,246,232,0.92) 0%, rgba(243,232,208,0.94) 100%)"
-  : "linear-gradient(155deg, rgba(48,35,14,0.93) 0%, rgba(30,21,8,0.95) 100%)";
+  ? "rgba(255,252,244,0.30)"
+  : "rgba(255,250,238,0.05)";
 // Первый непройденный урок роли — для карточки «Твой трек»
 const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
   for (const m of mods) for (const l of (m.lessons || [])) {
@@ -3011,7 +3013,7 @@ function TapAnchored({ x, y, T, children }) {
   const tail = {
     position: "absolute", width: 13, height: 13, left: pos.tailLeft, zIndex: 1,
     clipPath: "polygon(0 0, 100% 0, 0 100%)", // только остриё, без внутренней половины
-    background: a11y ? "rgba(252,246,232,0.99)" : "rgba(24,17,8,0.96)",
+    background: a11y ? "rgba(255,252,244,0.85)" : "rgba(45,34,16,0.85)",
     border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,169,110,0.35)"}`,
     borderRight: "none", borderBottom: "none",
     ...(pos.below
@@ -3168,7 +3170,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div ref={bodyRef} key={cardMode ? "card" + cardIdx : "feed"} className={cardMode ? (cardDir === "l" ? "sa-cardpage-l" : "sa-cardpage-r") : undefined} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
           {/* Стеклянная подложка для текста урока */}
           <div style={{
-            background: T.lessGlass?.bg || "linear-gradient(155deg, #382810 0%, #281C08 100%)",
+            background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
             border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
             borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
             borderRadius: 22,
@@ -3188,7 +3190,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div style={{ position:"relative", zIndex:1 }}>
           {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
-            <div style={{ background: T.modCard?.background || "linear-gradient(155deg, #382810 0%, #281C08 100%)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:18, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>
+            <div style={{ background: T.modCard?.background || "rgba(255,250,238,0.05)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:18, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
                 <div style={{ fontSize:28 }}>💬</div>
                 <div style={{ flex:1 }}>
@@ -3283,7 +3285,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:20, padding:"20px 20px 24px", width:"100%", boxSizing:"border-box",
                 border:`1px solid ${color}55`, borderTop:`1px solid ${color}77`,
                 backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
-                boxShadow:`0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(200,160,60,0.18) inset, 0 -2px 4px rgba(0,0,0,0.38) inset` }}>
+                boxShadow:`inset 0 0 20px ${a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.07)"}, inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.12)"}, 0 8px 32px rgba(0,0,0,0.4)` }}>
               <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
                 <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:7 }}>{UI_SVG.book(color, 16)}</span>{termPopup.term}
               </div>
@@ -3965,9 +3967,9 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   );
   return (
     <div className="sa-dlg" style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
-      background: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",
+      background: visible ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0)",
       transition:"background 0.8s ease" }}>
-      <div className="sa-dlgpath" style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(200,160,60,0.45)", boxShadow:"0 8px 32px rgba(0,0,0,0.5), 0 2px 0 rgba(210,170,70,0.28) inset", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
+      <div className="sa-dlgpath" style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(255,255,255,0.15)", boxShadow:"inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.5)", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
         transform: visible ? "translateY(0)" : "translateY(120%)",
         transition:"transform 1.1s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Header */}
@@ -4005,7 +4007,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
           if (msg.type === "guest") return (
             <div key={i} className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
               <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(180,145,70,0.12)" : "rgba(200,160,80,0.10)", border: T.a11y ? "1px solid rgba(160,120,50,0.25)" : "1px solid rgba(200,160,80,0.20)", color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(255,252,244,0.26)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,255,255,0.45), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10)", color: T.modTitle?.color || "#C8B898", fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "waiter") return (
@@ -4030,7 +4032,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         {typing && (
           <div className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
             <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(180,145,70,0.12)" : "rgba(200,160,80,0.10)", border: T.a11y ? "1px solid rgba(160,120,50,0.25)" : "1px solid rgba(200,160,80,0.20)", display:"flex", gap:5, alignItems:"center" }}>
+            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(255,252,244,0.26)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,255,255,0.45)" : "inset 0 0 18px rgba(255,248,230,0.06)", display:"flex", gap:5, alignItems:"center" }}>
               {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:BROWN, animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
             </div>
           </div>

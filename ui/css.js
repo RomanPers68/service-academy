@@ -137,6 +137,9 @@ export const injectStyles = () => {
     input::placeholder, textarea::placeholder { color: rgba(200, 180, 152, 0.65); opacity: 1; }
     .sa-light input, .sa-light textarea, .sa-light select { caret-color: #8B6A30; }
     .sa-light input::placeholder, .sa-light textarea::placeholder { color: rgba(90, 70, 50, 0.62); opacity: 1; }
+    /* Поля чатов (Наставник, AI-интервью): инеевый плейсхолдер в тёмной —
+       в тон ледяным пузырям */
+    .sa-aiinput-dark::placeholder { color: rgba(216, 206, 190, 0.58); opacity: 1; }
     /* Живой диалог: под шторкой страница не должна «резинить» (iOS rubber-band).
        Жесты запрещены везде, кроме ленты реплик — ей разрешена только вертикаль. */
     .sa-dlg, .sa-dlg * { touch-action: none !important; }

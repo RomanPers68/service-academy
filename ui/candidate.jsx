@@ -693,8 +693,17 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                   <div style={{ maxWidth: "88%", padding: "9px 12px", fontSize: 13.5, lineHeight: 1.55, fontFamily: "Georgia, serif",
                     ...(m.role === "user"
-                      ? { background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", borderRadius: "14px 14px 4px 14px" }
-                      : { background: "rgba(160,120,60,0.14)", color: T.modTitle.color, borderRadius: "14px 14px 14px 4px", border: `1px solid ${gold}33` }) }}>
+                      ? (a11y
+                        ? { background: "rgba(139,106,48,0.09)", border: "1px solid rgba(139,106,48,0.42)",
+                            boxShadow: "inset 0 0 22px rgba(255,255,255,0.40), inset 0 1px 0 rgba(255,255,255,0.70)", color: "#3A2E1C" }
+                        : { background: "rgba(200,169,110,0.10)", border: "1px solid rgba(214,178,102,0.35)",
+                            boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#F5E9CE" })
+                      : (a11y
+                        ? { background: "rgba(255,252,244,0.22)", border: "1px solid rgba(139,106,48,0.30)",
+                            boxShadow: "inset 0 0 22px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.85)", color: "#3A2E1C" }
+                        : { background: "rgba(255,250,238,0.05)", border: "1px solid rgba(255,255,255,0.13)",
+                            boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#EFE6D2" })),
+                    borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px" }}>
                     {m.content}
                   </div>
                 </div>
@@ -718,6 +727,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
               <textarea
+                className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
                 value={aiInput}
                 rows={1}
                 onChange={e => {

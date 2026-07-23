@@ -230,6 +230,20 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       : "inset 0 1px 0 rgba(255,255,255,0.10), 0 14px 40px rgba(0,0,0,0.55)",
   };
 
+  // «Морозный лёд»: прозрачное стекло с внутренним инеем — морозность
+  // без backdrop-blur, работает на любой платформе. mine = реплика человека.
+  const frost = (mine) => a11y
+    ? (mine
+      ? { background: "rgba(139,106,48,0.09)", border: "1px solid rgba(139,106,48,0.42)",
+          boxShadow: "inset 0 0 22px rgba(255,255,255,0.40), inset 0 1px 0 rgba(255,255,255,0.70)", color: "#3A2E1C" }
+      : { background: "rgba(255,252,244,0.22)", border: "1px solid rgba(139,106,48,0.30)",
+          boxShadow: "inset 0 0 22px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.85)", color: "#3A2E1C" })
+    : (mine
+      ? { background: "rgba(200,169,110,0.10)", border: "1px solid rgba(214,178,102,0.35)",
+          boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#F5E9CE" }
+      : { background: "rgba(255,250,238,0.05)", border: "1px solid rgba(255,255,255,0.13)",
+          boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#EFE6D2" });
+
   const miniBtn = {
     width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -369,20 +383,17 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
             <div className="dlg-in" style={{
               maxWidth: "86%", padding: "11px 14px", fontSize: a11y ? 15 : 13.5, lineHeight: 1.6,
               fontFamily: "Georgia, serif",
-              ...(m.role === "user"
-                ? { background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff",
-                    borderRadius: RADIUS.lg, boxShadow: "0 3px 12px rgba(200,160,80,0.25)" }
-                : { ...glass, color: T.modTitle.color,
-                    borderRadius: RADIUS.lg }),
+              ...frost(m.role === "user"),
+              borderRadius: RADIUS.lg,
             }}>
-              <Rich text={m.content} color={m.role === "user" ? "#fff" : gold} />
+              <Rich text={m.content} color={gold} />
             </div>
           </div>
         ))}
 
         {sending && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ ...glass, padding: "12px 16px", borderRadius: RADIUS.lg, display: "flex", gap: 5 }}>
+            <div style={{ ...frost(false), padding: "12px 16px", borderRadius: RADIUS.lg, display: "flex", gap: 5 }}>
               {[0, 1, 2].map(i => (
                 <span key={i} className="sa-pulse" style={{ width: 6, height: 6, borderRadius: 3, background: gold, animationDelay: (i * 0.18) + "s" }} />
               ))}

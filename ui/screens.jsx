@@ -3414,7 +3414,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     return (
       <div style={{ ...T.screen }} className="sa-screen">
         {/* ── ШАПКа ── */}
-        <div style={{ padding:"44px 18px 10px", background:"rgba(0,0,0,0.15)", backdropFilter:"blur(10px)" }}>
+        <div style={{ padding:"44px 18px 10px", background:"transparent" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
             <button style={T.backBtn2} onClick={onBack}>‹</button>
             <div style={{ display:"flex", gap:3 }}>
@@ -3426,7 +3426,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           </div>
           <div style={{ display:"flex", gap:3 }}>
             {situations.map((_,i)=>(
-              <div key={i} style={{ flex:1, height:3, borderRadius:2, background:i<practiceState.step?GREEN:i===practiceState.step?color:"rgba(255,255,255,0.12)", transition:"background 0.3s" }} />
+              <div key={i} style={{ flex:1, height:3, borderRadius:2, background:i<practiceState.step?GREEN:i===practiceState.step?color:"rgba(200,169,110,0.18)", transition:"background 0.3s" }} />
             ))}
           </div>
         </div>
@@ -3455,7 +3455,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {/* ── ЖАНР: TRUE/FALSE ── */}
           {genre==="truefalse" && (
             <>
-              <div style={{ background:"rgba(255,255,255,0.09)", borderRadius:16, padding:"16px", marginBottom:14, border:"1px solid rgba(255,255,255,0.15)", boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1)" }}>
+              <div style={{ background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(255,250,238,0.05)", borderRadius:16, padding:"16px", marginBottom:14, border: T.a11y ? "1px solid rgba(139,106,48,0.3)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
                 <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:6 }}>УТВЕРЖДЕНИЕ</div>
                 <div style={{ color:T.para.color, fontSize:15, lineHeight:1.7, fontStyle:"italic" }}>«{sit.statement}»</div>
               </div>

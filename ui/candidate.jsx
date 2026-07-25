@@ -673,7 +673,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             </button>
             <div style={{ ...T.modSub, color: sub, fontSize: 11.5, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
               В AI-режиме кандидат отвечает своими словами, а ИИ задаёт уточняющие вопросы
-              и оценивает по тем же компетенциям
+              и оценивает по тем же компетенциям.
+              <br /><span style={{ opacity: 0.75 }}>ИИ-помощник — окончательное решение принимает менеджер.</span>
             </div>
           </>
         )}

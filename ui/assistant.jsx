@@ -294,7 +294,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
           Наставник
-          <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI · БЕТА</span>
+          <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI</span>
         </div>
         <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
           <button className="sa-btn" style={miniBtn} aria-label="Список чатов"

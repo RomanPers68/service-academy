@@ -96,7 +96,7 @@ const ERRORS = {
   server: "Что-то пошло не так на сервере. Попробуй ещё раз.",
 };
 
-export function AssistantScreen({ T, a11y, onBack, profile }) {
+export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
   const uid = String(profile?.id || "anon");
   const [store, setStore] = React.useState(() => loadStore(uid));
   const active = store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
@@ -255,6 +255,21 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
       : { background: "rgba(255,250,238,0.05)", border: "1px solid rgba(255,255,255,0.13)",
           boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#EFE6D2" });
 
+  // Уровень 2: [[go:ключ|Подпись]] в конце ответа → кнопка-переход
+  const NAV_LABELS = {
+    sos: "Открыть SOS", glossary: "Глоссарий", leaderboard: "Рейтинг",
+    profile: "Мой профиль", daily: "Задания", checklist: "Чек-листы",
+    reference: "Справочник", stats: "Аналитика", candidate: "Собеседование",
+    guestbook: "Книга отзывов", mentor: "Наставничество",
+  };
+  const parseNav = (text) => {
+    const m = (text || "").match(/\[\[go:([a-z]+)(?:\|([^\]]+))?\]\]/i);
+    if (!m) return { clean: text, nav: null };
+    const key = m[1].toLowerCase();
+    if (!NAV_LABELS[key]) return { clean: text.replace(m[0], "").trim(), nav: null };
+    return { clean: text.replace(m[0], "").trim(), nav: { key, label: (m[2] || NAV_LABELS[key]).trim() } };
+  };
+
   const miniBtn = {
     width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -397,7 +412,23 @@ export function AssistantScreen({ T, a11y, onBack, profile }) {
               ...frost(m.role === "user"),
               borderRadius: RADIUS.lg,
             }}>
-              <Rich text={m.content} color={gold} />
+              {(() => {
+                const { clean, nav } = m.role === "assistant" ? parseNav(m.content) : { clean: m.content, nav: null };
+                return (<>
+                  <Rich text={clean} color={gold} />
+                  {nav && onNavigate && (
+                    <button className="sa-btn" onClick={() => { vibrate("light"); onNavigate(nav.key); }}
+                      style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px",
+                        borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}66`,
+                        background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.12)",
+                        color: gold, fontFamily: "Georgia, serif", fontSize: 13.5, fontWeight: "bold",
+                        boxShadow: `inset 0 0 14px ${a11y ? "rgba(255,255,255,0.4)" : "rgba(255,230,170,0.10)"}` }}>
+                      {nav.label}
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </button>
+                  )}
+                </>);
+              })()}
             </div>
           </div>
         ))}

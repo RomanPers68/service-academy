@@ -103,8 +103,8 @@ export const injectStyles = () => {
     .sa-stagger > *:nth-child(n+9) { animation-delay: 0.36s; }
     .sa-progress { animation: progressFill 0.8s cubic-bezier(0.4,0,0.2,1) both; }
     .sa-glass {
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      /* Блюр снят: на скролле он пересэмплировался каждый кадр и давал
+         мерцание карточек ролей/уроков. Лёд по всему приложению без блюра. */
     }
     .sa-glass:active {
       transform: scale(0.97);

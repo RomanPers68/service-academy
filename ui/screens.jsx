@@ -3968,7 +3968,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     <div className="sa-dlg" style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
       background: visible ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0)",
       transition:"background 0.8s ease" }}>
-      <div className="sa-dlgpath" style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border:"1px solid rgba(255,255,255,0.15)", boxShadow:"inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.5)", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
+      <div className="sa-dlgpath" style={{ background: a11y ? "rgba(250,242,222,0.92)" : "rgba(28,20,8,0.92)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(255,255,255,0.16)", boxShadow: a11y ? "inset 0 0 26px rgba(255,250,235,0.6), inset 0 1px 0 rgba(255,252,240,0.9), 0 8px 32px rgba(70,50,15,0.3)" : "inset 0 0 26px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.14), 0 8px 32px rgba(0,0,0,0.5)", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
         transform: visible ? "translateY(0)" : "translateY(120%)",
         transition:"transform 1.1s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Header */}

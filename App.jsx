@@ -130,10 +130,10 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
   const last = idx === cards.length - 1;
   const card = cards[idx];
   const glass = {
-    background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
-    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
-    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
-    boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50)",
+    background: T.lessGlass?.bg || (a11y ? "rgba(250,242,222,0.60)" : "rgba(226,186,116,0.11)"),
+    border: T.lessGlass?.border || (a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)"),
+    borderTop: T.lessGlass?.borderTop || (a11y ? "1px solid rgba(255,252,240,0.9)" : "1px solid rgba(255,255,255,0.20)"),
+    boxShadow: T.lessGlass?.shadow || (a11y ? "inset 0 0 22px rgba(255,250,235,0.5), 0 6px 20px rgba(120,90,30,0.10)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 6px 20px rgba(0,0,0,0.35)"),
     borderRadius: 22, padding: "26px 22px",
   };
   return (

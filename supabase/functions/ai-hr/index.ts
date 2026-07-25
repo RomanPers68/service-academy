@@ -101,7 +101,7 @@ const QUESTION_BANK: Record<string, Record<string, string[]>> = {
   },
 };
 
-function buildInterviewer(roleId: string, cand: { name?: string; expLabel?: string; place?: string }) {
+function buildInterviewer(roleId: string, cand: { name?: string; expLabel?: string; place?: string }, reglaments = "") {
   const comps = ROLE_COMPS[roleId] ?? ROLE_COMPS.waiter;
   const roleRu = ROLE_LABEL[roleId] ?? "сотрудник зала";
   const bank = QUESTION_BANK[roleId] ?? QUESTION_BANK.waiter;
@@ -125,10 +125,11 @@ function buildInterviewer(roleId: string, cand: { name?: string; expLabel?: stri
 }
 
 
-function buildAssessor(roleId: string) {
+function buildAssessor(roleId: string, reglaments = "") {
   const comps = ROLE_COMPS[roleId] ?? ROLE_COMPS.waiter;
   return [
     `Ты — опытный и СПРАВЕДЛИВЫЙ HR-эксперт ресторанной сферы. Дан транскрипт собеседования. Оцени кандидата по фактам его ответов — не выдумывай недостатков и не требуй эссе: это чат с телефона, краткий ответ с верными действиями — это ХОРОШИЙ ответ.`,
+    reglaments ? `СТАНДАРТЫ ЭТОГО РЕСТОРАНА (учитывай при оценке — ответы, совпадающие с ними, цени выше):\n${reglaments}` : "",
     ``,
     `КАЛИБРОВКА НА ПРИМЕРАХ (вопрос: «гость говорит, блюдо несъедобно — ваши действия?»):`,
     `≈90: «Извинюсь от лица ресторана, сразу заберу блюдо, уточню у гостя, что именно не так, предложу замену или другое блюдо в приоритете, потом вернусь убедиться, что всё ок» — конкретные шаги + забота + контроль результата.`,
@@ -194,11 +195,30 @@ Deno.serve(async (req) => {
     }).then((r) => r.json()).catch(() => null);
     if (!who || who.ok !== true) return json({ ok: false, error: "auth" }, 401);
 
+    // Регламенты ресторана — чтобы оценивать под реальные стандарты сети
+    let reglaments = "";
+    try {
+      const rows = await fetch(`${SUPABASE_URL}/rest/v1/rpc/cms_list_lessons`, {
+        method: "POST",
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_token: token }),
+      }).then((r) => r.json()).catch(() => null);
+      if (Array.isArray(rows) && rows.length) {
+        const chunks: string[] = [];
+        for (const r of rows.slice(0, 30)) {
+          const t = String(r?.title || r?.name || "").slice(0, 80);
+          const b = String(r?.body || r?.content || r?.text || "").replace(/\s+/g, " ").slice(0, 400);
+          if (t || b) chunks.push(`• ${t}${t && b ? ": " : ""}${b}`);
+        }
+        if (chunks.length) reglaments = chunks.join("\n").slice(0, 4000);
+      }
+    } catch (_e) { /* нет регламентов — общие стандарты */ }
+
     const API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     if (!API_KEY) return json({ ok: false, error: "not_configured" });
 
     const assess = mode === "assess";
-    const system = assess ? buildAssessor(role) : buildInterviewer(role, candidate || {});
+    const system = assess ? buildAssessor(role, reglaments) : buildInterviewer(role, candidate || {}, reglaments);
     const history = messages
       .filter((m: { role?: string; content?: string }) =>
         (m.role === "user" || m.role === "assistant") && typeof m.content === "string")

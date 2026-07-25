@@ -20,16 +20,28 @@ const json = (data: unknown, status = 200) =>
   });
 
 // Системный промпт: кто такой ассистент и по каким стандартам он живёт.
-function buildSystem(emp: { name?: string; position?: string; restaurant?: string }) {
+function buildSystem(emp: { name?: string; position?: string; restaurant?: string }, reglaments = "") {
   const posLabel: Record<string, string> = {
     waiter: "официант", hostess: "хостес", manager: "менеджер",
     senior: "руководитель", spg: "хостес (СПГ)",
   };
   const pos = posLabel[emp.position ?? ""] ?? "сотрудник зала";
+    const reglBlock = reglaments
+    ? `\n═ РЕГЛАМЕНТЫ ИМЕННО ТВОЕГО РЕСТОРАНА (высший приоритет — важнее общих правил ниже) ═\n${reglaments}\n`
+    : "";
   return [
     `Ты — «Наставник», AI-ассистент обучающего приложения Service Academy ресторанов «Два моря».`,
     `Собеседник: ${emp.name || "сотрудник"} (${pos}${emp.restaurant ? `, ресторан «${emp.restaurant}»` : ""}).`,
     `Тон: опытный доброжелательный наставник, на «ты», практично, шагами, обычно до 120 слов. Без канцелярита.`,
+    `КАК ОТВЕЧАТЬ (соблюдай строго):`,
+    `1. Сначала пойми суть вопроса — что именно тревожит сотрудника в этой ситуации.`,
+    `2. Дай конкретный ответ по шагам: что сделать 1)…, 2)…, 3)… — без общих слов «будьте вежливы».`,
+    `3. Где уместно — дай точную речевую формулировку в кавычках, которую можно сказать гостю дословно.`,
+    `4. Если ситуация опасная (здоровье, конфликт, алкоголь за рулём) — первым делом «зови менеджера», потом остальное.`,
+    `5. Не выдумывай фактов, цен, названий блюд. Не знаешь — честно скажи и отправь к менеджеру.`,
+    `6. Не повторяй вопрос сотрудника в ответе, не лей воду — сразу польза.`,
+    reglBlock,
+    reglaments ? `Если вопрос касается правил, цен, процедур — сначала сверься с регламентами твоего ресторана выше. Если там есть ответ — дай его. Если нет — опирайся на общие стандарты ниже и честно скажи, что это общая практика, а точное правило пусть уточнят у менеджера.` : "",
     ``,
     `═ ЭТАПЫ ВИЗИТА И ТАЙМИНГИ ═`,
     `Встреча: зрительный контакт и улыбка новому гостю — в первые 10 секунд; хостес провожает, официант подходит к столу не позже 2 минут после посадки. Первые слова задают тон вечера.`,
@@ -120,6 +132,27 @@ Deno.serve(async (req) => {
     if (!who || who.ok !== true) return json({ ok: false, error: "auth" }, 401);
     const emp = who.employee || {};
 
+    // ── Уровень 2: регламенты твоего ресторана в контекст Наставника ──
+    // Тянем кастомные уроки/регламенты, добавленные менеджером в редакторе,
+    // и даём их модели как «источник правды» поверх общих стандартов.
+    let reglaments = "";
+    try {
+      const rows = await fetch(`${SUPABASE_URL}/rest/v1/rpc/cms_list_lessons`, {
+        method: "POST",
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_token: token }),
+      }).then((r) => r.json()).catch(() => null);
+      if (Array.isArray(rows) && rows.length) {
+        const chunks: string[] = [];
+        for (const r of rows.slice(0, 40)) {
+          const title = String(r?.title || r?.name || "").slice(0, 80);
+          const body = String(r?.body || r?.content || r?.text || "").replace(/\s+/g, " ").slice(0, 600);
+          if (title || body) chunks.push(`• ${title}${title && body ? ": " : ""}${body}`);
+        }
+        if (chunks.length) reglaments = chunks.join("\n").slice(0, 6000);
+      }
+    } catch (_e) { /* регламентов нет — работаем на общих стандартах */ }
+
     // ── Ключ провайдера ──
     const API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     if (!API_KEY) return json({ ok: false, error: "not_configured" });
@@ -159,7 +192,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           model: m,
-          messages: [{ role: "system", content: buildSystem(emp) }, ...history],
+          messages: [{ role: "system", content: buildSystem(emp, reglaments) }, ...history],
           max_tokens: 520,
           temperature: 0.6,
         }),

@@ -190,7 +190,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
     vibrate("light");
     setError(null);
     setInput("");
-    if (inputRef.current) inputRef.current.style.height = "auto";
+    if (inputRef.current) inputRef.current.style.height = "44px";
     const next = [...msgs, { role: "user", content: text, t: Date.now() }];
     updMsgs(next);
     setSending(true);
@@ -476,14 +476,15 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
             rows={1}
             onChange={e => {
               setInput(e.target.value);
-              // авто-рост: до ~5 строк, дальше — внутренний скролл
-              e.target.style.height = "auto";
-              e.target.style.height = Math.min(e.target.scrollHeight, 122) + "px";
+              // авто-рост: от базовой высоты до ~5 строк, дальше внутренний скролл
+              e.target.style.height = "44px";
+              const h = e.target.scrollHeight;
+              if (h > 44) e.target.style.height = Math.min(h, 122) + "px";
             }}
             placeholder="Спроси наставника…"
             maxLength={600}
             style={{ flex: 1, minWidth: 0, padding: "11px 0", fontSize: 15, fontFamily: "Georgia, serif",
-              lineHeight: 1.45, resize: "none", maxHeight: 122, overflowY: "auto",
+              lineHeight: 1.45, resize: "none", height: 44, minHeight: 44, maxHeight: 122, overflowY: "auto", boxSizing: "border-box",
               caretColor: a11y ? "#8B6A30" : "#C8A96E",
               background: "transparent", border: "none", outline: "none",
               color: a11y ? "#3A2E1C" : "#F0E8D8" }}

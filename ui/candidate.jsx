@@ -379,7 +379,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         setResults(next); saveResults(next); setSaved(true);
         uploadResult(rec);
         setAnswers(synth);
-        setAiVerdict({ verdict: d.verdict, strengths: d.strengths, risks: d.risks });
+        setAiVerdict({ verdict: d.verdict, strengths: d.strengths, growth: d.growth, risks: d.risks });
         setPhase("result");
       })
       .catch(() => setAiErr("Нет связи с сервером. Попробуйте ещё раз."))
@@ -880,10 +880,15 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                     Вердикт ИИ
                     <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span>
                   </div>
-                  <div style={{ ...T.modSub, color: sub, lineHeight: 1.6, marginBottom: aiVerdict.strengths?.length || aiVerdict.risks?.length ? 10 : 0 }}>{aiVerdict.verdict}</div>
+                  <div style={{ ...T.modSub, color: sub, lineHeight: 1.6, marginBottom: aiVerdict.strengths?.length || aiVerdict.growth?.length || aiVerdict.risks?.length ? 10 : 0 }}>{aiVerdict.verdict}</div>
                   {aiVerdict.strengths?.length > 0 && (
                     <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 6 }}>
                       <b style={{ color: GREEN }}>Сильное:</b> {aiVerdict.strengths.join("; ")}
+                    </div>
+                  )}
+                  {aiVerdict.growth?.length > 0 && (
+                    <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: aiVerdict.risks?.length ? 10 : 0 }}>
+                      <b style={{ color: gold }}>Над чем работать:</b> {aiVerdict.growth.join("; ")}
                     </div>
                   )}
                   {aiVerdict.risks?.length > 0 && (

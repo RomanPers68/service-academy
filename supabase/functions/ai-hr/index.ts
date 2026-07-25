@@ -147,8 +147,10 @@ function buildAssessor(roleId: string, reglaments = "") {
     `— Нет ответа по теме — 35 и пометка в risks.`,
     ``,
     `Вердикт начинай с одного из: «Рекомендован» (средний балл 70+ без флагов), «Рекомендован с оговорками» (55–69 или один слабый ответ), «Не рекомендован» (ниже 55 или флаги) — и кратко почему, по-человечески.`,
-    `Ответь ТОЛЬКО валидным JSON без пояснений и markdown, ровно такой структуры:`,
-    `{"scores":{${comps.map((c) => `"${c}":0`).join(",")}},"verdict":"...","strengths":["...","..."],"risks":["...","..."]}`,
+    `ОБЯЗАТЕЛЬНО заполни "growth" — 2-3 конкретные зоны роста и над чем работать. ЭТО ВАЖНЕЕ ПОХВАЛЫ: даже у сильного кандидата всегда есть, что развивать. Не пиши «нет зон роста». Формулируй как совет наставнику: «стоит подтянуть X», «на испытательном обратить внимание на Y», «дать больше практики в Z». Если ответы были идеальны — укажи, что развивать на следующем уровне (наставничество, сложные конфликты, обучение новичков).`,
+    `"risks" — только реальные красные флаги (грубость, обман, безответственность). Нет флагов — оставь пустым массивом []. НЕ путай риски с зонами роста: риск это «опасно брать», а зона роста это «над чем работать после найма».`,
+    `КРИТИЧНО: ответь ТОЛЬКО одним JSON-объектом. Без единого слова до или после, без markdown-блоков, без \`\`\`. Используй обычные прямые кавычки ". Первый символ ответа — {, последний — }. Структура ровно такая:`,
+    `{"scores":{${comps.map((c) => `"${c}":0`).join(",")}},"verdict":"...","strengths":["...","..."],"growth":["...","..."],"risks":[]}`,
     `Каждый score — целое 0–100.`,
   ].join("\n");
 }
@@ -256,10 +258,16 @@ Deno.serve(async (req) => {
         if (!assess) return json({ ok: true, reply, model: data?.model || m });
         // ── режим оценки: парсим строгий JSON ──
         try {
-          const clean = reply.replace(/```json|```/g, "").trim();
+          let clean = reply.replace(/```json|```/gi, "").trim();
+          // нормализуем «умные» кавычки, которые ломают JSON.parse
+          clean = clean.replace(/[\u201C\u201D\u201E\u2033]/g, '"').replace(/[\u2018\u2019]/g, "'");
           const start = clean.indexOf("{");
           const end = clean.lastIndexOf("}");
-          const parsed = JSON.parse(clean.slice(start, end + 1));
+          if (start < 0 || end <= start) throw new Error("no json object");
+          let jsonStr = clean.slice(start, end + 1);
+          // подстраховка: убираем висячие запятые перед } или ]
+          jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
+          const parsed = JSON.parse(jsonStr);
           const comps = ROLE_COMPS[role] ?? ROLE_COMPS.waiter;
           const scores: Record<string, number> = {};
           for (const c of comps) {
@@ -271,6 +279,7 @@ Deno.serve(async (req) => {
             scores,
             verdict: String(parsed?.verdict || "").slice(0, 600),
             strengths: (Array.isArray(parsed?.strengths) ? parsed.strengths : []).slice(0, 3).map((s: unknown) => String(s).slice(0, 160)),
+            growth: (Array.isArray(parsed?.growth) ? parsed.growth : []).slice(0, 3).map((s: unknown) => String(s).slice(0, 160)),
             risks: (Array.isArray(parsed?.risks) ? parsed.risks : []).slice(0, 3).map((s: unknown) => String(s).slice(0, 160)),
             model: data?.model || m,
           });

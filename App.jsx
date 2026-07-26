@@ -665,7 +665,7 @@ function ServiceAcademy() {
   const openLesson = (l) => {
     if (l.type === "quiz" && quizDone[l.id]) return;
     if (l.type === "dialogue") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
-    const originalLesson = role ? (MODULES[role] || []).flatMap(m => m.lessons).find(lesson => lesson.id === l.id) || l : l;
+    const originalLesson = (Object.values(MODULES).flat().flatMap(m => m.lessons || []).find(lesson => lesson.id === l.id)) || l;
     let initQuestions = originalLesson.questions || [];
     let lessonToOpen = originalLesson;
     if (originalLesson.type === "quiz" && initQuestions.length > 0) {
@@ -1098,13 +1098,21 @@ function ServiceAcademy() {
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
           // Переход на урок по id: [[lesson:ID]]
           if (dest && typeof dest === "object" && dest.lesson) {
-            const allMods = [...(MODULES[role] || []), ...(customModules || [])];
+            // Ищем урок во ВСЕХ ролях (Наставник может сослаться на урок другой роли),
+            // плюс кастомные модули. Так кнопка не станет "мёртвой".
+            const everyMod = [...Object.values(MODULES).flat(), ...(customModules || [])];
             let foundMod = null, foundLesson = null;
-            for (const m of allMods) {
+            for (const m of everyMod) {
               const l = (m.lessons || []).find(x => x.id === dest.lesson);
               if (l) { foundMod = m; foundLesson = l; break; }
             }
-            if (foundLesson) { setPrevScreen("roleSelect"); setActiveModule(foundMod); openLesson(foundLesson); }
+            if (foundLesson) {
+              setPrevScreen("roleSelect"); setActiveModule(foundMod); openLesson(foundLesson);
+            } else {
+              // Урок с таким id не найден — не оставляем тап без реакции, ведём в программу
+              setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
+              setScreen("roleSelect");
+            }
             return;
           }
           // Переход в раздел: [[go:key]]

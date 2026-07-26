@@ -229,7 +229,8 @@ Deno.serve(async (req) => {
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content.slice(0, 1500) }));
 
     const MODEL = Deno.env.get("OPENROUTER_MODEL");
-    let candidates = MODEL ? [MODEL] : await liveFreeModels();
+    // При заданной модели пробуем её дважды — второй заход спасает от разовых сбоев провайдера
+    let candidates = MODEL ? [MODEL, MODEL] : await liveFreeModels();
     if (!MODEL && winner) candidates = [winner, ...candidates.filter((id) => id !== winner)];
     if (!candidates.length) candidates = ["deepseek/deepseek-chat-v3-0324:free", "qwen/qwen3-235b-a22b:free"];
 
@@ -246,7 +247,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: m,
           messages: [{ role: "system", content: system }, ...history],
-          max_tokens: assess ? 650 : 260,
+          max_tokens: assess ? 900 : 260,
           temperature: assess ? 0.2 : 0.7,
         }),
       });

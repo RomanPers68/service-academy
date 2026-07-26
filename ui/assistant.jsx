@@ -89,6 +89,17 @@ const ERRORS = {
       return "Дневной лимит бесплатного ИИ исчерпан — попробуйте позже или попросите менеджера переключить модель.";
     }
   })(),
+  daily_limit: (() => {
+    // Персональный лимит 20/сутки. Сброс — полночь UTC, показываем в часах пользователя.
+    try {
+      const now = new Date();
+      const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+      const hhmm = next.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      return `На сегодня лимит вопросов Наставнику исчерпан (20 в сутки). Обновится примерно в ${hhmm} по вашему времени. Загляни в уроки или SOS — там тоже много ответов!`;
+    } catch (e) {
+      return "На сегодня лимит вопросов Наставнику исчерпан (20 в сутки). Попробуй завтра — или загляни в уроки и SOS.";
+    }
+  })(),
   auth: "Не удалось подтвердить твой доступ. Перезайди в приложение по своему коду.",
   network: "Нет связи с сервером. Проверь интернет и попробуй ещё раз.",
   provider: "ИИ-провайдер сейчас недоступен. Попробуй через минуту.",
@@ -144,6 +155,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
   const [input, setInput] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState(null);
+  const [remaining, setRemaining] = React.useState(-1); // -1 = неизвестно/безлимит
   const [confirmClear, setConfirmClear] = React.useState(false);
   const listRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -212,6 +224,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
           const done = [...next, { role: "assistant", content: d.reply, t: Date.now() }];
           updMsgs(done);
           vibrate("light");
+          if (typeof d.remaining === "number") setRemaining(d.remaining);
         } else {
           setError(ERRORS[d?.error] || ERRORS.server);
         }
@@ -263,6 +276,12 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
     guestbook: "Книга отзывов", mentor: "Наставничество",
   };
   const parseNav = (text) => {
+    // Кнопка урока: [[lesson:ID|Подпись]]
+    const ml = (text || "").match(/\[\[lesson:([a-zA-Z0-9_-]+)(?:\|([^\]]+))?\]\]/);
+    if (ml) {
+      return { clean: text.replace(ml[0], "").trim(), nav: { lesson: ml[1], label: (ml[2] || "Открыть урок").trim() } };
+    }
+    // Кнопка раздела: [[go:key|Подпись]]
     const m = (text || "").match(/\[\[go:([a-z]+)(?:\|([^\]]+))?\]\]/i);
     if (!m) return { clean: text, nav: null };
     const key = m[1].toLowerCase();
@@ -417,7 +436,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
                 return (<>
                   <Rich text={clean} color={gold} />
                   {nav && onNavigate && (
-                    <button className="sa-btn" onClick={() => { vibrate("light"); onNavigate(nav.key); }}
+                    <button className="sa-btn" onClick={() => { vibrate("light"); onNavigate(nav.lesson ? { lesson: nav.lesson } : nav.key); }}
                       style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px",
                         borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}66`,
                         background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.12)",
@@ -455,6 +474,20 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
           </div>
         )}
 
+        {remaining >= 0 && remaining <= 5 && !sending && (
+          <div style={{ color: remaining <= 2 ? "#D98880" : gold, fontSize: 12, textAlign: "center", fontFamily: "Georgia, serif", padding: "5px 0", fontStyle: "italic", fontWeight: remaining <= 2 ? "bold" : "normal" }}>
+            {remaining === 0
+              ? (() => {
+                  try {
+                    const now = new Date();
+                    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+                    const hhmm = next.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                    return `Лимит исчерпан · обновится в ${hhmm}`;
+                  } catch (e) { return "Лимит на сегодня исчерпан"; }
+                })()
+              : `Осталось сообщений: ${remaining} · формулируй по сути`}
+          </div>
+        )}
         {msgs.length > 0 && !sending && (
           <div style={{ color: sub, fontSize: 10, textAlign: "center", opacity: 0.7, fontFamily: "monospace", letterSpacing: 1, padding: "4px 0" }}>
             ИИ МОЖЕТ ОШИБАТЬСЯ · СТАНДАРТЫ РЕСТОРАНА ГЛАВНЕЕ

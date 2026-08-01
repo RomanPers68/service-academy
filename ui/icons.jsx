@@ -68,6 +68,13 @@ export const ROLE_SVG = {
 
 // Интерфейсные SVG-иконки — карточки, бейджи, плитки статистики
 export const UI_SVG = {
+  shaker: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3h8l-1 3H9L8 3z"/>
+      <path d="M9 6h6l1.4 12.2a2 2 0 0 1-2 2.2H9.6a2 2 0 0 1-2-2.2L9 6z"/>
+      <path d="M8.2 11h7.6"/>
+    </svg>
+  ),
   crown: (c, s=20) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 15.5L3.6 7.6l4.9 3.3L12 5l3.5 5.9 4.9-3.3L19 15.5z" /><path d="M5 18.5h14" />

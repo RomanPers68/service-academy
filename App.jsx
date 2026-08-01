@@ -23,6 +23,7 @@ const TrainingCardScreen = lazy(() => import("./ui/training-card").then(m => ({ 
 const ReferenceSection = lazy(() => import("./ui/ReferenceSection").then(m => ({ default: m.ReferenceSection })));
 const CandidateScreen = lazy(() => import("./ui/candidate").then(m => ({ default: m.CandidateScreen })));
 const AssistantScreen = lazy(() => import("./ui/assistant").then(m => ({ default: m.AssistantScreen })));
+const BuildRunner = lazy(() => import("./ui/build").then(m => ({ default: m.BuildRunner })));
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -666,6 +667,7 @@ function ServiceAcademy() {
   const openLesson = (l) => {
     if (l.type === "quiz" && quizDone[l.id]) return;
     if (l.type === "dialogue") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
+    if (l.type === "build") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
     const originalLesson = (Object.values(MODULES).flat().flatMap(m => m.lessons || []).find(lesson => lesson.id === l.id)) || l;
     let initQuestions = originalLesson.questions || [];
     let lessonToOpen = originalLesson;
@@ -1161,7 +1163,13 @@ function ServiceAcademy() {
         {screen === "lesson" && activeLesson?.type === "dialogue" && createPortal(
           <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />
         , document.body)}
-        {screen === "lesson" && activeLesson?.type !== "dialogue" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
+        {screen === "lesson" && activeLesson?.type === "build" && createPortal(
+          <Suspense fallback={<ScreenLoader T={T} />}>
+            <BuildRunner key={"bld-" + gameKey} buildId={activeLesson.buildId} role={activeLesson.role || role}
+              T={T} color={activeModule?.color} onClose={completeLesson} />
+          </Suspense>
+        , document.body)}
+        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}

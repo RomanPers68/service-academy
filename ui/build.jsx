@@ -1,0 +1,362 @@
+// ui/build.jsx
+// «Сборка» — фирменный формат практики роли «Бар».
+// Пошаговый конструктор процесса: каждый шаг — одно решение, состояние объекта
+// меняется на глазах, ошибка необратима внутри прохождения и доезжает до гостя.
+// Реиграбельность даёт пул: повтор выдаёт другой сценарий и перемешивает варианты.
+//
+// Три визуальных носителя:
+//   vessel  — сосуд (напитки): послойная заливка, лёд, газ, гарниш
+//   station — схема станции сверху: зоны, ванна льда, флаг готовности
+//   flow    — цепочка стадий: для процессов без предмета (путь льда, закрытие смены)
+
+import React from "react";
+import { BUILDS } from "../data/builds";
+import { shuffleArray, vibrate } from "../lib/utils";
+import { GOLD, GOLD_SOFT, CREAM, SAND, GREEN, RED, MUTED, MUTED_2, CLAY, INK_DEEP, RADIUS } from "./tokens";
+import { UI_SVG } from "./icons";
+
+const serif = "Georgia, serif";
+const mono = "ui-monospace, Menlo, monospace";
+
+// Перемешиваем варианты внутри каждого шага — как shuffleSituationOptions в практике
+const shuffleSteps = (sc) => ({ ...sc, steps: sc.steps.map(st => ({ ...st, options: shuffleArray(st.options) })) });
+
+export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
+  const accent = color || GOLD;
+  const a11y = !!T.a11y;
+
+  // Пул: если сценарий задан явно — берём его, иначе случайный из пула роли
+  const pool = React.useMemo(
+    () => BUILDS.filter(b => !b.role || b.role === role),
+    [role]
+  );
+  const firstPick = React.useMemo(() => {
+    const src = (buildId && pool.find(b => b.id === buildId)) || shuffleArray(pool)[0];
+    return shuffleSteps(src);
+  }, [buildId, pool]);
+
+  const [sc, setSc] = React.useState(firstPick);
+  const [step, setStep] = React.useState(0);
+  const [answered, setAnswered] = React.useState(null);
+  const [results, setResults] = React.useState([]);
+  const [done, setDone] = React.useState(false);
+
+  if (!sc) return null;
+
+  const total = sc.steps.length;
+  const right = results.filter(Boolean).length;
+  const cur = sc.steps[step];
+  const shown = answered != null ? step + 1 : step;   // сколько шагов уже отражено в визуале
+  const just = answered != null ? step : -1;          // шаг, который только что закрыли
+  const spoiled = results.slice(0, shown).some(r => r === false);
+
+  const restart = (sameId) => {
+    const others = sameId ? pool.filter(b => b.id === sc.id) : pool.filter(b => b.id !== sc.id);
+    const src = shuffleArray(others.length ? others : pool)[0];
+    setSc(shuffleSteps(src));
+    setStep(0); setAnswered(null); setResults([]); setDone(false);
+  };
+
+  const choose = (i, ok) => {
+    if (answered != null) return;
+    vibrate(ok ? "light" : "error");
+    setAnswered(i);
+    setResults(prev => { const n = [...prev]; n[step] = !!ok; return n; });
+  };
+
+  const next = () => {
+    if (step < total - 1) { setStep(step + 1); setAnswered(null); }
+    else { vibrate(right === total ? "success" : "light"); setDone(true); }
+  };
+
+  // ── НОСИТЕЛЬ: сосуд ────────────────────────────────────────────────
+  const Vessel = () => {
+    const poured = sc.steps.slice(0, shown).map((s, i) => ({ s, i })).filter(x => x.s.layer);
+    const stack = poured.reduce((a, x) => a + x.s.layer.h, 0);
+    const iceStep = sc.steps.slice(0, shown).map((s, i) => ({ s, i })).find(x => x.s.ice);
+    const garn = sc.steps.slice(0, shown).find(s => s.garnish);
+    const rocks = sc.glass === "rocks";
+    const big = rocks;
+
+    return (
+      <div style={{ flex: "0 0 96px", height: 172, position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+        <div className={"sa-vessel " + (rocks ? "rocks" : "high") + (spoiled ? " spoiled" : "")}>
+          <div className="sa-rim" />
+          <div className="sa-layers">
+            {poured.map(({ s, i }) => (
+              <div key={i} className={"sa-layer" + (i === just ? " fresh" : "")}
+                style={{ background: s.layer.c, height: s.layer.h + "%" }} />
+            ))}
+          </div>
+
+          {just >= 0 && sc.steps[just].layer && <div className="sa-pour" />}
+          {stack > 0 && <div className={"sa-surface" + (just >= 0 && sc.steps[just].layer ? " fresh" : "")}
+            style={{ bottom: `calc(${stack}% - 2px)` }} />}
+
+          {poured.some(x => x.s.pulp) && (<>
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={"p" + i} className="sa-pulp" style={{
+                width: 4 + (i % 3) * 2, height: 3 + (i % 3) * 2,
+                left: 9 + ((i * 17) % 38), bottom: 6 + ((i * 13) % 22),
+                transform: `rotate(${i * 47 % 90 - 45}deg)`,
+              }} />
+            ))}
+            <div className="sa-wedge" style={{ left: 8, bottom: 4, transform: "rotate(-14deg)" }} />
+          </>)}
+
+          {iceStep && [...Array(big ? 1 : 8)].map((_, i) => {
+            const sz = big ? 36 : 11, rot = big ? 12 : (i * 41 % 70 - 35);
+            return (
+              <div key={"c" + i} className={"sa-cube" + (iceStep.i === just ? " fresh" : "")}
+                style={{
+                  width: sz, height: sz,
+                  left: big ? "calc(50% - 18px)" : 5 + ((i * 19) % 42),
+                  bottom: big ? 18 : 12 + ((i * 27) % 92),
+                  transform: `rotate(${rot}deg)`, "--rot": rot + "deg",
+                  animationDelay: (i * 0.045) + "s",
+                  borderRadius: big ? 8 : 3,
+                  background: big ? "rgba(240,250,255,0.32)" : undefined,
+                }} />
+            );
+          })}
+
+          {poured.some(x => x.s.fizz) && [...Array(14)].map((_, i) => {
+            const sz = 2 + (i % 3);
+            return <div key={"b" + i} className="sa-bubble" style={{
+              width: sz, height: sz, left: 7 + ((i * 13) % 46), bottom: 10 + ((i * 19) % 30),
+              "--rise": -(46 + ((i * 11) % 42)) + "px",
+              animationDuration: (1.9 + (i % 5) * 0.45) + "s", animationDelay: (i * 0.23) + "s",
+            }} />;
+          })}
+
+          {[0, 1, 2, 3, 4, 5].map(i => {
+            const sz = 2 + (i % 3);
+            return <div key={"d" + i} className="sa-drop" style={{
+              width: sz, height: sz, left: 6 + ((i * 23) % 48), bottom: 30 + ((i * 37) % 84),
+              "--slide": (14 + (i % 4) * 7) + "px",
+              animationDuration: (4.5 + (i % 4) * 1.6) + "s", animationDelay: (i * 0.8) + "s",
+            }} />;
+          })}
+        </div>
+        {garn && <div className="sa-garnish">{garn.garnish}</div>}
+        <div style={{ textAlign: "center", fontFamily: mono, fontSize: 8, letterSpacing: 1.6, color: MUTED_2, marginTop: 7, textTransform: "uppercase" }}>
+          {rocks ? "олд фэшн" : "хайбол"}
+        </div>
+      </div>
+    );
+  };
+
+  // ── НОСИТЕЛЬ: станция сверху ───────────────────────────────────────
+  const Station = () => {
+    const marks = new Set(), zones = { 0: null, 1: null, 2: null };
+    sc.steps.slice(0, shown).forEach(st => {
+      if (st.mark) marks.add(st.mark);
+      if (st.zone != null) zones[st.zone] = st.chips;
+    });
+    const ready = marks.has("ready") && !spoiled;
+    return (
+      <div className={"sa-station" + (marks.has("clean") ? " clean" : "") + (spoiled ? " spoiled" : "")}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontFamily: mono, fontSize: 7, letterSpacing: 1.3, color: MUTED_2, marginBottom: 6 }}>
+          <span>СТАНЦИЯ</span>
+          <span style={{ color: ready ? GREEN : RED }}>{ready ? "ГОТОВА ✓" : "НЕ ГОТОВА"}</span>
+        </div>
+        <div className={"sa-icebin" + (marks.has("ice") ? " on" : "")}>
+          {marks.has("ice") && [...Array(9)].map((_, i) => (
+            <i key={i} style={{ left: 6 + i * 15, top: 5 + ((i * 11) % 12), transform: `rotate(${i * 33 % 60 - 30}deg)` }} />
+          ))}
+          <span>{marks.has("ice") ? "лёд свежий" : "ванна пустая"}</span>
+        </div>
+        {["Рабочая", "Ближняя", "Дальняя"].map((nm, z) => (
+          <div key={z} className={"sa-zone" + (zones[z] ? " on" : "")}>
+            <div className="sa-zname">{nm}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+              {zones[z]
+                ? zones[z].map((c, i) => <span key={i} className="sa-zchip">{c}</span>)
+                : <span style={{ fontSize: 8.5, color: "#5C5244", fontStyle: "italic" }}>пусто</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ── НОСИТЕЛЬ: цепочка стадий ───────────────────────────────────────
+  const Flow = () => (
+    <div style={{ display: "flex", alignItems: "flex-start", margin: "14px 0 4px" }}>
+      {sc.stages.map((st, i) => {
+        const r = results[i];
+        const cls = r === true ? " on" : r === false ? " bad" : (i === step && !done) ? " now" : "";
+        return (
+          <div key={i} className={"sa-fstage" + cls}>
+            {i > 0 && <div className="sa-fbar" />}
+            <div className="sa-fring">{st.i}</div>
+            <div className="sa-fnm">{st.n}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const StepList = () => (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      {sc.steps.map((st, i) => {
+        const r = results[i];
+        const c = r === true ? SAND : r === false ? RED : (i === step && !done) ? GOLD : MUTED_2;
+        return (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 0", fontSize: 13, color: c }}>
+            <span style={{
+              flex: "0 0 18px", height: 18, borderRadius: 6, display: "grid", placeItems: "center",
+              fontSize: 10, fontFamily: mono,
+              background: r === true ? GREEN : r === false ? RED : "transparent",
+              color: r == null ? CLAY : r ? "#0d2318" : "#2a0d0d",
+              border: `1px solid ${r == null ? "rgba(200,169,110,0.3)" : "transparent"}`,
+            }}>{r === true ? "✓" : r === false ? "✕" : i + 1}</span>
+            <span>{st.label}</span>
+            {r != null && (
+              <span style={{ marginLeft: "auto", fontSize: 11, color: MUTED, maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {st.options.find(o => o.ok).t.split(",")[0]}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const Carrier = () => sc.vis === "flow" ? <Flow /> : (
+    <div style={{ display: "flex", gap: 14, alignItems: "flex-end", margin: "12px 0 2px" }}>
+      {sc.vis === "vessel" ? <Vessel /> : <Station />}
+      <StepList />
+    </div>
+  );
+
+  const cardStyle = {
+    margin: 16, padding: 18, borderRadius: RADIUS.lg,
+    background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
+    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
+    boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset",
+  };
+  const btn = {
+    width: "100%", marginTop: 10, padding: 14, border: "none", borderRadius: RADIUS.md,
+    background: accent, color: INK_DEEP, fontFamily: serif, fontWeight: "bold", fontSize: 15, cursor: "pointer",
+  };
+  const ghost = { ...btn, background: "transparent", border: `1px solid ${accent}66`, color: accent, fontWeight: "normal" };
+
+  // ── ЭКРАН ИТОГА ────────────────────────────────────────────────────
+  if (done) {
+    const missed = sc.steps.filter((_, i) => results[i] === false);
+    return (
+      <Shell title={sc.title} onClose={() => onClose && onClose()} accent={accent} T={T}>
+        <div style={cardStyle}>
+          <Eyebrow left={"Сборка · " + sc.title} right="итог" />
+          <Carrier />
+          <div style={{ textAlign: "center", padding: "10px 4px 2px" }}>
+            <div style={{ fontSize: 42, color: accent, lineHeight: 1 }}>{right} / {total}</div>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: MUTED_2, marginTop: 8 }}>шагов без ошибки</div>
+          </div>
+          {!missed.length ? (
+            <div className="sa-fb win">🎯 {sc.win}</div>
+          ) : (
+            <div className="sa-fb lose">
+              <div>💡 {sc.lose}</div>
+              <div style={{ margin: "12px 0 6px", fontFamily: mono, fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", color: MUTED_2 }}>
+                Что из этого получит гость
+              </div>
+              {missed.map((st, i) => (
+                <div key={i} style={{ display: "flex", gap: 9, padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: 13 }}>
+                  <span style={{ flex: "0 0 86px", color: GOLD_SOFT, fontSize: 11.5, paddingTop: 1 }}>{st.label}</span>
+                  <span style={{ color: "#EAC9C9", lineHeight: 1.45 }}>{st.cost}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <button style={btn} className="sa-btn" onClick={() => restart(false)}>Собрать заново</button>
+          <button style={ghost} className="sa-btn" onClick={() => restart(true)}>Пересобрать этот же сценарий</button>
+          <button style={{ ...ghost, borderColor: "rgba(255,255,255,0.14)", color: MUTED }} className="sa-btn" onClick={() => onClose && onClose()}>
+            Готово
+          </button>
+        </div>
+      </Shell>
+    );
+  }
+
+  // ── ЭКРАН ШАГА ─────────────────────────────────────────────────────
+  const picked = answered != null ? cur.options[answered] : null;
+  return (
+    <Shell title={sc.title} onClose={() => onClose && onClose(true)} accent={accent} T={T}>
+      <div style={cardStyle}>
+        <Eyebrow left={"Сборка · " + sc.title} right={`${step + 1} / ${total}`} />
+        <div style={{ fontSize: 11, color: MUTED_2, marginTop: 6, fontStyle: "italic" }}>{sc.from}</div>
+        <Carrier />
+        <div style={{ fontSize: 16, lineHeight: 1.45, margin: "14px 0 12px", color: CREAM }}>{cur.q}</div>
+
+        {cur.options.map((o, i) => {
+          const state = answered == null ? "" : o.ok ? " win" : i === answered ? " lose" : " off";
+          return (
+            <button key={i} className={"sa-opt" + state} disabled={answered != null}
+              onClick={answered == null ? () => choose(i, o.ok) : undefined}>
+              <span className="sa-optk">{"ABCD"[i]}</span>
+              <span>{o.t}</span>
+            </button>
+          );
+        })}
+
+        {picked && (
+          <div className={"sa-fb " + (picked.ok ? "win" : "lose")}>
+            {(picked.ok ? "🎯 " : "💡 ") + picked.fb}
+            {!picked.ok && cur.cost && (
+              <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: "#E8B5B5" }}>
+                Дойдёт до гостя так: {cur.cost}
+              </div>
+            )}
+            {cur.term && <div className="sa-term">📖 {cur.term}</div>}
+          </div>
+        )}
+
+        {answered != null && (
+          <button style={btn} className="sa-btn" onClick={next}>
+            {step < total - 1 ? "Дальше" : "Показать итог"}
+          </button>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+// ── Оболочка на весь экран, как у живого диалога ──────────────────────
+function Shell({ title, onClose, accent, T, children }) {
+  return (
+    <div className="sa-dlg" style={{
+      position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column",
+      background: T.screenBg || "linear-gradient(160deg,#14110A 0%,#1C1509 50%,#14110A 100%)",
+      overflowY: "auto", WebkitOverflowScrolling: "touch",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "44px 18px 4px" }}>
+        <button className="sa-btn" style={{
+          background: "transparent", border: "none", color: accent, fontSize: 26,
+          cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: serif,
+        }} onClick={onClose} aria-label="Закрыть">‹</button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: MUTED_2 }}>Сборка</div>
+          <div style={{ color: CREAM, fontSize: 16, fontFamily: serif }}>{title}</div>
+        </div>
+        {UI_SVG.shaker ? UI_SVG.shaker(accent, 22) : null}
+      </div>
+      {children}
+      <div style={{ height: 24 }} />
+    </div>
+  );
+}
+
+function Eyebrow({ left, right }) {
+  return (
+    <div style={{
+      fontFamily: mono, fontSize: 9.5, letterSpacing: 3.5, textTransform: "uppercase",
+      color: MUTED_2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+    }}>
+      <span>{left}</span>
+      <span style={{ color: GOLD_SOFT, whiteSpace: "nowrap" }}>{right}</span>
+    </div>
+  );
+}

@@ -68,12 +68,20 @@ function Rich({ text, color }) {
   );
 }
 
-const QUICK = [
+const QUICK_ZAL = [
   "Гость недоволен блюдом — что говорить?",
   "Как красиво предложить десерт?",
   "Запара, всё горит — с чего начать?",
   "Гость спросил про аллергены",
 ];
+const QUICK_BAR = [
+  "Гость просит посоветовать коктейль",
+  "Чем стир отличается от шейка?",
+  "Гость перебрал — как отказать?",
+  "Ингредиент в стопе, что делать?",
+];
+// Барменам — свои подсказки, остальным прежние
+const quickFor = (position) => position === "bartender" ? QUICK_BAR : QUICK_ZAL;
 
 const ERRORS = {
   not_configured: "Ассистент ещё не подключён на сервере. Менеджеру: инструкция — supabase/AI-SETUP.md в проекте.",
@@ -414,7 +422,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
 
         {msgs.length === 0 && !confirmClear && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {QUICK.map((q, i) => (
+            {quickFor(profile?.position).map((q, i) => (
               <button key={i} className="sa-btn sa-pagein" onClick={() => send(q)}
                 style={{ ...glass, animationDelay: (i * 0.06) + "s", padding: "12px 14px", textAlign: "left", cursor: "pointer", color: T.modTitle.color, fontFamily: "Georgia, serif", fontSize: a11y ? 14.5 : 13.5, lineHeight: 1.45 }}>
                 {q}

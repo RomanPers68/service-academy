@@ -246,7 +246,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const [detailTab, setDetailTab] = React.useState(false);
   const [selected, setSelected] = React.useState(null);
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
 
   const getAchievements = (player, allPlayers, allScores) => {
     const achievements = [];
@@ -466,7 +466,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
     return picked;
   }, [allLessons, completed, quizDone, seed]);
 
-  const taskTypeIcon = { lesson:"book", quiz:"quiz", practice:"gamepad", dialogue:"dialog" };
+  const taskTypeIcon = { lesson:"book", quiz:"quiz", practice:"gamepad", dialogue:"dialog", build:"shaker" };
   const taskTypeLabel = { lesson:"Урок", quiz:"Тест", practice:"Практика", dialogue:"Диалог" };
 
   if (!role) return (
@@ -775,8 +775,8 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const STAT_ROLES = ["spg", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
-  const roleIcon  = { seasonal:"🌱", core:"⭐", spg:"🛎️", manager:"🎯", service_manager:"🏛️" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
+  const roleIcon  = { seasonal:"🌱", core:"⭐", spg:"🛎️", manager:"🎯", service_manager:"🏛️", bar:"🍸" };
 
   const myScores = scores.filter(s => s.name === profile?.name && s.surname === profile?.surname);
   const totalTests = myScores.length;
@@ -2156,7 +2156,10 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                 {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 30) : r.icon) : ROLE_SVG.lock("#8A8070", 25)}
               </div>
               <div style={T.roleInfo}>
-                <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
+                <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                  <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
+                  {r.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? r.color : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+                </div>
                 <div style={T.roleSublabel}>{r.sublabel}</div>
                 {isUnlocked
                   ? <div style={T.roleDesc}>{r.desc}</div>
@@ -2190,22 +2193,33 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           { key:"audio", label:"Аудио-уроки", sub:"Слушай по дороге на смену", icon:(c)=>(
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4v-6z"/><path d="M20 14h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2v-6z"/></svg>
           )},
-        ].map(s => (
-          <div key={s.key} style={{
+        ].map(s => {
+          const active = s.key === "bar"; // Бар — рабочий трек, остальные пока «скоро»
+          return (
+          <div key={s.key}
+            onClick={active ? () => onSelect(s.key) : undefined}
+            {...(active ? onActivate(() => onSelect(s.key)) : {})}
+            style={{
             display:"flex", alignItems:"center", gap:12, padding:"11px 13px",
-            borderRadius:15, opacity:0.5, position:"relative", overflow:"hidden",
-            background: T.roleCard?.background, border:"1px solid rgba(255,255,255,0.06)",
+            borderRadius:15, opacity: active ? 1 : 0.5, position:"relative", overflow:"hidden",
+            cursor: active ? "pointer" : "default",
+            background: T.roleCard?.background, border: active ? "1px solid rgba(212,168,90,0.35)" : "1px solid rgba(255,255,255,0.06)",
           }}>
-            <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter:"grayscale(0.6)" }}>
-              {s.icon(a11y ? "#8B6A30" : "#8A8070")}
+            <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter: active ? "none" : "grayscale(0.6)" }}>
+              {s.icon(active ? (a11y ? "#8B6A30" : "#D4A85A") : (a11y ? "#8B6A30" : "#8A8070"))}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color: T.modSub.color, fontSize:13.5, fontWeight:"bold" }}>{s.label}</div>
               <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:1, opacity:0.85 }}>{s.sub}</div>
             </div>
-            <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:8, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+            {active ? (
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : "#D4A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:8, padding:"3px 8px" }}>НОВОЕ</div>
+            ) : (
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:8, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D4A85A44" }}>
@@ -2893,6 +2907,7 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
           <span style={{ display:"inline-flex", alignItems:"center" }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
           <span style={{ color:role.color, fontSize:15, fontWeight:"bold" }}>{role.label}</span>
           <span style={{ color:"#c8b898", fontSize:12 }}>{role.sublabel}</span>
+          {role.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
         </div>
       </div>
       <div style={T.progCard}>
@@ -2965,11 +2980,11 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
           const typeColor = { lesson:"#7C9E87", quiz:GOLD, practice:"#8B7BAB" };
           return (
             <div key={l.id} className="sa-card sa-glass" style={{ ...T.lessCard, opacity: 1 }} onClick={() => onLesson(l)} {...onActivate(() => onLesson(l))}>
-              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz"||l.type==="dialogue") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : l.type==="dialogue" ? "1.5px solid rgba(127,176,160,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
-                {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz(GOLD, 15) : l.type==="dialogue" ? UI_SVG.dialog("#7FB0A0", 15) : i+1}
+              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : l.type==="build" ? "#C89A6E" : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz"||l.type==="dialogue"||l.type==="build") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : l.type==="dialogue" ? "1.5px solid rgba(127,176,160,0.5)" : l.type==="build" ? "1.5px solid rgba(200,154,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
+                {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz(GOLD, 15) : l.type==="dialogue" ? UI_SVG.dialog("#7FB0A0", 15) : l.type==="build" ? UI_SVG.shaker("#C89A6E", 15) : i+1}
               </div>
               <div style={{ ...T.lessInfo, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ ...T.lessTitle, marginBottom:0, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : T.lessTitle.color }}>
+                <div style={{ ...T.lessTitle, marginBottom:0, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : l.type==="build" ? "#C89A6E" : T.lessTitle.color }}>
                   {l.title}
                 </div>
                 {l.type === "lesson" && <div style={{ fontSize:10, letterSpacing:1, fontFamily:"monospace", color:typeColor[l.type], marginTop:2 }}>{typeMap[l.type]}</div>}

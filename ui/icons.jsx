@@ -21,6 +21,15 @@ export const Mm = ({id, size=48, style={}}) => MM[id]
 // Вибрация — тактильная обратная связь
 
 export const ROLE_SVG = {
+  bar: (c, s=30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.6 4.4h16.8L12 13.2 3.6 4.4z" />
+      <path d="M12 13.2V20" />
+      <path d="M8.2 20h7.6" />
+      <path d="M16.6 7.4l1.9-3.6" />
+      <circle cx="18.9" cy="3.2" r="1.25" />
+    </svg>
+  ),
   seasonal: (c, s=30) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 21.5V13" />
@@ -68,6 +77,14 @@ export const ROLE_SVG = {
 
 // Интерфейсные SVG-иконки — карточки, бейджи, плитки статистики
 export const UI_SVG = {
+  shaker: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.2 2.5h3.6v1.8h-3.6z"/>
+      <path d="M8.8 4.3h6.4l-.5 3.2H9.3l-.5-3.2z"/>
+      <path d="M9 7.5h6l1.3 11.2a1.9 1.9 0 0 1-1.9 2.1H9.6a1.9 1.9 0 0 1-1.9-2.1L9 7.5z"/>
+      <path d="M8.4 12.5h7.2"/>
+    </svg>
+  ),
   crown: (c, s=20) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 15.5L3.6 7.6l4.9 3.3L12 5l3.5 5.9 4.9-3.3L19 15.5z" /><path d="M5 18.5h14" />
@@ -217,6 +234,32 @@ export const POS_SVG = { waiter: UI_SVG.cloche, hostess: (c,s)=>ROLE_SVG.spg(c,s
 
 // SVG-иконки модулей — ключ это эмодзи из данных, рисуем в цвет модуля; нет в карте — показываем эмодзи
 export const MOD_SVG = {
+  "🍸": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.6 4.4h16.8L12 13.2 3.6 4.4z" />
+      <path d="M12 13.2V20" /><path d="M8.2 20h7.6" />
+      <path d="M16.6 7.4l1.9-3.6" /><circle cx="18.9" cy="3.2" r="1.25" />
+    </svg>
+  ),
+  "🧊": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.8l7.2 4.1v8.2L12 21.2l-7.2-4.1V6.9L12 2.8z" />
+      <path d="M12 11.1l7.2-4.2M12 11.1L4.8 6.9M12 11.1v10.1" />
+    </svg>
+  ),
+  "🥃": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.2 5.5h11.6l-1.1 13a1.9 1.9 0 0 1-1.9 1.7H9.2a1.9 1.9 0 0 1-1.9-1.7L6.2 5.5z" />
+      <path d="M7 13.2h10" />
+      <path d="M10.2 9.4l1.6-1.6 1.6 1.6-1.6 1.6-1.6-1.6z" />
+    </svg>
+  ),
+  "🍋": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.4 12.6h17.2A8.6 8.6 0 0 1 12 21.2a8.6 8.6 0 0 1-8.6-8.6z" />
+      <path d="M12 12.6v8.6M7.1 13.4l2.6 6.9M16.9 13.4l-2.6 6.9" />
+    </svg>
+  ),
   "🧭": (c, s=30) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="8.7" /><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z" />
@@ -362,6 +405,80 @@ export const GAME_SVG = {
 };
 
 // SVG-иконки навбара — единый стиль линий, одинаковы на любом устройстве и перекрашиваются в цвет темы
+// SVG-иконки формата «Сборка» (ui/build.jsx): стадии цепочки и гарниш.
+// Тот же линейный стиль, что у ROLE_SVG/MOD_SVG — viewBox 24, обводка 1.7.
+export const BUILD_SVG = {
+  ice: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.8l7.2 4.1v8.2L12 21.2l-7.2-4.1V6.9L12 2.8z" />
+      <path d="M12 11.1l7.2-4.2M12 11.1L4.8 6.9M12 11.1v10.1" />
+    </svg>
+  ),
+  scoop: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.6 9.4a4.6 4.6 0 1 1-6.5 6.5l6.5-6.5z" />
+      <path d="M15.4 8.6l4.8-4.8" />
+    </svg>
+  ),
+  bin: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.6 6.4h14.8l-1.6 12.4a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L4.6 6.4z" />
+      <path d="M7.4 6.4a4.6 4.6 0 0 1 9.2 0" />
+    </svg>
+  ),
+  glass: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.2 5.5h11.6l-1.1 13a1.9 1.9 0 0 1-1.9 1.7H9.2a1.9 1.9 0 0 1-1.9-1.7L6.2 5.5z" />
+      <path d="M7 13.2h10" />
+    </svg>
+  ),
+  citrus: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.4 12.6h17.2A8.6 8.6 0 0 1 12 21.2a8.6 8.6 0 0 1-8.6-8.6z" />
+      <path d="M12 12.6v8.6M7.1 13.4l2.6 6.9M16.9 13.4l-2.6 6.9" />
+    </svg>
+  ),
+  sponge: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.4 9.6a3.4 3.4 0 0 1 3.4-3.4h8.4a3.4 3.4 0 0 1 3.4 3.4v4.8a3.4 3.4 0 0 1-3.4 3.4H7.8a3.4 3.4 0 0 1-3.4-3.4V9.6z" />
+      <path d="M4.4 13.4h15.2" />
+    </svg>
+  ),
+  wipe: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.6 14.4l6.2-6.2 4.6 4.6-6.2 6.2H4.6v-4.6z" />
+      <path d="M13.2 5.8l2.2-2.2 5 5-2.2 2.2" />
+    </svg>
+  ),
+  clipboard: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.6 4.4H6.8a1.8 1.8 0 0 0-1.8 1.8v12.6a1.8 1.8 0 0 0 1.8 1.8h10.4a1.8 1.8 0 0 0 1.8-1.8V6.2a1.8 1.8 0 0 0-1.8-1.8h-1.8" />
+      <path d="M9.4 2.8h5.2v3.2H9.4z" />
+      <path d="M8.8 11.4h6.4M8.8 15.2h4.2" />
+    </svg>
+  ),
+  eye: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.8 12S5.4 5.4 12 5.4 22.2 12 22.2 12 18.6 18.6 12 18.6 1.8 12 1.8 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  ),
+  mint: (c, s=26) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21.4V9.6" />
+      <path d="M12 12.4C12 8.8 9.4 6.6 5.2 6.6c0 4.2 2.6 5.8 6.8 5.8z" />
+      <path d="M12 9.8c0-3.2 2.4-5.4 6.6-5.4 0 3.7-2.4 5.4-6.6 5.4z" />
+    </svg>
+  ),
+  twist: (c, s=26) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 3.6a8.4 8.4 0 0 0 0 16.8" />
+      <path d="M12 7.2a4.8 4.8 0 0 1 0 9.6" />
+    </svg>
+  ),
+};
+
 export const NAV_ICONS = {
   team: (c) => (
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round">

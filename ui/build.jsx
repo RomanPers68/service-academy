@@ -13,7 +13,7 @@ import React from "react";
 import { BUILDS } from "../data/builds";
 import { shuffleArray, vibrate } from "../lib/utils";
 import { GOLD, GOLD_SOFT, CREAM, SAND, GREEN, RED, MUTED, MUTED_2, CLAY, INK_DEEP, RADIUS } from "./tokens";
-import { UI_SVG } from "./icons";
+import { UI_SVG, BUILD_SVG } from "./icons";
 
 const serif = "Georgia, serif";
 const mono = "ui-monospace, Menlo, monospace";
@@ -84,34 +84,34 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
 
     return (
       <div style={{ flex: "0 0 96px", height: 172, position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-        <div className={"sa-vessel " + (rocks ? "rocks" : "high") + (spoiled ? " spoiled" : "")}>
-          <div className="sa-rim" />
-          <div className="sa-layers">
+        <div className={"sa-bld-vessel " + (rocks ? "rocks" : "high") + (spoiled ? " spoiled" : "")}>
+          <div className="sa-bld-rim" />
+          <div className="sa-bld-layers">
             {poured.map(({ s, i }) => (
-              <div key={i} className={"sa-layer" + (i === just ? " fresh" : "")}
+              <div key={i} className={"sa-bld-layer" + (i === just ? " fresh" : "")}
                 style={{ background: s.layer.c, height: s.layer.h + "%" }} />
             ))}
           </div>
 
-          {just >= 0 && sc.steps[just].layer && <div className="sa-pour" />}
-          {stack > 0 && <div className={"sa-surface" + (just >= 0 && sc.steps[just].layer ? " fresh" : "")}
+          {just >= 0 && sc.steps[just].layer && <div className="sa-bld-pour" />}
+          {stack > 0 && <div className={"sa-bld-surface" + (just >= 0 && sc.steps[just].layer ? " fresh" : "")}
             style={{ bottom: `calc(${stack}% - 2px)` }} />}
 
           {poured.some(x => x.s.pulp) && (<>
             {[0, 1, 2, 3, 4].map(i => (
-              <div key={"p" + i} className="sa-pulp" style={{
+              <div key={"p" + i} className="sa-bld-pulp" style={{
                 width: 4 + (i % 3) * 2, height: 3 + (i % 3) * 2,
                 left: 9 + ((i * 17) % 38), bottom: 6 + ((i * 13) % 22),
                 transform: `rotate(${i * 47 % 90 - 45}deg)`,
               }} />
             ))}
-            <div className="sa-wedge" style={{ left: 8, bottom: 4, transform: "rotate(-14deg)" }} />
+            <div className="sa-bld-wedge" style={{ left: 8, bottom: 4, transform: "rotate(-14deg)" }} />
           </>)}
 
           {iceStep && [...Array(big ? 1 : 8)].map((_, i) => {
             const sz = big ? 36 : 11, rot = big ? 12 : (i * 41 % 70 - 35);
             return (
-              <div key={"c" + i} className={"sa-cube" + (iceStep.i === just ? " fresh" : "")}
+              <div key={"c" + i} className={"sa-bld-cube" + (iceStep.i === just ? " fresh" : "")}
                 style={{
                   width: sz, height: sz,
                   left: big ? "calc(50% - 18px)" : 5 + ((i * 19) % 42),
@@ -126,7 +126,7 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
 
           {poured.some(x => x.s.fizz) && [...Array(14)].map((_, i) => {
             const sz = 2 + (i % 3);
-            return <div key={"b" + i} className="sa-bubble" style={{
+            return <div key={"b" + i} className="sa-bld-bubble" style={{
               width: sz, height: sz, left: 7 + ((i * 13) % 46), bottom: 10 + ((i * 19) % 30),
               "--rise": -(46 + ((i * 11) % 42)) + "px",
               animationDuration: (1.9 + (i % 5) * 0.45) + "s", animationDelay: (i * 0.23) + "s",
@@ -135,14 +135,18 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
 
           {[0, 1, 2, 3, 4, 5].map(i => {
             const sz = 2 + (i % 3);
-            return <div key={"d" + i} className="sa-drop" style={{
+            return <div key={"d" + i} className="sa-bld-drop" style={{
               width: sz, height: sz, left: 6 + ((i * 23) % 48), bottom: 30 + ((i * 37) % 84),
               "--slide": (14 + (i % 4) * 7) + "px",
               animationDuration: (4.5 + (i % 4) * 1.6) + "s", animationDelay: (i * 0.8) + "s",
             }} />;
           })}
         </div>
-        {garn && <div className="sa-garnish">{garn.garnish}</div>}
+        {garn && (
+          <div className="sa-bld-garnish">
+            {(BUILD_SVG[garn.garnish] || BUILD_SVG.mint)(garn.garnish === "twist" ? (a11y ? "#A85A18" : "#E09A50") : (a11y ? "#4E7A32" : "#8FC471"), 26)}
+          </div>
+        )}
         <div style={{ textAlign: "center", fontFamily: mono, fontSize: 8, letterSpacing: 1.6, color: P.sub, marginTop: 7, textTransform: "uppercase" }}>
           {rocks ? "олд фэшн" : "хайбол"}
         </div>
@@ -159,23 +163,23 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
     });
     const ready = marks.has("ready") && !spoiled;
     return (
-      <div className={"sa-station" + (marks.has("clean") ? " clean" : "") + (spoiled ? " spoiled" : "")}>
+      <div className={"sa-bld-station" + (marks.has("clean") ? " clean" : "") + (spoiled ? " spoiled" : "")}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontFamily: mono, fontSize: 7, letterSpacing: 1.3, color: P.sub, marginBottom: 6 }}>
           <span>СТАНЦИЯ</span>
           <span style={{ color: ready ? GREEN : RED }}>{ready ? "ГОТОВА ✓" : "НЕ ГОТОВА"}</span>
         </div>
-        <div className={"sa-icebin" + (marks.has("ice") ? " on" : "")}>
+        <div className={"sa-bld-icebin" + (marks.has("ice") ? " on" : "")}>
           {marks.has("ice") && [...Array(9)].map((_, i) => (
             <i key={i} style={{ left: 6 + i * 15, top: 5 + ((i * 11) % 12), transform: `rotate(${i * 33 % 60 - 30}deg)` }} />
           ))}
           <span>{marks.has("ice") ? "лёд свежий" : "ванна пустая"}</span>
         </div>
         {["Рабочая", "Ближняя", "Дальняя"].map((nm, z) => (
-          <div key={z} className={"sa-zone" + (zones[z] ? " on" : "")}>
-            <div className="sa-zname">{nm}</div>
+          <div key={z} className={"sa-bld-zone" + (zones[z] ? " on" : "")}>
+            <div className="sa-bld-zname">{nm}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
               {zones[z]
-                ? zones[z].map((c, i) => <span key={i} className="sa-zchip">{c}</span>)
+                ? zones[z].map((c, i) => <span key={i} className="sa-bld-zchip">{c}</span>)
                 : <span style={{ fontSize: 8.5, color: "#5C5244", fontStyle: "italic" }}>пусто</span>}
             </div>
           </div>
@@ -191,10 +195,15 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
         const r = results[i];
         const cls = r === true ? " on" : r === false ? " bad" : (i === step && !done) ? " now" : "";
         return (
-          <div key={i} className={"sa-fstage" + cls}>
-            {i > 0 && <div className="sa-fbar" />}
-            <div className="sa-fring">{st.i}</div>
-            <div className="sa-fnm">{st.n}</div>
+          <div key={i} className={"sa-bld-fstage" + cls}>
+            {i > 0 && <div className="sa-bld-fbar" />}
+            <div className="sa-bld-fring">
+              {(BUILD_SVG[st.ic] || BUILD_SVG.ice)(
+                r === true ? (a11y ? "#8B6A30" : GOLD)
+                : r === false ? (a11y ? "#8B3020" : RED)
+                : (a11y ? "#8A7A5C" : MUTED_2), 20)}
+            </div>
+            <div className="sa-bld-fnm">{st.n}</div>
           </div>
         );
       })}
@@ -260,9 +269,9 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 8 }}>шагов без ошибки</div>
           </div>
           {!missed.length ? (
-            <div className="sa-fb win">🎯 {sc.win}</div>
+            <div className="sa-bld-fb win">🎯 {sc.win}</div>
           ) : (
-            <div className="sa-fb lose">
+            <div className="sa-bld-fb lose">
               <div>💡 {sc.lose}</div>
               <div style={{ margin: "12px 0 6px", fontFamily: mono, fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", color: P.sub }}>
                 Что из этого получит гость
@@ -298,23 +307,23 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
         {cur.options.map((o, i) => {
           const state = answered == null ? "" : o.ok ? " win" : i === answered ? " lose" : " off";
           return (
-            <button key={i} className={"sa-opt" + state} disabled={answered != null}
+            <button key={i} className={"sa-bld-opt" + state} disabled={answered != null}
               onClick={answered == null ? () => choose(i, o.ok) : undefined}>
-              <span className="sa-optk">{"ABCD"[i]}</span>
+              <span className="sa-bld-optk">{"ABCD"[i]}</span>
               <span>{o.t}</span>
             </button>
           );
         })}
 
         {picked && (
-          <div className={"sa-fb " + (picked.ok ? "win" : "lose")}>
+          <div className={"sa-bld-fb " + (picked.ok ? "win" : "lose")}>
             {(picked.ok ? "🎯 " : "💡 ") + picked.fb}
             {!picked.ok && cur.cost && (
               <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: a11y ? "#8B3020" : "#E8B5B5" }}>
                 Дойдёт до гостя так: {cur.cost}
               </div>
             )}
-            {cur.term && <div className="sa-term">📖 {cur.term}</div>}
+            {cur.term && <div className="sa-bld-term">📖 {cur.term}</div>}
           </div>
         )}
 
@@ -332,7 +341,7 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
 function Shell({ title, onClose, accent, T, children }) {
   const a11y = !!T.a11y;
   return (
-    <div className="sa-buildwrap" style={{
+    <div className="sa-bld-buildwrap" style={{
       position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column",
       background: T.a11y ? "#E8DEC8" : "linear-gradient(160deg,#14110A 0%,#1C1509 50%,#14110A 100%)",
       overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",

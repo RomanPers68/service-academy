@@ -106,6 +106,10 @@ export const injectStyles = () => {
        и колонка ниже не переанимируется при каждом тапе. */
     .sa-tracksub {
       display: flex; flex-direction: column; gap: 8px;
+      /* Запас снизу — под тени карточек: overflow:hidden режет их по границе,
+         а высота теперь равна содержимому ровно. Отступ входит в scrollHeight,
+         поэтому компенсируется отрицательным margin-bottom в разметке. */
+      padding-bottom: 16px;
       max-height: 0; overflow: hidden; opacity: 0;
       /* Точную высоту проставляет JS по scrollHeight — иначе движение
          заканчивается раньше времени и раскрытие выглядит рывком. */

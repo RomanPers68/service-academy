@@ -1947,7 +1947,13 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
   React.useEffect(() => {
     Object.entries(trackSubRefs.current).forEach(([id, node]) => {
       if (!node) return;
-      node.style.maxHeight = (openGroup === id ? node.scrollHeight : 0) + "px";
+      if (openGroup === id) {
+        // Страховка: если по какой-то причине высота не измерилась,
+        // ставим запас, чтобы блок не остался схлопнутым.
+        node.style.maxHeight = (node.scrollHeight || 520) + "px";
+      } else {
+        node.style.maxHeight = "0px";
+      }
     });
   }, [openGroup]);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
@@ -2265,7 +2271,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             out.push(
               <div key={g.id + "-steps"} className={"sa-tracksub" + (open ? " open" : "")}
                 ref={node => { trackSubRefs.current[g.id] = node; }}
-                style={{ marginBottom: open ? 0 : -listGap }}>
+                style={{ marginBottom: open ? -16 : -listGap }}>
                 {members.map(m => renderRole(m, true))}
               </div>
             );

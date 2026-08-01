@@ -458,10 +458,20 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
     const picked = [];
     let s = seed;
     const used = new Set();
-    while (picked.length < 3 && picked.length < pool.length) {
+    // Генератор самодельный и на малых пулах может зациклиться на одних и тех же
+    // индексах (умножение выходит за точность JS-чисел). Ограничиваем число
+    // попыток: для рабочих размеров пула три индекса находятся за единицы шагов.
+    let guard = 0;
+    while (picked.length < 3 && picked.length < pool.length && guard < 5000) {
+      guard++;
       s = (s * 1103515245 + 12345) & 0x7fffffff;
       const idx = s % pool.length;
       if (!used.has(idx)) { used.add(idx); picked.push(pool[idx]); }
+    }
+    // Если генератор так и не набрал три — добираем по порядку. Результат
+    // остаётся стабильным в течение дня, экран не зависает.
+    for (let i = 0; picked.length < 3 && i < pool.length; i++) {
+      if (!used.has(i)) { used.add(i); picked.push(pool[i]); }
     }
     return picked;
   }, [allLessons, completed, quizDone, seed]);

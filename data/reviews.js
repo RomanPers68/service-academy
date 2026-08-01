@@ -137,5 +137,8 @@ export function bookStats(modulesByRole, completed = {}, quizDone = {}, examResu
   pages += seals; // легендарная страница — тоже страница
   if (completed[weeklyLessonId()]) pages++; // страница гостя недели
   const score = pages + seals * 3;
-  return { pages, seals, total: total + Object.keys(LEGEND_REVIEWS).length + 1, score, rank: rankOf(score), next: nextRank(score) };
+  // sealTotal — сколько всего легендарных печатей возможно (по числу ролей).
+  // Витрина на главной рисует слоты по нему, а не по зашитому числу.
+  const sealTotal = Object.keys(LEGEND_REVIEWS).length;
+  return { pages, seals, sealTotal, total: total + sealTotal + 1, score, rank: rankOf(score), next: nextRank(score) };
 }

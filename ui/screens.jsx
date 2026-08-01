@@ -2056,7 +2056,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                       <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:7.5, letterSpacing:2, marginTop:1, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>ЛИЧНАЯ · {profile.name} · {bs.rank.label}</div>
                     </div>
                     <div style={{ display:"flex", gap:3.5, alignItems:"center", paddingRight:10, flexShrink:0 }}>
-                      {[0,1,2,3,4].map(i => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6][i]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
+                      {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
                     </div>
                   </div>
                   <div style={{ height:2.5, background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.45)" }}>

@@ -137,7 +137,12 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
     }
   }, [pages, idx]);
 
-  const page = pages[Math.min(idx, pages.length - 1)] || pages[0];
+  // Если у роли ещё нет ни одной страницы (не заведены отзывы для её модулей),
+  // подставляем заглушку вместо undefined — иначе экран падает на page.kind.
+  const page = pages[Math.min(idx, pages.length - 1)] || pages[0] || {
+    kind: "locked", key: "empty_" + tab, source: "СТРАНИЦ ПОКА НЕТ",
+    hint: "Для этой роли отзывы ещё готовятся. Проходи разделы — страницы появятся здесь.",
+  };
   const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };
   const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
 

@@ -21,6 +21,15 @@ export const Mm = ({id, size=48, style={}}) => MM[id]
 // Вибрация — тактильная обратная связь
 
 export const ROLE_SVG = {
+  bar: (c, s=30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.6 4.4h16.8L12 13.2 3.6 4.4z" />
+      <path d="M12 13.2V20" />
+      <path d="M8.2 20h7.6" />
+      <path d="M16.6 7.4l1.9-3.6" />
+      <circle cx="18.9" cy="3.2" r="1.25" />
+    </svg>
+  ),
   seasonal: (c, s=30) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 21.5V13" />
@@ -70,9 +79,10 @@ export const ROLE_SVG = {
 export const UI_SVG = {
   shaker: (c, s=20) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 3h8l-1 3H9L8 3z"/>
-      <path d="M9 6h6l1.4 12.2a2 2 0 0 1-2 2.2H9.6a2 2 0 0 1-2-2.2L9 6z"/>
-      <path d="M8.2 11h7.6"/>
+      <path d="M10.2 2.5h3.6v1.8h-3.6z"/>
+      <path d="M8.8 4.3h6.4l-.5 3.2H9.3l-.5-3.2z"/>
+      <path d="M9 7.5h6l1.3 11.2a1.9 1.9 0 0 1-1.9 2.1H9.6a1.9 1.9 0 0 1-1.9-2.1L9 7.5z"/>
+      <path d="M8.4 12.5h7.2"/>
     </svg>
   ),
   crown: (c, s=20) => (
@@ -224,6 +234,32 @@ export const POS_SVG = { waiter: UI_SVG.cloche, hostess: (c,s)=>ROLE_SVG.spg(c,s
 
 // SVG-иконки модулей — ключ это эмодзи из данных, рисуем в цвет модуля; нет в карте — показываем эмодзи
 export const MOD_SVG = {
+  "🍸": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.6 4.4h16.8L12 13.2 3.6 4.4z" />
+      <path d="M12 13.2V20" /><path d="M8.2 20h7.6" />
+      <path d="M16.6 7.4l1.9-3.6" /><circle cx="18.9" cy="3.2" r="1.25" />
+    </svg>
+  ),
+  "🧊": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.8l7.2 4.1v8.2L12 21.2l-7.2-4.1V6.9L12 2.8z" />
+      <path d="M12 11.1l7.2-4.2M12 11.1L4.8 6.9M12 11.1v10.1" />
+    </svg>
+  ),
+  "🥃": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.2 5.5h11.6l-1.1 13a1.9 1.9 0 0 1-1.9 1.7H9.2a1.9 1.9 0 0 1-1.9-1.7L6.2 5.5z" />
+      <path d="M7 13.2h10" />
+      <path d="M10.2 9.4l1.6-1.6 1.6 1.6-1.6 1.6-1.6-1.6z" />
+    </svg>
+  ),
+  "🍋": (c, s=28) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.4 12.6h17.2A8.6 8.6 0 0 1 12 21.2a8.6 8.6 0 0 1-8.6-8.6z" />
+      <path d="M12 12.6v8.6M7.1 13.4l2.6 6.9M16.9 13.4l-2.6 6.9" />
+    </svg>
+  ),
   "🧭": (c, s=30) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="8.7" /><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z" />

@@ -24,6 +24,10 @@ const shuffleSteps = (sc) => ({ ...sc, steps: sc.steps.map(st => ({ ...st, optio
 export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
   const accent = color || GOLD;
   const a11y = !!T.a11y;
+  // Инлайновые цвета текста под тему (классы красит CSS через html.sa-light)
+  const P = a11y
+    ? { text: "#2A1F0E", sub: "#6B5B40", faint: "#8A7A5C", costText: "#8B3020", stepDone: "#2A1F0E" }
+    : { text: CREAM, sub: MUTED_2, faint: MUTED, costText: "#EAC9C9", stepDone: SAND };
 
   // Пул: если сценарий задан явно — берём его, иначе случайный из пула роли
   const pool = React.useMemo(
@@ -139,7 +143,7 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
           })}
         </div>
         {garn && <div className="sa-garnish">{garn.garnish}</div>}
-        <div style={{ textAlign: "center", fontFamily: mono, fontSize: 8, letterSpacing: 1.6, color: MUTED_2, marginTop: 7, textTransform: "uppercase" }}>
+        <div style={{ textAlign: "center", fontFamily: mono, fontSize: 8, letterSpacing: 1.6, color: P.sub, marginTop: 7, textTransform: "uppercase" }}>
           {rocks ? "олд фэшн" : "хайбол"}
         </div>
       </div>
@@ -156,7 +160,7 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
     const ready = marks.has("ready") && !spoiled;
     return (
       <div className={"sa-station" + (marks.has("clean") ? " clean" : "") + (spoiled ? " spoiled" : "")}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontFamily: mono, fontSize: 7, letterSpacing: 1.3, color: MUTED_2, marginBottom: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontFamily: mono, fontSize: 7, letterSpacing: 1.3, color: P.sub, marginBottom: 6 }}>
           <span>СТАНЦИЯ</span>
           <span style={{ color: ready ? GREEN : RED }}>{ready ? "ГОТОВА ✓" : "НЕ ГОТОВА"}</span>
         </div>
@@ -201,7 +205,7 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
     <div style={{ flex: 1, minWidth: 0 }}>
       {sc.steps.map((st, i) => {
         const r = results[i];
-        const c = r === true ? SAND : r === false ? RED : (i === step && !done) ? GOLD : MUTED_2;
+        const c = r === true ? P.stepDone : r === false ? RED : (i === step && !done) ? (a11y ? "#8B6A30" : GOLD) : P.sub;
         return (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 0", fontSize: 13, color: c }}>
             <span style={{
@@ -213,7 +217,7 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
             }}>{r === true ? "✓" : r === false ? "✕" : i + 1}</span>
             <span>{st.label}</span>
             {r != null && (
-              <span style={{ marginLeft: "auto", fontSize: 11, color: MUTED, maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ marginLeft: "auto", fontSize: 11, color: MUTED, maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: P.faint }}>
                 {st.options.find(o => o.ok).t.split(",")[0]}
               </span>
             )}
@@ -249,31 +253,31 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
     return (
       <Shell title={sc.title} onClose={() => onClose && onClose()} accent={accent} T={T}>
         <div style={cardStyle}>
-          <Eyebrow left={"Сборка · " + sc.title} right="итог" />
+          <Eyebrow left={"Сборка · " + sc.title} right="итог" a11y={a11y} />
           <Carrier />
           <div style={{ textAlign: "center", padding: "10px 4px 2px" }}>
             <div style={{ fontSize: 42, color: accent, lineHeight: 1 }}>{right} / {total}</div>
-            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: MUTED_2, marginTop: 8 }}>шагов без ошибки</div>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 8 }}>шагов без ошибки</div>
           </div>
           {!missed.length ? (
             <div className="sa-fb win">🎯 {sc.win}</div>
           ) : (
             <div className="sa-fb lose">
               <div>💡 {sc.lose}</div>
-              <div style={{ margin: "12px 0 6px", fontFamily: mono, fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", color: MUTED_2 }}>
+              <div style={{ margin: "12px 0 6px", fontFamily: mono, fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", color: P.sub }}>
                 Что из этого получит гость
               </div>
               {missed.map((st, i) => (
                 <div key={i} style={{ display: "flex", gap: 9, padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: 13 }}>
                   <span style={{ flex: "0 0 86px", color: GOLD_SOFT, fontSize: 11.5, paddingTop: 1 }}>{st.label}</span>
-                  <span style={{ color: "#EAC9C9", lineHeight: 1.45 }}>{st.cost}</span>
+                  <span style={{ color: P.costText, lineHeight: 1.45 }}>{st.cost}</span>
                 </div>
               ))}
             </div>
           )}
           <button style={btn} className="sa-btn" onClick={() => restart(false)}>Собрать заново</button>
           <button style={ghost} className="sa-btn" onClick={() => restart(true)}>Пересобрать этот же сценарий</button>
-          <button style={{ ...ghost, borderColor: "rgba(255,255,255,0.14)", color: MUTED }} className="sa-btn" onClick={() => onClose && onClose()}>
+          <button style={{ ...ghost, borderColor: a11y ? "rgba(107,78,26,0.3)" : "rgba(255,255,255,0.14)", color: P.faint }} className="sa-btn" onClick={() => onClose && onClose()}>
             Готово
           </button>
         </div>
@@ -286,10 +290,10 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
   return (
     <Shell title={sc.title} onClose={() => onClose && onClose(true)} accent={accent} T={T}>
       <div style={cardStyle}>
-        <Eyebrow left={"Сборка · " + sc.title} right={`${step + 1} / ${total}`} />
-        <div style={{ fontSize: 11, color: MUTED_2, marginTop: 6, fontStyle: "italic" }}>{sc.from}</div>
+        <Eyebrow left={"Сборка · " + sc.title} right={`${step + 1} / ${total}`} a11y={a11y} />
+        <div style={{ fontSize: 11, color: P.sub, marginTop: 6, fontStyle: "italic" }}>{sc.from}</div>
         <Carrier />
-        <div style={{ fontSize: 16, lineHeight: 1.45, margin: "14px 0 12px", color: CREAM }}>{cur.q}</div>
+        <div style={{ fontSize: 16, lineHeight: 1.45, margin: "14px 0 12px", color: P.text }}>{cur.q}</div>
 
         {cur.options.map((o, i) => {
           const state = answered == null ? "" : o.ok ? " win" : i === answered ? " lose" : " off";
@@ -306,7 +310,7 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
           <div className={"sa-fb " + (picked.ok ? "win" : "lose")}>
             {(picked.ok ? "🎯 " : "💡 ") + picked.fb}
             {!picked.ok && cur.cost && (
-              <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: "#E8B5B5" }}>
+              <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: a11y ? "#8B3020" : "#E8B5B5" }}>
                 Дойдёт до гостя так: {cur.cost}
               </div>
             )}
@@ -326,11 +330,12 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
 
 // ── Оболочка на весь экран, как у живого диалога ──────────────────────
 function Shell({ title, onClose, accent, T, children }) {
+  const a11y = !!T.a11y;
   return (
-    <div className="sa-dlg" style={{
+    <div className="sa-buildwrap" style={{
       position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column",
-      background: T.screenBg || "linear-gradient(160deg,#14110A 0%,#1C1509 50%,#14110A 100%)",
-      overflowY: "auto", WebkitOverflowScrolling: "touch",
+      background: T.a11y ? "#E8DEC8" : "linear-gradient(160deg,#14110A 0%,#1C1509 50%,#14110A 100%)",
+      overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "44px 18px 4px" }}>
         <button className="sa-btn" style={{
@@ -338,10 +343,10 @@ function Shell({ title, onClose, accent, T, children }) {
           cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: serif,
         }} onClick={onClose} aria-label="Закрыть">‹</button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: MUTED_2 }}>Сборка</div>
-          <div style={{ color: CREAM, fontSize: 16, fontFamily: serif }}>{title}</div>
+          <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: a11y ? "#6B5B40" : MUTED_2 }}>Сборка</div>
+          <div style={{ color: a11y ? "#2A1F0E" : CREAM, fontSize: 16, fontFamily: serif }}>{title}</div>
         </div>
-        {UI_SVG.shaker ? UI_SVG.shaker(accent, 22) : null}
+        {UI_SVG.shaker ? UI_SVG.shaker(a11y ? "#8B6A30" : accent, 22) : null}
       </div>
       {children}
       <div style={{ height: 24 }} />
@@ -349,14 +354,14 @@ function Shell({ title, onClose, accent, T, children }) {
   );
 }
 
-function Eyebrow({ left, right }) {
+function Eyebrow({ left, right, a11y }) {
   return (
     <div style={{
       fontFamily: mono, fontSize: 9.5, letterSpacing: 3.5, textTransform: "uppercase",
-      color: MUTED_2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+      color: a11y ? "#6B5B40" : MUTED_2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
     }}>
       <span>{left}</span>
-      <span style={{ color: GOLD_SOFT, whiteSpace: "nowrap" }}>{right}</span>
+      <span style={{ color: a11y ? "#8B6A30" : GOLD_SOFT, whiteSpace: "nowrap" }}>{right}</span>
     </div>
   );
 }

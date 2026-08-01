@@ -246,7 +246,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const [detailTab, setDetailTab] = React.useState(false);
   const [selected, setSelected] = React.useState(null);
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
 
   const getAchievements = (player, allPlayers, allScores) => {
     const achievements = [];
@@ -775,8 +775,8 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const STAT_ROLES = ["spg", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB" };
-  const roleIcon  = { seasonal:"🌱", core:"⭐", spg:"🛎️", manager:"🎯", service_manager:"🏛️" };
+  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
+  const roleIcon  = { seasonal:"🌱", core:"⭐", spg:"🛎️", manager:"🎯", service_manager:"🏛️", bar:"🍸" };
 
   const myScores = scores.filter(s => s.name === profile?.name && s.surname === profile?.surname);
   const totalTests = myScores.length;
@@ -2156,7 +2156,10 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                 {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 30) : r.icon) : ROLE_SVG.lock("#8A8070", 25)}
               </div>
               <div style={T.roleInfo}>
-                <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
+                <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                  <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
+                  {r.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? r.color : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+                </div>
                 <div style={T.roleSublabel}>{r.sublabel}</div>
                 {isUnlocked
                   ? <div style={T.roleDesc}>{r.desc}</div>
@@ -2904,6 +2907,7 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
           <span style={{ display:"inline-flex", alignItems:"center" }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
           <span style={{ color:role.color, fontSize:15, fontWeight:"bold" }}>{role.label}</span>
           <span style={{ color:"#c8b898", fontSize:12 }}>{role.sublabel}</span>
+          {role.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
         </div>
       </div>
       <div style={T.progCard}>

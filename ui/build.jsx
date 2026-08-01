@@ -21,7 +21,21 @@ const mono = "ui-monospace, Menlo, monospace";
 // Перемешиваем варианты внутри каждого шага — как shuffleSituationOptions в практике
 const shuffleSteps = (sc) => ({ ...sc, steps: sc.steps.map(st => ({ ...st, options: shuffleArray(st.options) })) });
 
-export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
+// Состояния варианта поверх базового стекла приложения (T.simOpt).
+// Меняем только цвет обводки и подсветку — фактура остаётся общей с практикой.
+const optState = (state) => {
+  if (state === "win")  return { borderColor: GREEN, boxShadow: `0 0 0 1px ${GREEN}44, inset 0 0 18px ${GREEN}1F` };
+  if (state === "lose") return { borderColor: RED,   boxShadow: `0 0 0 1px ${RED}44, inset 0 0 18px ${RED}1A` };
+  if (state === "off")  return { opacity: 0.42 };
+  return {};
+};
+const optKey = (state) => ({
+  background: state === "win" ? GREEN : state === "lose" ? RED : "transparent",
+  color: state === "win" ? "#0d2318" : state === "lose" ? "#2a0d0d" : undefined,
+  borderColor: state === "win" ? GREEN : state === "lose" ? RED : undefined,
+});
+
+export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose }) {
   const accent = color || GOLD;
   const a11y = !!T.a11y;
   // Инлайновые цвета текста под тему (классы красит CSS через html.sa-light)
@@ -30,10 +44,13 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
     : { text: CREAM, sub: MUTED_2, faint: MUTED, costText: "#EAC9C9", stepDone: SAND };
 
   // Пул: если сценарий задан явно — берём его, иначе случайный из пула роли
-  const pool = React.useMemo(
-    () => BUILDS.filter(b => !b.role || b.role === role),
-    [role]
-  );
+  // Пул ограничен модулем урока (mod), иначе в модуле 1 может выпасть
+  // сценарий из модуля 5. Если модуль не задан — берём всю роль.
+  const pool = React.useMemo(() => {
+    const byRole = BUILDS.filter(b => !b.role || b.role === role);
+    const byMod = mod ? byRole.filter(b => b.mod === mod) : [];
+    return byMod.length ? byMod : byRole;
+  }, [role, mod]);
   const firstPick = React.useMemo(() => {
     const src = (buildId && pool.find(b => b.id === buildId)) || shuffleArray(pool)[0];
     return shuffleSteps(src);
@@ -243,12 +260,15 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
     </div>
   );
 
+  // Стекло карточки — общее с уроками приложения: внутреннее свечение,
+  // светлая кромка сверху, без backdrop-blur. Обе темы приходят из токенов.
   const cardStyle = {
     margin: 16, padding: 18, borderRadius: RADIUS.lg,
-    background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
-    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
-    borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
-    boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset",
+    background: T.lessGlass?.bg || "rgba(226,186,116,0.11)",
+    border: T.lessGlass?.border || "1px solid rgba(145,108,40,0.36)",
+    borderTop: T.lessGlass?.borderTop || "1px solid rgba(210,168,65,0.44)",
+    boxShadow: T.lessGlass?.shadow
+      || "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.38)",
   };
   const btn = {
     width: "100%", marginTop: 10, padding: 14, border: "none", borderRadius: RADIUS.md,
@@ -269,9 +289,9 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 8 }}>шагов без ошибки</div>
           </div>
           {!missed.length ? (
-            <div className="sa-bld-fb win">🎯 {sc.win}</div>
+            <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: GREEN }}>🎯 {sc.win}</div>
           ) : (
-            <div className="sa-bld-fb lose">
+            <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: RED }}>
               <div>💡 {sc.lose}</div>
               <div style={{ margin: "12px 0 6px", fontFamily: mono, fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", color: P.sub }}>
                 Что из этого получит гость
@@ -305,18 +325,19 @@ export function BuildRunner({ buildId, role = "bar", T = {}, color, onClose }) {
         <div style={{ fontSize: 16, lineHeight: 1.45, margin: "14px 0 12px", color: P.text }}>{cur.q}</div>
 
         {cur.options.map((o, i) => {
-          const state = answered == null ? "" : o.ok ? " win" : i === answered ? " lose" : " off";
+          const state = answered == null ? null : o.ok ? "win" : i === answered ? "lose" : "off";
           return (
-            <button key={i} className={"sa-bld-opt" + state} disabled={answered != null}
-              onClick={answered == null ? () => choose(i, o.ok) : undefined}>
-              <span className="sa-bld-optk">{"ABCD"[i]}</span>
-              <span>{o.t}</span>
+            <button key={i} className={"sa-bld-opt" + (state ? " " + state : "")} disabled={answered != null}
+              onClick={answered == null ? () => choose(i, o.ok) : undefined}
+              style={{ ...(T.simOpt || {}), ...optState(state) }}>
+              <span className="sa-bld-optk" style={optKey(state)}>{"ABCD"[i]}</span>
+              <span style={{ flex: 1 }}>{o.t}</span>
             </button>
           );
         })}
 
         {picked && (
-          <div className={"sa-bld-fb " + (picked.ok ? "win" : "lose")}>
+          <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: picked.ok ? GREEN : RED }}>
             {(picked.ok ? "🎯 " : "💡 ") + picked.fb}
             {!picked.ok && cur.cost && (
               <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: a11y ? "#8B3020" : "#E8B5B5" }}>

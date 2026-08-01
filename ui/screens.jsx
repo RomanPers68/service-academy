@@ -98,6 +98,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
     core:     { icon:"⭐", title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Твои стандарты — пример для новичков.", color:GOLD },
     manager:  { icon:"🎯", title:"Менеджер пройден!", badge:"Лидер зала", desc:"Управление командой, разрешение конфликтов, финансы — ты готов к большему.", color:"#8B7BAB" },
     service_manager: { icon:"🏛️", title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Ты прошёл весь путь. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
+    bar: { icon:"🍸", title:"Бар пройден!", badge:"Мастер стойки", desc:"Станция, техника, продукт и гость за стойкой — всё твоё. Бар держится на таких людях.", color:GOLD },
     spg: { icon:"🛎️", title:"Хостес пройдена!", badge:"Лицо ресторана", desc:"Ты — первое и последнее впечатление гостя. Встреча, поток и атмосфера у входа теперь твоя стихия.", color:"#C8917A" },
   };
   const ach = achivements[role?.id] || achivements.seasonal;
@@ -233,11 +234,13 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
     { id:"waiter",  label:"Официанты", icon:"🍽️", color:"#7C9E87" },
     { id:"hostess", label:"Хостес", icon:"🛎️", color:"#C8917A" },
     { id:"manager", label:"Менеджеры", icon:"🎯", color:"#8B7BAB" },
+    { id:"bartender", label:"Бар", icon:"🍸", color:GOLD },
     { id:"senior",  label:"Руководство", icon:"🏛️", color:GOLD },
   ];
   const visibleTabs = (isAdmin || myPosition === "senior") ? allTabs : allTabs.filter(t => {
     if (myPosition === "waiter")  return t.id === "waiter";
     if (myPosition === "hostess") return t.id === "hostess";
+    if (myPosition === "bartender") return t.id === "bartender";
     if (myPosition === "manager") return t.id === "waiter" || t.id === "manager";
     return true;
   });
@@ -245,7 +248,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const [tab, setTab] = React.useState(visibleTabs[0]?.id || "waiter");
   const [detailTab, setDetailTab] = React.useState(false);
   const [selected, setSelected] = React.useState(null);
-  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
+  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
   const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
 
   const getAchievements = (player, allPlayers, allScores) => {
@@ -586,8 +589,8 @@ export function PlayerDetailScreen({ player, T, onBack }) {
     }).catch(() => setLoading(false));
   }, [player.name, player.surname]);
 
-  const roleNames = { seasonal: "Новичок", spg: "СПГ", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер" };
-  const roleColors = { seasonal: "#7C9E87", spg: "#C8917A", core: GOLD, manager: "#8B7BAB", service_manager: "#5B8FA8" };
+  const roleNames = { seasonal: "Новичок", spg: "СПГ", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер", bar: "Бар" };
+  const roleColors = { seasonal: "#7C9E87", spg: "#C8917A", core: GOLD, manager: "#8B7BAB", service_manager: "#5B8FA8", bar: GOLD };
 
   // Группируем прогресс по ролям — уроки + практики (без квизов)
   const byRole = {};
@@ -783,8 +786,8 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
 
 export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
-  const STAT_ROLES = ["spg", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
-  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер" };
+  const STAT_ROLES = ["spg", "bar", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
+  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
   const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
   const roleIcon  = { seasonal:"🌱", core:"⭐", spg:"🛎️", manager:"🎯", service_manager:"🏛️", bar:"🍸" };
 
@@ -1051,7 +1054,7 @@ export function ProfileScreen({ onDone, T }) {
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                   cursor:"pointer", userSelect:"none" }}>
                 <span style={{ color: position ? CREAM : "#9A8060", fontSize:15 }}>
-                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{POS_SVG[position] && POS_SVG[position](GOLD, 16)}{({waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
+                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{POS_SVG[position] && POS_SVG[position](GOLD, 16)}{({waiter:"Официант", hostess:"Хостес", bartender:"Бармен", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
                 </span>
                 <span style={{ color:"#C8A870", fontSize:14, transition:"transform 0.2s", display:"inline-block", transform: showPositionSheet ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
               </div>
@@ -1060,6 +1063,7 @@ export function ProfileScreen({ onDone, T }) {
                   {[
                     { id:"waiter",  icon:"🍽️", label:"Официант",           sub:"Обслуживание гостей" },
                     { id:"hostess", icon:"🛎️", label:"Хостес",             sub:"Служба приёма гостей" },
+                    { id:"bartender", icon:"🍸", label:"Бармен",            sub:"Работа за барной стойкой" },
                     { id:"manager", icon:"🎯", label:"Менеджер",            sub:"Управление залом и командой" },
                     { id:"senior",  icon:"🏛️", label:"Руководящий состав", sub:"Управляющий, Директор" },
                   ].map(pos => (
@@ -1120,7 +1124,7 @@ export function ProfileScreen({ onDone, T }) {
 
 export const APP_SHARE_URL = "https://t.me/SA_RestaurantBot";
 
-export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав" };
+export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", manager:"Менеджер", senior:"Руководящий состав" };
 
 export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const [view, setView] = React.useState("list");        // list | add | card | code
@@ -1807,7 +1811,7 @@ function MentorPinBlock({ T, gold }) {
 
 export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) {
   const [confirmOut, setConfirmOut] = React.useState(false);
-  const posLabel = { waiter:"Официант", hostess:"Хостес", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
+  const posLabel = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
@@ -1932,7 +1936,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
   const position = profile?.position || "waiter";
 
   // Роли доступные сразу по должности (без прохождения)
-  const baseUnlocked = new Set(["seasonal", "spg"]);
+  const baseUnlocked = new Set(["seasonal", "spg", "bar"]);
   if (isAdmin || position === "senior") {
     ROLE_ORDER.forEach(r => baseUnlocked.add(r));
   } else if (position === "manager") {
@@ -2648,7 +2652,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const txt = dark ? CREAM : INK;
   const brd = dark ? "rgba(150,112,42,0.45)" : "rgba(180,145,70,0.35)";
   const SERIF = "Georgia, 'Times New Roman', serif";
-  const ROLES = [{ id: "seasonal", label: "Новичок" }, { id: "core", label: "Ядро" }, { id: "manager", label: "Менеджер" }, { id: "service_manager", label: "Сервис-менеджер" }];
+  const ROLES = [{ id: "seasonal", label: "Новичок" }, { id: "core", label: "Ядро" }, { id: "manager", label: "Менеджер" }, { id: "service_manager", label: "Сервис-менеджер" }, { id: "bar", label: "Бар" }];
   const token = (() => { try { return localStorage.getItem("sa_session_token"); } catch (e) { return null; } })();
   const uid = () => Math.random().toString(36).slice(2, 9);
   const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
@@ -4169,7 +4173,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
 
 const EXAM_PASS = 0.8;   // порог сдачи — 80%
 const EXAM_COUNT = 10;   // вопросов в одной попытке (или меньше, если их мало)
-const _CERT_ROLE_ORDER = ["spg", "seasonal", "core", "manager", "service_manager"];
+const _CERT_ROLE_ORDER = ["spg", "bar", "seasonal", "core", "manager", "service_manager"];
 
 // Собрать все вопросы квизов роли
 function collectRoleQuestions(roleId) {

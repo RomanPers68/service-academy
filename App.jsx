@@ -1130,7 +1130,7 @@ function ServiceAcademy() {
             // среди закрытых. Любая неясность (роль не найдена, урок в custom, я админ) →
             // урок ОТКРЫВАЕТСЯ. Лучше пропустить, чем случайно заблокировать доступное.
             const iamAdmin = !!profile?.is_admin;
-            const knownRole = lessonRole && ["seasonal","core","manager","service_manager","spg"].includes(lessonRole);
+            const knownRole = lessonRole && ["seasonal","core","manager","service_manager","spg","bar"].includes(lessonRole);
             const blocked = !iamAdmin && knownRole && !myRoles.has(lessonRole) && !inCustom;
 
             if (blocked) {
@@ -1165,7 +1165,7 @@ function ServiceAcademy() {
         , document.body)}
         {screen === "lesson" && activeLesson?.type === "build" && createPortal(
           <Suspense fallback={<ScreenLoader T={T} />}>
-            <BuildRunner key={"bld-" + gameKey} buildId={activeLesson.buildId} role={activeLesson.role || role}
+            <BuildRunner key={"bld-" + gameKey} buildId={activeLesson.buildId} mod={activeLesson.mod || activeModule?.id} role={activeLesson.role || role}
               T={T} color={activeModule?.color} onClose={completeLesson} />
           </Suspense>
         , document.body)}

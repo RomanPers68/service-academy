@@ -25,12 +25,14 @@ const MAX_CUSTOM_Q = 5;
 const TEST_ROLES = [
   { id: "waiter",  customRoles: ["seasonal","core"],            label: "Официант",     desc: "Зал, гости, сервис" },
   { id: "hostess", customRoles: ["spg"],                        label: "Хостес / СПГ", desc: "Вход, встреча, рассадка" },
+  { id: "bartender", customRoles: ["bar"],                    label: "Бармен",       desc: "Стойка, техника, продукт" },
   { id: "manager", customRoles: ["manager","service_manager"], label: "Менеджер",     desc: "Команда, конфликты, смена" },
 ];
 // Перерисованные иконки ролей из фирменного набора
 const ROLE_ICO = {
   waiter: (c) => UI_SVG.cloche(c, 20),
   hostess: (c) => UI_SVG.sparkle(c, 20),
+  bartender: (c) => UI_SVG.shaker(c, 20),
   manager: (c) => UI_SVG.target(c, 20),
 };
 

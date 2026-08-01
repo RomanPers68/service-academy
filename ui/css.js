@@ -170,28 +170,19 @@ export const injectStyles = () => {
     @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin { animation:none; } }
 
     /* ══ «Сборка» — фирменный формат практики роли «Бар» (ui/build.jsx) ══ */
-    .sa-bld-opt{width:100%;text-align:left;display:flex;align-items:center;gap:11px;
-      padding:13px 14px;margin-bottom:8px;border-radius:12px;cursor:pointer;
-      background:rgba(255,250,238,0.045);border:1px solid #4A3525;color:#E8DEC8;
-      font-family:Georgia,serif;font-size:14.5px;line-height:1.35;
-      transition:border-color .2s,background .2s,transform .12s}
-    .sa-bld-opt:active{transform:scale(.985)}
-    .sa-bld-opt[disabled]{cursor:default}
-    .sa-bld-optk{flex:0 0 24px;height:24px;border-radius:7px;display:grid;place-items:center;
-      font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#B09060;
-      border:1px solid rgba(200,169,110,0.35)}
-    .sa-bld-opt.win{border-color:#5DBB8A;background:rgba(93,187,138,0.13)}
-    .sa-bld-opt.win .sa-bld-optk{background:#5DBB8A;color:#0d2318;border-color:#5DBB8A}
-    .sa-bld-opt.lose{border-color:#E07878;background:rgba(224,120,120,0.11)}
-    .sa-bld-opt.lose .sa-bld-optk{background:#E07878;color:#2a0d0d;border-color:#E07878}
-    .sa-bld-opt.off{opacity:.4}
-    .sa-bld-fb{margin-top:12px;padding:12px 14px;border-radius:12px;font-size:13.5px;line-height:1.5}
-    .sa-bld-fb.win{background:rgba(93,187,138,0.10);border:1px solid rgba(93,187,138,0.4);color:#BFE6D0}
-    .sa-bld-fb.lose{background:rgba(224,120,120,0.09);border:1px solid rgba(224,120,120,0.38);color:#F0C9C9}
     .sa-bld-term{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;
       font-size:11px;color:#D4A85A;background:rgba(200,169,110,0.12);
       border:1px solid rgba(200,169,110,0.34)}
 
+    .sa-bld-opt{width:100%;text-align:left;display:flex;align-items:center;gap:11px;
+      cursor:pointer;font-family:Georgia,serif;
+      transition:border-color .2s,box-shadow .2s,opacity .2s,transform .12s}
+    .sa-bld-opt:active{transform:scale(.985)}
+    .sa-bld-opt[disabled]{cursor:default}
+    .sa-bld-optk{flex:0 0 24px;height:24px;border-radius:7px;display:grid;place-items:center;
+      font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#B09060;
+      border:1px solid rgba(200,169,110,0.35);transition:.2s}
+    .sa-bld-fb{margin-top:12px}
     /* носитель: сосуд */
     .sa-bld-vessel{position:relative;margin:0 auto;overflow:hidden;
       border:2px solid rgba(210,190,160,0.42);border-top:0;
@@ -246,8 +237,10 @@ export const injectStyles = () => {
     @keyframes saDropSlide{0%{transform:translateY(0);opacity:0}18%{opacity:.6}100%{transform:translateY(var(--slide));opacity:0}}
 
     /* носитель: станция сверху */
-    .sa-bld-station{flex:0 0 152px;padding:8px;border-radius:10px;background:rgba(0,0,0,0.32);
-      border:1px solid rgba(150,112,42,0.28);transition:.4s}
+    .sa-bld-station{flex:0 0 152px;padding:8px;border-radius:10px;background:rgba(226,186,116,0.09);
+      border:1px solid rgba(145,108,40,0.34);border-top:1px solid rgba(210,168,65,0.42);
+      box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10),0 5px 16px rgba(0,0,0,0.30);
+      transition:.4s}
     .sa-bld-station.clean{border-color:rgba(200,169,110,0.5);box-shadow:inset 0 0 20px rgba(214,170,80,0.08)}
     .sa-bld-station.spoiled{border-color:rgba(224,120,120,0.35)}
     .sa-bld-icebin{position:relative;height:26px;border-radius:7px;margin-bottom:6px;overflow:hidden;
@@ -256,7 +249,9 @@ export const injectStyles = () => {
     .sa-bld-icebin.on{color:#CFE4EF;border-style:solid;border-color:rgba(160,200,230,0.38);background:rgba(150,195,230,0.13)}
     .sa-bld-icebin i{position:absolute;width:7px;height:7px;border-radius:2px;background:rgba(235,248,255,0.5)}
     .sa-bld-zone{padding:5px 7px;border-radius:7px;margin-bottom:4px;
-      background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);transition:.4s}
+      background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
+      border-top:1px solid rgba(210,168,65,0.26);
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:.4s}
     .sa-bld-zone.on{background:rgba(200,169,110,0.11);border-color:rgba(200,169,110,0.36)}
     .sa-bld-zname{font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.1px;
       text-transform:uppercase;color:#756A58;margin-bottom:3px}
@@ -267,12 +262,12 @@ export const injectStyles = () => {
     /* носитель: цепочка стадий */
     .sa-bld-fstage{flex:1;min-width:0;text-align:center;position:relative}
     .sa-bld-fring{width:38px;height:38px;margin:0 auto;border-radius:50%;display:grid;place-items:center;
-      font-size:17px;background:rgba(255,255,255,0.03);border:1.5px solid rgba(255,255,255,0.10);
+      font-size:17px;background:rgba(226,186,116,0.09);border:1.5px solid rgba(145,108,40,0.34);
+      border-top-color:rgba(210,168,65,0.46);
+      box-shadow:inset 0 0 14px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10);
       transition:.45s;position:relative;z-index:2;opacity:.55}
     .sa-bld-fnm{font-size:9px;color:#756A58;margin-top:6px;line-height:1.2;
       font-family:ui-monospace,Menlo,monospace;letter-spacing:.3px}
-    .sa-bld-fbar{position:absolute;top:19px;left:-50%;width:100%;height:2px;
-      background:rgba(255,255,255,0.09);z-index:1;transition:.45s}
     .sa-bld-fstage.on .sa-bld-fring{opacity:1;background:rgba(200,169,110,0.16);border-color:#C8A96E;
       box-shadow:0 0 14px rgba(200,169,110,0.28)}
     .sa-bld-fstage.on .sa-bld-fnm{color:#D4A85A}
@@ -288,14 +283,6 @@ export const injectStyles = () => {
     }
 
     /* «Сборка» в светлой теме (режим чтения) */
-    html.sa-light .sa-bld-opt{background:rgba(255,252,244,0.75);border-color:rgba(139,106,48,0.38);color:#2E2412}
-    html.sa-light .sa-bld-optk{color:#8B6A30;border-color:rgba(139,106,48,0.45)}
-    html.sa-light .sa-bld-opt.win{background:rgba(42,107,69,0.12);border-color:#2A6B45}
-    html.sa-light .sa-bld-opt.win .sa-bld-optk{background:#2A6B45;color:#fff;border-color:#2A6B45}
-    html.sa-light .sa-bld-opt.lose{background:rgba(139,48,32,0.10);border-color:#8B3020}
-    html.sa-light .sa-bld-opt.lose .sa-bld-optk{background:#8B3020;color:#fff;border-color:#8B3020}
-    html.sa-light .sa-bld-fb.win{background:rgba(42,107,69,0.10);border-color:rgba(42,107,69,0.45);color:#1E4A30}
-    html.sa-light .sa-bld-fb.lose{background:rgba(139,48,32,0.08);border-color:rgba(139,48,32,0.40);color:#6B2418}
     html.sa-light .sa-bld-term{color:#8B6A30;background:rgba(139,106,48,0.10);border-color:rgba(139,106,48,0.35)}
     html.sa-light .sa-bld-vessel{border-color:rgba(107,78,26,0.55);
       background:linear-gradient(100deg,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0.25) 42%,rgba(255,255,255,0.5) 100%)}
@@ -305,19 +292,23 @@ export const injectStyles = () => {
     html.sa-light .sa-bld-cube{background:rgba(160,200,230,0.45);border-color:rgba(70,120,160,0.45)}
     html.sa-light .sa-bld-bubble{background:rgba(90,140,175,0.55)}
     html.sa-light .sa-bld-drop{background:rgba(70,120,160,0.28)}
-    html.sa-light .sa-bld-station{background:rgba(255,252,244,0.6);border-color:rgba(139,106,48,0.35)}
+    html.sa-light .sa-bld-station{background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.20);
+      border-top-color:rgba(255,240,200,0.66);
+      box-shadow:inset 0 0 20px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85),0 3px 12px rgba(120,90,30,0.10)}
     html.sa-light .sa-bld-station.clean{border-color:rgba(139,106,48,0.55);box-shadow:inset 0 0 20px rgba(200,160,60,0.15)}
     html.sa-light .sa-bld-icebin{color:#6B5B40;background:rgba(255,255,255,0.45);border-color:rgba(107,78,26,0.3)}
     html.sa-light .sa-bld-icebin.on{color:#2E5A73;background:rgba(150,195,230,0.28);border-color:rgba(70,120,160,0.5)}
     html.sa-light .sa-bld-icebin i{background:rgba(120,170,205,0.6)}
-    html.sa-light .sa-bld-zone{background:rgba(255,255,255,0.4);border-color:rgba(107,78,26,0.2)}
+    html.sa-light .sa-bld-zone{background:rgba(252,246,232,0.62);border-color:rgba(175,140,65,0.18);
+      border-top-color:rgba(255,244,214,0.7);box-shadow:inset 0 0 12px rgba(255,255,255,0.45)}
     html.sa-light .sa-bld-zone.on{background:rgba(200,169,110,0.24);border-color:rgba(139,106,48,0.5)}
     html.sa-light .sa-bld-zname{color:#8A7A5C}
     html.sa-light .sa-bld-zone.on .sa-bld-zname{color:#8B6A30}
     html.sa-light .sa-bld-zchip{color:#2E2412;background:rgba(200,169,110,0.3);border-color:rgba(139,106,48,0.45)}
-    html.sa-light .sa-bld-fring{background:rgba(255,255,255,0.55);border-color:rgba(107,78,26,0.28)}
+    html.sa-light .sa-bld-fring{background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.22);
+      border-top-color:rgba(255,240,200,0.7);
+      box-shadow:inset 0 0 14px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85)}
     html.sa-light .sa-bld-fnm{color:#8A7A5C}
-    html.sa-light .sa-bld-fbar{background:rgba(107,78,26,0.22)}
     html.sa-light .sa-bld-fstage.on .sa-bld-fring{opacity:1;background:rgba(200,169,110,0.3);border-color:#8B6A30;box-shadow:none}
     html.sa-light .sa-bld-fstage.on .sa-bld-fnm{color:#8B6A30}
     html.sa-light .sa-bld-fstage.on .sa-bld-fbar{background:linear-gradient(90deg,rgba(139,106,48,0.25),#8B6A30)}

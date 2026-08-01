@@ -1934,7 +1934,7 @@ const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
 export const TRACK_GROUPS = [
   { id: "g-waiter",  label: "Официант", sublabel: "Зал и гости",      color: "#7C9E87", icon: "cloche",
     desc: "От базовых стандартов до роли наставника",   members: ["seasonal", "core"] },
-  { id: "g-manager", label: "Менеджер", sublabel: "Руководство залом", color: "#8B7BAB", icon: "target",
+  { id: "g-manager", label: "Менеджмент", sublabel: "Зал и команда", color: "#8B7BAB", icon: "target",
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
@@ -2160,6 +2160,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
       <div style={T.roleList} className="sa-stagger">
         {(() => {
           // Профессия = одна плитка. Ступени раскрываются на месте, без нового экрана.
+          const listGap = (T.roleList && T.roleList.gap) || 8;
           const groupOf = {};
           TRACK_GROUPS.forEach(g => g.members.forEach(m => { groupOf[m] = g; }));
 
@@ -2249,7 +2250,15 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             usedGroups.add(g.id);
             const members = g.members.map(id => ROLES.find(x => x.id === id)).filter(Boolean);
             out.push(renderGroup(g, members));
-            if (openGroup === g.id) members.forEach(m => out.push(renderRole(m, true)));
+            // Контейнер есть всегда: при закрытой группе он нулевой высоты и
+            // компенсирует gap списка отрицательным отступом.
+            const open = openGroup === g.id;
+            out.push(
+              <div key={g.id + "-steps"} className={"sa-tracksub" + (open ? " open" : "")}
+                style={{ marginBottom: open ? 0 : -listGap }}>
+                {members.map(m => renderRole(m, true))}
+              </div>
+            );
           });
           return out;
         })()}

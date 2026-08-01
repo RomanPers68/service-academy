@@ -101,6 +101,26 @@ export const injectStyles = () => {
     .sa-stagger > *:nth-child(7) { animation-delay: 0.28s; }
     .sa-stagger > *:nth-child(8) { animation-delay: 0.32s; }
     .sa-stagger > *:nth-child(n+9) { animation-delay: 0.36s; }
+    /* Раскрытие ступеней профессии на главной (RoleSelect).
+       Контейнер присутствует всегда — так число детей .sa-stagger не меняется
+       и колонка ниже не переанимируется при каждом тапе. */
+    .sa-tracksub {
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 0; overflow: hidden; opacity: 0;
+      transition: max-height 0.38s cubic-bezier(0.22,1,0.36,1),
+                  opacity 0.24s ease,
+                  margin-bottom 0.38s cubic-bezier(0.22,1,0.36,1);
+    }
+    .sa-tracksub.open { max-height: 520px; opacity: 1; }
+    .sa-stagger > .sa-tracksub { animation: none; }
+    @keyframes saSubIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+    .sa-tracksub.open > * { animation: saSubIn 0.34s cubic-bezier(0.22,1,0.36,1) both; }
+    .sa-tracksub.open > *:nth-child(2) { animation-delay: 0.07s; }
+    .sa-tracksub.open > *:nth-child(3) { animation-delay: 0.14s; }
+    @media (prefers-reduced-motion: reduce) {
+      .sa-tracksub { transition: none; }
+      .sa-tracksub.open > * { animation: none; }
+    }
     .sa-progress { animation: progressFill 0.8s cubic-bezier(0.4,0,0.2,1) both; }
     .sa-glass {
       /* Блюр снят: на скролле он пересэмплировался каждый кадр и давал

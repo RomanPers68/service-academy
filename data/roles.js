@@ -9,4 +9,5 @@ export const ROLES = [
   { id: "core", mm: "thumbs_up2", label: "Ядро", sublabel: "Постоянная команда", icon: "⭐", color: "#C8A96E", dark: "#3e3020", desc: "Углублённые стандарты и роль наставника" },
   { id: "manager", mm: "serious", label: "Менеджер", sublabel: "Руководитель зала", icon: "🎯", color: "#8B7BAB", dark: "#1e1a2e", desc: "Управление командой, конфликты, финансы" },
   { id: "service_manager", mm: "idea", label: "Сервис-менеджер", sublabel: "Следующая ступень", icon: "🏛️", color: "#7B8FAB", dark: "#1a1e2e", desc: "Архитектор сервиса — школа, методика, культура, развитие" },
+  { id: "bar", mm: "wave", label: "Бар", sublabel: "Бармен", icon: "🍸", color: "#C8A96E", dark: "#3e3020", desc: "От новичка за баром до старшего бармена" },
 ];

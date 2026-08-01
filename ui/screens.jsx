@@ -2190,22 +2190,33 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           { key:"audio", label:"Аудио-уроки", sub:"Слушай по дороге на смену", icon:(c)=>(
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4v-6z"/><path d="M20 14h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2v-6z"/></svg>
           )},
-        ].map(s => (
-          <div key={s.key} style={{
+        ].map(s => {
+          const active = s.key === "bar"; // Бар — рабочий трек, остальные пока «скоро»
+          return (
+          <div key={s.key}
+            onClick={active ? () => onSelect(s.key) : undefined}
+            {...(active ? onActivate(() => onSelect(s.key)) : {})}
+            style={{
             display:"flex", alignItems:"center", gap:12, padding:"11px 13px",
-            borderRadius:15, opacity:0.5, position:"relative", overflow:"hidden",
-            background: T.roleCard?.background, border:"1px solid rgba(255,255,255,0.06)",
+            borderRadius:15, opacity: active ? 1 : 0.5, position:"relative", overflow:"hidden",
+            cursor: active ? "pointer" : "default",
+            background: T.roleCard?.background, border: active ? "1px solid rgba(212,168,90,0.35)" : "1px solid rgba(255,255,255,0.06)",
           }}>
-            <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter:"grayscale(0.6)" }}>
-              {s.icon(a11y ? "#8B6A30" : "#8A8070")}
+            <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter: active ? "none" : "grayscale(0.6)" }}>
+              {s.icon(active ? (a11y ? "#8B6A30" : "#D4A85A") : (a11y ? "#8B6A30" : "#8A8070"))}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color: T.modSub.color, fontSize:13.5, fontWeight:"bold" }}>{s.label}</div>
               <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:1, opacity:0.85 }}>{s.sub}</div>
             </div>
-            <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:8, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+            {active ? (
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : "#D4A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:8, padding:"3px 8px" }}>НОВОЕ</div>
+            ) : (
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:8, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D4A85A44" }}>

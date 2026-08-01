@@ -107,16 +107,18 @@ export const injectStyles = () => {
     .sa-tracksub {
       display: flex; flex-direction: column; gap: 8px;
       max-height: 0; overflow: hidden; opacity: 0;
-      transition: max-height 0.38s cubic-bezier(0.22,1,0.36,1),
-                  opacity 0.24s ease,
-                  margin-bottom 0.38s cubic-bezier(0.22,1,0.36,1);
+      /* Точную высоту проставляет JS по scrollHeight — иначе движение
+         заканчивается раньше времени и раскрытие выглядит рывком. */
+      transition: max-height 0.44s cubic-bezier(0.33,0,0.2,1),
+                  opacity 0.34s cubic-bezier(0.4,0,0.2,1),
+                  margin-bottom 0.44s cubic-bezier(0.33,0,0.2,1);
     }
-    .sa-tracksub.open { max-height: 520px; opacity: 1; }
+    .sa-tracksub.open { opacity: 1; }
     .sa-stagger > .sa-tracksub { animation: none; }
-    @keyframes saSubIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
-    .sa-tracksub.open > * { animation: saSubIn 0.34s cubic-bezier(0.22,1,0.36,1) both; }
-    .sa-tracksub.open > *:nth-child(2) { animation-delay: 0.07s; }
-    .sa-tracksub.open > *:nth-child(3) { animation-delay: 0.14s; }
+    @keyframes saSubIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .sa-tracksub.open > * { animation: saSubIn 0.42s cubic-bezier(0.4,0,0.2,1) both; }
+    .sa-tracksub.open > *:nth-child(2) { animation-delay: 0.08s; }
+    .sa-tracksub.open > *:nth-child(3) { animation-delay: 0.16s; }
     @media (prefers-reduced-motion: reduce) {
       .sa-tracksub { transition: none; }
       .sa-tracksub.open > * { animation: none; }

@@ -23,7 +23,6 @@ const TrainingCardScreen = lazy(() => import("./ui/training-card").then(m => ({ 
 const ReferenceSection = lazy(() => import("./ui/ReferenceSection").then(m => ({ default: m.ReferenceSection })));
 const CandidateScreen = lazy(() => import("./ui/candidate").then(m => ({ default: m.CandidateScreen })));
 const AssistantScreen = lazy(() => import("./ui/assistant").then(m => ({ default: m.AssistantScreen })));
-const BuildRunner = lazy(() => import("./ui/build").then(m => ({ default: m.BuildRunner })));
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -288,7 +287,6 @@ const SR_DAYS = [1, 3, 7, 30];
 function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
   const [prevScreen, setPrevScreen] = useState(null);
-  const [lessonLockMsg, setLessonLockMsg] = useState(null); // мягкое сообщение о закрытом уроке (Вариант В)
   const [bookFocus, setBookFocus] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState(null);
   const [profile, setProfile] = useState(null);
@@ -667,8 +665,7 @@ function ServiceAcademy() {
   const openLesson = (l) => {
     if (l.type === "quiz" && quizDone[l.id]) return;
     if (l.type === "dialogue") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
-    if (l.type === "build") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
-    const originalLesson = (Object.values(MODULES).flat().flatMap(m => m.lessons || []).find(lesson => lesson.id === l.id)) || l;
+    const originalLesson = role ? (MODULES[role] || []).flatMap(m => m.lessons).find(lesson => lesson.id === l.id) || l : l;
     let initQuestions = originalLesson.questions || [];
     let lessonToOpen = originalLesson;
     if (originalLesson.type === "quiz" && initQuestions.length > 0) {
@@ -1098,58 +1095,16 @@ function ServiceAcademy() {
         {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
         {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
-        {lessonLockMsg && (
-          <div onClick={() => setLessonLockMsg(null)} style={{ position: "fixed", inset: 0, zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(0,0,0,0.45)" }}>
-            <div onClick={e => e.stopPropagation()} style={{ maxWidth: 340, borderRadius: 20, padding: "22px 20px", textAlign: "center",
-              background: a11y ? "rgba(250,242,222,0.96)" : "rgba(28,20,8,0.96)",
-              border: a11y ? "1px solid rgba(139,106,48,0.4)" : "1px solid rgba(255,255,255,0.16)",
-              boxShadow: a11y ? "inset 0 0 26px rgba(255,250,235,0.6), 0 12px 40px rgba(70,50,15,0.3)" : "inset 0 0 26px rgba(255,248,230,0.08), 0 12px 40px rgba(0,0,0,0.55)" }}>
-              <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 15, lineHeight: 1.6, color: a11y ? "#3A2E1C" : "#EFE6D2", marginBottom: 16 }}>{lessonLockMsg}</div>
-              <button onClick={() => setLessonLockMsg(null)} style={{ padding: "10px 24px", borderRadius: 999, border: "none", cursor: "pointer",
-                background: "linear-gradient(135deg, #C8A96E, #8B6A30)", color: "#fff", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold" }}>Понятно</button>
-            </div>
-          </div>
-        )}
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
           // Переход на урок по id: [[lesson:ID]]
           if (dest && typeof dest === "object" && dest.lesson) {
-            // Роли, доступные сотруднику: его текущая + все пройденные.
-            // Вариант В: урок закрытой роли не открываем, мягко сообщаем.
-            const myRoles = new Set([role, ...completedRoles]);
-            // спг/сезонник — базовый уровень, всегда доступен как основа
-            const roleOfLesson = (lid) => {
-              for (const [rk, mods] of Object.entries(MODULES)) {
-                if ((mods || []).some(m => (m.lessons || []).some(x => x.id === lid))) return rk;
-              }
-              return null;
-            };
-            const lessonRole = roleOfLesson(dest.lesson);
-            const inCustom = (customModules || []).some(m => (m.lessons || []).some(x => x.id === dest.lesson));
-            // FAIL-SAFE: блокируем ТОЛЬКО когда роль урока определена ОДНОЗНАЧНО и она
-            // среди закрытых. Любая неясность (роль не найдена, урок в custom, я админ) →
-            // урок ОТКРЫВАЕТСЯ. Лучше пропустить, чем случайно заблокировать доступное.
-            const iamAdmin = !!profile?.is_admin;
-            const knownRole = lessonRole && ["seasonal","core","manager","service_manager","spg"].includes(lessonRole);
-            const blocked = !iamAdmin && knownRole && !myRoles.has(lessonRole) && !inCustom;
-
-            if (blocked) {
-              setLessonLockMsg("Этот урок из трека, который откроется позже — когда дойдёшь до него по программе. Спрашивай меня по теме сколько угодно, а систематически изучишь его на своём уровне 😊");
-              return;
-            }
-
-            const everyMod = [...Object.values(MODULES).flat(), ...(customModules || [])];
+            const allMods = [...(MODULES[role] || []), ...(customModules || [])];
             let foundMod = null, foundLesson = null;
-            for (const m of everyMod) {
+            for (const m of allMods) {
               const l = (m.lessons || []).find(x => x.id === dest.lesson);
               if (l) { foundMod = m; foundLesson = l; break; }
             }
-            if (foundLesson) {
-              setPrevScreen("roleSelect"); setActiveModule(foundMod); openLesson(foundLesson);
-            } else {
-              setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
-              setScreen("roleSelect");
-            }
+            if (foundLesson) { setPrevScreen("roleSelect"); setActiveModule(foundMod); openLesson(foundLesson); }
             return;
           }
           // Переход в раздел: [[go:key]]
@@ -1163,13 +1118,7 @@ function ServiceAcademy() {
         {screen === "lesson" && activeLesson?.type === "dialogue" && createPortal(
           <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />
         , document.body)}
-        {screen === "lesson" && activeLesson?.type === "build" && createPortal(
-          <Suspense fallback={<ScreenLoader T={T} />}>
-            <BuildRunner key={"bld-" + gameKey} buildId={activeLesson.buildId} role={activeLesson.role || role}
-              T={T} color={activeModule?.color} onClose={completeLesson} />
-          </Suspense>
-        , document.body)}
-        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
+        {screen === "lesson" && activeLesson?.type !== "dialogue" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}

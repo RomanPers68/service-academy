@@ -1929,8 +1929,18 @@ const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
   return null;
 };
 
+// Профессии на главной: несколько ступеней одной профессии живут под одной плиткой.
+// Роли, которых здесь нет (хостес, бар), показываются как раньше — отдельными карточками.
+export const TRACK_GROUPS = [
+  { id: "g-waiter",  label: "Официант", sublabel: "Зал и гости",      color: "#7C9E87", icon: "cloche",
+    desc: "От базовых стандартов до роли наставника",   members: ["seasonal", "core"] },
+  { id: "g-manager", label: "Менеджер", sublabel: "Руководство залом", color: "#8B7BAB", icon: "target",
+    desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
+];
+
 export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
+  const [openGroup, setOpenGroup] = React.useState(null);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const position = profile?.position || "waiter";
@@ -2148,47 +2158,101 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
       </div>
 
       <div style={T.roleList} className="sa-stagger">
-        {ROLES.map((r, idx) => {
-          const isUnlocked = effectiveUnlocked.has(r.id);
-          const prevRole = ROLE_ORDER[idx - 1];
-          const isNextUp = !isUnlocked && (idx === 0 || effectiveUnlocked.has(prevRole));
-          return (
-            <div key={r.id}
-              className={isUnlocked ? "sa-card sa-glass" : "sa-card"}
-              style={{
-                ...T.roleCard,
-                background: T.roleCard.background,
-                borderColor: isUnlocked ? r.color+"44" : "rgba(255,255,255,0.06)",
-                opacity: isUnlocked ? 1 : 0.45,
-                cursor: isUnlocked ? "pointer" : "default",
-                position: "relative", overflow:"hidden",
-              }}
-              onClick={() => isUnlocked && onSelect(r.id)} {...onActivate(() => isUnlocked && onSelect(r.id))}
-            >
-              {isUnlocked && <div style={{ ...T.roleAccent, background: r.color }} />}
-              <div style={{ ...T.roleIcon, background: isUnlocked ? r.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: isUnlocked ? `0 2px 8px ${r.color}44` : "none", filter: isUnlocked ? "none" : "grayscale(1)" }}>
-                {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 30) : r.icon) : ROLE_SVG.lock("#8A8070", 25)}
-              </div>
-              <div style={T.roleInfo}>
-                <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                  <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
-                  {r.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? r.color : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+        {(() => {
+          // Профессия = одна плитка. Ступени раскрываются на месте, без нового экрана.
+          const groupOf = {};
+          TRACK_GROUPS.forEach(g => g.members.forEach(m => { groupOf[m] = g; }));
+
+          const renderRole = (r, sub) => {
+            const idx = ROLES.findIndex(x => x.id === r.id);
+            const isUnlocked = effectiveUnlocked.has(r.id);
+            const prevRole = ROLE_ORDER[idx - 1];
+            const isNextUp = !isUnlocked && (idx === 0 || effectiveUnlocked.has(prevRole));
+            return (
+              <div key={r.id}
+                className={isUnlocked ? "sa-card sa-glass" : "sa-card"}
+                style={{
+                  ...T.roleCard,
+                  background: T.roleCard.background,
+                  borderColor: isUnlocked ? r.color+"44" : "rgba(255,255,255,0.06)",
+                  opacity: isUnlocked ? 1 : 0.45,
+                  cursor: isUnlocked ? "pointer" : "default",
+                  position: "relative", overflow:"hidden",
+                  ...(sub ? { marginLeft: 22, borderRadius: 18 } : null),
+                }}
+                onClick={() => isUnlocked && onSelect(r.id)} {...onActivate(() => isUnlocked && onSelect(r.id))}
+              >
+                {isUnlocked && <div style={{ ...T.roleAccent, background: r.color }} />}
+                <div style={{ ...T.roleIcon, background: isUnlocked ? r.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: isUnlocked ? `0 2px 8px ${r.color}44` : "none", filter: isUnlocked ? "none" : "grayscale(1)" }}>
+                  {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 30) : r.icon) : ROLE_SVG.lock("#8A8070", 25)}
                 </div>
-                <div style={T.roleSublabel}>{r.sublabel}</div>
+                <div style={T.roleInfo}>
+                  <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                    <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
+                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? r.color : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+                  </div>
+                  <div style={T.roleSublabel}>{r.sublabel}</div>
+                  {isUnlocked
+                    ? <div style={T.roleDesc}>{r.desc}</div>
+                    : <div style={{ ...T.roleDesc, color: T.modSub.color, fontStyle:"italic" }}>
+                        {isNextUp && idx > 0 ? `Пройди «${ROLES[idx-1].label}» чтобы открыть` : "Заблокировано"}
+                      </div>
+                  }
+                </div>
                 {isUnlocked
-                  ? <div style={T.roleDesc}>{r.desc}</div>
-                  : <div style={{ ...T.roleDesc, color: T.modSub.color, fontStyle:"italic" }}>
-                      {isNextUp ? `Пройди «${ROLES[idx-1].label}» чтобы открыть` : "Заблокировано"}
-                    </div>
+                  ? <div style={{ fontSize:20, color: r.color+"99", fontWeight:"bold" }}>›</div>
+                  : <div style={{ display:"flex", alignItems:"center" }}>{ROLE_SVG.lock("rgba(255,255,255,0.28)", 17)}</div>
                 }
               </div>
-              {isUnlocked
-                ? <div style={{ fontSize:20, color: r.color+"99", fontWeight:"bold" }}>›</div>
-                : <div style={{ display:"flex", alignItems:"center" }}>{ROLE_SVG.lock("rgba(255,255,255,0.28)", 17)}</div>
-              }
-            </div>
-          );
-        })}
+            );
+          };
+
+          const renderGroup = (g, members) => {
+            const open = openGroup === g.id;
+            const anyUnlocked = members.some(r => effectiveUnlocked.has(r.id));
+            const ico = (UI_SVG[g.icon] || ROLE_SVG.manager);
+            return (
+              <div key={g.id}
+                className={anyUnlocked ? "sa-card sa-glass" : "sa-card"}
+                style={{
+                  ...T.roleCard,
+                  background: T.roleCard.background,
+                  borderColor: anyUnlocked ? g.color+"44" : "rgba(255,255,255,0.06)",
+                  opacity: anyUnlocked ? 1 : 0.45,
+                  cursor: "pointer", position: "relative", overflow:"hidden",
+                }}
+                onClick={() => setOpenGroup(open ? null : g.id)} {...onActivate(() => setOpenGroup(open ? null : g.id))}
+              >
+                {anyUnlocked && <div style={{ ...T.roleAccent, background: g.color }} />}
+                <div style={{ ...T.roleIcon, background: anyUnlocked ? g.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: anyUnlocked ? `0 2px 8px ${g.color}44` : "none", filter: anyUnlocked ? "none" : "grayscale(1)" }}>
+                  {ico(anyUnlocked ? g.color : "#8A8070", 30)}
+                </div>
+                <div style={T.roleInfo}>
+                  <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                    <div style={{ ...T.roleLabel, color: anyUnlocked ? g.color : T.modSub.color }}>{g.label}</div>
+                  </div>
+                  <div style={T.roleSublabel}>{g.sublabel} · {members.length} ступени</div>
+                  <div style={T.roleDesc}>{g.desc}</div>
+                </div>
+                <div style={{ fontSize:20, color: (anyUnlocked ? g.color : "#8A8070")+"99", fontWeight:"bold",
+                  transition:"transform 0.3s cubic-bezier(0.22,1,0.36,1)", transform: open ? "rotate(90deg)" : "none" }}>›</div>
+              </div>
+            );
+          };
+
+          const out = [];
+          const usedGroups = new Set();
+          ROLES.forEach(r => {
+            const g = groupOf[r.id];
+            if (!g) { out.push(renderRole(r, false)); return; }
+            if (usedGroups.has(g.id)) return;
+            usedGroups.add(g.id);
+            const members = g.members.map(id => ROLES.find(x => x.id === id)).filter(Boolean);
+            out.push(renderGroup(g, members));
+            if (openGroup === g.id) members.forEach(m => out.push(renderRole(m, true)));
+          });
+          return out;
+        })()}
       </div>
 
       {/* ═══ На подходе — анонсы новых треков и функций, стиль заблокированных ролей ═══ */}

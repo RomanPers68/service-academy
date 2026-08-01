@@ -1941,21 +1941,6 @@ export const TRACK_GROUPS = [
 export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
-  // Высоту раскрытия ставим по фактическому содержимому: с фиксированным
-  // потолком анимация доезжает раньше срока и выглядит рывком.
-  const trackSubRefs = React.useRef({});
-  React.useEffect(() => {
-    Object.entries(trackSubRefs.current).forEach(([id, node]) => {
-      if (!node) return;
-      if (openGroup === id) {
-        // Страховка: если по какой-то причине высота не измерилась,
-        // ставим запас, чтобы блок не остался схлопнутым.
-        node.style.maxHeight = (node.scrollHeight || 520) + "px";
-      } else {
-        node.style.maxHeight = "0px";
-      }
-    });
-  }, [openGroup]);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const position = profile?.position || "waiter";
@@ -2251,7 +2236,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                   <div style={T.roleDesc}>{g.desc}</div>
                 </div>
                 <div style={{ fontSize:20, color: (anyUnlocked ? g.color : "#8A8070")+"99", fontWeight:"bold",
-                  transition:"transform 0.44s cubic-bezier(0.33,0,0.2,1)", transform: open ? "rotate(90deg)" : "none" }}>›</div>
+                  transition:"transform 0.5s cubic-bezier(0.4,0,0.2,1)", transform: open ? "rotate(90deg)" : "none" }}>›</div>
               </div>
             );
           };
@@ -2270,8 +2255,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             const open = openGroup === g.id;
             out.push(
               <div key={g.id + "-steps"} className={"sa-tracksub" + (open ? " open" : "")}
-                ref={node => { trackSubRefs.current[g.id] = node; }}
-                style={{ marginBottom: open ? -16 : -listGap }}>
+                style={{ marginBottom: open ? 0 : -listGap }}>
                 {members.map(m => renderRole(m, true))}
               </div>
             );

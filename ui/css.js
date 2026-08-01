@@ -106,23 +106,19 @@ export const injectStyles = () => {
        и колонка ниже не переанимируется при каждом тапе. */
     .sa-tracksub {
       display: flex; flex-direction: column; gap: 8px;
-      /* Запас снизу — под тени карточек: overflow:hidden режет их по границе,
-         а высота теперь равна содержимому ровно. Отступ входит в scrollHeight,
-         поэтому компенсируется отрицательным margin-bottom в разметке. */
-      padding-bottom: 16px;
       max-height: 0; overflow: hidden; opacity: 0;
-      /* Точную высоту проставляет JS по scrollHeight — иначе движение
-         заканчивается раньше времени и раскрытие выглядит рывком. */
-      transition: max-height 0.44s cubic-bezier(0.33,0,0.2,1),
-                  opacity 0.34s cubic-bezier(0.4,0,0.2,1),
-                  margin-bottom 0.44s cubic-bezier(0.33,0,0.2,1);
+      /* Потолок держим близко к реальной высоте двух ступеней: чем он больше,
+         тем раньше движение доезжает до конца и тем резче выглядит. */
+      transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1),
+                  opacity 0.4s cubic-bezier(0.4,0,0.2,1),
+                  margin-bottom 0.5s cubic-bezier(0.4,0,0.2,1);
     }
-    .sa-tracksub.open { opacity: 1; }
+    .sa-tracksub.open { max-height: 300px; opacity: 1; }
     .sa-stagger > .sa-tracksub { animation: none; }
     @keyframes saSubIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-    .sa-tracksub.open > * { animation: saSubIn 0.42s cubic-bezier(0.4,0,0.2,1) both; }
-    .sa-tracksub.open > *:nth-child(2) { animation-delay: 0.08s; }
-    .sa-tracksub.open > *:nth-child(3) { animation-delay: 0.16s; }
+    .sa-tracksub.open > * { animation: saSubIn 0.46s cubic-bezier(0.4,0,0.2,1) both; }
+    .sa-tracksub.open > *:nth-child(2) { animation-delay: 0.09s; }
+    .sa-tracksub.open > *:nth-child(3) { animation-delay: 0.18s; }
     @media (prefers-reduced-motion: reduce) {
       .sa-tracksub { transition: none; }
       .sa-tracksub.open > * { animation: none; }

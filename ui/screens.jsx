@@ -2236,7 +2236,7 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                   <div style={T.roleDesc}>{g.desc}</div>
                 </div>
                 <div style={{ fontSize:20, color: (anyUnlocked ? g.color : "#8A8070")+"99", fontWeight:"bold",
-                  transition:"transform 0.5s cubic-bezier(0.4,0,0.2,1)", transform: open ? "rotate(90deg)" : "none" }}>›</div>
+                  transition:"transform 0.62s cubic-bezier(0.25,0.8,0.25,1)", transform: open ? "rotate(90deg)" : "none" }}>›</div>
               </div>
             );
           };

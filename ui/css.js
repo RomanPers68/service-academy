@@ -107,21 +107,21 @@ export const injectStyles = () => {
     .sa-tracksub {
       display: flex; flex-direction: column; gap: 8px;
       max-height: 0; overflow: hidden; opacity: 0;
-      /* Потолок держим близко к реальной высоте двух ступеней: чем он больше,
-         тем раньше движение доезжает до конца и тем резче выглядит. */
-      transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1),
-                  opacity 0.4s cubic-bezier(0.4,0,0.2,1),
-                  margin-bottom 0.5s cubic-bezier(0.4,0,0.2,1);
+      /* Анимируем ОДИН элемент, а не контейнер плюс каждую ступень отдельно:
+         max-height пересчитывает раскладку на каждом кадре, и лишние
+         параллельные анимации на телефоне дают рваность.
+         Потолок держим близко к реальной высоте двух карточек — чем он выше,
+         тем раньше движение фактически заканчивается. */
+      transition: max-height 0.62s cubic-bezier(0.25,0.8,0.25,1),
+                  opacity 0.44s cubic-bezier(0.25,0.8,0.25,1),
+                  margin-bottom 0.62s cubic-bezier(0.25,0.8,0.25,1);
     }
-    .sa-tracksub.open { max-height: 300px; opacity: 1; }
+    .sa-tracksub.open { max-height: 270px; opacity: 1; will-change: max-height; }
     .sa-stagger > .sa-tracksub { animation: none; }
-    @keyframes saSubIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-    .sa-tracksub.open > * { animation: saSubIn 0.46s cubic-bezier(0.4,0,0.2,1) both; }
-    .sa-tracksub.open > *:nth-child(2) { animation-delay: 0.09s; }
-    .sa-tracksub.open > *:nth-child(3) { animation-delay: 0.18s; }
+    /* Ступени отдельных анимаций не имеют — проявляются вместе с контейнером */
+    .sa-tracksub > * { animation: none !important; }
     @media (prefers-reduced-motion: reduce) {
       .sa-tracksub { transition: none; }
-      .sa-tracksub.open > * { animation: none; }
     }
     .sa-progress { animation: progressFill 0.8s cubic-bezier(0.4,0,0.2,1) both; }
     .sa-glass {

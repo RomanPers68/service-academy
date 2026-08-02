@@ -11,7 +11,9 @@
 
 import React from "react";
 import { BUILDS } from "../data/builds";
+import { GLOSSARY } from "../data/glossary";
 import { shuffleArray, vibrate } from "../lib/utils";
+import { Confetti } from "./widgets";
 import { GOLD, GOLD_SOFT, CREAM, SAND, GREEN, RED, MUTED, MUTED_2, CLAY, INK_DEEP, RADIUS } from "./tokens";
 import { UI_SVG, BUILD_SVG } from "./icons";
 
@@ -19,6 +21,19 @@ const serif = "Georgia, serif";
 const mono = "ui-monospace, Menlo, monospace";
 
 // Перемешиваем варианты внутри каждого шага — как shuffleSituationOptions в практике
+// Статья в глоссарии есть не у каждого термина: «джиггер» есть, «приоритет» нет.
+// Без статьи чип остаётся подписью и не притворяется ссылкой.
+const findArticle = (term) => {
+  if (!term) return null;
+  const t = term.toLowerCase();
+  return GLOSSARY.find(g => (g.term || "").toLowerCase() === t)
+      || GLOSSARY.find(g => {
+           const x = (g.term || "").toLowerCase();
+           return x.includes(t) || t.includes(x);
+         })
+      || null;
+};
+
 const shuffleSteps = (sc) => ({ ...sc, steps: sc.steps.map(st => ({ ...st, options: shuffleArray(st.options) })) });
 
 // Состояния варианта поверх базового стекла приложения (T.simOpt).
@@ -61,6 +76,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
   const [answered, setAnswered] = React.useState(null);
   const [results, setResults] = React.useState([]);
   const [done, setDone] = React.useState(false);
+  const [openTerm, setOpenTerm] = React.useState(false); // раскрыта ли статья глоссария
 
   if (!sc) return null;
 
@@ -75,7 +91,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
     const others = sameId ? pool.filter(b => b.id === sc.id) : pool.filter(b => b.id !== sc.id);
     const src = shuffleArray(others.length ? others : pool)[0];
     setSc(shuffleSteps(src));
-    setStep(0); setAnswered(null); setResults([]); setDone(false);
+    setStep(0); setAnswered(null); setResults([]); setDone(false); setOpenTerm(false);
   };
 
   const choose = (i, ok) => {
@@ -86,7 +102,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
   };
 
   const next = () => {
-    if (step < total - 1) { setStep(step + 1); setAnswered(null); }
+    if (step < total - 1) { setStep(step + 1); setAnswered(null); setOpenTerm(false); }
     else { vibrate(right === total ? "success" : "light"); setDone(true); }
   };
 
@@ -96,12 +112,19 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
     const stack = poured.reduce((a, x) => a + x.s.layer.h, 0);
     const iceStep = sc.steps.slice(0, shown).map((s, i) => ({ s, i })).find(x => x.s.ice);
     const garn = sc.steps.slice(0, shown).find(s => s.garnish);
-    const rocks = sc.glass === "rocks";
+    const shape = sc.glass || "high";
+    const rocks = shape === "rocks";
+    const stemmed = shape === "wine" || shape === "coupe";
     const big = rocks;
+    // Пена берётся у последнего пройденного шага — так она сначала нарастает,
+    // а на следующем шаге оседает до нужной высоты.
+    const foamStep = sc.steps.slice(0, shown).map((x, i) => ({ s: x, i })).filter(x => x.s.foam).pop();
+    const shineStep = sc.steps.slice(0, shown).map((x, i) => ({ s: x, i })).find(x => x.s.shine);
+    const CAP = { high: "хайбол", rocks: "олд фэшн", wine: "винный", pint: "пивной", coupe: "купе" };
 
     return (
       <div style={{ flex: "0 0 96px", height: 172, position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-        <div className={"sa-bld-vessel " + (rocks ? "rocks" : "high") + (spoiled ? " spoiled" : "")}>
+        <div className={"sa-bld-vessel " + shape + (spoiled ? " spoiled" : "")}>
           <div className="sa-bld-rim" />
           <div className="sa-bld-layers">
             {poured.map(({ s, i }) => (
@@ -158,15 +181,100 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
               animationDuration: (4.5 + (i % 4) * 1.6) + "s", animationDelay: (i * 0.8) + "s",
             }} />;
           })}
+
+          {foamStep && (
+            <div className={"sa-bld-foam" + (foamStep.i === just ? " fresh" : "")}
+              style={{ bottom: stack + "%", height: foamStep.s.foam.h + "%" }} />
+          )}
+          {shineStep && shineStep.i === just && <div className="sa-bld-shine" />}
         </div>
+        <div className="sa-bld-shadow" />
+        {stemmed && (<>
+          <div className="sa-bld-stem" />
+          <div className="sa-bld-foot" />
+        </>)}
         {garn && (
           <div className="sa-bld-garnish">
             {(BUILD_SVG[garn.garnish] || BUILD_SVG.mint)(garn.garnish === "twist" ? (a11y ? "#A85A18" : "#E09A50") : (a11y ? "#4E7A32" : "#8FC471"), 26)}
           </div>
         )}
         <div style={{ textAlign: "center", fontFamily: mono, fontSize: 8, letterSpacing: 1.6, color: P.sub, marginTop: 7, textTransform: "uppercase" }}>
-          {rocks ? "олд фэшн" : "хайбол"}
+          {CAP[shape] || "хайбол"}
         </div>
+      </div>
+    );
+  };
+
+
+  // ── НОСИТЕЛЬ: путь льда ────────────────────────────────────────────
+  // Вертикальный маршрут: генератор сверху, ванна посередине, бокал снизу.
+  // Лёд физически спускается вниз, а ошибка делает его мутным и подтаявшим.
+  const IcePath = () => {
+    const passed = new Set(sc.steps.slice(0, shown).map(s => s.stage));
+    const murky = spoiled;                       // ошиблись — лёд собрал лишнее
+    const cube = (i, n, cls) => {
+      const sz = 9 + (i % 2) * 2;
+      return <i key={cls + i} className={"sa-bld-icecube" + (murky ? " murky" : "")}
+        style={{ width: sz, height: sz, left: 6 + ((i * 17) % (n > 4 ? 46 : 30)),
+          bottom: 4 + ((i * 13) % 18), transform: `rotate(${i * 37 % 70 - 35}deg)`,
+          animationDelay: (i * 0.05) + "s" }} />;
+    };
+    return (
+      <div className={"sa-bld-icecol" + (murky ? " murky" : "")}>
+        <div className={"sa-bld-icegen" + (passed.has("gen") ? " on" : "")}>
+          <span>ГЕНЕРАТОР</span>
+          {passed.has("gen") && [...Array(6)].map((_, i) => cube(i, 6, "g"))}
+        </div>
+        <div className={"sa-bld-icearrow" + (passed.has("scoop") ? " on" : "")}>
+          {passed.has("scoop") ? BUILD_SVG.scoop(murky ? RED : (a11y ? "#8B6A30" : GOLD), 15) : <b>↓</b>}
+        </div>
+        <div className={"sa-bld-icetub" + (passed.has("bin") ? " on" : "")}>
+          <span>ВАННА</span>
+          {passed.has("bin") && [...Array(8)].map((_, i) => cube(i, 8, "b"))}
+        </div>
+        <div className={"sa-bld-iceglass" + (passed.has("glass") ? " on" : "")}>
+          {passed.has("glass") && [...Array(5)].map((_, i) => cube(i, 5, "s"))}
+          <span>{passed.has("check") ? (murky ? "ВОДЯНИСТО" : "ХОЛОДНО") : "БОКАЛ"}</span>
+        </div>
+      </div>
+    );
+  };
+
+  // ── НОСИТЕЛЬ: уборка смены ─────────────────────────────────────────
+  // Обратная сборка: станция начинается захламлённой, каждый верный шаг
+  // что-то убирает, поверхность светлеет.
+  const Cleanup = () => {
+    const cleared = new Set();
+    sc.steps.slice(0, shown).forEach((st, i) => { if (st.clears && results[i] !== false) cleared.add(st.clears); });
+    const items = [
+      { key: "perish", ic: "citrus",    label: "гарниш и соки" },
+      { key: "tools",  ic: "sponge",    label: "инструмент" },
+      { key: "bin",    ic: "bin",       label: "вода в ванне" },
+      { key: "surface",ic: "wipe",      label: "станция и тряпки" },
+      { key: "handover", ic: "clipboard", label: "стоп-лист" },
+    ];
+    const done = items.filter(x => cleared.has(x.key)).length;
+    const pct = Math.round((done / items.length) * 100);
+    return (
+      <div className="sa-bld-clean" style={{ "--clean": pct + "%" }}>
+        <div className="sa-bld-cleanhead">
+          <span>СМЕНА</span>
+          <span style={{ color: done === items.length ? GREEN : (a11y ? "#8B6A30" : GOLD) }}>
+            {done === items.length ? "СДАНА ✓" : done + " / " + items.length}
+          </span>
+        </div>
+        {items.map(it => {
+          const off = cleared.has(it.key);
+          return (
+            <div key={it.key} className={"sa-bld-cslot" + (off ? " cleared" : "")}>
+              <span className="sa-bld-cico">
+                {(BUILD_SVG[it.ic] || BUILD_SVG.wipe)(off ? (a11y ? "#4E7A32" : GREEN) : (a11y ? "#9A7A40" : "#B09060"), 13)}
+              </span>
+              <span className="sa-bld-clabel">{it.label}</span>
+              {off && <span className="sa-bld-cmark">✓</span>}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -201,6 +309,105 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             </div>
           </div>
         ))}
+      </div>
+    );
+  };
+
+
+  // ── НОСИТЕЛЬ: гость за стойкой ─────────────────────────────────────
+  // Предмет здесь — сам гость: его настроение меняется от твоих решений,
+  // а на стойке появляется то, что ты ему поставил.
+  const Guest = () => {
+    const done = results.slice(0, shown);
+    const good = done.filter(r => r === true).length;
+    const bad = done.filter(r => r === false).length;
+    const mood = Math.max(0, Math.min(4, 2 + good - bad * 2));
+    const MOODS = ["Закрылся", "Насторожен", "Нейтрален", "Расположен", "Доволен"];
+    const tone = mood <= 1 ? RED : mood === 2 ? (a11y ? "#8A7A5C" : MUTED) : (a11y ? "#4E7A32" : GREEN);
+    const served = sc.steps.slice(0, shown).flatMap(s => s.serve || []);
+    return (
+      <div className="sa-bld-guest">
+        <div className="sa-bld-gfig" style={{ borderColor: tone + "55" }}>
+          {BUILD_SVG.guest(tone, 34)}
+        </div>
+        <div className="sa-bld-gmood">
+          {[0, 1, 2, 3, 4].map(i => (
+            <span key={i} className="sa-bld-gdot"
+              style={{ background: i <= mood ? tone : "transparent", borderColor: tone + (i <= mood ? "" : "44") }} />
+          ))}
+        </div>
+        <div className="sa-bld-glabel" style={{ color: tone }}>{MOODS[mood]}</div>
+        <div className="sa-bld-gbar">
+          {served.length
+            ? served.map((k, i) => (
+                <span key={i} className="sa-bld-gitem">
+                  {(BUILD_SVG[k] || BUILD_SVG.glass)(a11y ? "#8B6A30" : GOLD, 15)}
+                </span>
+              ))
+            : <span className="sa-bld-gempty">стойка пуста</span>}
+        </div>
+      </div>
+    );
+  };
+
+  // ── НОСИТЕЛЬ: выдача в час пик ─────────────────────────────────────
+  // Полка выдачи: напитки встают по мере верных решений, счётчик ждущих тает.
+  const Pass = () => {
+    const served = sc.steps.slice(0, shown).flatMap(s => s.serve || []);
+    const total = sc.steps.flatMap(s => s.serve || []).length;
+    const waiting = Math.max(0, total - served.length);
+    return (
+      <div className="sa-bld-pass">
+        <div className="sa-bld-passhead">
+          <span>ВЫДАЧА</span>
+          <span style={{ color: waiting ? (a11y ? "#8B6A30" : GOLD) : GREEN }}>
+            {waiting ? "ждут " + waiting : "готово ✓"}
+          </span>
+        </div>
+        <div className="sa-bld-rail">
+          {[...Array(total)].map((_, i) => (
+            <span key={i} className={"sa-bld-slot" + (i < served.length ? " on" : "")}>
+              {i < served.length
+                ? (BUILD_SVG[served[i]] || BUILD_SVG.glass)(spoiled ? RED : (a11y ? "#8B6A30" : GOLD), 17)
+                : <b>·</b>}
+            </span>
+          ))}
+        </div>
+        <div className="sa-bld-railline" />
+        <div className="sa-bld-passfoot">{spoiled ? "заказ уйдёт вразнобой" : "заказ уходит целиком"}</div>
+      </div>
+    );
+  };
+
+  // ── НОСИТЕЛЬ: полка склада ─────────────────────────────────────────
+  // Бутылки с разными уровнями: пока не посчитал — знак вопроса вместо цифры.
+  const Shelf = () => {
+    const marks = new Set(sc.steps.slice(0, shown).map(s => s.shelf).filter(Boolean));
+    const lv = [72, 34, 90, 18, 55, 46];
+    return (
+      <div className="sa-bld-shelf">
+        <div className="sa-bld-shelfhead">
+          <span>СКЛАД</span>
+          <span style={{ color: marks.has("handover") ? GREEN : (a11y ? "#8B6A30" : GOLD) }}>
+            {marks.has("handover") ? "сдан ✓" : marks.has("measure") ? "посчитан" : "не считан"}
+          </span>
+        </div>
+        <div className="sa-bld-bottles">
+          {lv.map((h, i) => (
+            <span key={i} className={"sa-bld-bottle" + (marks.has("measure") ? " on" : "")}>
+              <i style={{ height: (marks.has("measure") ? h : 0) + "%" }} />
+              <b>{marks.has("measure") ? h : "?"}</b>
+            </span>
+          ))}
+        </div>
+        <div className={"sa-bld-crate" + (marks.has("perish") ? " on" : "")}>
+          {BUILD_SVG.citrus(marks.has("perish") ? (a11y ? "#7A9A32" : "#A8C46E") : "#5C5244", 12)}
+          <span>{marks.has("perish") ? "скоропорт под оборот" : "скоропорт не учтён"}</span>
+        </div>
+        <div className={"sa-bld-crate" + (marks.has("order") ? " on" : "")}>
+          {BUILD_SVG.box(marks.has("order") ? (a11y ? "#8B6A30" : GOLD) : "#5C5244", 12)}
+          <span>{marks.has("order") ? "заказ отправлен" : "заказ не собран"}</span>
+        </div>
       </div>
     );
   };
@@ -253,12 +460,27 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
     </div>
   );
 
-  const Carrier = () => sc.vis === "flow" ? <Flow /> : (
-    <div style={{ display: "flex", gap: 14, alignItems: "flex-end", margin: "12px 0 2px" }}>
-      {sc.vis === "vessel" ? <Vessel /> : <Station />}
-      <StepList />
-    </div>
-  );
+  const SIDE = { vessel: Vessel, station: Station, ice: IcePath, cleanup: Cleanup, guest: Guest, pass: Pass, shelf: Shelf };
+  // Финальный кадр: то, что человек собрал, показываем крупно и по центру.
+  // Список шагов на итоге не нужен — его заменяет разбор ниже.
+  const HeroCarrier = () => {
+    const Side = SIDE[sc.vis] || Station;
+    return (
+      <div className="sa-bld-hero" style={{ display: "flex", justifyContent: "center", margin: "14px 0 4px" }}>
+        <Side />
+      </div>
+    );
+  };
+  const Carrier = () => {
+    if (sc.vis === "flow") return <Flow />;
+    const Side = SIDE[sc.vis] || Station;
+    return (
+      <div className="sa-bld-counter">
+        <Side />
+        <StepList />
+      </div>
+    );
+  };
 
   // Стекло карточки — общее с уроками приложения: внутреннее свечение,
   // светлая кромка сверху, без backdrop-blur. Обе темы приходят из токенов.
@@ -269,6 +491,9 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
     borderTop: T.lessGlass?.borderTop || "1px solid rgba(210,168,65,0.44)",
     boxShadow: T.lessGlass?.shadow
       || "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.38)",
+    // Оттенок под тему сценария: у льда холодный, у вина винный, у пива янтарный.
+    // Едва заметный, чтобы не спорить с общей золотой палитрой приложения.
+    backgroundImage: sc.tint ? `linear-gradient(158deg, ${sc.tint}${a11y ? "1A" : "16"} 0%, transparent 58%)` : undefined,
   };
   const btn = {
     width: "100%", marginTop: 10, padding: 14, border: "none", borderRadius: RADIUS.md,
@@ -279,14 +504,22 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
   // ── ЭКРАН ИТОГА ────────────────────────────────────────────────────
   if (done) {
     const missed = sc.steps.filter((_, i) => results[i] === false);
+    // Печать вместо голой цифры — метафора книги отзывов, уже принятая в приложении.
+    const verdict = missed.length === 0 ? { cls: "ok", label: "Безупречно" }
+      : missed.length === 1 ? { cls: "warn", label: "С замечанием" }
+      : { cls: "bad", label: "Пересобрать" };
     return (
       <Shell title={sc.title} onClose={() => onClose && onClose()} accent={accent} T={T}>
+        {right === total && <Confetti />}
         <div style={cardStyle}>
           <Eyebrow left={"Сборка · " + sc.title} right="итог" a11y={a11y} />
-          <Carrier />
-          <div style={{ textAlign: "center", padding: "10px 4px 2px" }}>
-            <div style={{ fontSize: 42, color: accent, lineHeight: 1 }}>{right} / {total}</div>
-            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 8 }}>шагов без ошибки</div>
+          <HeroCarrier />
+          <div style={{ textAlign: "center", padding: "12px 4px 2px" }}>
+            <div className={"sa-bld-seal " + verdict.cls}>
+              <span className="sa-bld-sealtop">{right} / {total}</span>
+              <span className="sa-bld-sealtext">{verdict.label}</span>
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 12 }}>шагов без ошибки</div>
           </div>
           {!missed.length ? (
             <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: GREEN }}>🎯 {sc.win}</div>
@@ -321,13 +554,17 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
       <div style={cardStyle}>
         <Eyebrow left={"Сборка · " + sc.title} right={`${step + 1} / ${total}`} a11y={a11y} />
         <div style={{ fontSize: 11, color: P.sub, marginTop: 6, fontStyle: "italic" }}>{sc.from}</div>
+        <div className="sa-bld-thread">
+          <i style={{ width: Math.round(((step + (answered != null ? 1 : 0)) / total) * 100) + "%" }} />
+        </div>
         <Carrier />
+        <div key={"st" + step} className="sa-bld-stepin">
         <div style={{ fontSize: 16, lineHeight: 1.45, margin: "14px 0 12px", color: P.text }}>{cur.q}</div>
 
         {cur.options.map((o, i) => {
           const state = answered == null ? null : o.ok ? "win" : i === answered ? "lose" : "off";
           return (
-            <button key={i} className={"sa-bld-opt" + (state ? " " + state : "")} disabled={answered != null}
+            <button key={i} className={"sa-bld-opt" + (state ? " " + state : "") + (state === "win" ? " pop" : "")} disabled={answered != null}
               onClick={answered == null ? () => choose(i, o.ok) : undefined}
               style={{ ...(T.simOpt || {}), ...optState(state) }}>
               <span className="sa-bld-optk" style={optKey(state)}>{"ABCD"[i]}</span>
@@ -344,9 +581,28 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
                 Дойдёт до гостя так: {cur.cost}
               </div>
             )}
-            {cur.term && <div className="sa-bld-term">📖 {cur.term}</div>}
+            {cur.term && (() => {
+              // Статью показываем прямо здесь: уход на экран глоссария
+              // размонтировал бы «Сборку» вместе с прохождением.
+              const art = findArticle(cur.term);
+              if (!art) return <span className="sa-bld-term flat">{cur.term}</span>;
+              return (<>
+                <button className={"sa-bld-term" + (openTerm ? " open" : "")}
+                  onClick={() => setOpenTerm(v => !v)}>
+                  📖 {cur.term} {openTerm ? "▴" : "▾"}
+                </button>
+                {openTerm && (
+                  <div className="sa-bld-article">
+                    <b>{art.term}</b>
+                    <span>{art.def}</span>
+                  </div>
+                )}
+              </>);
+            })()}
           </div>
         )}
+
+        </div>
 
         {answered != null && (
           <button style={btn} className="sa-btn" onClick={next}>

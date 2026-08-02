@@ -193,8 +193,21 @@ export const injectStyles = () => {
 
     /* ══ «Сборка» — фирменный формат практики роли «Бар» (ui/build.jsx) ══ */
     .sa-bld-term{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;
-      font-size:11px;color:#D4A85A;background:rgba(200,169,110,0.12);
-      border:1px solid rgba(200,169,110,0.34)}
+      font-family:Georgia,serif;font-size:11px;color:#D4A85A;background:rgba(200,169,110,0.12);
+      border:1px solid rgba(200,169,110,0.34);cursor:pointer;transition:.2s}
+    .sa-bld-term:active{transform:scale(.96)}
+    .sa-bld-term.flat{cursor:default;opacity:.85}
+    .sa-bld-term.open{background:rgba(200,169,110,0.20);border-color:rgba(200,169,110,0.5)}
+    .sa-bld-article{margin-top:8px;padding:9px 11px;border-radius:10px;font-size:12.5px;line-height:1.5;
+      background:rgba(255,250,238,0.05);border:1px solid rgba(145,108,40,0.28);
+      border-top:1px solid rgba(210,168,65,0.32);box-shadow:inset 0 0 14px rgba(255,248,230,0.05);
+      animation:saStepIn .28s cubic-bezier(0.25,0.8,0.25,1) both}
+    .sa-bld-article b{display:block;color:#D4A85A;font-weight:normal;margin-bottom:3px}
+    .sa-bld-article span{color:#C8BFAE}
+    html.sa-light .sa-bld-article{background:rgba(252,246,232,0.7);border-color:rgba(175,140,65,0.24);
+      border-top-color:rgba(255,244,214,0.7)}
+    html.sa-light .sa-bld-article b{color:#8B6A30}
+    html.sa-light .sa-bld-article span{color:#4A3D28}
 
     .sa-bld-opt{width:100%;text-align:left;display:flex;align-items:center;gap:11px;
       cursor:pointer;font-family:Georgia,serif;
@@ -205,6 +218,45 @@ export const injectStyles = () => {
       font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#B09060;
       border:1px solid rgba(200,169,110,0.35);transition:.2s}
     .sa-bld-fb{margin-top:12px}
+    /* Общая сцена: все носители стоят на одной линии стойки */
+    .sa-bld-counter{position:relative;display:flex;gap:14px;align-items:flex-end;margin:12px 0 14px;padding-bottom:11px}
+    .sa-bld-counter::after{content:"";position:absolute;left:-4px;right:-4px;bottom:0;height:3px;border-radius:2px;
+      background:linear-gradient(90deg,rgba(200,169,110,0.06),rgba(200,169,110,0.44),rgba(200,169,110,0.06));
+      box-shadow:0 3px 10px rgba(0,0,0,0.42)}
+    .sa-bld-shadow{position:absolute;left:50%;bottom:-3px;width:74px;height:9px;margin-left:-37px;
+      border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,0.5),transparent 72%);
+      z-index:0;pointer-events:none}
+    /* Прогресс-нить: движение к финалу видно, а не только «3 / 6» */
+    .sa-bld-thread{height:2.5px;border-radius:2px;margin-top:9px;overflow:hidden;background:rgba(0,0,0,0.35)}
+    .sa-bld-thread i{display:block;height:100%;border-radius:2px;
+      background:linear-gradient(90deg,#D4A85A,#C8A96E);box-shadow:0 0 6px rgba(200,169,110,0.55);
+      transition:width 0.5s cubic-bezier(0.25,0.8,0.25,1)}
+    /* Смена шага: вопрос и варианты мягко въезжают */
+    @keyframes saStepIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+    .sa-bld-stepin{animation:saStepIn 0.34s cubic-bezier(0.25,0.8,0.25,1) both}
+    @media (prefers-reduced-motion: reduce){ .sa-bld-stepin{animation:none} }
+    /* Отклик на верный шаг: короткий импульс у правильного варианта */
+    @keyframes saOptPop{0%{transform:scale(1)}38%{transform:scale(1.025)}100%{transform:scale(1)}}
+    .sa-bld-opt.pop{animation:saOptPop .38s cubic-bezier(.3,1.4,.5,1)}
+    /* Финальный кадр: носитель крупнее и по центру */
+    .sa-bld-hero{transform:scale(1.14);transform-origin:center top;padding:6px 0 12px}
+    /* Печать на итоге — та же метафора, что в книге отзывов */
+    @keyframes saSealIn{0%{transform:scale(.6) rotate(-16deg);opacity:0}
+      62%{transform:scale(1.07) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(-4deg)}}
+    .sa-bld-seal{position:relative;width:104px;height:104px;margin:0 auto;border-radius:50%;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+      transform:rotate(-4deg);animation:saSealIn .7s cubic-bezier(.3,1.3,.5,1) both;
+      box-shadow:inset 0 2px 6px rgba(255,255,255,0.28),inset 0 -4px 10px rgba(0,0,0,0.30),0 6px 16px rgba(0,0,0,0.42)}
+    .sa-bld-seal::before{content:"";position:absolute;inset:0;border-radius:50%;
+      border:2px dashed rgba(255,255,255,0.22);transform:scale(.86)}
+    .sa-bld-sealtop{font-family:Georgia,serif;font-size:26px;line-height:1;position:relative;z-index:2}
+    .sa-bld-sealtext{font-family:ui-monospace,Menlo,monospace;font-size:7.5px;letter-spacing:1.6px;
+      text-transform:uppercase;position:relative;z-index:2;opacity:.92}
+    .sa-bld-seal.ok{background:radial-gradient(circle at 34% 28%,#3E8E63,#215A3C);color:#EAF6EE}
+    .sa-bld-seal.warn{background:radial-gradient(circle at 34% 28%,#C8A050,#8B6A30);color:#FFF7E4}
+    .sa-bld-seal.bad{background:radial-gradient(circle at 34% 28%,#A8402F,#6E1F16);color:#FBE7E2}
+    @media (prefers-reduced-motion: reduce){ .sa-bld-seal{animation:none} }
+    @media (prefers-reduced-motion: reduce){ .sa-bld-opt.pop{animation:none} }
     /* носитель: сосуд */
     .sa-bld-vessel{position:relative;margin:0 auto;overflow:hidden;
       border:2px solid rgba(210,190,160,0.42);border-top:0;
@@ -213,6 +265,37 @@ export const injectStyles = () => {
     .sa-bld-vessel.high{width:62px;height:152px;border-radius:4px 4px 9px 9px}
     .sa-bld-vessel.rocks{width:84px;height:96px;border-radius:3px 3px 6px 6px;border-width:3px;
       box-shadow:inset 0 -14px 18px rgba(255,255,255,0.07)}
+    /* Винный бокал: чаша + ножка + основание. Чаша шире книзу и сужается кверху. */
+    .sa-bld-vessel.wine{width:80px;height:86px;border-radius:5px 5px 38px 38px;border-width:2px;
+      box-shadow:inset 0 -10px 16px rgba(255,255,255,0.06)}
+    .sa-bld-vessel.coupe{width:92px;height:54px;border-radius:3px 3px 46px 46px;border-width:2px;
+      box-shadow:inset 0 -8px 14px rgba(255,255,255,0.07)}
+    .sa-bld-stem{width:6px;height:40px;margin:0 auto;flex-shrink:0;
+      background:linear-gradient(90deg,rgba(180,160,130,0.22),rgba(255,255,255,0.34),rgba(180,160,130,0.22))}
+    .sa-bld-foot{width:54px;height:7px;margin:0 auto;flex-shrink:0;border-radius:50%;
+      background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(200,182,150,0.14));
+      box-shadow:0 3px 7px rgba(0,0,0,0.38)}
+    /* Пивной: чуть уже книзу, высокий */
+    .sa-bld-vessel.pint{width:74px;height:156px;border-radius:5px 5px 12px 12px;
+      box-shadow:inset 0 -18px 22px rgba(255,255,255,0.05)}
+    /* Пена: нарастает и оседает, поверх жидкости */
+    .sa-bld-foam{position:absolute;left:0;right:0;z-index:3;border-radius:7px 7px 3px 3px;
+      background:linear-gradient(180deg,rgba(255,253,246,0.96),rgba(242,231,206,0.82));
+      box-shadow:inset 0 -4px 7px rgba(190,168,124,0.35),0 -1px 3px rgba(255,255,255,0.4);
+      transition:height 0.55s cubic-bezier(0.3,1,0.4,1),bottom 0.55s cubic-bezier(0.3,1,0.4,1)}
+    .sa-bld-foam::after{content:"";position:absolute;inset:0;border-radius:inherit;opacity:0.75;
+      background:radial-gradient(circle at 22% 34%,rgba(255,255,255,0.95) 1.4px,transparent 2.4px),
+                 radial-gradient(circle at 63% 62%,rgba(255,255,255,0.85) 1.8px,transparent 2.8px),
+                 radial-gradient(circle at 82% 26%,rgba(255,255,255,0.8) 1.2px,transparent 2.2px),
+                 radial-gradient(circle at 40% 78%,rgba(255,255,255,0.7) 1.5px,transparent 2.5px)}
+    @keyframes saFoamRise{from{height:0;opacity:0}}
+    .sa-bld-foam.fresh{animation:saFoamRise 0.62s cubic-bezier(0.3,1,0.4,1)}
+    /* Блик по стеклу — отклик на шаг про чистоту бокала */
+    @keyframes saShine{0%{transform:translateX(-130%) skewX(-18deg);opacity:0}
+      18%{opacity:0.85}82%{opacity:0.85}100%{transform:translateX(130%) skewX(-18deg);opacity:0}}
+    .sa-bld-shine{position:absolute;top:0;bottom:0;left:0;width:46%;z-index:6;pointer-events:none;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent);
+      animation:saShine 0.9s ease-out forwards}
     .sa-bld-vessel::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
       box-shadow:inset 3px 0 7px rgba(255,255,255,0.13),inset -4px 0 8px rgba(0,0,0,0.34)}
     .sa-bld-vessel.spoiled{border-color:rgba(224,120,120,0.45)}
@@ -258,6 +341,55 @@ export const injectStyles = () => {
     @keyframes saGarnishSway{0%,100%{transform:translate(-50%,0) rotate(-3deg)}50%{transform:translate(-50%,0) rotate(3deg)}}
     @keyframes saDropSlide{0%{transform:translateY(0);opacity:0}18%{opacity:.6}100%{transform:translateY(var(--slide));opacity:0}}
 
+    /* носитель: путь льда — вертикальный маршрут кубика */
+    .sa-bld-icecol{flex:0 0 118px;display:flex;flex-direction:column;gap:5px;padding:7px;
+      border-radius:10px;background:rgba(226,186,116,0.09);
+      border:1px solid rgba(145,108,40,0.34);border-top:1px solid rgba(210,168,65,0.42);
+      box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10);
+      transition:.4s}
+    .sa-bld-icecol.murky{border-color:rgba(224,120,120,0.35)}
+    .sa-bld-icegen,.sa-bld-icetub,.sa-bld-iceglass{position:relative;overflow:hidden;
+      border-radius:6px;background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);transition:.45s}
+    .sa-bld-icegen{height:36px} .sa-bld-icetub{height:34px} .sa-bld-iceglass{height:44px;border-radius:4px 4px 9px 9px}
+    .sa-bld-icegen.on,.sa-bld-icetub.on,.sa-bld-iceglass.on{border-style:solid;
+      border-color:rgba(160,200,230,0.42);border-top-color:rgba(190,225,245,0.5);
+      background:rgba(150,195,230,0.12);
+      box-shadow:inset 0 0 14px rgba(200,235,255,0.10),inset 0 1px 0 rgba(255,255,255,0.14)}
+    .sa-bld-icegen > span,.sa-bld-icetub > span,.sa-bld-iceglass > span{position:absolute;left:6px;top:4px;
+      font-family:ui-monospace,Menlo,monospace;font-size:6.5px;letter-spacing:1.1px;color:#756A58;z-index:2}
+    .sa-bld-iceglass > span{top:auto;bottom:4px;left:0;right:0;text-align:center}
+    .sa-bld-icearrow{height:16px;display:grid;place-items:center;color:#5C5244;font-size:11px;transition:.4s}
+    .sa-bld-icearrow.on{color:#C8A96E}
+    @keyframes saCubeIn{0%{transform:translateY(-26px) scale(.6);opacity:0}100%{opacity:1}}
+    .sa-bld-icecube{position:absolute;border-radius:2px;z-index:1;
+      background:rgba(238,248,255,0.34);border:1px solid rgba(255,255,255,0.34);
+      box-shadow:inset 0 2px 3px rgba(255,255,255,0.35);
+      animation:saCubeIn .5s cubic-bezier(.35,1.1,.45,1) backwards;transition:.4s}
+    .sa-bld-icecube.murky{background:rgba(190,195,190,0.26);border-color:rgba(200,200,190,0.22);box-shadow:none}
+
+    /* носитель: уборка смены — станция пустеет, поверхность светлеет */
+    .sa-bld-clean{flex:0 0 152px;padding:8px;border-radius:10px;position:relative;overflow:hidden;
+      background:rgba(226,186,116,0.09);
+      border:1px solid rgba(145,108,40,0.34);border-top:1px solid rgba(210,168,65,0.42);
+      box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10)}
+    .sa-bld-clean::before{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--clean,0%);
+      background:linear-gradient(0deg,rgba(200,169,110,0.16),rgba(200,169,110,0));
+      transition:height .55s cubic-bezier(.3,1,.4,1);pointer-events:none}
+    .sa-bld-cleanhead{display:flex;justify-content:space-between;gap:6px;position:relative;z-index:2;
+      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#756A58;margin-bottom:6px}
+    .sa-bld-cslot{display:flex;align-items:center;gap:6px;padding:5px 7px;margin-bottom:4px;
+      border-radius:7px;position:relative;z-index:2;
+      background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
+      border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);
+      transition:opacity .45s ease,background .45s ease,border-color .45s ease}
+    .sa-bld-cslot.cleared{opacity:.42;background:rgba(93,187,138,0.10);border-color:rgba(93,187,138,0.30);
+      border-top-color:rgba(140,215,175,0.36);box-shadow:inset 0 0 12px rgba(93,187,138,0.10)}
+    .sa-bld-cico{display:flex;flex-shrink:0}
+    .sa-bld-clabel{flex:1;min-width:0;font-size:9px;color:#E8DEC8;line-height:1.2}
+    .sa-bld-cslot.cleared .sa-bld-clabel{text-decoration:line-through}
+    .sa-bld-cmark{font-size:9px;color:#5DBB8A}
+
     /* носитель: станция сверху */
     .sa-bld-station{flex:0 0 152px;padding:8px;border-radius:10px;background:rgba(226,186,116,0.09);
       border:1px solid rgba(145,108,40,0.34);border-top:1px solid rgba(210,168,65,0.42);
@@ -267,8 +399,11 @@ export const injectStyles = () => {
     .sa-bld-station.spoiled{border-color:rgba(224,120,120,0.35)}
     .sa-bld-icebin{position:relative;height:26px;border-radius:7px;margin-bottom:6px;overflow:hidden;
       display:flex;align-items:center;padding:0 7px;font-size:8.5px;color:#756A58;
-      background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.12);transition:.4s}
-    .sa-bld-icebin.on{color:#CFE4EF;border-style:solid;border-color:rgba(160,200,230,0.38);background:rgba(150,195,230,0.13)}
+      background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);transition:.4s}
+    .sa-bld-icebin.on{color:#CFE4EF;border-style:solid;border-color:rgba(160,200,230,0.38);
+      border-top-color:rgba(190,225,245,0.48);background:rgba(150,195,230,0.13);
+      box-shadow:inset 0 0 14px rgba(200,235,255,0.10),inset 0 1px 0 rgba(255,255,255,0.14)}
     .sa-bld-icebin i{position:absolute;width:7px;height:7px;border-radius:2px;background:rgba(235,248,255,0.5)}
     .sa-bld-zone{padding:5px 7px;border-radius:7px;margin-bottom:4px;
       background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
@@ -280,6 +415,70 @@ export const injectStyles = () => {
     .sa-bld-zone.on .sa-bld-zname{color:#D4A85A}
     .sa-bld-zchip{font-size:8.5px;padding:2px 5px;border-radius:999px;color:#E8DEC8;
       background:rgba(200,169,110,0.17);border:1px solid rgba(200,169,110,0.3)}
+
+    /* носитель: гость за стойкой */
+    .sa-bld-guest{flex:0 0 132px;padding:9px 8px;border-radius:10px;text-align:center;
+      background:rgba(226,186,116,0.09);border:1px solid rgba(145,108,40,0.34);
+      border-top:1px solid rgba(210,168,65,0.42);
+      box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10)}
+    .sa-bld-gfig{width:52px;height:52px;margin:0 auto;border-radius:50%;display:grid;place-items:center;
+      border:1.5px solid;background:rgba(255,250,238,0.035);
+      box-shadow:inset 0 0 16px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10);
+      transition:border-color .45s ease}
+    .sa-bld-gmood{display:flex;gap:4px;justify-content:center;margin-top:9px}
+    .sa-bld-gdot{width:7px;height:7px;border-radius:50%;border:1px solid;transition:.4s}
+    .sa-bld-glabel{font-family:ui-monospace,Menlo,monospace;font-size:8px;letter-spacing:1.2px;
+      text-transform:uppercase;margin-top:6px;transition:color .4s ease}
+    .sa-bld-gbar{margin-top:9px;padding-top:8px;border-top:1px solid rgba(200,169,110,0.28);
+      display:flex;gap:5px;justify-content:center;flex-wrap:wrap;min-height:26px;align-items:center}
+    @keyframes saServeIn{from{opacity:0;transform:translateY(8px) scale(.8)}to{opacity:1;transform:none}}
+    .sa-bld-gitem{display:flex;animation:saServeIn .42s cubic-bezier(.3,1.3,.5,1) both}
+    .sa-bld-gempty{font-size:8.5px;color:#5C5244;font-style:italic}
+
+    /* носитель: выдача в час пик */
+    .sa-bld-pass{flex:0 0 142px;padding:8px;border-radius:10px;
+      background:rgba(226,186,116,0.09);border:1px solid rgba(145,108,40,0.34);
+      border-top:1px solid rgba(210,168,65,0.42);
+      box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10)}
+    .sa-bld-passhead{display:flex;justify-content:space-between;gap:6px;
+      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#756A58;margin-bottom:8px}
+    .sa-bld-rail{display:flex;gap:5px;justify-content:center;align-items:flex-end;min-height:34px}
+    .sa-bld-slot{width:28px;height:32px;border-radius:6px;display:grid;place-items:center;
+      background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);color:#5C5244;font-size:11px;transition:.4s}
+    .sa-bld-slot.on{border-style:solid;border-color:rgba(200,169,110,0.45);
+      border-top-color:rgba(226,186,116,0.55);background:rgba(200,169,110,0.13);
+      box-shadow:inset 0 0 14px rgba(255,248,230,0.09),inset 0 1px 0 rgba(255,255,255,0.12);
+      animation:saServeIn .42s cubic-bezier(.3,1.3,.5,1) both}
+    .sa-bld-railline{height:3px;margin-top:5px;border-radius:2px;
+      background:linear-gradient(90deg,rgba(200,169,110,0.10),rgba(200,169,110,0.42),rgba(200,169,110,0.10))}
+    .sa-bld-passfoot{font-size:8px;color:#756A58;text-align:center;margin-top:7px;font-style:italic}
+
+    /* носитель: полка склада */
+    .sa-bld-shelf{flex:0 0 146px;padding:8px;border-radius:10px;
+      background:rgba(226,186,116,0.09);border:1px solid rgba(145,108,40,0.34);
+      border-top:1px solid rgba(210,168,65,0.42);
+      box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10)}
+    .sa-bld-shelfhead{display:flex;justify-content:space-between;gap:6px;
+      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#756A58;margin-bottom:7px}
+    .sa-bld-bottles{display:flex;gap:4px;align-items:flex-end;justify-content:center;
+      padding-bottom:6px;border-bottom:2px solid rgba(200,169,110,0.32)}
+    .sa-bld-bottle{position:relative;width:17px;height:40px;border-radius:3px 3px 4px 4px;overflow:hidden;
+      background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
+      border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:.45s}
+    .sa-bld-bottle.on{border-color:rgba(200,169,110,0.45);border-top-color:rgba(226,186,116,0.55)}
+    .sa-bld-bottle i{position:absolute;left:0;right:0;bottom:0;display:block;
+      background:linear-gradient(180deg,rgba(200,169,110,0.55),rgba(150,110,45,0.72));
+      transition:height .55s cubic-bezier(.3,1,.4,1)}
+    .sa-bld-bottle b{position:absolute;left:0;right:0;bottom:2px;text-align:center;z-index:2;
+      font-family:ui-monospace,Menlo,monospace;font-size:6.5px;font-weight:normal;color:#F0E8D8}
+    .sa-bld-crate{display:flex;align-items:center;gap:5px;margin-top:5px;padding:4px 6px;border-radius:6px;
+      background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
+      border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:.4s}
+    .sa-bld-crate.on{background:rgba(200,169,110,0.11);border-color:rgba(200,169,110,0.34);
+      border-top-color:rgba(226,186,116,0.44);box-shadow:inset 0 0 12px rgba(255,248,230,0.08)}
+    .sa-bld-crate span{font-size:8px;color:#948872;line-height:1.2}
+    .sa-bld-crate.on span{color:#E8DEC8}
 
     /* носитель: цепочка стадий */
     .sa-bld-fstage{flex:1;min-width:0;text-align:center;position:relative}
@@ -314,6 +513,25 @@ export const injectStyles = () => {
     html.sa-light .sa-bld-cube{background:rgba(160,200,230,0.45);border-color:rgba(70,120,160,0.45)}
     html.sa-light .sa-bld-bubble{background:rgba(90,140,175,0.55)}
     html.sa-light .sa-bld-drop{background:rgba(70,120,160,0.28)}
+    html.sa-light .sa-bld-stem{background:linear-gradient(90deg,rgba(150,120,60,0.22),rgba(255,255,255,0.6),rgba(150,120,60,0.22))}
+    html.sa-light .sa-bld-foot{background:linear-gradient(180deg,rgba(255,255,255,0.7),rgba(180,150,90,0.18));
+      box-shadow:0 3px 7px rgba(120,90,30,0.18)}
+    html.sa-light .sa-bld-foam{background:linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,240,222,0.9));
+      box-shadow:inset 0 -4px 7px rgba(180,155,105,0.28),0 -1px 3px rgba(255,255,255,0.7)}
+    html.sa-light .sa-bld-shine{background:linear-gradient(90deg,transparent,rgba(255,255,255,0.8),transparent)}
+    html.sa-light .sa-bld-icecol,html.sa-light .sa-bld-clean{background:rgba(250,242,222,0.60);
+      border-color:rgba(175,140,65,0.20);border-top-color:rgba(255,240,200,0.66);
+      box-shadow:inset 0 0 20px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85)}
+    html.sa-light .sa-bld-icegen,html.sa-light .sa-bld-icetub,html.sa-light .sa-bld-iceglass{
+      background:rgba(255,255,255,0.5);border-color:rgba(107,78,26,0.22)}
+    html.sa-light .sa-bld-icegen.on,html.sa-light .sa-bld-icetub.on,html.sa-light .sa-bld-iceglass.on{
+      background:rgba(150,195,230,0.26);border-color:rgba(70,120,160,0.45)}
+    html.sa-light .sa-bld-icecube{background:rgba(160,200,230,0.45);border-color:rgba(70,120,160,0.42)}
+    html.sa-light .sa-bld-icecube.murky{background:rgba(170,170,160,0.35);border-color:rgba(140,140,130,0.3)}
+    html.sa-light .sa-bld-cslot{background:rgba(255,255,255,0.55);border-color:rgba(175,140,65,0.22)}
+    html.sa-light .sa-bld-cslot.cleared{background:rgba(42,107,69,0.10);border-color:rgba(42,107,69,0.3)}
+    html.sa-light .sa-bld-clabel{color:#2E2412}
+    html.sa-light .sa-bld-cmark{color:#2A6B45}
     html.sa-light .sa-bld-station{background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.20);
       border-top-color:rgba(255,240,200,0.66);
       box-shadow:inset 0 0 20px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85),0 3px 12px rgba(120,90,30,0.10)}
@@ -327,6 +545,24 @@ export const injectStyles = () => {
     html.sa-light .sa-bld-zname{color:#8A7A5C}
     html.sa-light .sa-bld-zone.on .sa-bld-zname{color:#8B6A30}
     html.sa-light .sa-bld-zchip{color:#2E2412;background:rgba(200,169,110,0.3);border-color:rgba(139,106,48,0.45)}
+    html.sa-light .sa-bld-counter::after{background:linear-gradient(90deg,rgba(139,106,48,0.08),rgba(139,106,48,0.40),rgba(139,106,48,0.08));
+      box-shadow:0 3px 10px rgba(120,90,30,0.18)}
+    html.sa-light .sa-bld-shadow{background:radial-gradient(ellipse at center,rgba(120,90,30,0.26),transparent 72%)}
+    html.sa-light .sa-bld-thread{background:rgba(120,90,40,0.16)}
+    html.sa-light .sa-bld-guest,html.sa-light .sa-bld-pass,html.sa-light .sa-bld-shelf{
+      background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.20);
+      border-top-color:rgba(255,240,200,0.66);
+      box-shadow:inset 0 0 20px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85)}
+    html.sa-light .sa-bld-gfig{background:rgba(255,255,255,0.5)}
+    html.sa-light .sa-bld-gbar{border-top-color:rgba(175,140,65,0.3)}
+    html.sa-light .sa-bld-slot{border-color:rgba(107,78,26,0.22);color:#8A7A5C}
+    html.sa-light .sa-bld-slot.on{background:rgba(200,169,110,0.26);border-color:rgba(139,106,48,0.5)}
+    html.sa-light .sa-bld-passfoot,html.sa-light .sa-bld-crate span{color:#6B5B40}
+    html.sa-light .sa-bld-bottle{background:rgba(255,255,255,0.55);border-color:rgba(107,78,26,0.22)}
+    html.sa-light .sa-bld-bottle b{color:#2E2412}
+    html.sa-light .sa-bld-crate{background:rgba(255,255,255,0.5);border-color:rgba(175,140,65,0.18)}
+    html.sa-light .sa-bld-crate.on{background:rgba(200,169,110,0.24);border-color:rgba(139,106,48,0.42)}
+    html.sa-light .sa-bld-crate.on span{color:#2E2412}
     html.sa-light .sa-bld-fring{background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.22);
       border-top-color:rgba(255,240,200,0.7);
       box-shadow:inset 0 0 14px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85)}

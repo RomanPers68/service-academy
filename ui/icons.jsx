@@ -463,6 +463,42 @@ export const BUILD_SVG = {
       <circle cx="12" cy="12" r="2.8" />
     </svg>
   ),
+  guest: (c, s=30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="7.4" r="3.6" />
+      <path d="M4.8 20.6c0-3.8 3.2-6.4 7.2-6.4s7.2 2.6 7.2 6.4" />
+    </svg>
+  ),
+  water: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 4.2h10l-1.2 15a1.8 1.8 0 0 1-1.8 1.6h-4a1.8 1.8 0 0 1-1.8-1.6L7 4.2z" />
+      <path d="M7.7 12.4h8.6" />
+    </svg>
+  ),
+  wineglass: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.6 3.4h10.8v4.2a5.4 5.4 0 0 1-10.8 0V3.4z" />
+      <path d="M12 13v7.4M8.4 20.4h7.2" />
+    </svg>
+  ),
+  beerglass: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7.4 7.2h9.2l-1 12.4a1.8 1.8 0 0 1-1.8 1.6h-3.6a1.8 1.8 0 0 1-1.8-1.6L7.4 7.2z" />
+      <path d="M7.4 7.2c0-2.2 1.6-3.6 3.4-3.2 1-1.2 3-1.2 4 .2 1.6-.2 2.6 1 2.4 3h-9.8z" />
+    </svg>
+  ),
+  bottle: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.4 2.6h3.2v4l2 2.6v10.6a1.6 1.6 0 0 1-1.6 1.6h-4a1.6 1.6 0 0 1-1.6-1.6V9.2l2-2.6v-4z" />
+      <path d="M8.4 13.4h7.2" />
+    </svg>
+  ),
+  box: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.4 7.6L12 3.4l8.6 4.2v9L12 20.8 3.4 16.6v-9z" />
+      <path d="M3.4 7.6L12 11.8l8.6-4.2M12 11.8v9" />
+    </svg>
+  ),
   mint: (c, s=26) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 21.4V9.6" />

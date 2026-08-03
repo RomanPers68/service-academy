@@ -128,16 +128,24 @@ export const injectStyles = () => {
       background:linear-gradient(180deg,rgba(200,169,110,0.5),rgba(200,169,110,0.12))}
     .sa-step{position:relative;display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:14px;
       cursor:pointer;background:rgba(226,186,116,0.07);border:1px solid rgba(145,108,40,0.30);
-      border-top:1px solid rgba(210,168,65,0.34);box-shadow:inset 0 0 16px rgba(255,248,230,0.05);
+      border-top:1px solid rgba(210,168,65,0.34);
+      box-shadow:inset 0 0 16px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10),
+                 0 5px 16px rgba(0,0,0,0.30);
       transition:border-color .2s ease,background .2s ease,transform .12s ease}
     .sa-step:active{transform:scale(.99)}
     .sa-step.locked{opacity:.45;cursor:default}
     .sa-step::before{content:"";position:absolute;left:-17px;top:50%;width:15px;height:2px;
       background:rgba(200,169,110,0.34)}
     .sa-stepnum{position:absolute;left:-27px;top:50%;transform:translateY(-50%);z-index:2;
-      width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#14110A;
-      border:2px solid #C8A96E;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#C8A96E}
-    .sa-step.done .sa-stepnum{background:#5DBB8A;border-color:#5DBB8A;color:#0d2318}
+      width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+      background:linear-gradient(160deg,rgba(226,186,116,0.16),rgba(20,17,10,0.96) 62%),#14110A;
+      border:2px solid rgba(200,169,110,0.85);border-top-color:rgba(226,186,116,1);
+      box-shadow:inset 0 0 8px rgba(255,248,230,0.10),inset 0 1px 0 rgba(255,255,255,0.16),
+                 0 2px 6px rgba(0,0,0,0.45);
+      font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#C8A96E}
+    .sa-step.done .sa-stepnum{background:linear-gradient(160deg,#7FD3A6,#4AA377);
+      border-color:#5DBB8A;border-top-color:#8FE0B4;color:#0d2318;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 6px rgba(0,0,0,0.35)}
     .sa-step.locked .sa-stepnum{border-color:rgba(255,255,255,0.22);color:rgba(255,255,255,0.35)}
     .sa-steptext{flex:1;min-width:0}
     .sa-steptext b{display:block;font-size:15px;font-weight:normal;line-height:1.2}
@@ -145,10 +153,16 @@ export const injectStyles = () => {
     .sa-steppct{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#D4A85A}
     html.sa-light .sa-branch::before{background:linear-gradient(180deg,rgba(139,106,48,0.45),rgba(139,106,48,0.10))}
     html.sa-light .sa-step{background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.22);
-      border-top-color:rgba(255,240,200,0.66);box-shadow:inset 0 0 16px rgba(255,255,255,0.5)}
+      border-top-color:rgba(255,240,200,0.66);
+      box-shadow:inset 0 0 16px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85),
+                 0 3px 12px rgba(120,90,30,0.10)}
     html.sa-light .sa-step::before{background:rgba(139,106,48,0.30)}
-    html.sa-light .sa-stepnum{background:#E8DEC8;border-color:#8B6A30;color:#8B6A30}
-    html.sa-light .sa-step.done .sa-stepnum{background:#2A6B45;border-color:#2A6B45;color:#fff}
+    html.sa-light .sa-stepnum{background:linear-gradient(160deg,rgba(255,252,244,0.95),rgba(238,228,204,0.98));
+      border-color:rgba(139,106,48,0.8);border-top-color:rgba(255,240,200,0.95);color:#8B6A30;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 2px 5px rgba(120,90,30,0.18)}
+    html.sa-light .sa-step.done .sa-stepnum{background:linear-gradient(160deg,#3C8A5C,#245C3C);
+      border-color:#2A6B45;border-top-color:#4E9E70;color:#fff;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.28),0 2px 5px rgba(30,70,45,0.28)}
     html.sa-light .sa-steptext span{color:#6B5B40}
     html.sa-light .sa-steppct{color:#8B6A30}
     /* Ступени отдельных анимаций не имеют — проявляются вместе с контейнером */

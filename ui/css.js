@@ -119,8 +119,38 @@ export const injectStyles = () => {
                   opacity 0.44s cubic-bezier(0.25,0.8,0.25,1),
                   margin-bottom 0.62s cubic-bezier(0.25,0.8,0.25,1);
     }
-    .sa-tracksub.open { max-height: 270px; opacity: 1; }
+    .sa-tracksub.open { max-height: 190px; opacity: 1; }
     .sa-stagger > .sa-tracksub { animation: none; }
+    /* Ступени профессии: нить с номерами слева и компактная строка.
+       Так подуровень не путается с самостоятельным треком. */
+    .sa-branch{position:relative;padding-left:34px}
+    .sa-branch::before{content:"";position:absolute;left:16px;top:3px;bottom:15px;width:2px;border-radius:2px;
+      background:linear-gradient(180deg,rgba(200,169,110,0.5),rgba(200,169,110,0.12))}
+    .sa-step{position:relative;display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:14px;
+      cursor:pointer;background:rgba(226,186,116,0.07);border:1px solid rgba(145,108,40,0.30);
+      border-top:1px solid rgba(210,168,65,0.34);box-shadow:inset 0 0 16px rgba(255,248,230,0.05);
+      transition:border-color .2s ease,background .2s ease,transform .12s ease}
+    .sa-step:active{transform:scale(.99)}
+    .sa-step.locked{opacity:.45;cursor:default}
+    .sa-step::before{content:"";position:absolute;left:-17px;top:50%;width:15px;height:2px;
+      background:rgba(200,169,110,0.34)}
+    .sa-stepnum{position:absolute;left:-27px;top:50%;transform:translateY(-50%);z-index:2;
+      width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#14110A;
+      border:2px solid #C8A96E;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#C8A96E}
+    .sa-step.done .sa-stepnum{background:#5DBB8A;border-color:#5DBB8A;color:#0d2318}
+    .sa-step.locked .sa-stepnum{border-color:rgba(255,255,255,0.22);color:rgba(255,255,255,0.35)}
+    .sa-steptext{flex:1;min-width:0}
+    .sa-steptext b{display:block;font-size:15px;font-weight:normal;line-height:1.2}
+    .sa-steptext span{font-size:11.5px;color:#756A58}
+    .sa-steppct{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#D4A85A}
+    html.sa-light .sa-branch::before{background:linear-gradient(180deg,rgba(139,106,48,0.45),rgba(139,106,48,0.10))}
+    html.sa-light .sa-step{background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.22);
+      border-top-color:rgba(255,240,200,0.66);box-shadow:inset 0 0 16px rgba(255,255,255,0.5)}
+    html.sa-light .sa-step::before{background:rgba(139,106,48,0.30)}
+    html.sa-light .sa-stepnum{background:#E8DEC8;border-color:#8B6A30;color:#8B6A30}
+    html.sa-light .sa-step.done .sa-stepnum{background:#2A6B45;border-color:#2A6B45;color:#fff}
+    html.sa-light .sa-steptext span{color:#6B5B40}
+    html.sa-light .sa-steppct{color:#8B6A30}
     /* Ступени отдельных анимаций не имеют — проявляются вместе с контейнером */
     .sa-tracksub > * { animation: none !important; }
     @media (prefers-reduced-motion: reduce) {

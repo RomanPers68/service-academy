@@ -2164,6 +2164,35 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
           const groupOf = {};
           TRACK_GROUPS.forEach(g => g.members.forEach(m => { groupOf[m] = g; }));
 
+          // Ступень внутри профессии: компактная строка на нити с номером.
+          // Отличается от самостоятельного трека и высотой, и формой.
+          const roleProgress = (rid) => {
+            const mods = MODULES[rid] || [];
+            const all = mods.flatMap(m => (m.lessons || []).filter(l => l.type !== "result"));
+            if (!all.length) return 0;
+            const done = all.filter(l => l.type === "quiz" ? quizDone[l.id] : completed[l.id]).length;
+            return Math.round((done / all.length) * 100);
+          };
+
+          const renderStep = (r, nth) => {
+            const isUnlocked = effectiveUnlocked.has(r.id);
+            const pct = isUnlocked ? roleProgress(r.id) : 0;
+            const cls = "sa-step" + (isUnlocked ? "" : " locked") + (pct === 100 ? " done" : "");
+            const go = () => isUnlocked && onSelect(r.id);
+            return (
+              <div key={r.id} className={cls} onClick={go} {...onActivate(go)}>
+                <span className="sa-stepnum">{pct === 100 ? "✓" : nth}</span>
+                <span className="sa-steptext">
+                  <b style={{ color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</b>
+                  <span>{isUnlocked ? r.sublabel : "Откроется после предыдущей ступени"}</span>
+                </span>
+                {isUnlocked
+                  ? <span className="sa-steppct">{pct}%</span>
+                  : <span style={{ display: "flex", alignItems: "center" }}>{ROLE_SVG.lock("rgba(255,255,255,0.28)", 15)}</span>}
+              </div>
+            );
+          };
+
           const renderRole = (r, sub) => {
             const idx = ROLES.findIndex(x => x.id === r.id);
             const isUnlocked = effectiveUnlocked.has(r.id);
@@ -2254,9 +2283,9 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
             // компенсирует gap списка отрицательным отступом.
             const open = openGroup === g.id;
             out.push(
-              <div key={g.id + "-steps"} className={"sa-tracksub" + (open ? " open" : "")}
+              <div key={g.id + "-steps"} className={"sa-tracksub sa-branch" + (open ? " open" : "")}
                 style={{ marginBottom: open ? 0 : -listGap }}>
-                {members.map(m => renderRole(m, true))}
+                {members.map((m, k) => renderStep(m, k + 1))}
               </div>
             );
           });

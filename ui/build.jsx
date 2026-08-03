@@ -164,7 +164,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             );
           })}
 
-          {poured.some(x => x.s.fizz) && [...Array(14)].map((_, i) => {
+          {poured.some(x => x.s.fizz) && [...Array(8)].map((_, i) => {
             const sz = 2 + (i % 3);
             return <div key={"b" + i} className="sa-bld-bubble" style={{
               width: sz, height: sz, left: 7 + ((i * 13) % 46), bottom: 10 + ((i * 19) % 30),
@@ -173,7 +173,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             }} />;
           })}
 
-          {[0, 1, 2, 3, 4, 5].map(i => {
+          {[0, 1, 2, 3].map(i => {
             const sz = 2 + (i % 3);
             return <div key={"d" + i} className="sa-bld-drop" style={{
               width: sz, height: sz, left: 6 + ((i * 23) % 48), bottom: 30 + ((i * 37) % 84),
@@ -254,9 +254,8 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
       { key: "handover", ic: "clipboard", label: "стоп-лист" },
     ];
     const done = items.filter(x => cleared.has(x.key)).length;
-    const pct = Math.round((done / items.length) * 100);
     return (
-      <div className="sa-bld-clean" style={{ "--clean": pct + "%" }}>
+      <div className="sa-bld-clean" style={{ "--clean": done / items.length }}>
         <div className="sa-bld-cleanhead">
           <span>СМЕНА</span>
           <span style={{ color: done === items.length ? GREEN : (a11y ? "#8B6A30" : GOLD) }}>
@@ -555,7 +554,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
         <Eyebrow left={"Сборка · " + sc.title} right={`${step + 1} / ${total}`} a11y={a11y} />
         <div style={{ fontSize: 11, color: P.sub, marginTop: 6, fontStyle: "italic" }}>{sc.from}</div>
         <div className="sa-bld-thread">
-          <i style={{ width: Math.round(((step + (answered != null ? 1 : 0)) / total) * 100) + "%" }} />
+          <i style={{ transform: `scaleX(${(step + (answered != null ? 1 : 0)) / total})` }} />
         </div>
         <Carrier />
         <div key={"st" + step} className="sa-bld-stepin">

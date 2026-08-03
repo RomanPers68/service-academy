@@ -107,6 +107,9 @@ export const injectStyles = () => {
     .sa-tracksub {
       display: flex; flex-direction: column; gap: 8px;
       max-height: 0; overflow: hidden; opacity: 0;
+      /* Ограничиваем перерисовку контейнером: иначе на каждом кадре
+         пересчитывается и перерисовывается весь список треков ниже. */
+      contain: layout paint;
       /* Анимируем ОДИН элемент, а не контейнер плюс каждую ступень отдельно:
          max-height пересчитывает раскладку на каждом кадре, и лишние
          параллельные анимации на телефоне дают рваность.
@@ -116,7 +119,7 @@ export const injectStyles = () => {
                   opacity 0.44s cubic-bezier(0.25,0.8,0.25,1),
                   margin-bottom 0.62s cubic-bezier(0.25,0.8,0.25,1);
     }
-    .sa-tracksub.open { max-height: 270px; opacity: 1; will-change: max-height; }
+    .sa-tracksub.open { max-height: 270px; opacity: 1; }
     .sa-stagger > .sa-tracksub { animation: none; }
     /* Ступени отдельных анимаций не имеют — проявляются вместе с контейнером */
     .sa-tracksub > * { animation: none !important; }
@@ -194,7 +197,7 @@ export const injectStyles = () => {
     /* ══ «Сборка» — фирменный формат практики роли «Бар» (ui/build.jsx) ══ */
     .sa-bld-term{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;
       font-family:Georgia,serif;font-size:11px;color:#D4A85A;background:rgba(200,169,110,0.12);
-      border:1px solid rgba(200,169,110,0.34);cursor:pointer;transition:.2s}
+      border:1px solid rgba(200,169,110,0.34);cursor:pointer;transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease}
     .sa-bld-term:active{transform:scale(.96)}
     .sa-bld-term.flat{cursor:default;opacity:.85}
     .sa-bld-term.open{background:rgba(200,169,110,0.20);border-color:rgba(200,169,110,0.5)}
@@ -216,10 +219,11 @@ export const injectStyles = () => {
     .sa-bld-opt[disabled]{cursor:default}
     .sa-bld-optk{flex:0 0 24px;height:24px;border-radius:7px;display:grid;place-items:center;
       font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#B09060;
-      border:1px solid rgba(200,169,110,0.35);transition:.2s}
+      border:1px solid rgba(200,169,110,0.35);transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease}
     .sa-bld-fb{margin-top:12px}
     /* Общая сцена: все носители стоят на одной линии стойки */
-    .sa-bld-counter{position:relative;display:flex;gap:14px;align-items:flex-end;margin:12px 0 14px;padding-bottom:11px}
+    .sa-bld-counter{position:relative;display:flex;gap:14px;align-items:flex-end;margin:12px 0 14px;padding-bottom:11px;
+      contain:layout paint}
     .sa-bld-counter::after{content:"";position:absolute;left:-4px;right:-4px;bottom:0;height:3px;border-radius:2px;
       background:linear-gradient(90deg,rgba(200,169,110,0.06),rgba(200,169,110,0.44),rgba(200,169,110,0.06));
       box-shadow:0 3px 10px rgba(0,0,0,0.42)}
@@ -228,9 +232,9 @@ export const injectStyles = () => {
       z-index:0;pointer-events:none}
     /* Прогресс-нить: движение к финалу видно, а не только «3 / 6» */
     .sa-bld-thread{height:2.5px;border-radius:2px;margin-top:9px;overflow:hidden;background:rgba(0,0,0,0.35)}
-    .sa-bld-thread i{display:block;height:100%;border-radius:2px;
+    .sa-bld-thread i{display:block;width:100%;height:100%;border-radius:2px;transform-origin:left;
       background:linear-gradient(90deg,#D4A85A,#C8A96E);box-shadow:0 0 6px rgba(200,169,110,0.55);
-      transition:width 0.5s cubic-bezier(0.25,0.8,0.25,1)}
+      transition:transform 0.5s cubic-bezier(0.25,0.8,0.25,1)}
     /* Смена шага: вопрос и варианты мягко въезжают */
     @keyframes saStepIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
     .sa-bld-stepin{animation:saStepIn 0.34s cubic-bezier(0.25,0.8,0.25,1) both}
@@ -284,10 +288,8 @@ export const injectStyles = () => {
       box-shadow:inset 0 -4px 7px rgba(190,168,124,0.35),0 -1px 3px rgba(255,255,255,0.4);
       transition:height 0.55s cubic-bezier(0.3,1,0.4,1),bottom 0.55s cubic-bezier(0.3,1,0.4,1)}
     .sa-bld-foam::after{content:"";position:absolute;inset:0;border-radius:inherit;opacity:0.75;
-      background:radial-gradient(circle at 22% 34%,rgba(255,255,255,0.95) 1.4px,transparent 2.4px),
-                 radial-gradient(circle at 63% 62%,rgba(255,255,255,0.85) 1.8px,transparent 2.8px),
-                 radial-gradient(circle at 82% 26%,rgba(255,255,255,0.8) 1.2px,transparent 2.2px),
-                 radial-gradient(circle at 40% 78%,rgba(255,255,255,0.7) 1.5px,transparent 2.5px)}
+      background:radial-gradient(circle at 26% 36%,rgba(255,255,255,0.92) 1.6px,transparent 2.6px),
+                 radial-gradient(circle at 72% 64%,rgba(255,255,255,0.8) 1.6px,transparent 2.6px)}
     @keyframes saFoamRise{from{height:0;opacity:0}}
     .sa-bld-foam.fresh{animation:saFoamRise 0.62s cubic-bezier(0.3,1,0.4,1)}
     /* Блик по стеклу — отклик на шаг про чистоту бокала */
@@ -315,10 +317,12 @@ export const injectStyles = () => {
     .sa-bld-cube{position:absolute;border-radius:3px;background:rgba(238,248,255,0.26);z-index:2;
       border:1px solid rgba(255,255,255,0.30);box-shadow:inset 0 2px 3px rgba(255,255,255,0.3)}
     .sa-bld-cube.fresh{animation:saIceDrop .55s cubic-bezier(.35,1.1,.45,1) backwards}
+    /* Конечное число повторов: на старом WebKit непрерывная анимация не даёт
+       странице «уснуть» и жрёт кадры даже когда человек просто читает. */
     .sa-bld-bubble{position:absolute;border-radius:50%;background:rgba(255,255,255,0.55);z-index:3;
-      animation:saBubble linear infinite}
+      animation:saBubble linear 7}
     .sa-bld-drop{position:absolute;border-radius:50%;background:rgba(255,255,255,0.16);z-index:5;
-      animation:saDropSlide ease-in infinite}
+      animation:saDropSlide ease-in 3}
     .sa-bld-pulp{position:absolute;border-radius:50% 40% 50% 40%;z-index:2;
       background:linear-gradient(140deg,rgba(150,196,92,0.9),rgba(96,140,52,0.95));
       box-shadow:0 0 3px rgba(0,0,0,0.25)}
@@ -326,8 +330,8 @@ export const injectStyles = () => {
       background:linear-gradient(180deg,rgba(206,226,120,0.9),rgba(160,190,70,0.95));
       border-top:2px solid rgba(240,248,200,0.75)}
     .sa-bld-garnish{position:absolute;top:-10px;left:50%;font-size:28px;z-index:6;
-      transform:translateX(-50%);filter:drop-shadow(0 3px 5px rgba(0,0,0,0.5));
-      animation:saGarnishIn .6s cubic-bezier(.3,1.4,.5,1),saGarnishSway 4.5s ease-in-out .6s infinite}
+      transform:translateX(-50%);text-shadow:0 3px 5px rgba(0,0,0,0.5);
+      animation:saGarnishIn .6s cubic-bezier(.3,1.4,.5,1),saGarnishSway 4.5s ease-in-out .6s 4}
     @keyframes saPourGrow{from{height:0}}
     @keyframes saPourStream{0%{opacity:0;transform:scaleY(0)}12%{opacity:.85;transform:scaleY(1)}
       72%{opacity:.85}100%{opacity:0}}
@@ -346,11 +350,11 @@ export const injectStyles = () => {
       border-radius:10px;background:rgba(226,186,116,0.09);
       border:1px solid rgba(145,108,40,0.34);border-top:1px solid rgba(210,168,65,0.42);
       box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10);
-      transition:.4s}
+      transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease}
     .sa-bld-icecol.murky{border-color:rgba(224,120,120,0.35)}
     .sa-bld-icegen,.sa-bld-icetub,.sa-bld-iceglass{position:relative;overflow:hidden;
       border-radius:6px;background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
-      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);transition:.45s}
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);transition:background .45s ease,border-color .45s ease,opacity .45s ease}
     .sa-bld-icegen{height:36px} .sa-bld-icetub{height:34px} .sa-bld-iceglass{height:44px;border-radius:4px 4px 9px 9px}
     .sa-bld-icegen.on,.sa-bld-icetub.on,.sa-bld-iceglass.on{border-style:solid;
       border-color:rgba(160,200,230,0.42);border-top-color:rgba(190,225,245,0.5);
@@ -359,13 +363,13 @@ export const injectStyles = () => {
     .sa-bld-icegen > span,.sa-bld-icetub > span,.sa-bld-iceglass > span{position:absolute;left:6px;top:4px;
       font-family:ui-monospace,Menlo,monospace;font-size:6.5px;letter-spacing:1.1px;color:#756A58;z-index:2}
     .sa-bld-iceglass > span{top:auto;bottom:4px;left:0;right:0;text-align:center}
-    .sa-bld-icearrow{height:16px;display:grid;place-items:center;color:#5C5244;font-size:11px;transition:.4s}
+    .sa-bld-icearrow{height:16px;display:grid;place-items:center;color:#5C5244;font-size:11px;transition:color .4s ease}
     .sa-bld-icearrow.on{color:#C8A96E}
     @keyframes saCubeIn{0%{transform:translateY(-26px) scale(.6);opacity:0}100%{opacity:1}}
     .sa-bld-icecube{position:absolute;border-radius:2px;z-index:1;
       background:rgba(238,248,255,0.34);border:1px solid rgba(255,255,255,0.34);
       box-shadow:inset 0 2px 3px rgba(255,255,255,0.35);
-      animation:saCubeIn .5s cubic-bezier(.35,1.1,.45,1) backwards;transition:.4s}
+      animation:saCubeIn .5s cubic-bezier(.35,1.1,.45,1) backwards;transition:background .4s ease,border-color .4s ease}
     .sa-bld-icecube.murky{background:rgba(190,195,190,0.26);border-color:rgba(200,200,190,0.22);box-shadow:none}
 
     /* носитель: уборка смены — станция пустеет, поверхность светлеет */
@@ -373,9 +377,10 @@ export const injectStyles = () => {
       background:rgba(226,186,116,0.09);
       border:1px solid rgba(145,108,40,0.34);border-top:1px solid rgba(210,168,65,0.42);
       box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10)}
-    .sa-bld-clean::before{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--clean,0%);
+    .sa-bld-clean::before{content:"";position:absolute;left:0;right:0;bottom:0;height:100%;
+      transform:scaleY(var(--clean,0));transform-origin:bottom;
       background:linear-gradient(0deg,rgba(200,169,110,0.16),rgba(200,169,110,0));
-      transition:height .55s cubic-bezier(.3,1,.4,1);pointer-events:none}
+      transition:transform .55s cubic-bezier(.3,1,.4,1);pointer-events:none}
     .sa-bld-cleanhead{display:flex;justify-content:space-between;gap:6px;position:relative;z-index:2;
       font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#756A58;margin-bottom:6px}
     .sa-bld-cslot{display:flex;align-items:center;gap:6px;padding:5px 7px;margin-bottom:4px;
@@ -394,13 +399,13 @@ export const injectStyles = () => {
     .sa-bld-station{flex:0 0 152px;padding:8px;border-radius:10px;background:rgba(226,186,116,0.09);
       border:1px solid rgba(145,108,40,0.34);border-top:1px solid rgba(210,168,65,0.42);
       box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10),0 5px 16px rgba(0,0,0,0.30);
-      transition:.4s}
+      transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease}
     .sa-bld-station.clean{border-color:rgba(200,169,110,0.5);box-shadow:inset 0 0 20px rgba(214,170,80,0.08)}
     .sa-bld-station.spoiled{border-color:rgba(224,120,120,0.35)}
     .sa-bld-icebin{position:relative;height:26px;border-radius:7px;margin-bottom:6px;overflow:hidden;
       display:flex;align-items:center;padding:0 7px;font-size:8.5px;color:#756A58;
       background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
-      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);transition:.4s}
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease}
     .sa-bld-icebin.on{color:#CFE4EF;border-style:solid;border-color:rgba(160,200,230,0.38);
       border-top-color:rgba(190,225,245,0.48);background:rgba(150,195,230,0.13);
       box-shadow:inset 0 0 14px rgba(200,235,255,0.10),inset 0 1px 0 rgba(255,255,255,0.14)}
@@ -408,7 +413,7 @@ export const injectStyles = () => {
     .sa-bld-zone{padding:5px 7px;border-radius:7px;margin-bottom:4px;
       background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
       border-top:1px solid rgba(210,168,65,0.26);
-      box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:.4s}
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:background .4s ease,border-color .4s ease,opacity .4s ease}
     .sa-bld-zone.on{background:rgba(200,169,110,0.11);border-color:rgba(200,169,110,0.36)}
     .sa-bld-zname{font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.1px;
       text-transform:uppercase;color:#756A58;margin-bottom:3px}
@@ -426,7 +431,7 @@ export const injectStyles = () => {
       box-shadow:inset 0 0 16px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10);
       transition:border-color .45s ease}
     .sa-bld-gmood{display:flex;gap:4px;justify-content:center;margin-top:9px}
-    .sa-bld-gdot{width:7px;height:7px;border-radius:50%;border:1px solid;transition:.4s}
+    .sa-bld-gdot{width:7px;height:7px;border-radius:50%;border:1px solid;transition:background .4s ease,border-color .4s ease}
     .sa-bld-glabel{font-family:ui-monospace,Menlo,monospace;font-size:8px;letter-spacing:1.2px;
       text-transform:uppercase;margin-top:6px;transition:color .4s ease}
     .sa-bld-gbar{margin-top:9px;padding-top:8px;border-top:1px solid rgba(200,169,110,0.28);
@@ -445,7 +450,7 @@ export const injectStyles = () => {
     .sa-bld-rail{display:flex;gap:5px;justify-content:center;align-items:flex-end;min-height:34px}
     .sa-bld-slot{width:28px;height:32px;border-radius:6px;display:grid;place-items:center;
       background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
-      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);color:#5C5244;font-size:11px;transition:.4s}
+      box-shadow:inset 0 0 12px rgba(255,248,230,0.04);color:#5C5244;font-size:11px;transition:background .4s ease,border-color .4s ease,opacity .4s ease}
     .sa-bld-slot.on{border-style:solid;border-color:rgba(200,169,110,0.45);
       border-top-color:rgba(226,186,116,0.55);background:rgba(200,169,110,0.13);
       box-shadow:inset 0 0 14px rgba(255,248,230,0.09),inset 0 1px 0 rgba(255,255,255,0.12);
@@ -465,7 +470,7 @@ export const injectStyles = () => {
       padding-bottom:6px;border-bottom:2px solid rgba(200,169,110,0.32)}
     .sa-bld-bottle{position:relative;width:17px;height:40px;border-radius:3px 3px 4px 4px;overflow:hidden;
       background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
-      border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:.45s}
+      border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:background .45s ease,border-color .45s ease,opacity .45s ease}
     .sa-bld-bottle.on{border-color:rgba(200,169,110,0.45);border-top-color:rgba(226,186,116,0.55)}
     .sa-bld-bottle i{position:absolute;left:0;right:0;bottom:0;display:block;
       background:linear-gradient(180deg,rgba(200,169,110,0.55),rgba(150,110,45,0.72));
@@ -474,7 +479,7 @@ export const injectStyles = () => {
       font-family:ui-monospace,Menlo,monospace;font-size:6.5px;font-weight:normal;color:#F0E8D8}
     .sa-bld-crate{display:flex;align-items:center;gap:5px;margin-top:5px;padding:4px 6px;border-radius:6px;
       background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
-      border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:.4s}
+      border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:background .4s ease,border-color .4s ease,opacity .4s ease}
     .sa-bld-crate.on{background:rgba(200,169,110,0.11);border-color:rgba(200,169,110,0.34);
       border-top-color:rgba(226,186,116,0.44);box-shadow:inset 0 0 12px rgba(255,248,230,0.08)}
     .sa-bld-crate span{font-size:8px;color:#948872;line-height:1.2}
@@ -486,7 +491,7 @@ export const injectStyles = () => {
       font-size:17px;background:rgba(226,186,116,0.09);border:1.5px solid rgba(145,108,40,0.34);
       border-top-color:rgba(210,168,65,0.46);
       box-shadow:inset 0 0 14px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10);
-      transition:.45s;position:relative;z-index:2;opacity:.55}
+      transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease;position:relative;z-index:2;opacity:.55}
     .sa-bld-fnm{font-size:9px;color:#756A58;margin-top:6px;line-height:1.2;
       font-family:ui-monospace,Menlo,monospace;letter-spacing:.3px}
     .sa-bld-fstage.on .sa-bld-fring{opacity:1;background:rgba(200,169,110,0.16);border-color:#C8A96E;

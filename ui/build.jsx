@@ -34,6 +34,13 @@ const findArticle = (term) => {
       || null;
 };
 
+// Системная настройка «уменьшить движение»: декоративные частицы вообще не
+// создаём — на слабом железе это заметно дешевле, чем рисовать и глушить.
+const calmMotion = () => {
+  try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  catch (e) { return false; }
+};
+
 const shuffleSteps = (sc) => ({ ...sc, steps: sc.steps.map(st => ({ ...st, options: shuffleArray(st.options) })) });
 
 // Состояния варианта поверх базового стекла приложения (T.simOpt).
@@ -57,6 +64,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
   const P = a11y
     ? { text: "#2A1F0E", sub: "#6B5B40", faint: "#8A7A5C", costText: "#8B3020", stepDone: "#2A1F0E" }
     : { text: CREAM, sub: MUTED_2, faint: MUTED, costText: "#EAC9C9", stepDone: SAND };
+  const calm = React.useMemo(calmMotion, []);
 
   // Пул: если сценарий задан явно — берём его, иначе случайный из пула роли
   // Пул ограничен модулем урока (mod), иначе в модуле 1 может выпасть
@@ -164,7 +172,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             );
           })}
 
-          {poured.some(x => x.s.fizz) && [...Array(8)].map((_, i) => {
+          {!calm && poured.some(x => x.s.fizz) && [...Array(8)].map((_, i) => {
             const sz = 2 + (i % 3);
             return <div key={"b" + i} className="sa-bld-bubble" style={{
               width: sz, height: sz, left: 7 + ((i * 13) % 46), bottom: 10 + ((i * 19) % 30),
@@ -173,7 +181,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             }} />;
           })}
 
-          {[0, 1, 2, 3].map(i => {
+          {!calm && [0, 1, 2, 3].map(i => {
             const sz = 2 + (i % 3);
             return <div key={"d" + i} className="sa-bld-drop" style={{
               width: sz, height: sz, left: 6 + ((i * 23) % 48), bottom: 30 + ((i * 37) % 84),
@@ -184,7 +192,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
 
           {foamStep && (
             <div className={"sa-bld-foam" + (foamStep.i === just ? " fresh" : "")}
-              style={{ bottom: stack + "%", height: foamStep.s.foam.h + "%" }} />
+              style={{ bottom: stack + "%", height: "26%", transform: `scaleY(${foamStep.s.foam.h / 26})` }} />
           )}
           {shineStep && shineStep.i === just && <div className="sa-bld-shine" />}
         </div>
@@ -394,7 +402,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
         <div className="sa-bld-bottles">
           {lv.map((h, i) => (
             <span key={i} className={"sa-bld-bottle" + (marks.has("measure") ? " on" : "")}>
-              <i style={{ height: (marks.has("measure") ? h : 0) + "%" }} />
+              <i style={{ transform: `scaleY(${marks.has("measure") ? h / 100 : 0})` }} />
               <b>{marks.has("measure") ? h : "?"}</b>
             </span>
           ))}

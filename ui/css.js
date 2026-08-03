@@ -330,11 +330,12 @@ export const injectStyles = () => {
     .sa-bld-foam{position:absolute;left:0;right:0;z-index:3;border-radius:7px 7px 3px 3px;
       background:linear-gradient(180deg,rgba(255,253,246,0.96),rgba(242,231,206,0.82));
       box-shadow:inset 0 -4px 7px rgba(190,168,124,0.35),0 -1px 3px rgba(255,255,255,0.4);
-      transition:height 0.55s cubic-bezier(0.3,1,0.4,1),bottom 0.55s cubic-bezier(0.3,1,0.4,1)}
+      transform-origin:bottom;
+      transition:transform 0.55s cubic-bezier(0.3,1,0.4,1),bottom 0.55s cubic-bezier(0.3,1,0.4,1)}
     .sa-bld-foam::after{content:"";position:absolute;inset:0;border-radius:inherit;opacity:0.75;
       background:radial-gradient(circle at 26% 36%,rgba(255,255,255,0.92) 1.6px,transparent 2.6px),
                  radial-gradient(circle at 72% 64%,rgba(255,255,255,0.8) 1.6px,transparent 2.6px)}
-    @keyframes saFoamRise{from{height:0;opacity:0}}
+    @keyframes saFoamRise{from{transform:scaleY(0);opacity:0}}
     .sa-bld-foam.fresh{animation:saFoamRise 0.62s cubic-bezier(0.3,1,0.4,1)}
     /* Блик по стеклу — отклик на шаг про чистоту бокала */
     @keyframes saShine{0%{transform:translateX(-130%) skewX(-18deg);opacity:0}
@@ -348,8 +349,8 @@ export const injectStyles = () => {
     .sa-bld-vessel.spoiled .sa-bld-layer{filter:saturate(.4) brightness(.85)}
     .sa-bld-rim{position:absolute;top:-2px;left:-2px;right:-2px;height:5px;border-radius:50%;z-index:4;
       background:linear-gradient(90deg,rgba(255,255,255,0.10),rgba(255,255,255,0.42),rgba(255,255,255,0.10))}
-    .sa-bld-layers{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column-reverse}
-    .sa-bld-layer{width:100%}
+    .sa-bld-layers{position:absolute;inset:0;display:flex;flex-direction:column-reverse}
+    .sa-bld-layer{width:100%;transform-origin:bottom}
     .sa-bld-layer.fresh{animation:saPourGrow .75s cubic-bezier(.25,.9,.35,1)}
     .sa-bld-surface{position:absolute;left:0;right:0;height:5px;border-radius:50%;z-index:3;
       background:rgba(255,255,255,0.30);transition:bottom .6s cubic-bezier(.3,1,.4,1)}
@@ -376,7 +377,8 @@ export const injectStyles = () => {
     .sa-bld-garnish{position:absolute;top:-10px;left:50%;font-size:28px;z-index:6;
       transform:translateX(-50%);text-shadow:0 3px 5px rgba(0,0,0,0.5);
       animation:saGarnishIn .6s cubic-bezier(.3,1.4,.5,1),saGarnishSway 4.5s ease-in-out .6s 4}
-    @keyframes saPourGrow{from{height:0}}
+    /* Рост через scaleY: браузер не пересчитывает раскладку на каждом кадре. */
+    @keyframes saPourGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
     @keyframes saPourStream{0%{opacity:0;transform:scaleY(0)}12%{opacity:.85;transform:scaleY(1)}
       72%{opacity:.85}100%{opacity:0}}
     @keyframes saSettle{0%{transform:scaleY(2.4)}45%{transform:scaleY(.65)}72%{transform:scaleY(1.3)}100%{transform:scaleY(1)}}
@@ -516,9 +518,10 @@ export const injectStyles = () => {
       background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
       border-top:1px solid rgba(210,168,65,0.26);box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:background .45s ease,border-color .45s ease,opacity .45s ease}
     .sa-bld-bottle.on{border-color:rgba(200,169,110,0.45);border-top-color:rgba(226,186,116,0.55)}
-    .sa-bld-bottle i{position:absolute;left:0;right:0;bottom:0;display:block;
+    .sa-bld-bottle i{position:absolute;left:0;right:0;bottom:0;display:block;height:100%;
+      transform-origin:bottom;
       background:linear-gradient(180deg,rgba(200,169,110,0.55),rgba(150,110,45,0.72));
-      transition:height .55s cubic-bezier(.3,1,.4,1)}
+      transition:transform .55s cubic-bezier(.3,1,.4,1)}
     .sa-bld-bottle b{position:absolute;left:0;right:0;bottom:2px;text-align:center;z-index:2;
       font-family:ui-monospace,Menlo,monospace;font-size:6.5px;font-weight:normal;color:#F0E8D8}
     .sa-bld-crate{display:flex;align-items:center;gap:5px;margin-top:5px;padding:4px 6px;border-radius:6px;

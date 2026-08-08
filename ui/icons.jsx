@@ -77,6 +77,12 @@ export const ROLE_SVG = {
 
 // Интерфейсные SVG-иконки — карточки, бейджи, плитки статистики
 export const UI_SVG = {
+  calendar: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3.4" y="5" width="17.2" height="15.6" rx="2.2" />
+      <path d="M3.4 9.6h17.2M8 3.4v3.2M16 3.4v3.2" />
+    </svg>
+  ),
   shaker: (c, s=20) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10.2 2.5h3.6v1.8h-3.6z"/>

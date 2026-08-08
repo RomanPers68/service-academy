@@ -238,6 +238,69 @@ export const injectStyles = () => {
     .sa-hintin { animation: saHintIn .38s cubic-bezier(.16,1,.3,1) both; }
     @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin { animation:none; } }
 
+    /* ══ График смен ══════════════════════════════════════════════
+       Фактура «морозного льда»: тёплый полупрозрачный фон, светлая
+       кромка сверху, мягкое внутреннее свечение, никакого блюра. */
+    .sa-schedwrap{touch-action:pan-y}
+    .sa-schedgrid{max-height:64vh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+    .sa-schedgrid table{border-collapse:separate;border-spacing:0}
+    /* липкая шапка с числами */
+    .sa-schedgrid tr:first-child th{position:sticky;top:0;z-index:4;
+      background:linear-gradient(180deg,rgba(226,186,116,0.12),rgba(25,19,9,0.985) 62%),#191309;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.10),0 2px 8px rgba(0,0,0,0.45)}
+    .sa-schedgrid tr:first-child th.sa-schednm{z-index:5}
+    /* липкая колонка имён: плотная, иначе строки просвечивают */
+    .sa-schednm{position:sticky;left:0;z-index:3;text-align:left;
+      background:linear-gradient(100deg,rgba(226,186,116,0.10),rgba(25,19,9,0.985) 58%),#191309;
+      border-right:1px solid rgba(200,169,110,0.22);
+      box-shadow:inset 1px 0 0 rgba(255,255,255,0.07),inset 0 0 16px rgba(255,248,230,0.04)}
+    .sa-schedgrp{background:rgba(200,169,110,0.10);
+      border-top:1px solid rgba(210,168,65,0.42);border-bottom:1px solid rgba(200,169,110,0.22);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.09)}
+    .sa-schednm.sa-schedgrp{
+      background:linear-gradient(100deg,rgba(226,186,116,0.20),rgba(34,26,13,0.99) 58%),#221a0d;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),inset 0 0 16px rgba(255,248,230,0.07)}
+    .sa-schedcell{border-bottom:1px solid rgba(255,255,255,0.05)}
+    .sa-schedwe{background:rgba(200,169,110,0.045)}
+    .sa-schedzeb td:not(.sa-schednm){background:rgba(255,255,255,0.014)}
+    .sa-schedzeb td.sa-schedwe{background:rgba(200,169,110,0.06)}
+    .sa-schedrow{background:rgba(226,186,116,0.07);border:1px solid rgba(145,108,40,0.28);
+      border-top:1px solid rgba(210,168,65,0.32);
+      box-shadow:inset 0 0 14px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10)}
+    .sa-schedrow.off{background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.07)}
+    .sa-schednote{padding:10px 12px;border-radius:12px;font-size:13px;line-height:1.5}
+    .sa-schednote.ok{background:rgba(93,187,138,0.10);border:1px solid rgba(93,187,138,0.38);
+      border-top-color:rgba(140,215,175,0.5);color:#BFE6D0;
+      box-shadow:inset 0 0 14px rgba(93,187,138,0.09),inset 0 1px 0 rgba(255,255,255,0.10)}
+    .sa-schednote.bad{background:rgba(224,120,120,0.09);border:1px solid rgba(224,120,120,0.38);
+      border-top-color:rgba(240,160,160,0.5);color:#F0C9C9;
+      box-shadow:inset 0 0 14px rgba(224,120,120,0.08),inset 0 1px 0 rgba(255,255,255,0.09)}
+    .sa-schedbar{flex:1;height:3px;border-radius:2px;background:rgba(0,0,0,0.4);overflow:hidden}
+
+    /* ── светлая тема: то же стекло, только свечение белое ── */
+    html.sa-light .sa-schedgrid tr:first-child th{
+      background:linear-gradient(180deg,rgba(255,250,235,0.98),rgba(240,232,212,0.99));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 2px 8px rgba(120,90,30,0.12)}
+    html.sa-light .sa-schednm{
+      background:linear-gradient(100deg,rgba(255,250,235,0.98),rgba(242,234,214,0.99));
+      border-right-color:rgba(175,140,65,0.3);
+      box-shadow:inset 0 0 16px rgba(255,255,255,0.6),inset 1px 0 0 rgba(255,255,255,0.8)}
+    html.sa-light .sa-schedgrp{background:rgba(200,169,110,0.22);
+      border-top-color:rgba(175,140,65,0.5);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7)}
+    html.sa-light .sa-schednm.sa-schedgrp{
+      background:linear-gradient(100deg,rgba(234,223,198,0.99),rgba(226,214,186,0.99))}
+    html.sa-light .sa-schedcell{border-bottom-color:rgba(120,90,30,0.10)}
+    html.sa-light .sa-schedwe{background:rgba(200,169,110,0.10)}
+    html.sa-light .sa-schedzeb td:not(.sa-schednm){background:rgba(120,90,30,0.035)}
+    html.sa-light .sa-schedzeb td.sa-schedwe{background:rgba(200,169,110,0.14)}
+    html.sa-light .sa-schedrow{background:rgba(250,242,222,0.72);border-color:rgba(175,140,65,0.26);
+      border-top-color:rgba(255,240,200,0.8);
+      box-shadow:inset 0 0 18px rgba(255,255,255,0.6),inset 0 1px 0 rgba(255,255,255,0.9)}
+    html.sa-light .sa-schedrow.off{background:rgba(255,252,244,0.5);border-color:rgba(175,140,65,0.16)}
+    html.sa-light .sa-schednote.ok{background:rgba(42,107,69,0.12);border-color:rgba(42,107,69,0.4);color:#1E4A30}
+    html.sa-light .sa-schednote.bad{background:rgba(139,48,32,0.10);border-color:rgba(139,48,32,0.38);color:#6B2418}
+    html.sa-light .sa-schedbar{background:rgba(120,90,30,0.16)}
+
     /* ══ «Сборка» — фирменный формат практики роли «Бар» (ui/build.jsx) ══ */
     .sa-bld-term{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;
       font-family:Georgia,serif;font-size:11px;color:#D4A85A;background:rgba(200,169,110,0.12);

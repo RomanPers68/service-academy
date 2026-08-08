@@ -1938,7 +1938,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
@@ -2023,6 +2023,40 @@ export function RoleSelect({ onSelect, T, a11y, onLeaderboard, onProfile, onStat
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ═══ Карточка «График»: ближайшая смена или где горит ═══ */}
+        {(() => {
+          const mgr = !!profile?.is_admin;
+          return (
+            <div className="sa-card sa-glass" onClick={() => onSchedule && onSchedule()}
+              {...onActivate(() => onSchedule && onSchedule())}
+              style={{
+                margin: "10px 16px", padding: "10px 12px", borderRadius: 20, cursor: "pointer",
+                background: saInner(a11y), border: `1px solid ${saFrame(a11y)}`,
+                borderTop: `1px solid ${a11y ? "rgba(255,240,200,0.66)" : "rgba(210,168,65,0.44)"}`,
+                boxShadow: a11y
+                  ? "inset 0 0 18px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 12px rgba(120,90,30,0.10)"
+                  : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.38)",
+              }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ flex: "0 0 36px", height: 36, borderRadius: "50%", display: "grid", placeItems: "center",
+                  background: mgr ? "rgba(200,169,110,0.18)" : "rgba(126,180,220,0.16)" }}>
+                  {UI_SVG.calendar ? UI_SVG.calendar(mgr ? GOLD : "#7EB4DC", 20) : <span style={{ fontSize: 17 }}>🗓</span>}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, color: a11y ? "#2A1F0E" : CREAM }}>
+                    {mgr ? "График смен" : "Мой график"}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: a11y ? "#6B5B40" : "#A2907A", marginTop: 1 }}>
+                    {mgr ? "Составить, проверить и опубликовать" : "Смены, время и старший смены"}
+                  </div>
+                </div>
+                <div style={{ fontFamily: "monospace", flexShrink: 0, fontSize: 9, letterSpacing: 1.4,
+                  color: "#14100A", background: GOLD, borderRadius: 12, padding: "6px 11px" }}>ОТКРЫТЬ ›</div>
               </div>
             </div>
           );

@@ -119,6 +119,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       if (!r || r.ok !== true) {
         setState("error");
         const why = r?.error === "auth" ? "Сессия не распознана — перезайди в приложение"
+          : r?.error === "bad_token" ? "Токен сессии в неверном формате — перезайди в приложение"
+          : r?.error === "forbidden" ? "Нет прав: график меняет менеджер"
           : r?.message || r?.error || r?.hint || (r?.code ? "Код " + r.code : "Сервер вернул пустой ответ");
         setMsg(why);
         setDbg(JSON.stringify(r || {}).slice(0, 400));

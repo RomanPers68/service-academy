@@ -9,7 +9,9 @@
 --   • менять график и настройки может только админ (менеджер/управляющий);
 --   • пожелание на день сотрудник ставит себе сам, но чужое тронуть не может.
 --
--- Личность берётся из вашей же функции whoami(p_token), как в этапе 8.
+-- Личность берётся из вашей же функции whoami(p_token uuid) — она принимает
+-- именно uuid, поэтому токен приводим к нему явно и аккуратно: кривая строка
+-- вернёт понятный bad_token, а не ошибку приведения типа.
 -- Запускается один раз в SQL-редакторе Supabase. Адаптировать ничего не нужно.
 
 -- ── Настройки заведения ─────────────────────────────────────────────
@@ -41,9 +43,11 @@ create index if not exists schedule_months_idx
 -- ── Чтение: доступно любому сотруднику своего ресторана ─────────────
 create or replace function schedule_load(p_token text, p_restaurant text, p_month text)
 returns json language plpgsql security definer as $$
-declare v jsonb;
+declare v jsonb; v_tok uuid;
 begin
-  v := to_jsonb(whoami(p_token));
+  begin v_tok := p_token::uuid; exception when others then
+    return json_build_object('ok', false, 'error', 'bad_token'); end;
+  v := to_jsonb(whoami(v_tok));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -74,9 +78,11 @@ end; $$;
 create or replace function schedule_save_venue(
   p_token text, p_restaurant text, p_venue_key text, p_title text, p_config text)
 returns json language plpgsql security definer as $$
-declare v jsonb; v_who text;
+declare v jsonb; v_who text; v_tok uuid;
 begin
-  v := to_jsonb(whoami(p_token));
+  begin v_tok := p_token::uuid; exception when others then
+    return json_build_object('ok', false, 'error', 'bad_token'); end;
+  v := to_jsonb(whoami(v_tok));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -99,9 +105,11 @@ end; $$;
 create or replace function schedule_save_month(
   p_token text, p_restaurant text, p_venue_key text, p_month text, p_payload text)
 returns json language plpgsql security definer as $$
-declare v jsonb; v_who text;
+declare v jsonb; v_who text; v_tok uuid;
 begin
-  v := to_jsonb(whoami(p_token));
+  begin v_tok := p_token::uuid; exception when others then
+    return json_build_object('ok', false, 'error', 'bad_token'); end;
+  v := to_jsonb(whoami(v_tok));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -126,9 +134,11 @@ create or replace function schedule_set_wish(
   p_token text, p_restaurant text, p_venue_key text, p_month text,
   p_staff_id text, p_day text, p_wish text)
 returns json language plpgsql security definer as $$
-declare v jsonb; v_cur jsonb; v_self text;
+declare v jsonb; v_cur jsonb; v_self text; v_tok uuid;
 begin
-  v := to_jsonb(whoami(p_token));
+  begin v_tok := p_token::uuid; exception when others then
+    return json_build_object('ok', false, 'error', 'bad_token'); end;
+  v := to_jsonb(whoami(v_tok));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -182,9 +192,11 @@ create index if not exists schedule_pub_idx
 create or replace function schedule_publish(
   p_token text, p_restaurant text, p_venue_key text, p_month text)
 returns json language plpgsql security definer as $$
-declare v jsonb; v_who text; v_payload jsonb; v_id bigint;
+declare v jsonb; v_who text; v_payload jsonb; v_id bigint; v_tok uuid;
 begin
-  v := to_jsonb(whoami(p_token));
+  begin v_tok := p_token::uuid; exception when others then
+    return json_build_object('ok', false, 'error', 'bad_token'); end;
+  v := to_jsonb(whoami(v_tok));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -210,9 +222,11 @@ end; $$;
 -- Дописать ссылку на собранный PDF к публикации
 create or replace function schedule_publication_file(p_token text, p_id bigint, p_url text)
 returns json language plpgsql security definer as $$
-declare v jsonb;
+declare v jsonb; v_tok uuid;
 begin
-  v := to_jsonb(whoami(p_token));
+  begin v_tok := p_token::uuid; exception when others then
+    return json_build_object('ok', false, 'error', 'bad_token'); end;
+  v := to_jsonb(whoami(v_tok));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -228,9 +242,11 @@ end; $$;
 create or replace function schedule_publications_list(
   p_token text, p_restaurant text, p_venue_key text, p_month text)
 returns json language plpgsql security definer as $$
-declare v jsonb;
+declare v jsonb; v_tok uuid;
 begin
-  v := to_jsonb(whoami(p_token));
+  begin v_tok := p_token::uuid; exception when others then
+    return json_build_object('ok', false, 'error', 'bad_token'); end;
+  v := to_jsonb(whoami(v_tok));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;

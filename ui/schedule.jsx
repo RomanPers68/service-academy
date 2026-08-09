@@ -174,6 +174,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [dbg, setDbg] = React.useState("");     // сырой ответ сервера для разбора
   const [tab, setTab] = React.useState("plan"); // plan · setup
   const [openSec, setOpenSec] = React.useState(1);
+  const [confirmClear, setConfirmClear] = React.useState(false);
+  // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
+  // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
+  const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
 
   const DAYS = daysIn(Y, M);
   const mkey = `${Y}-${String(M + 1).padStart(2, "0")}`;
@@ -262,10 +266,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const visibleDays = weekIdx == null
     ? Array.from({ length: DAYS }, (_, i) => i + 1)
     : (weeks[weekIdx] || []);
-  const [confirmClear, setConfirmClear] = React.useState(false);
-  // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
-  // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
-  const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
 
   // Очистка месяца: снимает и расстановку, и замки. Настройки заведения
   // при этом остаются — они общие для всех месяцев.

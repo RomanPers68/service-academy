@@ -241,11 +241,18 @@ export const injectStyles = () => {
     /* ══ График смен ══════════════════════════════════════════════
        Фактура «морозного льда»: тёплый полупрозрачный фон, светлая
        кромка сверху, мягкое внутреннее свечение, никакого блюра. */
-    .sa-schedwrap{touch-action:pan-y}
-    /* Таблице нужен горизонтальный жест: обёртка разрешает только вертикальный,
-       поэтому внутри сетки явно возвращаем оба направления. */
-    .sa-schedgrid{max-height:64vh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:12px;
-      touch-action:pan-x pan-y;overscroll-behavior-x:contain}
+    /* touch-action у родителя перекрывает дочерний: если обёртке поставить
+       pan-y, горизонтальный жест внутри уже не вернуть. Поэтому обёртка
+       ничего не ограничивает, а от случайного закрытия окна защищает
+       overscroll-behavior. */
+    .sa-schedwrap{overscroll-behavior:contain}
+    .sa-schedgrid{max-height:64vh;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      border-radius:12px;touch-action:pan-x pan-y;overscroll-behavior-x:contain}
+    /* Колонки не должны сжиматься, иначе таблица влезает в экран
+       и прокручивать становится нечего. */
+    .sa-schedgrid table{width:max-content;min-width:100%}
+    .sa-schedgrid td,.sa-schedgrid th{min-width:26px}
+    .sa-schedgrid td.sa-schednm,.sa-schedgrid th.sa-schednm{min-width:100px}
     .sa-schedgrid table{border-collapse:separate;border-spacing:0}
     /* липкая шапка с числами */
     .sa-schedgrid tr:first-child th{position:sticky;top:0;z-index:4;

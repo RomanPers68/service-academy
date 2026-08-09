@@ -784,7 +784,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                       <td className="sa-schednm sa-schedgrp" style={{ fontFamily:mono, fontSize:9,
                         letterSpacing:2, textTransform:"uppercase", color:P.acc, padding:"6px 8px" }}>{t}</td>
                       {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => (
-                        <td key={d} className="sa-schedgrp" style={{ fontSize:8.5, color:P.sub, height:22, textAlign:"center",
+                        <td key={d} className="sa-schedgrp" style={{ fontSize:8.5, minWidth:26, color:P.sub, height:22, textAlign:"center",
                           borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>{needOf(d)[pos] || 0}</td>
                       ))}
                     </tr>
@@ -809,7 +809,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                             return (
                               <td key={d} onClick={() => tapCell(s, d)}
                                 className={"sa-schedcell" + (dow(d) >= 5 ? " sa-schedwe" : "")}
-                                style={{ width:26, height:30, cursor:"pointer", textAlign:"center",
+                                style={{ width:26, minWidth:26, height:30, cursor:"pointer", textAlign:"center",
                                   borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                                 <div style={{
                                   width:22, height:22, margin:"0 auto", borderRadius:6, display:"grid", placeItems:"center",

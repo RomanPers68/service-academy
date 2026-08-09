@@ -11,7 +11,7 @@
 
 import React from "react";
 import { rpc, saToken } from "../api/supabase";
-import { vibrate } from "../lib/utils";
+import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS } from "./tokens";
 
 const mono = "ui-monospace, Menlo, monospace";
@@ -79,6 +79,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [dirty, setDirty] = React.useState(false);
   const [msg, setMsg] = React.useState("");
   const [dbg, setDbg] = React.useState("");     // сырой ответ сервера для разбора
+  const [tab, setTab] = React.useState("plan"); // plan · setup
+  const [openSec, setOpenSec] = React.useState(1);
 
   const DAYS = daysIn(Y, M);
   const mkey = `${Y}-${String(M + 1).padStart(2, "0")}`;
@@ -153,6 +155,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   };
 
   const staff = cfg?.staff || [];
+
+  // Настройки заведения сохраняются отдельно от месяца: они общие для всех месяцев
+  const saveCfg = async (next) => {
+    setCfg(next);
+    if (!isAdmin) return;
+    setMsg("Сохраняю настройки…");
+    try {
+      const r = await rpc("schedule_save_venue", {
+        p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue_key: venueKey,
+        p_title: profile?.restaurant || "Заведение", p_config: JSON.stringify(next),
+      });
+      setMsg(r && r.ok === true ? "Настройки сохранены"
+        : (r?.error === "forbidden" ? "Настройки меняет менеджер" : "Сохранить не удалось"));
+    } catch (e) { setMsg("Нет связи с сервером"); }
+    setTimeout(() => setMsg(""), 2000);
+  };
+  const patch = (fn) => { const next = JSON.parse(JSON.stringify(cfg)); fn(next); saveCfg(next); };
 
   // ── Автозаполнение ────────────────────────────────────────────────
   // Закреплённые вручную клетки сохраняем и достраиваем вокруг них.
@@ -331,6 +350,182 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     </div>
   );
 
+
+  // ── Редактор настроек ─────────────────────────────────────────────
+  const Field = ({ label, children }) => (
+    <div style={{ flex:1, minWidth:0 }}>
+      <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+        color:P.sub, paddingBottom:4 }}>{label}</div>
+      {children}
+    </div>
+  );
+  const inp = { fontFamily:mono, fontSize:12.5, color:P.text, borderRadius:9, padding:"7px 8px", minWidth:0,
+    background: a11y ? "rgba(255,252,244,0.85)" : "rgba(255,250,238,0.05)",
+    border:`1px solid ${a11y ? "rgba(175,140,65,0.35)" : "rgba(145,108,40,0.32)"}`,
+    borderTopColor: a11y ? "rgba(255,240,200,0.9)" : "rgba(210,168,65,0.36)" };
+  const Num = ({ v, min, max, set }) => (
+    <input type="number" value={v} min={min} max={max} style={{ ...inp, width:56, textAlign:"center" }}
+      onChange={e => { const x = Math.max(min, Math.min(max, +e.target.value || 0)); set(x); }} />
+  );
+  const Pill = ({ on, children, onClick, style }) => (
+    <button onClick={onClick} className="sa-btn" style={{
+      padding:"6px 10px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:11.5,
+      color: on ? GOLD : P.sub, background: on ? "rgba(200,169,110,0.13)" : "transparent",
+      border:`1px solid ${on ? GOLD + "99" : (a11y ? "rgba(175,140,65,0.3)" : "rgba(145,108,40,0.3)")}`,
+      ...style }}>{children}</button>
+  );
+  const Sec = ({ no, title, hint, children }) => (
+    <div className="sa-schedsec" style={{ marginBottom:8, borderRadius:14, overflow:"hidden" }}>
+      <div onClick={() => setOpenSec(openSec === no ? 0 : no)} {...onActivate(() => setOpenSec(openSec === no ? 0 : no))}
+        style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 13px", cursor:"pointer" }}>
+        <div className="sa-schedno">{no}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:14.5, color:P.text }}>{title}</div>
+          <div style={{ fontSize:11, color:P.sub }}>{hint}</div>
+        </div>
+        <div style={{ color:P.sub, fontSize:16, transform: openSec === no ? "rotate(90deg)" : "none",
+          transition:"transform .3s" }}>›</div>
+      </div>
+      {openSec === no ? <div style={{ padding:"0 13px 13px" }}>{children}</div> : null}
+    </div>
+  );
+  const rowStyle = { display:"flex", alignItems:"center", gap:8, padding:"7px 0",
+    borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.10)" : "rgba(255,255,255,0.06)"}` };
+  const hintStyle = { fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic", lineHeight:1.5 };
+
+  const setupView = () => (
+    <div style={card}>
+      <div style={eyebrow}><span>Настройки графика</span><span style={{ color:P.acc }}>{staff.length} чел.</span></div>
+
+      <Sec no={1} title="Часы работы" hint="Когда открываемся и закрываемся в каждый день недели">
+        {DOWL.map((dl, i) => (
+          <div key={i} style={rowStyle}>
+            <span style={{ flex:"0 0 40px", fontSize:12.5, color:P.sub }}>{dl}</span>
+            <Num v={cfg.hours[i][0]} min={0} max={23} set={v => patch(c => { c.hours[i][0] = v; })} />
+            <span style={{ color:P.sub }}>—</span>
+            <Num v={cfg.hours[i][1]} min={1} max={30} set={v => patch(c => { c.hours[i][1] = v; })} />
+            <span style={{ fontSize:11, color:P.sub }}>
+              {(cfg.hours[i][1] < cfg.hours[i][0] ? cfg.hours[i][1] + 24 : cfg.hours[i][1]) - cfg.hours[i][0]} ч
+              {cfg.hours[i][1] > 24 ? " (до утра)" : ""}
+            </span>
+          </div>
+        ))}
+        <div style={hintStyle}>Работу после полуночи пишем как 25 или 26 — это час и два ночи.</div>
+      </Sec>
+
+      <Sec no={2} title="Смены" hint="Во сколько люди приходят и уходят">
+        {cfg.shifts.map((sh, i) => (
+          <div key={i} style={rowStyle}>
+            <input value={sh.k} maxLength={2} style={{ ...inp, width:44, textAlign:"center" }}
+              onChange={e => patch(c => { c.shifts[i].k = e.target.value.toUpperCase().slice(0,2); })} />
+            <input value={sh.name} style={{ ...inp, flex:1 }}
+              onChange={e => patch(c => { c.shifts[i].name = e.target.value; })} />
+            <Num v={sh.from} min={0} max={23} set={v => patch(c => { c.shifts[i].from = v; })} />
+            <Num v={sh.to} min={1} max={30} set={v => patch(c => { c.shifts[i].to = v; })} />
+            <span style={{ fontSize:11, color:P.acc }}>{len(sh)} ч</span>
+            <Pill on={!!sh.extra} onClick={() => patch(c => { c.shifts[i].extra = sh.extra ? 0 : 1; })}>
+              {sh.extra ? "вручную" : "авто"}
+            </Pill>
+            <button className="sa-btn" onClick={() => patch(c => { c.shifts.splice(i, 1); })}
+              style={{ background:"transparent", border:`1px solid ${"#E0787855"}`, color:"#E09090",
+                borderRadius:9, padding:"6px 9px", fontSize:11, cursor:"pointer", fontFamily:serif }}>✕</button>
+          </div>
+        ))}
+        <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"8px 12px", fontSize:12 }}
+          onClick={() => patch(c => { c.shifts.push({ k:"С" + (c.shifts.length+1), name:"Новая смена", from:12, to:20 }); })}>
+          + добавить смену
+        </button>
+        <div style={hintStyle}>Порядок важен: первого человека на позицию ставим в первую смену. Режим «вручную» — смена, которую автозаполнение не расставляет: так помечают кейтеринг.</div>
+      </Sec>
+
+      <Sec no={3} title="Сколько людей нужно" hint="Разное количество в будни, выходные и праздники">
+        <div style={{ display:"flex", gap:8, fontFamily:mono, fontSize:8.5, letterSpacing:1.2,
+          textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>
+          <span style={{ flex:1 }}>позиция</span>
+          {["обычный","высокий","пик"].map(x => <span key={x} style={{ flex:"0 0 56px", textAlign:"center" }}>{x}</span>)}
+        </div>
+        {POS.map(({ id, t }) => (
+          <div key={id} style={rowStyle}>
+            <span style={{ flex:1, fontSize:12.5, color:P.sub }}>{t}</span>
+            {[1,2,3].map(lvl => (
+              <Num key={lvl} v={cfg.need[lvl]?.[id] || 0} min={0} max={9}
+                set={v => patch(c => { if (!c.need[lvl]) c.need[lvl] = {}; c.need[lvl][id] = v; })} />
+            ))}
+          </div>
+        ))}
+      </Sec>
+
+      <Sec no={4} title="Правила смен" hint="Загрузка по дням недели, выходные и отдых">
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пиковые дни недели</div>
+        <div style={{ display:"flex", gap:4, marginBottom:8 }}>
+          {DOWL.map((dl, wi) => (
+            <Pill key={wi} on={cfg.rules.peakDows.includes(wi)} style={{ flex:1, padding:"6px 0" }}
+              onClick={() => patch(c => {
+                c.rules.peakDows = c.rules.peakDows.includes(wi)
+                  ? c.rules.peakDows.filter(x => x !== wi) : [...c.rules.peakDows, wi];
+                c.rules.highDows = c.rules.highDows.filter(x => x !== wi);
+              })}>{dl}</Pill>
+          ))}
+        </div>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>высокие дни</div>
+        <div style={{ display:"flex", gap:4, marginBottom:8 }}>
+          {DOWL.map((dl, wi) => (
+            <Pill key={wi} on={cfg.rules.highDows.includes(wi)} style={{ flex:1, padding:"6px 0",
+              opacity: cfg.rules.peakDows.includes(wi) ? .35 : 1 }}
+              onClick={() => { if (cfg.rules.peakDows.includes(wi)) return; patch(c => {
+                c.rules.highDows = c.rules.highDows.includes(wi)
+                  ? c.rules.highDows.filter(x => x !== wi) : [...c.rules.highDows, wi];
+              }); }}>{dl}</Pill>
+          ))}
+        </div>
+        <div style={rowStyle}>
+          <Field label="смен подряд"><Num v={cfg.rules.maxRow} min={1} max={14} set={v => patch(c => { c.rules.maxRow = v; })} /></Field>
+          <Field label="выходных в неделю"><Num v={cfg.rules.minOff} min={0} max={4} set={v => patch(c => { c.rules.minOff = v; })} /></Field>
+          <Field label="отдых, ч"><Num v={cfg.rules.minRest} min={0} max={24} set={v => patch(c => { c.rules.minRest = v; })} /></Field>
+        </div>
+        <div style={{ marginTop:8 }}>
+          <Pill on={cfg.rules.holidayPeak} onClick={() => patch(c => { c.rules.holidayPeak = !c.rules.holidayPeak; })}>
+            {cfg.rules.holidayPeak ? "праздники считаем пиком" : "праздники как обычный день"}
+          </Pill>
+        </div>
+        <div style={hintStyle}>Эти правила генератор не нарушает: он скорее оставит смену незакрытой, чем поставит человека сверх предела.</div>
+      </Sec>
+
+      <Sec no={5} title="Сотрудники" hint="Кто работает, на какой позиции и сколько часов">
+        {staff.map((sf, i) => (
+          <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:7 }}>
+            <div style={{ ...rowStyle, borderTop:"none", paddingTop:0 }}>
+              <Field label="имя">
+                <input value={sf.name} style={{ ...inp, width:"100%" }}
+                  onChange={e => patch(c => { c.staff[i].name = e.target.value; })} />
+              </Field>
+              <button className="sa-btn" onClick={() => patch(c => { c.staff.splice(i, 1); })}
+                style={{ background:"transparent", border:"1px solid #E0787855", color:"#E09090",
+                  borderRadius:9, padding:"6px 9px", fontSize:11, cursor:"pointer", fontFamily:serif, marginTop:14 }}>✕</button>
+            </div>
+            <div style={{ ...rowStyle, borderTop:"none" }}>
+              <Field label="должность">
+                <select value={sf.pos} style={{ ...inp, width:"100%" }}
+                  onChange={e => patch(c => { c.staff[i].pos = e.target.value; })}>
+                  {POS.map(({ id, t }) => <option key={id} value={id}>{t}</option>)}
+                </select>
+              </Field>
+              <Field label="норма, ч">
+                <Num v={sf.norm} min={0} max={320} set={v => patch(c => { c.staff[i].norm = v; })} />
+              </Field>
+            </div>
+          </div>
+        ))}
+        <button className="sa-btn" style={{ ...ghost, marginTop:4, padding:"10px 12px", fontSize:12.5 }}
+          onClick={() => patch(c => {
+            const id = Math.max(0, ...c.staff.map(x => +x.id || 0)) + 1;
+            c.staff.push({ id, name:"Новый сотрудник", pos:"waiter", norm:160 });
+          })}>+ добавить сотрудника</button>
+        <div style={hintStyle}>Имена лучше писать так же, как в профиле сотрудника: по ним человек увидит свои смены.</div>
+      </Sec>
+    </div>
+  );
+
   // ── Вид сотрудника: только свои смены ─────────────────────────────
   if (!isAdmin) {
     const me = staff.find(s => `${s.name}`.toLowerCase() === `${profile?.name || ""} ${profile?.surname || ""}`.trim().toLowerCase())
@@ -381,6 +576,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   });
 
   return shell(<>
+    <div style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
+      background: a11y ? "rgba(120,90,30,0.10)" : "rgba(0,0,0,0.3)",
+      border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)"}`, borderRadius:999 }}>
+      {[["plan","График"],["setup","Настройки"]].map(([k, t]) => (
+        <button key={k} className="sa-btn" onClick={() => setTab(k)} style={{
+          flex:1, border:"none", cursor:"pointer", padding:"9px 4px", borderRadius:999, fontFamily:serif, fontSize:13,
+          background: tab === k ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
+          color: tab === k ? INK_DEEP : P.sub, fontWeight: tab === k ? "bold" : "normal",
+        }}>{t}</button>
+      ))}
+    </div>
+    {tab === "setup" ? setupView() : <>
     {monthNav}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
       <button style={btn} className="sa-btn" onClick={generate}>Заполнить черновик</button>
@@ -473,6 +680,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       )}
     </div>
 
+    {!staff.length ? (
+      <div style={card}>
+        <div style={eyebrow}><span>С чего начать</span></div>
+        <div style={{ fontSize:13, lineHeight:1.6, color:P.sub }}>
+          Открой «Настройки» вверху и заведи людей — по одному, с должностью и нормой часов.
+          Там же задаются часы работы, смены и правила. После этого «Заполнить черновик»
+          расставит смены сам, а проверка покажет, где не сходится.
+        </div>
+      </div>
+    ) : (
     <div style={card}>
       <div style={eyebrow}><span>Проверка</span></div>
       {!warns.length ? (
@@ -487,5 +704,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       )}
     </div>
+    )}
+    </>}
   </>);
 }

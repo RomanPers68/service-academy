@@ -277,6 +277,19 @@ export const injectStyles = () => {
       box-shadow:inset 0 0 14px rgba(224,120,120,0.08),inset 0 1px 0 rgba(255,255,255,0.09)}
     .sa-schedbar{flex:1;height:3px;border-radius:2px;background:rgba(0,0,0,0.4);overflow:hidden}
 
+    /* редактор настроек графика */
+    .sa-schedsec{background:rgba(255,250,238,0.03);border:1px solid rgba(145,108,40,0.26);
+      border-top:1px solid rgba(210,168,65,0.3);
+      box-shadow:inset 0 0 14px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10)}
+    .sa-schedno{flex:0 0 22px;height:22px;border-radius:50%;display:grid;place-items:center;
+      font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#C8A96E;
+      border:1.5px solid rgba(200,169,110,0.7);border-top-color:rgba(226,186,116,0.95);
+      background:linear-gradient(160deg,rgba(226,186,116,0.18),rgba(20,17,10,0.96) 62%);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.16),0 2px 5px rgba(0,0,0,0.4)}
+    .sa-schedemp{background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.24);
+      border-top:1px solid rgba(210,168,65,0.28);
+      box-shadow:inset 0 0 14px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10)}
+
     /* ── светлая тема: то же стекло, только свечение белое ── */
     html.sa-light .sa-schedgrid tr:first-child th{
       background:linear-gradient(180deg,rgba(255,250,235,0.98),rgba(240,232,212,0.99));
@@ -300,6 +313,13 @@ export const injectStyles = () => {
     html.sa-light .sa-schednote.ok{background:rgba(42,107,69,0.12);border-color:rgba(42,107,69,0.4);color:#1E4A30}
     html.sa-light .sa-schednote.bad{background:rgba(139,48,32,0.10);border-color:rgba(139,48,32,0.38);color:#6B2418}
     html.sa-light .sa-schedbar{background:rgba(120,90,30,0.16)}
+    html.sa-light .sa-schedsec,html.sa-light .sa-schedemp{background:rgba(250,242,222,0.72);
+      border-color:rgba(175,140,65,0.26);border-top-color:rgba(255,240,200,0.8);
+      box-shadow:inset 0 0 18px rgba(255,255,255,0.6),inset 0 1px 0 rgba(255,255,255,0.9)}
+    html.sa-light .sa-schedno{color:#8B6A30;border-color:rgba(139,106,48,0.7);
+      border-top-color:rgba(255,240,200,0.95);
+      background:linear-gradient(160deg,rgba(255,252,244,0.95),rgba(238,228,204,0.98));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 2px 5px rgba(120,90,30,0.18)}
 
     /* ══ «Сборка» — фирменный формат практики роли «Бар» (ui/build.jsx) ══ */
     .sa-bld-term{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;

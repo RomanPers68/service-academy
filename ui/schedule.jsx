@@ -80,7 +80,12 @@ const INP = (a11y, P) => ({
   // складывается с отступами и рамкой, поле вылезает за свои границы
   // и наезжает на соседнюю кнопку.
   boxSizing: "border-box",
-  fontFamily: mono, fontSize: 12.5, color: P.text, borderRadius: 9, padding: "7px 8px", minWidth: 0,
+  // iOS красит текст в полях своим цветом, обычного color ему мало —
+  // нужен -webkit-text-fill-color, иначе на тёмной теме текст почти чёрный.
+  WebkitTextFillColor: P.text,
+  caretColor: GOLD,
+  WebkitAppearance: "none",
+  fontFamily: mono, fontSize: 13.5, color: P.text, borderRadius: 9, padding: "8px 9px", minWidth: 0,
   background: a11y ? "rgba(255,252,244,0.85)" : "rgba(255,250,238,0.05)",
   border: `1px solid ${a11y ? "rgba(175,140,65,0.35)" : "rgba(145,108,40,0.32)"}`,
   borderTopColor: a11y ? "rgba(255,240,200,0.9)" : "rgba(210,168,65,0.36)",
@@ -244,7 +249,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   };
 
   const staff = cfg?.staff || [];
+
+  // Недели месяца: первая может быть неполной, последняя тоже
+  const weeks = React.useMemo(() => {
+    const out = []; let cur = [];
+    for (let d = 1; d <= DAYS; d++) {
+      cur.push(d);
+      if (dow(d) === 6 || d === DAYS) { out.push(cur); cur = []; }
+    }
+    return out;
+  }, [Y, M, DAYS]);
+  const visibleDays = weekIdx == null
+    ? Array.from({ length: DAYS }, (_, i) => i + 1)
+    : (weeks[weekIdx] || []);
   const [confirmClear, setConfirmClear] = React.useState(false);
+  // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
+  // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
+  const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
 
   // Очистка месяца: снимает и расстановку, и замки. Настройки заведения
   // при этом остаются — они общие для всех месяцев.
@@ -764,15 +785,37 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       ) : (
         <>
+        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:9 }}>
+          {weeks.map((w, i) => (
+            <button key={i} className="sa-btn" onClick={() => setWeekIdx(weekIdx === i ? null : i)}
+              style={{ flex:"1 1 auto", padding:"7px 4px", borderRadius:999, cursor:"pointer",
+                fontFamily:serif, fontSize:11.5, minWidth:52,
+                color: weekIdx === i ? INK_DEEP : P.sub,
+                background: weekIdx === i ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
+                border:`1px solid ${weekIdx === i ? GOLD : (a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.3)")}`,
+                fontWeight: weekIdx === i ? "bold" : "normal" }}>
+              {w[0]}–{w[w.length - 1]}
+            </button>
+          ))}
+          <button className="sa-btn" onClick={() => setWeekIdx(null)}
+            style={{ flex:"1 1 auto", padding:"7px 8px", borderRadius:999, cursor:"pointer",
+              fontFamily:serif, fontSize:11.5, minWidth:74,
+              color: weekIdx == null ? INK_DEEP : P.sub,
+              background: weekIdx == null ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
+              border:`1px solid ${weekIdx == null ? GOLD : (a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.3)")}`,
+              fontWeight: weekIdx == null ? "bold" : "normal" }}>весь месяц</button>
+        </div>
         <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginBottom:7 }}>
-          Таблица листается вбок · тап по клетке меняет смену и закрепляет её
+          {weekIdx == null
+            ? "Весь месяц: таблица листается вбок. Выбери неделю — влезет без прокрутки"
+            : "Тап по клетке меняет смену и закрепляет её"}
         </div>
         <div className="sa-schedgrid">
           <table style={{ borderCollapse:"separate", borderSpacing:0, fontFamily:mono }}>
             <tbody>
               <tr>
                 <th className="sa-schednm" style={{ width:100, minWidth:100 }} />
-                {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => (
+                {visibleDays.map(d => (
                   <th key={d} style={{ width:26, minWidth:26, fontSize:9, color:P.sub, padding:"3px 0", lineHeight:1.2,
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                     <b style={{ display:"block", fontSize:10.5, fontWeight:"normal",
@@ -789,7 +832,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                     <tr>
                       <td className="sa-schednm sa-schedgrp" style={{ fontFamily:mono, fontSize:9,
                         letterSpacing:2, textTransform:"uppercase", color:P.acc, padding:"6px 8px" }}>{t}</td>
-                      {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => (
+                      {visibleDays.map(d => (
                         <td key={d} className="sa-schedgrp" style={{ fontSize:8.5, minWidth:26, color:P.sub, height:22, textAlign:"center",
                           borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>{needOf(d)[pos] || 0}</td>
                       ))}
@@ -808,7 +851,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                               <span style={{ fontFamily:mono, fontSize:8, color:P.sub }}>{h}/{s.norm}</span>
                             </div>
                           </td>
-                          {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
+                          {visibleDays.map(d => {
                             const k = plan[s.id]?.[d] || "", col = k && colorOf(k);
                             const vac = onVac(s, d);
                             const fixedOff = !k && !vac && (s.off || []).includes(dow(d));

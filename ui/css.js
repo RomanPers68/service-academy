@@ -287,6 +287,16 @@ export const injectStyles = () => {
       box-shadow:inset 0 0 14px rgba(224,120,120,0.08),inset 0 1px 0 rgba(255,255,255,0.09)}
     .sa-schedbar{flex:1;height:3px;border-radius:2px;background:rgba(0,0,0,0.4);overflow:hidden}
 
+    /* Поля ввода в графике: цвет текста и подсказки задаём явно —
+       iOS иначе подставляет системный, почти чёрный на тёмной теме. */
+    .sa-schedwrap input,.sa-schedwrap select{-webkit-appearance:none;appearance:none}
+    .sa-schedwrap input::placeholder{color:rgba(240,232,216,.38)}
+    html.sa-light .sa-schedwrap input::placeholder{color:rgba(42,31,14,.42)}
+    .sa-schedwrap select{color:#F0E8D8;-webkit-text-fill-color:#F0E8D8}
+    html.sa-light .sa-schedwrap select{color:#2A1F0E;-webkit-text-fill-color:#2A1F0E}
+    .sa-schedwrap input:focus,.sa-schedwrap select:focus{outline:none;
+      border-color:rgba(200,169,110,.75);box-shadow:0 0 0 2px rgba(200,169,110,.18)}
+
     /* редактор настроек графика */
     .sa-schedsec{background:rgba(255,250,238,0.03);border:1px solid rgba(145,108,40,0.26);
       border-top:1px solid rgba(210,168,65,0.3);

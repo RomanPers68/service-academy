@@ -76,6 +76,10 @@ const focusScroll = (e) => {
 
 // Поля редактора — на уровне модуля, иначе React пересоздаёт их каждый рендер
 const INP = (a11y, P) => ({
+  // В приложении нет глобального box-sizing: без него ширина 100 %
+  // складывается с отступами и рамкой, поле вылезает за свои границы
+  // и наезжает на соседнюю кнопку.
+  boxSizing: "border-box",
   fontFamily: mono, fontSize: 12.5, color: P.text, borderRadius: 9, padding: "7px 8px", minWidth: 0,
   background: a11y ? "rgba(255,252,244,0.85)" : "rgba(255,250,238,0.05)",
   border: `1px solid ${a11y ? "rgba(175,140,65,0.35)" : "rgba(145,108,40,0.32)"}`,
@@ -86,7 +90,7 @@ const ROW = (a11y) => ({ display:"flex", alignItems:"center", gap:8, padding:"7p
 
 function Field({ label, P, children }) {
   return (
-    <div style={{ flex:1, minWidth:0 }}>
+    <div style={{ flex:"1 1 0", minWidth:0, maxWidth:"100%" }}>
       <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
         color:P.sub, paddingBottom:4 }}>{label}</div>
       {children}
@@ -503,9 +507,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
               {sh.extra ? "вручную" : "авто"}
             </Pill>
             <button className="sa-btn" title="Удалить смену" onClick={() => patch(c => { c.shifts.splice(i, 1); })}
-              style={{ flex:"0 0 auto", width:32, height:32, background:"transparent",
-                border:"1px solid #E0787855", color:"#E09090", borderRadius:9,
-                fontSize:12, cursor:"pointer", fontFamily:serif, lineHeight:1 }}>✕</button>
+              style={{ flex:"0 0 32px", width:32, height:32, minWidth:32, boxSizing:"border-box",
+                background:"transparent", border:"1px solid #E0787855", color:"#E09090",
+                borderRadius:9, fontSize:12, cursor:"pointer", fontFamily:serif, lineHeight:1,
+                padding:0, display:"grid", placeItems:"center" }}>✕</button>
           </div>
         ))}
         <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"8px 12px", fontSize:12 }}
@@ -571,16 +576,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       <Sec no={5} title="Сотрудники" hint="Кто работает, на какой позиции и сколько часов" P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
         {staff.map((sf, i) => (
           <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:7 }}>
-            <div style={{ display:"flex", alignItems:"flex-end", gap:8, paddingBottom:2 }}>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:8, paddingBottom:2, minWidth:0 }}>
               <Field label="имя" P={P}>
                 <Text inp={inp} v={sf.name} style={{ width:"100%" }}
                   set={val => patch(c => { c.staff[i].name = val; })} />
               </Field>
               <button className="sa-btn" title="Удалить сотрудника"
                 onClick={() => patch(c => { c.staff.splice(i, 1); })}
-                style={{ flex:"0 0 auto", width:34, height:34, background:"transparent",
-                  border:"1px solid #E0787855", color:"#E09090", borderRadius:9,
-                  fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1 }}>✕</button>
+                style={{ flex:"0 0 34px", width:34, height:34, minWidth:34, boxSizing:"border-box",
+                  background:"transparent", border:"1px solid #E0787855", color:"#E09090",
+                  borderRadius:9, fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1,
+                  padding:0, display:"grid", placeItems:"center" }}>✕</button>
             </div>
             <div style={{ ...rowStyle, borderTop:"none" }}>
               <Field label="должность" P={P}>

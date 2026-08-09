@@ -64,6 +64,10 @@ begin
       where restaurant = p_restaurant and month = p_month
     ), '[]'::jsonb)
   );
+exception when others then
+  -- Без этого любая ошибка уходит наружу в формате PostgREST,
+  -- и приложение видит не наш ответ, а служебный код.
+  return json_build_object('ok', false, 'error', SQLERRM);
 end; $$;
 
 -- ── Запись настроек заведения: только админ ─────────────────────────
@@ -255,3 +259,19 @@ grant execute on function schedule_set_wish(text,text,text,text,text,text,text) 
 grant execute on function schedule_publish(text,text,text,text)               to anon, authenticated;
 grant execute on function schedule_publication_file(text,bigint,text)         to anon, authenticated;
 grant execute on function schedule_publications_list(text,text,text,text)     to anon, authenticated;
+
+-- ── Проверка после запуска ──────────────────────────────────────────
+-- Выполни отдельно и убедись, что все семь функций на месте:
+--
+--   select proname from pg_proc where proname like 'schedule%' order by 1;
+--
+-- Если PostgREST ещё не увидел новые функции, разбудить его:
+--
+--   notify pgrst, 'reload schema';
+--
+-- Быстрая проверка прав и связи (подставь свой токен и ресторан):
+--
+--   select schedule_load('ТОКЕН', 'НАЗВАНИЕ_РЕСТОРАНА', '2026-08');
+--
+-- Ответ должен быть {"ok": true, "venues": [], "months": []}.
+-- Пустые массивы — это нормально: заведение ещё не настроено.

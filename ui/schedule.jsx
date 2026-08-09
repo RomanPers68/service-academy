@@ -78,6 +78,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [state, setState] = React.useState("load"); // load · ok · error
   const [dirty, setDirty] = React.useState(false);
   const [msg, setMsg] = React.useState("");
+  const [dbg, setDbg] = React.useState("");     // сырой ответ сервера для разбора
 
   const DAYS = daysIn(Y, M);
   const mkey = `${Y}-${String(M + 1).padStart(2, "0")}`;
@@ -113,14 +114,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       const r = await rpc("schedule_load", {
         p_token: saToken(), p_restaurant: profile?.restaurant || "", p_month: mkey,
       });
-      if (!r || r.ok !== true) { setState("error"); setMsg("Не удалось загрузить график"); return; }
+      // Показываем ответ сервера как есть: общая фраза «не удалось» не даёт
+      // понять, дело в правах, в отсутствующей функции или в токене.
+      if (!r || r.ok !== true) {
+        setState("error");
+        const why = r?.error === "auth" ? "Сессия не распознана — перезайди в приложение"
+          : r?.message || r?.error || r?.hint || (r?.code ? "Код " + r.code : "Сервер вернул пустой ответ");
+        setMsg(why);
+        setDbg(JSON.stringify(r || {}).slice(0, 400));
+        return;
+      }
       const v = (r.venues || []).find(x => x.venue_key === venueKey);
       setCfg(v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG });
       const m = (r.months || []).find(x => x.venue_key === venueKey);
       const pl = m?.payload || {};
       setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {});
       setDirty(false); setState("ok");
-    } catch (e) { setState("error"); setMsg("Нет связи с сервером"); }
+    } catch (e) { setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e)); }
   }, [mkey, profile?.restaurant]);
 
   React.useEffect(() => { load(); }, [load]);
@@ -134,7 +144,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         p_month: mkey, p_payload: JSON.stringify({ plan, locks, days }),
       });
       if (r && r.ok === true) { setDirty(false); setMsg("Сохранено"); vibrate("success"); }
-      else setMsg("Сохранить не удалось");
+      else setMsg(r?.error === "forbidden" ? "Нет прав на изменение графика"
+        : (r?.message || r?.error || "Сохранить не удалось"));
     } catch (e) { setMsg("Нет связи с сервером"); }
     setTimeout(() => setMsg(""), 2500);
   };
@@ -291,7 +302,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   if (state === "load") return shell(<div style={{ ...card, textAlign:"center", color:P.sub }}>Загружаю график…</div>);
   if (state === "error") return shell(
     <div style={{ ...card }}>
-      <div style={{ color:P.warn, marginBottom:10 }}>{msg}</div>
+      <div style={{ color:P.warn, marginBottom:6, fontSize:15 }}>{msg}</div>
+      <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>
+        Ресторан в профиле: «{profile?.restaurant || "не задан"}» · месяц {mkey}
+      </div>
+      {dbg ? (
+        <div style={{ fontFamily:mono, fontSize:10, lineHeight:1.5, color:P.sub, wordBreak:"break-all",
+          padding:"9px 11px", borderRadius:10, marginBottom:12,
+          background: a11y ? "rgba(120,90,30,0.07)" : "rgba(0,0,0,0.28)",
+          border:`1px solid ${a11y ? "rgba(175,140,65,0.22)" : "rgba(145,108,40,0.28)"}` }}>{dbg}</div>
+      ) : null}
       <button style={ghost} className="sa-btn" onClick={load}>Попробовать снова</button>
     </div>
   );

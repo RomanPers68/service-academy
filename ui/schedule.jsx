@@ -757,6 +757,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           добавь людей, и появится таблица.
         </div>
       ) : (
+        <>
         <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginBottom:7 }}>
           Таблица листается вбок · тап по клетке меняет смену и закрепляет её
         </div>
@@ -836,6 +837,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {staff.length ? (

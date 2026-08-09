@@ -242,7 +242,10 @@ export const injectStyles = () => {
        Фактура «морозного льда»: тёплый полупрозрачный фон, светлая
        кромка сверху, мягкое внутреннее свечение, никакого блюра. */
     .sa-schedwrap{touch-action:pan-y}
-    .sa-schedgrid{max-height:64vh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+    /* Таблице нужен горизонтальный жест: обёртка разрешает только вертикальный,
+       поэтому внутри сетки явно возвращаем оба направления. */
+    .sa-schedgrid{max-height:64vh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:12px;
+      touch-action:pan-x pan-y;overscroll-behavior-x:contain}
     .sa-schedgrid table{border-collapse:separate;border-spacing:0}
     /* липкая шапка с числами */
     .sa-schedgrid tr:first-child th{position:sticky;top:0;z-index:4;

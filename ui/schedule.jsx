@@ -22,8 +22,9 @@ const MONTHS_R = ["января","февраля","марта","апреля","�
 
 // Порядок позиций: сверху руководство, дальше по залу
 export const POS = [
-  { id: "manager", t: "Менеджер" }, { id: "host", t: "Хостес" }, { id: "bar", t: "Бар" },
-  { id: "barback", t: "Барбек" }, { id: "waiter", t: "Официант" }, { id: "runner", t: "Раннер" },
+  { id: "manager", t: "Менеджер" }, { id: "host", t: "Хостес" }, { id: "call", t: "Колл-центр" },
+  { id: "bar", t: "Бар" }, { id: "barback", t: "Барбек" },
+  { id: "waiter", t: "Официант" }, { id: "runner", t: "Раннер" },
 ];
 const posName = id => (POS.find(p => p.id === id) || {}).t || id;
 
@@ -63,11 +64,21 @@ export const DEFAULT_CONFIG = {
     { k:"К", name:"Кейтеринг", from:10, to:22, extra:1 },
   ],
   need: {
-    1:{manager:1,host:1,bar:1,barback:0,waiter:2,runner:1},
-    2:{manager:1,host:1,bar:1,barback:1,waiter:3,runner:1},
-    3:{manager:1,host:1,bar:2,barback:1,waiter:4,runner:2},
+    1:{manager:1,host:1,call:1,bar:1,barback:0,waiter:2,runner:1},
+    2:{manager:1,host:1,call:1,bar:1,barback:1,waiter:3,runner:1},
+    3:{manager:1,host:1,call:1,bar:2,barback:1,waiter:4,runner:2},
   },
   rules: { peakDows:[4,5], highDows:[3,6], maxRow:5, minOff:2, minRest:11, holidayPeak:true },
+  // Как позиция выходит: 2/2 — жёсткий цикл два через два,
+  // «поровну» — генератор сам делит смены по недобору часов.
+  posRules: {
+    manager:{ pattern:"2x2" }, host:{ pattern:"2x2" }, call:{ pattern:"2x2" },
+    bar:{ pattern:"even" }, barback:{ pattern:"even" },
+    waiter:{ pattern:"even" }, runner:{ pattern:"2x2" },
+  },
+  dayShift: "Д",                    // основная смена для всех
+  // Усиление вечером: сколько человек и в какие дни недели
+  evening: { pos:"waiter", shift:"В", dows:[3,4,5], count:6 },
   staff: [],
 };
 
@@ -269,6 +280,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   const staff = cfg?.staff || [];
 
+  // Смещение цикла 2/2 у каждого своё, иначе вся позиция уйдёт отдыхать разом.
+  const cycleOffset = (s) => {
+    const list = staff.filter(x => x.pos === s.pos);
+    const i = list.findIndex(x => x.id === s.id);
+    return list.length ? Math.round(i * 4 / list.length) % 4 : 0;
+  };
+  const inCycle = (s, d) => {
+    const rule = (cfg?.posRules || {})[s.pos];
+    if (!rule || rule.pattern !== "2x2") return true;
+    return ((d - 1 + cycleOffset(s)) % 4) < 2;      // два рабочих, два выходных
+  };
+
   // Недели месяца: первая может быть неполной, последняя тоже
   const weeks = React.useMemo(() => {
     const out = []; let cur = [];
@@ -350,18 +373,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       return (n - work) - need;
     };
 
+    const dayK = (cfg.dayShift && shiftOf(cfg.dayShift)) ? cfg.dayShift : auto[0].k;
+    const ev = cfg.evening || null;
+
     for (let d = 1; d <= DAYS; d++) {
       const need = needOf(d), isPeak = lvlOf(d) === 3, slots = [];
+      // Дневная смена — всем позициям по потребности дня
       POS.forEach(({ id: pos }) => {
         const already = staff.filter(s => s.pos === pos && p[s.id][d]).length;
         const n = (need[pos] || 0) - already;
-        for (let i = 0; i < n; i++) slots.push({ pos, k: auto[Math.min(already + i, auto.length - 1)].k });
+        for (let i = 0; i < n; i++) slots.push({ pos, k: dayK });
       });
+      // Вечернее усиление: отдельная надбавка сверх дневной потребности,
+      // только для указанной позиции и только в заданные дни недели
+      if (ev && ev.count && shiftOf(ev.shift) && (ev.dows || []).includes(dow(d))) {
+        const busy = staff.filter(s => s.pos === ev.pos && p[s.id][d] && shiftOf(p[s.id][d])?.k === ev.shift).length;
+        for (let i = 0; i < ev.count - busy; i++) slots.push({ pos: ev.pos, k: ev.shift });
+      }
       slots.forEach(sl => {
         const sh = shiftOf(sl.k); if (!sh) return;
         const cand = staff.filter(s => {
           if (s.pos !== sl.pos || p[s.id][d] || onVac(s, d)) return false;
           if (isDayOff(s, d)) return false;
+          if (!inCycle(s, d)) return false;              // цикл два через два
           if (s.notBefore && sh.from < s.notBefore) return false;
           if (row[s.id] >= R.maxRow) return false;
           if (offLeft(s, d) <= 0) return false;
@@ -371,7 +405,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           return true;
         }).sort((a, b) => {
           if (isPeak && peak[a.id] !== peak[b.id]) return peak[a.id] - peak[b.id];
-          return (b.norm - hrs[b.id]) - (a.norm - hrs[a.id]);
+          const dh = (b.norm - hrs[b.id]) - (a.norm - hrs[a.id]);
+          if (dh) return dh;
+          // При равном недоборе берём того, кто работал вчера: так выходные
+          // склеиваются по два подряд, а не рассыпаются по одному.
+          const wa = d > 1 && p[a.id][d - 1] ? 1 : 0, wb = d > 1 && p[b.id][d - 1] ? 1 : 0;
+          return wb - wa;
         });
         if (cand.length) {
           const s = cand[0]; p[s.id][d] = sl.k; hrs[s.id] += len(sh);
@@ -410,6 +449,36 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       if (mx > R.maxRow) out.push(`${s.name}: ${mx} смен подряд при пределе ${R.maxRow}`);
     });
     return [...new Set(out)];
+  };
+
+  // Норма месяца при полной ставке: рабочие дни по пятидневке минус праздники,
+  // предпраздничный день короче на час. Переносы выходных правительство
+  // утверждает отдельно — их менеджер поправит руками.
+  const monthNorm = (hoursPerWeek = 40) => {
+    const perDay = hoursPerWeek / 5;
+    let work = 0, shortDays = 0;
+    for (let d = 1; d <= DAYS; d++) {
+      const w = dow(d), hol = !!holName(d);
+      if (w >= 5 || hol) continue;
+      work++;
+      const nextHol = d < DAYS ? !!holName(d + 1) : false;
+      if (nextHol) shortDays++;
+    }
+    return Math.round(work * perDay - shortDays);
+  };
+
+  // Полный разбор по человеку: сколько смен каждого вида и сколько часов
+  // они дали. Считается по фактически расставленным сменам месяца.
+  const breakdownOf = s => {
+    const by = {}; let hours = 0, shifts = 0;
+    for (let d = 1; d <= DAYS; d++) {
+      const k = plan[s.id]?.[d]; if (!k) continue;
+      const sh = shiftOf(k); if (!sh) continue;
+      shifts++; hours += len(sh);
+      if (!by[k]) by[k] = { n: 0, h: 0, name: sh.name };
+      by[k].n++; by[k].h += len(sh);
+    }
+    return { hours, shifts, by };
   };
 
   const hoursOf = s => {
@@ -792,6 +861,71 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           </Pill>
         </div>
         <div style={hintStyle}>Эти правила генератор не нарушает: он скорее оставит смену незакрытой, чем поставит человека сверх предела.</div>
+
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+          color:P.sub, padding:"14px 0 5px" }}>как выходит каждая позиция</div>
+        {POS.map(({ id, t }) => {
+          const pat = (cfg.posRules?.[id]?.pattern) || "even";
+          return (
+            <div key={id} style={{ ...rowStyle }}>
+              <span style={{ flex:1, fontSize:12.5, color:P.sub }}>{t}</span>
+              {[["2x2","2 / 2"],["even","поровну"]].map(([v, lbl]) => (
+                <Pill key={v} a11y={a11y} P={P} on={pat === v} style={{ flex:"0 0 82px", padding:"6px 0" }}
+                  onClick={() => patch(c => {
+                    if (!c.posRules) c.posRules = {};
+                    c.posRules[id] = { ...(c.posRules[id] || {}), pattern: v };
+                  })}>{lbl}</Pill>
+              ))}
+            </div>
+          );
+        })}
+        <div style={hintStyle}>«2 / 2» — жёсткий цикл: два дня работает, два отдыхает, смещение у каждого своё.
+          «Поровну» — генератор делит смены по недобору часов и старается склеивать выходные по два подряд.</div>
+
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+          color:P.sub, padding:"14px 0 5px" }}>основная смена</div>
+        <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+          {(cfg.shifts || []).filter(x => !x.extra).map(sh => (
+            <Pill key={sh.k} a11y={a11y} P={P} on={(cfg.dayShift || "Д") === sh.k} style={{ flex:"1 1 auto", padding:"7px 10px" }}
+              onClick={() => patch(c => { c.dayShift = sh.k; })}>{sh.k} · {sh.name}</Pill>
+          ))}
+        </div>
+        <div style={hintStyle}>Её получают все позиции по умолчанию.</div>
+
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+          color:P.sub, padding:"14px 0 5px" }}>вечернее усиление</div>
+        <div style={rowStyle}>
+          <Field label="позиция" P={P}>
+            <select value={cfg.evening?.pos || "waiter"} style={{ ...inp, width:"100%" }} onFocus={focusScroll}
+              onChange={e => patch(c => { c.evening = { ...(c.evening || {}), pos: e.target.value }; })}>
+              {POS.map(({ id, t }) => <option key={id} value={id}>{t}</option>)}
+            </select>
+          </Field>
+          <Field label="смена" P={P}>
+            <select value={cfg.evening?.shift || "В"} style={{ ...inp, width:"100%" }} onFocus={focusScroll}
+              onChange={e => patch(c => { c.evening = { ...(c.evening || {}), shift: e.target.value }; })}>
+              {(cfg.shifts || []).filter(x => !x.extra).map(sh => <option key={sh.k} value={sh.k}>{sh.k} · {sh.name}</option>)}
+            </select>
+          </Field>
+          <Field label="человек" P={P}>
+            <Num inp={inp} v={cfg.evening?.count || 0} min={0} max={20}
+              set={v => patch(c => { c.evening = { ...(c.evening || {}), count: v }; })} />
+          </Field>
+        </div>
+        <div style={{ display:"flex", gap:4, marginTop:6 }}>
+          {DOWL.map((dl, wi) => {
+            const on = (cfg.evening?.dows || []).includes(wi);
+            return (
+              <Pill key={wi} a11y={a11y} P={P} on={on} style={{ flex:1, padding:"6px 0" }}
+                onClick={() => patch(c => {
+                  const cur = c.evening?.dows || [];
+                  c.evening = { ...(c.evening || {}), dows: on ? cur.filter(x => x !== wi) : [...cur, wi] };
+                })}>{dl}</Pill>
+            );
+          })}
+        </div>
+        <div style={hintStyle}>Надбавка сверх дневной потребности: столько людей выходит в вечер в отмеченные дни.
+          Ноль отключает усиление.</div>
       </Sec>
 
       <Sec no={5} title="Сотрудники" hint="Кто работает, на какой позиции и сколько часов" P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
@@ -901,10 +1035,27 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </div>
           </div>
         ))}
-        <button className="sa-btn" style={{ ...ghost, marginTop:4, padding:"10px 12px", fontSize:12.5 }}
+        <div style={{ marginTop:10, padding:"10px 12px", borderRadius:12,
+          background: a11y ? "rgba(200,169,110,0.14)" : "rgba(200,169,110,0.10)",
+          border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(200,169,110,0.3)"}` }}>
+          <div style={{ fontSize:12.5, color:P.text, lineHeight:1.55 }}>
+            Норма {MONTHS_R[M]} при полной ставке — <b style={{ color:P.acc }}>{monthNorm(40)} ч</b>
+            <span style={{ color:P.sub }}> · при 36 часах в неделю {monthNorm(36)} ч</span>
+          </div>
+          <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
+            {[40, 36, 24].map(h => (
+              <Pill key={h} a11y={a11y} P={P} on={false} style={{ flex:"1 1 auto" }}
+                onClick={() => patch(c => { c.staff.forEach(x => { x.norm = monthNorm(h); }); })}>
+                поставить всем {monthNorm(h)} ч
+              </Pill>
+            ))}
+          </div>
+        </div>
+
+        <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"10px 12px", fontSize:12.5 }}
           onClick={() => patch(c => {
             const id = Math.max(0, ...c.staff.map(x => +x.id || 0)) + 1;
-            c.staff.push({ id, name:"Новый сотрудник", pos:"waiter", norm:160 });
+            c.staff.push({ id, name:"Новый сотрудник", pos:"waiter", norm: monthNorm(40) });
           })}>+ добавить сотрудника</button>
         <div style={hintStyle}>Имена лучше писать так же, как в профиле сотрудника: по ним человек увидит свои смены.
           У каждого три вида нерабочих дней: <b>отпуск</b> — период в этом месяце, <b>дни недели</b> — постоянный
@@ -1186,6 +1337,92 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       ) : null}
     </div>
+
+    {staff.length ? (
+      <div style={card}>
+        <div style={eyebrow}><span>Отработано по людям</span><span style={{ color:P.acc }}>{MONTHS_R[M]}</span></div>
+        {POS.map(({ id: pos, t }) => {
+          const list = staff.filter(x => x.pos === pos);
+          if (!list.length) return null;
+          return (
+            <div key={pos}>
+              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:2, textTransform:"uppercase",
+                color:P.acc, margin:"12px 0 4px" }}>{t}</div>
+              {list.map(s => {
+                const b = breakdownOf(s);
+                const diff = b.hours - (s.norm || 0);
+                return (
+                  <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>{s.name}</div>
+                      <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
+                      <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
+                    </div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:6 }}>
+                      <span style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>{b.shifts} смен</span>
+                      {Object.entries(b.by).map(([k, v]) => {
+                        const c = colorOf(k);
+                        return (
+                          <span key={k} style={{ display:"flex", alignItems:"center", gap:4,
+                            fontFamily:mono, fontSize:10.5, color:P.sub }}>
+                            <i style={{ width:11, height:11, borderRadius:3, display:"inline-block",
+                              background: c ? (a11y ? c.bgL : c.bg) : "transparent",
+                              border:`1px solid ${c ? (a11y ? c.bdL : c.bd) : "transparent"}` }} />
+                            {k} · {v.n} × {v.h} ч
+                          </span>
+                        );
+                      })}
+                      <span style={{ fontFamily:mono, fontSize:10.5, marginLeft:"auto",
+                        color: diff > 0 ? P.warn : diff < 0 ? P.sub : P.acc }}>
+                        {diff > 0 ? `+${diff} ч сверх нормы` : diff < 0 ? `${-diff} ч недобор` : "норма закрыта"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    ) : null}
+
+    {staff.length ? (() => {
+      const tot = staff.reduce((a, s) => a + hoursOf(s), 0);
+      const totNorm = staff.reduce((a, s) => a + (s.norm || 0), 0);
+      const over = staff.filter(s => hoursOf(s) > s.norm);
+      const under = staff.filter(s => hoursOf(s) < s.norm * 0.9);
+      const shifts = staff.reduce((a, s) => {
+        let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
+      }, 0);
+      return (
+        <div style={card}>
+          <div style={eyebrow}><span>Часы за месяц</span>
+            <span style={{ color:P.acc }}>норма месяца {monthNorm(40)} ч</span></div>
+          <div style={{ display:"flex", gap:10 }}>
+            {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (
+              <div key={i} style={{ flex:1, textAlign:"center", padding:"11px 6px", borderRadius:14,
+                background: a11y ? "rgba(250,242,222,0.72)" : "rgba(255,250,238,0.04)",
+                border:`1px solid ${a11y ? "rgba(175,140,65,0.26)" : "rgba(145,108,40,0.26)"}`,
+                borderTop:`1px solid ${a11y ? "rgba(255,240,200,0.8)" : "rgba(210,168,65,0.3)"}`,
+                boxShadow: a11y
+                  ? "inset 0 0 14px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)"
+                  : "inset 0 0 14px rgba(255,248,230,0.05), inset 0 1px 0 rgba(255,255,255,0.10)" }}>
+                <div style={{ fontSize:21, color:P.acc, lineHeight:1.1 }}>{v}</div>
+                <div style={{ fontFamily:mono, fontSize:8, letterSpacing:1.4, textTransform:"uppercase",
+                  color:P.sub, marginTop:5 }}>{t}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:12.5, color:P.sub, marginTop:10, lineHeight:1.6 }}>
+            {tot === totNorm ? "Часы разошлись ровно по нормам."
+              : tot < totNorm ? `Недобрано ${totNorm - tot} ч до суммы норм.`
+              : `Сверх норм ${tot - totNorm} ч — это переработки.`}
+            {over.length ? <span style={{ color:P.warn }}> Переработка у {over.length}: {over.map(s => s.name).join(", ")}.</span> : null}
+            {under.length ? <span> Заметный недобор у {under.length}: {under.map(s => s.name).join(", ")}.</span> : null}
+          </div>
+        </div>
+      );
+    })() : null}
 
     {!staff.length ? (
       <div style={card}>

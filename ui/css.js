@@ -246,8 +246,14 @@ export const injectStyles = () => {
        ничего не ограничивает, а от случайного закрытия окна защищает
        overscroll-behavior. */
     .sa-schedwrap{overscroll-behavior:contain}
+    /* Глобально в приложении стоит * { touch-action: pan-y !important },
+       поэтому горизонтальный жест включается только классом sa-hscroll —
+       он объявлен выше и бьёт по важности. */
     .sa-schedgrid{max-height:64vh;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;
-      border-radius:12px;touch-action:pan-x pan-y;overscroll-behavior-x:contain}
+      border-radius:12px;overscroll-behavior-x:contain}
+    /* Цвета текста в таблице: без них ячейки наследуют чёрный по умолчанию */
+    .sa-schedgrid td,.sa-schedgrid th{color:#E8DEC8}
+    html.sa-light .sa-schedgrid td,html.sa-light .sa-schedgrid th{color:#2A1F0E}
     /* Колонки не должны сжиматься, иначе таблица влезает в экран
        и прокручивать становится нечего. */
     .sa-schedgrid table{width:max-content;min-width:100%}
@@ -257,16 +263,19 @@ export const injectStyles = () => {
     /* липкая шапка с числами */
     .sa-schedgrid tr:first-child th{position:sticky;top:0;z-index:4;
       background:linear-gradient(180deg,rgba(226,186,116,0.12),rgba(25,19,9,0.985) 62%),#191309;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.10),0 2px 8px rgba(0,0,0,0.45)}
+      border-top:1px solid rgba(210,168,65,0.34);
+      box-shadow:inset 0 0 18px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10),
+                 0 2px 8px rgba(0,0,0,0.45)}
     .sa-schedgrid tr:first-child th.sa-schednm{z-index:5}
     /* липкая колонка имён: плотная, иначе строки просвечивают */
     .sa-schednm{position:sticky;left:0;z-index:3;text-align:left;
       background:linear-gradient(100deg,rgba(226,186,116,0.10),rgba(25,19,9,0.985) 58%),#191309;
       border-right:1px solid rgba(200,169,110,0.22);
-      box-shadow:inset 1px 0 0 rgba(255,255,255,0.07),inset 0 0 16px rgba(255,248,230,0.04)}
-    .sa-schedgrp{background:rgba(200,169,110,0.10);
+      box-shadow:inset 1px 0 0 rgba(255,255,255,0.07),inset 0 1px 0 rgba(255,255,255,0.07),
+                 inset 0 0 16px rgba(255,248,230,0.04)}
+    .sa-schedgrp{background:rgba(226,186,116,0.11);
       border-top:1px solid rgba(210,168,65,0.42);border-bottom:1px solid rgba(200,169,110,0.22);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.09)}
+      box-shadow:inset 0 0 16px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.09)}
     .sa-schednm.sa-schedgrp{
       background:linear-gradient(100deg,rgba(226,186,116,0.20),rgba(34,26,13,0.99) 58%),#221a0d;
       box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),inset 0 0 16px rgba(255,248,230,0.07)}
@@ -287,6 +296,17 @@ export const injectStyles = () => {
       box-shadow:inset 0 0 14px rgba(224,120,120,0.08),inset 0 1px 0 rgba(255,255,255,0.09)}
     .sa-schedbar{flex:1;height:3px;border-radius:2px;background:rgba(0,0,0,0.4);overflow:hidden}
 
+    /* Черновик собирается волной: клетки въезжают по строкам и дням.
+       Только transform и opacity — раскладку не трогаем, иначе на слабом
+       телефоне 500 клеток положат прокрутку. */
+    @keyframes saChipIn{
+      from{opacity:0;transform:scale(.55) translateY(-4px)}
+      70%{opacity:1;transform:scale(1.06)}
+      to{opacity:1;transform:scale(1)}
+    }
+    .sa-schedchip{animation:saChipIn .34s cubic-bezier(.25,.9,.35,1) both}
+    @media (prefers-reduced-motion: reduce){ .sa-schedchip{animation:none} }
+
     /* Поля ввода в графике: цвет текста и подсказки задаём явно —
        iOS иначе подставляет системный, почти чёрный на тёмной теме. */
     .sa-schedwrap input,.sa-schedwrap select{-webkit-appearance:none;appearance:none}
@@ -305,7 +325,8 @@ export const injectStyles = () => {
       font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#C8A96E;
       border:1.5px solid rgba(200,169,110,0.7);border-top-color:rgba(226,186,116,0.95);
       background:linear-gradient(160deg,rgba(226,186,116,0.18),rgba(20,17,10,0.96) 62%);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.16),0 2px 5px rgba(0,0,0,0.4)}
+      box-shadow:inset 0 0 10px rgba(255,248,230,0.08),inset 0 1px 0 rgba(255,255,255,0.16),
+                 0 2px 5px rgba(0,0,0,0.4)}
     .sa-schedemp{background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.24);
       border-top:1px solid rgba(210,168,65,0.28);
       box-shadow:inset 0 0 14px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10)}
@@ -313,15 +334,20 @@ export const injectStyles = () => {
     /* ── светлая тема: то же стекло, только свечение белое ── */
     html.sa-light .sa-schedgrid tr:first-child th{
       background:linear-gradient(180deg,rgba(255,250,235,0.98),rgba(240,232,212,0.99));
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 2px 8px rgba(120,90,30,0.12)}
+      border-top-color:rgba(255,240,200,0.8);
+      box-shadow:inset 0 0 18px rgba(255,255,255,0.55),inset 0 1px 0 rgba(255,255,255,0.9),
+                 0 2px 8px rgba(120,90,30,0.12)}
     html.sa-light .sa-schednm{
       background:linear-gradient(100deg,rgba(255,250,235,0.98),rgba(242,234,214,0.99));
       border-right-color:rgba(175,140,65,0.3);
-      box-shadow:inset 0 0 16px rgba(255,255,255,0.6),inset 1px 0 0 rgba(255,255,255,0.8)}
-    html.sa-light .sa-schedgrp{background:rgba(200,169,110,0.22);
-      border-top-color:rgba(175,140,65,0.5);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7)}
+      box-shadow:inset 0 0 16px rgba(255,255,255,0.6),inset 1px 0 0 rgba(255,255,255,0.8),
+                 inset 0 1px 0 rgba(255,255,255,0.85)}
+    html.sa-light .sa-schedgrp{background:rgba(250,242,222,0.85);
+      border-top-color:rgba(255,240,200,0.8);
+      box-shadow:inset 0 0 16px rgba(255,255,255,0.6),inset 0 1px 0 rgba(255,255,255,0.85)}
     html.sa-light .sa-schednm.sa-schedgrp{
-      background:linear-gradient(100deg,rgba(234,223,198,0.99),rgba(226,214,186,0.99))}
+      background:linear-gradient(100deg,rgba(244,236,214,0.99),rgba(234,224,198,0.99));
+      box-shadow:inset 0 0 16px rgba(255,255,255,0.6),inset 0 1px 0 rgba(255,255,255,0.85)}
     html.sa-light .sa-schedcell{border-bottom-color:rgba(120,90,30,0.10)}
     html.sa-light .sa-schedwe{background:rgba(200,169,110,0.10)}
     html.sa-light .sa-schedzeb td:not(.sa-schednm){background:rgba(120,90,30,0.035)}
@@ -330,8 +356,12 @@ export const injectStyles = () => {
       border-top-color:rgba(255,240,200,0.8);
       box-shadow:inset 0 0 18px rgba(255,255,255,0.6),inset 0 1px 0 rgba(255,255,255,0.9)}
     html.sa-light .sa-schedrow.off{background:rgba(255,252,244,0.5);border-color:rgba(175,140,65,0.16)}
-    html.sa-light .sa-schednote.ok{background:rgba(42,107,69,0.12);border-color:rgba(42,107,69,0.4);color:#1E4A30}
-    html.sa-light .sa-schednote.bad{background:rgba(139,48,32,0.10);border-color:rgba(139,48,32,0.38);color:#6B2418}
+    html.sa-light .sa-schednote.ok{background:rgba(42,107,69,0.12);border-color:rgba(42,107,69,0.4);
+      border-top-color:rgba(90,170,120,0.5);color:#1E4A30;
+      box-shadow:inset 0 0 14px rgba(255,255,255,0.4),inset 0 1px 0 rgba(255,255,255,0.7)}
+    html.sa-light .sa-schednote.bad{background:rgba(139,48,32,0.10);border-color:rgba(139,48,32,0.38);
+      border-top-color:rgba(190,110,90,0.45);color:#6B2418;
+      box-shadow:inset 0 0 14px rgba(255,255,255,0.4),inset 0 1px 0 rgba(255,255,255,0.65)}
     html.sa-light .sa-schedbar{background:rgba(120,90,30,0.16)}
     html.sa-light .sa-schedsec,html.sa-light .sa-schedemp{background:rgba(250,242,222,0.72);
       border-color:rgba(175,140,65,0.26);border-top-color:rgba(255,240,200,0.8);
@@ -339,7 +369,8 @@ export const injectStyles = () => {
     html.sa-light .sa-schedno{color:#8B6A30;border-color:rgba(139,106,48,0.7);
       border-top-color:rgba(255,240,200,0.95);
       background:linear-gradient(160deg,rgba(255,252,244,0.95),rgba(238,228,204,0.98));
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 2px 5px rgba(120,90,30,0.18)}
+      box-shadow:inset 0 0 10px rgba(255,255,255,0.7),inset 0 1px 0 rgba(255,255,255,0.9),
+                 0 2px 5px rgba(120,90,30,0.18)}
 
     /* ══ «Сборка» — фирменный формат практики роли «Бар» (ui/build.jsx) ══ */
     .sa-bld-term{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;

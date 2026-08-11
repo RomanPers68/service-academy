@@ -36,6 +36,11 @@ const HOLIDAYS = {
   "05-09":"День Победы","06-12":"День России","11-04":"День народного единства",
 };
 
+// Если человек попросил меньше движения — не анимируем вовсе
+const calmMotion = () => {
+  try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  catch (e) { return false; }
+};
 const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
 const firstDow = (y, m) => (new Date(y, m, 1).getDay() + 6) % 7;
 
@@ -178,6 +183,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
   // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
   const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
+  const [genKey, setGenKey] = React.useState(0);        // смена номера перезапускает анимацию
+  const [shot, setShot] = React.useState(null);         // готовая картинка: {url, blob, name}
+  const [shotBusy, setShotBusy] = React.useState(false);
+  const [shotMode, setShotMode] = React.useState("chat");  // chat · a4
+  const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
+  const covTarget = React.useRef(0);
 
   const DAYS = daysIn(Y, M);
   const mkey = `${Y}-${String(M + 1).padStart(2, "0")}`;
@@ -205,6 +216,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const needOf = d => (cfg?.need || {})[lvlOf(d)] || {};
   const onVac = (s, d) => s.vac && s.vac[2] === mkey && d >= s.vac[0] && d <= s.vac[1];
   const vacOn = (s) => !!(s.vac && s.vac[2] === mkey && s.vac[0]);
+  // Выходные по конкретным числам. Хранятся по месяцам: «14-е» в августе
+  // не должно тянуться в сентябрь.
+  const offDays = (s) => (s.offDays && s.offDays[mkey]) || [];
+  const isDayOff = (s, d) => (s.off || []).includes(dow(d)) || offDays(s).includes(d);
   const isLocked = (id, d) => !!(locks[id] && locks[id][d]);
 
   // ── Загрузка ──────────────────────────────────────────────────────
@@ -346,7 +361,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         const sh = shiftOf(sl.k); if (!sh) return;
         const cand = staff.filter(s => {
           if (s.pos !== sl.pos || p[s.id][d] || onVac(s, d)) return false;
-          if (s.off && s.off.includes(dow(d))) return false;
+          if (isDayOff(s, d)) return false;
           if (s.notBefore && sh.from < s.notBefore) return false;
           if (row[s.id] >= R.maxRow) return false;
           if (offLeft(s, d) <= 0) return false;
@@ -365,7 +380,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       });
       staff.forEach(s => { row[s.id] = p[s.id][d] ? row[s.id] + 1 : 0; });
     }
-    setPlan(p); setDirty(true); vibrate("light");
+    setPlan(p); setDirty(true); setGenKey(k => k + 1); vibrate("light");
   };
 
   // ── Проверка ──────────────────────────────────────────────────────
@@ -407,6 +422,21 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     return m ? m.name : null;
   };
 
+  // Цифра покрытия догоняет настоящее значение за полсекунды — так видно,
+  // что генератор отработал, а не просто перерисовалась таблица.
+  React.useEffect(() => {
+    if (calmMotion()) { setCovShown(covTarget.current); return; }
+    let raf = 0; const from = covShown, to = covTarget.current, t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / 520);
+      const e = 1 - Math.pow(1 - k, 3);
+      setCovShown(Math.round(from + (to - from) * e));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [genKey, mkey, weekIdx]);
+
   const tapCell = (s, d) => {
     if (!isAdmin) return;
     const keys = ["", ...(cfg.shifts || []).map(x => x.k)];
@@ -418,8 +448,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   };
 
   const P = a11y
-    ? { text:"#2A1F0E", sub:"#6B5B40", acc:"#7A5A22", warn:"#A33A2A" }
-    : { text:CREAM, sub:MUTED_2, acc:GOLD_SOFT, warn:"#E09090" };
+    ? { text:"#2A1F0E", sub:"#6B5B40", acc:"#7A5A22", warn:"#A33A2A",
+        danger:"#8B3020", dangerBg:"#A33A2A", dangerFg:"#FFF4F1" }
+    : { text:CREAM, sub:MUTED_2, acc:GOLD_SOFT, warn:"#E09090",
+        danger:"#E09090", dangerBg:"#C04A4A", dangerFg:"#FFF1F1" };
 
   // ── Оформление ────────────────────────────────────────────────────
   const card = {
@@ -486,6 +518,174 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   );
 
 
+
+  // ── Выгрузка графика картинкой ────────────────────────────────────
+  // Рисуем на canvas вручную: внутри Telegram печать в PDF недоступна,
+  // а PNG открывается прямо в чате и не требует ни сервера, ни библиотек.
+
+  // Для печати рисуем заведомо монохромно: на чёрно-белом принтере красный
+  // и зелёный превращаются в одинаковый серый, поэтому смысл несут
+  // не цвета, а начертание и пометки.
+  const drawExport = (forPrint = false) => {
+    const C = forPrint ? {
+      bg:"#FFFFFF", text:"#111111", dim:"#444444", faint:"#8A8A8A",
+      grpBg:"#E6E6E6", weBg:"#F1F1F1", line:"#B8B8B8", lineHard:"#6E6E6E",
+      bad:"#000000", good:"#444444", hol:"#000000", empty:"#BDBDBD",
+    } : {
+      bg:"#FBF7EE", text:"#2A1F0E", dim:"#6B5B40", faint:"#8A7A5C",
+      grpBg:"#EFE4CB", weBg:"#FAF5E9", line:"#DED3BC", lineHard:"#CDBF9F",
+      bad:"#A33A2A", good:"#4A6B4A", hol:"#A33A2A", empty:"#CFC5AE",
+    };
+    const S = 2;                                     // множитель под ретину
+    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 58;
+    const groups = POS.map(p => ({ ...p, list: staff.filter(x => x.pos === p.id) })).filter(g => g.list.length);
+    const rows = groups.reduce((a, g) => a + g.list.length + 2, 0);   // +заголовок +строка добора
+    const W = NAME + DAYS * CELL;
+    const H = HEAD + rows * ROW + FOOT;
+
+    const cv = document.createElement("canvas");
+    cv.width = W * S; cv.height = H * S;
+    const x = cv.getContext("2d");
+    x.scale(S, S);
+    x.textBaseline = "middle";
+
+    // фон и шапка
+    x.fillStyle = C.bg; x.fillRect(0, 0, W, H);
+    x.fillStyle = C.text; x.font = "600 21px Georgia, serif";
+    x.fillText("График смен", 16, 30);
+    x.fillStyle = C.dim; x.font = "13px Georgia, serif";
+    x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} сотрудников`, 16, 54);
+    x.fillText(`составлен ${new Date().toLocaleDateString("ru-RU")}`, 16, 74);
+
+    // шапка дней
+    let y = HEAD;
+    x.font = "11px ui-monospace, Menlo, monospace";
+    for (let d = 1; d <= DAYS; d++) {
+      const cx = NAME + (d - 1) * CELL, w = dow(d);
+      if (w >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y - 24, CELL, 24); }
+      x.fillStyle = holOf(d) ? C.hol : C.text;
+      if (holOf(d)) x.font = "600 11px ui-monospace, Menlo, monospace";
+      x.fillText(String(d), cx + CELL / 2 - (d > 9 ? 7 : 3.5), y - 16);
+      x.font = "11px ui-monospace, Menlo, monospace";
+      x.fillStyle = C.faint;
+      x.fillText(holOf(d) ? "•" + DOWL[w] : DOWL[w], cx + CELL / 2 - (holOf(d) ? 10 : 7), y - 5);
+    }
+
+    const line = (yy, c = C.line) => { x.strokeStyle = c; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(0, yy + .5); x.lineTo(W, yy + .5); x.stroke(); };
+
+    groups.forEach(g => {
+      // заголовок должности
+      x.fillStyle = C.grpBg; x.fillRect(0, y, W, ROW);
+      x.fillStyle = C.text; x.font = "600 11px ui-monospace, Menlo, monospace";
+      x.fillText(g.t.toUpperCase(), 12, y + ROW / 2);
+      x.font = "11px ui-monospace, Menlo, monospace";
+      for (let d = 1; d <= DAYS; d++) {
+        x.fillStyle = C.faint;
+        x.fillText(String(needOf(d)[g.id] || 0), NAME + (d - 1) * CELL + CELL / 2 - 3, y + ROW / 2);
+      }
+      line(y); line(y + ROW); y += ROW;
+
+      // люди
+      g.list.forEach(s => {
+        let h = 0;
+        for (let d = 1; d <= DAYS; d++) { const sh = shiftOf(plan[s.id]?.[d]); if (sh) h += len(sh); }
+        x.fillStyle = C.text; x.font = "13px Georgia, serif";
+        x.fillText(s.name.length > 17 ? s.name.slice(0, 16) + "…" : s.name, 12, y + ROW / 2 - 5);
+        x.fillStyle = C.faint; x.font = "10px ui-monospace, Menlo, monospace";
+        x.fillText(`${h} / ${s.norm} ч`, 12, y + ROW / 2 + 8);
+        for (let d = 1; d <= DAYS; d++) {
+          const cx = NAME + (d - 1) * CELL;
+          if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y, CELL, ROW); }
+          const k = plan[s.id]?.[d] || "";
+          const vac = onVac(s, d), fix = !k && !vac && (s.off || []).includes(dow(d));
+          x.font = "600 13px ui-monospace, Menlo, monospace";
+          x.fillStyle = k ? C.text : vac ? C.hol : fix ? C.faint : C.empty;
+          x.fillText(k || (vac ? "О" : fix ? "×" : "·"), cx + CELL / 2 - 5, y + ROW / 2);
+        }
+        line(y + ROW); y += ROW;
+      });
+
+      // добор
+      x.font = "10px ui-monospace, Menlo, monospace";
+      x.fillStyle = C.faint; x.fillText("есть / нужно", 12, y + ROW / 2);
+      for (let d = 1; d <= DAYS; d++) {
+        const n = needOf(d)[g.id] || 0;
+        const have = g.list.filter(s => { const sh = shiftOf(plan[s.id]?.[d]); return sh && !sh.extra; }).length;
+        const short = have < n;
+        x.fillStyle = short ? C.bad : C.good;
+        x.font = short ? "600 10px ui-monospace, Menlo, monospace" : "10px ui-monospace, Menlo, monospace";
+        x.fillText(`${have}/${n}` + (short ? "!" : ""), NAME + (d - 1) * CELL + CELL / 2 - (short ? 12 : 9), y + ROW / 2);
+      }
+      line(y + ROW, C.lineHard); y += ROW;
+    });
+
+    // вертикальные линии недель
+    x.strokeStyle = C.lineHard;
+    for (let d = 1; d <= DAYS; d++) if (dow(d) === 0) {
+      const cx = NAME + (d - 1) * CELL;
+      x.beginPath(); x.moveTo(cx + .5, HEAD - 26); x.lineTo(cx + .5, y); x.stroke();
+    }
+    x.beginPath(); x.moveTo(NAME + .5, HEAD - 26); x.lineTo(NAME + .5, y); x.stroke();
+
+    // подвал: расшифровка смен
+    x.fillStyle = C.dim; x.font = "11px Georgia, serif";
+    const legend = (cfg.shifts || []).map(sh =>
+      `${sh.k} — ${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00${sh.extra ? " (вручную)" : ""}`
+    ).concat(["О — отпуск", "× — постоянный выходной"]);
+    let lx = 12, ly = y + 22;
+    legend.forEach(t => {
+      const w = x.measureText(t).width + 18;
+      if (lx + w > W - 12) { lx = 12; ly += 17; }
+      x.fillText(t, lx, ly); lx += w;
+    });
+    return cv;
+  };
+
+  // Лист A4 в альбомной: содержимое вписывается по центру с полями.
+  // Пропорции листа важны, иначе принтер добавит свои поля и всё уедет.
+  const toSheet = (src) => {
+    const W = 3508, H = 2480, M = 110;               // A4 альбомная при 300 точках на дюйм
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const x = cv.getContext("2d");
+    x.fillStyle = "#FFFFFF"; x.fillRect(0, 0, W, H);
+    const k = Math.min((W - M * 2) / src.width, (H - M * 2) / src.height);
+    const w = src.width * k, h = src.height * k;
+    x.imageSmoothingQuality = "high";
+    x.drawImage(src, (W - w) / 2, (H - h) / 2, w, h);
+    return cv;
+  };
+
+  const exportImage = async (mode = shotMode) => {
+    if (!staff.length) return;
+    setShotBusy(true); setShotMode(mode);
+    try {
+      const base = drawExport(mode === "a4");
+      const cv = mode === "a4" ? toSheet(base) : base;
+      const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+      const name = `График_${MONTHS_N[M]}_${Y}${mode === "a4" ? "_A4" : ""}.png`.replace(/\s/g, "_");
+      const url = URL.createObjectURL(blob);
+      setShot({ url, blob, name });
+      vibrate("success");
+    } catch (e) { setMsg("Не удалось собрать картинку"); setTimeout(() => setMsg(""), 2500); }
+    setShotBusy(false);
+  };
+
+  const shareShot = async () => {
+    if (!shot) return;
+    try {
+      const file = new File([shot.blob], shot.name, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `График · ${MONTHS_N[M]} ${Y}` });
+        return;
+      }
+    } catch (e) {}
+    // Запасной путь: обычное скачивание
+    const a = document.createElement("a");
+    a.href = shot.url; a.download = shot.name; a.click();
+  };
+
   // ── Редактор настроек ─────────────────────────────────────────────
   // Компоненты полей вынесены на уровень модуля: объявленные внутри,
   // они пересоздавались на каждый рендер, React размонтировал поле,
@@ -529,7 +729,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </Pill>
             <button className="sa-btn" title="Удалить смену" onClick={() => patch(c => { c.shifts.splice(i, 1); })}
               style={{ flex:"0 0 32px", width:32, height:32, minWidth:32, boxSizing:"border-box",
-                background:"transparent", border:"1px solid #E0787855", color:"#E09090",
+                background:"transparent", border:`1px solid ${P.danger}66`, color:P.danger,
                 borderRadius:9, fontSize:12, cursor:"pointer", fontFamily:serif, lineHeight:1,
                 padding:0, display:"grid", placeItems:"center" }}>✕</button>
           </div>
@@ -605,7 +805,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
               <button className="sa-btn" title="Удалить сотрудника"
                 onClick={() => patch(c => { c.staff.splice(i, 1); })}
                 style={{ flex:"0 0 34px", width:34, height:34, minWidth:34, boxSizing:"border-box",
-                  background:"transparent", border:"1px solid #E0787855", color:"#E09090",
+                  background:"transparent", border:`1px solid ${P.danger}66`, color:P.danger,
                   borderRadius:9, fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1,
                   padding:0, display:"grid", placeItems:"center" }}>✕</button>
             </div>
@@ -658,6 +858,38 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                   })}>{dl}</Pill>
               ))}
             </div>
+            {/* Выходные по конкретным датам — поверх недельного шаблона */}
+            <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+              color:P.sub, padding:"10px 0 5px" }}>
+              выходные по датам · {MONTHS_R[M]}
+              {offDays(sf).length ? <span style={{ color:P.acc }}> · выбрано {offDays(sf).length}</span> : null}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
+              {Array.from({ length: DAYS }, (_, k) => k + 1).map(d => {
+                const on = offDays(sf).includes(d);
+                const weekly = (sf.off || []).includes(dow(d));
+                return (
+                  <button key={d} className="sa-btn" disabled={weekly}
+                    onClick={() => patch(c => {
+                      const st = c.staff[i];
+                      if (!st.offDays) st.offDays = {};
+                      const cur = st.offDays[mkey] || [];
+                      st.offDays[mkey] = cur.includes(d) ? cur.filter(v => v !== d) : [...cur, d].sort((a, b) => a - b);
+                      if (!st.offDays[mkey].length) delete st.offDays[mkey];
+                    })}
+                    style={{ padding:"7px 0", borderRadius:8, cursor: weekly ? "default" : "pointer",
+                      fontFamily:mono, fontSize:11, opacity: weekly ? .35 : 1,
+                      color: on ? INK_DEEP : (holOf(d) ? P.warn : P.sub),
+                      background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
+                      border:`1px solid ${on ? GOLD : (a11y ? "rgba(175,140,65,.28)" : "rgba(145,108,40,.28)")}`,
+                      fontWeight: on ? "bold" : "normal" }}>{d}</button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize:11, color:P.sub, marginTop:6, fontStyle:"italic", lineHeight:1.5 }}>
+              Числа, в которые человек точно не выйдет. Дни, уже закрытые недельным шаблоном, погашены.
+            </div>
+
             <div style={{ ...rowStyle, borderTop:"none", marginTop:4 }}>
               <Field label="не раньше, ч" P={P}>
                 <Num inp={inp} v={sf.notBefore || 0} min={0} max={23}
@@ -675,8 +907,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             c.staff.push({ id, name:"Новый сотрудник", pos:"waiter", norm:160 });
           })}>+ добавить сотрудника</button>
         <div style={hintStyle}>Имена лучше писать так же, как в профиле сотрудника: по ним человек увидит свои смены.
-          Отпуск задаётся числами открытого месяца, ноль — отпуска нет. Дни недели и «не раньше» — постоянные
-          ограничения, генератор их не нарушает.</div>
+          У каждого три вида нерабочих дней: <b>отпуск</b> — период в этом месяце, <b>дни недели</b> — постоянный
+          шаблон вроде «не работает по вторникам», <b>выходные по датам</b> — разовые числа. Генератор не нарушает
+          ни одно из них.</div>
       </Sec>
     </div>
   );
@@ -729,6 +962,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     const n = needOf(d)[pos] || 0; need += n;
     have += Math.min(n, staff.filter(s => { const sh = s.pos === pos && shiftOf(plan[s.id]?.[d]); return sh && !sh.extra; }).length);
   });
+  const covPct = need ? Math.round(have / need * 100) : 0;
+  covTarget.current = covPct;
 
   return shell(<>
     <div style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
@@ -754,9 +989,42 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px" }} className="sa-btn"
         onClick={() => { setLocks({}); setDirty(true); }}>Снять закрепления</button>
       <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
-        borderColor:"#E0787866", color:"#E09090" }} className="sa-btn"
+        borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
         onClick={() => setConfirmClear(true)}>Очистить месяц</button>
     </div>
+    <div style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
+      <button style={{ ...btn, fontSize:13 }} className="sa-btn" onClick={exportImage} disabled={!staff.length || shotBusy}>
+        {shotBusy ? "Собираю…" : "Сохранить и отправить"}
+      </button>
+    </div>
+    {shot ? (
+      <div style={{ ...card }}>
+        <div style={eyebrow}><span>График картинкой</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
+        <img src={shot.url} alt="График" style={{ width:"100%", borderRadius:12, display:"block",
+          border:`1px solid ${a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.32)"}` }} />
+        <div style={{ display:"flex", gap:6, marginTop:10 }}>
+          {[["chat","Для чата"],["a4","Лист A4"]].map(([k, t]) => (
+            <button key={k} className="sa-btn" onClick={() => { URL.revokeObjectURL(shot.url); exportImage(k); }}
+              style={{ flex:1, padding:"8px 4px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:12,
+                color: shotMode === k ? INK_DEEP : P.sub,
+                background: shotMode === k ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
+                border:`1px solid ${shotMode === k ? GOLD : (a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.3)")}`,
+                fontWeight: shotMode === k ? "bold" : "normal" }}>{t}</button>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:8, marginTop:8 }}>
+          <button style={btn} className="sa-btn" onClick={shareShot}>Отправить</button>
+          <button style={ghost} className="sa-btn"
+            onClick={() => { URL.revokeObjectURL(shot.url); setShot(null); }}>Закрыть</button>
+        </div>
+        <div style={{ fontSize:11.5, color:P.sub, marginTop:10, lineHeight:1.55 }}>
+          {shotMode === "a4"
+            ? "Лист A4 в альбомной, 300 точек на дюйм, свёрстан под чёрно-белую печать: недобор помечен восклицательным знаком, праздники точкой. «Отправить» → «Напечатать»."
+            : "«Отправить» откроет системное меню — оттуда картинка уходит в рабочую группу одним касанием. Для печати переключись на «Лист A4»."}
+        </div>
+      </div>
+    ) : null}
+
     {confirmClear ? (
       <div style={{ ...card, marginTop:10 }}>
         <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:12 }}>
@@ -764,7 +1032,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           сотрётся только расстановка и закрепления.
         </div>
         <div style={{ display:"flex", gap:8 }}>
-          <button style={{ ...btn, background:"#C04A4A", color:"#FFF1F1" }} className="sa-btn"
+          <button style={{ ...btn, background:P.dangerBg, color:P.dangerFg }} className="sa-btn"
             onClick={clearMonth}>Да, стереть</button>
           <button style={ghost} className="sa-btn" onClick={() => setConfirmClear(false)}>Отмена</button>
         </div>
@@ -775,7 +1043,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     <div style={card}>
       <div style={eyebrow}>
         <span>Смены</span>
-        <span style={{ color:P.acc }}>{need ? `покрытие ${Math.round(have / need * 100)}%` : "—"}</span>
+        <span style={{ color:P.acc }}>{need ? `покрытие ${covShown}%` : "—"}</span>
       </div>
 
       {!staff.length ? (
@@ -810,9 +1078,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             ? "Весь месяц: таблица листается вбок. Выбери неделю — влезет без прокрутки"
             : "Тап по клетке меняет смену и закрепляет её"}
         </div>
-        <div className="sa-schedgrid">
+        <div className="sa-schedgrid sa-hscroll">
           <table style={{ borderCollapse:"separate", borderSpacing:0, fontFamily:mono }}>
-            <tbody>
+            <tbody key={"g" + genKey + ":" + weekIdx}>
               <tr>
                 <th className="sa-schednm" style={{ width:100, minWidth:100 }} />
                 {visibleDays.map(d => (
@@ -841,7 +1109,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                       const h = hoursOf(s), pct = Math.min(100, Math.round(h / (s.norm || 1) * 100));
                       return (
                         <tr key={s.id} className={ri % 2 ? "sa-schedzeb" : ""}>
-                          <td className="sa-schednm" style={{ fontFamily:serif, fontSize:12.5, padding:"0 8px", textAlign:"left" }}>
+                          <td className="sa-schednm" style={{ fontFamily:serif, fontSize:12.5, padding:"0 8px",
+                            textAlign:"left", color:P.text }}>
                             {s.name}
                             <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
                               <span className="sa-schedbar">
@@ -851,10 +1120,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                               <span style={{ fontFamily:mono, fontSize:8, color:P.sub }}>{h}/{s.norm}</span>
                             </div>
                           </td>
-                          {visibleDays.map(d => {
+                          {visibleDays.map((d, di) => {
                             const k = plan[s.id]?.[d] || "", col = k && colorOf(k);
                             const vac = onVac(s, d);
-                            const fixedOff = !k && !vac && (s.off || []).includes(dow(d));
+                            const fixedOff = !k && !vac && isDayOff(s, d);
                             return (
                               <td key={d} onClick={() => tapCell(s, d)}
                                 className={"sa-schedcell" + (dow(d) >= 5 ? " sa-schedwe" : "")}
@@ -873,7 +1142,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                   border: `1px solid ${col ? (a11y ? col.bdL : col.bd)
                                     : vac ? "rgba(224,120,120,.35)" : "transparent"}`,
                                   boxShadow: isLocked(s.id, d) ? `0 0 0 1.5px ${GOLD}D0` : undefined,
-                                }}>{k || (vac ? "О" : fixedOff ? "×" : "·")}</div>
+                                  animationDelay: `${ri * 45 + di * 7}ms`,
+                                }} className={k ? "sa-schedchip" : undefined}
+                                >{k || (vac ? "О" : fixedOff ? "×" : "·")}</div>
                               </td>
                             );
                           })}

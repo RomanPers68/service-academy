@@ -2032,20 +2032,20 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
         {(() => {
           const mgr = !!profile?.is_admin;
           return (
+            <div style={{ padding: "0 14px 9px" }}>
             <div className="sa-card sa-glass" onClick={() => onSchedule && onSchedule()}
               {...onActivate(() => onSchedule && onSchedule())}
               style={{
-                margin: "10px 16px", padding: "10px 12px", borderRadius: 20, cursor: "pointer",
-                background: saInner(a11y), border: `1px solid ${saFrame(a11y)}`,
-                borderTop: `1px solid ${a11y ? "rgba(255,240,200,0.66)" : "rgba(210,168,65,0.44)"}`,
+                borderRadius: 16, padding: "12px 13px", cursor: "pointer",
+                background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`,
                 boxShadow: a11y
-                  ? "inset 0 0 18px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 12px rgba(120,90,30,0.10)"
-                  : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.38)",
+                  ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
+                  : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)",
               }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ flex: "0 0 36px", height: 36, borderRadius: "50%", display: "grid", placeItems: "center",
-                  background: mgr ? "rgba(200,169,110,0.18)" : "rgba(126,180,220,0.16)" }}>
-                  {UI_SVG.calendar ? UI_SVG.calendar(mgr ? GOLD : "#7EB4DC", 20) : <span style={{ fontSize: 17 }}>🗓</span>}
+              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+                  background: "rgba(200,169,110,0.13)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {UI_SVG.calendar ? UI_SVG.calendar(GOLD, 20) : <span style={{ fontSize: 17 }}>🗓</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, color: a11y ? "#2A1F0E" : CREAM }}>
@@ -2058,6 +2058,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
                 <div style={{ fontFamily: "monospace", flexShrink: 0, fontSize: 9, letterSpacing: 1.4,
                   color: "#14100A", background: GOLD, borderRadius: 12, padding: "6px 11px" }}>ОТКРЫТЬ ›</div>
               </div>
+            </div>
             </div>
           );
         })()}

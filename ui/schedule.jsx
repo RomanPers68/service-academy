@@ -64,11 +64,14 @@ export const DEFAULT_CONFIG = {
     { k:"К", name:"Кейтеринг", from:10, to:22, extra:1 },
   ],
   need: {
-    1:{manager:1,host:1,call:1,bar:1,barback:0,waiter:2,runner:1},
-    2:{manager:1,host:1,call:1,bar:1,barback:1,waiter:3,runner:1},
-    3:{manager:1,host:1,call:1,bar:2,barback:1,waiter:4,runner:2},
+    1:{manager:1,host:1,call:1,bar:1,barback:1,waiter:6,runner:1},
+    2:{manager:1,host:1,call:1,bar:1,barback:1,waiter:6,runner:2},
+    3:{manager:1,host:1,call:1,bar:2,barback:1,waiter:6,runner:2},
   },
-  rules: { peakDows:[4,5], highDows:[3,6], maxRow:5, minOff:2, minRest:11, holidayPeak:true },
+  rules: { peakDows:[4,5], highDows:[3,6], maxRow:5, minOff:2, minRest:11, holidayPeak:true,
+    // floor — норма это обязательная выработка, сверх неё можно;
+    // cap — норму превышать нельзя.
+    normMode:"floor" },
   // Как позиция выходит: 2/2 — жёсткий цикл два через два,
   // «поровну» — генератор сам делит смены по недобору часов.
   posRules: {
@@ -78,7 +81,9 @@ export const DEFAULT_CONFIG = {
   },
   dayShift: "Д",                    // основная смена для всех
   // Усиление вечером: сколько человек и в какие дни недели
-  evening: { pos:"waiter", shift:"В", dows:[3,4,5], count:6 },
+  // Вечернее усиление выключено: все выходят в дневную смену.
+  // Включается в «Правилах смен», если понадобится.
+  evening: { pos:"waiter", shift:"В", dows:[3,4,5], count:0 },
   staff: [],
 };
 
@@ -353,14 +358,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     const R = cfg.rules, auto = cfg.shifts.filter(x => !x.extra);
     if (!auto.length) return;
     const p = {}; staff.forEach(s => { p[s.id] = {}; });
-    const hrs = {}, row = {}, peak = {};
-    staff.forEach(s => { hrs[s.id] = 0; row[s.id] = 0; peak[s.id] = 0; });
+    const hrs = {}, row = {}, peak = {}, cnt = {};
+    staff.forEach(s => { hrs[s.id] = 0; row[s.id] = 0; peak[s.id] = 0; cnt[s.id] = 0; });
 
     for (let d = 1; d <= DAYS; d++) staff.forEach(s => {
       const keep = isLocked(s.id, d) ? (plan[s.id]?.[d] || "") : "";
       p[s.id][d] = keep;
       const sh = keep && shiftOf(keep);
-      if (sh) { hrs[s.id] += len(sh); if (lvlOf(d) === 3) peak[s.id]++; }
+      if (sh) { hrs[s.id] += len(sh); cnt[s.id]++; if (lvlOf(d) === 3) peak[s.id]++; }
     });
 
     // Сколько выходных ещё можно потратить на этой неделе.
@@ -399,12 +404,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           if (s.notBefore && sh.from < s.notBefore) return false;
           if (row[s.id] >= R.maxRow) return false;
           if (offLeft(s, d) <= 0) return false;
-          if (hrs[s.id] + len(sh) > s.norm) return false;
+          // Норма как потолок — только если так задано в правилах.
+          if ((R.normMode || "floor") === "cap" && hrs[s.id] + len(sh) > s.norm) return false;
           const pv = d > 1 ? p[s.id][d - 1] : "";
           if (pv) { const q = shiftOf(pv); if (q && (24 - q.to + sh.from) < R.minRest) return false; }
           return true;
         }).sort((a, b) => {
           if (isPeak && peak[a.id] !== peak[b.id]) return peak[a.id] - peak[b.id];
+          // Когда норма — обязательный минимум, делим поровну по числу смен:
+          // так у всех выходит одинаковое количество рабочих дней.
+          if ((R.normMode || "floor") === "floor" && cnt[a.id] !== cnt[b.id]) return cnt[a.id] - cnt[b.id];
           const dh = (b.norm - hrs[b.id]) - (a.norm - hrs[a.id]);
           if (dh) return dh;
           // При равном недоборе берём того, кто работал вчера: так выходные
@@ -413,7 +422,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           return wb - wa;
         });
         if (cand.length) {
-          const s = cand[0]; p[s.id][d] = sl.k; hrs[s.id] += len(sh);
+          const s = cand[0]; p[s.id][d] = sl.k; hrs[s.id] += len(sh); cnt[s.id]++;
           if (isPeak) peak[s.id]++;
         }
       });
@@ -445,7 +454,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         const pv = d > 1 ? plan[s.id]?.[d - 1] : "", q = pv && shiftOf(pv);
         if (sh && q) { const r = 24 - q.to + sh.from; if (r < R.minRest) out.push(`${s.name}: между ${d-1} и ${d} только ${r} ч отдыха`); }
       }
-      if (h > s.norm) out.push(`${s.name}: переработка ${h - s.norm} ч`);
+      if ((R.normMode || "floor") === "cap" && h > s.norm) out.push(`${s.name}: переработка ${h - s.norm} ч`);
+      if ((R.normMode || "floor") === "floor" && h < s.norm) out.push(`${s.name}: недоработка ${s.norm - h} ч до нормы`);
       if (mx > R.maxRow) out.push(`${s.name}: ${mx} смен подряд при пределе ${R.maxRow}`);
     });
     return [...new Set(out)];
@@ -859,6 +869,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           <Pill a11y={a11y} P={P} on={cfg.rules.holidayPeak} onClick={() => patch(c => { c.rules.holidayPeak = !c.rules.holidayPeak; })}>
             {cfg.rules.holidayPeak ? "праздники считаем пиком" : "праздники как обычный день"}
           </Pill>
+        </div>
+
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+          color:P.sub, padding:"14px 0 5px" }}>что означает норма часов</div>
+        <div style={{ display:"flex", gap:6 }}>
+          {[["floor","обязательный минимум"],["cap","потолок"]].map(([v, t]) => (
+            <Pill key={v} a11y={a11y} P={P} on={(cfg.rules.normMode || "floor") === v} style={{ flex:1, padding:"8px 6px" }}
+              onClick={() => patch(c => { c.rules.normMode = v; })}>{t}</Pill>
+          ))}
+        </div>
+        <div style={hintStyle}>
+          {(cfg.rules.normMode || "floor") === "floor"
+            ? "Норму нужно выработать, всё сверху — законная переработка. Генератор закрывает смены до конца месяца и делит их поровну по числу рабочих дней."
+            : "Норму превышать нельзя. Генератор скорее оставит смену незакрытой, чем выведет человека сверх нормы."}
         </div>
         <div style={hintStyle}>Эти правила генератор не нарушает: он скорее оставит смену незакрытой, чем поставит человека сверх предела.</div>
 

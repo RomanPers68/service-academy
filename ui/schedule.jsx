@@ -68,6 +68,10 @@ export const DEFAULT_CONFIG = {
     2:{manager:1,host:1,call:1,bar:1,barback:1,waiter:6,runner:2},
     3:{manager:1,host:1,call:1,bar:2,barback:1,waiter:6,runner:2},
   },
+  // Разбивка потребности по сменам: сколько человек в какой смене.
+  // Если для позиции ничего не задано — все идут в основную смену.
+  // Числа здесь — часть общей потребности, а не надбавка сверх неё.
+  split: { waiter: { "Д":5, "В":1 } },
   rules: { peakDows:[4,5], highDows:[3,6], maxRow:5, minOff:2, minRest:11, holidayPeak:true,
     // floor — норма это обязательная выработка, сверх неё можно;
     // cap — норму превышать нельзя.
@@ -81,9 +85,7 @@ export const DEFAULT_CONFIG = {
   },
   dayShift: "Д",                    // основная смена для всех
   // Усиление вечером: сколько человек и в какие дни недели
-  // Вечернее усиление выключено: все выходят в дневную смену.
-  // Включается в «Правилах смен», если понадобится.
-  evening: { pos:"waiter", shift:"В", dows:[3,4,5], count:0 },
+  evening: { pos:"waiter", shift:"В", dows:[], count:0 },   // устарело, оставлено для старых настроек
   staff: [],
 };
 
@@ -383,18 +385,33 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
     for (let d = 1; d <= DAYS; d++) {
       const need = needOf(d), isPeak = lvlOf(d) === 3, slots = [];
-      // Дневная смена — всем позициям по потребности дня
       POS.forEach(({ id: pos }) => {
-        const already = staff.filter(s => s.pos === pos && p[s.id][d]).length;
-        const n = (need[pos] || 0) - already;
-        for (let i = 0; i < n; i++) slots.push({ pos, k: dayK });
+        const total = need[pos] || 0;
+        if (!total) return;
+        const sp = (cfg.split || {})[pos];
+        // Уже занятые вручную клетки вычитаем из потребности каждой смены
+        const busyIn = (k) => staff.filter(s => s.pos === pos && shiftOf(p[s.id][d])?.k === k).length;
+        if (sp && Object.keys(sp).length) {
+          // Разбивка по сменам: сумма её чисел и есть потребность дня
+          Object.entries(sp).forEach(([k, cnt2]) => {
+            if (!shiftOf(k)) return;
+            for (let i = 0; i < (cnt2 || 0) - busyIn(k); i++) slots.push({ pos, k });
+          });
+        } else {
+          const already = staff.filter(s => s.pos === pos && p[s.id][d]).length;
+          for (let i = 0; i < total - already; i++) slots.push({ pos, k: dayK });
+        }
       });
-      // Вечернее усиление: отдельная надбавка сверх дневной потребности,
-      // только для указанной позиции и только в заданные дни недели
-      if (ev && ev.count && shiftOf(ev.shift) && (ev.dows || []).includes(dow(d))) {
-        const busy = staff.filter(s => s.pos === ev.pos && p[s.id][d] && shiftOf(p[s.id][d])?.k === ev.shift).length;
+      // Устаревшее вечернее усиление: работает, только если разбивки нет
+      if (ev && ev.count && shiftOf(ev.shift) && (ev.dows || []).includes(dow(d))
+          && !((cfg.split || {})[ev.pos])) {
+        const busy = staff.filter(s => s.pos === ev.pos && shiftOf(p[s.id][d])?.k === ev.shift).length;
         for (let i = 0; i < ev.count - busy; i++) slots.push({ pos: ev.pos, k: ev.shift });
       }
+      // Длинные смены раздаём первыми: иначе тот, кому досталась короткая,
+      // уже не догонит по часам.
+      slots.sort((a, b) => (len(shiftOf(b.k)) || 0) - (len(shiftOf(a.k)) || 0));
+
       slots.forEach(sl => {
         const sh = shiftOf(sl.k); if (!sh) return;
         const cand = staff.filter(s => {
@@ -411,9 +428,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           return true;
         }).sort((a, b) => {
           if (isPeak && peak[a.id] !== peak[b.id]) return peak[a.id] - peak[b.id];
-          // Когда норма — обязательный минимум, делим поровну по числу смен:
-          // так у всех выходит одинаковое количество рабочих дней.
-          if ((R.normMode || "floor") === "floor" && cnt[a.id] !== cnt[b.id]) return cnt[a.id] - cnt[b.id];
+          // Когда норма — обязательный минимум, делим поровну по числу смен,
+          // а при равенстве смен — по часам: короткие вечерние иначе
+          // достались бы всегда одним и тем же.
+          if ((R.normMode || "floor") === "floor") {
+            if (cnt[a.id] !== cnt[b.id]) return cnt[a.id] - cnt[b.id];
+            if (hrs[a.id] !== hrs[b.id]) return hrs[a.id] - hrs[b.id];
+          }
           const dh = (b.norm - hrs[b.id]) - (a.norm - hrs[a.id]);
           if (dh) return dh;
           // При равном недоборе берём того, кто работал вчера: так выходные
@@ -917,39 +938,36 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div style={hintStyle}>Её получают все позиции по умолчанию.</div>
 
         <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
-          color:P.sub, padding:"14px 0 5px" }}>вечернее усиление</div>
-        <div style={rowStyle}>
-          <Field label="позиция" P={P}>
-            <select value={cfg.evening?.pos || "waiter"} style={{ ...inp, width:"100%" }} onFocus={focusScroll}
-              onChange={e => patch(c => { c.evening = { ...(c.evening || {}), pos: e.target.value }; })}>
-              {POS.map(({ id, t }) => <option key={id} value={id}>{t}</option>)}
-            </select>
-          </Field>
-          <Field label="смена" P={P}>
-            <select value={cfg.evening?.shift || "В"} style={{ ...inp, width:"100%" }} onFocus={focusScroll}
-              onChange={e => patch(c => { c.evening = { ...(c.evening || {}), shift: e.target.value }; })}>
-              {(cfg.shifts || []).filter(x => !x.extra).map(sh => <option key={sh.k} value={sh.k}>{sh.k} · {sh.name}</option>)}
-            </select>
-          </Field>
-          <Field label="человек" P={P}>
-            <Num inp={inp} v={cfg.evening?.count || 0} min={0} max={20}
-              set={v => patch(c => { c.evening = { ...(c.evening || {}), count: v }; })} />
-          </Field>
-        </div>
-        <div style={{ display:"flex", gap:4, marginTop:6 }}>
-          {DOWL.map((dl, wi) => {
-            const on = (cfg.evening?.dows || []).includes(wi);
-            return (
-              <Pill key={wi} a11y={a11y} P={P} on={on} style={{ flex:1, padding:"6px 0" }}
-                onClick={() => patch(c => {
-                  const cur = c.evening?.dows || [];
-                  c.evening = { ...(c.evening || {}), dows: on ? cur.filter(x => x !== wi) : [...cur, wi] };
-                })}>{dl}</Pill>
-            );
-          })}
-        </div>
-        <div style={hintStyle}>Надбавка сверх дневной потребности: столько людей выходит в вечер в отмеченные дни.
-          Ноль отключает усиление.</div>
+          color:P.sub, padding:"14px 0 5px" }}>разбивка по сменам</div>
+        {POS.map(({ id, t }) => {
+          const sp = (cfg.split || {})[id];
+          const total = Math.max(...[1,2,3].map(l => cfg.need[l]?.[id] || 0));
+          if (!total) return null;
+          const sum = sp ? Object.values(sp).reduce((a, v) => a + (v || 0), 0) : 0;
+          return (
+            <div key={id} style={{ ...rowStyle, flexWrap:"wrap" }}>
+              <span style={{ flex:"1 1 100%", fontSize:12.5, color:P.sub, marginBottom:4 }}>
+                {t}
+                {sp ? <span style={{ color: sum === total ? P.acc : P.warn }}> · {sum} из {total}</span>
+                    : <span style={{ color:P.sub }}> · все в основную смену</span>}
+              </span>
+              {(cfg.shifts || []).filter(x => !x.extra).map(sh => (
+                <div key={sh.k} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                  <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{sh.k}</span>
+                  <Num inp={inp} v={(sp && sp[sh.k]) || 0} min={0} max={20}
+                    set={v => patch(c => {
+                      if (!c.split) c.split = {};
+                      const cur = { ...(c.split[id] || {}) };
+                      if (v) cur[sh.k] = v; else delete cur[sh.k];
+                      if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
+                    })} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+        <div style={hintStyle}>Сколько человек в какой смене. Сумма должна совпадать с потребностью позиции —
+          если не совпадает, цифра краснеет. Ноль везде означает, что все выходят в основную смену.</div>
       </Sec>
 
       <Sec no={5} title="Сотрудники" hint="Кто работает, на какой позиции и сколько часов" P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>

@@ -3,7 +3,7 @@
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
 import React from "react";
 import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
-import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE } from "../data/reference";
+import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 import { SearchScreen } from "./search";
 import { onActivate } from "../lib/utils";
 import { GOLD, GREEN, RED } from "./tokens";
@@ -68,12 +68,15 @@ function Hub({ T, gold, dark, openCourse, onSearch, onExit }) {
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const barChapters = REFERENCE_BAR_COURSE.lessons.filter(l => l.type === "lesson").length;
+  const isLeader = !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
+  const appChapters = REFERENCE_APP_COURSE.lessons.filter(l => l.type === "lesson" && (!l.leaderOnly || isLeader)).length;
   const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
   const cards = [
     { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} · с фото`, icon: Ico.serving, on: true },
     { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
     { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
     { id: "bar", t: "Бар и коктейли", s: `${barChapters} ${plural(barChapters)} · истории классики`, icon: Ico.bar, on: true },
+    { id: "app", t: "Гид по приложению", s: `${appChapters} ${plural(appChapters)} · все возможности`, icon: Ico.compass, on: true },
   ];
   return (<div style={T.screen}>
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
@@ -203,7 +206,10 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 export function ReferenceSection({ T, a11y, onExit, startLessonId, profile }) {
   const gold = a11y ? "#8B6A30" : GOLD;
   const dark = !a11y;
-  const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE, coffee: REFERENCE_COFFEE_COURSE, bar: REFERENCE_BAR_COURSE };
+  // Глава «Инструменты руководителя» видна только менеджерам — фильтруем
+  // прямо в карте курсов: вся навигация ниже работает с уже отсеянным списком.
+  const filterCourse = (c) => ({ ...c, lessons: c.lessons.filter(l => !l.leaderOnly || isLeader) });
+  const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE, coffee: REFERENCE_COFFEE_COURSE, bar: REFERENCE_BAR_COURSE, app: filterCourse(REFERENCE_APP_COURSE) };
   let startCourseId = "serving", startIdx = -1;
   if (startLessonId) {
     for (const cid of Object.keys(COURSES)) {

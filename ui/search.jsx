@@ -6,7 +6,7 @@
 import React from "react";
 import { GLOSSARY } from "../data/glossary";
 import { RESTAURANT_MENUS } from "../data/menu";
-import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE } from "../data/reference";
+import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 import { onActivate, vibrate } from "../lib/utils";
 import { UI_SVG } from "./icons";
 
@@ -32,7 +32,7 @@ const dishesFor = (restaurant) => {
   return [...samples, ...(custom[restaurant] || [])];
 };
 
-const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE];
+const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE];
 
 export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText }) {
   const [q, setQ] = React.useState("");
@@ -55,8 +55,10 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
 
     const ref = [];
     for (const course of REF_COURSES) {
+      const isLeader = !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
       for (const l of (course.lessons || [])) {
         if (l.type !== "lesson") continue;
+        if (l.leaderOnly && !isLeader) continue;   // глава руководителей — только им
         const inTitle = norm(l.title).includes(query);
         if (inTitle || norm(l.content || "").includes(query)) {
           ref.push({ course, l, inTitle });

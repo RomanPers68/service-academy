@@ -226,7 +226,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
         token: saToken(),
         // Справочник подмешивается в копию последнего вопроса (клиентский RAG):
         // ассистент отвечает по главам приложения, история в UI остаётся чистой.
-        messages: withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content }))),
+        messages: withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content })), profile),
       }),
     })
       .then(r => r.json())
@@ -281,7 +281,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
 
   // Уровень 2: [[go:ключ|Подпись]] в конце ответа → кнопка-переход
   const NAV_LABELS = {
-    sos: "Открыть SOS", glossary: "Глоссарий", leaderboard: "Рейтинг",
+    sos: "Открыть SOS", glossary: "Глоссарий", leaderboard: "Рейтинг", menu: "Открыть меню",
     profile: "Мой профиль", daily: "Задания", checklist: "Чек-листы",
     reference: "Справочник", stats: "Аналитика", candidate: "Собеседование",
     guestbook: "Книга отзывов", mentor: "Наставничество",

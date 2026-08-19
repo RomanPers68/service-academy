@@ -1181,8 +1181,8 @@ function ServiceAcademy() {
             return;
           }
           // Переход в раздел: [[go:key]]
-          const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor"];
-          if (ok.includes(dest)) { setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(dest); }
+          const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor","menu"];
+          if (ok.includes(dest)) { setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(dest === "menu" ? "menuTrainer" : dest); }
         }} /></Suspense>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}

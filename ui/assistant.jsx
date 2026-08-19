@@ -295,7 +295,11 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
     // Кнопка раздела: [[go:key|Подпись]]
     const m = (text || "").match(/\[\[go:([a-z]+)(?:\|([^\]]+))?\]\]/i);
     if (!m) return { clean: text, nav: null };
-    const key = m[1].toLowerCase();
+    let key = m[1].toLowerCase();
+    // Страховка: модель на сервере иногда путает ключ и пишет go:glossary
+    // с подписью «Открыть Справочник». Подпись — честное намерение, ключ —
+    // промах; верим подписи и ведём человека в Справочник.
+    if (key === "glossary" && /справочник/i.test(m[2] || "")) key = "reference";
     if (!NAV_LABELS[key]) return { clean: text.replace(m[0], "").trim(), nav: null };
     return { clean: text.replace(m[0], "").trim(), nav: { key, label: (m[2] || NAV_LABELS[key]).trim() } };
   };

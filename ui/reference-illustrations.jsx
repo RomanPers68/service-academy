@@ -155,6 +155,49 @@ function SceneOyster({ c }) {
 }
 
 function Row({ children }) { return <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 14, padding: "6px 0" }}>{children}</div>; }
+
+// ── Кофе: чашки, питчер, пропорции (линии в стиле бокалов) ──
+function CoffeeCup({ c, dark, size = 64, foam = 0, coffee = 0.5, label }) {
+  // foam: доля пены сверху, coffee: доля напитка (от высоты чаши)
+  const liq = dark ? "rgba(150,95,45,0.50)" : "rgba(120,72,30,0.42)";
+  const fm = dark ? "rgba(235,220,190,0.55)" : "rgba(120,72,30,0.16)";
+  const top = 26, bot = 66, H = bot - top;
+  const cofTop = bot - H * coffee, fmTop = cofTop - H * foam;
+  return (<div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+      {coffee > 0 && <path d={`M15 ${cofTop} L15 ${bot - 6} Q15 ${bot} 21 ${bot} L59 ${bot} Q65 ${bot} 65 ${bot - 6} L65 ${cofTop} Z`} fill={liq} />}
+      {foam > 0 && <rect x="15" y={fmTop} width="50" height={cofTop - fmTop} fill={fm} />}
+      <path d="M15 26 L15 60 Q15 66 21 66 L59 66 Q65 66 65 60 L65 26" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+      <path d="M13 26 H67" stroke={c} strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M65 32 h6a6 6 0 0 1 0 14h-6" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+      <path d="M22 74 H58" stroke={c} strokeWidth="2.1" strokeLinecap="round" opacity="0.7" />
+    </svg>
+    {label && <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: c, opacity: 0.85, textTransform: "uppercase" }}>{label}</div>}
+  </div>);
+}
+function Pitcher({ c, dark, size = 72 }) {
+  const liq = dark ? "rgba(235,220,190,0.35)" : "rgba(120,72,30,0.14)";
+  return (<svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+    <path d="M26 32 L24 64 Q24 68 30 68 L54 68 Q60 68 60 64 L58 32" fill={liq} />
+    <path d="M24 22 L22 64 Q22 69 29 69 L55 69 Q62 69 62 64 L60 22" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+    <path d="M22 22 L34 22 L40 14 L46 22 L62 22" stroke={c} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <path d="M62 30 h6a5 5 0 0 1 0 22h-5" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+    <path d="M30 32 Q40 36 54 32" stroke={c} strokeWidth="1.4" opacity="0.5" fill="none" />
+  </svg>);
+}
+function EspressoCup({ c, dark, size = 66 }) {
+  const crema = dark ? "rgba(210,160,90,0.6)" : "rgba(160,100,40,0.4)";
+  const liq = dark ? "rgba(120,70,30,0.55)" : "rgba(90,55,25,0.45)";
+  return (<svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+    <path d="M20 40 L22 56 Q23 62 30 62 L50 62 Q57 62 58 56 L60 40 Z" fill={liq} />
+    <rect x="20" y="37" width="40" height="5" fill={crema} />
+    <path d="M18 36 L21 56 Q22 63 30 63 L50 63 Q58 63 59 56 L62 36" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+    <path d="M16 36 H64" stroke={c} strokeWidth="2.1" strokeLinecap="round" />
+    <path d="M62 40 h5a5 5 0 0 1 0 12h-4" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+    <ellipse cx="40" cy="71" rx="26" ry="4" stroke={c} strokeWidth="1.8" fill="none" opacity="0.8" />
+    <path d="M34 22c0 3-2.4 3-2.4 6M43 20c0 3.5-2.6 3.5-2.6 7M50 23c0 2.6-2 2.6-2 5.4" stroke={c} strokeWidth="1.6" strokeLinecap="round" opacity="0.6" />
+  </svg>);
+}
 function Photo({ src }) { return <img src={src} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 190, objectFit: "cover", borderRadius: 14, display: "block" }} />; }
 function PhotoSmall({ src }) { return <img src={src} alt="" loading="lazy" decoding="async" style={{ width: "auto", maxWidth: 152, maxHeight: 190, objectFit: "contain", borderRadius: 12, display: "block", margin: "0 auto", imageRendering: "auto" }} />; }
 
@@ -175,6 +218,9 @@ export const ILL = {
   snifter_rocks: (c, d) => <Row><Snifter c={c} dark={d} size={56} /><Rocks c={c} dark={d} size={48} /></Row>,
   glass_red: (c, d) => <Glass type="red" c={c} dark={d} size={88} />,
   glass_flute: (c, d) => <Glass type="flute" c={c} dark={d} size={88} />,
+  espresso_cup: (c, d) => <EspressoCup c={c} dark={d} size={92} />,
+  milk_pitcher: (c, d) => <Row><Pitcher c={c} dark={d} size={78} /><CoffeeCup c={c} dark={d} size={64} foam={0.18} coffee={0.62} /></Row>,
+  coffee_ratio: (c, d) => <Row><CoffeeCup c={c} dark={d} size={56} coffee={0.28} label="эспрессо" /><CoffeeCup c={c} dark={d} size={56} foam={0.30} coffee={0.55} label="капучино" /><CoffeeCup c={c} dark={d} size={56} foam={0.12} coffee={0.75} label="латте" /></Row>,
 };
 // Фото национальных школ (school_russian_1 … school_french_2)
 Object.keys(REFERENCE_PHOTOS).forEach((k) => { ILL[k] = () => (k.indexOf("wine_") === 0 ? <PhotoSmall src={REFERENCE_PHOTOS[k]} /> : <Photo src={REFERENCE_PHOTOS[k]} />); });

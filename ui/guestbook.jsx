@@ -59,7 +59,7 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates) {
 
 
 // ── Экран книги ──
-export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, onBack, onWeekly, focusId }) {
+export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, practiceStars = {}, onBack, onWeekly, focusId }) {
   const [tab, setTab] = React.useState(role && MODULES[role] ? role : "seasonal");
   const [idx, setIdx] = React.useState(0);
   const [dir, setDir] = React.useState("r");
@@ -125,6 +125,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
         ? [{ kind: "legend", key: wid, ...WEEKLY_REVIEW, seal: "ВЫИГРАН", source: "ГОСТЬ НЕДЕЛИ · ПРОЙДЕН", date: dates[wid] ? ruDate(dates[wid]) : "" }]
         : [{ kind: "challenge", key: wid }];
     }
+    if (tab === "builds") return [{ kind: "builds", key: "builds_page" }];
     return buildRolePages(tab, completed, quizDone, examResults, dates);
   }, [tab, completed, quizDone, examResults, dates, wid]);
 
@@ -146,7 +147,14 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };
   const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
 
-  const chips = [...ROLES.filter(r => MODULES[r.id] && (MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])).map(r => ({ id: r.id, label: r.shortLabel || r.label })), { id: "weekly", label: "✦ Гость недели" }];
+  const chips = [...ROLES.filter(r => MODULES[r.id] && (MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])).map(r => ({ id: r.id, label: r.shortLabel || r.label })),
+    ...((MODULES.bar || []).some(m => (m.lessons || []).some(l => l.type === "build")) ? [{ id: "builds", label: "🍸 Сборка" }] : []),
+    { id: "weekly", label: "✦ Гость недели" }];
+  // Витрина сборки: build-уроки роли «Бар» и лучшие звёзды по каждому.
+  // Данные — из общего контура practice_stars, отдельного хранилища нет.
+  const buildLessons = React.useMemo(() =>
+    (MODULES.bar || []).flatMap(m => (m.lessons || []).filter(l => l.type === "build")), []);
+  const myBuildStars = practiceStars[`${profile?.name}|${profile?.surname ?? ""}`] || {};
   // В каких вкладках есть непрочитанные страницы — для золотой точки на вкладке
   const unreadByTab = React.useMemo(() => {
     const d = loadDates(); const map = {};
@@ -222,6 +230,43 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                 <div style={{ color: BROWN, fontSize: 13.5, lineHeight: 1.65, maxWidth: 258 }}>Сложный живой диалог. Проведи его достойно — и получи страницу с печатью. Не получится — гость уйдёт без отзыва, но вернётся: попробуешь снова.</div>
                 <button onClick={onWeekly} {...onActivate(onWeekly)} style={{ ...MONO, marginTop: 4, fontSize: 11, letterSpacing: 2, color: PAPER, background: `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, border: "none", borderRadius: 16, padding: "10px 22px", boxShadow: "0 4px 14px rgba(139,106,48,.4)", cursor: "pointer" }}>ПРИНЯТЬ СТОЛ ›</button>
               </div>
+            ) : page.kind === "builds" ? (
+              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>РОЛЬ «БАР» · ЛУЧШИЕ ПРОГОНЫ</div>
+                  <span style={{ fontSize: 15 }}>🍸</span>
+                </div>
+                <div style={{ ...SCRIPT, color: INK, fontSize: 24, marginTop: 10 }}>Витрина сборки</div>
+                <div style={{ marginTop: 6, flex: 1 }}>
+                  {buildLessons.map(l => {
+                    const st = myBuildStars[l.id] || 0;
+                    const verdict = st === 3 ? "безупречно" : st === 2 ? "с замечанием" : st === 1 ? "пересобрать" : "ещё не собрано";
+                    const col = st === 3 ? GOLD_SOFT : st === 2 ? "#A98A4E" : st === 1 ? WAX : "rgba(122,101,72,.55)";
+                    return (
+                      <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px dashed rgba(122,101,72,.2)" }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11,
+                          border: st ? "none" : `1.5px dashed ${col}`, color: st ? PAPER : col,
+                          background: st ? `radial-gradient(circle at 34% 30%, ${col}, ${col} 58%, rgba(0,0,0,.3))` : "transparent",
+                          boxShadow: st ? "inset 0 1px 2px rgba(255,255,255,.3), 0 2px 5px rgba(0,0,0,.25)" : "none" }}>
+                          {st ? "✦" : "·"}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: INK, fontSize: 13, fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {(l.title || "").replace(/^Сборка:\s*/i, "")}
+                          </div>
+                          <div style={{ ...MONO, color: col, fontSize: 8.5, letterSpacing: 1.5, marginTop: 2, textTransform: "uppercase" }}>{verdict}</div>
+                        </div>
+                        <div style={{ color: GOLD_SOFT, fontSize: 11, letterSpacing: 1, flexShrink: 0 }}>
+                          {"★".repeat(st)}<span style={{ opacity: .22 }}>{"★".repeat(3 - st)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, marginTop: 10 }}>
+                  ЛУЧШИЙ ПРОГОН КАЖДОЙ СБОРКИ · ОБНОВЛЯЕТСЯ САМ
+                </div>
+              </div>
             ) : page.kind === "locked" ? (
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 11, opacity: .88 }}>
                 {page.legend
@@ -272,7 +317,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
           </div>
         )}
         <div style={{ ...MONO, color: T.modSub.color, fontSize: 9, letterSpacing: 1, textAlign: "center", marginTop: 10, opacity: .8 }}>
-          {tab === "weekly" ? "НОВЫЙ ГОСТЬ — КАЖДЫЙ ПОНЕДЕЛЬНИК" : `ЗАПОЛНЕНО В РАЗДЕЛЕ: ${earnedInTab} ИЗ ${pages.length}`}
+          {tab === "weekly" ? "НОВЫЙ ГОСТЬ — КАЖДЫЙ ПОНЕДЕЛЬНИК" : tab === "builds" ? "СОБЕРИ ВСЕ НА «БЕЗУПРЕЧНО» — ТРИ ЗВЕЗДЫ В КАЖДОЙ СТРОКЕ" : `ЗАПОЛНЕНО В РАЗДЕЛЕ: ${earnedInTab} ИЗ ${pages.length}`}
         </div>
         <div style={{ height: 10 }} />
       </div>

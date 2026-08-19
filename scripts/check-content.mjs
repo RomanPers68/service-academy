@@ -154,6 +154,108 @@ console.log("5. Согласованность стандартов времен
   bad ? console.log(`  ! подозрительных мест: ${bad}`) : ok("контакт — 10 сек, подход — 2 мин: противоречий нет");
 }
 
+// ── 6. Кросс-ссылки, «Сборка», иллюстрации, меню ───────────────────
+// (перенесено из ручного аудита: раньше это ловилось скриптами в чате)
+console.log("6. Кросс-ссылки и «Сборка»");
+try {
+  const { BUILDS } = await import(join(ROOT, "data/builds.js"));
+  const { RESTAURANTS } = await import(join(ROOT, "data/roles.js"));
+  const { RESTAURANT_MENUS } = await import(join(ROOT, "data/menu.js"));
+  const { REFERENCE_PHOTOS } = await import(join(ROOT, "data/reference-photos.js"));
+  const { existsSync } = await import("node:fs");
+
+  // 6.1 «Сборка»: ровно 4 варианта, ровно один ok, fb и cost везде, слои не переливаются
+  let flatChips = 0;
+  const glossTerms = (GLOSSARY || []).map(g => (g.term || "").toLowerCase());
+  for (const b of BUILDS || []) {
+    if (b.vis === "flow" && !b.stages) errors.push(`[сборка/${b.id}] vis=flow без stages — краш носителя`);
+    (b.steps || []).forEach((st, i) => {
+      const tag = `[сборка/${b.id}#${i + 1}]`;
+      if ((st.options || []).length !== 4) errors.push(`${tag} должно быть ровно 4 варианта`);
+      const oks = (st.options || []).filter(o => o.ok).length;
+      if (oks !== 1) errors.push(`${tag} ok-вариантов: ${oks} (нужен ровно один)`);
+      (st.options || []).forEach((o, j) => { if (!o.fb) errors.push(`${tag} вариант ${j + 1} без fb`); });
+      if (!st.cost) errors.push(`${tag} нет cost («что дойдёт до гостя»)`);
+      if (st.term) {
+        const t = st.term.toLowerCase();
+        if (!glossTerms.some(x => x === t || x.includes(t) || t.includes(x))) flatChips++;
+      }
+    });
+    if (b.vis === "vessel") {
+      const sum = (b.steps || []).filter(s => s.layer).reduce((a, s) => a + s.layer.h, 0);
+      if (sum > 92) errors.push(`[сборка/${b.id}] слои ${sum}% — перелив бокала`);
+    }
+  }
+  const stepsN = (BUILDS || []).reduce((a, b) => a + (b.steps || []).length, 0);
+  ok(`сборка: ${(BUILDS || []).length} сценариев, ${stepsN} шагов` + (flatChips ? ` (${flatChips} чипов без статьи глоссария — допустимо)` : ""));
+
+  // 6.2 Уроки → сценарии/диалоги: buildId и dialogueId существуют
+  const buildIds = new Set((BUILDS || []).map(b => b.id));
+  const dlgIds = new Set((DIALOGUES || []).map(d => d.id));
+  const roles = { ...(MODULES || {}), spg: SPG || (MODULES || {}).spg };
+  for (const [rid, mods] of Object.entries(roles)) {
+    for (const m of mods || []) for (const l of m.lessons || []) {
+      if (l.type === "build" && l.buildId && !buildIds.has(l.buildId))
+        errors.push(`[${rid}/${l.id}] buildId «${l.buildId}» не найден в BUILDS`);
+      if (l.type === "dialogue" && l.dialogueId && !dlgIds.has(l.dialogueId))
+        errors.push(`[${rid}/${l.id}] dialogueId «${l.dialogueId}» не найден`);
+    }
+  }
+  // 6.3 Живые диалоги: все next-переходы ведут в существующие узлы
+  for (const d of DIALOGUES || []) {
+    const nodeIds = new Set((d.nodes || []).map(n => n.id));
+    for (const n of d.nodes || []) for (const o of n.options || [])
+      if (o.next && o.next !== "end" && !nodeIds.has(o.next))
+        errors.push(`[диалог/${d.id}] узел ${n.id} → next «${o.next}» не найден`);
+  }
+  // 6.4 «Гость недели»: пул диалогов существует (reviews.js читаем регэкспом — см. п.1)
+  {
+    const src = readFileSync(join(ROOT, "data/reviews.js"), "utf-8");
+    const m = src.match(/WEEKLY_DIALOGUE_POOL\s*=\s*\[([^\]]*)\]/);
+    if (m) for (const idm of m[1].matchAll(/"([^"]+)"/g))
+      if (!dlgIds.has(idm[1])) errors.push(`[гость недели] диалог «${idm[1]}» не найден`);
+  }
+  // 6.5 Глоссарий: дубли терминов
+  {
+    const seen = new Set();
+    for (const g of GLOSSARY || []) {
+      const t = (g.term || "").toLowerCase();
+      if (seen.has(t)) errors.push(`[глоссарий] дубль термина «${g.term}»`);
+      seen.add(t);
+    }
+  }
+  // 6.6 Меню ↔ рестораны (в обе стороны) и картинки блюд на диске
+  for (const r of Object.keys(RESTAURANT_MENUS || {}))
+    if (!RESTAURANTS.includes(r)) errors.push(`[меню] ресторан «${r}» отсутствует в RESTAURANTS`);
+  for (const r of RESTAURANTS || [])
+    if (!RESTAURANT_MENUS[r]) warns.push(`[меню] у ресторана «${r}» нет меню`);
+  {
+    const walk = (o, cb) => { if (!o) return; if (Array.isArray(o)) return o.forEach(x => walk(x, cb));
+      if (typeof o === "object") for (const [k, v] of Object.entries(o)) { if (k === "img" && typeof v === "string" && v.startsWith("/")) cb(v); else walk(v, cb); } };
+    walk(RESTAURANT_MENUS, (p) => { if (!existsSync(join(ROOT, "public" + p))) errors.push(`[меню] файл не найден: ${p}`); });
+  }
+  // 6.7 Иллюстрации: каждый [img:ключ] в текстах имеет отрисовку (ILL или фото)
+  {
+    const texts = ["data/reference.js", "data/modules.js", "data/modules-spg.js"]
+      .map(f => readFileSync(join(ROOT, f), "utf-8")).join("\n");
+    const usedKeys = new Set();
+    for (const m of texts.matchAll(/\[img:([a-z0-9_,\s]+)\]/gi))
+      m[1].split(",").forEach(k => usedKeys.add(k.trim()));
+    const registry = new Set(Object.keys(REFERENCE_PHOTOS || {}));
+    const illSrc = readFileSync(join(ROOT, "ui/reference-illustrations.jsx"), "utf-8");
+    for (const m of illSrc.matchAll(/^\s{2}([a-z0-9_]+):\s/gm)) registry.add(m[1]);
+    for (const k of usedKeys)
+      if (!registry.has(k)) errors.push(`[иллюстрации] маркер [img:${k}] не имеет отрисовки`);
+    Object.values(REFERENCE_PHOTOS || {}).flat().forEach(p => {
+      const src = typeof p === "string" ? p : (p && (p.src || p.img));
+      if (src && !existsSync(join(ROOT, "public" + src))) errors.push(`[фото] файл не найден: ${src}`);
+    });
+    ok(`иллюстрации: ${usedKeys.size} маркеров, все имеют отрисовку и файлы`);
+  }
+} catch (e) {
+  errors.push("секция 6 упала: " + e.message);
+}
+
 // ── Итог ────────────────────────────────────────────────────────────
 console.log("\n──────────────────────────────");
 if (warns.length) {

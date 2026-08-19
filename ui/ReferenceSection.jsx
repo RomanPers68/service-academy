@@ -3,7 +3,8 @@
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
 import React from "react";
 import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
-import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
+import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE } from "../data/reference";
+import { SearchScreen } from "./search";
 import { onActivate } from "../lib/utils";
 import { GOLD, GREEN, RED } from "./tokens";
 
@@ -62,15 +63,17 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, openCourse, onExit }) {
+function Hub({ T, gold, dark, openCourse, onSearch, onExit }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
+  const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
+  const barChapters = REFERENCE_BAR_COURSE.lessons.filter(l => l.type === "lesson").length;
   const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
   const cards = [
     { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} · с фото`, icon: Ico.serving, on: true },
     { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
-    { id: "coffee", t: "Кофе", s: "скоро", icon: Ico.coffee },
-    { id: "bar", t: "Бар и коктейли", s: "скоро", icon: Ico.bar },
+    { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
+    { id: "bar", t: "Бар и коктейли", s: `${barChapters} ${plural(barChapters)} · истории классики`, icon: Ico.bar, on: true },
   ];
   return (<div style={T.screen}>
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
@@ -80,6 +83,17 @@ function Hub({ T, gold, dark, openCourse, onExit }) {
     <div style={{ padding: "6px 18px 8px" }}>
       <div style={{ fontFamily: SERIF, fontSize: 27, fontWeight: "bold", color: T.modTitle.color }}>Справочник</div>
       <div style={{ color: T.modSub.color, fontSize: 14, marginTop: 6, lineHeight: 1.5 }}>Познавательные курсы для всей команды. Пополняется со временем.</div>
+    </div>
+    {/* Строка поиска: справочник растёт, листать 26+ глав дольше, чем спросить */}
+    <div style={{ padding: "4px 18px 2px" }}>
+      <div onClick={onSearch} {...onActivate(onSearch)} role="search" aria-label="Поиск по справочнику"
+        style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 15px", borderRadius: 14, cursor: "pointer",
+          border: `1px solid ${gold}55`, borderTop: `1px solid ${gold}88`,
+          background: dark ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.5)",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.10) inset" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <span style={{ color: T.modSub.color, fontSize: 14 }}>Найти главу: гренадин, капучино, декантация…</span>
+      </div>
     </div>
     <div style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
@@ -186,10 +200,10 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-export function ReferenceSection({ T, a11y, onExit, startLessonId }) {
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile }) {
   const gold = a11y ? "#8B6A30" : GOLD;
   const dark = !a11y;
-  const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE };
+  const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE, coffee: REFERENCE_COFFEE_COURSE, bar: REFERENCE_BAR_COURSE };
   let startCourseId = "serving", startIdx = -1;
   if (startLessonId) {
     for (const cid of Object.keys(COURSES)) {
@@ -209,7 +223,16 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId }) {
   const goNext = next ? () => { setIdx(idx + 1); setView("read"); } : null;
   const nextLabel = next ? (next.type === "quiz" ? "К фото-вопросам" : "Следующая глава") : null;
 
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} onExit={onExit} />;
+  const openById = (lid) => {
+    for (const cid of Object.keys(COURSES)) {
+      const i = COURSES[cid].lessons.findIndex(l => l.id === lid);
+      if (i >= 0) { setCourseId(cid); setIdx(i); setView("read"); return; }
+    }
+  };
+  if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
+    scopeText="Введи минимум 2 буквы — найду по главам справочника, глоссарию и меню ресторана."
+    onReferenceLesson={openById} onBack={() => setView("hub")} />;
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} onSearch={() => setView("search")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

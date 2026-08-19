@@ -6,7 +6,7 @@
 import React from "react";
 import { GLOSSARY } from "../data/glossary";
 import { RESTAURANT_MENUS } from "../data/menu";
-import { REFERENCE_COURSE, REFERENCE_WINE_COURSE } from "../data/reference";
+import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE } from "../data/reference";
 import { onActivate, vibrate } from "../lib/utils";
 import { UI_SVG } from "./icons";
 
@@ -32,9 +32,9 @@ const dishesFor = (restaurant) => {
   return [...samples, ...(custom[restaurant] || [])];
 };
 
-const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE];
+const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE];
 
-export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack }) {
+export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText }) {
   const [q, setQ] = React.useState("");
   const [openKey, setOpenKey] = React.useState(null);
   const gold = a11y ? "#8B6A30" : "#C8A96E";
@@ -106,7 +106,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
       {query.length < 2 && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔎</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Введи минимум 2 буквы — найду по урокам твоей роли, глоссарию, меню ресторана и справочнику.</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>{scopeText || "Введи минимум 2 буквы — найду по урокам твоей роли, глоссарию, меню ресторана и справочнику."}</div>
         </div>
       )}
 

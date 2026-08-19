@@ -57,7 +57,7 @@ const optKey = (state) => ({
   borderColor: state === "win" ? GREEN : state === "lose" ? RED : undefined,
 });
 
-export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose }) {
+export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose, onResult }) {
   const accent = color || GOLD;
   const a11y = !!T.a11y;
   // Инлайновые цвета текста под тему (классы красит CSS через html.sa-light)
@@ -111,7 +111,14 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
 
   const next = () => {
     if (step < total - 1) { setStep(step + 1); setAnswered(null); setOpenTerm(false); }
-    else { vibrate(right === total ? "success" : "light"); setDone(true); }
+    else {
+      vibrate(right === total ? "success" : "light");
+      // Результат наружу: App копит лучший в звёздах практики.
+      // Каждый прогон (в т.ч. «Собрать заново») отчитывается — хуже не станет,
+      // потому что App сохраняет только улучшение.
+      try { onResult && onResult(right, total); } catch (e) {}
+      setDone(true);
+    }
   };
 
   // ── НОСИТЕЛЬ: сосуд ────────────────────────────────────────────────
@@ -119,6 +126,9 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
     const poured = sc.steps.slice(0, shown).map((s, i) => ({ s, i })).filter(x => x.s.layer);
     const stack = poured.reduce((a, x) => a + x.s.layer.h, 0);
     const iceStep = sc.steps.slice(0, shown).map((s, i) => ({ s, i })).find(x => x.s.ice);
+    // strain: с шага процеживания лёд исчезает из бокала — он остался в шейкере.
+    // Визуал повторяет то, чему учит шаг «Подача» (двойное процеживание).
+    const strained = sc.steps.slice(0, shown).some(s => s.strain);
     const garn = sc.steps.slice(0, shown).find(s => s.garnish);
     const shape = sc.glass || "high";
     const rocks = shape === "rocks";
@@ -156,7 +166,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             <div className="sa-bld-wedge" style={{ left: 8, bottom: 4, transform: "rotate(-14deg)" }} />
           </>)}
 
-          {iceStep && [...Array(big ? 1 : 8)].map((_, i) => {
+          {!strained && iceStep && [...Array(big ? 1 : 8)].map((_, i) => {
             const sz = big ? 36 : 11, rot = big ? 12 : (i * 41 % 70 - 35);
             return (
               <div key={"c" + i} className={"sa-bld-cube" + (iceStep.i === just ? " fresh" : "")}
@@ -194,7 +204,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             <div className={"sa-bld-foam" + (foamStep.i === just ? " fresh" : "")}
               style={{ bottom: stack + "%", height: "26%", transform: `scaleY(${foamStep.s.foam.h / 26})` }} />
           )}
-          {shineStep && shineStep.i === just && <div className="sa-bld-shine" />}
+          {(shineStep && shineStep.i === just) || (done && !spoiled) ? <div className="sa-bld-shine" /> : null}
         </div>
         <div className="sa-bld-shadow" />
         {stemmed && (<>
@@ -207,7 +217,10 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
           </div>
         )}
         <div style={{ textAlign: "center", fontFamily: mono, fontSize: 8, letterSpacing: 1.6, color: P.sub, marginTop: 7, textTransform: "uppercase" }}>
-          {CAP[shape] || "хайбол"}
+          {/* До первого решения имя бокала скрыто: первый вопрос коктейлей —
+              «в чём подаёшь?», и подпись выдавала бы ответ. После ответа
+              имя появляется как подтверждение выбора. */}
+          {shown === 0 ? "собери меня" : (CAP[shape] || "хайбол")}
         </div>
       </div>
     );
@@ -457,7 +470,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             }}>{r === true ? "✓" : r === false ? "✕" : i + 1}</span>
             <span>{st.label}</span>
             {r != null && (
-              <span style={{ marginLeft: "auto", fontSize: 11, color: MUTED, maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: P.faint }}>
+              <span style={{ marginLeft: "auto", fontSize: 11, maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: P.faint }}>
                 {st.options.find(o => o.ok).t.split(",")[0]}
               </span>
             )}
@@ -468,23 +481,32 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
   );
 
   const SIDE = { vessel: Vessel, station: Station, ice: IcePath, cleanup: Cleanup, guest: Guest, pass: Pass, shelf: Shelf };
+  // Носители вызываем как функции ({Carrier()}), а не как <Carrier />:
+  // компоненты объявлены внутри BuildRunner и на каждый рендер получают новую
+  // идентичность — React пересоздавал бы их DOM целиком, перезапуская анимации
+  // заливки и пузырьков даже при простом открытии чипа глоссария.
   // Финальный кадр: то, что человек собрал, показываем крупно и по центру.
   // Список шагов на итоге не нужен — его заменяет разбор ниже.
   const HeroCarrier = () => {
-    const Side = SIDE[sc.vis] || Station;
+    const side = SIDE[sc.vis] || Station;
     return (
       <div className="sa-bld-hero" style={{ display: "flex", justifyContent: "center", margin: "14px 0 4px" }}>
-        <Side />
+        {side()}
       </div>
     );
   };
   const Carrier = () => {
-    if (sc.vis === "flow") return <Flow />;
-    const Side = SIDE[sc.vis] || Station;
+    if (sc.vis === "flow") return Flow();
+    const side = SIDE[sc.vis] || Station;
+    // Реакция предмета на ответ: ошибка — вздрагивание, верный — лёгкий кивок.
+    // До первого решения — «дыхание»-приглашение (await). Класс появляется
+    // на персистентном DOM в момент ответа и играет один раз.
+    const react = answered != null ? (cur.options[answered].ok ? " nudge" : " jolt")
+      : shown === 0 ? " await" : "";
     return (
-      <div className="sa-bld-counter">
-        <Side />
-        <StepList />
+      <div className={"sa-bld-counter" + react}>
+        {side()}
+        {StepList()}
       </div>
     );
   };
@@ -515,18 +537,28 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
     const verdict = missed.length === 0 ? { cls: "ok", label: "Безупречно" }
       : missed.length === 1 ? { cls: "warn", label: "С замечанием" }
       : { cls: "bad", label: "Пересобрать" };
+    // Та же шкала, что у звёзд практики: 0 ошибок → 3, одна → 2, больше → 1
+    const stars = missed.length === 0 ? 3 : missed.length === 1 ? 2 : 1;
     return (
       <Shell title={sc.title} onClose={() => onClose && onClose()} accent={accent} T={T}>
         {right === total && <Confetti />}
         <div style={cardStyle}>
           <Eyebrow left={"Сборка · " + sc.title} right="итог" a11y={a11y} />
-          <HeroCarrier />
+          {HeroCarrier()}
           <div style={{ textAlign: "center", padding: "12px 4px 2px" }}>
             <div className={"sa-bld-seal " + verdict.cls}>
               <span className="sa-bld-sealtop">{right} / {total}</span>
               <span className="sa-bld-sealtext">{verdict.label}</span>
             </div>
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 12 }}>шагов без ошибки</div>
+            <div style={{ fontSize: 17, letterSpacing: 4, marginTop: 10 }}>
+              {[1, 2, 3].map(s => (
+                <span key={s} style={{ opacity: s <= stars ? 1 : 0.22, filter: s <= stars ? "none" : "grayscale(1)" }}>⭐</span>
+              ))}
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 8.5, letterSpacing: 2, textTransform: "uppercase", color: P.faint, marginTop: 5 }}>
+              лучший результат идёт в общий зачёт
+            </div>
           </div>
           {!missed.length ? (
             <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: GREEN }}>🎯 {sc.win}</div>
@@ -564,7 +596,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
         <div className="sa-bld-thread">
           <i style={{ transform: `scaleX(${(step + (answered != null ? 1 : 0)) / total})` }} />
         </div>
-        <Carrier />
+        {Carrier()}
         <div key={"st" + step} className="sa-bld-stepin">
         <div style={{ fontSize: 16, lineHeight: 1.45, margin: "14px 0 12px", color: P.text }}>{cur.q}</div>
 

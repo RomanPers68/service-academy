@@ -11,6 +11,7 @@
 
 import React from "react";
 import { rpc, saToken } from "../api/supabase";
+import { generateSchedule } from "../lib/schedule-gen";
 import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS } from "./tokens";
 
@@ -93,8 +94,15 @@ export const DEFAULT_CONFIG = {
 const focusScroll = (e) => {
   const el = e.target;
   setTimeout(() => {
-    try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {}
-  }, 300);
+    try {
+      // График живёт в position:fixed-слое. iOS при открытии клавиатуры
+      // прокручивает СТРАНИЦУ под ним, и WebKit рисует каретку со смещением
+      // от поля. Возвращаем страницу на место, затем подводим поле к центру
+      // видимой зоны — каретка встаёт куда положено.
+      window.scrollTo(0, 0);
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    } catch (_) {}
+  }, 350);
 };
 
 // Поля редактора — на уровне модуля, иначе React пересоздаёт их каждый рендер
@@ -108,7 +116,9 @@ const INP = (a11y, P) => ({
   WebkitTextFillColor: P.text,
   caretColor: GOLD,
   WebkitAppearance: "none",
-  fontFamily: mono, fontSize: 13.5, color: P.text, borderRadius: 9, padding: "8px 9px", minWidth: 0,
+  // 16px — как у полей поиска и ассистента: крупнее тап-цель и ни одного
+  // сценария зума-на-фокус на старых WebView.
+  fontFamily: mono, fontSize: 16, color: P.text, borderRadius: 9, padding: "8px 9px", minWidth: 0,
   background: a11y ? "rgba(255,252,244,0.85)" : "rgba(255,250,238,0.05)",
   border: `1px solid ${a11y ? "rgba(175,140,65,0.35)" : "rgba(145,108,40,0.32)"}`,
   borderTopColor: a11y ? "rgba(255,240,200,0.9)" : "rgba(210,168,65,0.36)",
@@ -136,8 +146,9 @@ function Num({ v, min, max, set, inp }) {
   }, [v]);
   return (
     <input ref={ref} type="number" inputMode="numeric" defaultValue={String(v)} min={min} max={max}
-      style={{ ...inp, width:56, textAlign:"center" }}
+      style={{ ...inp, width:60, textAlign:"center" }}
       onFocus={focusScroll}
+      onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
       onChange={e => { if (e.target.value === "") return;
         set(Math.max(min, Math.min(max, +e.target.value || 0))); }}
       onBlur={e => { const x = Math.max(min, Math.min(max, +e.target.value || 0));
@@ -152,6 +163,7 @@ function Text({ v, set, inp, style, maxLength }) {
   }, [v]);
   return (
     <input ref={ref} defaultValue={v} maxLength={maxLength} style={{ ...inp, ...style }}
+      enterKeyHint="done" onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
       onFocus={focusScroll} onChange={e => set(e.target.value)} />
   );
 }
@@ -163,6 +175,18 @@ function Pill({ on, children, onClick, a11y, P, style }) {
       border:`1px solid ${on ? GOLD + "99" : (a11y ? "rgba(175,140,65,0.3)" : "rgba(145,108,40,0.3)")}`,
       ...style }}>{children}</button>
   );
+}
+// Имя с телефоном превращается в звонок по тапу: «проспал», «заболел» —
+// это ситуации на секунды, а не на переписку. Пунктир снизу — знак, что имя
+// звонит; stopPropagation — чтобы тап не сворачивал раскрытый день.
+// Компонент на уровне модуля: объявленный внутри экрана, он получал бы новую
+// идентичность каждый рендер, и React пересоздавал бы DOM ссылки впустую.
+const telHref = ph => "tel:" + String(ph).replace(/[^+\d]/g, "");
+function CallName({ who, label, color }) {
+  return who && who.phone ? (
+    <a href={telHref(who.phone)} onClick={e => e.stopPropagation()}
+      style={{ color, textDecoration:"none", borderBottom:`1px dashed ${color}AA` }}>{label}</a>
+  ) : <>{label}</>;
 }
 function Sec({ no, title, hint, open, onToggle, P, children }) {
   return (
@@ -205,6 +229,30 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [shot, setShot] = React.useState(null);         // готовая картинка: {url, blob, name}
   const [shotBusy, setShotBusy] = React.useState(false);
   const [shotMode, setShotMode] = React.useState("chat");  // chat · a4
+  const [openDay, setOpenDay] = React.useState(0);     // раскрытый день в виде сотрудника
+  const [openEmp, setOpenEmp] = React.useState(0);     // раскрытая карточка сотрудника в настройках
+  const [swap, setSwap] = React.useState(false);       // режим обмена сменами (менеджер)
+  const [swapSel, setSwapSel] = React.useState(null);  // первая выбранная клетка обмена
+  // Личные заметки к дням: чаевые, важные события. Хранятся на устройстве —
+  // это персональный блокнот сотрудника, сервер о нём не знает.
+  const notesKey = `sa_schednotes_${profile?.name || ""}_${profile?.surname || ""}`;
+  const [notes, setNotes] = React.useState({});
+  React.useEffect(() => {
+    try { const all = JSON.parse(localStorage.getItem(notesKey) || "{}"); setNotes(all[mkey] || {}); }
+    catch (e) { setNotes({}); }
+  }, [mkey, notesKey]);
+  const saveNote = (d, text) => {
+    setNotes(n => {
+      const nx = { ...n }; const t = (text || "").trim();
+      if (t) nx[d] = t.slice(0, 200); else delete nx[d];
+      try {
+        const all = JSON.parse(localStorage.getItem(notesKey) || "{}");
+        if (Object.keys(nx).length) all[mkey] = nx; else delete all[mkey];
+        localStorage.setItem(notesKey, JSON.stringify(all));
+      } catch (e) {}
+      return nx;
+    });
+  };
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
 
@@ -264,6 +312,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       const m = (r.months || []).find(x => x.venue_key === venueKey);
       const pl = m?.payload || {};
       setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {});
+      setSwapSel(null);   // выбор обмена не переживает смену месяца
       setDirty(false); setState("ok");
     } catch (e) { setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e)); }
   }, [mkey, profile?.restaurant]);
@@ -354,102 +403,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   };
 
   // ── Автозаполнение ────────────────────────────────────────────────
-  // Закреплённые вручную клетки сохраняем и достраиваем вокруг них.
+  // Алгоритм живёт в lib/schedule-gen.js (там же тесты гоняются в Node):
+  // мультистарт из 24 прогонов с ремонтом дыр перестановками. Закреплённые
+  // вручную клетки сохраняются и достраиваются вокруг — как раньше.
   const generate = () => {
     if (!cfg || !staff.length) return;
-    const R = cfg.rules, auto = cfg.shifts.filter(x => !x.extra);
-    if (!auto.length) return;
-    const p = {}; staff.forEach(s => { p[s.id] = {}; });
-    const hrs = {}, row = {}, peak = {}, cnt = {};
-    staff.forEach(s => { hrs[s.id] = 0; row[s.id] = 0; peak[s.id] = 0; cnt[s.id] = 0; });
-
-    for (let d = 1; d <= DAYS; d++) staff.forEach(s => {
-      const keep = isLocked(s.id, d) ? (plan[s.id]?.[d] || "") : "";
-      p[s.id][d] = keep;
-      const sh = keep && shiftOf(keep);
-      if (sh) { hrs[s.id] += len(sh); cnt[s.id]++; if (lvlOf(d) === 3) peak[s.id]++; }
-    });
-
-    // Сколько выходных ещё можно потратить на этой неделе.
-    // Неполные недели на стыке месяцев считаем пропорционально.
-    const offLeft = (s, d) => {
-      const start = d - dow(d), end = Math.min(DAYS, start + 6);
-      let work = 0, n = 0;
-      for (let i = Math.max(1, start); i <= end; i++) { n++; if (p[s.id][i]) work++; }
-      const need = n >= 7 ? R.minOff : Math.round(R.minOff * n / 7);
-      return (n - work) - need;
-    };
-
-    const dayK = (cfg.dayShift && shiftOf(cfg.dayShift)) ? cfg.dayShift : auto[0].k;
-    const ev = cfg.evening || null;
-
-    for (let d = 1; d <= DAYS; d++) {
-      const need = needOf(d), isPeak = lvlOf(d) === 3, slots = [];
-      POS.forEach(({ id: pos }) => {
-        const total = need[pos] || 0;
-        if (!total) return;
-        const sp = (cfg.split || {})[pos];
-        // Уже занятые вручную клетки вычитаем из потребности каждой смены
-        const busyIn = (k) => staff.filter(s => s.pos === pos && shiftOf(p[s.id][d])?.k === k).length;
-        if (sp && Object.keys(sp).length) {
-          // Разбивка по сменам: сумма её чисел и есть потребность дня
-          Object.entries(sp).forEach(([k, cnt2]) => {
-            if (!shiftOf(k)) return;
-            for (let i = 0; i < (cnt2 || 0) - busyIn(k); i++) slots.push({ pos, k });
-          });
-        } else {
-          const already = staff.filter(s => s.pos === pos && p[s.id][d]).length;
-          for (let i = 0; i < total - already; i++) slots.push({ pos, k: dayK });
-        }
-      });
-      // Устаревшее вечернее усиление: работает, только если разбивки нет
-      if (ev && ev.count && shiftOf(ev.shift) && (ev.dows || []).includes(dow(d))
-          && !((cfg.split || {})[ev.pos])) {
-        const busy = staff.filter(s => s.pos === ev.pos && shiftOf(p[s.id][d])?.k === ev.shift).length;
-        for (let i = 0; i < ev.count - busy; i++) slots.push({ pos: ev.pos, k: ev.shift });
-      }
-      // Длинные смены раздаём первыми: иначе тот, кому досталась короткая,
-      // уже не догонит по часам.
-      slots.sort((a, b) => (len(shiftOf(b.k)) || 0) - (len(shiftOf(a.k)) || 0));
-
-      slots.forEach(sl => {
-        const sh = shiftOf(sl.k); if (!sh) return;
-        const cand = staff.filter(s => {
-          if (s.pos !== sl.pos || p[s.id][d] || onVac(s, d)) return false;
-          if (isDayOff(s, d)) return false;
-          if (!inCycle(s, d)) return false;              // цикл два через два
-          if (s.notBefore && sh.from < s.notBefore) return false;
-          if (row[s.id] >= R.maxRow) return false;
-          if (offLeft(s, d) <= 0) return false;
-          // Норма как потолок — только если так задано в правилах.
-          if ((R.normMode || "floor") === "cap" && hrs[s.id] + len(sh) > s.norm) return false;
-          const pv = d > 1 ? p[s.id][d - 1] : "";
-          if (pv) { const q = shiftOf(pv); if (q && (24 - q.to + sh.from) < R.minRest) return false; }
-          return true;
-        }).sort((a, b) => {
-          if (isPeak && peak[a.id] !== peak[b.id]) return peak[a.id] - peak[b.id];
-          // Когда норма — обязательный минимум, делим поровну по числу смен,
-          // а при равенстве смен — по часам: короткие вечерние иначе
-          // достались бы всегда одним и тем же.
-          if ((R.normMode || "floor") === "floor") {
-            if (cnt[a.id] !== cnt[b.id]) return cnt[a.id] - cnt[b.id];
-            if (hrs[a.id] !== hrs[b.id]) return hrs[a.id] - hrs[b.id];
-          }
-          const dh = (b.norm - hrs[b.id]) - (a.norm - hrs[a.id]);
-          if (dh) return dh;
-          // При равном недоборе берём того, кто работал вчера: так выходные
-          // склеиваются по два подряд, а не рассыпаются по одному.
-          const wa = d > 1 && p[a.id][d - 1] ? 1 : 0, wb = d > 1 && p[b.id][d - 1] ? 1 : 0;
-          return wb - wa;
-        });
-        if (cand.length) {
-          const s = cand[0]; p[s.id][d] = sl.k; hrs[s.id] += len(sh); cnt[s.id]++;
-          if (isPeak) peak[s.id]++;
-        }
-      });
-      staff.forEach(s => { row[s.id] = p[s.id][d] ? row[s.id] + 1 : 0; });
-    }
-    setPlan(p); setDirty(true); setGenKey(k => k + 1); vibrate("light");
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey });
+    if (!res.plan) return;
+    setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
+    vibrate(res.shortage ? "light" : "success");
+    setMsg(res.shortage
+      ? `Черновик готов: не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
+      : "Черновик готов: все смены закрыты");
+    setTimeout(() => setMsg(""), 3500);
   };
 
   // ── Проверка ──────────────────────────────────────────────────────
@@ -517,10 +483,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     for (let d = 1; d <= DAYS; d++) { const sh = shiftOf(plan[s.id]?.[d]); if (sh) h += len(sh); }
     return h;
   };
-  const leadOn = d => {
-    const m = staff.find(s => s.pos === "manager" && plan[s.id]?.[d] && !shiftOf(plan[s.id][d])?.extra);
-    return m ? m.name : null;
-  };
+  const leadObj = d =>
+    staff.find(s => s.pos === "manager" && plan[s.id]?.[d] && !shiftOf(plan[s.id][d])?.extra) || null;
+  const leadOn = d => { const m = leadObj(d); return m ? m.name : null; };
 
   // Цифра покрытия догоняет настоящее значение за полсекунды — так видно,
   // что генератор отработал, а не просто перерисовалась таблица.
@@ -539,11 +504,48 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   const tapCell = (s, d) => {
     if (!isAdmin) return;
+    // Режим обмена: две тапнутые клетки меняются содержимым. Самая частая
+    // просьба смены — «поменяйся со мной» — решается двумя касаниями.
+    if (swap) {
+      if (!swapSel) { setSwapSel({ id: s.id, d }); vibrate("light"); return; }
+      if (swapSel.id === s.id && swapSel.d === d) { setSwapSel(null); return; }
+      const a = swapSel, b = { id: s.id, d };
+      const va = plan[a.id]?.[a.d] || "", vb = plan[b.id]?.[b.d] || "";
+      setPlan(p => {
+        // Последовательно, через промежуточный объект: так обмен корректен
+        // и когда обе клетки принадлежат одному сотруднику.
+        const nx = { ...p };
+        const ra = { ...(nx[a.id] || {}) }; ra[a.d] = vb; nx[a.id] = ra;
+        const rb = { ...(nx[b.id] || {}) }; rb[b.d] = va; nx[b.id] = rb;
+        return nx;
+      });
+      setLocks(l => {
+        if (a.id === b.id) {
+          const mine = { ...(l[a.id] || {}) };
+          if (vb) mine[a.d] = 1; else delete mine[a.d];
+          if (va) mine[b.d] = 1; else delete mine[b.d];
+          return { ...l, [a.id]: mine };
+        }
+        const la = { ...(l[a.id] || {}) }, lb = { ...(l[b.id] || {}) };
+        if (vb) la[a.d] = 1; else delete la[a.d];
+        if (va) lb[b.d] = 1; else delete lb[b.d];
+        return { ...l, [a.id]: la, [b.id]: lb };
+      });
+      setSwapSel(null); setDirty(true); vibrate("success");
+      return;
+    }
     const keys = ["", ...(cfg.shifts || []).map(x => x.k)];
     const cur = plan[s.id]?.[d] || "";
     const nx = keys[(keys.indexOf(cur) + 1) % keys.length];
     setPlan(p => ({ ...p, [s.id]: { ...(p[s.id] || {}), [d]: nx } }));
-    setLocks(l => ({ ...l, [s.id]: { ...(l[s.id] || {}), [d]: 1 } }));
+    // Пустая клетка снимает и замок: иначе случайный тап закреплял бы
+    // пустоту навсегда, а генератор обходил бы её стороной. Снять такой
+    // замок можно было только сбросом всех закреплений месяца.
+    setLocks(l => {
+      const mine = { ...(l[s.id] || {}) };
+      if (nx) mine[d] = 1; else delete mine[d];
+      return { ...l, [s.id]: mine };
+    });
     setDirty(true);
   };
 
@@ -568,7 +570,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     color:P.sub, display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:10 };
 
   const shell = kids => (
-    <div className="sa-schedwrap" style={{
+    <div className="sa-schedwrap"
+      onBlurCapture={() => { try { window.scrollTo(0, 0); } catch (_) {} }}
+      style={{
       position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column",
       background: a11y ? "#E8DEC8" : "linear-gradient(160deg,#14110A 0%,#1C1509 50%,#14110A 100%)",
       overflowY:"auto", WebkitOverflowScrolling:"touch", overscrollBehavior:"contain",
@@ -772,6 +776,64 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     setShotBusy(false);
   };
 
+  // «Мои смены» картинкой: сотрудник сохраняет свой месяц себе или семье.
+  // Заметки попадают в картинку — чаевые и пометки останутся под рукой.
+  const drawMyExport = (me) => {
+    const C = { bg:"#FBF7EE", text:"#2A1F0E", dim:"#6B5B40", faint:"#8A7A5C",
+      line:"#DED3BC", we:"#F3EDDD", hol:"#A33A2A", acc:"#7A5A22" };
+    const S = 2, W = 430, ROWH = 30, HEAD = 92, FOOT = 34;
+    const H = HEAD + DAYS * ROWH + FOOT;
+    const cv = document.createElement("canvas");
+    cv.width = W * S; cv.height = H * S;
+    const x = cv.getContext("2d"); x.scale(S, S); x.textBaseline = "middle";
+    x.fillStyle = C.bg; x.fillRect(0, 0, W, H);
+    x.fillStyle = C.text; x.font = "600 19px Georgia, serif";
+    x.fillText("Мои смены", 16, 28);
+    const bd = breakdownOf(me);
+    x.fillStyle = C.dim; x.font = "12.5px Georgia, serif";
+    x.fillText(`${me.name} · ${MONTHS_N[M]} ${Y}`, 16, 50);
+    x.fillText(`${profile?.restaurant || ""} · ${bd.shifts} смен · ${bd.hours} из ${me.norm} ч`, 16, 69);
+    let y = HEAD;
+    for (let d = 1; d <= DAYS; d++) {
+      const k = plan[me.id]?.[d], sh = k && shiftOf(k), vac = onVac(me, d), w = dow(d), note = notes[d];
+      if (w >= 5 || holOf(d)) { x.fillStyle = C.we; x.fillRect(0, y, W, ROWH); }
+      x.font = "11px ui-monospace, Menlo, monospace";
+      x.fillStyle = holOf(d) ? C.hol : C.dim;
+      x.fillText(`${String(d).padStart(2, " ")} ${DOWL[w]}`, 16, y + ROWH / 2);
+      const main = sh ? `${sh.name} · ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00`
+        : vac ? "Отпуск" : "";
+      x.font = sh ? "13px Georgia, serif" : "italic 12px Georgia, serif";
+      x.fillStyle = sh ? C.text : vac ? C.hol : C.faint;
+      x.fillText(main || "—", 74, y + ROWH / 2 - (note ? 6 : 0));
+      if (note) {
+        x.font = "italic 10px Georgia, serif"; x.fillStyle = C.acc;
+        const t = note.replace(/\s+/g, " ");
+        x.fillText("✎ " + (t.length > 44 ? t.slice(0, 43) + "…" : t), 74, y + ROWH / 2 + 8);
+      }
+      if (sh) {
+        x.font = "11px ui-monospace, Menlo, monospace"; x.fillStyle = C.acc;
+        x.fillText(len(sh) + " ч", W - 42, y + ROWH / 2);
+      }
+      x.strokeStyle = C.line; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(0, y + ROWH + .5); x.lineTo(W, y + ROWH + .5); x.stroke();
+      y += ROWH;
+    }
+    x.fillStyle = C.faint; x.font = "10.5px Georgia, serif";
+    x.fillText(`составлено ${new Date().toLocaleDateString("ru-RU")}`, 16, y + 20);
+    return cv;
+  };
+  const exportMy = async (me) => {
+    setShotBusy(true);
+    try {
+      const cv = drawMyExport(me);
+      const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+      const name = `Мои_смены_${MONTHS_N[M]}_${Y}.png`.replace(/\s/g, "_");
+      setShot({ url: URL.createObjectURL(blob), blob, name });
+      vibrate("success");
+    } catch (e) { setMsg("Не удалось собрать картинку"); setTimeout(() => setMsg(""), 2500); }
+    setShotBusy(false);
+  };
+
   const shareShot = async () => {
     if (!shot) return;
     try {
@@ -794,11 +856,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const rowStyle = ROW(a11y);
   const hintStyle = { fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic", lineHeight:1.5 };
 
-  const setupView = () => (
+  const setupView = () => {
+    // Сводки для свёрнутых секций: закрытая секция отвечает «что настроено»,
+    // открытая — «что это значит». Обзор всех настроек без единого тапа.
+    const sum1 = `с ${Math.min(...cfg.hours.map(h => h[0]))}:00 до ${Math.max(...cfg.hours.map(h => h[1]))}:00`;
+    const sum2 = `${cfg.shifts.map(x => x.k).join(" ")} · авто: ${cfg.shifts.filter(x => !x.extra).length}`;
+    const sum3 = [1, 2, 3].map(l => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.";
+    const sum4 = `пик: ${cfg.rules.peakDows.map(w => DOWL[w]).join(",") || "—"} · до ${cfg.rules.maxRow} подряд · отдых ${cfg.rules.minRest} ч`;
+    const nVac = staff.filter(vacOn).length;
+    const sum5 = `${staff.length} чел.` + (nVac ? ` · в отпуске: ${nVac}` : "");
+    return (
     <div style={card}>
       <div style={eyebrow}><span>Настройки графика</span><span style={{ color:P.acc }}>{staff.length} чел.</span></div>
 
-      <Sec no={1} title="Часы работы" hint="Когда открываемся и закрываемся в каждый день недели" P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
+      <Sec no={1} title="Часы работы" hint={openSec===1 ? "Когда открываемся и закрываемся в каждый день недели" : sum1} P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
         {DOWL.map((dl, i) => (
           <div key={i} style={rowStyle}>
             <span style={{ flex:"0 0 40px", fontSize:12.5, color:P.sub }}>{dl}</span>
@@ -814,7 +885,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div style={hintStyle}>Работу после полуночи пишем как 25 или 26 — это час и два ночи.</div>
       </Sec>
 
-      <Sec no={2} title="Смены" hint="Во сколько люди приходят и уходят" P={P} open={openSec===2} onToggle={() => setOpenSec(openSec===2?0:2)}>
+      <Sec no={2} title="Смены" hint={openSec===2 ? "Во сколько люди приходят и уходят" : sum2} P={P} open={openSec===2} onToggle={() => setOpenSec(openSec===2?0:2)}>
         {cfg.shifts.map((sh, i) => (
           <div key={i} style={{ ...rowStyle, flexWrap:"wrap" }}>
             <Text inp={inp} v={sh.k} maxLength={2} style={{ width:44, textAlign:"center" }}
@@ -841,7 +912,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div style={hintStyle}>Порядок важен: первого человека на позицию ставим в первую смену. Режим «вручную» — смена, которую автозаполнение не расставляет: так помечают кейтеринг.</div>
       </Sec>
 
-      <Sec no={3} title="Сколько людей нужно" hint="Разное количество в будни, выходные и праздники" P={P} open={openSec===3} onToggle={() => setOpenSec(openSec===3?0:3)}>
+      <Sec no={3} title="Сколько людей нужно" hint={openSec===3 ? "Разное количество в будни, выходные и праздники" : sum3} P={P} open={openSec===3} onToggle={() => setOpenSec(openSec===3?0:3)}>
         <div style={{ display:"flex", gap:8, fontFamily:mono, fontSize:8.5, letterSpacing:1.2,
           textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>
           <span style={{ flex:1 }}>позиция</span>
@@ -858,7 +929,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         ))}
       </Sec>
 
-      <Sec no={4} title="Правила смен" hint="Загрузка по дням недели, выходные и отдых" P={P} open={openSec===4} onToggle={() => setOpenSec(openSec===4?0:4)}>
+      <Sec no={4} title="Правила смен" hint={openSec===4 ? "Загрузка по дням недели, выходные и отдых" : sum4} P={P} open={openSec===4} onToggle={() => setOpenSec(openSec===4?0:4)}>
         <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пиковые дни недели</div>
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
@@ -970,10 +1041,27 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           если не совпадает, цифра краснеет. Ноль везде означает, что все выходят в основную смену.</div>
       </Sec>
 
-      <Sec no={5} title="Сотрудники" hint="Кто работает, на какой позиции и сколько часов" P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
-        {staff.map((sf, i) => (
+      <Sec no={5} title="Сотрудники" hint={openSec===5 ? "Кто работает, на какой позиции и сколько часов" : sum5} P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
+        {staff.map((sf, i) => { const openE = openEmp === sf.id; return (
           <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:7 }}>
-            <div style={{ display:"flex", alignItems:"flex-end", gap:8, paddingBottom:2, minWidth:0 }}>
+            {/* Свёрнутая строка: обзор без простыни из десяти полей на человека */}
+            <div onClick={() => { vibrate("light"); setOpenEmp(openE ? 0 : sf.id); }}
+              {...onActivate(() => setOpenEmp(openE ? 0 : sf.id))}
+              style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", minWidth:0 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13.5, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sf.name}</div>
+                <div style={{ fontSize:10.5, color:P.sub }}>
+                  {posName(sf.pos)} · {sf.norm} ч
+                  {sf.phone ? " · ✆" : ""}
+                  {vacOn(sf) ? " · отпуск" : ""}
+                  {((sf.off || []).length || offDays(sf).length) ? " · есть выходные" : ""}
+                </div>
+              </div>
+              <div style={{ color:P.sub, fontSize:15, transform: openE ? "rotate(90deg)" : "none",
+                transition:"transform .25s" }}>›</div>
+            </div>
+            {openE ? (<>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:8, padding:"8px 0 2px", minWidth:0 }}>
               <Field label="имя" P={P}>
                 <Text inp={inp} v={sf.name} style={{ width:"100%" }}
                   set={val => patch(c => { c.staff[i].name = val; })} />
@@ -994,6 +1082,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
               </Field>
               <Field label="норма, ч" P={P}>
                 <Num inp={inp} v={sf.norm} min={0} max={320} set={v => patch(c => { c.staff[i].norm = v; })} />
+              </Field>
+            </div>
+            <div style={{ ...rowStyle, borderTop:"none" }}>
+              <Field label="телефон · для связи в смене" P={P}>
+                <Text inp={inp} v={sf.phone || ""} maxLength={20} style={{ width:"100%" }}
+                  set={val => patch(c => { c.staff[i].phone = val; })} />
               </Field>
             </div>
 
@@ -1075,8 +1169,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 {sf.notBefore ? `не ставим на смены раньше ${sf.notBefore}:00` : "ограничений по времени нет"}
               </div>
             </div>
+            </>) : null}
           </div>
-        ))}
+        ); })}
         <div style={{ marginTop:10, padding:"10px 12px", borderRadius:12,
           background: a11y ? "rgba(200,169,110,0.14)" : "rgba(200,169,110,0.10)",
           border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(200,169,110,0.3)"}` }}>
@@ -1095,17 +1190,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
 
         <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"10px 12px", fontSize:12.5 }}
-          onClick={() => patch(c => {
-            const id = Math.max(0, ...c.staff.map(x => +x.id || 0)) + 1;
-            c.staff.push({ id, name:"Новый сотрудник", pos:"waiter", norm: monthNorm(40) });
-          })}>+ добавить сотрудника</button>
+          onClick={() => {
+            const nid = Math.max(0, ...(cfg.staff || []).map(x => +x.id || 0)) + 1;
+            patch(c => { c.staff.push({ id: nid, name:"Новый сотрудник", pos:"waiter", norm: monthNorm(40) }); });
+            setOpenEmp(nid);   // новая карточка сразу раскрыта — заполняй
+          }}>+ добавить сотрудника</button>
         <div style={hintStyle}>Имена лучше писать так же, как в профиле сотрудника: по ним человек увидит свои смены.
+          Телефон виден коллегам в их графике — имя становится звонком по тапу: выручает, когда кто-то проспал или заболел.
           У каждого три вида нерабочих дней: <b>отпуск</b> — период в этом месяце, <b>дни недели</b> — постоянный
           шаблон вроде «не работает по вторникам», <b>выходные по датам</b> — разовые числа. Генератор не нарушает
           ни одно из них.</div>
       </Sec>
     </div>
-  );
+    );
+  };
 
   // ── Вид сотрудника: только свои смены ─────────────────────────────
   if (!isAdmin) {
@@ -1123,27 +1221,100 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {me.norm} ч</span></div>
           {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
             const k = plan[me.id]?.[d], sh = k && shiftOf(k), vac = onVac(me, d), col = k && colorOf(k);
+            // Состав смены по тапу: первый вопрос любой смены — «кто сегодня
+            // со мной?», и ответ уже лежит в загруженном plan.
+            const open = openDay === d;
             return (
-              <div key={d} className={"sa-schedrow" + (sh ? "" : " off")} style={{
+              <div key={d} onClick={() => { vibrate("light"); setOpenDay(open ? 0 : d); }}
+                className={"sa-schedrow" + (sh ? "" : " off")} style={{
                 display:"flex", alignItems:"center", gap:11, padding:"9px 11px", marginTop:6, borderRadius:13,
+                cursor:"pointer", flexWrap:"wrap",
                 borderLeft: col ? `3px solid ${a11y ? col.bdL : col.bd}` : undefined,
               }}>
                 <div style={{ flex:"0 0 44px", textAlign:"center" }}>
                   <div style={{ fontSize:17, color: holOf(d) ? P.warn : P.text }}>{d}</div>
                   <div style={{ fontFamily:mono, fontSize:8.5, color:P.sub }}>{DOWL[dow(d)]}</div>
+                  {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? "Отпуск" : sh ? sh.name : "Выходной"}</div>
                   <div style={{ fontSize:11.5, color:P.sub }}>
                     {sh ? `${sh.from}:00 – ${sh.to > 24 ? sh.to - 24 : sh.to}:00` : (holName(d) || "")}
-                    {sh && leadOn(d) ? <span style={{ color:P.acc }}> · старший: {leadOn(d)}</span> : null}
+                    {sh && leadObj(d) ? <span style={{ color:P.acc }}> · старший:{" "}
+                      <CallName who={leadObj(d)} label={leadOn(d)} color={P.acc} /></span> : null}
                   </div>
                 </div>
                 <div style={{ fontFamily:mono, fontSize:11, color:P.acc }}>{sh ? len(sh) + " ч" : ""}</div>
+                {open ? (() => {
+                  const mates = sh ? staff.filter(x => x.id !== me.id && shiftOf(plan[x.id]?.[d])) : [];
+                  return (
+                    <div style={{ flex:"1 1 100%", paddingTop:8, marginTop:7,
+                      borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}
+                      onClick={e => e.stopPropagation()}>
+                      {sh ? (<>
+                        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
+                          color:P.sub, marginBottom:5 }}>в смене с тобой</div>
+                        {!mates.length ? (
+                          <div style={{ fontSize:12, color:P.sub }}>Больше никого — держишь оборону в одиночку</div>
+                        ) : POS.map(({ id: pos, t }) => {
+                          const list = mates.filter(x => x.pos === pos);
+                          if (!list.length) return null;
+                          return (
+                            <div key={pos} style={{ display:"flex", gap:8, fontSize:12, lineHeight:1.7 }}>
+                              <span style={{ flex:"0 0 84px", color:P.sub }}>{t}</span>
+                              <span style={{ flex:1, color:P.text }}>
+                                {list.map((x, xi) => {
+                                  const xs = shiftOf(plan[x.id][d]);
+                                  const lbl = x.name + (xs && xs.k !== k ? " (" + xs.k + ")" : "");
+                                  return (
+                                    <span key={x.id}>{xi ? ", " : ""}
+                                      <CallName who={x} label={lbl} color={P.text} />
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </>) : null}
+                      {/* Личная заметка дня: чаевые, важные события, напоминания */}
+                      <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
+                        color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>заметка</div>
+                      <textarea key={"nt" + mkey + "-" + d} defaultValue={notes[d] || ""} rows={2} maxLength={200}
+                        placeholder="Чаевые, важный день, напоминание…"
+                        onFocus={focusScroll} onBlur={e => saveNote(d, e.target.value)}
+                        style={{ ...INP(a11y, P), width:"100%", resize:"none", fontFamily:serif, fontSize:13, lineHeight:1.5 }} />
+                      <div style={{ fontSize:10.5, color:P.sub, marginTop:4, fontStyle:"italic" }}>
+                        Заметки видишь только ты — они живут на этом устройстве
+                      </div>
+                    </div>
+                  );
+                })() : null}
               </div>
             );
           })}
         </div>
+        <div style={{ margin:"0 14px" }}>
+          <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"11px 12px", fontSize:13 }}
+            className="sa-btn" disabled={shotBusy} onClick={() => exportMy(me)}>
+            {shotBusy ? "Собираю…" : "Сохранить смены картинкой"}
+          </button>
+        </div>
+        {shot ? (
+          <div style={{ ...card }}>
+            <div style={eyebrow}><span>Мои смены</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
+            <img src={shot.url} alt="Мои смены" style={{ width:"100%", borderRadius:12, display:"block",
+              border:`1px solid ${a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.32)"}` }} />
+            <div style={{ display:"flex", gap:8, marginTop:10 }}>
+              <button style={btn} className="sa-btn" onClick={shareShot}>Отправить</button>
+              <button style={ghost} className="sa-btn"
+                onClick={() => { URL.revokeObjectURL(shot.url); setShot(null); }}>Закрыть</button>
+            </div>
+            <div style={{ fontSize:11.5, color:P.sub, marginTop:10, lineHeight:1.55 }}>
+              Картинка с твоими сменами и заметками — можно отправить себе или сохранить в галерею.
+            </div>
+          </div>
+        ) : null}
       </>)}
     </>);
   }
@@ -1157,6 +1328,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   });
   const covPct = need ? Math.round(have / need * 100) : 0;
   covTarget.current = covPct;
+  // Сегодняшний день, если открыт текущий месяц: менеджеру чаще всего
+  // нужен ответ «кто сейчас в смене», а не таблица месяца целиком.
+  const today = (now.getFullYear() === Y && now.getMonth() === M) ? now.getDate() : 0;
 
   return shell(<>
     <div style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
@@ -1179,6 +1353,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       </button>
     </div>
     <div style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
+      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
+        ...(swap ? { background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:INK_DEEP,
+          fontWeight:"bold", borderColor:GOLD } : {}) }} className="sa-btn"
+        onClick={() => { setSwap(!swap); setSwapSel(null); vibrate("light"); }}>
+        {swap ? "Обмен: вкл" : "Обмен"}
+      </button>
       <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px" }} className="sa-btn"
         onClick={() => { setLocks({}); setDirty(true); }}>Снять закрепления</button>
       <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
@@ -1233,6 +1413,36 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     ) : null}
     {msg ? <div style={{ textAlign:"center", fontSize:12, color:P.sub, marginTop:8 }}>{msg}</div> : null}
 
+    {today ? (
+      <div style={card}>
+        <div style={eyebrow}>
+          <span>Сегодня · {today} {MONTHS_R[M]}</span>
+          <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""}</span>
+        </div>
+        {POS.map(({ id: pos, t }) => {
+          const n = needOf(today)[pos] || 0;
+          const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
+          if (!n && !onDuty.length) return null;
+          const main = onDuty.filter(x => !shiftOf(plan[x.id][today]).extra).length;
+          const short = main < n;
+          return (
+            <div key={pos} style={{ display:"flex", gap:8, fontSize:12.5, lineHeight:1.8 }}>
+              <span style={{ flex:"0 0 104px", color: short ? P.warn : P.sub, fontWeight: short ? "bold" : "normal" }}>
+                {t}{n ? ` ${main}/${n}` : ""}{short ? "!" : ""}
+              </span>
+              <span style={{ flex:1, minWidth:0, color:P.text }}>
+                {onDuty.length ? onDuty.map((x, xi) => (
+                  <span key={x.id}>{xi ? ", " : ""}
+                    <CallName who={x} label={x.name.split(" ")[0]} color={P.text} />
+                    {" (" + plan[x.id][today] + ")"}
+                  </span>
+                )) : "—"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    ) : null}
     <div style={card}>
       <div style={eyebrow}>
         <span>Смены</span>
@@ -1267,7 +1477,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
               fontWeight: weekIdx == null ? "bold" : "normal" }}>весь месяц</button>
         </div>
         <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginBottom:7 }}>
-          {weekIdx == null
+          {swap
+            ? (swapSel ? "Теперь тапни вторую клетку — смены поменяются местами" : "Обмен: тапни первую клетку")
+            : weekIdx == null
             ? "Весь месяц: таблица листается вбок. Выбери неделю — влезет без прокрутки"
             : "Тап по клетке меняет смену и закрепляет её"}
         </div>
@@ -1334,7 +1546,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                     : "transparent",
                                   border: `1px solid ${col ? (a11y ? col.bdL : col.bd)
                                     : vac ? "rgba(224,120,120,.35)" : "transparent"}`,
-                                  boxShadow: isLocked(s.id, d) ? `0 0 0 1.5px ${GOLD}D0` : undefined,
+                                  boxShadow: (swapSel && swapSel.id === s.id && swapSel.d === d)
+                                    ? `0 0 0 2px ${GOLD}, 0 0 10px ${GOLD}88`
+                                    : isLocked(s.id, d) ? `0 0 0 1.5px ${GOLD}D0` : undefined,
                                   animationDelay: `${ri * 45 + di * 7}ms`,
                                 }} className={k ? "sa-schedchip" : undefined}
                                 >{k || (vac ? "О" : fixedOff ? "×" : "·")}</div>

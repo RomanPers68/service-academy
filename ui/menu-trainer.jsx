@@ -542,7 +542,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     const fr = new FileReader();
     fr.onload = () => {
       const pdfBase64 = String(fr.result).split(",")[1];
-      fetch("/api/menu-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdfBase64 }) })
+      fetch("/api/menu-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdfBase64, token: saToken() }) })
         .then(r => r.json().then(j => ({ ok: r.ok, j })))
         .then(({ ok, j }) => {
           setImporting(false);
@@ -609,7 +609,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
         <div style={{ padding: "10px 16px 24px" }}>
           {form.img
             ? <div style={{ position: "relative", marginBottom: 12 }}>
-                <img src={form.img} alt="" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 14, display: "block", border: `1px solid ${gold}44` }} />
+                <img src={form.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 14, display: "block", border: `1px solid ${gold}44` }} />
                 <div onClick={() => setForm(f => ({ ...f, img: "" }))} {...onActivate(() => setForm(f => ({ ...f, img: "" })))} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>✕</div>
               </div>
             : <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "22px 13px", borderRadius: 14, border: `1.5px dashed ${gold}77`, color: T.para?.color, fontSize: 14, cursor: "pointer", marginBottom: 12 }}>

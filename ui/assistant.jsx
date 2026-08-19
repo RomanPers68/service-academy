@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { GOLD, RED, RADIUS } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
 import { SUPABASE_URL, SUPABASE_KEY, saToken } from "../api/supabase";
+import { withRefContext } from "../lib/reference-context";
 import { UI_SVG } from "./icons";
 import { ACCENT_SERIF } from "./styles";
 
@@ -223,7 +224,9 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
       },
       body: JSON.stringify({
         token: saToken(),
-        messages: next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content })),
+        // Справочник подмешивается в копию последнего вопроса (клиентский RAG):
+        // ассистент отвечает по главам приложения, история в UI остаётся чистой.
+        messages: withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content }))),
       }),
     })
       .then(r => r.json())

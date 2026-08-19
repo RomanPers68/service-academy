@@ -211,6 +211,10 @@ export const injectStyles = () => {
     /* Поля чатов (Наставник, AI-интервью): инеевый плейсхолдер в тёмной —
        в тон ледяным пузырям */
     .sa-aiinput-dark::placeholder { color: rgba(216, 206, 190, 0.58); opacity: 1; }
+    /* Светлая тема чатов: явное правило-близнец. Каскад .sa-light уже красит
+       плейсхолдеры, но пара -dark/-light самодокументируется и переживёт
+       возможные будущие правки общего правила. */
+    .sa-aiinput-light::placeholder { color: rgba(90, 70, 50, 0.62); opacity: 1; }
     /* Живой диалог: под шторкой страница не должна «резинить» (iOS rubber-band).
        Жесты запрещены везде, кроме ленты реплик — ей разрешена только вертикаль. */
     .sa-dlg, .sa-dlg * { touch-action: none !important; }
@@ -420,8 +424,33 @@ export const injectStyles = () => {
     /* Отклик на верный шаг: короткий импульс у правильного варианта */
     @keyframes saOptPop{0%{transform:scale(1)}38%{transform:scale(1.025)}100%{transform:scale(1)}}
     .sa-bld-opt.pop{animation:saOptPop .38s cubic-bezier(.3,1.4,.5,1)}
-    /* Финальный кадр: носитель крупнее и по центру */
-    .sa-bld-hero{transform:scale(1.14);transform-origin:center top;padding:6px 0 12px}
+    /* Джус: реакция самого предмета на ответ. Ошибка ощущается физически —
+       носитель вздрагивает, как дёрнувшаяся рука, с краткой красной вспышкой.
+       Верный ответ — лёгкий кивок-подскок: глаз сам переводится на предмет. */
+    @keyframes saJolt{0%{transform:translateX(0)}
+      16%{transform:translateX(-7px) rotate(-.6deg);box-shadow:0 0 0 1px rgba(224,112,112,.34),0 0 18px rgba(224,112,112,.22)}
+      34%{transform:translateX(6px) rotate(.5deg)}
+      52%{transform:translateX(-4px);box-shadow:0 0 0 1px rgba(224,112,112,.18),0 0 10px rgba(224,112,112,.10)}
+      70%{transform:translateX(3px)}100%{transform:translateX(0);box-shadow:none}}
+    .sa-bld-counter.jolt{animation:saJolt .5s cubic-bezier(.35,.1,.25,1)}
+    @keyframes saNudge{0%{transform:scale(1)}42%{transform:scale(1.028)}100%{transform:scale(1)}}
+    .sa-bld-counter.nudge{animation:saNudge .42s cubic-bezier(.3,1.4,.5,1);transform-origin:center bottom}
+    @media (prefers-reduced-motion: reduce){ .sa-bld-counter.jolt,.sa-bld-counter.nudge{animation:none} }
+    /* Приглашение: до первого решения пустой носитель тихо «дышит» —
+       предмет ждёт руки, а не просто стоит декорацией. После первого
+       ответа класс уходит и предмет живёт уже от решений человека. */
+    @keyframes saIdleBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.016) translateY(-1.5px)}}
+    .sa-bld-counter.await .sa-bld-vessel,.sa-bld-counter.await .sa-bld-station,
+    .sa-bld-counter.await .sa-bld-icecol,.sa-bld-counter.await .sa-bld-clean,
+    .sa-bld-counter.await .sa-bld-guest,.sa-bld-counter.await .sa-bld-pass,
+    .sa-bld-counter.await .sa-bld-shelf{animation:saIdleBreath 2.8s ease-in-out infinite;transform-origin:center bottom}
+    @media (prefers-reduced-motion: reduce){ .sa-bld-counter.await .sa-bld-vessel,.sa-bld-counter.await .sa-bld-station,.sa-bld-counter.await .sa-bld-icecol,.sa-bld-counter.await .sa-bld-clean,.sa-bld-counter.await .sa-bld-guest,.sa-bld-counter.await .sa-bld-pass,.sa-bld-counter.await .sa-bld-shelf{animation:none} }
+    /* Финальный кадр: носитель крупнее и по центру. Появляется как подача —
+       подъезжает снизу с лёгким довесом, по бокалу проходит блик (см. JSX). */
+    @keyframes saHeroServe{0%{transform:translateY(16px) scale(1.05);opacity:0}100%{transform:translateY(0) scale(1.14);opacity:1}}
+    .sa-bld-hero{transform:scale(1.14);transform-origin:center top;padding:6px 0 12px;
+      animation:saHeroServe .55s cubic-bezier(.3,1.2,.4,1) both}
+    @media (prefers-reduced-motion: reduce){ .sa-bld-hero{animation:none} }
     /* Печать на итоге — та же метафора, что в книге отзывов */
     @keyframes saSealIn{0%{transform:scale(.6) rotate(-16deg);opacity:0}
       62%{transform:scale(1.07) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(-4deg)}}

@@ -10,6 +10,8 @@
 
 export const config = { api: { bodyParser: { sizeLimit: "1mb" } } };
 
+import { verifySession, rateLimit } from "./_auth.js";
+
 const SYSTEM = `Ты — «Наставник» академии сервиса ресторанной группы. Ты помогаешь официантам,
 хостес, барменам и менеджерам прямо в смене. Правила, которые нельзя нарушать:
 1. Отвечай ТОЛЬКО на основе переданных фрагментов базы знаний (уроки, глоссарий, меню).
@@ -26,8 +28,16 @@ export default async function handler(req, res) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return res.status(501).json({ error: "Ассистент ещё не включён (нет ANTHROPIC_API_KEY)" });
 
-  const { question, context, history } = req.body || {};
+  const { question, context, history, token } = req.body || {};
   if (!question) return res.status(400).json({ error: "Пустой вопрос" });
+
+  // Только для сотрудников с живой сессией, до 30 вопросов в час на пользователя.
+  // Проверки идут ДО обращения к Claude API.
+  const emp = await verifySession(token);
+  if (!emp) return res.status(401).json({ error: "Сессия не найдена — войди в приложение заново" });
+  if (!rateLimit("ai:" + token, 30, 3600_000)) {
+    return res.status(429).json({ error: "Слишком много вопросов подряд — сделай паузу и вернись через час" });
+  }
 
   try {
     const messages = [

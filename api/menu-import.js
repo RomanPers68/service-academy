@@ -6,6 +6,8 @@
 
 export const config = { api: { bodyParser: { sizeLimit: "15mb" } } };
 
+import { verifySession, rateLimit } from "./_auth.js";
+
 const ALLERGENS = ["Глютен", "Рыба", "Моллюски и ракообразные", "Яйца", "Молоко", "Орехи", "Соя", "Кунжут"];
 
 const PROMPT = `Ты — методист ресторанной академии. В приложённом PDF — карточки блюд меню.
@@ -26,7 +28,17 @@ export default async function handler(req, res) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return res.status(500).json({ error: "ANTHROPIC_API_KEY не задан в переменных окружения Vercel" });
 
-  const { pdfBase64 } = req.body || {};
+  const { pdfBase64, token } = req.body || {};
+
+  // Защита дорогого эндпоинта: только для сотрудников с живой сессией,
+  // не больше 8 импортов в час на пользователя. Проверки идут ДО обращения
+  // к Claude API — неавторизованный запрос не тратит ни одного токена.
+  const emp = await verifySession(token);
+  if (!emp) return res.status(401).json({ error: "Сессия не найдена — войди в приложение заново и повтори импорт" });
+  if (!rateLimit("menu:" + token, 8, 3600_000)) {
+    return res.status(429).json({ error: "Слишком много импортов подряд — попробуй через час" });
+  }
+
   if (!pdfBase64) return res.status(400).json({ error: "Файл не получен" });
 
   try {

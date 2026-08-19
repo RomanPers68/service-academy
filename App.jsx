@@ -435,7 +435,14 @@ function ServiceAcademy() {
       try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
       try { const ps = await storageGet("sa_practice_stars"); if (ps) setPracticeStars(JSON.parse(ps.value)); } catch(e) {}
       try { const uk4 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const st = await storageGet("sa_streak"+uk4); if (st) setStreak(JSON.parse(st.value)); } catch(e) {}
-      try { const mb = await storageGet("sa_mistakes"); if (mb) { const arr = JSON.parse(mb.value); if (Array.isArray(arr)) setMistakeBank(arr); } } catch(e) {}
+      // Банк ошибок — персональный ключ. Раньше был общий "sa_mistakes":
+      // на общем устройстве (планшет на баре) ошибки одного сотрудника
+      // доставались другому. Старый ключ читаем один раз как миграцию.
+      try {
+        const ukM = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : "";
+        const mb = await storageGet("sa_mistakes" + ukM) || await storageGet("sa_mistakes");
+        if (mb) { const arr = JSON.parse(mb.value); if (Array.isArray(arr)) setMistakeBank(arr); }
+      } catch(e) {}
       try { const uk5 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const sv = await storageGet("sa_saved"+uk5); if (sv) { const obj = JSON.parse(sv.value); if (obj && typeof obj === "object" && !Array.isArray(obj)) setSaved(obj); } } catch(e) {}
       try { const uk6 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const ex = await storageGet("sa_exam"+uk6); if (ex) { const obj = JSON.parse(ex.value); if (obj && typeof obj === "object" && !Array.isArray(obj)) setExamResults(obj); } } catch(e) {}
       clearTimeout(fallback);
@@ -490,9 +497,13 @@ function ServiceAcademy() {
   // Загрузка progress из Supabase и синхронизация с completed
   React.useEffect(() => {
     if (!profile) return;
+    // Сначала ждём ленивые СПГ-модули: их уроки должны попасть в allValidIds ниже,
+    // иначе при быстром ответе сервера прогресс роли СПГ отфильтруется как «неизвестные id»
+    // и перезапишет localStorage без этих уроков (гонка загрузок).
+    loadSpgModules().catch(() => {}).then(() =>
     fetch(`${SUPABASE_URL}/rest/v1/progress?user_id=eq.${encodeURIComponent(profile.id)}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-    }).then(r => r.json()).then(data => {
+    })).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
       if (data.length === 0) return; // пусто — не обнуляем
       {
@@ -693,6 +704,22 @@ function ServiceAcademy() {
     navigate("lesson");
   };
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
+  // Результат «Сборки» → звёзды практики: тот же контур (practice_stars), что и у
+  // игровых практик — попадает в лидерборд и статистику без отдельного хранилища.
+  // Шкала едина: без ошибок → 3, одна → 2, больше → 1. Сохраняется только улучшение.
+  const recordBuildResult = useCallback((right, total) => {
+    if (!profile || !activeLesson || !total) return;
+    const missed = total - right;
+    const stars = missed === 0 ? 3 : missed === 1 ? 2 : 1;
+    const userKey = `${profile.name}|${profile.surname}`;
+    const userStars = practiceStars[userKey] || {};
+    const prevBest = userStars[activeLesson.id] || 0;
+    if (stars <= prevBest) return; // хуже или так же — не трогаем лучший результат
+    const nx = { ...practiceStars, [userKey]: { ...userStars, [activeLesson.id]: stars } };
+    try { localStorage.setItem("sa_practice_stars", JSON.stringify(nx)); } catch(e) {}
+    setPracticeStars(nx);
+    rpcSync("save_practice_stars", { p_token: saToken(), p_lesson_id: activeLesson.id, p_stars: stars });
+  }, [profile, activeLesson, practiceStars]);
   const checkAndShowAchievements = useCallback((newScores, newPracticeStars, newCompletedRoles) => {
     if (!profile) return;
     const key = `${profile.name}|${profile.surname}`;
@@ -862,9 +889,7 @@ function ServiceAcademy() {
       const _qe = { q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "", img: q.img || null, lessonTitle: (activeLesson && activeLesson.title) || "", stage: 0, due: Date.now() };
       setMistakeBank(prev => {
         if (prev.some(m => m.q === q.q)) return prev;
-        const nx = [...prev, _qe].slice(-200);
-        try { localStorage.setItem("sa_mistakes", JSON.stringify(nx)); } catch(e) {}
-        return nx;
+        return [...prev, _qe].slice(-200);
       });
     }
     if (newMistakes >= 3 && !isCorrect) {
@@ -875,25 +900,24 @@ function ServiceAcademy() {
   }, [quizState, activeLesson, role]);
   // Верный ответ: вопрос уходит на следующий интервал (1→3→7→30 дней). После 4 верных подряд — закреплён и удаляется.
   const resolveMistake = useCallback((qText) => {
-    setMistakeBank(prev => {
-      const next = prev.map(m => {
-        if (m.q !== qText) return m;
-        const stage = (m.stage || 0) + 1;
-        if (stage > SR_DAYS.length) return null; // вопрос закреплён
-        return { ...m, stage, due: Date.now() + SR_DAYS[stage - 1] * 24 * 3600 * 1000 };
-      }).filter(Boolean);
-      try { localStorage.setItem("sa_mistakes", JSON.stringify(next)); } catch(e) {}
-      return next;
-    });
+    setMistakeBank(prev => prev.map(m => {
+      if (m.q !== qText) return m;
+      const stage = (m.stage || 0) + 1;
+      if (stage > SR_DAYS.length) return null; // вопрос закреплён
+      return { ...m, stage, due: Date.now() + SR_DAYS[stage - 1] * 24 * 3600 * 1000 };
+    }).filter(Boolean));
   }, []);
   // Неверный ответ при повторе: прогресс сгорает, вопрос снова доступен сразу
   const failMistake = useCallback((qText) => {
-    setMistakeBank(prev => {
-      const next = prev.map(m => m.q === qText ? { ...m, stage: 0, due: Date.now() } : m);
-      try { localStorage.setItem("sa_mistakes", JSON.stringify(next)); } catch(e) {}
-      return next;
-    });
+    setMistakeBank(prev => prev.map(m => m.q === qText ? { ...m, stage: 0, due: Date.now() } : m));
   }, []);
+  // Единая точка сохранения банка ошибок (персональный ключ) — как у saved/examResults.
+  // Раньше три колбэка писали общий "sa_mistakes" внутри setState-апдейтеров:
+  // на общем устройстве банк перетекал между сотрудниками, а в StrictMode писался дважды.
+  React.useEffect(() => {
+    if (!storageLoaded || !profile) return;
+    try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_mistakes"+uk, JSON.stringify(mistakeBank)); } catch(e) {}
+  }, [mistakeBank, storageLoaded, profile]);
   const flashTimerRef = useRef(null);
   const handlePracticeChoice = useCallback((idx) => {
     let vibratePattern = null;
@@ -1030,7 +1054,7 @@ function ServiceAcademy() {
         <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {/* ── Книга отзывов ── */}
-        {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} focusId={bookFocus} onBack={() => { setBookFocus(null); navigate(prevScreen && prevScreen !== "weeklyGuest" && prevScreen !== "guestbook" ? prevScreen : "roleSelect"); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}
+        {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} focusId={bookFocus} onBack={() => { setBookFocus(null); navigate(prevScreen && prevScreen !== "weeklyGuest" && prevScreen !== "guestbook" ? prevScreen : "roleSelect"); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}
         {/* «Гость недели»: живой диалог из книги; завершение = страница в книге */}
         {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyDialogueId()} T={T} color={"#C8A96E"} onClose={(finished) => {
           try {
@@ -1170,12 +1194,12 @@ function ServiceAcademy() {
         {screen === "lesson" && activeLesson?.type === "build" && createPortal(
           <Suspense fallback={<ScreenLoader T={T} />}>
             <BuildRunner key={"bld-" + gameKey} buildId={activeLesson.buildId} mod={activeLesson.mod || activeModule?.id} role={activeLesson.role || role}
-              T={T} color={activeModule?.color} onClose={completeLesson} />
+              T={T} color={activeModule?.color} onClose={completeLesson} onResult={recordBuildResult} />
           </Suspense>
         , document.body)}
         {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
-        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} /></Suspense>}
+        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
         {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) openCertificate(id); }} onExit={() => navigate("certificates")} />}
         {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}

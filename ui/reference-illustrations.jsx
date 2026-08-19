@@ -186,6 +186,68 @@ function Pitcher({ c, dark, size = 72 }) {
     <path d="M30 32 Q40 36 54 32" stroke={c} strokeWidth="1.4" opacity="0.5" fill="none" />
   </svg>);
 }
+// ── Коктейли: силуэты классики для курса «Бар и коктейли» ──
+// Четыре формы бокалов с жидкостью и гарнишем — та же линейная манера,
+// что у Glass и кофейных чашек. Настоящие фото напитков сюда лягут тем же
+// механизмом [img:] через public/reference/ — схемы держат место достойно.
+function CkRocks({ c, dark, liq, big, zest, orange, cherry, size = 62, label }) {
+  return (<div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+      <path d={`M20 34 L22 62 Q22 68 29 68 L51 68 Q58 68 58 62 L60 34 Z`} fill={liq} />
+      {big
+        ? <rect x="30" y="38" width="18" height="18" rx="3" stroke={c} strokeWidth="1.5" opacity="0.65" fill={dark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.45)"} transform="rotate(8 39 47)" />
+        : (<><rect x="27" y="38" width="11" height="11" rx="2" stroke={c} strokeWidth="1.3" opacity="0.6" fill="none" transform="rotate(10 32 43)" /><rect x="42" y="44" width="11" height="11" rx="2" stroke={c} strokeWidth="1.3" opacity="0.6" fill="none" transform="rotate(-12 47 49)" /></>)}
+      <path d="M18 26 L21 62 Q22 69 30 69 L50 69 Q58 69 59 62 L62 26" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+      <path d="M17 26 H63" stroke={c} strokeWidth="2.1" strokeLinecap="round" />
+      {orange && <path d="M56 20 a9 9 0 0 1 0 14" stroke={c} strokeWidth="2" fill={dark ? "rgba(220,120,40,0.5)" : "rgba(220,120,40,0.35)"} strokeLinecap="round" />}
+      {zest && <path d="M52 18 q6 3 2 8 q-4 5 2 8" stroke={c} strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.85" />}
+      {cherry && <circle cx="34" cy="30" r="4" fill={dark ? "rgba(170,40,50,0.75)" : "rgba(150,30,40,0.6)"} stroke={c} strokeWidth="1.2" />}
+    </svg>
+    {label && <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: c, opacity: 0.85, textTransform: "uppercase" }}>{label}</div>}
+  </div>);
+}
+function CkCoupe({ c, dark, liq, rim, lime, cherry, beans, foam, size = 62, label }) {
+  return (<div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+      <path d="M18 24 Q19 40 40 40 Q61 40 62 24 Z" fill={liq} />
+      {foam && <rect x="17" y="22" width="46" height="4" fill={dark ? "rgba(230,205,165,0.6)" : "rgba(140,90,40,0.3)"} />}
+      <path d="M16 22 Q17 41 40 41 Q63 41 64 22" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+      <path d="M15 22 H65" stroke={c} strokeWidth={rim ? 3.4 : 2.1} strokeLinecap="round" opacity={rim ? 0.9 : 1} />
+      <path d="M40 41 V62 M27 66 Q40 60 53 66" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+      {lime && <circle cx="60" cy="17" r="6" stroke={c} strokeWidth="1.8" fill={dark ? "rgba(150,190,90,0.45)" : "rgba(140,180,80,0.35)"} />}
+      {cherry && <circle cx="40" cy="32" r="4" fill={dark ? "rgba(170,40,50,0.75)" : "rgba(150,30,40,0.6)"} stroke={c} strokeWidth="1.2" />}
+      {beans && <g fill={c} opacity="0.9"><ellipse cx="34" cy="20" rx="2.6" ry="1.7" /><ellipse cx="40" cy="19" rx="2.6" ry="1.7" /><ellipse cx="46" cy="20" rx="2.6" ry="1.7" /></g>}
+    </svg>
+    {label && <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: c, opacity: 0.85, textTransform: "uppercase" }}>{label}</div>}
+  </div>);
+}
+function CkHigh({ c, dark, liq, liq2, mint, straw, bubbles, size = 62, label }) {
+  return (<div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+      {liq2 ? (<><path d="M26 40 L26 64 Q26 70 33 70 L47 70 Q54 70 54 64 L54 40 Z" fill={liq} /><rect x="26" y="26" width="28" height="14" fill={liq2} /></>)
+            : <path d="M26 26 L26 64 Q26 70 33 70 L47 70 Q54 70 54 64 L54 26 Z" fill={liq} />}
+      <path d="M25 16 L25 64 Q25 71 33 71 L47 71 Q55 71 55 64 L55 16" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+      <path d="M24 16 H56" stroke={c} strokeWidth="2.1" strokeLinecap="round" />
+      {straw && <path d="M48 4 L42 34" stroke={c} strokeWidth="2.4" strokeLinecap="round" opacity="0.85" />}
+      {mint && <g stroke={c} strokeWidth="1.7" fill={dark ? "rgba(110,170,110,0.4)" : "rgba(90,150,90,0.3)"} strokeLinecap="round"><path d="M32 12 q-5 -7 2 -9 q4 5 -2 9z" /><path d="M37 11 q1 -8 7 -6 q1 6 -7 6z" /></g>}
+      {bubbles && <g fill="none" stroke={c} opacity="0.55" strokeWidth="1.2"><circle cx="34" cy="50" r="2" /><circle cx="44" cy="44" r="1.6" /><circle cx="38" cy="58" r="1.4" /><circle cx="47" cy="55" r="2" /></g>}
+    </svg>
+    {label && <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: c, opacity: 0.85, textTransform: "uppercase" }}>{label}</div>}
+  </div>);
+}
+function CkMartini({ c, dark, liq, olive, size = 62, label }) {
+  return (<div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+      <path d="M22 25 L40 41 L58 25 Z" fill={liq} />
+      <path d="M17 22 L40 42 L63 22" stroke={c} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M16 22 H64" stroke={c} strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M40 42 V62 M27 66 Q40 60 53 66" stroke={c} strokeWidth="2.1" strokeLinecap="round" fill="none" />
+      {olive && (<><path d="M33 24 L45 30" stroke={c} strokeWidth="1.6" strokeLinecap="round" /><circle cx="46" cy="31" r="3.4" fill={dark ? "rgba(140,160,70,0.7)" : "rgba(120,140,50,0.55)"} stroke={c} strokeWidth="1.2" /></>)}
+    </svg>
+    {label && <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: c, opacity: 0.85, textTransform: "uppercase" }}>{label}</div>}
+  </div>);
+}
+
 function EspressoCup({ c, dark, size = 66 }) {
   const crema = dark ? "rgba(210,160,90,0.6)" : "rgba(160,100,40,0.4)";
   const liq = dark ? "rgba(120,70,30,0.55)" : "rgba(90,55,25,0.45)";
@@ -221,6 +283,21 @@ export const ILL = {
   glass_flute: (c, d) => <Glass type="flute" c={c} dark={d} size={88} />,
   espresso_cup: (c, d) => <EspressoCup c={c} dark={d} size={92} />,
   milk_pitcher: (c, d) => <Row><Pitcher c={c} dark={d} size={78} /><CoffeeCup c={c} dark={d} size={64} foam={0.18} coffee={0.62} /></Row>,
+  cocktail_aperitif: (c, d) => <Row>
+    <CkRocks c={c} dark={d} liq={d ? "rgba(200,70,40,0.5)" : "rgba(190,60,35,0.4)"} orange label="негрони" />
+    <CkHigh c={c} dark={d} liq={d ? "rgba(235,130,50,0.45)" : "rgba(230,120,40,0.35)"} bubbles label="спритц" size={58} />
+    <CkMartini c={c} dark={d} liq={d ? "rgba(220,225,210,0.18)" : "rgba(180,180,150,0.2)"} olive label="мартини" /></Row>,
+  cocktail_sour: (c, d) => <Row>
+    <CkCoupe c={c} dark={d} liq={d ? "rgba(200,215,140,0.4)" : "rgba(170,190,100,0.35)"} lime label="дайкири" />
+    <CkCoupe c={c} dark={d} liq={d ? "rgba(170,210,130,0.4)" : "rgba(150,190,110,0.35)"} rim lime label="маргарита" />
+    <CkHigh c={c} dark={d} liq={d ? "rgba(240,230,200,0.45)" : "rgba(225,210,170,0.5)"} straw label="колада" size={58} /></Row>,
+  cocktail_strong: (c, d) => <Row>
+    <CkRocks c={c} dark={d} liq={d ? "rgba(200,140,50,0.5)" : "rgba(180,120,40,0.4)"} big zest label="олд фэшн" />
+    <CkCoupe c={c} dark={d} liq={d ? "rgba(160,50,50,0.5)" : "rgba(140,40,40,0.4)"} cherry label="манхэттен" />
+    <CkCoupe c={c} dark={d} liq={d ? "rgba(90,60,35,0.6)" : "rgba(80,50,30,0.5)"} foam beans label="эспрессо-мартини" /></Row>,
+  cocktail_zero: (c, d) => <Row>
+    <CkHigh c={c} dark={d} liq={d ? "rgba(200,230,210,0.25)" : "rgba(170,210,180,0.3)"} mint straw bubbles label="вирджин мохито" />
+    <CkHigh c={c} dark={d} liq={d ? "rgba(235,230,215,0.3)" : "rgba(230,222,200,0.5)"} liq2={d ? "rgba(90,60,35,0.55)" : "rgba(80,50,30,0.45)"} bubbles label="эспрессо-тоник" /></Row>,
   coffee_ratio: (c, d) => <Row><CoffeeCup c={c} dark={d} size={56} coffee={0.28} label="эспрессо" /><CoffeeCup c={c} dark={d} size={56} foam={0.30} coffee={0.55} label="капучино" /><CoffeeCup c={c} dark={d} size={56} foam={0.12} coffee={0.75} label="латте" /></Row>,
 };
 // Фото национальных школ (school_russian_1 … school_french_2)

@@ -63,12 +63,11 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, openCourse, onSearch, onExit }) {
+function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const barChapters = REFERENCE_BAR_COURSE.lessons.filter(l => l.type === "lesson").length;
-  const isLeader = !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
   const appChapters = REFERENCE_APP_COURSE.lessons.filter(l => l.type === "lesson" && (!l.leaderOnly || isLeader)).length;
   const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
   const cards = [
@@ -208,6 +207,9 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile }) {
   const dark = !a11y;
   // Глава «Инструменты руководителя» видна только менеджерам — фильтруем
   // прямо в карте курсов: вся навигация ниже работает с уже отсеянным списком.
+  // isLeader живёт ЗДЕСЬ (profile — проп этого компонента) и уходит в Hub
+  // пропом: объявление в чужом скоупе уронило Справочник на проде.
+  const isLeader = !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
   const filterCourse = (c) => ({ ...c, lessons: c.lessons.filter(l => !l.leaderOnly || isLeader) });
   const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE, coffee: REFERENCE_COFFEE_COURSE, bar: REFERENCE_BAR_COURSE, app: filterCourse(REFERENCE_APP_COURSE) };
   let startCourseId = "serving", startIdx = -1;
@@ -238,7 +240,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile }) {
   if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
     scopeText="Введи минимум 2 буквы — найду по главам справочника, глоссарию и меню ресторана."
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} onSearch={() => setView("search")} onExit={onExit} />;
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} isLeader={isLeader} onSearch={() => setView("search")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

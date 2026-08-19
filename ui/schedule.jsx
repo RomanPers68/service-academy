@@ -233,8 +233,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [openEmp, setOpenEmp] = React.useState(0);     // раскрытая карточка сотрудника в настройках
   const [swap, setSwap] = React.useState(false);       // режим обмена сменами (менеджер)
   const [swapSel, setSwapSel] = React.useState(null);  // первая выбранная клетка обмена
+  const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
+  const covTarget = React.useRef(0);
+
+  const DAYS = daysIn(Y, M);
+  const mkey = `${Y}-${String(M + 1).padStart(2, "0")}`;
+  const venueKey = "main";                           // одно заведение на ресторан; сети — позже
+  const dow = d => (firstDow(Y, M) + d - 1) % 7;
+
   // Личные заметки к дням: чаевые, важные события. Хранятся на устройстве —
   // это персональный блокнот сотрудника, сервер о нём не знает.
+  // ВАЖНО: блок живёт ПОСЛЕ объявления mkey — массив зависимостей эффекта
+  // вычисляется прямо при рендере, и ссылка на mkey выше его объявления
+  // роняла весь экран (TDZ: "Cannot access before initialization").
   const notesKey = `sa_schednotes_${profile?.name || ""}_${profile?.surname || ""}`;
   const [notes, setNotes] = React.useState({});
   React.useEffect(() => {
@@ -253,13 +264,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       return nx;
     });
   };
-  const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
-  const covTarget = React.useRef(0);
-
-  const DAYS = daysIn(Y, M);
-  const mkey = `${Y}-${String(M + 1).padStart(2, "0")}`;
-  const venueKey = "main";                           // одно заведение на ресторан; сети — позже
-  const dow = d => (firstDow(Y, M) + d - 1) % 7;
   const holName = d => HOLIDAYS[`${String(M+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`];
 
   const shiftOf = k => (cfg?.shifts || []).find(s => s.k === k);

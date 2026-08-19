@@ -340,8 +340,12 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           акцент; цвет должности остаётся у иконки роли в карточках ниже. */}
       {!detailTab && (
         <div style={{ margin:"12px 16px 0" }}>
-          <LiquidSegment a11y={!!T.a11y} equal
-            itemStyle={{ fontFamily:"Georgia, serif", fontSize:11.5, fontWeight:"bold", padding:"9px 2px" }}
+          {/* equal={false} + scroll — как вкладки Книги отзывов: линза встаёт
+              по реальным координатам вкладок (в equal-режиме она считала
+              равные доли и промахивалась, т.к. подписи разной ширины),
+              а «Руководство» больше не обрезается — дорожка прокручивается. */}
+          <LiquidSegment a11y={!!T.a11y} equal={false} scroll
+            itemStyle={{ fontFamily:"Georgia, serif", fontSize:11.5, fontWeight:"bold", padding:"9px 13px", whiteSpace:"nowrap" }}
             items={visibleTabs.map(t => ({ id: t.id, render: (active) => (
               <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:4, whiteSpace:"nowrap", maxWidth:"100%" }}>
                 {POS_SVG[t.id] ? POS_SVG[t.id](active ? (T.a11y ? "#6B4E1A" : GOLD) : (T.a11y ? "#5C3D10" : "#9A8060"), 13) : null}{t.label}

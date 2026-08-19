@@ -76,7 +76,47 @@ const WELCOME_AI_CARD = {
     </svg>
   ),
   title: "Наставник всегда рядом",
-  text: "Стеклянная кнопка в правом нижнем углу — AI-наставник. Спроси про жалобу гостя, запару или подачу — ответит по стандартам академии, как старший коллега. Любой вопрос — нормальный вопрос.",
+  text: "Стеклянная кнопка в правом нижнем углу — AI-наставник. Он знает Справочник и меню твоего ресторана: спроси про жалобу гостя, состав блюда или аллергены — ответит как старший коллега и кнопкой отведёт в нужный раздел.",
+};
+
+// Новые фичи большого обновления — карточки для всех
+const WELCOME_BUILD_CARD = {
+  icon: (c) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 4h14l-7 8zM12 12v6M8 21h8" /><path d="M8.2 7h7.6" opacity="0.6" />
+    </svg>
+  ),
+  title: "Тренажёры — твой спортзал",
+  text: "В «Сборке» собираешь коктейли шаг за шагом: ошибся — напиток испорчен, как за настоящей стойкой; за чистый прогон — звёзды и печать в Книгу. Тренажёр меню гоняет по составам и аллергенам, диалоги — по разговору с гостем. Ошибаться здесь бесплатно.",
+};
+const WELCOME_REF_CARD = {
+  icon: (c) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z" /><circle cx="12" cy="12" r="0.8" />
+    </svg>
+  ),
+  title: "Справочник и поиск",
+  text: "Курсы для всей команды: сервировка, вино, кофе, истории коктейлей — и «Гид по приложению», где расписаны все возможности. Строка поиска найдёт что угодно: главу, термин, блюдо. А «глава дня» в Заданиях читает Справочник за тебя — по странице в день.",
+};
+const WELCOME_SCHED_CARD = {
+  icon: (c) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M8 14.5h3M8 17.5h5" opacity="0.7" />
+    </svg>
+  ),
+  title: "График смен — в кармане",
+  text: "Свои смены, часы и отпуска — без скриншотов из чатов. Тапни день: увидишь, кто в смене с тобой, и оставишь личную заметку — чаевые, важное. Имя с пунктиром — звонок старшему или коллеге в один тап. Кнопка ниже сохранит месяц картинкой.",
+};
+
+// Менеджерам и руководству: график в режиме редактора
+const WELCOME_SCHEDIT_CARD = {
+  icon: (c) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M14.5 17.5l2-2 2 2M16.5 15.5v4" opacity="0" /><path d="M9 16.8l1.6 1.6 3.4-3.9" />
+    </svg>
+  ),
+  title: "График: режим редактора",
+  text: "Настрой смены, потребность и правила заведения — и жми «Заполнить черновик»: умный генератор соберёт месяц, соблюдая отпуска, выходные и отдых. Тап закрепляет клетку, «Обмен» меняет две смены местами, карточка «Сегодня» показывает, кто сейчас в зале. Экспорт — в чат или листом А4.",
 };
 
 // Карточка AI-собеседования — менеджерам и руководству
@@ -100,17 +140,21 @@ const WELCOME_ADMIN_CARD = {
 
 const WELCOME_CARDS = [
   { icon: (c) => UI_SVG.cloche(c, 28), title: "Твой трек",
-    text: "Учись по шагам: уроки открываются по порядку, а приложение само подскажет, куда дальше. Кнопка «ДАЛЬШЕ» на главной — твой компас." },
+    text: "Учись по шагам: уроки открываются по порядку, а приложение само подскажет, куда дальше. Кнопка «ДАЛЬШЕ» на главной — твой компас. В тестах ответ подсвечивается сразу — учишься в моменте." },
   { icon: (c) => UI_SVG.target(c, 28), title: "Ошибки — это план",
     text: "Неверный ответ — не приговор: вопрос попадёт в «Работу над ошибками» и вернётся сам — через день, три, неделю. Бейдж покажет, когда пора." },
-  { icon: (c) => UI_SVG.sparkle(c, 28), title: "Инструменты рядом",
-    text: "В нижней панели живут тренажёр меню, книга твоего пути, SOS-шпаргалки для смены и поиск по всему приложению." },
+  { icon: (c) => UI_SVG.sparkle(c, 28), title: "Команда видит твой рост",
+    text: "«Рейтинг» показывает прогресс всех — фильтр должностей сверху, стеклянную линзу можно таскать пальцем. За ступени и собранные коктейли — печати в «Книге отзывов». А если в смене жарко — красная кнопка SOS даст шпаргалку за секунды." },
 ];
 
 function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
+  // Порядок — путь новичка: учёба → ошибки → тренажёры → знания → наставник
+  // → график → признание; менеджерам и руководству — их инструменты в конце.
   const cards = [
-    ...WELCOME_CARDS.slice(0, 2), WELCOME_AI_CARD, ...WELCOME_CARDS.slice(2),
-    ...(canHire ? [WELCOME_HIRE_CARD] : []),
+    ...WELCOME_CARDS.slice(0, 2),
+    WELCOME_BUILD_CARD, WELCOME_REF_CARD, WELCOME_AI_CARD, WELCOME_SCHED_CARD,
+    ...WELCOME_CARDS.slice(2),
+    ...(canHire ? [WELCOME_SCHEDIT_CARD, WELCOME_HIRE_CARD] : []),
     ...(isAdmin ? [WELCOME_ADMIN_CARD] : []),
   ];
   const [idx, setIdx] = useState(0);
@@ -969,10 +1013,11 @@ function ServiceAcademy() {
   const [mistakeHint, setMistakeHint] = useState(false);
   useEffect(() => {
     if (!profile || !storageLoaded) return;
-    try { if (localStorage.getItem("sa_welcome_seen_v2") !== "1") setWelcome(true); } catch (e) {}
+    // v3: тур большого обновления — разово покажется и давним пользователям
+    try { if (localStorage.getItem("sa_welcome_seen_v3") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen_v2", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v3", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };

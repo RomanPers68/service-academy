@@ -564,6 +564,31 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     staff.find(s => s.pos === "manager" && plan[s.id]?.[d] && !shiftOf(plan[s.id][d])?.extra) || null;
   const leadOn = d => { const m = leadObj(d); return m ? m.name : null; };
 
+  // Координаты клеток-нарушителей: та же логика, что в audit(), но с адресами
+  // — красная точка на клетке показывает проблему прямо в сетке.
+  // ВАЖНО: это ХУК, и он обязан жить ДО первых ранних return (загрузка,
+  // ошибка, вид сотрудника) — иначе число хуков меняется между рендерами
+  // и React падает с #310. Уже падал: третий бокал вина за день.
+  const badCells = React.useMemo(() => {
+    const bad = new Set(); if (!cfg) return bad;
+    const R = cfg.rules;
+    staff.forEach(sf => {
+      let run = [];
+      for (let d = 1; d <= DAYS + 1; d++) {
+        const sh = d <= DAYS ? shiftOf(plan[sf.id]?.[d]) : null;
+        if (sh) run.push(d);
+        else { if (run.length > R.maxRow) run.forEach(x => bad.add(sf.id + ":" + x)); run = []; }
+        if (d <= DAYS && sh && d > 1) {
+          const q = shiftOf(plan[sf.id]?.[d - 1]);
+          if (q && (24 - q.to + sh.from) < R.minRest) { bad.add(sf.id + ":" + d); bad.add(sf.id + ":" + (d - 1)); }
+        }
+        if (d <= DAYS && plan[sf.id]?.[d] && onVac(sf, d)) bad.add(sf.id + ":" + d);
+      }
+    });
+    return bad;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, cfg, staff, DAYS]);
+
   // Цифра покрытия догоняет настоящее значение за полсекунды — так видно,
   // что генератор отработал, а не просто перерисовалась таблица.
   React.useEffect(() => {
@@ -1491,27 +1516,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       if (q && !q.extra) warns.push(`${sf.name} просил(а) выходной ${d}-го — стоит смена ${q.k}`);
     }));
   }
-  // Координаты клеток-нарушителей: та же логика, что в audit(), но с адресами
-  // — красная точка на клетке показывает проблему прямо в сетке.
-  const badCells = React.useMemo(() => {
-    const bad = new Set(); if (!cfg) return bad;
-    const R = cfg.rules;
-    staff.forEach(sf => {
-      let run = [];
-      for (let d = 1; d <= DAYS + 1; d++) {
-        const sh = d <= DAYS ? shiftOf(plan[sf.id]?.[d]) : null;
-        if (sh) run.push(d);
-        else { if (run.length > R.maxRow) run.forEach(x => bad.add(sf.id + ":" + x)); run = []; }
-        if (d <= DAYS && sh && d > 1) {
-          const q = shiftOf(plan[sf.id]?.[d - 1]);
-          if (q && (24 - q.to + sh.from) < R.minRest) { bad.add(sf.id + ":" + d); bad.add(sf.id + ":" + (d - 1)); }
-        }
-        if (d <= DAYS && plan[sf.id]?.[d] && onVac(sf, d)) bad.add(sf.id + ":" + d);
-      }
-    });
-    return bad;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, cfg, staff, DAYS]);
   let need = 0, have = 0;
   for (let d = 1; d <= DAYS; d++) POS.forEach(({ id: pos }) => {
     const n = needOf(d)[pos] || 0; need += n;

@@ -231,48 +231,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [shotMode, setShotMode] = React.useState("chat");  // chat · a4
   const [openDay, setOpenDay] = React.useState(0);     // раскрытый день в виде сотрудника
   const [openEmp, setOpenEmp] = React.useState(0);     // раскрытая карточка сотрудника в настройках
-  // Пожелания «прошу выходной»: null — грузятся, false — сервер без функции
-  // (docs/schedule-wishes.sql не применён), объект — карта staffId → [дни]
-  const [wishes, setWishes] = React.useState(null);
-  const wishOf = (id, d) => wishes && Array.isArray(wishes[id]) && wishes[id].includes(d);
-  const loadWishes = React.useCallback(async () => {
-    try {
-      const r = await rpc("schedule_wishes_get", {
-        p_token: saToken(), p_restaurant: profile?.restaurant || "",
-        p_venue_key: venueKey, p_month: mkey,
-      });
-      if (r && r.ok === true) {
-        const map = {};
-        (r.wishes || []).forEach(w => { (map[w.staff_id] = map[w.staff_id] || []).push(w.day); });
-        setWishes(map);
-      } else if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wishes_get")) {
-        setWishes(false);   // функции нет на сервере — фича честно спит
-      } else setWishes({});
-    } catch (e) { setWishes(false); }
-  }, [mkey, venueKey, profile]);
-  React.useEffect(() => { if (state === "ok") { setWishes(null); loadWishes(); } }, [state, loadWishes]);
-  const setWish = async (staffId, d, on) => {
-    if (wishes === false) return;
-    setWishes(w => {
-      const nx = { ...(w || {}) };
-      const arr = new Set(nx[staffId] || []);
-      on ? arr.add(d) : arr.delete(d);
-      nx[staffId] = [...arr].sort((a, b) => a - b);
-      if (!nx[staffId].length) delete nx[staffId];
-      return nx;
-    });
-    vibrate("light");
-    try {
-      const r = await rpc("schedule_wish_set", {
-        p_token: saToken(), p_restaurant: profile?.restaurant || "",
-        p_venue_key: venueKey, p_month: mkey, p_staff_id: staffId, p_day: d, p_on: on,
-      });
-      if (!r || r.ok !== true) {
-        if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wish_set")) setWishes(false);
-        else loadWishes();   // рассинхрон — перечитать правду с сервера
-      }
-    } catch (e) { setWishes(false); }
-  };
   const [offRange, setOffRange] = React.useState(false); // календарь дат: режим «диапазон»
   const [offAnchor, setOffAnchor] = React.useState(null); // первый тап диапазона {i, d}
   // Отмена последнего крупного действия (генерация, обмен, очистка, снятие
@@ -321,6 +279,51 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       } catch (e) {}
       return nx;
     });
+  };
+
+  // Пожелания «прошу выходной»: null — грузятся, false — сервер без функции
+  // (schedule-wishes.sql не применён), объект — карта staffId → [дни].
+  // ВАЖНО: блок стоит ПОСЛЕ mkey/venueKey — их имена живут в deps-массивах,
+  // которые вычисляются при рендере (тот же TDZ, что уже ронял заметки).
+  const [wishes, setWishes] = React.useState(null);
+  const wishOf = (id, d) => wishes && Array.isArray(wishes[id]) && wishes[id].includes(d);
+  const loadWishes = React.useCallback(async () => {
+    try {
+      const r = await rpc("schedule_wishes_get", {
+        p_token: saToken(), p_restaurant: profile?.restaurant || "",
+        p_venue_key: venueKey, p_month: mkey,
+      });
+      if (r && r.ok === true) {
+        const map = {};
+        (r.wishes || []).forEach(w => { (map[w.staff_id] = map[w.staff_id] || []).push(w.day); });
+        setWishes(map);
+      } else if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wishes_get")) {
+        setWishes(false);   // функции нет на сервере — фича честно спит
+      } else setWishes({});
+    } catch (e) { setWishes(false); }
+  }, [mkey, venueKey, profile]);
+  React.useEffect(() => { if (state === "ok") { setWishes(null); loadWishes(); } }, [state, loadWishes]);
+  const setWish = async (staffId, d, on) => {
+    if (wishes === false) return;
+    setWishes(w => {
+      const nx = { ...(w || {}) };
+      const arr = new Set(nx[staffId] || []);
+      on ? arr.add(d) : arr.delete(d);
+      nx[staffId] = [...arr].sort((a, b) => a - b);
+      if (!nx[staffId].length) delete nx[staffId];
+      return nx;
+    });
+    vibrate("light");
+    try {
+      const r = await rpc("schedule_wish_set", {
+        p_token: saToken(), p_restaurant: profile?.restaurant || "",
+        p_venue_key: venueKey, p_month: mkey, p_staff_id: staffId, p_day: d, p_on: on,
+      });
+      if (!r || r.ok !== true) {
+        if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wish_set")) setWishes(false);
+        else loadWishes();   // рассинхрон — перечитать правду с сервера
+      }
+    } catch (e) { setWishes(false); }
   };
   const holName = d => HOLIDAYS[`${String(M+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`];
 

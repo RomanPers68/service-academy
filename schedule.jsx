@@ -231,50 +231,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [shotMode, setShotMode] = React.useState("chat");  // chat · a4
   const [openDay, setOpenDay] = React.useState(0);     // раскрытый день в виде сотрудника
   const [openEmp, setOpenEmp] = React.useState(0);     // раскрытая карточка сотрудника в настройках
-  // Пожелания «прошу выходной»: null — грузятся, false — сервер без функции
-  // (docs/schedule-wishes.sql не применён), объект — карта staffId → [дни]
-  const [wishes, setWishes] = React.useState(null);
-  const wishOf = (id, d) => wishes && Array.isArray(wishes[id]) && wishes[id].includes(d);
-  const loadWishes = React.useCallback(async () => {
-    try {
-      const r = await rpc("schedule_wishes_get", {
-        p_token: saToken(), p_restaurant: profile?.restaurant || "",
-        p_venue_key: venueKey, p_month: mkey,
-      });
-      if (r && r.ok === true) {
-        const map = {};
-        (r.wishes || []).forEach(w => { (map[w.staff_id] = map[w.staff_id] || []).push(w.day); });
-        setWishes(map);
-      } else if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wishes_get")) {
-        setWishes(false);   // функции нет на сервере — фича честно спит
-      } else setWishes({});
-    } catch (e) { setWishes(false); }
-  }, [mkey, venueKey, profile]);
-  React.useEffect(() => { if (state === "ok") { setWishes(null); loadWishes(); } }, [state, loadWishes]);
-  const setWish = async (staffId, d, on) => {
-    if (wishes === false) return;
-    setWishes(w => {
-      const nx = { ...(w || {}) };
-      const arr = new Set(nx[staffId] || []);
-      on ? arr.add(d) : arr.delete(d);
-      nx[staffId] = [...arr].sort((a, b) => a - b);
-      if (!nx[staffId].length) delete nx[staffId];
-      return nx;
-    });
-    vibrate("light");
-    try {
-      const r = await rpc("schedule_wish_set", {
-        p_token: saToken(), p_restaurant: profile?.restaurant || "",
-        p_venue_key: venueKey, p_month: mkey, p_staff_id: staffId, p_day: d, p_on: on,
-      });
-      if (!r || r.ok !== true) {
-        if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wish_set")) setWishes(false);
-        else loadWishes();   // рассинхрон — перечитать правду с сервера
-      }
-    } catch (e) { setWishes(false); }
-  };
-  const [offRange, setOffRange] = React.useState(false); // календарь дат: режим «диапазон»
-  const [offAnchor, setOffAnchor] = React.useState(null); // первый тап диапазона {i, d}
   // Отмена последнего крупного действия (генерация, обмен, очистка, снятие
   // замков): один снапшот, честная страховка от «ой, не то нажал».
   const undoRef = React.useRef(null);
@@ -343,14 +299,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const holOf = d => { const o = days[d]; return o && o.hol !== undefined ? o.hol : !!holName(d); };
   const needOf = d => (cfg?.need || {})[lvlOf(d)] || {};
   const onVac = (s, d) => s.vac && s.vac[2] === mkey && d >= s.vac[0] && d <= s.vac[1];
-  // Норма с учётом отпуска: 160 ч при 11 днях отпуска — это не 160 ч в
-  // оставшиеся дни. Уменьшаем пропорционально — генератор перестаёт
-  // трамбовать отпускника, а «Проверка» — ныть о недоработке.
-  const effNorm = (s) => {
-    if (!(s.vac && s.vac[2] === mkey && s.vac[0])) return s.norm || 0;
-    const vd = Math.max(0, Math.min(DAYS, s.vac[1]) - Math.max(1, s.vac[0]) + 1);
-    return Math.round((s.norm || 0) * (DAYS - vd) / DAYS);
-  };
   const vacOn = (s) => !!(s.vac && s.vac[2] === mkey && s.vac[0]);
   // Выходные по конкретным числам. Хранятся по месяцам: «14-е» в августе
   // не должно тянуться в сентябрь.
@@ -480,7 +428,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // вручную клетки сохраняются и достраиваются вокруг — как раньше.
   const generate = () => {
     if (!cfg || !staff.length) return;
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey, wishes: wishes || {} });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey });
     if (!res.plan) return;
     snapUndo();
     setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
@@ -514,9 +462,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         const pv = d > 1 ? plan[s.id]?.[d - 1] : "", q = pv && shiftOf(pv);
         if (sh && q) { const r = 24 - q.to + sh.from; if (r < R.minRest) out.push(`${s.name}: между ${d-1} и ${d} только ${r} ч отдыха`); }
       }
-      const en = effNorm(s);
       if ((R.normMode || "floor") === "cap" && h > s.norm) out.push(`${s.name}: переработка ${h - s.norm} ч`);
-      if ((R.normMode || "floor") === "floor" && h < en) out.push(`${s.name}: недоработка ${en - h} ч до нормы${en !== s.norm ? " (с учётом отпуска)" : ""}`);
+      if ((R.normMode || "floor") === "floor" && h < s.norm) out.push(`${s.name}: недоработка ${s.norm - h} ч до нормы`);
       if (mx > R.maxRow) out.push(`${s.name}: ${mx} смен подряд при пределе ${R.maxRow}`);
     });
     return [...new Set(out)];
@@ -867,7 +814,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     const bd = breakdownOf(me);
     x.fillStyle = C.dim; x.font = "12.5px Georgia, serif";
     x.fillText(`${me.name} · ${MONTHS_N[M]} ${Y}`, 16, 50);
-    x.fillText(`${profile?.restaurant || ""} · ${bd.shifts} смен · ${bd.hours} из ${effNorm(me)} ч`, 16, 69);
+    x.fillText(`${profile?.restaurant || ""} · ${bd.shifts} смен · ${bd.hours} из ${me.norm} ч`, 16, 69);
     let y = HEAD;
     for (let d = 1; d <= DAYS; d++) {
       const k = plan[me.id]?.[d], sh = k && shiftOf(k), vac = onVac(me, d), w = dow(d), note = notes[d];
@@ -1178,7 +1125,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <Num inp={inp} v={vacOn(sf) ? sf.vac[1] : 0} min={0} max={DAYS}
                   set={v => patch(c => {
                     if (c.staff[i].vac) c.staff[i].vac[1] = Math.max(c.staff[i].vac[0], v);
-                    else if (v) c.staff[i].vac = [v, v, mkey];   // «по» первым — тоже работает, а не теряется молча
                   })} />
               </Field>
               <Field label="статус" P={P}>
@@ -1207,66 +1153,27 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             {/* Выходные по конкретным датам — поверх недельного шаблона */}
             <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
               color:P.sub, padding:"10px 0 5px" }}>
-              <span>выходные по датам · {MONTHS_R[M]}
-                {offDays(sf).length ? <span style={{ color:P.acc }}> · выбрано {offDays(sf).length}</span> : null}</span>
-              <button className="sa-btn" onClick={() => { setOffRange(!offRange); setOffAnchor(null); vibrate("light"); }}
-                style={{ float:"right", padding:"3px 9px", borderRadius:8, cursor:"pointer", fontFamily:mono, fontSize:9,
-                  letterSpacing:1, textTransform:"uppercase",
-                  color: offRange ? INK_DEEP : P.sub,
-                  background: offRange ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
-                  border:`1px solid ${offRange ? GOLD : (a11y ? "rgba(175,140,65,.28)" : "rgba(145,108,40,.28)")}` }}>
-                ↔ диапазон
-              </button>
+              выходные по датам · {MONTHS_R[M]}
+              {offDays(sf).length ? <span style={{ color:P.acc }}> · выбрано {offDays(sf).length}</span> : null}
             </div>
-            {offRange ? (
-              <div style={{ fontSize:10.5, color:P.acc, fontStyle:"italic", marginBottom:6 }}>
-                {offAnchor && offAnchor.i === i
-                  ? `Начало: ${offAnchor.d} ${MONTHS_R[M]} — теперь тапни последний день`
-                  : "Тапни первый и последний день — заполню всё между ними"}
-              </div>
-            ) : null}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
               {Array.from({ length: DAYS }, (_, k) => k + 1).map(d => {
                 const on = offDays(sf).includes(d);
                 const weekly = (sf.off || []).includes(dow(d));
                 return (
                   <button key={d} className="sa-btn" disabled={weekly}
-                    onClick={() => {
-                      // Режим диапазона: первый тап — якорь, второй заливает всё
-                      // между. Если вся полоса уже выбрана — второй тап её снимает.
-                      if (offRange) {
-                        if (!offAnchor || offAnchor.i !== i) { setOffAnchor({ i, d }); vibrate("light"); return; }
-                        const lo = Math.min(offAnchor.d, d), hi = Math.max(offAnchor.d, d);
-                        setOffAnchor(null);
-                        patch(c => {
-                          const st = c.staff[i];
-                          if (!st.offDays) st.offDays = {};
-                          const cur = new Set(st.offDays[mkey] || []);
-                          const span = [];
-                          for (let x = lo; x <= hi; x++) if (!(st.off || []).includes(dow(x))) span.push(x);
-                          const allOn = span.every(x => cur.has(x));
-                          span.forEach(x => allOn ? cur.delete(x) : cur.add(x));
-                          st.offDays[mkey] = [...cur].sort((a, b) => a - b);
-                          if (!st.offDays[mkey].length) delete st.offDays[mkey];
-                        });
-                        vibrate("success");
-                        return;
-                      }
-                      patch(c => {
-                        const st = c.staff[i];
-                        if (!st.offDays) st.offDays = {};
-                        const cur = st.offDays[mkey] || [];
-                        st.offDays[mkey] = cur.includes(d) ? cur.filter(v => v !== d) : [...cur, d].sort((a, b) => a - b);
-                        if (!st.offDays[mkey].length) delete st.offDays[mkey];
-                      });
-                    }}
+                    onClick={() => patch(c => {
+                      const st = c.staff[i];
+                      if (!st.offDays) st.offDays = {};
+                      const cur = st.offDays[mkey] || [];
+                      st.offDays[mkey] = cur.includes(d) ? cur.filter(v => v !== d) : [...cur, d].sort((a, b) => a - b);
+                      if (!st.offDays[mkey].length) delete st.offDays[mkey];
+                    })}
                     style={{ padding:"7px 0", borderRadius:8, cursor: weekly ? "default" : "pointer",
                       fontFamily:mono, fontSize:11, opacity: weekly ? .35 : 1,
                       color: on ? INK_DEEP : (holOf(d) ? P.warn : P.sub),
                       background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
                       border:`1px solid ${on ? GOLD : (a11y ? "rgba(175,140,65,.28)" : "rgba(145,108,40,.28)")}`,
-                      boxShadow: (offAnchor && offAnchor.i === i && offAnchor.d === d)
-                        ? `0 0 0 2px ${GOLD}, 0 0 8px ${GOLD}88` : undefined,
                       fontWeight: on ? "bold" : "normal" }}>{d}</button>
                 );
               })}
@@ -1333,7 +1240,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       ) : (<>
         <div style={card}>
-          <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {effNorm(me)} ч{effNorm(me) !== me.norm ? <span style={{ color:P.sub }}> · отпуск учтён</span> : null}</span></div>
+          <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {me.norm} ч</span></div>
           {(() => {
             // Первый вопрос при открытии графика — «когда моя ближайшая смена?».
             // Отвечаем сразу, в одну строку, не заставляя сканировать список.
@@ -1373,7 +1280,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                   <div style={{ fontSize:17, color: holOf(d) ? P.warn : P.text }}>{d}</div>
                   <div style={{ fontFamily:mono, fontSize:8.5, color:P.sub }}>{DOWL[dow(d)]}</div>
                   {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
-                  {wishOf(me.id, d) ? <div style={{ fontSize:9, lineHeight:1.2 }}>🙏</div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? "Отпуск" : sh ? sh.name : "Выходной"}</div>
@@ -1426,26 +1332,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                       <div style={{ fontSize:10.5, color:P.sub, marginTop:4, fontStyle:"italic" }}>
                         Заметки видишь только ты — они живут на этом устройстве
                       </div>
-                      {/* Пожелание выходного: видит менеджер, уважает генератор */}
-                      {wishes === false ? (
-                        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
-                          Просьбы о выходных пока не включены — менеджеру нужно применить SQL-файл schedule-wishes.sql в Supabase
-                        </div>
-                      ) : !sh ? (
-                        <button className="sa-btn" disabled={wishes === null}
-                          onClick={() => setWish(me.id, d, !wishOf(me.id, d))}
-                          style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:9,
-                            padding:"9px 10px", fontSize:12.5,
-                            ...(wishOf(me.id, d) ? { borderColor:GOLD, color: a11y ? "#6B4E1A" : GOLD } : {}) }}>
-                          {wishes === null ? "…" : wishOf(me.id, d)
-                            ? "🙏 Просьба о выходном отправлена — отозвать"
-                            : "🙏 Попросить выходной в этот день"}
-                        </button>
-                      ) : (
-                        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
-                          На этот день уже стоит смена — о замене договорись с менеджером
-                        </div>
-                      )}
                     </div>
                   );
                 })() : null}
@@ -1480,14 +1366,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   // ── Вид менеджера: таблица ────────────────────────────────────────
   const warns = audit();
-  // Нарушенные пожелания — отдельно от нарушений правил: это просьбы,
-  // а не запреты; менеджер решает сам, но должен их видеть.
-  if (wishes && typeof wishes === "object") {
-    staff.forEach(sf => (wishes[sf.id] || []).forEach(d => {
-      const q = shiftOf(plan[sf.id]?.[d]);
-      if (q && !q.extra) warns.push(`${sf.name} просил(а) выходной ${d}-го — стоит смена ${q.k}`);
-    }));
-  }
   // Координаты клеток-нарушителей: та же логика, что в audit(), но с адресами
   // — красная точка на клетке показывает проблему прямо в сетке.
   const badCells = React.useMemo(() => {
@@ -1719,8 +1597,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                       })}
                     </tr>
                     {list.map((s, ri) => {
-                      const en = effNorm(s);
-                      const h = hoursOf(s), pct = Math.min(100, Math.round(h / (en || 1) * 100));
+                      const h = hoursOf(s), pct = Math.min(100, Math.round(h / (s.norm || 1) * 100));
                       return (
                         <tr key={s.id} className={ri % 2 ? "sa-schedzeb" : ""}>
                           <td className="sa-schednm" style={{ fontFamily:serif, fontSize:12.5, padding:"0 8px",
@@ -1729,9 +1606,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                             <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
                               <span className="sa-schedbar">
                                 <span style={{ display:"block", height:"100%", width:pct + "%", borderRadius:2,
-                                  background: h > en ? "linear-gradient(90deg,#E07878,#C04A4A)" : "linear-gradient(90deg,#D4A85A,#C8A96E)" }} />
+                                  background: h > s.norm ? "linear-gradient(90deg,#E07878,#C04A4A)" : "linear-gradient(90deg,#D4A85A,#C8A96E)" }} />
                               </span>
-                              <span style={{ fontFamily:mono, fontSize:8, color:P.sub }}>{h}/{en}{en !== s.norm ? "*" : ""}</span>
+                              <span style={{ fontFamily:mono, fontSize:8, color:P.sub }}>{h}/{s.norm}</span>
                             </div>
                           </td>
                           {visibleDays.map((d, di) => {
@@ -1765,10 +1642,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                   {badCells.has(s.id + ":" + d) ? (
                                     <span style={{ position:"absolute", top:-2, right:-2, width:6, height:6,
                                       borderRadius:3, background:P.warn, boxShadow:"0 0 4px rgba(224,120,120,0.8)" }} />
-                                  ) : null}
-                                  {wishOf(s.id, d) ? (
-                                    <span style={{ position:"absolute", bottom:-2, left:-2, width:6, height:6,
-                                      borderRadius:3, border:`1.4px solid ${GOLD}`, background:"transparent" }} />
                                   ) : null}
                                 </div>
                               </td>
@@ -1915,7 +1788,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div className="sa-schednote ok">🎯 Нарушений нет: смены закрыты, нормы соблюдены.</div>
       ) : (
         <div className="sa-schednote bad">
-          💡 Замечаний: {warns.length} · красная точка = нарушение правил, золотой уголок = просьба о выходном, звёздочка у часов = отпуск учтён в норме
+          💡 Замечаний: {warns.length} · клетки-нарушители помечены красной точкой в таблице
           <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
             {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
             {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}

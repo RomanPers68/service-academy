@@ -82,7 +82,7 @@ const QUICK_BAR = [
   "Ингредиент в стопе, что делать?",
 ];
 // Барменам — свои подсказки, остальным прежние
-const quickFor = (position) => position === "bartender" ? QUICK_BAR : QUICK_ZAL;
+const quickFor = (position) => ["bartender", "senior_bartender"].includes(position) ? QUICK_BAR : QUICK_ZAL;
 
 const ERRORS = {
   not_configured: "Ассистент ещё не подключён на сервере. Менеджеру: инструкция — supabase/AI-SETUP.md в проекте.",

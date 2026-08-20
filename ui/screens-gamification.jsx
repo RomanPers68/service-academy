@@ -242,6 +242,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
     if (myPosition === "waiter")  return t.id === "waiter";
     if (myPosition === "hostess") return t.id === "hostess";
     if (myPosition === "bartender") return t.id === "bartender";
+    if (myPosition === "senior_bartender") return t.id === "bartender";
     if (myPosition === "manager") return t.id === "waiter" || t.id === "manager";
     return true;
   });
@@ -306,7 +307,9 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   };
 
   const currentTab = allTabs.find(t => t.id === tab);
-  const filtered = leaderboard.filter(p => (p.position || "waiter") === tab);
+  // Старший бармен соревнуется во вкладке «Бар» — отдельной вкладки не плодим
+  const tabOf = (pos) => pos === "senior_bartender" ? "bartender" : pos;
+  const filtered = leaderboard.filter(p => tabOf(p.position || "waiter") === tab);
   const detail = selected ? scores.filter(s => s.name === selected.name && s.surname === selected.surname) : [];
 
   // Сотрудник недели: сумма очков за текущую неделю (Пн–Вс) в рамках вкладки
@@ -1061,7 +1064,7 @@ export function ProfileScreen({ onDone, T }) {
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                   cursor:"pointer", userSelect:"none" }}>
                 <span style={{ color: position ? CREAM : "#9A8060", fontSize:15 }}>
-                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{POS_SVG[position] && POS_SVG[position](GOLD, 16)}{({waiter:"Официант", hostess:"Хостес", bartender:"Бармен", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
+                  {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>{(() => { const ic = POS_SVG[position === "senior_bartender" ? "bartender" : position]; return ic ? ic(GOLD, 16) : null; })()}{({waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
                 </span>
                 <span style={{ color:"#C8A870", fontSize:14, transition:"transform 0.2s", display:"inline-block", transform: showPositionSheet ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
               </div>
@@ -1071,6 +1074,7 @@ export function ProfileScreen({ onDone, T }) {
                     { id:"waiter",  icon:"🍽️", label:"Официант",           sub:"Обслуживание гостей" },
                     { id:"hostess", icon:"🛎️", label:"Хостес",             sub:"Служба приёма гостей" },
                     { id:"bartender", icon:"🍸", label:"Бармен",            sub:"Работа за барной стойкой" },
+                    { id:"senior_bartender", icon:"🥃", label:"Старший бармен",  sub:"Бар: смена, качество, наставничество" },
                     { id:"manager", icon:"🎯", label:"Менеджер",            sub:"Управление залом и командой" },
                     { id:"senior",  icon:"🏛️", label:"Руководящий состав", sub:"Управляющий, Директор" },
                   ].map(pos => (
@@ -1131,4 +1135,4 @@ export function ProfileScreen({ onDone, T }) {
 
 export const APP_SHARE_URL = "https://t.me/SA_RestaurantBot";
 
-export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", manager:"Менеджер", senior:"Руководящий состав" };
+export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав" };

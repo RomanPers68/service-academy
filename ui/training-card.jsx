@@ -23,7 +23,7 @@ const fmtDate = (d) => { try { return new Date(d).toLocaleDateString("ru-RU"); }
 export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone = {}, examResults = {}, onBack }) {
   const skills = React.useMemo(() => loadSkills(profile), [profile]);
   const today = new Date().toLocaleDateString("ru-RU");
-  const posLabel = { waiter: "Официант", hostess: "Хостес", manager: "Менеджер", senior: "Руководящий состав" }[profile?.position] || profile?.position || "";
+  const posLabel = { waiter: "Официант", hostess: "Хостес", bartender: "Бармен", senior_bartender: "Старший бармен", manager: "Менеджер", senior: "Руководящий состав" }[profile?.position] || profile?.position || "";
 
   // Прогресс по каждому треку
   const tracks = ROLES.map(r => {

@@ -709,7 +709,7 @@ function MentorPinBlock({ T, gold }) {
 
 export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) {
   const [confirmOut, setConfirmOut] = React.useState(false);
-  const posLabel = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
+  const posLabel = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>

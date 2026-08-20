@@ -207,7 +207,9 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
 }
 
 export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
-  const isAdmin = !!profile?.is_admin;
+  // Редактор графика — не только владелец: менеджеры и руководители тоже
+  // (та же формула, что у собеседования кандидатов — canHire в App).
+  const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
   const now = new Date();
   const [Y, setY] = React.useState(now.getFullYear());
   const [M, setM] = React.useState(now.getMonth());

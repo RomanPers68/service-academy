@@ -1510,6 +1510,30 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   // ── Вид менеджера: таблица ────────────────────────────────────────
   const warns = audit();
+  // Советник ёмкости: если потребность НЕДОСТИЖИМА штатом даже в идеале
+  // (отпуска, недельные выходные, цикл 2/2) — сказать прямо, а не сыпать
+  // десятками одинаковых недоборов. Классика межсезонья: людей ужали,
+  // потребность забыли. Оценка верхняя: реальность будет чуть ниже.
+  POS.forEach(({ id: pos, t }) => {
+    let needTotal = 0;
+    for (let d = 1; d <= DAYS; d++) {
+      const sp = (cfg.split || {})[pos];
+      if (sp && Object.keys(sp).length) needTotal += Object.values(sp).reduce((a, v) => a + (v || 0), 0);
+      else needTotal += needOf(d)[pos] || 0;
+    }
+    if (!needTotal) return;
+    let cap = 0;
+    staff.filter(x => x.pos === pos).forEach(x => {
+      let avail = 0;
+      for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d)) avail++;
+      let c = Math.min(avail, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7));
+      if ((cfg.posRules?.[pos]?.pattern) === "2x2") c = Math.min(c, Math.ceil(DAYS / 2));
+      cap += c;
+    });
+    if (cap < needTotal) warns.unshift(
+      `${t}: потребность ${needTotal} смен в месяц, а ёмкость штата ≈ ${cap} — нехватка структурная. Уменьши потребность в настройках (межсезонье?) или добавь людей`
+    );
+  });
   // Нарушенные пожелания — отдельно от нарушений правил: это просьбы,
   // а не запреты; менеджер решает сам, но должен их видеть.
   if (wishes && typeof wishes === "object") {

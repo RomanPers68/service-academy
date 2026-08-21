@@ -491,8 +491,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
     vibrate(res.shortage ? "light" : "success");
     setMsg(res.shortage
-      ? `Черновик готов (ген 2): не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
-      : "Черновик готов (ген 2): все смены закрыты");
+      ? `Черновик готов (ген 3): не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
+      : "Черновик готов (ген 3): все смены закрыты");
     setTimeout(() => setMsg(""), 3500);
   };
 
@@ -764,7 +764,22 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     x.fillText("График смен", 16, 30);
     x.fillStyle = C.dim; x.font = "13px Georgia, serif";
     x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} сотрудников`, 16, 54);
-    x.fillText(`составлен ${new Date().toLocaleDateString("ru-RU")} · ген 2`, 16, 74);
+    x.fillText(`составлен ${new Date().toLocaleDateString("ru-RU")} · ген 3`, 16, 74);
+    // Диагностика конфига: по этой строке видно потребность и разбивку —
+    // будущие «загадки шестого числа» решаются с одного скрина
+    {
+      const diag = POS.map(({ id: pos, t }) => {
+        const nn = [1, 2, 3].map(l => (cfg.need?.[l] || {})[pos] || 0);
+        if (!nn.some(Boolean)) return null;
+        const sp = (cfg.split || {})[pos];
+        const spTxt = sp && Object.keys(sp).length
+          ? " (" + Object.entries(sp).map(([k, c]) => k + c).join("+") + ")" : "";
+        return `${t} ${nn.join("/")}${spTxt}`;
+      }).filter(Boolean).join(" · ");
+      x.font = "500 9px ui-monospace, Menlo, monospace";
+      x.fillStyle = C.dim;
+      x.fillText(`потребность (об/выс/пик): ${diag}${cfg.evening && cfg.evening.count ? " · вечернее усиление: " + cfg.evening.shift + "+" + cfg.evening.count : ""}`, 16, 88);
+    }
 
     // шапка дней
     let y = HEAD;

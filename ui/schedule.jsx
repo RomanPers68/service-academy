@@ -491,8 +491,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
     vibrate(res.shortage ? "light" : "success");
     setMsg(res.shortage
-      ? `Черновик готов: не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
-      : "Черновик готов: все смены закрыты");
+      ? `Черновик готов (ген 2): не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
+      : "Черновик готов (ген 2): все смены закрыты");
     setTimeout(() => setMsg(""), 3500);
   };
 
@@ -764,7 +764,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     x.fillText("График смен", 16, 30);
     x.fillStyle = C.dim; x.font = "13px Georgia, serif";
     x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} сотрудников`, 16, 54);
-    x.fillText(`составлен ${new Date().toLocaleDateString("ru-RU")}`, 16, 74);
+    x.fillText(`составлен ${new Date().toLocaleDateString("ru-RU")} · ген 2`, 16, 74);
 
     // шапка дней
     let y = HEAD;

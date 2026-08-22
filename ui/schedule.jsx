@@ -348,6 +348,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const holOf = d => { const o = days[d]; return o && o.hol !== undefined ? o.hol : !!holName(d); };
   const needOf = d => (cfg?.need || {})[lvlOf(d)] || {};
   const onVac = (s, d) => s.vac && s.vac[2] === mkey && d >= s.vac[0] && d <= s.vac[1];
+  // Заморозка живого месяца: прошедшие дни (и сегодня — смена уже идёт)
+  // неприкосновенны для генерации/раздачи/очистки. Прошлый месяц заморожен
+  // целиком, будущий — свободен весь.
+  const frozenBefore = () => {
+    const cur = new Date(now.getFullYear(), now.getMonth());
+    const view = new Date(Y, M);
+    if (view < cur) return DAYS + 1;
+    if (view > cur) return 0;
+    return now.getDate() + 1;
+  };
   // Норма с учётом отпуска: 160 ч при 11 днях отпуска — это не 160 ч в
   // оставшиеся дни. Уменьшаем пропорционально — генератор перестаёт
   // трамбовать отпускника, а «Проверка» — ныть о недоработке.
@@ -439,20 +449,75 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   // Очистка месяца: снимает и расстановку, и замки. Настройки заведения
   // при этом остаются — они общие для всех месяцев.
-  const clearMonth = async () => {
-    snapUndo();   // очистку можно отменить (вернётся локально — жми «Сохранить»)
-    setPlan({}); setLocks({}); setConfirmClear(false);
-    if (!isAdmin) return;
-    setMsg("Очищаю…");
-    try {
-      const r = await rpc("schedule_save_month", {
-        p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue_key: venueKey,
-        p_month: mkey, p_payload: JSON.stringify({ plan: {}, locks: {}, days }),
+  // Очистка — ЛОКАЛЬНЫЙ черновик: сервер не трогаем до осознанного
+  // «Сохранить». Случайная очистка теперь безобидна всегда: «Отменить»
+  // вернёт как было, а закрытие приложения просто оставит сервер прежним.
+  // scope: {} — весь месяц; { pos } — должность; { staffId } — один человек.
+  const clearScope = (scope = {}) => {
+    snapUndo();
+    const fb = frozenBefore();
+    const match = (id) => {
+      if (scope.staffId) return String(id) === String(scope.staffId);
+      if (scope.pos) return staff.some(x => String(x.id) === String(id) && x.pos === scope.pos);
+      return true;
+    };
+    const strip = (obj) => {
+      const nx = {};
+      Object.entries(obj || {}).forEach(([id, v]) => {
+        if (!match(id)) { nx[id] = v; return; }
+        // прошедшие дни живого месяца неприкосновенны — стирается будущее
+        const past = {};
+        Object.entries(v || {}).forEach(([d, val]) => { if (+d < fb && val) past[d] = val; });
+        if (Object.keys(past).length) nx[id] = past;
       });
-      if (r && r.ok === true) { setDirty(false); setMsg("Месяц очищен"); vibrate("light"); }
-      else setMsg(r?.error === "forbidden" ? "Нет прав на изменение графика" : "Очистить не удалось");
-    } catch (e) { setMsg("Нет связи с сервером"); }
-    setTimeout(() => setMsg(""), 2500);
+      return nx;
+    };
+    setPlan(p => strip(p)); setLocks(l => strip(l));
+    setDirty(true); setConfirmClear(false); vibrate("light");
+    const what = scope.staffId
+      ? `у ${staff.find(x => String(x.id) === String(scope.staffId))?.name || "сотрудника"}`
+      : scope.pos ? `у должности «${POS.find(pp => pp.id === scope.pos)?.t || scope.pos}»` : "за месяц";
+    setMsg(`Смены ${what} стёрты в черновике — «Сохранить» закрепит, «↩ Отменить» вернёт`);
+    setTimeout(() => setMsg(""), 4000);
+  };
+
+  // Сотрудник уходит: раздать ЕГО смены другим, не тронув ни одной чужой
+  // клетки. Механика — виртуальные замки: всё существующее у остальных
+  // фиксируется на время прогона, уходящий исключается из штата, и
+  // генератор заполняет только его дыры по всем правилам. Виртуальные
+  // замки в стейт не попадают — это инструмент прогона, не данные.
+  const redistribute = (staffId) => {
+    const gone = staff.find(x => String(x.id) === String(staffId));
+    if (!gone) return;
+    const fb = frozenBefore();
+    if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
+    snapUndo();
+    // Отработанное остаётся у уходящего — это история и зарплата;
+    // раздаём коллегам только будущие смены
+    const gonePast = {};
+    Object.entries(plan[staffId] || {}).forEach(([d, v]) => { if (+d < fb && v) gonePast[d] = v; });
+    const planWo = {};
+    Object.entries(plan).forEach(([id, ds]) => { if (String(id) !== String(staffId)) planWo[id] = { ...ds }; });
+    const vLocks = {};
+    Object.entries(planWo).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    Object.entries(locks).forEach(([id, ds]) => {
+      if (String(id) === String(staffId)) return;
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    const cfg2 = { ...cfg, staff: staff.filter(x => String(x.id) !== String(staffId)) };
+    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, freezeBefore: fb });
+    if (!res.plan) return;
+    // прошлое уходящего возвращается в план (генератор его не знает — он
+    // исключён из штата на прогон)
+    setPlan(Object.keys(gonePast).length ? { ...res.plan, [staffId]: gonePast } : res.plan);
+    setLocks(l => { const nx = { ...l }; delete nx[staffId]; return nx; });
+    setDirty(true); setConfirmClear(false); setGenKey(k => k + 1); vibrate("success");
+    setMsg(res.shortage
+      ? `Будущие смены ${gone.name} розданы, но ${res.shortage} закрыть некем — детали в проверке. «Сохранить» закрепит, «↩ Отменить» вернёт`
+      : `Будущие смены ${gone.name} розданы коллегам (отработанное осталось в графике) — проверь черновик и сохрани. Не забудь убрать человека в настройках`);
+    setTimeout(() => setMsg(""), 6000);
   };
 
   // Настройки заведения сохраняются отдельно от месяца: они общие для всех месяцев
@@ -485,14 +550,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // вручную клетки сохраняются и достраиваются вокруг — как раньше.
   const generate = () => {
     if (!cfg || !staff.length) return;
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey, wishes: wishes || {} });
+    const fb = frozenBefore();
+    if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey, wishes: wishes || {}, freezeBefore: fb });
     if (!res.plan) return;
     snapUndo();
     setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
     vibrate(res.shortage ? "light" : "success");
     setMsg(res.shortage
-      ? `Черновик готов (ген 3): не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
-      : "Черновик готов (ген 3): все смены закрыты");
+      ? `Черновик готов (ген 3${fb > 1 ? ", прошедшие дни не тронуты" : ""}): не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
+      : `Черновик готов (ген 3${fb > 1 ? ", прошедшие дни не тронуты" : ""}): все смены закрыты`);
     setTimeout(() => setMsg(""), 3500);
   };
 
@@ -1691,15 +1758,45 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
     {confirmClear ? (
       <div style={{ ...card, marginTop:10 }}>
-        <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:12 }}>
-          Стереть весь график за {MONTHS_R[M]} {Y}? Сотрудники, смены и правила останутся —
-          сотрётся только расстановка и закрепления.
+        <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:10 }}>
+          Что стереть за {MONTHS_R[M]} {Y}? Расстановка и закрепления сотрутся
+          <b> только в черновике</b> — на сервере всё останется, пока не нажмёшь «Сохранить».
+          Передумал — «↩ Отменить» вернёт как было.
+          {frozenBefore() > 1 && frozenBefore() <= DAYS ? <span> <b>Прошедшие дни и сегодня не трогаются</b> — сотрётся только будущее.</span> : null}
         </div>
-        <div style={{ display:"flex", gap:8 }}>
-          <button style={{ ...btn, background:P.dangerBg, color:P.dangerFg }} className="sa-btn"
-            onClick={clearMonth}>Да, стереть</button>
-          <button style={ghost} className="sa-btn" onClick={() => setConfirmClear(false)}>Отмена</button>
+        <button style={{ ...btn, background:P.dangerBg, color:P.dangerFg, width:"100%", boxSizing:"border-box", marginBottom:10 }}
+          className="sa-btn" onClick={() => clearScope({})}>Стереть весь месяц</button>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          или только одну должность
         </div>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
+          {POS.filter(pp => staff.some(x => x.pos === pp.id)).map(pp => (
+            <button key={pp.id} style={{ ...ghost, padding:"7px 11px", fontSize:12 }} className="sa-btn"
+              onClick={() => clearScope({ pos: pp.id })}>{pp.t}</button>
+          ))}
+        </div>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          или одного сотрудника
+        </div>
+        <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
+          onChange={e => { if (e.target.value) clearScope({ staffId: e.target.value }); }}>
+          <option value="">Выбрать сотрудника…</option>
+          {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          сотрудник уходит — раздать его смены другим
+        </div>
+        <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
+          Чужие смены останутся как есть: генератор заполнит только освободившиеся
+          дни, соблюдая отдых, «подряд» и нормы.
+        </div>
+        <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
+          onChange={e => { if (e.target.value) redistribute(e.target.value); }}>
+          <option value="">Выбрать уходящего…</option>
+          {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <button style={{ ...ghost, width:"100%", boxSizing:"border-box" }} className="sa-btn"
+          onClick={() => setConfirmClear(false)}>Отмена</button>
       </div>
     ) : null}
     {msg ? <div style={{ textAlign:"center", fontSize:12, color:P.sub, marginTop:8 }}>{msg}</div> : null}

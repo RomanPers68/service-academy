@@ -746,7 +746,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       bad:"#A33A2A", good:"#4A6B4A", hol:"#A33A2A", empty:"#CFC5AE",
     };
     const S = 2;                                     // множитель под ретину
-    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 58;
+    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 86;
     const groups = POS.map(p => ({ ...p, list: staff.filter(x => x.pos === p.id) })).filter(g => g.list.length);
     const rows = groups.reduce((a, g) => a + g.list.length + 2, 0);   // +заголовок +строка добора
     const W = NAME + DAYS * CELL;
@@ -764,10 +764,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     x.fillText("График смен", 16, 30);
     x.fillStyle = C.dim; x.font = "13px Georgia, serif";
     x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} сотрудников`, 16, 54);
-    x.fillText(`составлен ${new Date().toLocaleDateString("ru-RU")} · ген 3`, 16, 74);
-    // Диагностика конфига: по этой строке видно потребность и разбивку —
-    // будущие «загадки шестого числа» решаются с одного скрина
-    {
+    // Вордмарк и служебная строка — правым краем: слева им тесно
+    // (строка «составлен» упиралась в числа первых дней)
+    x.fillStyle = C.faint; x.font = "600 10px ui-monospace, Menlo, monospace";
+    const wm = "S E R V I C E   A C A D E M Y";
+    x.fillText(wm, W - 16 - x.measureText(wm).width, 30);
+    x.fillStyle = C.dim; x.font = "12px Georgia, serif";
+    const made = `составлен ${new Date().toLocaleDateString("ru-RU")} · ген 3`;
+    x.fillText(made, W - 16 - x.measureText(made).width, 50);
+    // Диагностика конфига (потребность/разбивка) рисуется в ПОДВАЛЕ:
+    // в шапке она ложилась поверх строки дней (прод-артефакт со скрина)
+    const diagText = (() => {
       const diag = POS.map(({ id: pos, t }) => {
         const nn = [1, 2, 3].map(l => (cfg.need?.[l] || {})[pos] || 0);
         if (!nn.some(Boolean)) return null;
@@ -776,10 +783,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           ? " (" + Object.entries(sp).map(([k, c]) => k + c).join("+") + ")" : "";
         return `${t} ${nn.join("/")}${spTxt}`;
       }).filter(Boolean).join(" · ");
-      x.font = "500 9px ui-monospace, Menlo, monospace";
-      x.fillStyle = C.dim;
-      x.fillText(`потребность (об/выс/пик): ${diag}${cfg.evening && cfg.evening.count ? " · вечернее усиление: " + cfg.evening.shift + "+" + cfg.evening.count : ""}`, 16, 88);
-    }
+      return `потребность (об/выс/пик): ${diag}${cfg.evening && cfg.evening.count ? " · вечернее усиление: " + cfg.evening.shift + "+" + cfg.evening.count : ""}`;
+    })();
+    // Золотая линия отделяет шапку от полотна (в печати — серая)
+    x.strokeStyle = forPrint ? C.lineHard : "#C8A96E"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(0, HEAD - 26); x.lineTo(W, HEAD - 26); x.stroke();
 
     // шапка дней
     let y = HEAD;
@@ -797,6 +805,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
     const line = (yy, c = C.line) => { x.strokeStyle = c; x.lineWidth = 1;
       x.beginPath(); x.moveTo(0, yy + .5); x.lineTo(W, yy + .5); x.stroke(); };
+    const kColor = (k) => forPrint ? C.text : (k === "В" ? "#8A6520" : k === "У" ? "#4A6B4A" : C.text);
 
     groups.forEach(g => {
       // заголовок должности
@@ -811,20 +820,25 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       line(y); line(y + ROW); y += ROW;
 
       // люди
-      g.list.forEach(s => {
+      g.list.forEach((s, si) => {
         let h = 0;
         for (let d = 1; d <= DAYS; d++) { const sh = shiftOf(plan[s.id]?.[d]); if (sh) h += len(sh); }
+        // Зебра чётных строк — глазу легче вести длинную строку (не в печати)
+        if (!forPrint && si % 2 === 1) { x.fillStyle = "rgba(43,31,14,0.03)"; x.fillRect(0, y + 1, W, ROW - 1); }
         x.fillStyle = C.text; x.font = "13px Georgia, serif";
         x.fillText(s.name.length > 17 ? s.name.slice(0, 16) + "…" : s.name, 12, y + ROW / 2 - 5);
+        const en = effNorm(s);
         x.fillStyle = C.faint; x.font = "10px ui-monospace, Menlo, monospace";
-        x.fillText(`${h} / ${s.norm} ч`, 12, y + ROW / 2 + 8);
+        x.fillText(`${h} / ${en} ч${en !== s.norm ? "*" : ""}`, 12, y + ROW / 2 + 8);
         for (let d = 1; d <= DAYS; d++) {
           const cx = NAME + (d - 1) * CELL;
-          if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y, CELL, ROW); }
+          // +1/-1: заливка не съедает горизонтальные линии (прод-артефакт
+          // «линия прерывается» — fillRect ложился ровно на штрих)
+          if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y + 1, CELL, ROW - 1); }
           const k = plan[s.id]?.[d] || "";
           const vac = onVac(s, d), fix = !k && !vac && (s.off || []).includes(dow(d));
           x.font = "600 13px ui-monospace, Menlo, monospace";
-          x.fillStyle = k ? C.text : vac ? C.hol : fix ? C.faint : C.empty;
+          x.fillStyle = k ? kColor(k) : vac ? C.hol : fix ? C.faint : C.empty;
           x.fillText(k || (vac ? "О" : fix ? "×" : "·"), cx + CELL / 2 - 5, y + ROW / 2);
         }
         line(y + ROW); y += ROW;
@@ -837,9 +851,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         const n = needOf(d)[g.id] || 0;
         const have = g.list.filter(s => { const sh = shiftOf(plan[s.id]?.[d]); return sh && !sh.extra; }).length;
         const short = have < n;
+        const cx = NAME + (d - 1) * CELL;
+        if (short && !forPrint) { x.fillStyle = "rgba(163,58,42,0.10)"; x.fillRect(cx + 2, y + 4, CELL - 4, ROW - 8); }
         x.fillStyle = short ? C.bad : C.good;
         x.font = short ? "600 10px ui-monospace, Menlo, monospace" : "10px ui-monospace, Menlo, monospace";
-        x.fillText(`${have}/${n}` + (short ? "!" : ""), NAME + (d - 1) * CELL + CELL / 2 - (short ? 12 : 9), y + ROW / 2);
+        x.fillText(`${have}/${n}` + (short ? "!" : ""), cx + CELL / 2 - (short ? 12 : 9), y + ROW / 2);
       }
       line(y + ROW, C.lineHard); y += ROW;
     });
@@ -852,17 +868,26 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     }
     x.beginPath(); x.moveTo(NAME + .5, HEAD - 26); x.lineTo(NAME + .5, y); x.stroke();
 
-    // подвал: расшифровка смен
-    x.fillStyle = C.dim; x.font = "11px Georgia, serif";
-    const legend = (cfg.shifts || []).map(sh =>
-      `${sh.k} — ${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00${sh.extra ? " (вручную)" : ""}`
-    ).concat(["О — отпуск", "× — постоянный выходной"]);
+    // подвал: расшифровка смен (буквы — в цветах сетки) + диагностика
+    const legend = (cfg.shifts || []).map(sh => ({
+      mark: sh.k, mc: kColor(sh.k),
+      rest: ` — ${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00${sh.extra ? " (вручную)" : ""}`,
+    })).concat([{ mark: "О", mc: C.hol, rest: " — отпуск" }, { mark: "×", mc: C.faint, rest: " — постоянный выходной" }]);
     let lx = 12, ly = y + 22;
     legend.forEach(t => {
-      const w = x.measureText(t).width + 18;
+      x.font = "600 11px ui-monospace, Menlo, monospace";
+      const wMark = x.measureText(t.mark).width;
+      x.font = "11px Georgia, serif";
+      const w = wMark + x.measureText(t.rest).width + 18;
       if (lx + w > W - 12) { lx = 12; ly += 17; }
-      x.fillText(t, lx, ly); lx += w;
+      x.fillStyle = t.mc; x.font = "600 11px ui-monospace, Menlo, monospace";
+      x.fillText(t.mark, lx, ly);
+      x.fillStyle = C.dim; x.font = "11px Georgia, serif";
+      x.fillText(t.rest, lx + wMark, ly);
+      lx += w;
     });
+    x.fillStyle = C.faint; x.font = "500 9px ui-monospace, Menlo, monospace";
+    x.fillText(diagText, 12, ly + 18);
     return cv;
   };
 

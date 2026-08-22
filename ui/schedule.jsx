@@ -746,9 +746,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       bad:"#A33A2A", good:"#4A6B4A", hol:"#A33A2A", empty:"#CFC5AE",
     };
     const S = 2;                                     // множитель под ретину
-    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 86;
+    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = forPrint ? 64 : 86;
     const groups = POS.map(p => ({ ...p, list: staff.filter(x => x.pos === p.id) })).filter(g => g.list.length);
-    const rows = groups.reduce((a, g) => a + g.list.length + 2, 0);   // +заголовок +строка добора
+    // Печать: без строки «есть/нужно» — лист для стены, не для аудита
+    const rows = groups.reduce((a, g) => a + g.list.length + (forPrint ? 1 : 2), 0);
     const W = NAME + DAYS * CELL;
     const H = HEAD + rows * ROW + FOOT;
 
@@ -806,16 +807,30 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     const line = (yy, c = C.line) => { x.strokeStyle = c; x.lineWidth = 1;
       x.beginPath(); x.moveTo(0, yy + .5); x.lineTo(W, yy + .5); x.stroke(); };
     const kColor = (k) => forPrint ? C.text : (k === "В" ? "#8A6520" : k === "У" ? "#4A6B4A" : C.text);
+    // Чипы под редкими буквами (только чат-версия): «Д» — спокойный текст,
+    // остальные буквы глаз выхватывает по цвету, не вглядываясь
+    const CHIP = forPrint ? null : {
+      "В": { bg: "rgba(138,101,32,0.16)", fg: "#6E4F14" },
+      "У": { bg: "rgba(74,107,74,0.16)",  fg: "#3E5C3E" },
+      "К": { bg: "rgba(90,74,110,0.16)",  fg: "#55446B" },
+      "О": { bg: "rgba(163,58,42,0.11)",  fg: C.hol },
+    };
+    const rr = (x0, y0, w, h, r) => { x.beginPath();
+      x.moveTo(x0 + r, y0); x.arcTo(x0 + w, y0, x0 + w, y0 + h, r);
+      x.arcTo(x0 + w, y0 + h, x0, y0 + h, r); x.arcTo(x0, y0 + h, x0, y0, r);
+      x.arcTo(x0, y0, x0 + w, y0, r); x.closePath(); };
 
     groups.forEach(g => {
       // заголовок должности
       x.fillStyle = C.grpBg; x.fillRect(0, y, W, ROW);
       x.fillStyle = C.text; x.font = "600 11px ui-monospace, Menlo, monospace";
       x.fillText(g.t.toUpperCase(), 12, y + ROW / 2);
-      x.font = "11px ui-monospace, Menlo, monospace";
-      for (let d = 1; d <= DAYS; d++) {
-        x.fillStyle = C.faint;
-        x.fillText(String(needOf(d)[g.id] || 0), NAME + (d - 1) * CELL + CELL / 2 - 3, y + ROW / 2);
+      if (!forPrint) {
+        x.font = "11px ui-monospace, Menlo, monospace";
+        for (let d = 1; d <= DAYS; d++) {
+          x.fillStyle = C.faint;
+          x.fillText(String(needOf(d)[g.id] || 0), NAME + (d - 1) * CELL + CELL / 2 - 3, y + ROW / 2);
+        }
       }
       line(y); line(y + ROW); y += ROW;
 
@@ -837,14 +852,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y + 1, CELL, ROW - 1); }
           const k = plan[s.id]?.[d] || "";
           const vac = onVac(s, d), fix = !k && !vac && (s.off || []).includes(dow(d));
+          const glyph = k || (vac ? "О" : fix ? "×" : "·");
+          const chip = CHIP && CHIP[glyph];
+          if (chip) { x.fillStyle = chip.bg; rr(cx + 5, y + 5, CELL - 10, ROW - 10, 6); x.fill(); }
           x.font = "600 13px ui-monospace, Menlo, monospace";
-          x.fillStyle = k ? kColor(k) : vac ? C.hol : fix ? C.faint : C.empty;
-          x.fillText(k || (vac ? "О" : fix ? "×" : "·"), cx + CELL / 2 - 5, y + ROW / 2);
+          x.fillStyle = chip ? chip.fg : k ? kColor(k) : vac ? C.hol : fix ? C.faint : C.empty;
+          x.fillText(glyph, cx + CELL / 2 - 5, y + ROW / 2);
         }
         line(y + ROW); y += ROW;
       });
 
-      // добор
+      // добор (в печати строки нет — лист чище)
+      if (!forPrint) {
       x.font = "10px ui-monospace, Menlo, monospace";
       x.fillStyle = C.faint; x.fillText("есть / нужно", 12, y + ROW / 2);
       for (let d = 1; d <= DAYS; d++) {
@@ -858,6 +877,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         x.fillText(`${have}/${n}` + (short ? "!" : ""), cx + CELL / 2 - (short ? 12 : 9), y + ROW / 2);
       }
       line(y + ROW, C.lineHard); y += ROW;
+      } else {
+        line(y, C.lineHard);   // граница группы вместо строки добора
+      }
     });
 
     // вертикальные линии недель
@@ -880,14 +902,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       x.font = "11px Georgia, serif";
       const w = wMark + x.measureText(t.rest).width + 18;
       if (lx + w > W - 12) { lx = 12; ly += 17; }
-      x.fillStyle = t.mc; x.font = "600 11px ui-monospace, Menlo, monospace";
+      const lchip = CHIP && CHIP[t.mark];
+      if (lchip) { x.fillStyle = lchip.bg; rr(lx - 4, ly - 8, wMark + 8, 16, 5); x.fill(); }
+      x.fillStyle = lchip ? lchip.fg : t.mc; x.font = "600 11px ui-monospace, Menlo, monospace";
       x.fillText(t.mark, lx, ly);
       x.fillStyle = C.dim; x.font = "11px Georgia, serif";
       x.fillText(t.rest, lx + wMark, ly);
       lx += w;
     });
-    x.fillStyle = C.faint; x.font = "500 9px ui-monospace, Menlo, monospace";
-    x.fillText(diagText, 12, ly + 18);
+    if (!forPrint) {
+      x.fillStyle = C.faint; x.font = "500 9px ui-monospace, Menlo, monospace";
+      x.fillText(diagText, 12, ly + 18);
+    }
     return cv;
   };
 

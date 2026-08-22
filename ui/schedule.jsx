@@ -288,7 +288,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // ВАЖНО: блок стоит ПОСЛЕ mkey/venueKey — их имена живут в deps-массивах,
   // которые вычисляются при рендере (тот же TDZ, что уже ронял заметки).
   const [wishes, setWishes] = React.useState(null);
+  // Жёсткие «не смогу выйти» (kind='hard'): для генератора — запрет,
+  // для менеджера — красный уголок. Требует schedule-wishes-v2.sql;
+  // на старом сервере кнопка честно деградирует в подсказку.
+  const [hardOff, setHardOff] = React.useState({});
+  const [wishesV2, setWishesV2] = React.useState(true);
   const wishOf = (id, d) => wishes && Array.isArray(wishes[id]) && wishes[id].includes(d);
+  const hardOf = (id, d) => Array.isArray(hardOff[id]) && hardOff[id].includes(d);
+
   const loadWishes = React.useCallback(async () => {
     try {
       const r = await rpc("schedule_wishes_get", {
@@ -296,18 +303,35 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         p_venue_key: venueKey, p_month: mkey,
       });
       if (r && r.ok === true) {
-        const map = {};
-        (r.wishes || []).forEach(w => { (map[w.staff_id] = map[w.staff_id] || []).push(w.day); });
-        setWishes(map);
+        const map = {}, hard = {};
+        (r.wishes || []).forEach(w => {
+          const tgt = w.kind === "hard" ? hard : map;
+          (tgt[w.staff_id] = tgt[w.staff_id] || []).push(w.day);
+        });
+        setWishes(map); setHardOff(hard);
       } else if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wishes_get")) {
         setWishes(false);   // функции нет на сервере — фича честно спит
       } else setWishes({});
     } catch (e) { setWishes(false); }
   }, [mkey, venueKey, profile]);
   React.useEffect(() => { if (state === "ok") { setWishes(null); loadWishes(); } }, [state, loadWishes]);
-  const setWish = async (staffId, d, on) => {
+  const setWish = async (staffId, d, on, kind = "off") => {
     if (wishes === false) return;
-    setWishes(w => {
+    let cap = null;
+    if (kind === "hard" && on) {
+      const meObj = staff.find(x => String(x.id) === String(staffId));
+      cap = meObj ? hardCapacity(d, meObj) : null;
+      if (cap && cap.left <= 0) {
+        // мест нет — честно и сразу, без похода на сервер
+        setWishNote({ d, text: cap.maxHard === 0
+          ? "На этот день никто не может брать «не смогу»: людей ровно столько, сколько нужно залу. Поговори с менеджером"
+          : `Мест на этот день уже нет (${cap.taken} из ${cap.maxHard} заняли коллеги) — кто успел, тот успел. Поговори с менеджером` });
+        vibrate("light");
+        return;
+      }
+    }
+    setWishNote(null);
+    const applyLocal = (setter) => setter(w => {
       const nx = { ...(w || {}) };
       const arr = new Set(nx[staffId] || []);
       on ? arr.add(d) : arr.delete(d);
@@ -315,14 +339,38 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       if (!nx[staffId].length) delete nx[staffId];
       return nx;
     });
+    applyLocal(kind === "hard" ? setHardOff : setWishes);
+    // один день — одно состояние: жёсткое и мягкое взаимоисключаются
+    if (on) {
+      const other = kind === "hard" ? setWishes : setHardOff;
+      other(w => { if (!w || !Array.isArray(w[staffId])) return w;
+        const nx = { ...w, [staffId]: w[staffId].filter(x => x !== d) };
+        if (!nx[staffId].length) delete nx[staffId]; return nx; });
+    }
     vibrate("light");
     try {
-      const r = await rpc("schedule_wish_set", {
+      const args = {
         p_token: saToken(), p_restaurant: profile?.restaurant || "",
         p_venue_key: venueKey, p_month: mkey, p_staff_id: staffId, p_day: d, p_on: on,
-      });
+      };
+      let r = await rpc("schedule_wish_set", { ...args, p_kind: kind,
+        ...(cap ? { p_peers: cap.peers, p_max: cap.maxHard } : {}) });
+      if (r && r.ok !== true && r.error === "day_full") {
+        // гонка: пока думал — коллеги заняли места; сервер отбил честно
+        loadWishes();
+        setWishNote({ d, text: "Пока ты думал(а), коллеги заняли последние места на этот день — кто успел, тот успел. Поговори с менеджером" });
+        return;
+      }
+      const miss = (x) => String(x?.message || x?.error || "").toLowerCase().includes("schedule_wish_set");
+      if ((!r || r.ok !== true) && miss(r) && kind !== "hard") {
+        // старый сервер без p_kind: мягкие работают по-старому
+        setWishesV2(false);
+        r = await rpc("schedule_wish_set", args);
+      } else if ((!r || r.ok !== true) && miss(r) && kind === "hard") {
+        setWishesV2(false); loadWishes(); return;
+      }
       if (!r || r.ok !== true) {
-        if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wish_set")) setWishes(false);
+        if (miss(r)) setWishes(false);
         else loadWishes();   // рассинхрон — перечитать правду с сервера
       }
     } catch (e) { setWishes(false); }
@@ -371,6 +419,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // не должно тянуться в сентябрь.
   const offDays = (s) => (s.offDays && s.offDays[mkey]) || [];
   const isDayOff = (s, d) => (s.off || []).includes(dow(d)) || offDays(s).includes(d);
+
   const isLocked = (id, d) => !!(locks[id] && locks[id][d]);
 
   // ── Загрузка ──────────────────────────────────────────────────────
@@ -421,6 +470,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   };
 
   const staff = cfg?.staff || [];
+  const [wishNote, setWishNote] = React.useState(null);   // { d, text } — отказ очереди в раскрытом дне
+  // Очередь жёстких «не смогу выйти»: мест на день ровно столько, чтобы
+  // зал ещё закрывался — доступные коллеги должности минус потребность.
+  // Кто успел, тот успел; отпуск и постоянные выходные место не занимают
+  // (эти люди и так не в строю).
+  const hardCapacity = (d, meObj) => {
+    const peers = staff.filter(x => x.pos === meObj.pos);
+    const avail = peers.filter(x => !onVac(x, d) && !isDayOff(x, d));
+    const need = needOf(d)[meObj.pos] || 0;
+    const maxHard = Math.max(0, avail.length - need);
+    const taken = avail.filter(x => String(x.id) !== String(meObj.id) && hardOf(x.id, d)).length;
+    return { maxHard, taken, left: Math.max(0, maxHard - taken), peers: peers.map(x => x.id) };
+  };
 
   // Смещение цикла 2/2 у каждого своё, иначе вся позиция уйдёт отдыхать разом.
   const cycleOffset = (s) => {
@@ -507,7 +569,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
     });
     const cfg2 = { ...cfg, staff: staff.filter(x => String(x.id) !== String(staffId)) };
-    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, freezeBefore: fb });
+    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, freezeBefore: fb });
     if (!res.plan) return;
     // прошлое уходящего возвращается в план (генератор его не знает — он
     // исключён из штата на прогон)
@@ -517,6 +579,36 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     setMsg(res.shortage
       ? `Будущие смены ${gone.name} розданы, но ${res.shortage} закрыть некем — детали в проверке. «Сохранить» закрепит, «↩ Отменить» вернёт`
       : `Будущие смены ${gone.name} розданы коллегам (отработанное осталось в графике) — проверь черновик и сохрани. Не забудь убрать человека в настройках`);
+    setTimeout(() => setMsg(""), 6000);
+  };
+
+  // Новенький в живом месяце: отдать ему ДЫРЫ будущего, ничего не меняя
+  // у остальных. Механика: все существующие клетки фиксируются
+  // виртуальными замками, а назначать генератору разрешено только ему
+  // (onlyIds) — коллеги остаются фоном занятости.
+  const onboardNew = (staffId) => {
+    const nw = staff.find(x => String(x.id) === String(staffId));
+    if (!nw) return;
+    const fb = frozenBefore();
+    if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
+    snapUndo();
+    const vLocks = {};
+    Object.entries(plan).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    Object.entries(locks).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey,
+      wishes: wishes || {}, hardOff, onlyIds: new Set([String(staffId)]), freezeBefore: fb });
+    if (!res.plan) return;
+    setPlan(res.plan);
+    setDirty(true); setConfirmClear(false); setGenKey(k => k + 1); vibrate("success");
+    const got = Object.values(res.plan[staffId] || {}).filter(Boolean).length
+      - Object.values(plan[staffId] || {}).filter(Boolean).length;
+    setMsg(got > 0
+      ? `${nw.name} получил(а) ${got} ${got === 1 ? "смену" : got < 5 ? "смены" : "смен"} в свободные дыры — проверь черновик и сохрани`
+      : `Свободных дыр для ${nw.name} не нашлось: график уже закрыт. Сними смены у коллег (очисткой или тапами) и повтори`);
     setTimeout(() => setMsg(""), 6000);
   };
 
@@ -552,7 +644,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     if (!cfg || !staff.length) return;
     const fb = frozenBefore();
     if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey, wishes: wishes || {}, freezeBefore: fb });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey, wishes: wishes || {}, hardOff, freezeBefore: fb });
     if (!res.plan) return;
     snapUndo();
     setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
@@ -792,8 +884,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         onClick={() => { const m = M + 1; if (m > 11) { setM(0); setY(Y + 1); } else setM(m); }}>›</button>
     </div>
   );
-
-
 
   // ── Выгрузка графика картинкой ────────────────────────────────────
   // Рисуем на canvas вручную: внутри Telegram печать в PDF недоступна,
@@ -1537,6 +1627,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                   <div style={{ fontFamily:mono, fontSize:8.5, color:P.sub }}>{DOWL[dow(d)]}</div>
                   {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
                   {wishOf(me.id, d) ? <div style={{ fontSize:9, lineHeight:1.2 }}>🙏</div> : null}
+                  {hardOf(me.id, d) ? <div style={{ fontSize:9, lineHeight:1.2 }}>🚫</div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? "Отпуск" : sh ? sh.name : "Выходной"}</div>
@@ -1595,15 +1686,37 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                           Просьбы о выходных пока не включены — менеджеру нужно применить SQL-файл schedule-wishes.sql в Supabase
                         </div>
                       ) : !sh ? (
-                        <button className="sa-btn" disabled={wishes === null}
-                          onClick={() => setWish(me.id, d, !wishOf(me.id, d))}
-                          style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:9,
-                            padding:"9px 10px", fontSize:12.5,
-                            ...(wishOf(me.id, d) ? { borderColor:GOLD, color: a11y ? "#6B4E1A" : GOLD } : {}) }}>
-                          {wishes === null ? "…" : wishOf(me.id, d)
-                            ? "🙏 Просьба о выходном отправлена — отозвать"
-                            : "🙏 Попросить выходной в этот день"}
-                        </button>
+                        <div style={{ marginTop:9 }}>
+                          <button className="sa-btn" disabled={wishes === null}
+                            onClick={() => setWish(me.id, d, !wishOf(me.id, d))}
+                            style={{ ...ghost, width:"100%", boxSizing:"border-box",
+                              padding:"9px 10px", fontSize:12.5,
+                              ...(wishOf(me.id, d) ? { borderColor:GOLD, color: a11y ? "#6B4E1A" : GOLD } : {}) }}>
+                            {wishes === null ? "…" : wishOf(me.id, d)
+                              ? "🙏 Просьба о выходном отправлена — отозвать"
+                              : "🙏 Попросить выходной (если получится)"}
+                          </button>
+                          {wishesV2 ? (
+                            <button className="sa-btn" disabled={wishes === null}
+                              onClick={() => setWish(me.id, d, !hardOf(me.id, d), "hard")}
+                              style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:7,
+                                padding:"9px 10px", fontSize:12.5,
+                                ...(hardOf(me.id, d) ? { borderColor:P.warn, color:P.warn } : {}) }}>
+                              {wishes === null ? "…" : hardOf(me.id, d)
+                                ? "🚫 Отмечено «не смогу выйти» — снять"
+                                : `🚫 Не смогу выйти в этот день${(() => { const c = hardCapacity(d, me); return c.maxHard ? ` (мест: ${c.left})` : ""; })()}`}
+                            </button>
+                            {wishNote && wishNote.d === d ? (
+                              <div style={{ fontSize:11.5, color:P.warn, marginTop:7, lineHeight:1.5 }}>
+                                {wishNote.text}
+                              </div>
+                            ) : null}
+                          ) : (
+                            <div style={{ fontSize:10.5, color:P.sub, marginTop:7, fontStyle:"italic" }}>
+                              «Не смогу выйти» появится после обновления сервера (schedule-wishes-v2.sql)
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
                           На этот день уже стоит смена — о замене договорись с менеджером
@@ -1675,6 +1788,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       if (q && !q.extra) warns.push(`${sf.name} просил(а) выходной ${d}-го — стоит смена ${q.k}`);
     }));
   }
+  staff.forEach(sf => (hardOff[sf.id] || []).forEach(d => {
+    const q = shiftOf(plan[sf.id]?.[d]);
+    if (q) warns.push(`${sf.name} НЕ СМОЖЕТ выйти ${d}-го — а смена ${q.k} стоит! Срочно замени`);
+  }));
   let need = 0, have = 0;
   for (let d = 1; d <= DAYS; d++) POS.forEach(({ id: pos }) => {
     const n = needOf(d)[pos] || 0; need += n;
@@ -1781,6 +1898,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
           onChange={e => { if (e.target.value) clearScope({ staffId: e.target.value }); }}>
           <option value="">Выбрать сотрудника…</option>
+          {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          новенький пришёл — дать ему смены
+        </div>
+        <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
+          Сначала добавь человека в настройках. Он получит только свободные
+          дыры будущих дней — чужие смены не изменятся.
+        </div>
+        <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
+          onChange={e => { if (e.target.value) onboardNew(e.target.value); }}>
+          <option value="">Выбрать новенького…</option>
           {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
         <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
@@ -1966,6 +2095,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                     <span style={{ position:"absolute", bottom:-2, left:-2, width:6, height:6,
                                       borderRadius:3, border:`1.4px solid ${GOLD}`, background:"transparent" }} />
                                   ) : null}
+                                  {hardOf(s.id, d) ? (
+                                    <span style={{ position:"absolute", bottom:-2, left:-2, width:6, height:6,
+                                      borderRadius:3, border:`1.4px solid ${P.warn}`, background:"transparent" }} />
+                                  ) : null}
                                 </div>
                               </td>
                             );
@@ -2111,7 +2244,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div className="sa-schednote ok">🎯 Нарушений нет: смены закрыты, нормы соблюдены.</div>
       ) : (
         <div className="sa-schednote bad">
-          💡 Замечаний: {warns.length} · красная точка = нарушение правил, золотой уголок = просьба о выходном, звёздочка у часов = отпуск учтён в норме
+          💡 Замечаний: {warns.length} · красная точка = нарушение, золотой уголок = просьба о выходном, красный уголок = «не смогу выйти», звёздочка = отпуск в норме
           <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
             {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
             {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}

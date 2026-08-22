@@ -1706,16 +1706,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                 ? "🚫 Отмечено «не смогу выйти» — снять"
                                 : `🚫 Не смогу выйти в этот день${(() => { const c = hardCapacity(d, me); return c.maxHard ? ` (мест: ${c.left})` : ""; })()}`}
                             </button>
-                            {wishNote && wishNote.d === d ? (
-                              <div style={{ fontSize:11.5, color:P.warn, marginTop:7, lineHeight:1.5 }}>
-                                {wishNote.text}
-                              </div>
-                            ) : null}
                           ) : (
                             <div style={{ fontSize:10.5, color:P.sub, marginTop:7, fontStyle:"italic" }}>
                               «Не смогу выйти» появится после обновления сервера (schedule-wishes-v2.sql)
                             </div>
                           )}
+                          {wishNote && wishNote.d === d ? (
+                            <div style={{ fontSize:11.5, color:P.warn, marginTop:7, lineHeight:1.5 }}>
+                              {wishNote.text}
+                            </div>
+                          ) : null}
                         </div>
                       ) : (
                         <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>

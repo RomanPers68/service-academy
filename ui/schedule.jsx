@@ -644,15 +644,34 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     if (!cfg || !staff.length) return;
     const fb = frozenBefore();
     if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey, wishes: wishes || {}, hardOff, freezeBefore: fb });
+    // ДОЗАПОЛНЕНИЕ, а не пересборка: всё уже расставленное фиксируется
+    // виртуальными замками — генератор закрывает только дыры. Прод-кейс:
+    // стёр одну должность → «Заполнить» перетасовывал весь месяц, хотя
+    // люди уже видели свои смены. Пересборка с нуля — через очистку.
+    const vLocks = {};
+    Object.entries(plan).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    Object.entries(locks).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    const cells = (pm) => Object.values(pm || {}).reduce((a, ds) => a + Object.values(ds || {}).filter(Boolean).length, 0);
+    const before = cells(plan);
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, freezeBefore: fb });
     if (!res.plan) return;
+    const added = cells(res.plan) - before;
     snapUndo();
     setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
     vibrate(res.shortage ? "light" : "success");
-    setMsg(res.shortage
-      ? `Черновик готов (ген 3${fb > 1 ? ", прошедшие дни не тронуты" : ""}): не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
-      : `Черновик готов (ген 3${fb > 1 ? ", прошедшие дни не тронуты" : ""}): все смены закрыты`);
-    setTimeout(() => setMsg(""), 3500);
+    const frozenNote = fb > 1 ? ", прошедшие дни не тронуты" : "";
+    setMsg(added > 0
+      ? (res.shortage
+        ? `Дозаполнено ${added} ${added === 1 ? "смена" : added < 5 ? "смены" : "смен"} (ген 3${frozenNote}), но ${res.shortage} закрыть некем — детали в проверке`
+        : `Дозаполнено ${added} ${added === 1 ? "смена" : added < 5 ? "смены" : "смен"} (ген 3${frozenNote}) — существующие не тронуты`)
+      : (res.shortage
+        ? `Дыры есть (${res.shortage}), но закрыть их некем — детали в проверке ниже`
+        : "Всё уже расставлено. Пересобрать с нуля? Сначала «Очистить месяц» (или должность) — потом «Заполнить»"));
+    setTimeout(() => setMsg(""), 5000);
   };
 
   // ── Проверка ──────────────────────────────────────────────────────
@@ -1374,10 +1393,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <Num inp={inp} v={sf.norm} min={0} max={320} set={v => patch(c => { c.staff[i].norm = v; })} />
               </Field>
             </div>
-            <div style={{ ...rowStyle, borderTop:"none" }}>
-              <Field label="телефон · для связи в смене" P={P}>
+            <div style={{ ...rowStyle, borderTop:"none", display:"flex", gap:8 }}>
+              <Field label="телефон · для связи" P={P}>
                 <Text inp={inp} v={sf.phone || ""} maxLength={20} style={{ width:"100%" }}
                   set={val => patch(c => { c.staff[i].phone = val; })} />
+              </Field>
+              <Field label="ставка, ₽/ч" P={P}>
+                <Num inp={inp} v={sf.rate || 0} min={0} max={20000}
+                  set={v => patch(c => { c.staff[i].rate = v; })} />
               </Field>
             </div>
 
@@ -1549,6 +1572,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       ) : (<>
         <div style={card}>
           <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {effNorm(me)} ч{effNorm(me) !== me.norm ? <span style={{ color:P.sub }}> · отпуск учтён</span> : null}</span></div>
+          {me.rate > 0 ? (
+            <div style={{ fontSize:12.5, color:P.text, margin:"2px 0 8px" }}>
+              Заработок за месяц: <b style={{ color:P.acc }}>≈ {(hoursOf(me) * me.rate).toLocaleString("ru-RU")} ₽</b>
+              <span style={{ color:P.sub }}> · по ставке {me.rate} ₽/ч, по сменам в графике</span>
+            </div>
+          ) : null}
           {(() => {
             // Первый вопрос при открытии графика — «когда моя ближайшая смена?».
             // Отвечаем сразу, в одну строку, не заставляя сканировать список.
@@ -1567,6 +1596,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 ) : (
                   <span style={{ color:P.sub }}>в этом месяце смен больше нет</span>
                 )}
+              </div>
+            );
+          })()}
+          {(() => {
+            // Контакты «на связи»: раньше телефоны жили только в настройках
+            // и у старшего смены — сотрудник их не видел (замечание владельца)
+            const bosses = staff.filter(x => x.phone && x.id !== me.id);
+            if (!bosses.length) return null;
+            return (
+              <div style={{ display:"flex", alignItems:"baseline", gap:7, flexWrap:"wrap", margin:"0 0 10px",
+                paddingBottom:9, borderBottom:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+                <span style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub }}>на связи</span>
+                {bosses.map(b => (
+                  <span key={b.id} style={{ fontSize:12.5 }}>
+                    <CallName who={b} label={`✆ ${b.name}`} color={P.acc} />
+                  </span>
+                ))}
               </div>
             );
           })()}
@@ -2207,12 +2253,33 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       ) : (
         <div className="sa-schednote bad">
           💡 Замечаний: {warns.length} · красная точка = нарушение, золотой уголок = просьба о выходном, красный уголок = «не смогу выйти», звёздочка = отпуск в норме
-          <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
+        <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
             {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
             {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}
           </ul>
         </div>
       )}
+      {staff.some(x => x.rate > 0) ? (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+          <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+            зарплата · по ставкам и сменам черновика
+          </div>
+          {staff.filter(x => x.rate > 0).map(x => (
+            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
+              <span>{x.name}</span>
+              <span style={{ fontFamily:mono }}>{hoursOf(x)} ч × {x.rate} = <b style={{ color:P.acc }}>{(hoursOf(x) * x.rate).toLocaleString("ru-RU")} ₽</b></span>
+            </div>
+          ))}
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"6px 0 0", marginTop:4,
+            borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.3)" : "rgba(255,255,255,0.15)"}` }}>
+            <b>Итого фонд</b>
+            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (x.rate > 0 ? hoursOf(x) * x.rate : 0), 0).toLocaleString("ru-RU")} ₽</b>
+          </div>
+          <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
+            Считается по сменам текущего черновика. У кого ставка не задана — в фонд не входит.
+          </div>
+        </div>
+      ) : null}
     </div>
     )}
     </>}

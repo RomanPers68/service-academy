@@ -923,7 +923,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           fontSize:26, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
           onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ flex:1 }}>
-          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase", color:P.sub }}>График</div>
+          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase", color:P.sub }}>График · v64</div>
           <div style={{ color:P.text, fontSize:16, fontFamily:serif }}>{MONTHS_N[M]} {Y}</div>
         </div>
       </div>

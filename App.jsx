@@ -1507,6 +1507,10 @@ class ErrorBoundary extends React.Component {
   }
   componentDidCatch(error, info) {
     console.error("ServiceAcademy crashed:", error, info);
+    // Экран ошибки обязан быть ВИДЕН: если краш случился до снятия
+    // брендовой заставки, она (z-index 9999, вне #root) закрыла бы бокал
+    // вина — и снаружи это выглядело бы «вечной загрузкой» без диагноза
+    try { const sp = document.getElementById("sa-splash"); if (sp) sp.remove(); } catch (e) {}
     try { this.setState({ errStack: String((info && info.componentStack || "").split("\n").slice(0, 4).join(" · ")) }); } catch (e) {}
   }
   handleReload = () => {

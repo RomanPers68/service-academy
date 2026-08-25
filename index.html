@@ -41,7 +41,33 @@
       @keyframes saSplashPulse{0%,100%{opacity:.45}50%{opacity:1}}
     </style>
     <div id="sa-splash"><div class="mark">✦ SA</div></div>
-    <script>try{if(localStorage.getItem("sa_a11y")==="1")document.getElementById("sa-splash").className="light"}catch(e){}</script>
+    <script>
+      try{if(localStorage.getItem("sa_a11y")==="1")document.getElementById("sa-splash").className="light"}catch(e){}
+      /* Диагностика запуска: любая ранняя ошибка записывается, а если за
+         8 секунд приложение не поднялось — заставка сама говорит, что
+         случилось, вместо вечного мерцания (прод-кейс: Telegram держал
+         старый HTML с мёртвыми ссылками на файлы — «вечная загрузка»
+         на трёх устройствах без единого сообщения). */
+      window.__saErr = "";
+      window.addEventListener("error", function(e){
+        try{ window.__saErr = String((e && (e.message || (e.error && e.error.message))) || "ошибка загрузки"); }catch(_){}
+      }, true);
+      setTimeout(function(){
+        try{
+          var root = document.getElementById("root");
+          var sp = document.getElementById("sa-splash");
+          if (sp && root && !root.firstChild) {
+            var light = sp.className === "light";
+            sp.innerHTML = '<div style="max-width:280px;text-align:center;font-family:Georgia,serif;line-height:1.65;color:' + (light ? "#5A431B" : "#C8A96E") + '">' +
+              '<div style="font-size:15px;letter-spacing:5px;margin-bottom:14px">✦ SA</div>' +
+              '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">Не удалось запустить приложение</div>' +
+              '<div style="font-size:12px;opacity:.85">Закрой мини-приложение полностью и открой заново. Если повторится — скажи менеджеру.' +
+              (window.__saErr ? '<br><br><span style="font-size:10px;opacity:.7">Техдетали: ' + window.__saErr.slice(0,140) + '</span>' : '') +
+              '</div></div>';
+          }
+        }catch(_){}
+      }, 8000);
+    </script>
     <div id="root"></div>
     <script type="module" src="/main.jsx?v=20260610"></script>
   </body>

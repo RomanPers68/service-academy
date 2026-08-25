@@ -136,7 +136,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           return (
             <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)", cursor:"pointer" }}>
+              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)", cursor:"pointer" }}>
                 <div style={{ borderRadius:14.5, padding:"12px 13px", background: "transparent" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:11 }}>
                     <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? "rgba(200,169,110,0.13)" : `${RC}26`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -170,7 +170,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
               {...onActivate(() => onSchedule && onSchedule())}
               style={{
                 borderRadius: 16, padding: "12px 13px", cursor: "pointer",
-                background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`,
+                background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`,
                 boxShadow: a11y
                   ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
                   : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)",

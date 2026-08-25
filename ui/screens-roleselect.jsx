@@ -136,7 +136,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           return (
             <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)", cursor:"pointer" }}>
+              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)", cursor:"pointer" }}>
                 <div style={{ borderRadius:14.5, padding:"12px 13px", background: "transparent" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:11 }}>
                     <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? "rgba(200,169,110,0.13)" : `${RC}26`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -170,7 +170,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
               {...onActivate(() => onSchedule && onSchedule())}
               style={{
                 borderRadius: 16, padding: "12px 13px", cursor: "pointer",
-                background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`,
+                background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`,
                 boxShadow: a11y
                   ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
                   : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)",
@@ -240,8 +240,12 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
           const Cc = moodPalette(a11y);
           const sosR = a11y ? "#A03828" : "#E07878";
           const tiles = [];
-          if (onAssistant) tiles.push({ key:"ai", label:"Ассистент", onClick:onAssistant, icon:(
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z"/><text x="12" y="14.2" textAnchor="middle" fontSize="7.5" fontWeight="bold" fontFamily="Georgia, serif" letterSpacing="0.3" fill={Cc.gold} stroke="none">AI</text></svg>
+          // Плитки «Ассистент» больше нет: плавающая AI-кнопка и так на каждом
+          // экране — два одинаковых входа на главной путали (замечание владельца)
+          // Справочник — первым и с золотой оправой: раньше прятался седьмым
+          // за горизонтом скролла, а он для всей команды
+          if (onReference) tiles.push({ key:"sp", label:"Справочник", accent:true, onClick:onReference, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
           )});
           if (onCandidate) tiles.push({ key:"hire", label:"Собеседование", onClick:onCandidate, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 3.5a4 4 0 0 1 0 7"/><path d="M19 8h4M21 6v4"/></svg>
@@ -257,9 +261,6 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
           )});
           if (onAnalytics && (["manager","senior"].includes(profile?.position) || profile?.is_admin)) tiles.push({ key:"an", label:"Аналитика", onClick:onAnalytics, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5v14h16"/><path d="M8 15l3-4 3 2 4-6"/></svg>
-          )});
-          if (onReference) tiles.push({ key:"sp", label:"Справочник", onClick:onReference, icon:(
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
           )});
           if (onMenuTrainer) tiles.push({ key:"menu", label:"Меню", onClick:onMenuTrainer, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3v7a2 2 0 0 0 2 2h0V3"/><path d="M11 3v18"/><path d="M7 12v9"/><path d="M17 3c-1.7 0-3 2.2-3 5s1.3 5 3 5v8"/></svg>
@@ -280,7 +281,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
           const isStaff = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
           const anyDone = Object.keys(completed || {}).length > 0 || Object.keys(quizDone || {}).length > 0;
           const newbie = !isStaff && !anyDone;
-          const visibleTiles = newbie ? tiles.filter(t => ["ai", "sos", "ob", "sp"].includes(t.key)) : tiles;
+          const visibleTiles = newbie ? tiles.filter(t => ["sos", "ob", "sp"].includes(t.key)) : tiles;
           // Бейджи-события: новинки меню (реальные данные)
           const menuNew = countNewDishes(profile?.restaurant);
           return (
@@ -292,7 +293,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
               {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 return (
-                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:88, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
+                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:88, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
                     <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: "transparent" }}>
                       <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.20)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
                       <TokenEyelet />

@@ -903,10 +903,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       bad:"#A33A2A", good:"#4A6B4A", hol:"#A33A2A", empty:"#CFC5AE",
     };
     const S = 2;                                     // множитель под ретину
-    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = forPrint ? 64 : 86;
+    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 64;
     const groups = POS.map(p => ({ ...p, list: staff.filter(x => x.pos === p.id) })).filter(g => g.list.length);
-    // Печать: без строки «есть/нужно» — лист для стены, не для аудита
-    const rows = groups.reduce((a, g) => a + g.list.length + (forPrint ? 1 : 2), 0);
+    // Экспорт без строки «есть/нужно» в ОБЕИХ версиях: полотно — витрина
+    // для команды, аудит недоборов живёт в таблице приложения
+    const rows = groups.reduce((a, g) => a + g.list.length + 1, 0);
     const W = NAME + DAYS * CELL;
     const H = HEAD + rows * ROW + FOOT;
 
@@ -930,19 +931,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     x.fillStyle = C.dim; x.font = "12px Georgia, serif";
     const made = `составлен ${new Date().toLocaleDateString("ru-RU")} · ген 3`;
     x.fillText(made, W - 16 - x.measureText(made).width, 50);
-    // Диагностика конфига (потребность/разбивка) рисуется в ПОДВАЛЕ:
-    // в шапке она ложилась поверх строки дней (прод-артефакт со скрина)
-    const diagText = (() => {
-      const diag = POS.map(({ id: pos, t }) => {
-        const nn = [1, 2, 3].map(l => (cfg.need?.[l] || {})[pos] || 0);
-        if (!nn.some(Boolean)) return null;
-        const sp = (cfg.split || {})[pos];
-        const spTxt = sp && Object.keys(sp).length
-          ? " (" + Object.entries(sp).map(([k, c]) => k + c).join("+") + ")" : "";
-        return `${t} ${nn.join("/")}${spTxt}`;
-      }).filter(Boolean).join(" · ");
-      return `потребность (об/выс/пик): ${diag}${cfg.evening && cfg.evening.count ? " · вечернее усиление: " + cfg.evening.shift + "+" + cfg.evening.count : ""}`;
-    })();
+    // Диагностика конфига из экспорта убрана (Доп. 54): аудит живёт в
+    // таблице приложения, полотно — чистая витрина для команды.
     // Золотая линия отделяет шапку от полотна (в печати — серая)
     x.strokeStyle = forPrint ? C.lineHard : "#C8A96E"; x.lineWidth = 2;
     x.beginPath(); x.moveTo(0, HEAD - 26); x.lineTo(W, HEAD - 26); x.stroke();
@@ -982,13 +972,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       x.fillStyle = C.grpBg; x.fillRect(0, y, W, ROW);
       x.fillStyle = C.text; x.font = "600 11px ui-monospace, Menlo, monospace";
       x.fillText(g.t.toUpperCase(), 12, y + ROW / 2);
-      if (!forPrint) {
-        x.font = "11px ui-monospace, Menlo, monospace";
-        for (let d = 1; d <= DAYS; d++) {
-          x.fillStyle = C.faint;
-          x.fillText(String(needOf(d)[g.id] || 0), NAME + (d - 1) * CELL + CELL / 2 - 3, y + ROW / 2);
-        }
-      }
       line(y); line(y + ROW); y += ROW;
 
       // люди
@@ -1019,24 +1002,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         line(y + ROW); y += ROW;
       });
 
-      // добор (в печати строки нет — лист чище)
-      if (!forPrint) {
-      x.font = "10px ui-monospace, Menlo, monospace";
-      x.fillStyle = C.faint; x.fillText("есть / нужно", 12, y + ROW / 2);
-      for (let d = 1; d <= DAYS; d++) {
-        const n = needOf(d)[g.id] || 0;
-        const have = g.list.filter(s => { const sh = shiftOf(plan[s.id]?.[d]); return sh && !sh.extra; }).length;
-        const short = have < n;
-        const cx = NAME + (d - 1) * CELL;
-        if (short && !forPrint) { x.fillStyle = "rgba(163,58,42,0.10)"; x.fillRect(cx + 2, y + 4, CELL - 4, ROW - 8); }
-        x.fillStyle = short ? C.bad : C.good;
-        x.font = short ? "600 10px ui-monospace, Menlo, monospace" : "10px ui-monospace, Menlo, monospace";
-        x.fillText(`${have}/${n}` + (short ? "!" : ""), cx + CELL / 2 - (short ? 12 : 9), y + ROW / 2);
-      }
-      line(y + ROW, C.lineHard); y += ROW;
-      } else {
-        line(y, C.lineHard);   // граница группы вместо строки добора
-      }
+      line(y, C.lineHard);   // жирная граница группы
     });
 
     // вертикальные линии недель
@@ -1067,10 +1033,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       x.fillText(t.rest, lx + wMark, ly);
       lx += w;
     });
-    if (!forPrint) {
-      x.fillStyle = C.faint; x.font = "500 9px ui-monospace, Menlo, monospace";
-      x.fillText(diagText, 12, ly + 18);
-    }
     return cv;
   };
 

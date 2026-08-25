@@ -1011,11 +1011,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y + 1, CELL, ROW - 1); }
           const k = plan[s.id]?.[d] || "";
           const vac = onVac(s, d), fix = !k && !vac && (s.off || []).includes(dow(d));
-          const glyph = k || (vac ? "О" : fix ? "×" : "·");
+          const glyph = k || (vac ? "О" : fix ? "✕" : "·");
           const chip = CHIP && CHIP[glyph];
           if (chip) { x.fillStyle = chip.bg; rr(cx + 5, y + 5, CELL - 10, ROW - 10, 6); x.fill(); }
           x.font = "600 13px ui-monospace, Menlo, monospace";
-          x.fillStyle = chip ? chip.fg : k ? kColor(k) : vac ? C.hol : fix ? C.faint : C.empty;
+          x.fillStyle = chip ? chip.fg : k ? kColor(k) : vac ? C.hol : fix ? C.dim : C.empty;
           x.fillText(glyph, cx + CELL / 2 - 5, y + ROW / 2);
         }
         line(y + ROW); y += ROW;
@@ -1036,7 +1036,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     const legend = (cfg.shifts || []).map(sh => ({
       mark: sh.k, mc: kColor(sh.k),
       rest: ` — ${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00${sh.extra ? " (вручную)" : ""}`,
-    })).concat([{ mark: "О", mc: C.hol, rest: " — отпуск" }, { mark: "×", mc: C.faint, rest: " — постоянный выходной" }]);
+    })).concat([{ mark: "О", mc: C.hol, rest: " — отпуск" }, { mark: "✕", mc: C.dim, rest: " — постоянный выходной" }]);
     let lx = 12, ly = y + 22;
     legend.forEach(t => {
       x.font = "600 11px ui-monospace, Menlo, monospace";
@@ -2008,6 +2008,31 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             ? "Весь месяц: таблица листается вбок. Выбери неделю — влезет без прокрутки"
             : "Тап по клетке меняет смену и закрепляет её"}
         </div>
+        {/* Мини-легенда: палитра смен читается без экспорта и без памяти */}
+        <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", margin:"2px 0 9px" }}>
+          {(cfg.shifts || []).map((sh2, i2) => {
+            const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
+            return (
+              <span key={sh2.k} style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
+                <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:9,
+                  color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
+                  border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{sh2.k}</span>
+                {sh2.name}
+              </span>
+            );
+          })}
+          <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
+            <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:9,
+              color: a11y ? "#8B3020" : "#E0A0A0", background: a11y ? "rgba(224,120,120,.14)" : "rgba(224,120,120,.10)",
+              border:"1px solid rgba(224,120,120,.35)" }}>О</span>
+            отпуск
+          </span>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
+            <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:12,
+              fontWeight:600, color: a11y ? "#6B5B40" : "#9A8A72" }}>✕</span>
+            пост. выходной
+          </span>
+        </div>
         <div className="sa-schedgrid sa-hscroll">
           <table style={{ borderCollapse:"separate", borderSpacing:0, fontFamily:mono }}>
             <tbody key={"g" + genKey + ":" + weekIdx}>
@@ -2079,10 +2104,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                   borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                                 <div style={{
                                   width:22, height:22, margin:"0 auto", borderRadius:6, display:"grid", placeItems:"center",
-                                  fontSize:9, position:"relative",
+                                  // Крестик постоянного выходного — крупнее и плотнее: девятый
+                                  // кегль тусклым цветом было «для зорких» (замечание владельца)
+                                  fontSize: !k && !vac && fixedOff ? 13 : 9,
+                                  fontWeight: !k && !vac && fixedOff ? 600 : undefined,
+                                  position:"relative",
                                   color: col ? (a11y ? col.fgL : col.fg)
                                     : vac ? (a11y ? "#8B3020" : "#E0A0A0")
-                                    : fixedOff ? (a11y ? "#8A7A5C" : "#7A6A54")
+                                    : fixedOff ? (a11y ? "#6B5B40" : "#9A8A72")
                                     : (a11y ? "#B9AE97" : "#4A4136"),
                                   background: col ? (a11y ? col.bgL : col.bg)
                                     : vac ? (a11y ? "rgba(224,120,120,.14)" : "rgba(224,120,120,.10)")
@@ -2094,7 +2123,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                     : isLocked(s.id, d) ? `0 0 0 1.5px ${GOLD}D0` : undefined,
                                   animationDelay: `${ri * 45 + di * 7}ms`,
                                 }} className={k ? "sa-schedchip" : undefined}
-                                >{k || (vac ? "О" : fixedOff ? "×" : "·")}
+                                >{k || (vac ? "О" : fixedOff ? "✕" : "·")}
                                   {badCells.has(s.id + ":" + d) ? (
                                     <span style={{ position:"absolute", top:-2, right:-2, width:6, height:6,
                                       borderRadius:3, background:P.warn, boxShadow:"0 0 4px rgba(224,120,120,0.8)" }} />

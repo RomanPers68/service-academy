@@ -277,6 +277,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [facts, setFacts] = React.useState({});
   const [factMode, setFactMode] = React.useState(false);
   const [factEdit, setFactEdit] = React.useState(null);   // { id, d }
+  // Аналитика внизу страницы свёрнута в секции-кнопки (замечание владельца:
+  // «страница перегружена — сделай как в настройках»). Раскрыт максимум один.
+  const [anOpen, setAnOpen] = React.useState(null);
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
 
@@ -1397,34 +1400,70 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
           color:P.sub, padding:"14px 0 5px" }}>разбивка по сменам</div>
         {POS.map(({ id, t }) => {
-          const sp = (cfg.split || {})[id];
-          const total = Math.max(...[1,2,3].map(l => cfg.need[l]?.[id] || 0));
-          if (!total) return null;
-          const sum = sp ? Object.values(sp).reduce((a, v) => a + (v || 0), 0) : 0;
+          const spRaw = (cfg.split || {})[id];
+          const byLvl = !!spRaw && Object.keys(spRaw).length > 0
+            && Object.keys(spRaw).every(k => k === "1" || k === "2" || k === "3");
+          const totalMax = Math.max(...[1, 2, 3].map(l => cfg.need[l]?.[id] || 0));
+          if (!totalMax) return null;
+          const letters = (cfg.shifts || []).filter(x => !x.extra);
+          const writeFlat = (k, v) => patch(c => {
+            if (!c.split) c.split = {};
+            const cur = { ...(c.split[id] || {}) };
+            if (v) cur[k] = v; else delete cur[k];
+            if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
+          });
+          const writeLvl = (lv, k, v) => patch(c => {
+            if (!c.split) c.split = {};
+            const cur = { ...(c.split[id] || {}) };
+            const lo = { ...(cur[lv] || {}) };
+            if (v) lo[k] = v; else delete lo[k];
+            if (Object.keys(lo).length) cur[lv] = lo; else delete cur[lv];
+            if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
+          });
+          const steppers = (spCur, write) => letters.map(sh => (
+            <div key={sh.k} style={{ display:"flex", alignItems:"center", gap:5 }}>
+              <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{sh.k}</span>
+              <Num inp={inp} v={(spCur && spCur[sh.k]) || 0} min={0} max={20} set={v => write(sh.k, v)} />
+            </div>
+          ));
+          const sumOf = (o) => o ? Object.values(o).reduce((a, v) => a + (v || 0), 0) : 0;
           return (
             <div key={id} style={{ ...rowStyle, flexWrap:"wrap" }}>
-              <span style={{ flex:"1 1 100%", fontSize:12.5, color:P.sub, marginBottom:4 }}>
-                {t}
-                {sp ? <span style={{ color: sum === total ? P.acc : P.warn }}> · {sum} из {total}</span>
-                    : <span style={{ color:P.sub }}> · все в основную смену</span>}
+              <span style={{ flex:"1 1 100%", fontSize:12.5, color:P.sub, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ flex:1 }}>{t}</span>
+                <Pill a11y={a11y} P={P} on={!byLvl} style={{ padding:"5px 9px", fontSize:10.5 }}
+                  onClick={() => { if (!byLvl) return; patch(c => {
+                    const base = (c.split?.[id]?.["1"]) || (c.split?.[id]?.["3"]) || {};
+                    if (Object.keys(base).length) c.split[id] = { ...base }; else if (c.split) delete c.split[id];
+                  }); }}>одинаковая</Pill>
+                <Pill a11y={a11y} P={P} on={byLvl} style={{ padding:"5px 9px", fontSize:10.5 }}
+                  onClick={() => { if (byLvl) return; patch(c => {
+                    if (!c.split) c.split = {};
+                    c.split[id] = { "1": { ...(c.split[id] || {}) } };
+                  }); }}>по типу дня</Pill>
               </span>
-              {(cfg.shifts || []).filter(x => !x.extra).map(sh => (
-                <div key={sh.k} style={{ display:"flex", alignItems:"center", gap:5 }}>
-                  <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{sh.k}</span>
-                  <Num inp={inp} v={(sp && sp[sh.k]) || 0} min={0} max={20}
-                    set={v => patch(c => {
-                      if (!c.split) c.split = {};
-                      const cur = { ...(c.split[id] || {}) };
-                      if (v) cur[sh.k] = v; else delete cur[sh.k];
-                      if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
-                    })} />
-                </div>
-              ))}
+              {!byLvl ? (<>
+                <span style={{ flex:"1 1 100%", fontSize:11, color: sumOf(spRaw) === 0 ? P.sub : sumOf(spRaw) <= totalMax ? P.acc : P.warn, marginBottom:4 }}>
+                  {sumOf(spRaw) === 0 ? "все в основную смену" : sumOf(spRaw) + " из " + totalMax + (sumOf(spRaw) > totalMax ? " — больше потребности!" : "")}
+                </span>
+                {steppers(spRaw, writeFlat)}
+              </>) : ([["1", "обычный день"], ["2", "высокий"], ["3", "пик"]].map(([lv, nm]) => {
+                const spL = spRaw[lv]; const needL = cfg.need[+lv]?.[id] || 0;
+                return (
+                  <div key={lv} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:5 }}>
+                    <span style={{ fontFamily:mono, fontSize:10, color:P.sub, width:92 }}>{nm} · {needL} чел</span>
+                    {steppers(spL, (k, v) => writeLvl(lv, k, v))}
+                    {spL && sumOf(spL) > needL ? <span style={{ fontSize:10, color:P.warn }}>больше потребности!</span> : null}
+                  </div>
+                );
+              }))}
             </div>
           );
         })}
-        <div style={hintStyle}>Сколько человек в какой смене. Сумма должна совпадать с потребностью позиции —
-          если не совпадает, цифра краснеет. Ноль везде означает, что все выходят в основную смену.</div>
+        <div style={hintStyle}>Сколько человек в какой смене. «По типу дня» — своя структура для обычного,
+          высокого и пикового дня: межсезонье в будни ставит утро вместо вечера, выходные возвращают вечер.
+          Сумма может быть меньше потребности — остаток добирается основной сменой. Пустой уровень = весь
+          день в основную смену.</div>
       </Sec>
 
       <Sec no={5} title="Сотрудники" hint={openSec===5 ? "Кто работает, на какой позиции и сколько часов" : sum5} P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
@@ -1860,11 +1899,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // потребность забыли. Оценка верхняя: реальность будет чуть ниже.
   POS.forEach(({ id: pos, t }) => {
     let needTotal = 0;
-    for (let d = 1; d <= DAYS; d++) {
-      const sp = (cfg.split || {})[pos];
-      if (sp && Object.keys(sp).length) needTotal += Object.values(sp).reduce((a, v) => a + (v || 0), 0);
-      else needTotal += needOf(d)[pos] || 0;
-    }
+    // Разбивка после «ген 3» — структура В ПРЕДЕЛАХ потребности, а не
+    // объём поверх неё: честный месячный объём — сумма потребности по дням
+    for (let d = 1; d <= DAYS; d++) needTotal += needOf(d)[pos] || 0;
     if (!needTotal) return;
     let cap = 0;
     staff.filter(x => x.pos === pos).forEach(x => {
@@ -2339,8 +2376,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     </div>
 
     {staff.length ? (
-      <div style={card}>
-        <div style={eyebrow}><span>Отработано по людям</span><span style={{ color:P.acc }}>{MONTHS_R[M]}</span></div>
+      <Sec no="👥" title="Отработано по людям" hint={staff.length + " чел · " + MONTHS_R[M] + " · часы, смены и нормы каждого"}
+        open={anOpen === "people"} onToggle={() => setAnOpen(anOpen === "people" ? null : "people")} P={P}>
         {POS.map(({ id: pos, t }) => {
           const list = staff.filter(x => x.pos === pos);
           if (!list.length) return null;
@@ -2383,7 +2420,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </div>
           );
         })}
-      </div>
+      </Sec>
     ) : null}
 
     {staff.length ? (() => {
@@ -2395,9 +2432,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
       }, 0);
       return (
-        <div style={card}>
-          <div style={eyebrow}><span>Часы за месяц</span>
-            <span style={{ color:P.acc }}>норма месяца {monthNorm(40)} ч</span></div>
+        <Sec no="⏱" title="Часы за месяц" hint={shifts + " смен · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
+          open={anOpen === "month"} onToggle={() => setAnOpen(anOpen === "month" ? null : "month")} P={P}>
           <div style={{ display:"flex", gap:10 }}>
             {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (
               <div key={i} style={{ flex:1, textAlign:"center", padding:"11px 6px", borderRadius:14,
@@ -2420,7 +2456,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             {over.length ? <span style={{ color:P.warn }}> Переработка у {over.length}: {over.map(s => s.name).join(", ")}.</span> : null}
             {under.length ? <span> Заметный недобор у {under.length}: {under.map(s => s.name).join(", ")}.</span> : null}
           </div>
-        </div>
+        </Sec>
       );
     })() : null}
 
@@ -2434,8 +2470,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       </div>
     ) : (
-    <div style={card}>
-      <div style={eyebrow}><span>Проверка</span></div>
+    <Sec no="💡" title="Проверка и зарплата"
+      hint={(warns.length ? warns.length + " " + (warns.length === 1 ? "замечание" : warns.length < 5 ? "замечания" : "замечаний") : "нарушений нет")
+        + (staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0) > 0
+          ? " · фонд ≈ " + staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU") + " ₽" : "")}
+      open={anOpen === "audit"} onToggle={() => setAnOpen(anOpen === "audit" ? null : "audit")} P={P}>
       {!warns.length ? (
         <div className="sa-schednote ok">🎯 Нарушений нет: смены закрыты, нормы соблюдены.</div>
       ) : (
@@ -2468,7 +2507,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           </div>
         </div>
       ) : null}
-    </div>
+    </Sec>
     )}
     </>}
   </>);

@@ -260,17 +260,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const undoRef = React.useRef(null);
   const [undoTick, setUndoTick] = React.useState(0);
   const snapUndo = () => {
-    undoRef.current = { plan: JSON.parse(JSON.stringify(plan)), locks: JSON.parse(JSON.stringify(locks)) };
+    undoRef.current = { plan: JSON.parse(JSON.stringify(plan)), locks: JSON.parse(JSON.stringify(locks)), facts: JSON.parse(JSON.stringify(facts)) };
     setUndoTick(t => t + 1);
   };
   const undo = () => {
     const u = undoRef.current; if (!u) return;
-    setPlan(u.plan); setLocks(u.locks); undoRef.current = null;
+    setPlan(u.plan); setLocks(u.locks); if (u.facts) setFacts(u.facts); undoRef.current = null;
     setUndoTick(t => t + 1); setDirty(true); vibrate("light");
     setMsg("Вернул как было — не забудь сохранить"); setTimeout(() => setMsg(""), 2500);
   };
   const [swap, setSwap] = React.useState(false);       // режим обмена сменами (менеджер)
   const [swapSel, setSwapSel] = React.useState(null);  // первая выбранная клетка обмена
+  // Факт часов: сотрудник ушёл раньше (нет столов) или задержался —
+  // менеджер отмечает отработанное по факту, и ВСЯ математика (часы,
+  // зарплата, фонд, экспорт) считает честно. { staffId: { day: часы } }
+  const [facts, setFacts] = React.useState({});
+  const [factMode, setFactMode] = React.useState(false);
+  const [factEdit, setFactEdit] = React.useState(null);   // { id, d }
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
 
@@ -465,7 +471,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       setCfg(v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG });
       const m = (r.months || []).find(x => x.venue_key === venueKey);
       const pl = m?.payload || {};
-      setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {});
+      setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {}); setFacts(pl.facts || {});
       setSwapSel(null);   // выбор обмена не переживает смену месяца
       undoRef.current = null; setUndoTick(t => t + 1);   // и отмена тоже
       setDirty(false); setState("ok");
@@ -480,7 +486,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     try {
       const r = await rpc("schedule_save_month", {
         p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue_key: venueKey,
-        p_month: mkey, p_payload: JSON.stringify({ plan, locks, days }),
+        p_month: mkey, p_payload: JSON.stringify({ plan, locks, days, facts }),
       });
       if (r && r.ok === true) { setDirty(false); setMsg("Сохранено"); vibrate("success"); }
       else setMsg(r?.error === "forbidden" ? "Нет прав на изменение графика"
@@ -554,7 +560,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       });
       return nx;
     };
-    setPlan(p => strip(p)); setLocks(l => strip(l));
+    setPlan(p => strip(p)); setLocks(l => strip(l)); setFacts(f => strip(f));
     setDirty(true); setConfirmClear(false); vibrate("light");
     const what = scope.staffId
       ? `у ${staff.find(x => String(x.id) === String(scope.staffId))?.name || "сотрудника"}`
@@ -755,10 +761,32 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     return { hours, shifts, by };
   };
 
+  // Часы конкретного дня: факт (если менеджер отметил) важнее плана
+  const dayHoursOf = (s, d) => {
+    const sh = shiftOf(plan[s.id]?.[d]);
+    if (!sh) return 0;
+    const f = facts[s.id]?.[d];
+    return typeof f === "number" && f >= 0 ? f : len(sh);
+  };
   const hoursOf = s => {
     let h = 0;
-    for (let d = 1; d <= DAYS; d++) { const sh = shiftOf(plan[s.id]?.[d]); if (sh) h += len(sh); }
+    for (let d = 1; d <= DAYS; d++) h += dayHoursOf(s, d);
     return h;
+  };
+  const shiftsOf = s => {
+    let n = 0;
+    for (let d = 1; d <= DAYS; d++) if (shiftOf(plan[s.id]?.[d])) n++;
+    return n;
+  };
+  // Оплата труда: официанты — почасовая, бар/барбек/менеджеры — оклад,
+  // у кого-то посменная. Тип у каждого свой (rateMode), деньги — одна
+  // формула на всё приложение.
+  const payOf = (x) => {
+    if (!(x.rate > 0)) return null;
+    const mode = x.rateMode || "hour";
+    if (mode === "month") return { sum: x.rate, note: "оклад / мес" };
+    if (mode === "shift") { const n = shiftsOf(x); return { sum: n * x.rate, note: `${n} смен × ${x.rate}` }; }
+    return { sum: hoursOf(x) * x.rate, note: `${hoursOf(x)} ч × ${x.rate}` };
   };
   const leadObj = d =>
     staff.find(s => s.pos === "manager" && plan[s.id]?.[d] && !shiftOf(plan[s.id][d])?.extra) || null;
@@ -806,6 +834,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   const tapCell = (s, d) => {
     if (!isAdmin) return;
+    if (factMode) {
+      if (!shiftOf(plan[s.id]?.[d])) {
+        setMsg("Тут нет смены — факт отмечается на рабочем дне"); setTimeout(() => setMsg(""), 2200);
+        return;
+      }
+      setFactEdit({ id: s.id, d }); vibrate("light"); return;
+    }
     // Режим обмена: две тапнутые клетки меняются содержимым. Самая частая
     // просьба смены — «поменяйся со мной» — решается двумя касаниями.
     if (swap) {
@@ -1015,8 +1050,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
       // люди
       g.list.forEach((s, si) => {
-        let h = 0;
-        for (let d = 1; d <= DAYS; d++) { const sh = shiftOf(plan[s.id]?.[d]); if (sh) h += len(sh); }
+        const h = hoursOf(s);   // с учётом фактов «ушёл раньше»
         // Зебра чётных строк — глазу легче вести длинную строку (не в печати)
         if (!forPrint && si % 2 === 1) { x.fillStyle = "rgba(43,31,14,0.03)"; x.fillRect(0, y + 1, W, ROW - 1); }
         x.fillStyle = C.text; x.font = "13px Georgia, serif";
@@ -1441,10 +1475,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <Text inp={inp} v={sf.phone || ""} maxLength={20} style={{ width:"100%" }}
                   set={val => patch(c => { c.staff[i].phone = val; })} />
               </Field>
-              <Field label="ставка, ₽/ч" P={P}>
-                <Num inp={inp} v={sf.rate || 0} min={0} max={20000}
+              <Field label={"оплата, " + ({ hour:"₽/час", shift:"₽/смена", month:"₽/мес" }[sf.rateMode || "hour"])} P={P}>
+                <Num inp={inp} v={sf.rate || 0} min={0} max={sf.rateMode === "month" ? 2000000 : 20000}
                   set={v => patch(c => { c.staff[i].rate = v; })} />
               </Field>
+            </div>
+            <div style={{ display:"flex", gap:6, marginTop:6 }}>
+              {[["hour", "почасовая"], ["shift", "за смену"], ["month", "оклад/мес"]].map(([v, t]) => (
+                <Pill key={v} a11y={a11y} P={P} on={(sf.rateMode || "hour") === v} style={{ flex:1, padding:"7px 4px", fontSize:11 }}
+                  onClick={() => patch(c => { c.staff[i].rateMode = v; })}>{t}</Pill>
+              ))}
             </div>
 
             {/* Отпуск задаётся числами того месяца, который открыт сейчас */}
@@ -1615,10 +1655,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       ) : (<>
         <div style={card}>
           <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {effNorm(me)} ч{effNorm(me) !== me.norm ? <span style={{ color:P.sub }}> · отпуск учтён</span> : null}</span></div>
-          {me.rate > 0 ? (
+          {payOf(me) ? (
             <div style={{ fontSize:12.5, color:P.text, margin:"2px 0 8px" }}>
-              Заработок за месяц: <b style={{ color:P.acc }}>≈ {(hoursOf(me) * me.rate).toLocaleString("ru-RU")} ₽</b>
-              <span style={{ color:P.sub }}> · по ставке {me.rate} ₽/ч, по сменам в графике</span>
+              Заработок за месяц: <b style={{ color:P.acc }}>≈ {payOf(me).sum.toLocaleString("ru-RU")} ₽</b>
+              <span style={{ color:P.sub }}> · {payOf(me).note}{(me.rateMode || "hour") !== "month" ? ", по сменам в графике" : ""}</span>
             </div>
           ) : null}
           {(() => {
@@ -1729,6 +1769,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                         placeholder="Чаевые, важный день, напоминание…"
                         onFocus={focusScroll} onBlur={e => saveNote(d, e.target.value)}
                         style={{ ...INP(a11y, P), width:"100%", resize:"none", fontFamily:serif, fontSize:13, lineHeight:1.5 }} />
+                      {typeof facts[me.id]?.[d] === "number" && sh ? (
+                        <div style={{ fontSize:12, color:P.text, margin:"6px 0 2px" }}>
+                          Учтено по факту: <b style={{ color:P.acc }}>{facts[me.id][d]} ч</b>
+                          <span style={{ color:P.sub }}> · план {len(sh)} ч</span>
+                        </div>
+                      ) : null}
                       <div style={{ fontSize:10.5, color:P.sub, marginTop:4, fontStyle:"italic" }}>
                         Заметки видишь только ты — они живут на этом устройстве
                       </div>
@@ -1879,8 +1925,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
         ...(swap ? { background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:INK_DEEP,
           fontWeight:"bold", borderColor:GOLD } : {}) }} className="sa-btn"
-        onClick={() => { setSwap(!swap); setSwapSel(null); vibrate("light"); }}>
+        onClick={() => { setSwap(!swap); setSwapSel(null); setFactMode(false); setFactEdit(null); vibrate("light"); }}>
         {swap ? "Обмен: вкл" : "Обмен"}
+      </button>
+      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
+        ...(factMode ? { background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:INK_DEEP,
+          fontWeight:"bold", borderColor:GOLD } : {}) }} className="sa-btn"
+        onClick={() => { setFactMode(!factMode); setFactEdit(null); setSwap(false); setSwapSel(null); vibrate("light"); }}>
+        {factMode ? "Факт: вкл" : "Факт часов"}
       </button>
       {undoRef.current ? (
         <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px" }} className="sa-btn"
@@ -1925,6 +1977,45 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       </div>
     ) : null}
 
+    {factEdit ? (() => {
+      const fs = staff.find(x => String(x.id) === String(factEdit.id));
+      const k = fs && plan[fs.id]?.[factEdit.d];
+      const sh = k && shiftOf(k);
+      if (!fs || !sh) return null;
+      const planH = len(sh);
+      const cur = facts[fs.id]?.[factEdit.d];
+      const val = typeof cur === "number" ? cur : planH;
+      const setFact = (v) => {
+        setFacts(f => {
+          const nx = { ...f, [fs.id]: { ...(f[fs.id] || {}) } };
+          if (v === planH || v == null) { delete nx[fs.id][factEdit.d]; if (!Object.keys(nx[fs.id]).length) delete nx[fs.id]; }
+          else nx[fs.id][factEdit.d] = v;
+          return nx;
+        });
+        setDirty(true);
+      };
+      return (
+        <div style={{ ...card, marginTop:10 }}>
+          <div style={{ fontSize:13.5, color:P.text, marginBottom:8 }}>
+            <b>{fs.name}</b> · {factEdit.d} {MONTHS_R[M]} · смена {sh.name} ({planH} ч по плану)
+          </div>
+          <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap" }}>
+            <Field label="отработано по факту, ч" P={P}>
+              <Num inp={inp} v={val} min={0} max={24} set={setFact} />
+            </Field>
+            {typeof cur === "number" ? (
+              <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+                onClick={() => { setFact(null); vibrate("light"); }}>Вернуть по плану</button>
+            ) : null}
+            <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+              onClick={() => setFactEdit(null)}>Готово</button>
+          </div>
+          <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+            Часы и зарплата пересчитаются сразу. Не забудь «Сохранить», чтобы факт увидели все.
+          </div>
+        </div>
+      );
+    })() : null}
     {confirmClear ? (
       <div style={{ ...card, marginTop:10 }}>
         <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:10 }}>
@@ -2048,6 +2139,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginBottom:7 }}>
           {swap
             ? (swapSel ? "Теперь тапни вторую клетку — смены поменяются местами" : "Обмен: тапни первую клетку")
+            : factMode
+            ? "Факт часов: тапни клетку со сменой — отметишь, сколько человек отработал на самом деле"
             : weekIdx == null
             ? "Весь месяц: таблица листается вбок. Выбери неделю — влезет без прокрутки"
             : "Тап по клетке меняет смену и закрепляет её"}
@@ -2180,6 +2273,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                     <span style={{ position:"absolute", bottom:-2, left:-2, width:6, height:6,
                                       borderRadius:3, border:`1.4px solid ${P.warn}`, background:"transparent" }} />
                                   ) : null}
+                                  {typeof facts[s.id]?.[d] === "number" && k ? (
+                                    <span style={{ position:"absolute", bottom:-2, right:-2, width:6, height:6,
+                                      borderRadius:3, background:"#D4A85A", boxShadow:"0 0 4px rgba(212,168,90,0.7)" }} />
+                                  ) : null}
                                 </div>
                               </td>
                             );
@@ -2199,11 +2296,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           staff.forEach(x => {
             for (let d = 1; d <= DAYS; d++) {
               const q = shiftOf(plan[x.id]?.[d]);
-              if (q) { shifts++; hours += (q.to - q.from); }
+              if (q) { shifts++; hours += dayHoursOf(x, d); }
             }
           });
           if (!shifts) return null;
-          const fund = staff.reduce((a, x) => a + (x.rate > 0 ? hoursOf(x) * x.rate : 0), 0);
+          const fund = staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0);
           return (
             <div style={{ fontFamily:mono, fontSize:10, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
               итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
@@ -2355,19 +2452,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
             зарплата · по ставкам и сменам черновика
           </div>
-          {staff.filter(x => x.rate > 0).map(x => (
+          {staff.filter(x => payOf(x)).map(x => (
             <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
               <span>{x.name}</span>
-              <span style={{ fontFamily:mono }}>{hoursOf(x)} ч × {x.rate} = <b style={{ color:P.acc }}>{(hoursOf(x) * x.rate).toLocaleString("ru-RU")} ₽</b></span>
+              <span style={{ fontFamily:mono }}>{payOf(x).note} = <b style={{ color:P.acc }}>{payOf(x).sum.toLocaleString("ru-RU")} ₽</b></span>
             </div>
           ))}
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"6px 0 0", marginTop:4,
             borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.3)" : "rgba(255,255,255,0.15)"}` }}>
             <b>Итого фонд</b>
-            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (x.rate > 0 ? hoursOf(x) * x.rate : 0), 0).toLocaleString("ru-RU")} ₽</b>
+            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU")} ₽</b>
           </div>
           <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
-            Считается по сменам текущего черновика. У кого ставка не задана — в фонд не входит.
+            Почасовые и посменные — по сменам текущего черновика; оклады — фиксированно. У кого оплата не задана — в фонд не входит.
           </div>
         </div>
       ) : null}

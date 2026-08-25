@@ -1178,6 +1178,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     <div style={card}>
       <div style={eyebrow}><span>Настройки графика</span><span style={{ color:P.acc }}>{staff.length} чел.</span></div>
 
+      {/* Паспорт заведения: контекст до того, как открыл хоть одну секцию */}
+      <div style={{ ...card, marginBottom:10, padding:"12px 14px" }}>
+        <div style={{ fontFamily:serif, fontSize:15, color:P.text, marginBottom:6 }}>
+          {profile?.restaurant || "Заведение"}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", fontSize:11, color:P.sub }}>
+          <span>👥 {staff.length} {staff.length % 10 === 1 && staff.length % 100 !== 11 ? "сотрудник" : [2,3,4].includes(staff.length % 10) && ![12,13,14].includes(staff.length % 100) ? "сотрудника" : "сотрудников"}</span>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+            {(cfg.shifts || []).map((sh2, i2) => {
+              const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
+              return <span key={sh2.k} style={{ width:15, height:15, borderRadius:4, display:"grid", placeItems:"center",
+                fontSize:8.5, color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
+                border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{sh2.k}</span>;
+            })}
+          </span>
+          {(() => {
+            const sums = [1, 2, 3].map(l => POS.reduce((a, pp) => a + ((cfg.need?.[l] || {})[pp.id] || 0), 0)).filter(Boolean);
+            if (!sums.length) return null;
+            const lo = Math.min(...sums), hi = Math.max(...sums);
+            return <span>в день: {lo === hi ? lo : `${lo}–${hi}`} чел</span>;
+          })()}
+        </div>
+      </div>
       <Sec no={1} title="Часы работы" hint={openSec===1 ? "Когда открываемся и закрываемся в каждый день недели" : sum1} P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
         {DOWL.map((dl, i) => (
           <div key={i} style={rowStyle}>
@@ -1638,7 +1661,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                   {hardOf(me.id, d) ? <div style={{ fontSize:9, lineHeight:1.2 }}>🚫</div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? "Отпуск" : sh ? sh.name : "Выходной"}</div>
+                  <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? "Отпуск 🌊" : sh ? sh.name
+                    : ["Выходной", "Отдыхай ✨", "Твой день"][d % 3]}</div>
                   <div style={{ fontSize:11.5, color:P.sub }}>
                     {sh ? `${sh.from}:00 – ${sh.to > 24 ? sh.to - 24 : sh.to}:00` : (holName(d) || "")}
                     {sh && leadObj(d) ? <span style={{ color:P.acc }}> · старший:{" "}
@@ -2035,7 +2059,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
         <div className="sa-schedgrid sa-hscroll">
           <table style={{ borderCollapse:"separate", borderSpacing:0, fontFamily:mono }}>
-            <tbody key={"g" + genKey + ":" + weekIdx}>
+            <tbody key={"g" + genKey + ":" + weekIdx} className="sa-weekin">
               <tr>
                 <th className="sa-schednm" style={{ width:100, minWidth:100 }} />
                 {visibleDays.map(d => (
@@ -2149,6 +2173,24 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </tbody>
           </table>
         </div>
+        {/* Месяц одной строкой: менеджер видит масштаб без калькулятора */}
+        {(() => {
+          let shifts = 0, hours = 0;
+          staff.forEach(x => {
+            for (let d = 1; d <= DAYS; d++) {
+              const q = shiftOf(plan[x.id]?.[d]);
+              if (q) { shifts++; hours += (q.to - q.from); }
+            }
+          });
+          if (!shifts) return null;
+          const fund = staff.reduce((a, x) => a + (x.rate > 0 ? hoursOf(x) * x.rate : 0), 0);
+          return (
+            <div style={{ fontFamily:mono, fontSize:10, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
+              итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
+              {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}>{fund.toLocaleString("ru-RU")} ₽</span></> : null}
+            </div>
+          );
+        })()}
         </>
       )}
 

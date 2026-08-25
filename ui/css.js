@@ -309,7 +309,9 @@ export const injectStyles = () => {
       to{opacity:1;transform:scale(1)}
     }
     .sa-schedchip{animation:saChipIn .34s cubic-bezier(.25,.9,.35,1) both}
-    @media (prefers-reduced-motion: reduce){ .sa-schedchip{animation:none} }
+    @keyframes saWeekIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+    .sa-weekin{animation:saWeekIn .26s ease both}
+    @media (prefers-reduced-motion: reduce){ .sa-schedchip,.sa-weekin{animation:none} }
 
     /* Поля ввода в графике: цвет текста и подсказки задаём явно —
        iOS иначе подставляет системный, почти чёрный на тёмной теме. */

@@ -183,10 +183,30 @@ function Pill({ on, children, onClick, a11y, P, style }) {
 // идентичность каждый рендер, и React пересоздавал бы DOM ссылки впустую.
 const telHref = ph => "tel:" + String(ph).replace(/[^+\d]/g, "");
 function CallName({ who, label, color }) {
-  return who && who.phone ? (
-    <a href={telHref(who.phone)} onClick={e => e.stopPropagation()}
-      style={{ color, textDecoration:"none", borderBottom:`1px dashed ${color}AA` }}>{label}</a>
-  ) : <>{label}</>;
+  // Прод-урок: прямые tel:-ссылки Telegram-WebView часто глушит молча —
+  // тап «не делал ничего», и человек ждал, что номер хотя бы ПОЯВИТСЯ.
+  // Теперь тап раскрывает номер рядом (и тихо кладёт его в буфер), а сам
+  // раскрытый номер — ссылка на звонилку: где tel: работает — звонит,
+  // где нет — номер перед глазами и уже скопирован.
+  const [shown, setShown] = React.useState(false);
+  if (!(who && who.phone)) return <>{label}</>;
+  const tap = (e) => {
+    e.stopPropagation();
+    setShown(v => !v);
+    if (!shown) { try { navigator.clipboard?.writeText(String(who.phone)); } catch (err) {} }
+  };
+  return (
+    <span onClick={tap} style={{ color, cursor:"pointer" }}>
+      <span style={{ borderBottom:`1px dashed ${color}AA` }}>{label}</span>
+      {shown ? (
+        <a href={telHref(who.phone)} onClick={e => e.stopPropagation()}
+          style={{ color, textDecoration:"none", marginLeft:6, fontFamily:mono, fontSize:"0.92em",
+            padding:"1px 6px", borderRadius:6, border:`1px solid ${color}55`, whiteSpace:"nowrap" }}>
+          {who.phone} ↗
+        </a>
+      ) : null}
+    </span>
+  );
 }
 function Sec({ no, title, hint, open, onToggle, P, children }) {
   return (

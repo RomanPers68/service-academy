@@ -181,6 +181,22 @@ function Pill({ on, children, onClick, a11y, P, style }) {
 // звонит; stopPropagation — чтобы тап не сворачивал раскрытый день.
 // Компонент на уровне модуля: объявленный внутри экрана, он получал бы новую
 // идентичность каждый рендер, и React пересоздавал бы DOM ссылки впустую.
+// Фирменные линейные иконки вместо эмодзи: эмодзи в латунном интерьере
+// выглядели чужими (замечание владельца). Стиль — как у плиток главной:
+// тонкий штрих, скруглённые концы.
+const Ico = ({ size = 12, color = "#C8A96E", sw = 1.7, children, dy = 0 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+    style={{ flexShrink:0, verticalAlign: dy }}>{children}</svg>
+);
+const IcoUsers = (p) => <Ico {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" /><circle cx="17" cy="9" r="2.4" /><path d="M15.8 14.4c2.2.4 3.7 1.8 4.2 4.1" /></Ico>;
+const IcoClock = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Ico>;
+const IcoBulb = (p) => <Ico {...p}><path d="M9.5 18h5M10.5 21h3" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.7.5 1 1.3 1 2.1h5c0-.8.3-1.6 1-2.1A6 6 0 0 0 12 3z" /></Ico>;
+const IcoBan = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><path d="M6.2 6.2l11.6 11.6" /></Ico>;
+const IcoSun = (p) => <Ico {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" /></Ico>;
+const IcoTarget = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.3" /><circle cx="12" cy="12" r="0.8" fill={p.color || "#C8A96E"} stroke="none" /></Ico>;
+const IcoWave = (p) => <Ico {...p}><path d="M2.5 10c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /><path d="M2.5 16c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /></Ico>;
+const IcoPhone = (p) => <Ico {...p}><path d="M5.5 4h3.4l1.6 4-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4 1.6v3.4a2 2 0 0 1-2.2 2A17 17 0 0 1 3.5 6.2 2 2 0 0 1 5.5 4z" /></Ico>;
 const telHref = ph => "tel:" + String(ph).replace(/[^+\d]/g, "");
 function CallName({ who, label, color }) {
   // Прод-урок: прямые tel:-ссылки Telegram-WebView часто глушит молча —
@@ -923,7 +939,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           fontSize:26, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
           onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ flex:1 }}>
-          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase", color:P.sub }}>График · v64</div>
+          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase", color:P.sub }}>График</div>
           <div style={{ color:P.text, fontSize:16, fontFamily:serif }}>{MONTHS_N[M]} {Y}</div>
         </div>
       </div>
@@ -1241,7 +1257,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           {profile?.restaurant || "Заведение"}
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", fontSize:11, color:P.sub }}>
-          <span>👥 {staff.length} {staff.length % 10 === 1 && staff.length % 100 !== 11 ? "сотрудник" : [2,3,4].includes(staff.length % 10) && ![12,13,14].includes(staff.length % 100) ? "сотрудника" : "сотрудников"}</span>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}><IcoUsers size={12} color={P.sub} /> {staff.length} {staff.length % 10 === 1 && staff.length % 100 !== 11 ? "сотрудник" : [2,3,4].includes(staff.length % 10) && ![12,13,14].includes(staff.length % 100) ? "сотрудника" : "сотрудников"}</span>
           <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
             {(cfg.shifts || []).map((sh2, i2) => {
               const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
@@ -1477,7 +1493,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <div style={{ fontSize:13.5, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sf.name}</div>
                 <div style={{ fontSize:10.5, color:P.sub }}>
                   {posName(sf.pos)} · {sf.norm} ч
-                  {sf.phone ? " · ✆" : ""}
+                  {sf.phone ? <> · <IcoPhone size={10} color={P.sub} dy={-1} /></> : ""}
                   {vacOn(sf) ? " · отпуск" : ""}
                   {((sf.off || []).length || offDays(sf).length) ? " · есть выходные" : ""}
                 </div>
@@ -1732,7 +1748,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <span style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub }}>на связи</span>
                 {bosses.map(b => (
                   <span key={b.id} style={{ fontSize:12.5 }}>
-                    <CallName who={b} label={`✆ ${b.name}`} color={P.acc} />
+                    <CallName who={b} color={P.acc}
+                      label={<span style={{ display:"inline-flex", alignItems:"center", gap:4 }}><IcoPhone size={11} color={P.acc} /> {b.name}</span>} />
                   </span>
                 ))}
               </div>
@@ -1756,12 +1773,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                   <div style={{ fontSize:17, color: holOf(d) ? P.warn : P.text }}>{d}</div>
                   <div style={{ fontFamily:mono, fontSize:8.5, color:P.sub }}>{DOWL[dow(d)]}</div>
                   {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
-                  {wishOf(me.id, d) ? <div style={{ fontSize:9, lineHeight:1.2 }}>🙏</div> : null}
-                  {hardOf(me.id, d) ? <div style={{ fontSize:9, lineHeight:1.2 }}>🚫</div> : null}
+                  {wishOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoSun size={10} /></div> : null}
+                  {hardOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoBan size={10} color={P.warn} /></div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? "Отпуск 🌊" : sh ? sh.name
-                    : ["Выходной", "Отдыхай ✨", "Твой день"][d % 3]}</div>
+                  <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? <>Отпуск <IcoWave size={13} color={P.acc} dy={-2} /></> : sh ? sh.name
+                    : ["Выходной", "Отдыхай ✦", "Твой день"][d % 3]}</div>
                   <div style={{ fontSize:11.5, color:P.sub }}>
                     {sh ? `${sh.from}:00 – ${sh.to > 24 ? sh.to - 24 : sh.to}:00` : (holName(d) || "")}
                     {sh && leadObj(d) ? <span style={{ color:P.acc }}> · старший:{" "}
@@ -1830,8 +1847,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                               padding:"9px 10px", fontSize:12.5,
                               ...(wishOf(me.id, d) ? { borderColor:GOLD, color: a11y ? "#6B4E1A" : GOLD } : {}) }}>
                             {wishes === null ? "…" : wishOf(me.id, d)
-                              ? "🙏 Просьба о выходном отправлена — отозвать"
-                              : "🙏 Попросить выходной (если получится)"}
+                              ? <><IcoSun size={13} dy={-2} /> Просьба о выходном отправлена — отозвать</>
+                              : <><IcoSun size={13} dy={-2} /> Попросить выходной (если получится)</>}
                           </button>
                           {wishesV2 ? (
                             <button className="sa-btn" disabled={wishes === null}
@@ -1840,8 +1857,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                 padding:"9px 10px", fontSize:12.5,
                                 ...(hardOf(me.id, d) ? { borderColor:P.warn, color:P.warn } : {}) }}>
                               {wishes === null ? "…" : hardOf(me.id, d)
-                                ? "🚫 Отмечено «не смогу выйти» — снять"
-                                : `🚫 Не смогу выйти в этот день${(() => { const c = hardCapacity(d, me); return c.maxHard ? ` (мест: ${c.left})` : ""; })()}`}
+                                ? <><IcoBan size={13} color={P.warn} dy={-2} /> Отмечено «не смогу выйти» — снять</>
+                                : <><IcoBan size={13} color={P.warn} dy={-2} /> Не смогу выйти в этот день{(() => { const c = hardCapacity(d, me); return c.maxHard ? ` (мест: ${c.left})` : ""; })()}</>}
                             </button>
                           ) : (
                             <div style={{ fontSize:10.5, color:P.sub, marginTop:7, fontStyle:"italic" }}>
@@ -2108,143 +2125,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           onClick={() => setConfirmClear(false)}>Отмена</button>
       </div>
     ) : null}
-
-    {/* Аналитика — СВЕРХУ, под рукой (перенос из подвала: на проде хвост
-        страницы обрезался системно — здесь зона гарантированного рендера) */}
-    {staff.length ? (
-      <Sec no="👥" title="Отработано по людям" hint={staff.length + " чел · " + MONTHS_R[M] + " · часы, смены и нормы каждого"}
-        open={anOpen === "people"} onToggle={() => setAnOpen(anOpen === "people" ? null : "people")} P={P}>
-        {POS.map(({ id: pos, t }) => {
-          const list = staff.filter(x => x.pos === pos);
-          if (!list.length) return null;
-          return (
-            <div key={pos}>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:2, textTransform:"uppercase",
-                color:P.acc, margin:"12px 0 4px" }}>{t}</div>
-              {list.map(s => {
-                const b = breakdownOf(s);
-                const diff = b.hours - (s.norm || 0);
-                return (
-                  <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
-                    <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>{s.name}</div>
-                      <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
-                      <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
-                    </div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:6 }}>
-                      <span style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>{b.shifts} смен</span>
-                      {Object.entries(b.by).map(([k, v]) => {
-                        const c = colorOf(k);
-                        return (
-                          <span key={k} style={{ display:"flex", alignItems:"center", gap:4,
-                            fontFamily:mono, fontSize:10.5, color:P.sub }}>
-                            <i style={{ width:11, height:11, borderRadius:3, display:"inline-block",
-                              background: c ? (a11y ? c.bgL : c.bg) : "transparent",
-                              border:`1px solid ${c ? (a11y ? c.bdL : c.bd) : "transparent"}` }} />
-                            {k} · {v.n} × {v.h} ч
-                          </span>
-                        );
-                      })}
-                      <span style={{ fontFamily:mono, fontSize:10.5, marginLeft:"auto",
-                        color: diff > 0 ? P.warn : diff < 0 ? P.sub : P.acc }}>
-                        {diff > 0 ? `+${diff} ч сверх нормы` : diff < 0 ? `${-diff} ч недобор` : "норма закрыта"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </Sec>
-    ) : null}
-
-    {staff.length ? (() => {
-      const tot = staff.reduce((a, s) => a + hoursOf(s), 0);
-      const totNorm = staff.reduce((a, s) => a + (s.norm || 0), 0);
-      const over = staff.filter(s => hoursOf(s) > s.norm);
-      const under = staff.filter(s => hoursOf(s) < s.norm * 0.9);
-      const shifts = staff.reduce((a, s) => {
-        let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
-      }, 0);
-      return (
-        <Sec no="⏱" title="Часы за месяц" hint={shifts + " смен · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
-          open={anOpen === "month"} onToggle={() => setAnOpen(anOpen === "month" ? null : "month")} P={P}>
-          <div style={{ display:"flex", gap:10 }}>
-            {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (
-              <div key={i} style={{ flex:1, textAlign:"center", padding:"11px 6px", borderRadius:14,
-                background: a11y ? "rgba(250,242,222,0.72)" : "rgba(255,250,238,0.04)",
-                border:`1px solid ${a11y ? "rgba(175,140,65,0.26)" : "rgba(145,108,40,0.26)"}`,
-                borderTop:`1px solid ${a11y ? "rgba(255,240,200,0.8)" : "rgba(210,168,65,0.3)"}`,
-                boxShadow: a11y
-                  ? "inset 0 0 14px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)"
-                  : "inset 0 0 14px rgba(255,248,230,0.05), inset 0 1px 0 rgba(255,255,255,0.10)" }}>
-                <div style={{ fontSize:21, color:P.acc, lineHeight:1.1 }}>{v}</div>
-                <div style={{ fontFamily:mono, fontSize:8, letterSpacing:1.4, textTransform:"uppercase",
-                  color:P.sub, marginTop:5 }}>{t}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize:12.5, color:P.sub, marginTop:10, lineHeight:1.6 }}>
-            {tot === totNorm ? "Часы разошлись ровно по нормам."
-              : tot < totNorm ? `Недобрано ${totNorm - tot} ч до суммы норм.`
-              : `Сверх норм ${tot - totNorm} ч — это переработки.`}
-            {over.length ? <span style={{ color:P.warn }}> Переработка у {over.length}: {over.map(s => s.name).join(", ")}.</span> : null}
-            {under.length ? <span> Заметный недобор у {under.length}: {under.map(s => s.name).join(", ")}.</span> : null}
-          </div>
-        </Sec>
-      );
-    })() : null}
-
-    {!staff.length ? (
-      <div style={card}>
-        <div style={eyebrow}><span>С чего начать</span></div>
-        <div style={{ fontSize:13, lineHeight:1.6, color:P.sub }}>
-          Открой «Настройки» вверху и заведи людей — по одному, с должностью и нормой часов.
-          Там же задаются часы работы, смены и правила. После этого «Заполнить черновик»
-          расставит смены сам, а проверка покажет, где не сходится.
-        </div>
-      </div>
-    ) : (
-    <Sec no="💡" title="Проверка и зарплата"
-      hint={(warns.length ? warns.length + " " + (warns.length === 1 ? "замечание" : warns.length < 5 ? "замечания" : "замечаний") : "нарушений нет")
-        + (staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0) > 0
-          ? " · фонд ≈ " + staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU") + " ₽" : "")}
-      open={anOpen === "audit"} onToggle={() => setAnOpen(anOpen === "audit" ? null : "audit")} P={P}>
-      {!warns.length ? (
-        <div className="sa-schednote ok">🎯 Нарушений нет: смены закрыты, нормы соблюдены.</div>
-      ) : (
-        <div className="sa-schednote bad">
-          💡 Замечаний: {warns.length} · красная точка = нарушение, золотой уголок = просьба о выходном, красный уголок = «не смогу выйти», звёздочка = отпуск в норме
-        <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
-            {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
-            {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}
-          </ul>
-        </div>
-      )}
-      {staff.some(x => x.rate > 0) ? (
-        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
-          <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
-            зарплата · по ставкам и сменам черновика
-          </div>
-          {staff.filter(x => payOf(x)).map(x => (
-            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
-              <span>{x.name}</span>
-              <span style={{ fontFamily:mono }}>{payOf(x).note} = <b style={{ color:P.acc }}>{payOf(x).sum.toLocaleString("ru-RU")} ₽</b></span>
-            </div>
-          ))}
-          <div style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"6px 0 0", marginTop:4,
-            borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.3)" : "rgba(255,255,255,0.15)"}` }}>
-            <b>Итого фонд</b>
-            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU")} ₽</b>
-          </div>
-          <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
-            Почасовые и посменные — по сменам текущего черновика; оклады — фиксированно. У кого оплата не задана — в фонд не входит.
-          </div>
-        </div>
-      ) : null}
-    </Sec>
-    )}
     {msg ? <div style={{ textAlign:"center", fontSize:12, color:P.sub, marginTop:8 }}>{msg}</div> : null}
 
     {today ? (
@@ -2511,6 +2391,142 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       ) : null}
     </div>
+    {/* Аналитика — в подвале, как задумано владельцем: график во главе.
+        Сжатие в «полоски» побеждено flexShrink:0 (Доп. 66) — низ безопасен */}
+    {staff.length ? (
+      <Sec no={<IcoUsers size={13} />} title="Отработано по людям" hint={staff.length + " чел · " + MONTHS_R[M] + " · часы, смены и нормы каждого"}
+        open={anOpen === "people"} onToggle={() => setAnOpen(anOpen === "people" ? null : "people")} P={P}>
+        {POS.map(({ id: pos, t }) => {
+          const list = staff.filter(x => x.pos === pos);
+          if (!list.length) return null;
+          return (
+            <div key={pos}>
+              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:2, textTransform:"uppercase",
+                color:P.acc, margin:"12px 0 4px" }}>{t}</div>
+              {list.map(s => {
+                const b = breakdownOf(s);
+                const diff = b.hours - (s.norm || 0);
+                return (
+                  <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>{s.name}</div>
+                      <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
+                      <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
+                    </div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:6 }}>
+                      <span style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>{b.shifts} смен</span>
+                      {Object.entries(b.by).map(([k, v]) => {
+                        const c = colorOf(k);
+                        return (
+                          <span key={k} style={{ display:"flex", alignItems:"center", gap:4,
+                            fontFamily:mono, fontSize:10.5, color:P.sub }}>
+                            <i style={{ width:11, height:11, borderRadius:3, display:"inline-block",
+                              background: c ? (a11y ? c.bgL : c.bg) : "transparent",
+                              border:`1px solid ${c ? (a11y ? c.bdL : c.bd) : "transparent"}` }} />
+                            {k} · {v.n} × {v.h} ч
+                          </span>
+                        );
+                      })}
+                      <span style={{ fontFamily:mono, fontSize:10.5, marginLeft:"auto",
+                        color: diff > 0 ? P.warn : diff < 0 ? P.sub : P.acc }}>
+                        {diff > 0 ? `+${diff} ч сверх нормы` : diff < 0 ? `${-diff} ч недобор` : "норма закрыта"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </Sec>
+    ) : null}
+
+    {staff.length ? (() => {
+      const tot = staff.reduce((a, s) => a + hoursOf(s), 0);
+      const totNorm = staff.reduce((a, s) => a + (s.norm || 0), 0);
+      const over = staff.filter(s => hoursOf(s) > s.norm);
+      const under = staff.filter(s => hoursOf(s) < s.norm * 0.9);
+      const shifts = staff.reduce((a, s) => {
+        let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
+      }, 0);
+      return (
+        <Sec no={<IcoClock size={13} />} title="Часы за месяц" hint={shifts + " смен · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
+          open={anOpen === "month"} onToggle={() => setAnOpen(anOpen === "month" ? null : "month")} P={P}>
+          <div style={{ display:"flex", gap:10 }}>
+            {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (
+              <div key={i} style={{ flex:1, textAlign:"center", padding:"11px 6px", borderRadius:14,
+                background: a11y ? "rgba(250,242,222,0.72)" : "rgba(255,250,238,0.04)",
+                border:`1px solid ${a11y ? "rgba(175,140,65,0.26)" : "rgba(145,108,40,0.26)"}`,
+                borderTop:`1px solid ${a11y ? "rgba(255,240,200,0.8)" : "rgba(210,168,65,0.3)"}`,
+                boxShadow: a11y
+                  ? "inset 0 0 14px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)"
+                  : "inset 0 0 14px rgba(255,248,230,0.05), inset 0 1px 0 rgba(255,255,255,0.10)" }}>
+                <div style={{ fontSize:21, color:P.acc, lineHeight:1.1 }}>{v}</div>
+                <div style={{ fontFamily:mono, fontSize:8, letterSpacing:1.4, textTransform:"uppercase",
+                  color:P.sub, marginTop:5 }}>{t}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:12.5, color:P.sub, marginTop:10, lineHeight:1.6 }}>
+            {tot === totNorm ? "Часы разошлись ровно по нормам."
+              : tot < totNorm ? `Недобрано ${totNorm - tot} ч до суммы норм.`
+              : `Сверх норм ${tot - totNorm} ч — это переработки.`}
+            {over.length ? <span style={{ color:P.warn }}> Переработка у {over.length}: {over.map(s => s.name).join(", ")}.</span> : null}
+            {under.length ? <span> Заметный недобор у {under.length}: {under.map(s => s.name).join(", ")}.</span> : null}
+          </div>
+        </Sec>
+      );
+    })() : null}
+
+    {!staff.length ? (
+      <div style={card}>
+        <div style={eyebrow}><span>С чего начать</span></div>
+        <div style={{ fontSize:13, lineHeight:1.6, color:P.sub }}>
+          Открой «Настройки» вверху и заведи людей — по одному, с должностью и нормой часов.
+          Там же задаются часы работы, смены и правила. После этого «Заполнить черновик»
+          расставит смены сам, а проверка покажет, где не сходится.
+        </div>
+      </div>
+    ) : (
+    <Sec no={<IcoBulb size={13} />} title="Проверка и зарплата"
+      hint={(warns.length ? warns.length + " " + (warns.length === 1 ? "замечание" : warns.length < 5 ? "замечания" : "замечаний") : "нарушений нет")
+        + (staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0) > 0
+          ? " · фонд ≈ " + staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU") + " ₽" : "")}
+      open={anOpen === "audit"} onToggle={() => setAnOpen(anOpen === "audit" ? null : "audit")} P={P}>
+      {!warns.length ? (
+        <div className="sa-schednote ok"><IcoTarget size={13} dy={-2} /> Нарушений нет: смены закрыты, нормы соблюдены.</div>
+      ) : (
+        <div className="sa-schednote bad">
+          <IcoBulb size={13} dy={-2} /> Замечаний: {warns.length} · красная точка = нарушение, золотой уголок = просьба о выходном, красный уголок = «не смогу выйти», звёздочка = отпуск в норме
+        <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
+            {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
+            {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}
+          </ul>
+        </div>
+      )}
+      {staff.some(x => x.rate > 0) ? (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+          <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+            зарплата · по ставкам и сменам черновика
+          </div>
+          {staff.filter(x => payOf(x)).map(x => (
+            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
+              <span>{x.name}</span>
+              <span style={{ fontFamily:mono }}>{payOf(x).note} = <b style={{ color:P.acc }}>{payOf(x).sum.toLocaleString("ru-RU")} ₽</b></span>
+            </div>
+          ))}
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"6px 0 0", marginTop:4,
+            borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.3)" : "rgba(255,255,255,0.15)"}` }}>
+            <b>Итого фонд</b>
+            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU")} ₽</b>
+          </div>
+          <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
+            Почасовые и посменные — по сменам текущего черновика; оклады — фиксированно. У кого оплата не задана — в фонд не входит.
+          </div>
+        </div>
+      ) : null}
+    </Sec>
+    )}
     </>}
   </>);
 }

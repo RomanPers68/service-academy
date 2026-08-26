@@ -199,26 +199,36 @@ const IcoWave = (p) => <Ico {...p}><path d="M2.5 10c2-2.4 4-2.4 6 0s4 2.4 6 0 4-
 const IcoPhone = (p) => <Ico {...p}><path d="M5.5 4h3.4l1.6 4-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4 1.6v3.4a2 2 0 0 1-2.2 2A17 17 0 0 1 3.5 6.2 2 2 0 0 1 5.5 4z" /></Ico>;
 const telHref = ph => "tel:" + String(ph).replace(/[^+\d]/g, "");
 function CallName({ who, label, color }) {
-  // Прод-урок: прямые tel:-ссылки Telegram-WebView часто глушит молча —
-  // тап «не делал ничего», и человек ждал, что номер хотя бы ПОЯВИТСЯ.
-  // Теперь тап раскрывает номер рядом (и тихо кладёт его в буфер), а сам
-  // раскрытый номер — ссылка на звонилку: где tel: работает — звонит,
-  // где нет — номер перед глазами и уже скопирован.
+  // Контакт-капсула: имя с трубкой (без служебного пунктира — замечание
+  // владельца), тап раскрывает ЗОЛОТУЮ кнопку с номером. Тап по номеру —
+  // сразу звонилка: и якорь tel:, и принудительный переход location.href
+  // (разные клиенты Telegram глушат разное — бьём с двух рук), а номер
+  // заодно тихо ложится в буфер на случай, если WebView глушит всё.
   const [shown, setShown] = React.useState(false);
   if (!(who && who.phone)) return <>{label}</>;
-  const tap = (e) => {
+  const url = telHref(who.phone);
+  const tap = (e) => { e.stopPropagation(); setShown(v => !v); };
+  const dial = (e) => {
     e.stopPropagation();
-    setShown(v => !v);
-    if (!shown) { try { navigator.clipboard?.writeText(String(who.phone)); } catch (err) {} }
+    try { navigator.clipboard?.writeText(String(who.phone)); } catch (err) {}
+    try { window.location.href = url; } catch (err) {}
   };
   return (
-    <span onClick={tap} style={{ color, cursor:"pointer" }}>
-      <span style={{ borderBottom:`1px dashed ${color}AA` }}>{label}</span>
+    <span style={{ display:"inline-flex", alignItems:"center", gap:6, flexWrap:"wrap", verticalAlign:"middle" }}>
+      <span onClick={tap} style={{ display:"inline-flex", alignItems:"center", gap:5, color, cursor:"pointer",
+        padding:"2px 9px", borderRadius:999, border:`1px solid ${color}44`,
+        background:"rgba(200,169,110,0.08)", WebkitTapHighlightColor:"transparent" }}>
+        <IcoPhone size={10} color={color} />
+        {label}
+      </span>
       {shown ? (
-        <a href={telHref(who.phone)} onClick={e => e.stopPropagation()}
-          style={{ color, textDecoration:"none", marginLeft:6, fontFamily:mono, fontSize:"0.92em",
-            padding:"1px 6px", borderRadius:6, border:`1px solid ${color}55`, whiteSpace:"nowrap" }}>
-          {who.phone} ↗
+        <a href={url} onClick={dial}
+          style={{ display:"inline-flex", alignItems:"center", gap:6, textDecoration:"none",
+            fontFamily:mono, fontSize:"0.95em", fontWeight:700, color:INK_DEEP,
+            background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"4px 12px",
+            borderRadius:999, whiteSpace:"nowrap", boxShadow:"0 2px 8px rgba(0,0,0,0.25)" }}>
+          <IcoPhone size={11} color={INK_DEEP} sw={2.1} />
+          {who.phone}
         </a>
       ) : null}
     </span>
@@ -1748,8 +1758,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <span style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub }}>на связи</span>
                 {bosses.map(b => (
                   <span key={b.id} style={{ fontSize:12.5 }}>
-                    <CallName who={b} color={P.acc}
-                      label={<span style={{ display:"inline-flex", alignItems:"center", gap:4 }}><IcoPhone size={11} color={P.acc} /> {b.name}</span>} />
+                    <CallName who={b} label={b.name} color={P.acc} />
                   </span>
                 ))}
               </div>

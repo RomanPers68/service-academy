@@ -2437,7 +2437,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 return (
                   <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
                     <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>{s.name}</div>
+                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>
+                        {/* Контакты команды для руководителя: у кого телефон
+                            заполнен — капсула со звонком прямо здесь, а не
+                            только в настройках (вопрос владельца) */}
+                        <CallName who={s} label={s.name} color={P.text} />
+                      </div>
                       <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
                       <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
                     </div>

@@ -1126,6 +1126,23 @@ function ServiceAcademy() {
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+          onDeleteEmployee={isAdmin ? async (name, surname) => {
+            // Удаление сотрудника из «Управления данными»: находим его id в
+            // списке доступа по имени, себя удалить нельзя. Серверная функция
+            // та же, что в «Команде» (admin_delete_employee).
+            try {
+              const t = (x) => String(x || "").trim().toLowerCase();
+              if (profile && t(profile.name) === t(name) && t(profile.surname) === t(surname)) {
+                return { ok: false, msg: "Себя удалить нельзя — попроси другого руководителя" };
+              }
+              const list = await rpc("admin_list_employees", { p_token: saToken() });
+              if (!Array.isArray(list)) return { ok: false, msg: "Не получил список сотрудников — проверь связь" };
+              const emp = list.find(e => t(e.name) === t(name) && t(e.surname) === t(surname));
+              if (!emp) return { ok: false, msg: "В списке доступа такого нет — возможно, уже удалён (проверь «Команду»)" };
+              const res = await rpc("admin_delete_employee", { p_token: saToken(), p_employee_id: emp.id });
+              return res && res.ok ? { ok: true } : { ok: false, msg: "Сервер не подтвердил удаление" };
+            } catch (e) { return { ok: false, msg: "Нет связи. Попробуй ещё раз" }; }
+          } : undefined}
           onResetPlayer={isAdmin ? (name, surname) => {
             setScores(prev => prev.filter(s => !(s.name === name && s.surname === surname)));
             if (profile && profile.name === name && profile.surname === surname) {

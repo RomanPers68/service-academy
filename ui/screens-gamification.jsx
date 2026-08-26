@@ -748,8 +748,14 @@ export function PlayerDetailScreen({ player, T, onBack }) {
   );
 }
 
-export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
+export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
   const [showConfirm, setShowConfirm] = React.useState(false);
+  // Удаление сотрудника (доступ + запись) — отдельный поток с жёстким
+  // подтверждением: это навсегда, в отличие от сброса результатов
+  const [delAsk, setDelAsk] = React.useState(false);
+  const [delBusy, setDelBusy] = React.useState(false);
+  const [delDone, setDelDone] = React.useState(false);
+  const [delErr, setDelErr] = React.useState(null);
   return (
     <div style={{ ...T.modCard, marginBottom:8, gap:12, flexDirection:"column" }}>
       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -790,11 +796,51 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
           {UI_SVG.lockOpen("#81C784", 13)} Разблокировать тесты
         </div>
       )}
+      {onDeleteEmployee && !delDone && (
+        <div onClick={() => { setDelAsk(a => !a); setDelErr(null); }} {...onActivate(() => { setDelAsk(a => !a); setDelErr(null); })}
+          style={{ padding:"6px 12px", borderRadius:10, cursor:"pointer", fontSize:12, fontFamily:"Georgia, serif",
+            background:"rgba(180,50,50,0.10)", border:"1px solid rgba(200,60,60,0.35)", color:"#D96A5E", alignSelf:"flex-start", display:"flex", alignItems:"center", gap:6 }}>
+          {UI_SVG.trash("#D96A5E", 13)} Удалить сотрудника
+        </div>
+      )}
+      {delAsk && !delDone && (
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ color:"#D96A5E", fontSize:12, lineHeight:1.5 }}>
+            Удалить {p.name} насовсем? Пропадёт доступ в приложение. Это нельзя отменить.
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <div onClick={async () => {
+              if (delBusy) return;
+              setDelBusy(true); setDelErr(null);
+              const r = await onDeleteEmployee(p.name, p.surname);
+              setDelBusy(false);
+              if (r && r.ok) { setDelDone(true); setDelAsk(false); }
+              else setDelErr((r && r.msg) || "Не получилось удалить");
+            }} {...onActivate(() => {})}
+              style={{ padding:"7px 14px", borderRadius:10, cursor:"pointer", fontSize:12, fontWeight:"bold",
+                background:"rgba(200,60,60,0.28)", border:"1px solid rgba(210,70,70,0.55)", color:"#E88378",
+                opacity: delBusy ? 0.6 : 1 }}>
+              {delBusy ? "Удаляю…" : "Да, удалить навсегда"}
+            </div>
+            <div onClick={() => setDelAsk(false)} {...onActivate(() => setDelAsk(false))}
+              style={{ padding:"7px 14px", borderRadius:10, cursor:"pointer", fontSize:12,
+                background:T.modCard.background, border:"1px solid rgba(255,255,255,0.08)", color:T.modSub.color }}>
+              Отмена
+            </div>
+          </div>
+          {delErr ? <div style={{ color:"#D96A5E", fontSize:11 }}>{delErr}</div> : null}
+        </div>
+      )}
+      {delDone && (
+        <div style={{ color:T.modSub.color, fontSize:11.5, fontStyle:"italic" }}>
+          Доступ удалён. Результаты в рейтинге можно стереть кнопкой «Сбросить».
+        </div>
+      )}
     </div>
   );
 }
 
-export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer }) {
+export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const STAT_ROLES = ["spg", "bar", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
@@ -928,7 +974,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
             <>
               <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:3, fontFamily:"monospace", margin:"16px 0 8px" }}>УПРАВЛЕНИЕ ДАННЫМИ</div>
               {players.map((p, i) => (
-                <PlayerResetCard key={i} p={p} T={T} onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} />
+                <PlayerResetCard key={i} p={p} T={T} onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} onDeleteEmployee={onDeleteEmployee} />
               ))}
             </>
           ) : null;

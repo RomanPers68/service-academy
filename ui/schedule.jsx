@@ -325,6 +325,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // Аналитика внизу страницы свёрнута в секции-кнопки (замечание владельца:
   // «страница перегружена — сделай как в настройках»). Раскрыт максимум один.
   const [anOpen, setAnOpen] = React.useState(null);
+  // Хвост прошлого месяца (последняя неделя каждого): шов месяцев —
+  // ритм 2/2 продолжается, «подряд» и отдых считаются через границу
+  const [prevTail, setPrevTail] = React.useState({});
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
 
@@ -523,6 +526,30 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       setSwapSel(null);   // выбор обмена не переживает смену месяца
       undoRef.current = null; setUndoTick(t => t + 1);   // и отмена тоже
       setDirty(false); setState("ok");
+      // Хвост прошлого месяца — тихо, в фоне: не задерживает открытие,
+      // при любой ошибке остаётся пустым (генератор работает как раньше)
+      setPrevTail({});
+      (async () => {
+        try {
+          const py = M === 0 ? Y - 1 : Y, pmo = M === 0 ? 11 : M - 1;
+          const pk = py + "-" + String(pmo + 1).padStart(2, "0");
+          const r2 = await rpc("schedule_load", {
+            p_token: saToken(), p_restaurant: profile?.restaurant || "", p_month: pk,
+          });
+          if (r2 && r2.ok === true) {
+            const m2 = (r2.months || []).find(x => x.venue_key === venueKey);
+            const pl2 = (m2 && m2.payload && m2.payload.plan) || {};
+            const pdays = new Date(py, pmo + 1, 0).getDate();
+            const tail = {};
+            Object.entries(pl2).forEach(([id, ds]) => {
+              const arr = [];
+              for (let d = pdays - 6; d <= pdays; d++) arr.push((ds || {})[d] || "");
+              if (arr.some(Boolean)) tail[id] = arr;
+            });
+            setPrevTail(tail);
+          }
+        } catch (e) {}
+      })();
     } catch (e) { setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e)); }
   }, [mkey, profile?.restaurant]);
 
@@ -643,7 +670,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
     });
     const cfg2 = { ...cfg, staff: staff.filter(x => String(x.id) !== String(staffId)) };
-    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, freezeBefore: fb });
+    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
     if (!res.plan) return;
     // прошлое уходящего возвращается в план (генератор его не знает — он
     // исключён из штата на прогон)
@@ -674,7 +701,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
     });
     const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey,
-      wishes: wishes || {}, hardOff, onlyIds: new Set([String(staffId)]), freezeBefore: fb });
+      wishes: wishes || {}, hardOff, onlyIds: new Set([String(staffId)]), prevTail, freezeBefore: fb });
     if (!res.plan) return;
     setPlan(res.plan);
     setDirty(true); setConfirmClear(false); setGenKey(k => k + 1); vibrate("success");
@@ -731,7 +758,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     });
     const cells = (pm) => Object.values(pm || {}).reduce((a, ds) => a + Object.values(ds || {}).filter(Boolean).length, 0);
     const before = cells(plan);
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, freezeBefore: fb });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
     if (!res.plan) return;
     const added = cells(res.plan) - before;
     snapUndo();

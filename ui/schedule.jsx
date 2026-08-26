@@ -2108,6 +2108,143 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           onClick={() => setConfirmClear(false)}>Отмена</button>
       </div>
     ) : null}
+
+    {/* Аналитика — СВЕРХУ, под рукой (перенос из подвала: на проде хвост
+        страницы обрезался системно — здесь зона гарантированного рендера) */}
+    {staff.length ? (
+      <Sec no="👥" title="Отработано по людям" hint={staff.length + " чел · " + MONTHS_R[M] + " · часы, смены и нормы каждого"}
+        open={anOpen === "people"} onToggle={() => setAnOpen(anOpen === "people" ? null : "people")} P={P}>
+        {POS.map(({ id: pos, t }) => {
+          const list = staff.filter(x => x.pos === pos);
+          if (!list.length) return null;
+          return (
+            <div key={pos}>
+              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:2, textTransform:"uppercase",
+                color:P.acc, margin:"12px 0 4px" }}>{t}</div>
+              {list.map(s => {
+                const b = breakdownOf(s);
+                const diff = b.hours - (s.norm || 0);
+                return (
+                  <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>{s.name}</div>
+                      <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
+                      <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
+                    </div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:6 }}>
+                      <span style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>{b.shifts} смен</span>
+                      {Object.entries(b.by).map(([k, v]) => {
+                        const c = colorOf(k);
+                        return (
+                          <span key={k} style={{ display:"flex", alignItems:"center", gap:4,
+                            fontFamily:mono, fontSize:10.5, color:P.sub }}>
+                            <i style={{ width:11, height:11, borderRadius:3, display:"inline-block",
+                              background: c ? (a11y ? c.bgL : c.bg) : "transparent",
+                              border:`1px solid ${c ? (a11y ? c.bdL : c.bd) : "transparent"}` }} />
+                            {k} · {v.n} × {v.h} ч
+                          </span>
+                        );
+                      })}
+                      <span style={{ fontFamily:mono, fontSize:10.5, marginLeft:"auto",
+                        color: diff > 0 ? P.warn : diff < 0 ? P.sub : P.acc }}>
+                        {diff > 0 ? `+${diff} ч сверх нормы` : diff < 0 ? `${-diff} ч недобор` : "норма закрыта"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </Sec>
+    ) : null}
+
+    {staff.length ? (() => {
+      const tot = staff.reduce((a, s) => a + hoursOf(s), 0);
+      const totNorm = staff.reduce((a, s) => a + (s.norm || 0), 0);
+      const over = staff.filter(s => hoursOf(s) > s.norm);
+      const under = staff.filter(s => hoursOf(s) < s.norm * 0.9);
+      const shifts = staff.reduce((a, s) => {
+        let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
+      }, 0);
+      return (
+        <Sec no="⏱" title="Часы за месяц" hint={shifts + " смен · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
+          open={anOpen === "month"} onToggle={() => setAnOpen(anOpen === "month" ? null : "month")} P={P}>
+          <div style={{ display:"flex", gap:10 }}>
+            {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (
+              <div key={i} style={{ flex:1, textAlign:"center", padding:"11px 6px", borderRadius:14,
+                background: a11y ? "rgba(250,242,222,0.72)" : "rgba(255,250,238,0.04)",
+                border:`1px solid ${a11y ? "rgba(175,140,65,0.26)" : "rgba(145,108,40,0.26)"}`,
+                borderTop:`1px solid ${a11y ? "rgba(255,240,200,0.8)" : "rgba(210,168,65,0.3)"}`,
+                boxShadow: a11y
+                  ? "inset 0 0 14px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)"
+                  : "inset 0 0 14px rgba(255,248,230,0.05), inset 0 1px 0 rgba(255,255,255,0.10)" }}>
+                <div style={{ fontSize:21, color:P.acc, lineHeight:1.1 }}>{v}</div>
+                <div style={{ fontFamily:mono, fontSize:8, letterSpacing:1.4, textTransform:"uppercase",
+                  color:P.sub, marginTop:5 }}>{t}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:12.5, color:P.sub, marginTop:10, lineHeight:1.6 }}>
+            {tot === totNorm ? "Часы разошлись ровно по нормам."
+              : tot < totNorm ? `Недобрано ${totNorm - tot} ч до суммы норм.`
+              : `Сверх норм ${tot - totNorm} ч — это переработки.`}
+            {over.length ? <span style={{ color:P.warn }}> Переработка у {over.length}: {over.map(s => s.name).join(", ")}.</span> : null}
+            {under.length ? <span> Заметный недобор у {under.length}: {under.map(s => s.name).join(", ")}.</span> : null}
+          </div>
+        </Sec>
+      );
+    })() : null}
+
+    {!staff.length ? (
+      <div style={card}>
+        <div style={eyebrow}><span>С чего начать</span></div>
+        <div style={{ fontSize:13, lineHeight:1.6, color:P.sub }}>
+          Открой «Настройки» вверху и заведи людей — по одному, с должностью и нормой часов.
+          Там же задаются часы работы, смены и правила. После этого «Заполнить черновик»
+          расставит смены сам, а проверка покажет, где не сходится.
+        </div>
+      </div>
+    ) : (
+    <Sec no="💡" title="Проверка и зарплата"
+      hint={(warns.length ? warns.length + " " + (warns.length === 1 ? "замечание" : warns.length < 5 ? "замечания" : "замечаний") : "нарушений нет")
+        + (staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0) > 0
+          ? " · фонд ≈ " + staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU") + " ₽" : "")}
+      open={anOpen === "audit"} onToggle={() => setAnOpen(anOpen === "audit" ? null : "audit")} P={P}>
+      {!warns.length ? (
+        <div className="sa-schednote ok">🎯 Нарушений нет: смены закрыты, нормы соблюдены.</div>
+      ) : (
+        <div className="sa-schednote bad">
+          💡 Замечаний: {warns.length} · красная точка = нарушение, золотой уголок = просьба о выходном, красный уголок = «не смогу выйти», звёздочка = отпуск в норме
+        <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
+            {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
+            {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}
+          </ul>
+        </div>
+      )}
+      {staff.some(x => x.rate > 0) ? (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+          <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+            зарплата · по ставкам и сменам черновика
+          </div>
+          {staff.filter(x => payOf(x)).map(x => (
+            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
+              <span>{x.name}</span>
+              <span style={{ fontFamily:mono }}>{payOf(x).note} = <b style={{ color:P.acc }}>{payOf(x).sum.toLocaleString("ru-RU")} ₽</b></span>
+            </div>
+          ))}
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"6px 0 0", marginTop:4,
+            borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.3)" : "rgba(255,255,255,0.15)"}` }}>
+            <b>Итого фонд</b>
+            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU")} ₽</b>
+          </div>
+          <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
+            Почасовые и посменные — по сменам текущего черновика; оклады — фиксированно. У кого оплата не задана — в фонд не входит.
+          </div>
+        </div>
+      ) : null}
+    </Sec>
+    )}
     {msg ? <div style={{ textAlign:"center", fontSize:12, color:P.sub, marginTop:8 }}>{msg}</div> : null}
 
     {today ? (
@@ -2374,141 +2511,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       ) : null}
     </div>
-
-    {staff.length ? (
-      <Sec no="👥" title="Отработано по людям" hint={staff.length + " чел · " + MONTHS_R[M] + " · часы, смены и нормы каждого"}
-        open={anOpen === "people"} onToggle={() => setAnOpen(anOpen === "people" ? null : "people")} P={P}>
-        {POS.map(({ id: pos, t }) => {
-          const list = staff.filter(x => x.pos === pos);
-          if (!list.length) return null;
-          return (
-            <div key={pos}>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:2, textTransform:"uppercase",
-                color:P.acc, margin:"12px 0 4px" }}>{t}</div>
-              {list.map(s => {
-                const b = breakdownOf(s);
-                const diff = b.hours - (s.norm || 0);
-                return (
-                  <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
-                    <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>{s.name}</div>
-                      <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
-                      <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
-                    </div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:6 }}>
-                      <span style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>{b.shifts} смен</span>
-                      {Object.entries(b.by).map(([k, v]) => {
-                        const c = colorOf(k);
-                        return (
-                          <span key={k} style={{ display:"flex", alignItems:"center", gap:4,
-                            fontFamily:mono, fontSize:10.5, color:P.sub }}>
-                            <i style={{ width:11, height:11, borderRadius:3, display:"inline-block",
-                              background: c ? (a11y ? c.bgL : c.bg) : "transparent",
-                              border:`1px solid ${c ? (a11y ? c.bdL : c.bd) : "transparent"}` }} />
-                            {k} · {v.n} × {v.h} ч
-                          </span>
-                        );
-                      })}
-                      <span style={{ fontFamily:mono, fontSize:10.5, marginLeft:"auto",
-                        color: diff > 0 ? P.warn : diff < 0 ? P.sub : P.acc }}>
-                        {diff > 0 ? `+${diff} ч сверх нормы` : diff < 0 ? `${-diff} ч недобор` : "норма закрыта"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </Sec>
-    ) : null}
-
-    {staff.length ? (() => {
-      const tot = staff.reduce((a, s) => a + hoursOf(s), 0);
-      const totNorm = staff.reduce((a, s) => a + (s.norm || 0), 0);
-      const over = staff.filter(s => hoursOf(s) > s.norm);
-      const under = staff.filter(s => hoursOf(s) < s.norm * 0.9);
-      const shifts = staff.reduce((a, s) => {
-        let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
-      }, 0);
-      return (
-        <Sec no="⏱" title="Часы за месяц" hint={shifts + " смен · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
-          open={anOpen === "month"} onToggle={() => setAnOpen(anOpen === "month" ? null : "month")} P={P}>
-          <div style={{ display:"flex", gap:10 }}>
-            {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (
-              <div key={i} style={{ flex:1, textAlign:"center", padding:"11px 6px", borderRadius:14,
-                background: a11y ? "rgba(250,242,222,0.72)" : "rgba(255,250,238,0.04)",
-                border:`1px solid ${a11y ? "rgba(175,140,65,0.26)" : "rgba(145,108,40,0.26)"}`,
-                borderTop:`1px solid ${a11y ? "rgba(255,240,200,0.8)" : "rgba(210,168,65,0.3)"}`,
-                boxShadow: a11y
-                  ? "inset 0 0 14px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)"
-                  : "inset 0 0 14px rgba(255,248,230,0.05), inset 0 1px 0 rgba(255,255,255,0.10)" }}>
-                <div style={{ fontSize:21, color:P.acc, lineHeight:1.1 }}>{v}</div>
-                <div style={{ fontFamily:mono, fontSize:8, letterSpacing:1.4, textTransform:"uppercase",
-                  color:P.sub, marginTop:5 }}>{t}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize:12.5, color:P.sub, marginTop:10, lineHeight:1.6 }}>
-            {tot === totNorm ? "Часы разошлись ровно по нормам."
-              : tot < totNorm ? `Недобрано ${totNorm - tot} ч до суммы норм.`
-              : `Сверх норм ${tot - totNorm} ч — это переработки.`}
-            {over.length ? <span style={{ color:P.warn }}> Переработка у {over.length}: {over.map(s => s.name).join(", ")}.</span> : null}
-            {under.length ? <span> Заметный недобор у {under.length}: {under.map(s => s.name).join(", ")}.</span> : null}
-          </div>
-        </Sec>
-      );
-    })() : null}
-
-    {!staff.length ? (
-      <div style={card}>
-        <div style={eyebrow}><span>С чего начать</span></div>
-        <div style={{ fontSize:13, lineHeight:1.6, color:P.sub }}>
-          Открой «Настройки» вверху и заведи людей — по одному, с должностью и нормой часов.
-          Там же задаются часы работы, смены и правила. После этого «Заполнить черновик»
-          расставит смены сам, а проверка покажет, где не сходится.
-        </div>
-      </div>
-    ) : (
-    <Sec no="💡" title="Проверка и зарплата"
-      hint={(warns.length ? warns.length + " " + (warns.length === 1 ? "замечание" : warns.length < 5 ? "замечания" : "замечаний") : "нарушений нет")
-        + (staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0) > 0
-          ? " · фонд ≈ " + staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU") + " ₽" : "")}
-      open={anOpen === "audit"} onToggle={() => setAnOpen(anOpen === "audit" ? null : "audit")} P={P}>
-      {!warns.length ? (
-        <div className="sa-schednote ok">🎯 Нарушений нет: смены закрыты, нормы соблюдены.</div>
-      ) : (
-        <div className="sa-schednote bad">
-          💡 Замечаний: {warns.length} · красная точка = нарушение, золотой уголок = просьба о выходном, красный уголок = «не смогу выйти», звёздочка = отпуск в норме
-        <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
-            {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
-            {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}
-          </ul>
-        </div>
-      )}
-      {staff.some(x => x.rate > 0) ? (
-        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
-          <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
-            зарплата · по ставкам и сменам черновика
-          </div>
-          {staff.filter(x => payOf(x)).map(x => (
-            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
-              <span>{x.name}</span>
-              <span style={{ fontFamily:mono }}>{payOf(x).note} = <b style={{ color:P.acc }}>{payOf(x).sum.toLocaleString("ru-RU")} ₽</b></span>
-            </div>
-          ))}
-          <div style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"6px 0 0", marginTop:4,
-            borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.3)" : "rgba(255,255,255,0.15)"}` }}>
-            <b>Итого фонд</b>
-            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU")} ₽</b>
-          </div>
-          <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
-            Почасовые и посменные — по сменам текущего черновика; оклады — фиксированно. У кого оплата не задана — в фонд не входит.
-          </div>
-        </div>
-      ) : null}
-    </Sec>
-    )}
     </>}
   </>);
 }

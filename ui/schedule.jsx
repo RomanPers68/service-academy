@@ -210,7 +210,7 @@ function CallName({ who, label, color }) {
 }
 function Sec({ no, title, hint, open, onToggle, P, children }) {
   return (
-    <div className="sa-schedsec" style={{ marginBottom:8, borderRadius:14, overflow:"hidden" }}>
+    <div className="sa-schedsec" style={{ marginBottom:8, borderRadius:14, overflow:"hidden", flexShrink:0 }}>
       <div onClick={onToggle} {...onActivate(onToggle)}
         style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 13px", cursor:"pointer" }}>
         <div className="sa-schedno">{no}</div>

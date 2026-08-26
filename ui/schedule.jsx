@@ -205,12 +205,26 @@ function CallName({ who, label, color }) {
   // (разные клиенты Telegram глушат разное — бьём с двух рук), а номер
   // заодно тихо ложится в буфер на случай, если WebView глушит всё.
   const [shown, setShown] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   if (!(who && who.phone)) return <>{label}</>;
   const url = telHref(who.phone);
   const tap = (e) => { e.stopPropagation(); setShown(v => !v); };
   const dial = (e) => {
     e.stopPropagation();
-    try { navigator.clipboard?.writeText(String(who.phone)); } catch (err) {}
+    // Прод-факт: Telegram-WebView глушит и tel:-якорь, и location.href.
+    // Официальная дверь — t.me-ссылка на профиль по номеру: открывается
+    // самим Telegram, в профиле — родная кнопка звонка и номер. Снаружи
+    // Telegram (Safari) работает обычный tel:. Буфер — третий рубеж.
+    try {
+      navigator.clipboard?.writeText(String(who.phone));
+      setCopied(true); setTimeout(() => setCopied(false), 1800);
+    } catch (err) {}
+    const raw = String(who.phone).replace(/\D/g, "");
+    const intl = raw.length === 11 && raw[0] === "8" ? "7" + raw.slice(1) : raw;
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && typeof tg.openTelegramLink === "function" && intl.length >= 10) {
+      try { tg.openTelegramLink("https://t.me/+" + intl); } catch (err) {}
+    }
     try { window.location.href = url; } catch (err) {}
   };
   return (
@@ -230,6 +244,11 @@ function CallName({ who, label, color }) {
           <IcoPhone size={11} color={INK_DEEP} sw={2.1} />
           {who.phone}
         </a>
+      ) : null}
+      {copied ? (
+        <span style={{ fontSize:"0.78em", fontFamily:mono, color, opacity:.8, whiteSpace:"nowrap" }}>
+          номер скопирован
+        </span>
       ) : null}
     </span>
   );

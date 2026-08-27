@@ -195,6 +195,9 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     }
     setBusy(true); setActionError(null);
     try {
+      // Полная зачистка одной кнопкой: сначала результаты (как «Сбросить»
+      // в Управлении данными), затем доступ. Сбой зачистки не блокирует.
+      try { await rpc("admin_reset_player", { p_token: token, p_name: selected.name, p_surname: selected.surname || "" }); } catch (e2) {}
       const res = await rpc("admin_delete_employee", { p_token: token, p_employee_id: selected.id });
       if (res && res.ok) {
         vibrate("success");

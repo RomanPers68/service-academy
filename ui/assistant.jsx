@@ -116,7 +116,7 @@ const ERRORS = {
   server: "Что-то пошло не так на сервере. Попробуй ещё раз.",
 };
 
-export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
+export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner }) {
   const uid = String(profile?.id || "anon");
   const [store, setStore] = React.useState(() => loadStore(uid));
   const active = store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
@@ -226,7 +226,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate }) {
         token: saToken(),
         // Справочник подмешивается в копию последнего вопроса (клиентский RAG):
         // ассистент отвечает по главам приложения, история в UI остаётся чистой.
-        messages: withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content })), profile),
+        messages: withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content })), profile, learner),
       }),
     })
       .then(r => r.json())

@@ -271,7 +271,7 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
   );
 }
 
-export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
+export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist }) {
   // Редактор графика — не только владелец: менеджеры и руководители тоже
   // (та же формула, что у собеседования кандидатов — canHire в App).
   const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
@@ -1260,6 +1260,86 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     x.fillText(`составлено ${new Date().toLocaleDateString("ru-RU")}`, 16, y + 20);
     return cv;
   };
+  // Карточка недели 9:16 (мост «экспорт → в карман»): ближайшие 7 дней
+  // одним стильным вертикальным изображением — на обои или в избранное
+  const drawWeekCard = (me) => {
+    const t = new Date();
+    const start = (t.getFullYear() === Y && t.getMonth() === M) ? t.getDate() : 1;
+    const days = []; for (let d = start; d <= Math.min(DAYS, start + 6); d++) days.push(d);
+    const W = 1080, H = 1920, cv = document.createElement("canvas");
+    cv.width = W; cv.height = H; const x = cv.getContext("2d");
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#1B1409"); g.addColorStop(1, "#2A1F0E");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.textBaseline = "middle";
+    x.fillStyle = "#C8A96E"; x.font = "600 26px ui-monospace, Menlo, monospace"; x.textAlign = "center";
+    x.fillText("S E R V I C E   A C A D E M Y", W / 2, 92);
+    x.fillStyle = "#EFE4C8"; x.font = "54px Georgia, serif";
+    x.fillText(me.name, W / 2, 172);
+    const dn = ["вс","пн","вт","ср","чт","пт","сб"];
+    const p1 = days[0], p2 = days[days.length - 1];
+    x.fillStyle = "#8F7B57"; x.font = "30px ui-monospace, Menlo, monospace";
+    x.fillText(p1 + "–" + p2 + " " + MONTHS_R[M].toLowerCase() + " · моя неделя", W / 2, 232);
+    x.strokeStyle = "rgba(200,169,110,0.4)"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(140, 278); x.lineTo(W - 140, 278); x.stroke();
+    const rowH = 188, top = 330; let wh = 0;
+    days.forEach((d, i) => {
+      const yc = top + i * rowH + rowH / 2;
+      const k = plan[me.id]?.[d]; const sh = shiftOf(k);
+      const vac = onVac(me, d);
+      const wd = new Date(Y, M, d).getDay();
+      const rr2 = (xx, yy, w2, h2, r2) => { x.beginPath(); x.moveTo(xx + r2, yy); x.arcTo(xx + w2, yy, xx + w2, yy + h2, r2);
+        x.arcTo(xx + w2, yy + h2, xx, yy + h2, r2); x.arcTo(xx, yy + h2, xx, yy, r2); x.arcTo(xx, yy, xx + w2, yy, r2); x.closePath(); };
+      // «морозный лёд» и на холсте: стекло + латунная рамка + блик кромки
+      const ry = yc - rowH / 2 + 12, rh = rowH - 24;
+      x.fillStyle = "rgba(255,250,238,0.045)";
+      rr2(80, ry, W - 160, rh, 26); x.fill();
+      x.strokeStyle = "rgba(145,108,40,0.35)"; x.lineWidth = 2;
+      rr2(80, ry, W - 160, rh, 26); x.stroke();
+      x.strokeStyle = "rgba(255,255,255,0.10)"; x.lineWidth = 2;
+      x.beginPath(); x.moveTo(108, ry + 2); x.lineTo(W - 108, ry + 2); x.stroke();
+      x.textAlign = "left";
+      x.fillStyle = [0, 6].includes(wd) ? "#D2A85A" : "#8F7B57";
+      x.font = "600 28px ui-monospace, Menlo, monospace";
+      x.fillText(dn[wd], 130, yc - 30);
+      x.fillStyle = "#EFE4C8"; x.font = "64px Georgia, serif";
+      x.fillText(String(d), 130, yc + 24);
+      if (sh) {
+        wh += dayHoursOf(me, d);
+        const ci = (cfg.shifts || []).findIndex(q => q.k === k);
+        const cc = SHIFT_COLORS[(ci < 0 ? 0 : ci) % SHIFT_COLORS.length];
+        x.fillStyle = cc.bg; rr2(300, yc - 42, 84, 84, 20); x.fill();
+        x.strokeStyle = cc.bd; x.lineWidth = 2.4; rr2(300, yc - 42, 84, 84, 20); x.stroke();
+        x.fillStyle = cc.fg; x.font = "600 44px ui-monospace, Menlo, monospace"; x.textAlign = "center";
+        x.fillText(k, 342, yc + 2);
+        x.textAlign = "left"; x.fillStyle = "#EFE4C8"; x.font = "42px Georgia, serif";
+        x.fillText(sh.name, 428, yc - 18);
+        x.fillStyle = "#9C8760"; x.font = "30px ui-monospace, Menlo, monospace";
+        x.fillText(sh.from + ":00–" + (sh.to === 24 ? "24" : sh.to) + ":00 · " + dayHoursOf(me, d) + " ч", 428, yc + 30);
+      } else if (vac) {
+        x.fillStyle = "#D98A80"; x.font = "42px Georgia, serif";
+        x.fillText("Отпуск", 300, yc);
+      } else {
+        x.fillStyle = "#8F7B57"; x.font = "italic 40px Georgia, serif";
+        x.fillText("Отдыхай ✦", 300, yc);
+      }
+    });
+    x.textAlign = "center"; x.fillStyle = "#C8A96E"; x.font = "34px ui-monospace, Menlo, monospace";
+    x.fillText("часов за неделю: " + wh, W / 2, top + days.length * rowH + 64);
+    x.fillStyle = "#6E5C3E"; x.font = "24px ui-monospace, Menlo, monospace";
+    x.fillText("составлено в Service Academy", W / 2, H - 64);
+    return cv;
+  };
+  const exportWeek = async (me) => {
+    setShotBusy(true);
+    try {
+      const cv = drawWeekCard(me);
+      const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+      setShot({ url: URL.createObjectURL(blob), blob, name: ("Моя_неделя_" + MONTHS_N[M] + ".png").replace(/\s/g, "_") });
+      vibrate("success");
+    } catch (e) { setMsg("Не удалось собрать карточку"); setTimeout(() => setMsg(""), 2500); }
+    setShotBusy(false);
+  };
   const exportMy = async (me) => {
     setShotBusy(true);
     try {
@@ -1772,6 +1852,58 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
               <span style={{ color:P.sub }}> · {payOf(me).note}{(me.rateMode || "hour") !== "month" ? ", по сменам в графике" : ""}</span>
             </div>
           ) : null}
+          {/* Мост «зарплата → мотивация»: сколько принесут ещё две смены */}
+          {(() => {
+            const po = payOf(me);
+            if (!po || (me.rateMode || "hour") === "month") return null;
+            const n = shiftsOf(me);
+            const per = (me.rateMode === "shift") ? me.rate : (n > 0 ? Math.round(hoursOf(me) / n) * me.rate : 0);
+            if (!(per > 0)) return null;
+            return (
+              <div style={{ fontSize:11.5, color:P.sub, margin:"-4px 0 8px" }}>
+                Возьмёшь ещё 2 смены — будет примерно <b style={{ color:P.acc }}>+{(per * 2).toLocaleString("ru-RU")} ₽</b>
+              </div>
+            );
+          })()}
+          {/* Мост «график → обучение и чек-листы»: перед сменой — по делу */}
+          {(() => {
+            const t = new Date();
+            if (!(t.getFullYear() === Y && t.getMonth() === M)) return null;
+            const td = t.getDate();
+            const kT = shiftOf(plan[me.id]?.[td]);
+            const kN = td < DAYS ? shiftOf(plan[me.id]?.[td + 1]) : null;
+            if (!kT && !kN) return null;
+            const pill = { display:"inline-flex", alignItems:"center", gap:5, padding:"5px 11px", borderRadius:999,
+              cursor:"pointer", fontSize:11.5, fontFamily:serif, color:INK_DEEP, fontWeight:"bold",
+              background:`linear-gradient(180deg,#E4C88C,${GOLD})`, WebkitTapHighlightColor:"transparent" };
+            return (
+              <div style={{ display:"flex", flexDirection:"column", gap:8, margin:"0 0 12px",
+                padding:"11px 13px", borderRadius:14,
+                // «морозный лёд»: полупрозрачное стекло, изморозь-свечение
+                // изнутри и блик по верхней кромке — как у всех карточек
+                background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
+                border: `1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}`,
+                borderTop: `1px solid ${a11y ? "rgba(175,135,50,0.4)" : "rgba(210,168,65,0.32)"}`,
+                boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.5)"
+                  : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
+                {dueCount > 0 && onMistakes ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <span style={{ fontSize:12, color:P.text }}>
+                      {kT ? "Сегодня смена" : "Завтра смена"} · <b style={{ color:P.acc }}>{dueCount}</b> {dueCount === 1 ? "вопрос ждёт" : dueCount < 5 ? "вопроса ждут" : "вопросов ждут"} повтора
+                    </span>
+                    <span onClick={onMistakes} {...onActivate(onMistakes)} style={pill}>Повторить перед сменой</span>
+                  </div>
+                ) : null}
+                {kT && onChecklist ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:12, color:P.sub }}>Смена {kT.name.toLowerCase()} · {kT.from}:00–{kT.to === 24 ? "24" : kT.to}:00</span>
+                    <span onClick={onChecklist} {...onActivate(onChecklist)} style={{ ...pill, background:"transparent",
+                      color:P.acc, border:`1px solid ${GOLD}66`, fontWeight:"normal" }}>Чек-лист смены</span>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
           {(() => {
             // Первый вопрос при открытии графика — «когда моя ближайшая смена?».
             // Отвечаем сразу, в одну строку, не заставляя сканировать список.
@@ -1938,10 +2070,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             );
           })}
         </div>
-        <div style={{ margin:"0 14px" }}>
-          <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"11px 12px", fontSize:13 }}
+        <div style={{ margin:"0 14px", display:"flex", gap:8 }}>
+          <button style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
             className="sa-btn" disabled={shotBusy} onClick={() => exportMy(me)}>
-            {shotBusy ? "Собираю…" : "Сохранить смены картинкой"}
+            {shotBusy ? "Собираю…" : "Месяц картинкой"}
+          </button>
+          <button style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
+            className="sa-btn" disabled={shotBusy} onClick={() => exportWeek(me)}>
+            {shotBusy ? "Собираю…" : "Карточка недели"}
           </button>
         </div>
         {shot ? (

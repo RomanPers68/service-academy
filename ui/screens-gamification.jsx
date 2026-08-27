@@ -833,7 +833,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
       )}
       {delDone && (
         <div style={{ color:T.modSub.color, fontSize:11.5, fontStyle:"italic" }}>
-          Доступ удалён. Результаты в рейтинге можно стереть кнопкой «Сбросить».
+          Сотрудник удалён: доступ и все результаты стёрты.
         </div>
       )}
     </div>

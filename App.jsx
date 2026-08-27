@@ -1115,7 +1115,8 @@ function ServiceAcademy() {
           navigate("guestbook");
         }} pro={true} />}
         {screen === "schedule" && <Suspense fallback={<ScreenLoader T={T} />}>
-          <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} />
+          <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")}
+            dueCount={dueMistakes} onMistakes={() => navigate("mistakes")} onChecklist={() => navigate("checklist")} />
         </Suspense>}
         {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} />}
         {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => navigate(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
@@ -1131,16 +1132,42 @@ function ServiceAcademy() {
             // списке доступа по имени, себя удалить нельзя. Серверная функция
             // та же, что в «Команде» (admin_delete_employee).
             try {
-              const t = (x) => String(x || "").trim().toLowerCase();
-              if (profile && t(profile.name) === t(name) && t(profile.surname) === t(surname)) {
+              // Карточки живут по ПРОФИЛЯМ (как человек записал себя сам),
+              // а удаление ищет в СПИСКЕ ДОСТУПА (как записал руководитель).
+              // «Заяц Екатерина» против «Екатерина Заяц», ё/е, пробелы —
+              // поэтому сравниваем МНОЖЕСТВА токенов имени, без порядка.
+              const norm = (x) => String(x || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+              const toks = (a, b) => new Set(norm(a + " " + b).split(" ").filter(Boolean));
+              const isSub = (A, B) => [...A].every(x => B.has(x));
+              const target = toks(name, surname);
+              if (!target.size) return { ok: false, msg: "Пустое имя — удали через «Команду»" };
+              const me = toks(profile?.name, profile?.surname);
+              if (me.size && (isSub(target, me) || isSub(me, target))) {
                 return { ok: false, msg: "Себя удалить нельзя — попроси другого руководителя" };
               }
               const list = await rpc("admin_list_employees", { p_token: saToken() });
               if (!Array.isArray(list)) return { ok: false, msg: "Не получил список сотрудников — проверь связь" };
-              const emp = list.find(e => t(e.name) === t(name) && t(e.surname) === t(surname));
-              if (!emp) return { ok: false, msg: "В списке доступа такого нет — возможно, уже удалён (проверь «Команду»)" };
+              const hits = list.filter(e => {
+                const et = toks(e.name, e.surname);
+                return et.size && (isSub(target, et) || isSub(et, target));
+              });
+              if (hits.length === 0) return { ok: false, msg: "В списке доступа такого нет (искал среди " + list.length + " чел) — проверь написание в «Команде»" };
+              if (hits.length > 1) return { ok: false, msg: "Нашёл несколько похожих: " + hits.slice(0, 3).map(e => (e.name + " " + (e.surname || "")).trim()).join(", ") + " — удали точечно через «Команду»" };
+              const emp = hits[0];
               const res = await rpc("admin_delete_employee", { p_token: saToken(), p_employee_id: emp.id });
-              return res && res.ok ? { ok: true } : { ok: false, msg: "Сервер не подтвердил удаление" };
+              if (!(res && res.ok)) return { ok: false, msg: "Сервер не подтвердил удаление" };
+              // «Удалил — значит удалил ВСЁ»: следом стираем результаты той же
+              // функцией, что под кнопкой «Сбросить». Чистим ОБЕ личности —
+              // профильную (карточка) и из списка доступа, если написания
+              // разошлись (урок Доп. 75). Сбой зачистки удаление не отменяет.
+              try { await rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }); } catch (e) {}
+              if (norm(emp.name + " " + (emp.surname || "")) !== norm(name + " " + (surname || ""))) {
+                try { await rpc("admin_reset_player", { p_token: saToken(), p_name: emp.name, p_surname: emp.surname || "" }); } catch (e) {}
+              }
+              setScores(prev => prev.filter(x => !(x.name === name && x.surname === surname)));
+              setPracticeStars(prev => { const nx = { ...prev }; delete nx[name + "|" + (surname || "")]; return nx; });
+              setAllProfiles(prev => (prev || []).filter(x => !(x.name === name && x.surname === surname)));
+              return { ok: true };
             } catch (e) { return { ok: false, msg: "Нет связи. Попробуй ещё раз" }; }
           } : undefined}
           onResetPlayer={isAdmin ? (name, surname) => {
@@ -1201,7 +1228,10 @@ function ServiceAcademy() {
             </div>
           </div>
         )}
-        {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
+        {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile}
+          learner={{ position: profile?.position, roleTitle: (ROLES.find(r => r.id === role) || {}).title,
+            done: doneCount, total: totalLessons, dueMistakes,
+            topics: mistakeBank.filter(m => !m.due || m.due <= Date.now()).slice(0, 3).map(m => m.lessonTitle).filter(Boolean) }} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
           // Переход на урок по id: [[lesson:ID]]
           if (dest && typeof dest === "object" && dest.lesson) {
             // Роли, доступные сотруднику: его текущая + все пройденные.

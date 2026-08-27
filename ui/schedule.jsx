@@ -328,6 +328,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // Хвост прошлого месяца (последняя неделя каждого): шов месяцев —
   // ритм 2/2 продолжается, «подряд» и отдых считаются через границу
   const [prevTail, setPrevTail] = React.useState({});
+  // Офлайн-копия: последний загруженный месяц живёт в кеше устройства —
+  // график открывается в подсобке без сети (метка времени копии)
+  const [offlineAt, setOfflineAt] = React.useState(null);
+  // Динамика к прошлому месяцу: смены/часы/фонд (считается из той же
+  // фоновой подгрузки, что кормит шов месяцев)
+  const [prevStats, setPrevStats] = React.useState(null);
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
 
@@ -525,7 +531,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {}); setFacts(pl.facts || {});
       setSwapSel(null);   // выбор обмена не переживает смену месяца
       undoRef.current = null; setUndoTick(t => t + 1);   // и отмена тоже
-      setDirty(false); setState("ok");
+      setDirty(false); setState("ok"); setOfflineAt(null);
+      try {
+        localStorage.setItem("sa_sched_cache_" + venueKey + "_" + mkey, JSON.stringify({
+          cfg: v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG },
+          plan: pl.plan || {}, locks: pl.locks || {}, days: pl.days || {}, facts: pl.facts || {},
+          ts: Date.now() }));
+      } catch (e2) {}
       // Хвост прошлого месяца — тихо, в фоне: не задерживает открытие,
       // при любой ошибке остаётся пустым (генератор работает как раньше)
       setPrevTail({});
@@ -547,10 +559,41 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               if (arr.some(Boolean)) tail[id] = arr;
             });
             setPrevTail(tail);
+            // Динамика: агрегаты прошлого месяца теми же правилами денег
+            const f2 = (m2 && m2.payload && m2.payload.facts) || {};
+            let psh = 0, phr = 0, pfund = 0;
+            (cfg?.staff || []).forEach(st => {
+              const ds = pl2[st.id] || {}; let hh = 0, nn = 0;
+              for (let d = 1; d <= pdays; d++) {
+                const sh2 = (cfg?.shifts || []).find(q => q.k === ds[d]);
+                if (!sh2) continue;
+                nn++; const f = f2[st.id]?.[d];
+                hh += (typeof f === "number" && f >= 0) ? f : (sh2.to - sh2.from);
+              }
+              psh += nn; phr += hh;
+              if (st.rate > 0) {
+                const md = st.rateMode || "hour";
+                pfund += md === "month" ? st.rate : md === "shift" ? nn * st.rate : hh * st.rate;
+              }
+            });
+            setPrevStats(psh > 0 ? { shifts: psh, hours: phr, fund: pfund } : null);
           }
         } catch (e) {}
       })();
-    } catch (e) { setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e)); }
+    } catch (e) {
+      // Сети нет — поднимаем офлайн-копию, если она есть
+      try {
+        const raw = localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey);
+        if (raw) {
+          const c = JSON.parse(raw);
+          setCfg(c.cfg || { ...DEFAULT_CONFIG });
+          setPlan(c.plan || {}); setLocks(c.locks || {}); setDays(c.days || {}); setFacts(c.facts || {});
+          setOfflineAt(c.ts || Date.now()); setDirty(false); setState("ok");
+          return;
+        }
+      } catch (e3) {}
+      setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e));
+    }
   }, [mkey, profile?.restaurant]);
 
   React.useEffect(() => { load(); }, [load]);
@@ -999,6 +1042,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <div style={{ color:P.text, fontSize:16, fontFamily:serif }}>{MONTHS_N[M]} {Y}</div>
         </div>
       </div>
+      {offlineAt ? (
+        <div style={{ margin:"0 14px 10px", padding:"8px 12px", borderRadius:12, fontSize:11.5,
+          color:"#D2A85A", background:"rgba(210,168,90,0.09)", border:"1px solid rgba(210,168,90,0.3)" }}>
+          Офлайн-копия от {new Date(offlineAt).toLocaleString("ru-RU", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} — свежесть проверь при связи
+        </div>
+      ) : null}
       {kids}
       <div style={{ height:24 }} />
     </div>
@@ -1865,6 +1914,25 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               </div>
             );
           })()}
+          {/* Достижения из реальной работы: считаются из самого графика */}
+          {(() => {
+            const chips = [];
+            const en2 = effNorm(me);
+            if (en2 > 0 && hoursOf(me) >= en2) chips.push("норма закрыта");
+            let peaks = 0;
+            for (let d = 1; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d]) && lvlOf(d) === 3) peaks++;
+            if (peaks >= 3) chips.push(peaks + " пиковых смен");
+            if (!chips.length) return null;
+            return (
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", margin:"0 0 10px" }}>
+                {chips.map(c => (
+                  <span key={c} style={{ fontSize:11, color:P.acc, padding:"3px 10px", borderRadius:999,
+                    background: a11y ? "rgba(250,242,222,0.65)" : "rgba(200,169,110,0.10)",
+                    border:`1px solid ${GOLD}55` }}>✦ {c}</span>
+                ))}
+              </div>
+            );
+          })()}
           {/* Мост «график → обучение и чек-листы»: перед сменой — по делу */}
           {(() => {
             const t = new Date();
@@ -2550,6 +2618,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div style={{ fontFamily:mono, fontSize:10, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
               итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
               {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}>{fund.toLocaleString("ru-RU")} ₽</span></> : null}
+              {prevStats ? (() => {
+                const ar = (d) => d > 0 ? "↑" + d.toLocaleString("ru-RU") : d < 0 ? "↓" + Math.abs(d).toLocaleString("ru-RU") : "=";
+                return (
+                  <span style={{ display:"block", marginTop:3, opacity:.85 }}>
+                    к прошлому месяцу: смены {ar(shifts - prevStats.shifts)} · часы {ar(hours - prevStats.hours)}
+                    {fund > 0 && prevStats.fund > 0 ? <> · фонд {ar(fund - prevStats.fund)} ₽</> : null}
+                  </span>
+                );
+              })() : null}
             </div>
           );
         })()}

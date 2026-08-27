@@ -450,10 +450,10 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   );
 }
 
-export function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson }) {
+export function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson, mistakeTopics }) {
   const today = new Date().toLocaleDateString("ru-RU");
   const seed = today.split(".").reduce((a, v) => a + parseInt(v), 0);
-  const refTask = referenceDailyTask(seed);
+  const refTask = referenceDailyTask(seed, mistakeTopics);
 
   // Генерируем 3 задания на сегодня из непройденных уроков
   const allLessons = React.useMemo(() => {

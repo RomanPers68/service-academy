@@ -105,6 +105,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
             <div style={{ padding:"2px 20px 12px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
               <div style={{ color: T.modTitle.color, fontSize:19, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: GOLD }}>{profile.name}</span>
+                {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
                 {(() => { try {
                   const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
                   const t = new Date();
@@ -113,7 +114,6 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
                     return <span style={{ display:"block", fontSize:11.5, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic" }}>Хорошей смены ✦</span>;
                   }
                 } catch (e) {} return null; })()}
-                {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
               </div>
               <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
             </div>

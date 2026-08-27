@@ -2069,6 +2069,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 ))}
               </div>
                 ) : null}
+              </div>
             );
           })()}
           {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
@@ -2503,7 +2504,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           );
         })}
       </div>
-        </div>
     ) : null}
     <div style={card}>
       <div style={eyebrow}>

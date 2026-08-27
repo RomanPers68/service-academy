@@ -95,12 +95,12 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
 
   const isLast = !nextRole;
   const achivements = {
-    seasonal: { icon:"🌱", title:"Новичок пройден!", badge:"Стажёр сервиса", desc:"Ты освоил базовые стандарты и готов к реальным сменам. Это только начало пути!", color:"#7C9E87" },
-    core:     { icon:"⭐", title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Твои стандарты — пример для новичков.", color:GOLD },
-    manager:  { icon:"🎯", title:"Менеджер пройден!", badge:"Лидер зала", desc:"Управление командой, разрешение конфликтов, финансы — ты готов к большему.", color:"#8B7BAB" },
-    service_manager: { icon:"🏛️", title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Ты прошёл весь путь. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
-    bar: { icon:"🍸", title:"Бар пройден!", badge:"Мастер стойки", desc:"Станция, техника, продукт и гость за стойкой — всё твоё. Бар держится на таких людях.", color:GOLD },
-    spg: { icon:"🛎️", title:"Хостес пройдена!", badge:"Лицо ресторана", desc:"Ты — первое и последнее впечатление гостя. Встреча, поток и атмосфера у входа теперь твоя стихия.", color:"#C8917A" },
+    seasonal: { title:"Новичок пройден!", badge:"Стажёр сервиса", desc:"Ты освоил базовые стандарты и готов к реальным сменам. Это только начало пути!", color:"#7C9E87" },
+    core:     { title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Твои стандарты — пример для новичков.", color:GOLD },
+    manager:  { title:"Менеджер пройден!", badge:"Лидер зала", desc:"Управление командой, разрешение конфликтов, финансы — ты готов к большему.", color:"#8B7BAB" },
+    service_manager: { title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Ты прошёл весь путь. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
+    bar: { title:"Бар пройден!", badge:"Мастер стойки", desc:"Станция, техника, продукт и гость за стойкой — всё твоё. Бар держится на таких людях.", color:GOLD },
+    spg: { title:"Хостес пройдена!", badge:"Лицо ресторана", desc:"Ты — первое и последнее впечатление гостя. Встреча, поток и атмосфера у входа теперь твоя стихия.", color:"#C8917A" },
   };
   const ach = achivements[role?.id] || achivements.seasonal;
 
@@ -132,7 +132,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
       {/* Звёзды */}
       <div className="sa-fast" style={{ display:"flex", gap:8, marginBottom:28, animationDelay:"0.3s" }}>
         {[1,2,3].map(s => (
-          <div key={s} style={{ fontSize:32, filter:`drop-shadow(0 0 8px #C8A96E)`, animationDelay:`${s*0.15}s` }} className="sa-pop">⭐</div>
+          <div key={s} style={{ fontSize:32, filter:`drop-shadow(0 0 8px #C8A96E)`, animationDelay:`${s*0.15}s` }} className="sa-pop"><span style={{ color:"#E4C88C" }}>✦</span></div>
         ))}
       </div>
 
@@ -232,11 +232,11 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const isAdmin = !!profile?.is_admin;
   // Доступные вкладки по должности
   const allTabs = [
-    { id:"waiter",  label:"Официанты", icon:"🍽️", color:"#7C9E87" },
-    { id:"hostess", label:"Хостес", icon:"🛎️", color:"#C8917A" },
-    { id:"manager", label:"Менеджеры", icon:"🎯", color:"#8B7BAB" },
-    { id:"bartender", label:"Бар", icon:"🍸", color:GOLD },
-    { id:"senior",  label:"Руководство", icon:"🏛️", color:GOLD },
+    { id:"waiter",  label:"Официанты", color:"#7C9E87" },
+    { id:"hostess", label:"Хостес", color:"#C8917A" },
+    { id:"manager", label:"Менеджеры", color:"#8B7BAB" },
+    { id:"bartender", label:"Бар", color:GOLD },
+    { id:"senior",  label:"Руководство", color:GOLD },
   ];
   const visibleTabs = (isAdmin || myPosition === "senior") ? allTabs : allTabs.filter(t => {
     if (myPosition === "waiter")  return t.id === "waiter";
@@ -310,6 +310,24 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   // Старший бармен соревнуется во вкладке «Бар» — отдельной вкладки не плодим
   const tabOf = (pos) => pos === "senior_bartender" ? "bartender" : pos;
   const filtered = leaderboard.filter(p => tabOf(p.position || "waiter") === tab);
+  // Динамика «↑N за неделю»: место сравнивается со снапшотом 2+ дней
+  // давности (на устройстве, по вкладке); снапшот обновляется раз в 7 дней
+  const myIdx = filtered.findIndex(p => p.name === profile?.name && p.surname === profile?.surname);
+  const rankDelta = (() => {
+    if (myIdx < 0) return null;
+    try {
+      const key = "sa_rank_snap_" + tab;
+      const sn = JSON.parse(localStorage.getItem(key) || "null");
+      const now = Date.now();
+      if (!sn || typeof sn.rank !== "number") {
+        localStorage.setItem(key, JSON.stringify({ ts: now, rank: myIdx + 1 }));
+        return null;
+      }
+      const d = now - sn.ts >= 2 * 86400000 ? sn.rank - (myIdx + 1) : null;
+      if (now - sn.ts >= 7 * 86400000) localStorage.setItem(key, JSON.stringify({ ts: now, rank: myIdx + 1 }));
+      return d;
+    } catch (e) { return null; }
+  })();
   const detail = selected ? scores.filter(s => s.name === selected.name && s.surname === selected.surname) : [];
 
   // Сотрудник недели: сумма очков за текущую неделю (Пн–Вс) в рамках вкладки
@@ -376,6 +394,14 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <div style={{ ...T.modTitle }}>{p.name} {p.surname}</div>
+                  {i === myIdx && rankDelta != null && rankDelta !== 0 ? (
+                    <span style={{ fontSize:10, fontFamily:"ui-monospace, Menlo, monospace", padding:"2px 7px", borderRadius:999,
+                      color: rankDelta > 0 ? "#8FB890" : T.modSub.color,
+                      background: rankDelta > 0 ? "rgba(124,158,135,0.14)" : "rgba(154,140,116,0.12)",
+                      border: `1px solid ${rankDelta > 0 ? "rgba(124,158,135,0.4)" : "rgba(154,140,116,0.3)"}` }}>
+                      {rankDelta > 0 ? "↑" + rankDelta : "↓" + Math.abs(rankDelta)} за неделю
+                    </span>
+                  ) : null}
                   {ach.map((a, ai) => <span key={ai} title={a.label} style={{ display:"inline-flex", alignItems:"center" }}>{UI_SVG[a.icon] ? UI_SVG[a.icon](GOLD, 15) : a.icon}</span>)}
                 </div>
                 <div style={{ color:T.modSub.color, fontSize:12, marginBottom:6 }}>{p.restaurant}</div>
@@ -754,7 +780,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
   // подтверждением: это навсегда, в отличие от сброса результатов
   const [delAsk, setDelAsk] = React.useState(false);
   const [delBusy, setDelBusy] = React.useState(false);
-  const [delDone, setDelDone] = React.useState(false);
+  const [delDone, setDelDone] = React.useState(null);   // null | текст итога
   const [delErr, setDelErr] = React.useState(null);
   return (
     <div style={{ ...T.modCard, marginBottom:8, gap:12, flexDirection:"column" }}>
@@ -814,7 +840,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
               setDelBusy(true); setDelErr(null);
               const r = await onDeleteEmployee(p.name, p.surname);
               setDelBusy(false);
-              if (r && r.ok) { setDelDone(true); setDelAsk(false); }
+              if (r && r.ok) { setDelDone(r.note || "Сотрудник удалён: доступ и все результаты стёрты."); setDelAsk(false); }
               else setDelErr((r && r.msg) || "Не получилось удалить");
             }} {...onActivate(() => {})}
               style={{ padding:"7px 14px", borderRadius:10, cursor:"pointer", fontSize:12, fontWeight:"bold",
@@ -833,7 +859,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
       )}
       {delDone && (
         <div style={{ color:T.modSub.color, fontSize:11.5, fontStyle:"italic" }}>
-          Сотрудник удалён: доступ и все результаты стёрты.
+          {delDone}
         </div>
       )}
     </div>
@@ -845,7 +871,6 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
   const STAT_ROLES = ["spg", "bar", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
   const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
-  const roleIcon  = { seasonal:"🌱", core:"⭐", spg:"🛎️", manager:"🎯", service_manager:"🏛️", bar:"🍸" };
 
   const myScores = scores.filter(s => s.name === profile?.name && s.surname === profile?.surname);
   const totalTests = myScores.length;
@@ -920,7 +945,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
           const hasAnyProgress = totalDone > 0;
           return (
             <div key={r} style={{ ...T.modCard, marginBottom:8, gap:12, opacity: done || hasAnyProgress ? 1 : 0.4 }}>
-              <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{ROLE_SVG[r] ? ROLE_SVG[r](roleColor[r], 24) : roleIcon[r]}</div>
+              <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{ROLE_SVG[r] ? ROLE_SVG[r](roleColor[r], 24) : null}</div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
                   <div style={{ ...T.modTitle, fontSize: T.modTitle?.fontSize || 17 }}>{roleLabel[r]}</div>
@@ -1117,12 +1142,12 @@ export function ProfileScreen({ onDone, T }) {
               {showPositionSheet && (
                 <div className="sa-fast" style={{ marginTop:8, display:"flex", flexDirection:"column", gap:6 }}>
                   {[
-                    { id:"waiter",  icon:"🍽️", label:"Официант",           sub:"Обслуживание гостей" },
-                    { id:"hostess", icon:"🛎️", label:"Хостес",             sub:"Служба приёма гостей" },
-                    { id:"bartender", icon:"🍸", label:"Бармен",            sub:"Работа за барной стойкой" },
-                    { id:"senior_bartender", icon:"🥃", label:"Старший бармен",  sub:"Бар: смена, качество, наставничество" },
-                    { id:"manager", icon:"🎯", label:"Менеджер",            sub:"Управление залом и командой" },
-                    { id:"senior",  icon:"🏛️", label:"Руководящий состав", sub:"Управляющий, Директор" },
+                    { id:"waiter",  label:"Официант",           sub:"Обслуживание гостей" },
+                    { id:"hostess", label:"Хостес",             sub:"Служба приёма гостей" },
+                    { id:"bartender", label:"Бармен",            sub:"Работа за барной стойкой" },
+                    { id:"senior_bartender", label:"Старший бармен",  sub:"Бар: смена, качество, наставничество" },
+                    { id:"manager", label:"Менеджер",            sub:"Управление залом и командой" },
+                    { id:"senior",  label:"Руководящий состав", sub:"Управляющий, Директор" },
                   ].map(pos => (
                     <div key={pos.id} onClick={() => { setPosition(pos.id); setShowPositionSheet(false); }} {...onActivate(() => { setPosition(pos.id); setShowPositionSheet(false); })}
                       style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", borderRadius:13, cursor:"pointer",

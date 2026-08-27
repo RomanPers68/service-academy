@@ -154,7 +154,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color: gold ? GOLD : GRN, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{title}</div>
-                      <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sub}</div>
+                      <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:1, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", lineHeight:1.35 }}>{sub}</div>
                     </div>
                 {total > 0 && done > 0 && next ? (
                   <svg width="26" height="26" viewBox="0 0 26 26" style={{ flexShrink:0, marginRight:2 }}>
@@ -162,7 +162,7 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
                     <circle cx="13" cy="13" r="10.5" fill="none" stroke={GOLD} strokeWidth="2.6" strokeLinecap="round"
                       strokeDasharray={(2 * Math.PI * 10.5 * prog / 100) + " " + (2 * Math.PI * 10.5)}
                       transform="rotate(-90 13 13)" />
-                    <text x="13" y="14.5" textAnchor="middle" fontSize="7.5" fill={GOLD} fontFamily="ui-monospace, Menlo, monospace">{prog}</text>
+                    <text x="13" y="14.5" textAnchor="middle" fontSize="6.5" fill={GOLD} fontFamily="ui-monospace, Menlo, monospace">{prog}%</text>
                   </svg>
                 ) : null}
                     <div style={{ fontFamily:"monospace", flexShrink:0, fontSize:9, letterSpacing:1, color: "#14100A", background: gold ? `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)` : RC, borderRadius:12, padding:"6px 11px" }}>{cta} ›</div>

@@ -36,6 +36,21 @@ const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_C
 
 export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText }) {
   const [q, setQ] = React.useState("");
+  // Недавние запросы: три последних чипами, пишутся с паузой 1.2с
+  const [recent, setRecent] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem("sa_recent_q") || "[]"); } catch (e) { return []; }
+  });
+  React.useEffect(() => {
+    if (!q || q.trim().length < 3) return;
+    const t = setTimeout(() => {
+      setRecent(prev => {
+        const nx = [q.trim(), ...prev.filter(x => x !== q.trim())].slice(0, 3);
+        try { localStorage.setItem("sa_recent_q", JSON.stringify(nx)); } catch (e) {}
+        return nx;
+      });
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [q]);
   const [openKey, setOpenKey] = React.useState(null);
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const red = a11y ? "#A03828" : "#E07878";
@@ -103,6 +118,16 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
           placeholder="Глютен, прожарки, жалоба, декантация…"
           style={{ width: "100%", boxSizing: "border-box", padding: "13px 15px", borderRadius: 14, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, outline: "none" }}
         />
+        {!q && recent.length > 0 && (
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:8 }}>
+            {recent.map(t => (
+              <span key={t} onClick={() => setQ(t)}
+                style={{ fontSize:11.5, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
+                  background:"rgba(200,169,110,0.08)", border:"1px solid rgba(200,169,110,0.3)",
+                  WebkitTapHighlightColor:"transparent" }}>{t}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {query.length < 2 && (

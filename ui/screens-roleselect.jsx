@@ -105,6 +105,14 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
             <div style={{ padding:"2px 20px 12px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
               <div style={{ color: T.modTitle.color, fontSize:19, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: GOLD }}>{profile.name}</span>
+                {(() => { try {
+                  const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
+                  const t = new Date();
+                  const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+                  if (r && r.date === key && r.label && r.label !== "выходной") {
+                    return <span style={{ display:"block", fontSize:11.5, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic" }}>Хорошей смены ✦</span>;
+                  }
+                } catch (e) {} return null; })()}
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
               </div>
               <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
@@ -148,6 +156,15 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
                       <div style={{ color: gold ? GOLD : GRN, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{title}</div>
                       <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sub}</div>
                     </div>
+                {total > 0 && done > 0 && next ? (
+                  <svg width="26" height="26" viewBox="0 0 26 26" style={{ flexShrink:0, marginRight:2 }}>
+                    <circle cx="13" cy="13" r="10.5" fill="none" stroke="rgba(200,169,110,0.22)" strokeWidth="2.6" />
+                    <circle cx="13" cy="13" r="10.5" fill="none" stroke={GOLD} strokeWidth="2.6" strokeLinecap="round"
+                      strokeDasharray={(2 * Math.PI * 10.5 * prog / 100) + " " + (2 * Math.PI * 10.5)}
+                      transform="rotate(-90 13 13)" />
+                    <text x="13" y="14.5" textAnchor="middle" fontSize="7.5" fill={GOLD} fontFamily="ui-monospace, Menlo, monospace">{prog}</text>
+                  </svg>
+                ) : null}
                     <div style={{ fontFamily:"monospace", flexShrink:0, fontSize:9, letterSpacing:1, color: "#14100A", background: gold ? `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)` : RC, borderRadius:12, padding:"6px 11px" }}>{cta} ›</div>
                   </div>
                   {next && (

@@ -517,6 +517,24 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
             backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
             border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",
             boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)"}, 0 6px 22px rgba(0,0,0,${a11y ? 0.10 : 0.38})` }}>
+          {/* Быстрые чипы: пустое поле пугает — готовые вопросы приглашают.
+              Собираются из learner-контекста, живут пока поле пустое */}
+          {!input && (() => {
+            const qs = [];
+            if (learner && learner.dueMistakes > 0) qs.push("Что мне повторить перед сменой?");
+            if (learner && learner.todayShift && learner.todayShift !== "выходной") qs.push("Подготовь меня к сегодняшней смене");
+            qs.push("Проверь меня по трём блюдам меню");
+            return (
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", padding:"0 2px 8px" }}>
+                {qs.slice(0, 3).map(t => (
+                  <span key={t} onClick={() => setInput(t)}
+                    style={{ fontSize:11.5, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
+                      background:"rgba(200,169,110,0.08)", border:"1px solid rgba(200,169,110,0.3)",
+                      WebkitTapHighlightColor:"transparent" }}>{t}</span>
+                ))}
+              </div>
+            );
+          })()}
           <textarea
             ref={inputRef}
             className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}

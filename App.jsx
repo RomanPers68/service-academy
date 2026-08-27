@@ -358,6 +358,14 @@ function ServiceAcademy() {
   const [customLessons, setCustomLessons] = useState([]); // свой контент (редактор)
   const [saved, setSaved] = useState({}); // #5 — избранные термины и заметки: { termKey: { fav?: bool, note?: string } }
   const [examResults, setExamResults] = useState({}); // #2 — результаты экзаменов: { roleId: { passed, score, correct, total, date } }
+  // Празднование побед: золотая вспышка ✦ на большие моменты (экзамен).
+  // null | текст; живёт полторы секунды и гаснет сама.
+  const [celebrate, setCelebrate] = useState(null);
+  const cheer = useCallback((text) => {
+    setCelebrate(text);
+    try { vibrate && vibrate("success"); } catch (e) {}
+    setTimeout(() => setCelebrate(null), 1500);
+  }, []);
   const [examRole, setExamRole] = useState(null); // #2 — для какой роли открыт экзамен/сертификат
 
   // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
@@ -1096,6 +1104,16 @@ function ServiceAcademy() {
             экран начисто — лечит iOS-призраки старого рендера под стеклом.
             Исключение — «Собеседование»: там живёт прогресс интервью,
             перемонтаж его уничтожил бы (тема переключается без пересборки) */}
+        {celebrate ? (
+          <div className="sa-celeb">
+            <div className="c-core">
+              {[[-96,-74],[92,-80],[-120,18],[118,26],[-58,-108],[64,96],[0,-118],[-10,104]].map(([dx, dy], i) => (
+                <span key={i} className="c-spark" style={{ "--dx": dx + "px", "--dy": dy + "px", animationDelay: (i * 0.04) + "s" }}>✦</span>
+              ))}
+              <span style={{ color:"#D2A85A" }}>✦</span> {celebrate}
+            </div>
+          </div>
+        ) : null}
         <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {/* ── Книга отзывов ── */}
@@ -1307,7 +1325,7 @@ function ServiceAcademy() {
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => navigate(prevScreen || "roleSelect")} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
-        {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) openCertificate(id); }} onExit={() => navigate("certificates")} />}
+        {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} />}
         {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}
         </div>
 

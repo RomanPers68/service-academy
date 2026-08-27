@@ -228,6 +228,18 @@ export const injectStyles = () => {
     /* Переход между экранами: каждый мягко въезжает (fade + сдвиг) */
     @keyframes saPageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
     .sa-pagein { animation: saPageIn .28s cubic-bezier(.16,1,.3,1) backwards; }
+    @keyframes saCelebIn { 0%{opacity:0;transform:scale(.7)} 18%{opacity:1;transform:scale(1.04)}
+      30%{transform:scale(1)} 78%{opacity:1} 100%{opacity:0;transform:scale(1.02)} }
+    @keyframes saCelebSpark { 0%{opacity:0;transform:translate(0,0) scale(.4)}
+      25%{opacity:1} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1)} }
+    .sa-celeb { position:fixed; inset:0; z-index:340; display:grid; place-items:center;
+      pointer-events:none; animation: saCelebIn 1.5s ease both; }
+    .sa-celeb .c-core { position:relative; text-align:center; font-family:Georgia,serif;
+      color:#EFE4C8; font-size:21px; padding:18px 30px; border-radius:18px;
+      background:rgba(28,21,10,0.88); border:1px solid rgba(210,168,65,0.5);
+      box-shadow:inset 0 0 22px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 40px rgba(0,0,0,0.5); }
+    .sa-celeb .c-spark { position:absolute; left:50%; top:50%; color:#D2A85A; font-size:15px;
+      animation: saCelebSpark 1.3s ease-out both; }
     /* Мерцающий скелетон стеклянных карточек на время ленивой подгрузки */
     @keyframes saShimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
     .sa-skel { background: linear-gradient(100deg, rgba(200,169,110,0.07) 40%, rgba(230,200,140,0.16) 50%, rgba(200,169,110,0.07) 60%); background-size:200% 100%; animation: saShimmer 1.4s linear infinite; }

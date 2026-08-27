@@ -180,8 +180,14 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         vibrate("success");
         setSelected({ ...selected, name: nm, surname: sn });
         setConfirm(null); loadList();
-      } else { vibrate("error"); setActionError("Не получилось. Проверь, что на сервере добавлена функция admin_update_employee."); }
-    } catch(e) { vibrate("error"); setActionError("Нет связи. Попробуй ещё раз."); }
+      } else {
+        vibrate("error");
+        // Диагностика вместо одной фразы на все беды: показываем, ЧТО
+        // именно ответил сервер — по этому тексту чиним прицельно
+        const why = res && (res.error || res.message) ? String(res.error || res.message) : "пустой ответ";
+        setActionError("Сервер отказал: " + why + (res && res.step ? " (шаг: " + res.step + ")" : ""));
+      }
+    } catch(e) { vibrate("error"); setActionError("Ошибка вызова: " + String(e && e.message || e).slice(0, 160)); }
     setBusy(false);
   };
 

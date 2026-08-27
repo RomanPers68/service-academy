@@ -70,7 +70,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ onSelect, T, a11y, scores = [], onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
@@ -116,6 +116,28 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
                 } catch (e) {} return null; })()}
               </div>
               <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
+            </div>
+          );
+        })()}
+
+        {/* Пульс недели: владельцу — командная сводка одним взглядом */}
+        {profile?.is_admin && scores.length > 0 && (() => {
+          const d = new Date(); const dw = (d.getDay() + 6) % 7;
+          d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dw);
+          const ws = d.getTime();
+          const wk = scores.filter(q => q.updated_at && new Date(q.updated_at).getTime() >= ws);
+          if (!wk.length) return null;
+          const by = {};
+          wk.forEach(q => { const k = q.name + " " + (q.surname || ""); by[k] = (by[k] || 0) + (q.score || 0); });
+          const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
+          const ppl = Object.keys(by).length;
+          return (
+            <div style={{ margin:"0 14px 10px", padding:"9px 13px", borderRadius:13, fontSize:11.5,
+              color: T.modSub.color, background:"rgba(200,169,110,0.06)",
+              border:"1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
+              <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:"#C8A96E" }}>пульс недели</span>
+              {" "}· {wk.length} {wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов"} · {ppl} чел в игре
+              {top ? <> · лидер: <span style={{ color:"#C8A96E" }}>{top[0].trim()}</span></> : null}
             </div>
           );
         })()}

@@ -335,6 +335,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // фоновой подгрузки, что кормит шов месяцев)
   const [prevStats, setPrevStats] = React.useState(null);
   const [dayEdit, setDayEdit] = React.useState(null);   // заметка ко дню (менеджер)
+  const [backupText, setBackupText] = React.useState("");   // страховка настроек
   const [contactsOpen, setContactsOpen] = React.useState(false);   // «на связи» свёрнуто
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
@@ -1404,6 +1405,73 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     x.fillText("составлено в Service Academy", W / 2, H - 64);
     return cv;
   };
+  // Карточка «Сегодня» для чата: состав смены по позициям одной картинкой
+  const drawTodayCard = () => {
+    const t = new Date(); const td = t.getDate();
+    const W = 1080, H = 1350, cv = document.createElement("canvas");
+    cv.width = W; cv.height = H; const x = cv.getContext("2d");
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#1B1409"); g.addColorStop(1, "#2A1F0E");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.textBaseline = "middle"; x.textAlign = "center";
+    x.fillStyle = "#C8A96E"; x.font = "600 24px ui-monospace, Menlo, monospace";
+    x.fillText("S E R V I C E   A C A D E M Y", W / 2, 76);
+    x.fillStyle = "#EFE4C8"; x.font = "50px Georgia, serif";
+    x.fillText("Сегодня · " + td + " " + MONTHS_R[M].toLowerCase(), W / 2, 148);
+    let y = 208;
+    const note = days[td] && days[td].note;
+    if (note) { x.fillStyle = "#D2A85A"; x.font = "italic 30px Georgia, serif";
+      x.fillText("✎ " + note, W / 2, y); y += 52; }
+    const dm = String(td).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
+    const bd = staff.filter(q => (q.bday || "") === dm);
+    if (bd.length) { x.fillStyle = "#D2A85A"; x.font = "30px Georgia, serif";
+      x.fillText("✦ День рождения: " + bd.map(q => q.name).join(", "), W / 2, y); y += 52; }
+    y += 8;
+    x.textAlign = "left";
+    POS.forEach(({ id: pos, t: pt }) => {
+      const inShift = staff.filter(q => q.pos === pos && shiftOf(plan[q.id]?.[td]));
+      const nd = (needOf(td) || {})[pos] || 0;
+      if (!inShift.length && !nd) return;
+      x.fillStyle = "#8F7B57"; x.font = "600 22px ui-monospace, Menlo, monospace";
+      x.fillText(pt.toUpperCase(), 90, y); 
+      if (nd > inShift.length) {
+        x.fillStyle = "#D96A5E"; x.font = "22px ui-monospace, Menlo, monospace"; x.textAlign = "right";
+        x.fillText(inShift.length + " из " + nd, W - 90, y); x.textAlign = "left";
+      }
+      y += 44;
+      inShift.forEach(q => {
+        const k = plan[q.id][td]; const sh = shiftOf(k);
+        const ci = (cfg.shifts || []).findIndex(z => z.k === k);
+        const cc = SHIFT_COLORS[(ci < 0 ? 0 : ci) % SHIFT_COLORS.length];
+        x.fillStyle = cc.bg; x.fillRect(90, y - 19, 40, 38);
+        x.strokeStyle = cc.bd; x.lineWidth = 2; x.strokeRect(90, y - 19, 40, 38);
+        x.fillStyle = cc.fg; x.font = "600 23px ui-monospace, Menlo, monospace"; x.textAlign = "center";
+        x.fillText(k, 110, y + 1); x.textAlign = "left";
+        x.fillStyle = "#EFE4C8"; x.font = "31px Georgia, serif";
+        x.fillText(q.name, 152, y);
+        x.fillStyle = "#9C8760"; x.font = "22px ui-monospace, Menlo, monospace"; x.textAlign = "right";
+        x.fillText(sh.from + ":00–" + (sh.to === 24 ? "24" : sh.to) + ":00", W - 90, y); x.textAlign = "left";
+        y += 46;
+      });
+      y += 18;
+    });
+    const ld = leadOn(td);
+    if (ld) { x.fillStyle = "#C8A96E"; x.font = "26px Georgia, serif"; x.textAlign = "center";
+      x.fillText("Старший: " + ld, W / 2, Math.min(y + 8, H - 110)); }
+    x.textAlign = "center"; x.fillStyle = "#6E5C3E"; x.font = "22px ui-monospace, Menlo, monospace";
+    x.fillText("составлено в Service Academy", W / 2, H - 56);
+    return cv;
+  };
+  const exportToday = async () => {
+    setShotBusy(true);
+    try {
+      const cv = drawTodayCard();
+      const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+      setShot({ url: URL.createObjectURL(blob), blob, name: "Сегодня_в_смене.png" });
+      vibrate("success");
+    } catch (e) { setMsg("Не собралась карточка"); setTimeout(() => setMsg(""), 2500); }
+    setShotBusy(false);
+  };
   const exportWeek = async (me) => {
     setShotBusy(true);
     try {
@@ -1905,6 +1973,26 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           У каждого три вида нерабочих дней: <b>отпуск</b> — период в этом месяце, <b>дни недели</b> — постоянный
           шаблон вроде «не работает по вторникам», <b>выходные по датам</b> — разовые числа. Генератор не нарушает
           ни одно из них.</div>
+      </Sec>
+      {/* Страховка: настройки целиком текстом — скопировать в заметки,
+          а после беды вставить обратно и применить (запрос владельца) */}
+      <Sec no={6} title="Страховка настроек" hint="копия текстом — на чёрный день"
+        open={openSec === 6} onToggle={() => setOpenSec(openSec === 6 ? 0 : 6)} P={P}>
+        <textarea value={backupText} onChange={e => setBackupText(e.target.value)}
+          style={{ ...inp, width:"100%", minHeight:120, fontFamily:mono, fontSize:10.5, boxSizing:"border-box" }} />
+        <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+            onClick={() => { setBackupText(JSON.stringify(cfg)); setMsg("Настройки в поле — выдели всё и скопируй в заметки"); setTimeout(() => setMsg(""), 3000); }}>
+            Выгрузить в поле</button>
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+            onClick={() => { try {
+              const o = JSON.parse(backupText);
+              if (!o || !Array.isArray(o.shifts) || !Array.isArray(o.staff)) throw new Error("bad");
+              patch(c => { Object.keys(c).forEach(k => delete c[k]); Object.assign(c, o); });
+              setMsg("Настройки восстановлены — проверь и сохрани"); setTimeout(() => setMsg(""), 3000);
+            } catch (e) { setMsg("Это не похоже на копию настроек"); setTimeout(() => setMsg(""), 2500); } }}>
+            Применить из поля</button>
+        </div>
       </Sec>
     </div>
     );
@@ -2503,6 +2591,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
           );
         })}
+        <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12, marginTop:10 }}
+          className="sa-btn" disabled={shotBusy} onClick={exportToday}>
+          {shotBusy ? "Собираю…" : "Сегодня — картинкой в чат"}
+        </button>
       </div>
     ) : null}
     <div style={card}>

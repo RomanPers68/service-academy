@@ -334,6 +334,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // Динамика к прошлому месяцу: смены/часы/фонд (считается из той же
   // фоновой подгрузки, что кормит шов месяцев)
   const [prevStats, setPrevStats] = React.useState(null);
+  const [dayEdit, setDayEdit] = React.useState(null);   // заметка ко дню (менеджер)
+  const [contactsOpen, setContactsOpen] = React.useState(false);   // «на связи» свёрнуто
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
 
@@ -538,6 +540,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           plan: pl.plan || {}, locks: pl.locks || {}, days: pl.days || {}, facts: pl.facts || {},
           ts: Date.now() }));
       } catch (e2) {}
+      // Сводка «моя смена сегодня» — для плитки на главной и наставника
+      try {
+        const t0 = new Date();
+        if (t0.getFullYear() === Y && t0.getMonth() === M) {
+          const cfgL = v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG };
+          const full = ((profile?.name || "") + " " + (profile?.surname || "")).trim().toLowerCase();
+          const nrm = x => String(x || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+          const tks = x => new Set(nrm(x).split(" ").filter(Boolean));
+          const ptk = tks(full);
+          const allIn2 = (A, B) => [...A].every(w => B.has(w));
+          const cands = (cfgL.staff || []).filter(st => {
+            const et = tks(st.name);
+            return et.size && ptk.size && (allIn2(et, ptk) || allIn2(ptk, et));
+          });
+          const meS = cands.find(st => tks(st.name).size === ptk.size && allIn2(tks(st.name), ptk))
+            || (cands.length === 1 ? cands[0] : null);
+          const k0 = meS && (pl.plan || {})[meS.id]?.[t0.getDate()];
+          const sh0 = k0 && (cfgL.shifts || []).find(q => q.k === k0);
+          localStorage.setItem("sa_today_shift", JSON.stringify({
+            date: t0.getFullYear() + "-" + String(t0.getMonth() + 1).padStart(2, "0") + "-" + String(t0.getDate()).padStart(2, "0"),
+            label: sh0 ? sh0.name + " · " + sh0.from + ":00–" + (sh0.to === 24 ? "24" : sh0.to) + ":00" : (meS ? "выходной" : null) }));
+        }
+      } catch (e5) {}
       // Хвост прошлого месяца — тихо, в фоне: не задерживает открытие,
       // при любой ошибке остаётся пустым (генератор работает как раньше)
       setPrevTail({});
@@ -1725,6 +1750,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <Pill key={v} a11y={a11y} P={P} on={(sf.rateMode || "hour") === v} style={{ flex:1, padding:"7px 4px", fontSize:11 }}
                   onClick={() => patch(c => { c.staff[i].rateMode = v; })}>{t}</Pill>
               ))}
+              <Field label="д.р." P={P}>
+                <Text inp={{ ...inp, width:64 }} v={sf.bday || ""} maxLength={5} placeholder="дд.мм"
+                  set={val => patch(c => { c.staff[i].bday = val; })} />
+              </Field>
             </div>
 
             {/* Отпуск задаётся числами того месяца, который открыт сейчас */}
@@ -1883,8 +1912,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
   // ── Вид сотрудника: только свои смены ─────────────────────────────
   if (!isAdmin) {
-    const me = staff.find(s => `${s.name}`.toLowerCase() === `${profile?.name || ""} ${profile?.surname || ""}`.trim().toLowerCase())
-            || staff.find(s => `${s.name}`.toLowerCase().includes((profile?.name || "").toLowerCase()));
+    // Прод-баг «двух Дмитриев»: includes-фолбэк отдавал первого, чьё имя
+    // содержит «Дмитрий» — оба видели чужой график. Токен-движок Доп. 75.
+    const meNorm = x => String(x || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+    const meToks = x => new Set(meNorm(x).split(" ").filter(Boolean));
+    const mePT = meToks((profile?.name || "") + " " + (profile?.surname || ""));
+    const meEq = [], meSub = [];
+    staff.forEach(s2 => {
+      const st2 = meToks(s2.name);
+      if (!st2.size || !mePT.size) return;
+      const allIn = (A, B) => [...A].every(w => B.has(w));
+      if (st2.size === mePT.size && allIn(st2, mePT)) meEq.push(s2);
+      else if (allIn(mePT, st2) || allIn(st2, mePT)) meSub.push(s2);
+    });
+    const me = meEq.length === 1 ? meEq[0] : (meEq.length === 0 && meSub.length === 1 ? meSub[0] : null);
     return shell(<>
       {monthNav}
       {!me ? (
@@ -1922,6 +1963,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             let peaks = 0;
             for (let d = 1; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d]) && lvlOf(d) === 3) peaks++;
             if (peaks >= 3) chips.push(peaks + " пиковых смен");
+            if (en2 > 0 && hoursOf(me) < en2) {
+              const lack = en2 - hoursOf(me);
+              const n2 = shiftsOf(me);
+              const avg = n2 > 0 ? Math.max(1, Math.round(hoursOf(me) / n2)) : 12;
+              chips.push("до нормы " + lack + " ч ≈ " + Math.ceil(lack / avg) + " см.");
+            }
             if (!chips.length) return null;
             return (
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", margin:"0 0 10px" }}>
@@ -1998,16 +2045,30 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             // и у старшего смены — сотрудник их не видел (замечание владельца)
             const bosses = staff.filter(x => x.phone && x.id !== me.id);
             if (!bosses.length) return null;
+            // Компактно (замечание владельца: 15 капсул грузили экран):
+            // свёрнуто в одну строку-кнопку, список раскрывается по тапу
             return (
-              <div style={{ display:"flex", alignItems:"baseline", gap:7, flexWrap:"wrap", margin:"0 0 10px",
-                paddingBottom:9, borderBottom:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
-                <span style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub }}>на связи</span>
+              <div style={{ margin:"0 0 10px", paddingBottom:9,
+                borderBottom:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+                <span onClick={() => setContactsOpen(o => !o)} {...onActivate(() => setContactsOpen(o => !o))}
+                  style={{ display:"inline-flex", alignItems:"center", gap:6, cursor:"pointer",
+                    padding:"4px 11px", borderRadius:999, fontSize:11.5, color:P.acc,
+                    background: a11y ? "rgba(250,242,222,0.6)" : "rgba(200,169,110,0.08)",
+                    border:`1px solid ${GOLD}44`, WebkitTapHighlightColor:"transparent" }}>
+                  <IcoPhone size={11} color={P.acc} />
+                  на связи · {bosses.length}
+                  <span style={{ fontSize:13, transform: contactsOpen ? "rotate(90deg)" : "none",
+                    transition:"transform .25s", display:"inline-block" }}>›</span>
+                </span>
+                {contactsOpen ? (
+                <div style={{ display:"flex", alignItems:"baseline", gap:7, flexWrap:"wrap", marginTop:8 }}>
                 {bosses.map(b => (
                   <span key={b.id} style={{ fontSize:12.5 }}>
                     <CallName who={b} label={b.name} color={P.acc} />
                   </span>
                 ))}
               </div>
+                ) : null}
             );
           })()}
           {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
@@ -2028,10 +2089,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   <div style={{ fontSize:17, color: holOf(d) ? P.warn : P.text }}>{d}</div>
                   <div style={{ fontFamily:mono, fontSize:8.5, color:P.sub }}>{DOWL[dow(d)]}</div>
                   {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
+                  {days[d]?.note ? <div style={{ width:4, height:4, borderRadius:2, background:GOLD, margin:"1px auto 0" }} /> : null}
                   {wishOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoSun size={10} /></div> : null}
                   {hardOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoBan size={10} color={P.warn} /></div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
+                  {days[d]?.note ? <div style={{ fontSize:10.5, color:P.acc, marginBottom:1 }}>✎ {days[d].note}</div> : null}
                   <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? <>Отпуск <IcoWave size={13} color={P.acc} dy={-2} /></> : sh ? sh.name
                     : ["Выходной", "Отдыхай ✦", "Твой день"][d % 3]}</div>
                   <div style={{ fontSize:11.5, color:P.sub }}>
@@ -2329,6 +2392,21 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
       );
     })() : null}
+    {dayEdit ? (
+      <div style={{ ...card, marginTop:10 }}>
+        <div style={{ fontSize:13.5, color:P.text, marginBottom:8 }}>
+          Заметка ко дню <b>{dayEdit} {MONTHS_R[M]}</b> — увидит вся команда
+        </div>
+        <Text inp={inp} v={days[dayEdit]?.note || ""} maxLength={80} style={{ width:"100%" }}
+          set={val => { setDays(dd => ({ ...dd, [dayEdit]: { ...(dd[dayEdit] || {}), note: val || undefined } })); setDirty(true); }} />
+        <div style={{ display:"flex", gap:8, marginTop:8 }}>
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
+        </div>
+        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+          Банкет, инвентаризация, проверка — короткая строка у даты. Не забудь «Сохранить».
+        </div>
+      </div>
+    ) : null}
     {confirmClear ? (
       <div style={{ ...card, marginTop:10 }}>
         <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:10 }}>
@@ -2392,6 +2470,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <span>Сегодня · {today} {MONTHS_R[M]}</span>
           <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""}</span>
         </div>
+        {days[today]?.note ? (
+          <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✎ {days[today].note}</div>
+        ) : null}
+        {(() => {
+          const dm = String(today).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
+          const bd = staff.filter(x => (x.bday || "") === dm);
+          return bd.length ? (
+            <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✦ День рождения: {bd.map(x => x.name).join(", ")}</div>
+          ) : null;
+        })()}
         {POS.map(({ id: pos, t }) => {
           const n = needOf(today)[pos] || 0;
           const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
@@ -2415,6 +2503,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           );
         })}
       </div>
+        </div>
     ) : null}
     <div style={card}>
       <div style={eyebrow}>
@@ -2493,10 +2582,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     background: d === today ? (a11y ? "rgba(175,140,65,0.12)" : "rgba(212,168,90,0.09)") : undefined,
                     boxShadow: d === today ? `0 2px 0 ${GOLD} inset` : undefined,
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
-                    <b style={{ display:"block", fontSize:10.5,
+                    <b onClick={() => setDayEdit(d)} style={{ display:"block", fontSize:10.5, cursor:"pointer",
                       fontWeight: d === today ? "bold" : "normal",
                       color: d === today ? GOLD : holOf(d) ? P.warn : dow(d) >= 5 ? P.acc : SAND }}>{d}</b>
                     {DOWL[dow(d)]}
+                    {days[d]?.note ? <span style={{ display:"block", width:4, height:4, borderRadius:2, background:GOLD, margin:"1px auto 0" }} /> : null}
                   </th>
                 ))}
               </tr>

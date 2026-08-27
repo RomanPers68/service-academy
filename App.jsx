@@ -1151,7 +1151,15 @@ function ServiceAcademy() {
                 const et = toks(e.name, e.surname);
                 return et.size && (isSub(target, et) || isSub(et, target));
               });
-              if (hits.length === 0) return { ok: false, msg: "В списке доступа такого нет (искал среди " + list.length + " чел) — проверь написание в «Команде»" };
+              if (hits.length === 0) {
+                // Призрак-профиль: зарегистрировался, но в «Команде» не создан
+                // (или уже удалён оттуда). Доступа нет — стираем записи.
+                try { await rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }); } catch (e2) {}
+                setScores(prev => prev.filter(x => !(x.name === name && x.surname === surname)));
+                setPracticeStars(prev => { const nx = { ...prev }; delete nx[name + "|" + (surname || "")]; return nx; });
+                setAllProfiles(prev => (prev || []).filter(x => !(x.name === name && x.surname === surname)));
+                return { ok: true, note: "Доступа в списке не было (профиль-призрак) — записи и результаты стёрты" };
+              }
               if (hits.length > 1) return { ok: false, msg: "Нашёл несколько похожих: " + hits.slice(0, 3).map(e => (e.name + " " + (e.surname || "")).trim()).join(", ") + " — удали точечно через «Команду»" };
               const emp = hits[0];
               const res = await rpc("admin_delete_employee", { p_token: saToken(), p_employee_id: emp.id });
@@ -1231,7 +1239,13 @@ function ServiceAcademy() {
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile}
           learner={{ position: profile?.position, roleTitle: (ROLES.find(r => r.id === role) || {}).title,
             done: doneCount, total: totalLessons, dueMistakes,
-            topics: mistakeBank.filter(m => !m.due || m.due <= Date.now()).slice(0, 3).map(m => m.lessonTitle).filter(Boolean) }} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
+            topics: mistakeBank.filter(m => !m.due || m.due <= Date.now()).slice(0, 3).map(m => m.lessonTitle).filter(Boolean),
+            todayShift: (() => { try {
+              const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
+              const t = new Date();
+              const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+              return (r && r.date === key && r.label) ? r.label : null;
+            } catch (e) { return null; } })() }} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
           // Переход на урок по id: [[lesson:ID]]
           if (dest && typeof dest === "object" && dest.lesson) {
             // Роли, доступные сотруднику: его текущая + все пройденные.

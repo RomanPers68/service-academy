@@ -185,7 +185,18 @@ export function RoleSelect({ onSelect, T, a11y, onSchedule, onLeaderboard, onPro
                     {mgr ? "График смен" : "Мой график"}
                   </div>
                   <div style={{ fontSize: 11.5, color: a11y ? "#6B5B40" : "#A2907A", marginTop: 1 }}>
-                    {mgr ? "Составить, проверить и опубликовать" : "Смены, время и старший смены"}
+                    {(() => {
+                      // Живая подпись из офлайн-сводки: смена сегодня
+                      try {
+                        const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
+                        const t = new Date();
+                        const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+                        if (r && r.date === key && r.label) {
+                          return r.label === "выходной" ? "Сегодня выходной ✦" : "Сегодня: " + r.label;
+                        }
+                      } catch (e) {}
+                      return mgr ? "Составить, проверить и опубликовать" : "Смены, время и старший смены";
+                    })()}
                   </div>
                 </div>
                 <div style={{ fontFamily: "monospace", flexShrink: 0, fontSize: 9, letterSpacing: 1.4,

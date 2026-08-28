@@ -336,6 +336,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [prevStats, setPrevStats] = React.useState(null);
   const [dayEdit, setDayEdit] = React.useState(null);   // заметка ко дню (менеджер)
   const [backupText, setBackupText] = React.useState("");   // страховка настроек
+  const [swaps, setSwaps] = React.useState([]);       // обмены сменами (сервер)
+  const [swapDay, setSwapDay] = React.useState(0);    // выбранный день для предложения
+  const [prevPay, setPrevPay] = React.useState({});   // заработок прошлого месяца по людям
+  const [planDiff, setPlanDiff] = React.useState([]);  // мои изменённые дни с прошлого визита
+  const [empFilter, setEmpFilter] = React.useState(""); // фильтр сотрудников в настройках
   const [contactsOpen, setContactsOpen] = React.useState(false);   // «на связи» свёрнуто
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
@@ -535,7 +540,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       setSwapSel(null);   // выбор обмена не переживает смену месяца
       undoRef.current = null; setUndoTick(t => t + 1);   // и отмена тоже
       setDirty(false); setState("ok"); setOfflineAt(null);
+      let prevSnap = null;
       try {
+        try { prevSnap = JSON.parse(localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey) || "null"); } catch (e9) {}
         localStorage.setItem("sa_sched_cache_" + venueKey + "_" + mkey, JSON.stringify({
           cfg: v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG },
           plan: pl.plan || {}, locks: pl.locks || {}, days: pl.days || {}, facts: pl.facts || {},
@@ -557,6 +564,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           });
           const meS = cands.find(st => tks(st.name).size === ptk.size && allIn2(tks(st.name), ptk))
             || (cands.length === 1 ? cands[0] : null);
+          // «График обновился»: сравниваем мой план со снимком прошлого визита
+          if (meS && prevSnap && prevSnap.plan) {
+            const oldMy = prevSnap.plan[meS.id] || {}, newMy = (pl.plan || {})[meS.id] || {}, ch = [];
+            for (let d = 1; d <= 31; d++) if ((oldMy[d] || "") !== (newMy[d] || "")) ch.push(d + "-е");
+            setPlanDiff(ch.slice(0, 6));
+          } else setPlanDiff([]);
           const k0 = meS && (pl.plan || {})[meS.id]?.[t0.getDate()];
           const sh0 = k0 && (cfgL.shifts || []).find(q => q.k === k0);
           localStorage.setItem("sa_today_shift", JSON.stringify({
@@ -564,6 +577,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             label: sh0 ? sh0.name + " · " + sh0.from + ":00–" + (sh0.to === 24 ? "24" : sh0.to) + ":00" : (meS ? "выходной" : null) }));
         }
       } catch (e5) {}
+      // Обмены сменами: активные заявки заведения (тихо, ошибки безвредны)
+      (async () => { try {
+        const r3 = await rpc("swap_list", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue: venueKey, p_month: mkey });
+        if (r3 && r3.ok) setSwaps(Array.isArray(r3.swaps) ? r3.swaps : []);
+      } catch (e6) {} })();
       // Хвост прошлого месяца — тихо, в фоне: не задерживает открытие,
       // при любой ошибке остаётся пустым (генератор работает как раньше)
       setPrevTail({});
@@ -588,6 +606,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             // Динамика: агрегаты прошлого месяца теми же правилами денег
             const f2 = (m2 && m2.payload && m2.payload.facts) || {};
             let psh = 0, phr = 0, pfund = 0;
+            const pp2 = {};
             (cfg?.staff || []).forEach(st => {
               const ds = pl2[st.id] || {}; let hh = 0, nn = 0;
               for (let d = 1; d <= pdays; d++) {
@@ -597,12 +616,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 hh += (typeof f === "number" && f >= 0) ? f : (sh2.to - sh2.from);
               }
               psh += nn; phr += hh;
+              pp2[st.id] = { hh, nn };
               if (st.rate > 0) {
                 const md = st.rateMode || "hour";
                 pfund += md === "month" ? st.rate : md === "shift" ? nn * st.rate : hh * st.rate;
               }
             });
             setPrevStats(psh > 0 ? { shifts: psh, hours: phr, fund: pfund } : null);
+            const pm2 = {};
+            (cfg?.staff || []).forEach(st => { const q = pp2[st.id]; if (!q || !(st.rate > 0)) return;
+              const md = st.rateMode || "hour";
+              pm2[st.id] = md === "month" ? st.rate : md === "shift" ? q.nn * st.rate : q.hh * st.rate; });
+            setPrevPay(pm2);
           }
         } catch (e) {}
       })();
@@ -1761,7 +1786,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       </Sec>
 
       <Sec no={5} title="Сотрудники" hint={openSec===5 ? "Кто работает, на какой позиции и сколько часов" : sum5} P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
-        {staff.map((sf, i) => { const openE = openEmp === sf.id; return (
+        <Text inp={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:8 }} v={empFilter}
+          placeholder="Найти по имени или должности…" set={setEmpFilter} />
+        {staff.map((sf, i) => { const openE = openEmp === sf.id;
+          if (empFilter && !((sf.name + " " + sf.pos).toLowerCase().includes(empFilter.toLowerCase()))) return null;
+          return (
           <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:7 }}>
             {/* Свёрнутая строка: обзор без простыни из десяти полей на человека */}
             <div onClick={() => { vibrate("light"); setOpenEmp(openE ? 0 : sf.id); }}
@@ -2030,6 +2059,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <span style={{ color:P.sub }}> · {payOf(me).note}{(me.rateMode || "hour") !== "month" ? ", по сменам в графике" : ""}</span>
             </div>
           ) : null}
+          {prevPay[me.id] > 0 ? (
+            <div style={{ fontSize:11, color:P.sub, margin:"-4px 0 8px" }}>Прошлый месяц: ≈ {Math.round(prevPay[me.id]).toLocaleString("ru-RU")} ₽</div>
+          ) : null}
+          {planDiff.length ? (
+            <div style={{ fontSize:11.5, color:P.acc, margin:"0 0 8px" }}>✎ С прошлого визита изменились твои дни: {planDiff.join(", ")}</div>
+          ) : null}
           {/* Мост «зарплата → мотивация»: сколько принесут ещё две смены */}
           {(() => {
             const po = payOf(me);
@@ -2064,6 +2099,68 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   <span key={c} style={{ fontSize:11, color:P.acc, padding:"3px 10px", borderRadius:999,
                     background: a11y ? "rgba(250,242,222,0.65)" : "rgba(200,169,110,0.10)",
                     border:`1px solid ${GOLD}55` }}>✦ {c}</span>
+                ))}
+              </div>
+            );
+          })()}
+          {/* Обмен сменами: предложить свою / взять чужую (сервер swaps) */}
+          {(() => {
+            const t0 = new Date();
+            const isCur = t0.getFullYear() === Y && t0.getMonth() === M;
+            const td0 = isCur ? t0.getDate() : 1;
+            const myAct = swaps.find(w => String(w.from_staff) === String(me.id));
+            const mine = swaps.filter(w => String(w.to_staff) === String(me.id) && w.status === "taken");
+            const offers = swaps.filter(w => w.status === "open" && String(w.from_staff) !== String(me.id)
+              && (staff.find(q => String(q.id) === String(w.from_staff)) || {}).pos === me.pos
+              && !shiftOf(plan[me.id]?.[w.day]));
+            const myDays = [];
+            for (let d = td0; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d])) myDays.push(d);
+            if (!myAct && !offers.length && !mine.length && !myDays.length) return null;
+            const act = async (fn, args, okMsg) => { try {
+              const r = await rpc(fn, { p_token: saToken(), p_restaurant: profile?.restaurant || "", ...args });
+              if (r && r.ok) { setMsg(okMsg); const r3 = await rpc("swap_list", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue: venueKey, p_month: mkey });
+                if (r3 && r3.ok) setSwaps(r3.swaps || []); }
+              else setMsg(r && r.error === "busy" ? "Смену уже взяли" : r && r.error === "already" ? "На этот день заявка уже есть" : "Не получилось");
+              setTimeout(() => setMsg(""), 2500);
+            } catch (e) { setMsg("Нет связи"); setTimeout(() => setMsg(""), 2000); } };
+            return (
+              <div style={{ margin:"0 0 12px", padding:"11px 13px", borderRadius:14,
+                background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
+                border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}`,
+                boxShadow: a11y ? "none" : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
+                <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:7 }}>обмен сменами</div>
+                {myAct ? (
+                  <div style={{ fontSize:12, color:P.text, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    Ты отдаёшь {myAct.day}-е ({myAct.k}){myAct.status === "taken" ? <> — берёт <b style={{ color:P.acc }}>{myAct.to_name}</b>, ждём менеджера</> : " — ждём желающих"}
+                    <span onClick={() => act("swap_cancel", { p_id: myAct.id, p_staff: String(me.id) }, "Заявка отозвана")}
+                      style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>отозвать</span>
+                  </div>
+                ) : myDays.length ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <select value={swapDay || myDays[0]} onChange={e => setSwapDay(+e.target.value)}
+                      style={{ ...inp, padding:"6px 8px", fontSize:12 }}>
+                      {myDays.map(d => <option key={d} value={d}>{d}-е · {shiftOf(plan[me.id][d]).name}</option>)}
+                    </select>
+                    <span onClick={() => { const d = swapDay || myDays[0];
+                      act("swap_create", { p_venue: venueKey, p_month: mkey, p_day: d, p_k: plan[me.id][d], p_staff: String(me.id), p_name: me.name }, "Предложение отправлено"); }}
+                      style={{ padding:"5px 12px", borderRadius:999, cursor:"pointer", fontSize:11.5, fontWeight:"bold",
+                        color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>Предложить обмен</span>
+                  </div>
+                ) : null}
+                {offers.map(w => (
+                  <div key={w.id} style={{ fontSize:12, color:P.text, marginTop:7, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <b style={{ color:P.acc }}>{w.from_name}</b> отдаёт {w.day}-е ({w.k})
+                    <span onClick={() => act("swap_take", { p_id: w.id, p_staff: String(me.id), p_name: me.name }, "Ты взял смену — ждём менеджера")}
+                      style={{ padding:"4px 11px", borderRadius:999, cursor:"pointer", fontSize:11, fontWeight:"bold",
+                        color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>Возьму</span>
+                  </div>
+                ))}
+                {mine.map(w => (
+                  <div key={w.id} style={{ fontSize:12, color:P.text, marginTop:7 }}>
+                    Ты берёшь {w.day}-е у {w.from_name} — ждём менеджера{" "}
+                    <span onClick={() => act("swap_cancel", { p_id: w.id, p_staff: String(me.id) }, "Отклик снят")}
+                      style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>передумал</span>
+                  </div>
                 ))}
               </div>
             );
@@ -2481,6 +2578,30 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
       );
     })() : null}
+    {swaps.filter(w => w.status === "taken").length > 0 ? (
+      <div style={{ ...card, marginTop:10 }}>
+        <div style={eyebrow}><span>Обмены ждут решения</span><span /></div>
+        {swaps.filter(w => w.status === "taken").map(w => (
+          <div key={w.id} style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", fontSize:12.5, color:P.text, padding:"6px 0" }}>
+            <span><b style={{ color:P.acc }}>{w.from_name}</b> → <b style={{ color:P.acc }}>{w.to_name}</b> · {w.day}-е ({w.k})</span>
+            <span onClick={async () => { try {
+              const r = await rpc("swap_resolve", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_id: w.id, p_approve: true });
+              if (r && r.ok) {
+                setPlan(pp => { const nx = { ...pp, [w.from_staff]: { ...(pp[w.from_staff] || {}) }, [w.to_staff]: { ...(pp[w.to_staff] || {}) } };
+                  delete nx[w.from_staff][w.day]; nx[w.to_staff][w.day] = w.k; return nx; });
+                setDirty(true); setSwaps(ws => ws.filter(x => x.id !== w.id));
+                setMsg("Обмен применён — не забудь «Сохранить»"); setTimeout(() => setMsg(""), 3000);
+              } } catch (e) {} }}
+              style={{ padding:"4px 11px", borderRadius:999, cursor:"pointer", fontSize:11, fontWeight:"bold",
+                color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>Подтвердить</span>
+            <span onClick={async () => { try {
+              const r = await rpc("swap_resolve", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_id: w.id, p_approve: false });
+              if (r && r.ok) setSwaps(ws => ws.filter(x => x.id !== w.id)); } catch (e) {} }}
+              style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>отклонить</span>
+          </div>
+        ))}
+      </div>
+    ) : null}
     {dayEdit ? (
       <div style={{ ...card, marginTop:10 }}>
         <div style={{ fontSize:13.5, color:P.text, marginBottom:8 }}>

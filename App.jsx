@@ -1095,7 +1095,14 @@ function ServiceAcademy() {
         {!["profile","login"].includes(screen) && (
           <div style={T.a11yBar}>
             <span style={{ ...T.a11yLabel, color:GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
-            <button style={{ ...T.a11yBtn, background: a11y ? "#7C9E87" : "#E8A020" }} onClick={() => setA11y(!a11y)}>
+            <button style={{ ...T.a11yBtn,
+              // Капелька-канон (рецепт AI-кнопки): золото вместо светофора
+              background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.10)",
+              color: a11y ? "#6B4E1A" : "#D2A85A",
+              boxShadow: a11y
+                ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 0 14px rgba(255,255,255,0.4), inset 0 1px 0 rgba(255,255,255,0.8)"
+                : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 14px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.16)" }}
+              onClick={() => setA11y(!a11y)}>
               <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>{a11y ? UI_SVG.moon("currentColor", 12) : UI_SVG.eye("currentColor", 12)}{a11y ? "Тёмная" : "Для чтения"}</span>
             </button>
           </div>

@@ -172,6 +172,7 @@ function Pill({ on, children, onClick, a11y, P, style }) {
     <button onClick={onClick} className="sa-btn" style={{
       padding:"6px 10px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:11.5,
       color: on ? GOLD : P.sub, background: on ? "rgba(200,169,110,0.13)" : "transparent",
+      boxShadow: on ? "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 12px rgba(255,230,170,0.09), inset 0 1px 0 rgba(255,255,255,0.14)" : "none",
       border:`1px solid ${on ? GOLD + "99" : (a11y ? "rgba(175,140,65,0.3)" : "rgba(145,108,40,0.3)")}`,
       ...style }}>{children}</button>
   );

@@ -224,7 +224,10 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const chip = (active) => ({
     padding:"8px 13px", borderRadius:20, fontSize:12.5, fontFamily:"Georgia, serif", cursor:"pointer",
     border: active ? (a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E") : (a11y ? "1px solid rgba(160,120,60,0.4)" : "1px solid rgba(200,160,80,0.3)"),
-    background: active ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.18)") : "transparent",
+    background: active ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.12)") : "transparent",
+    boxShadow: active ? (a11y
+      ? "inset 0 0 12px rgba(255,255,255,0.4), inset 0 1px 0 rgba(255,255,255,0.8)"
+      : "inset 0 0 12px rgba(255,230,170,0.09), inset 0 1px 0 rgba(255,255,255,0.14)") : "none",
     color: active ? (a11y ? "#6B4E1A" : "#E8D9B8") : (a11y ? "#7A6A50" : "#9A8C74"),
     fontWeight: active ? "bold" : "normal",
     transition:"all 0.2s ease"

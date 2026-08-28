@@ -1505,14 +1505,15 @@ function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
               background: a11y
                 ? "linear-gradient(180deg, rgba(139,106,48,0.15), rgba(139,106,48,0.07))"
                 : "linear-gradient(180deg, rgba(200,169,110,0.14), rgba(200,169,110,0.08))",
+              // Капелька в стиле кнопки AI: золотое кольцо + изморозь + блик
               boxShadow: a11y
-                ? "inset 0 1px 1px rgba(255,255,255,0.40), 0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(107,78,26,0.15)"
-                : "inset 0 0 0 1px rgba(255,255,255,0.13), inset 0 1px 0 rgba(255,255,255,0.10), 0 3px 10px rgba(0,0,0,0.22)",
+                ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 0 18px rgba(255,255,255,0.45), inset 0 1.5px 0 rgba(255,255,255,0.9), 0 3px 10px rgba(70,50,15,0.15)"
+                : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 18px rgba(255,230,170,0.10), inset 0 1.5px 0 rgba(255,255,255,0.18), 0 3px 10px rgba(0,0,0,0.25)",
             }}>
               {/* хроматическая (радужная) кромка */}
               <div style={{
                 position:"absolute", inset:0, borderRadius:999, padding:1.5, opacity: a11y ? 0.4 : 0.3,
-                background:"conic-gradient(from 210deg, rgba(255,90,90,0.6), rgba(255,205,70,0.55), rgba(120,235,160,0.5), rgba(95,175,255,0.6), rgba(200,125,255,0.55), rgba(255,90,90,0.6))",
+                background:"conic-gradient(from 210deg, rgba(214,178,102,0.6), rgba(255,230,170,0.35), rgba(214,178,102,0.6), rgba(255,230,170,0.35), rgba(214,178,102,0.6))",
                 WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
                 WebkitMaskComposite:"xor", maskComposite:"exclude",
                 filter:"blur(0.6px)",

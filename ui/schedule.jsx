@@ -1806,7 +1806,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   {posName(sf.pos)} · {sf.norm} ч
                   {sf.phone ? <> · <IcoPhone size={10} color={P.sub} dy={-1} /></> : ""}
                   {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { delete c.staff[i].till; }); }}
-                    style={{ marginLeft:6, fontSize:9.5, color:P.warn, border:`1px solid ${P.warn}55`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}>не работает · вернуть</span> : null}
+                    style={{ marginLeft:6, fontSize:9.5, color:P.warn, border:`1px solid ${P.warn}55`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}>не работает · вернуть</span>
+                  {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { c.staff.splice(i, 1); }); }}
+                    style={{ marginLeft:5, fontSize:9.5, color:P.danger, border:`1px solid ${P.danger}66`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}
+                    title="Стереть из всех месяцев">✕ насовсем</span> : null}
                   {vacOn(sf) ? " · отпуск" : ""}
                   {((sf.off || []).length || offDays(sf).length) ? " · есть выходные" : ""}
                 </div>

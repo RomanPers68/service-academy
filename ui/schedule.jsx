@@ -664,7 +664,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     setTimeout(() => setMsg(""), 2500);
   };
 
-  const staff = cfg?.staff || [];
+  // Сотрудники месяца: метка till (последний рабочий mkey) закрывает
+  // человека С месяца, не трогая прошлое (прод-урок владельца: удаление
+  // в октябре стирало и сентябрь). Редактор видит всех (staffAll).
+  const staffAll = cfg?.staff || [];
+  const staff = staffAll.filter(q => !q.till || mkey <= q.till);
   const [wishNote, setWishNote] = React.useState(null);   // { d, text } — отказ очереди в раскрытом дне
   // Очередь жёстких «не смогу выйти»: мест на день ровно столько, чтобы
   // зал ещё закрывался — доступные коллеги должности минус потребность.
@@ -1788,7 +1792,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       <Sec no={5} title="Сотрудники" hint={openSec===5 ? "Кто работает, на какой позиции и сколько часов" : sum5} P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
         <Text inp={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:8 }} v={empFilter}
           placeholder="Найти по имени или должности…" set={setEmpFilter} />
-        {staff.map((sf, i) => { const openE = openEmp === sf.id;
+        {staffAll.map((sf, i) => { const openE = openEmp === sf.id;
           if (empFilter && !((sf.name + " " + sf.pos).toLowerCase().includes(empFilter.toLowerCase()))) return null;
           return (
           <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:7 }}>
@@ -1801,6 +1805,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <div style={{ fontSize:10.5, color:P.sub }}>
                   {posName(sf.pos)} · {sf.norm} ч
                   {sf.phone ? <> · <IcoPhone size={10} color={P.sub} dy={-1} /></> : ""}
+                  {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { delete c.staff[i].till; }); }}
+                    style={{ marginLeft:6, fontSize:9.5, color:P.warn, border:`1px solid ${P.warn}55`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}>не работает · вернуть</span> : null}
                   {vacOn(sf) ? " · отпуск" : ""}
                   {((sf.off || []).length || offDays(sf).length) ? " · есть выходные" : ""}
                 </div>
@@ -1815,7 +1821,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   set={val => patch(c => { c.staff[i].name = val; })} />
               </Field>
               <button className="sa-btn" title="Удалить сотрудника"
-                onClick={() => patch(c => { c.staff.splice(i, 1); })}
+                onClick={() => patch(c => {
+                  // Закрываем прошлым месяцем: этот и будущие не видят,
+                  // прошлые целы. Повторный тап по бейджу — вернуть.
+                  const pv2 = M === 0 ? (Y - 1) + "-12" : Y + "-" + String(M).padStart(2, "0");
+                  c.staff[i].till = pv2;
+                })}
                 style={{ flex:"0 0 34px", width:34, height:34, minWidth:34, boxSizing:"border-box",
                   background:"transparent", border:`1px solid ${P.danger}66`, color:P.danger,
                   borderRadius:9, fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1,

@@ -1609,7 +1609,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "Georgia, serif" }}>
-          <div style={{ fontSize: 44, marginBottom: 16 }}>🍷</div>
+          <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>{ROLE_SVG.bar("#C8A96E", 44)}</div>
           <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Что-то пошло не так</div>
           <div style={{ color: "#9A8060", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
             Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение.

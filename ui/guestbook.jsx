@@ -8,6 +8,7 @@ import React from "react";
 import { GOLD } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { LiquidSegment } from "./widgets";
+import { ROLE_SVG } from "./icons";
 import { MODULES } from "../data/modules";
 import { ROLES } from "../data/roles";
 import {
@@ -148,7 +149,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
 
   const chips = [...ROLES.filter(r => MODULES[r.id] && (MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])).map(r => ({ id: r.id, label: r.shortLabel || r.label })),
-    ...((MODULES.bar || []).some(m => (m.lessons || []).some(l => l.type === "build")) ? [{ id: "builds", label: "🍸 Сборка" }] : []),
+    ...((MODULES.bar || []).some(m => (m.lessons || []).some(l => l.type === "build")) ? [{ id: "builds", label: "Сборка" }] : []),
     { id: "weekly", label: "✦ Гость недели" }];
   // Витрина сборки: build-уроки роли «Бар» и лучшие звёзды по каждому.
   // Данные — из общего контура practice_stars, отдельного хранилища нет.
@@ -234,7 +235,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>РОЛЬ «БАР» · ЛУЧШИЕ ПРОГОНЫ</div>
-                  <span style={{ fontSize: 15 }}>🍸</span>
+                  <span style={{ display:"inline-flex", verticalAlign:"-3px" }}>{ROLE_SVG.bar("#C8A96E", 16)}</span>
                 </div>
                 <div style={{ ...SCRIPT, color: INK, fontSize: 24, marginTop: 10 }}>Витрина сборки</div>
                 <div style={{ marginTop: 6, flex: 1 }}>

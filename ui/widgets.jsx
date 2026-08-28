@@ -206,13 +206,13 @@ export function LiquidSegment({
               ? "linear-gradient(180deg, rgba(107,78,26,0.10), rgba(107,78,26,0.05))"
               : "rgba(250,240,215,0.09)",
             boxShadow: a11y
-              ? "inset 0 1px 1px rgba(255,255,255,0.40), 0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(107,78,26,0.15)"
-              : "inset 0 0 0 1px rgba(255,255,255,0.12), 0 2px 6px rgba(0,0,0,0.18)",
+              ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 0 18px rgba(255,255,255,0.45), inset 0 1.5px 0 rgba(255,255,255,0.9), 0 3px 10px rgba(70,50,15,0.15)"
+              : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 18px rgba(255,230,170,0.10), inset 0 1.5px 0 rgba(255,255,255,0.18), 0 3px 10px rgba(0,0,0,0.25)",
           }}>
             {/* хроматическая (радужная) кромка */}
             <div style={{
               position:"absolute", inset:0, borderRadius:999, padding:1.2, opacity: a11y ? 0.4 : 0.28,
-              background:"conic-gradient(from 210deg, rgba(255,90,90,0.6), rgba(255,205,70,0.55), rgba(120,235,160,0.5), rgba(95,175,255,0.6), rgba(200,125,255,0.55), rgba(255,90,90,0.6))",
+              background:"conic-gradient(from 210deg, rgba(214,178,102,0.6), rgba(255,230,170,0.35), rgba(214,178,102,0.6), rgba(255,230,170,0.35), rgba(214,178,102,0.6))",
               WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
               WebkitMaskComposite:"xor", maskComposite:"exclude",
               filter:"blur(0.5px)",

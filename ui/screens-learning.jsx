@@ -343,7 +343,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   const processedLines = React.useMemo(() => {
     if (!lesson.content) return [];
     const terms = GLOSSARY.map(g => g.term);
-    const pattern = new RegExp(`(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+    // Прод-находка владельца: «краш» (лёд из бара) подсвечивался ВНУТРИ
+    // «Украшения» — \b не знает кириллицы. Границы слов вручную:
+    // слева и справа не должно быть буквы (lookbehind/lookahead).
+    const pattern = new RegExp(`(?<![а-яёa-z])(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![а-яёa-z])`, "gi");
     const seenTerms = new Set();
     return lesson.content.split("\n").map((line, lineIdx) => {
       // Нормализуем строку — убираем ** для bold и прочие маркеры чтобы совпадало с тем что рендерится

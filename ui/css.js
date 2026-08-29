@@ -228,6 +228,17 @@ export const injectStyles = () => {
     /* Переход между экранами: каждый мягко въезжает (fade + сдвиг) */
     @keyframes saPageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
     .sa-pagein { animation: saPageIn .28s cubic-bezier(.16,1,.3,1) backwards; }
+    /* Каскад: верхние блоки экрана въезжают друг за другом (карточки
+       движутся ЦЕЛИКОМ — изморозь на них статична, канон льда цел) */
+    .sa-pagein > div:nth-child(2) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .03s; }
+    .sa-pagein > div:nth-child(3) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .06s; }
+    .sa-pagein > div:nth-child(4) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .09s; }
+    .sa-pagein > div:nth-child(5) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .12s; }
+    .sa-pagein > div:nth-child(6) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .15s; }
+    /* Виньетка глубины: сценический свет — углы чуть темнее, морозные
+       карточки выступают вперёд; статична, обе темы переживают */
+    body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+      background: radial-gradient(ellipse 120% 100% at 50% 42%, transparent 58%, rgba(16,11,4,0.22) 100%); }
     @keyframes saCelebIn { 0%{opacity:0;transform:scale(.7)} 18%{opacity:1;transform:scale(1.04)}
       30%{transform:scale(1)} 78%{opacity:1} 100%{opacity:0;transform:scale(1.02)} }
     @keyframes saCelebSpark { 0%{opacity:0;transform:translate(0,0) scale(.4)}

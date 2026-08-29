@@ -198,6 +198,22 @@ const IcoSun = (p) => <Ico {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2
 const IcoTarget = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.3" /><circle cx="12" cy="12" r="0.8" fill={p.color || "#C8A96E"} stroke="none" /></Ico>;
 const IcoWave = (p) => <Ico {...p}><path d="M2.5 10c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /><path d="M2.5 16c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /></Ico>;
 const IcoPhone = (p) => <Ico {...p}><path d="M5.5 4h3.4l1.6 4-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4 1.6v3.4a2 2 0 0 1-2.2 2A17 17 0 0 1 3.5 6.2 2 2 0 0 1 5.5 4z" /></Ico>;
+// Числа с достоинством: значение досчитывается за ~0.6с (ease-out).
+// Движутся ЦИФРЫ, не поверхности — морозный лёд статичен.
+function NumUp({ v }) {
+  const [k, setK] = React.useState(0);
+  React.useEffect(() => {
+    let raf; const t0 = performance.now();
+    const step = (t) => {
+      const pr = Math.min(1, (t - t0) / 600);
+      setK(Math.round(v * (1 - Math.pow(1 - pr, 3))));
+      if (pr < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [v]);
+  return <>{k.toLocaleString("ru-RU")}</>;
+}
 const telHref = ph => "tel:" + String(ph).replace(/[^+\d]/g, "");
 function CallName({ who, label, color }) {
   // Контакт-капсула: имя с трубкой (без служебного пунктира — замечание
@@ -2070,7 +2086,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {effNorm(me)} ч{effNorm(me) !== me.norm ? <span style={{ color:P.sub }}> · отпуск учтён</span> : null}</span></div>
           {payOf(me) ? (
             <div style={{ fontSize:12.5, color:P.text, margin:"2px 0 8px" }}>
-              Заработок за месяц: <b style={{ color:P.acc }}>≈ {payOf(me).sum.toLocaleString("ru-RU")} ₽</b>
+              Заработок за месяц: <b style={{ color:P.acc }}>≈ <NumUp v={payOf(me).sum} /> ₽</b>
               <span style={{ color:P.sub }}> · {payOf(me).note}{(me.rateMode || "hour") !== "month" ? ", по сменам в графике" : ""}</span>
             </div>
           ) : null}
@@ -2935,7 +2951,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           return (
             <div style={{ fontFamily:mono, fontSize:10, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
               итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
-              {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}>{fund.toLocaleString("ru-RU")} ₽</span></> : null}
+              {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}><NumUp v={fund} /> ₽</span></> : null}
               {prevStats ? (() => {
                 const ar = (d) => d > 0 ? "↑" + d.toLocaleString("ru-RU") : d < 0 ? "↓" + Math.abs(d).toLocaleString("ru-RU") : "=";
                 return (

@@ -518,7 +518,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
             const qs = [];
             if (learner && learner.dueMistakes > 0) qs.push("Что мне повторить перед сменой?");
             if (learner && learner.todayShift && learner.todayShift !== "выходной") qs.push("Подготовь меня к сегодняшней смене");
-            qs.push("Проверь меня по трём блюдам меню");
+            // Без контекста чип не нужен: приветствие уже предлагает вопросы
+            if (!qs.length) return null;
             return (
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", padding:"0 2px 8px" }}>
                 {qs.slice(0, 3).map(t => (

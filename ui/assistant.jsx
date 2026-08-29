@@ -512,12 +512,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
 
       {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
       <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 29,
-            background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
-            backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-            border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",
-            boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)"}, 0 6px 22px rgba(0,0,0,${a11y ? 0.10 : 0.38})` }}>
-          {/* Быстрые чипы: пустое поле пугает — готовые вопросы приглашают.
+        {/* Быстрые чипы: пустое поле пугает — готовые вопросы приглашают.
               Собираются из learner-контекста, живут пока поле пустое */}
           {!input && (() => {
             const qs = [];
@@ -535,6 +530,11 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
               </div>
             );
           })()}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 29,
+            background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
+            backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",
+            boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)"}, 0 6px 22px rgba(0,0,0,${a11y ? 0.10 : 0.38})` }}>
           <textarea
             ref={inputRef}
             className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}

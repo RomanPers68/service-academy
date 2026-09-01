@@ -228,6 +228,19 @@ export const injectStyles = () => {
     /* Переход между экранами: каждый мягко въезжает (fade + сдвиг) */
     @keyframes saPageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
     .sa-pagein { animation: saPageIn .28s cubic-bezier(.16,1,.3,1) backwards; }
+    /* Колода бармена: 3D-переворот и перелистывание */
+    .sa-ck-wrap { perspective: 1200px; }
+    .sa-ck-inner { position: relative; transform-style: preserve-3d; -webkit-transform-style: preserve-3d;
+      transition: transform .6s cubic-bezier(.2,.8,.2,1); height: 470px; }
+    .sa-ck-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow-y: auto; }
+    .sa-ck-back { transform: rotateY(180deg); }
+    @keyframes saCkOutL { to { transform: translateX(-125%) rotate(-10deg); opacity: 0; } }
+    @keyframes saCkOutR { to { transform: translateX(125%) rotate(10deg); opacity: 0; } }
+    @keyframes saCkInR { from { transform: translateX(110%) rotate(6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes saCkInL { from { transform: translateX(-110%) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+    .sa-ck-outL { animation: saCkOutL .24s ease-in forwards; } .sa-ck-outR { animation: saCkOutR .24s ease-in forwards; }
+    .sa-ck-inR { animation: saCkInR .32s cubic-bezier(.16,1,.3,1) both; } .sa-ck-inL { animation: saCkInL .32s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes saMicPulse { 0%,100%{ box-shadow: inset 0 0 0 1px rgba(220,90,80,0.6), 0 0 0 4px rgba(220,90,80,0.10) } 50%{ box-shadow: inset 0 0 0 1px rgba(220,90,80,0.8), 0 0 0 10px rgba(220,90,80,0.04) } }
     /* Каскад: верхние блоки экрана въезжают друг за другом (карточки
        движутся ЦЕЛИКОМ — изморозь на них статична, канон льда цел) */
     .sa-pagein > div:nth-child(2) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .03s; }

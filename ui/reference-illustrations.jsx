@@ -8,6 +8,7 @@ import { GOLD } from "./tokens";
 const sv = (c, s, w = 2) => ({ width: s, height: s, viewBox: "0 0 24 24", fill: "none", stroke: c, strokeWidth: w, strokeLinecap: "round", strokeLinejoin: "round" });
 export const Ico = {
   compass: (c, s = 26) => (<svg {...sv(c, s, 1.7)}><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z" /><circle cx="12" cy="12" r="0.8" /></svg>),
+  cocktail: (c, s = 26) => (<svg {...sv(c, s, 1.7)}><path d="M5 4h14l-7 8.5z" /><path d="M12 12.5V20" /><path d="M8 20h8" /><path d="M8.5 7h7" /></svg>),
   serving: (c, s = 26) => (<svg {...sv(c, s, 1.7)}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.4" /><path d="M3.5 12H1M23 12h-2.5" /></svg>),
   wine: (c, s = 26) => (<svg {...sv(c, s, 1.7)}><path d="M8 3h8M9 3c0 5 1.5 7 3 7s3-2 3-7M12 10v8M8 21h8" /></svg>),
   coffee: (c, s = 26) => (<svg {...sv(c, s, 1.7)}><path d="M4 8h13v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" /><path d="M17 9h2a2 2 0 0 1 0 4h-2" /><path d="M7 2.5c0 1.2-1 1.2-1 2.5M11 2.5c0 1.2-1 1.2-1 2.5" /></svg>),

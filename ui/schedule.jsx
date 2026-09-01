@@ -2353,6 +2353,34 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           );
                         })}
                       </>) : null}
+                      {/* Кто отдыхает в этот день — чтобы найти замену одним звонком
+                          (вопрос владельца). Своя позиция первой, отпускники не в счёт */}
+                      {(() => {
+                        const rest = staff.filter(x => x.id !== me.id && !shiftOf(plan[x.id]?.[d]) && !onVac(x, d));
+                        if (!rest.length) return null;
+                        const order = [me.pos, ...POS.map(q => q.id).filter(q => q !== me.pos)];
+                        return (
+                          <>
+                            <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
+                              color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>отдыхают · можно попросить подменить</div>
+                            {order.map(pos => {
+                              const list = rest.filter(x => x.pos === pos);
+                              if (!list.length) return null;
+                              const t = (POS.find(q => q.id === pos) || {}).t || pos;
+                              return (
+                                <div key={pos} style={{ display:"flex", gap:8, fontSize:12, lineHeight:1.7, opacity: pos === me.pos ? 1 : 0.75 }}>
+                                  <span style={{ flex:"0 0 84px", color:P.sub }}>{t}</span>
+                                  <span style={{ flex:1, color:P.text }}>
+                                    {list.map((x, xi) => (
+                                      <span key={x.id}>{xi ? ", " : ""}<CallName who={x} label={x.name} color={P.text} /></span>
+                                    ))}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
                       {/* Личная заметка дня: чаевые, важные события, напоминания */}
                       <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
                         color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>заметка</div>

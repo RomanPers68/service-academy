@@ -10,6 +10,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { GOLD, RED, RADIUS } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
+import { MicButton } from "./mic";
 import { SUPABASE_URL, SUPABASE_KEY, saToken } from "../api/supabase";
 import { withRefContext } from "../lib/reference-context";
 import { UI_SVG } from "./icons";
@@ -514,7 +515,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
       <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
         {/* Быстрые чипы: пустое поле пугает — готовые вопросы приглашают.
               Собираются из learner-контекста, живут пока поле пустое */}
-          {!input && (() => {
+          {!input && msgs.length === 0 && (() => {
             const qs = [];
             if (learner && learner.dueMistakes > 0) qs.push("Что мне повторить перед сменой?");
             if (learner && learner.todayShift && learner.todayShift !== "выходной") qs.push("Подготовь меня к сегодняшней смене");
@@ -556,6 +557,10 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
               background: "transparent", border: "none", outline: "none",
               color: a11y ? "#3A2E1C" : "#F0E8D8" }}
           />
+          <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
+            headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
+            onText={t => setInput(v => (v ? v.trimEnd() + " " : "") + t)}
+            onError={m => { setInput(v => v); try { window.Telegram?.WebApp?.showAlert?.(m); } catch (e) { alert(m); } }} />
           <button className="sa-btn" onClick={() => send()} disabled={sending || !input.trim()}
             style={{ width: 44, height: 44, borderRadius: 22, border: "none", cursor: "pointer", flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "center",

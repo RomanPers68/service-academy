@@ -14,6 +14,7 @@ import React from "react";
 import { CANDIDATE_QUESTIONS } from "../data/candidate-questions";
 import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS } from "./tokens";
 import { shuffleArray, vibrate, onActivate } from "../lib/utils";
+import { MicButton } from "./mic";
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { LiquidSegment } from "./widgets";
@@ -40,9 +41,16 @@ const EXPERIENCE = [
   { id: "none",   label: "Опыта нет",      level: "none",   note: "проверим потенциал и характер" },
   { id: "junior", label: "До года",        level: "junior", note: "база + рабочие ситуации" },
   { id: "mid",    label: "1–3 года",       level: "pro",    note: "профессиональные ситуации" },
-  { id: "senior", label: "Больше 3 лет",   level: "pro",    note: "профессиональные ситуации, планка выше" },
+  { id: "senior", label: "Больше 3 лет",   level: "senior", note: "только сложные кейсы, экспертная планка" },
 ];
 const PLACES = ["Ресторан", "Кафе", "Бар", "Фастфуд", "Другое"];
+// Инструкция интервьюеру по уровню кандидата — уходит в AI-интервью
+const HR_BRIEF = {
+  none: "Кандидат без опыта. Не спрашивай о профессиональных техниках — проверяй здравый смысл, характер, отношение к гостю и обучаемость. Вопросы простые, тёплые, ситуационные из жизни.",
+  junior: "Кандидат с опытом до года. Половина вопросов — база стандартов, половина — простые рабочие ситуации. Планка средняя.",
+  pro: "Кандидат с опытом 1–3 года. Не задавай базовых вопросов — только профессиональные ситуации: конфликтный гость, запара, ошибка в заказе, работа в паре. Проверяй глубину, а не факты.",
+  senior: "Кандидат с опытом БОЛЬШЕ 3 ЛЕТ. Категорически не задавай базовых и очевидных вопросов — это оскорбит опытного специалиста. Только экспертные кейсы своей роли: для бара — классика и спеки наизусть, скорость под нагрузкой, себестоимость и списания, инвентаризация, работа с сомелье/шефом, обучение новичков; для зала — управление сложным столом, апсейл без давления, VIP и конфликт на грани скандала, наставничество. Если ответ сильный — следующий вопрос ещё сложнее (уточняй детали, проси конкретные цифры и примеры). Планка экспертная: «нормальный» ответ для новичка здесь — слабый.",
+};
 const AGES = ["До 18", "18–25", "26–35", "36+"];
 const SELF_BANDS = [
   { id: 0, label: "Меньше половины", min: 0,  max: 49 },
@@ -87,6 +95,10 @@ function buildTest(roleId, level, customQs = []) {
   else if (level === "junior") {
     const nb = Math.min(7, base.length);
     picked = [...base.slice(0, nb), ...pro.slice(0, total - nb)];
+  } else if (level === "senior") {
+    // Опытному — только профессиональные кейсы; база лишь если pro не хватает
+    const np = Math.min(total, pro.length);
+    picked = [...pro.slice(0, np), ...base.slice(0, total - np)];
   } else {
     const np = Math.min(12, pro.length);
     picked = [...pro.slice(0, np), ...base.slice(0, total - np)];
@@ -116,6 +128,14 @@ function verdictOf(pct, level) {
       note: "Часть инстинктов верная, часть придётся ставить. Смотри на мотивацию: при желании учиться — рабочий вариант." };
     return { label: "Пока не про сервис", color: RED,
       note: "Ответы расходятся с самой сутью гостеприимства. Если брать — только с плотным наставничеством и испытательным сроком." };
+  }
+  if (level === "senior") {
+    if (pct >= 85) return { label: "Эксперт", color: GREEN,
+      note: "Уровень соответствует заявленным 3+ годам: сложные ситуации решает уверенно. Разговор — о лидерстве, наставничестве и условиях." };
+    if (pct >= 65) return { label: "Профессионал с пробелами", color: GOLD_SOFT,
+      note: "Опыт чувствуется, но часть экспертных кейсов провалена. Уточни, где именно работал и в каком формате — планка «3+ лет» пока не подтверждена полностью." };
+    return { label: "Ниже заявленного опыта", color: RED,
+      note: "Ответы не соответствуют уровню «больше 3 лет». Возможно, опыт в другом формате или завышен — проверь рекомендациями и стажировочной сменой." };
   }
   if (pct >= 80) return { label: "Уверенный профессионал", color: GREEN,
     note: "Кандидат мыслит как человек из индустрии. На собеседовании можно говорить о личности, мотивации и условиях." };
@@ -320,7 +340,13 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       body: JSON.stringify({
         token: saToken(), mode, role: role?.id,
-        candidate: { name: name.trim(), expLabel: exp?.label || "", place: place || "" },
+        candidate: {
+          name: name.trim(), expLabel: exp?.label || "", place: place || "", age: age || "",
+          level: exp?.level || "pro",
+          // Калибровка интервьюера по опыту (прод-замечание владельца:
+          // опытному бармену задавались вопросы для новичка)
+          brief: HR_BRIEF[exp?.level] || HR_BRIEF.pro,
+        },
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
       }),
     }).then(r => r.json()), [role, name, exp, place]);
@@ -743,6 +769,10 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 style={{ ...inputStyle, flex: 1, minWidth: 0, marginBottom: 0,
                   lineHeight: 1.45, resize: "none", maxHeight: 110, overflowY: "auto" }}
               />
+              <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
+                headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
+                onText={t => setAiInput(v => (v ? v.trimEnd() + " " : "") + t)}
+                onError={m => { try { window.Telegram?.WebApp?.showAlert?.(m); } catch (e) { alert(m); } }} />
               <button className="sa-btn" onClick={aiSend} disabled={aiBusy || !aiInput.trim()}
                 style={{ width: 46, height: 46, alignSelf: "flex-end", borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",

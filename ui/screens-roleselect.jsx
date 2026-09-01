@@ -70,7 +70,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ onSelect, T, a11y, scores = [], onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";

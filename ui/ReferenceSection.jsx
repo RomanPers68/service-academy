@@ -74,8 +74,9 @@ function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader }) {
     { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} · с фото`, icon: Ico.serving, on: true },
     { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
     { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
-    { id: "bar", t: "Бар и коктейли", s: `${barChapters} ${plural(barChapters)} · истории классики`, icon: Ico.bar, on: true },
+
     { id: "app", t: "Гид по приложению", s: `${appChapters} ${plural(appChapters)} · все возможности`, icon: Ico.compass, on: true },
+    { id: "cocktails", t: "Бар: коктейли", s: "50 карточек · состав, метод, история · основы бара", icon: Ico.cocktail, on: true, deck: true },
   ];
   return (<div style={T.screen}>
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
@@ -99,11 +100,11 @@ function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader }) {
     </div>
     <div style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
-        <div key={c.id} onClick={c.on ? () => openCourse(c.id) : undefined} {...onActivate(c.on ? () => openCourse(c.id) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
+        <div key={c.id} onClick={c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
           <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
           <div style={T.modIcon}>{c.icon(gold, 24)}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ ...T.modTag, color: gold }}>{c.on ? "КУРС" : "СКОРО"}</div>
+            <div style={{ ...T.modTag, color: gold }}>{c.deck ? "КОЛОДА" : c.on ? "КУРС" : "СКОРО"}</div>
             <div style={T.modTitle}>{c.t}</div>
             <div style={{ ...T.modSub, display: "flex", alignItems: "center", gap: 5 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
           </div>
@@ -202,7 +203,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile }) {
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails }) {
   const gold = a11y ? "#8B6A30" : GOLD;
   const dark = !a11y;
   // Глава «Инструменты руководителя» видна только менеджерам — фильтруем

@@ -41,10 +41,22 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics }) {
   const [view, setView] = React.useState("cards");      // cards | index (оглавление)
   const [idx, setIdx] = React.useState(0);
   const [flip, setFlip] = React.useState(false);
-  const [dx, setDx] = React.useState(0);
-  const touch = React.useRef(null);
-  const [anim, setAnim] = React.useState(null);   // outL|outR|inL|inR|null
+  // Дополнение 128: плавное перелистывание. Во время свайпа карточка следует
+  // за пальцем через ref (без setState — тяжёлая карточка с витражом не
+  // перерисовывается на каждом движении), а отпущенная — продолжает движение
+  // с той же точки, а не прыгает в центр перед вылетом.
+  const wrapRef = React.useRef(null);
+  const touch = React.useRef(null);        // { x, y, t, axis, dx, vx }
+  const busy = React.useRef(false);        // идёт анимация перелистывания
+  const snapRef = React.useRef(false);     // при смене карточки переворот сбрасывается мгновенно, а не за 0.6с
+  const [anim] = React.useState(null);     // совместимость: класс анимации больше не используется
   const moved = React.useRef(false);
+  const setWrap = (transform, transition, opacity) => {
+    const el = wrapRef.current; if (!el) return;
+    el.style.transition = transition || "none";
+    el.style.transform = transform || "none";
+    el.style.opacity = opacity == null ? 1 : opacity;
+  };
 
   const due = React.useMemo(() => COCKTAILS.filter(c => { const r = sr[c.id]; return !r || !r.due || r.due <= Date.now(); }), [sr]);
   const pool = React.useMemo(() => COCKTAILS.filter(c => matches(c, q) && (!base || baseOf(c) === base)), [q, base]);
@@ -53,15 +65,25 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics }) {
   const total = list.length;
   React.useEffect(() => { setIdx(0); setFlip(false); }, [q, base, mode]);
 
+  const OUT_MS = 260, IN_MS = 420;
   const go = (d) => {
-    if (!total || anim) return;
+    if (!total || busy.current) return;
+    busy.current = true;
     vibrate("light");
-    setAnim(d > 0 ? "outL" : "outR");
+    const sign = d > 0 ? -1 : 1; // вперёд — улетает влево
+    setWrap(`translateX(${sign * 120}%) rotate(${sign * 9}deg) scale(.96)`,
+      `transform ${OUT_MS}ms cubic-bezier(.3,.6,.4,1), opacity ${OUT_MS}ms ease-out`, 0);
     setTimeout(() => {
-      setFlip(false); setIdx(i => (i + d + total) % total);
-      setAnim(d > 0 ? "inR" : "inL");
-      setTimeout(() => setAnim(null), 340);
-    }, 230);
+      snapRef.current = true; setFlip(false); setIdx(i => (i + d + total) % total);
+      // новая карточка ставится за кадром с противоположной стороны без анимации…
+      setWrap(`translateX(${-sign * 70}%) rotate(${-sign * 5}deg) scale(.94)`, "none", 0);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        // …и въезжает с мягким доездом (overshoot ~2%)
+        setWrap("none", `transform ${IN_MS}ms cubic-bezier(.16,1.1,.3,1), opacity ${IN_MS * 0.6}ms ease-out`, 1);
+        snapRef.current = false;
+        setTimeout(() => { busy.current = false; }, IN_MS);
+      }));
+    }, OUT_MS);
   };
   const mark = (ok) => {
     const cur = sr[c.id] || { stage: 0 };
@@ -72,9 +94,30 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics }) {
     setFlip(false);
     setIdx(i => Math.min(i, Math.max(0, (mode === "quiz" ? due.length - 1 : total) - 1)));
   };
-  const onTS = (e) => { touch.current = e.touches[0].clientX; moved.current = false; };
-  const onTM = (e) => { if (touch.current != null) { const v = e.touches[0].clientX - touch.current; if (Math.abs(v) > 8) moved.current = true; setDx(v); } };
-  const onTE = () => { if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); setDx(0); touch.current = null; };
+  const onTS = (e) => {
+    if (busy.current) { touch.current = null; return; }
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: 0, vx: 0, lx: t.clientX, lt: Date.now() };
+    moved.current = false;
+  };
+  const onTM = (e) => {
+    const s = touch.current; if (!s) return;
+    const t = e.touches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
+    if (!s.axis) { if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; }
+    if (s.axis !== "x") return; // вертикальный жест — это скролл состава, не листание
+    moved.current = true;
+    const now = Date.now(); if (now > s.lt) { s.vx = (t.clientX - s.lx) / (now - s.lt); s.lx = t.clientX; s.lt = now; }
+    s.dx = dx;
+    const fade = Math.max(0.55, 1 - Math.abs(dx) / 700);
+    setWrap(`translateX(${dx * 0.9}px) rotate(${dx * 0.03}deg)`, "none", fade);
+  };
+  const onTE = () => {
+    const s = touch.current; touch.current = null;
+    if (!s || s.axis !== "x") return;
+    const flick = Math.abs(s.vx) > 0.45 && Math.sign(s.vx) === Math.sign(s.dx);
+    if (Math.abs(s.dx) > 70 || (flick && Math.abs(s.dx) > 24)) go(s.dx < 0 ? 1 : -1);
+    else setWrap("none", "transform .38s cubic-bezier(.16,1.1,.3,1), opacity .25s ease-out", 1); // не дотянул — пружиной назад
+  };
 
   const glass = a11y ? { bg:"rgba(250,242,222,0.7)", bd:"rgba(150,112,40,0.35)", tx:"#3A2E1C", sub:"#6B5A3A" }
                      : { bg:"rgba(255,250,238,0.035)", bd:"rgba(145,108,40,0.3)", tx:"#EFE4C8", sub:"#9C8760" };
@@ -133,11 +176,11 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics }) {
           Всё повторено ✦ Карточки вернутся по кривой памяти — через день, три, неделю, месяц.
         </div>
       ) : (
-        <div className={"sa-ck-wrap" + (anim ? " sa-ck-" + anim : "")}
-          onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE}
-          onClick={() => { if (moved.current || anim) return; setFlip(f => !f); vibrate("light"); }}
-          style={{ transform: dx ? `translateX(${dx * 0.4}px) rotate(${dx * 0.025}deg)` : "none", transition: dx ? "none" : "transform .25s", cursor:"pointer" }}>
-          <div className="sa-ck-inner" style={{ transform: flip ? "rotateY(180deg)" : "none" }}>
+        <div className="sa-ck-wrap" ref={wrapRef}
+          onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE}
+          onClick={() => { if (moved.current || busy.current) return; setFlip(f => !f); vibrate("light"); }}
+          style={{ cursor:"pointer", willChange:"transform, opacity", touchAction:"pan-y" }}>
+          <div className="sa-ck-inner" style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
             <div className="sa-ck-face sa-ck-front" style={{ ...card, padding:16 }}>
             <div style={{ textAlign:"center" }}>
               <div style={{ fontFamily:"Georgia, serif", fontSize:24, color:glass.tx, letterSpacing:1.5, textTransform:"uppercase", lineHeight:1.2, marginTop:4 }}>{c.name}</div>

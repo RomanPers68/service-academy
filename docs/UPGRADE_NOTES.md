@@ -85,10 +85,13 @@
 - «Выучил новинки ✓» в конце колоды — локальная отметка сразу.
 
 ⚙️ Два серверных шага (по 5 минут):
-1. **AI-импорт**: Vercel → Settings → Environment Variables →
-   `ANTHROPIC_API_KEY` (ключ: https://console.anthropic.com). Функция
-   `api/menu-import.js` задеплоится сама вместе с проектом.
-   Актуальные детали API: https://docs.claude.com/en/api/overview
+1. **AI-импорт**: Vercel → Settings → Environment Variables → Add →
+   Key `OPENROUTER_API_KEY`, Value — ключ OpenRouter (`sk-or-v1-…`, тот же
+   сервис, что у HR-бота и голоса; новый ключ: openrouter.ai → Keys →
+   Create Key) → Save → Deployments → Redeploy. Функция `api/menu-import.js`
+   задеплоится сама вместе с проектом. Модель по умолчанию —
+   anthropic/claude-sonnet-4.6, сменить: переменная `OPENROUTER_MENU_MODEL`.
+   (Старый `ANTHROPIC_API_KEY` тоже понимается, если OpenRouter-ключа нет.)
 2. **Общее меню и трекинг**: выполни `supabase-stage4.sql` в Supabase →
    SQL Editor (подставь свою связку токен→сотрудник, помечено в файле).
    После этого «Опубликовать команде» реально раздаёт меню всем устройствам,
@@ -110,7 +113,7 @@
   Без ключа честно отвечает 501.
 - `lib/assistant.js` — клиентский сборщик контекста (отбирает релевантные
   блюда, термины и фрагменты уроков под вопрос) + обёртка запроса.
-Когда купите AI: (1) тот же ANTHROPIC_API_KEY в Vercel — функция оживёт,
+Когда включите: (1) ANTHROPIC_API_KEY в Vercel (или перевод на OpenRouter, как menu-import) — функция оживёт,
 (2) добавить экран чата, который вызывает buildAssistantContext → askAssistant.
 Смена модели — одна строка в api/assistant.js (актуальные модели и цены:
 https://docs.claude.com/en/api/overview).

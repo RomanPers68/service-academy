@@ -546,7 +546,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
         .then(r => r.json().then(j => ({ ok: r.ok, j })))
         .then(({ ok, j }) => {
           setImporting(false);
-          if (!ok || !Array.isArray(j.dishes)) { setImportErr(j.error || "Не получилось разобрать PDF. Настроен ли ANTHROPIC_API_KEY в Vercel? (см. docs/UPGRADE_NOTES.md)"); return; }
+          if (!ok || !Array.isArray(j.dishes)) { setImportErr(j.error || "Не получилось разобрать PDF. Настроен ли OPENROUTER_API_KEY в Vercel? (см. docs/UPGRADE_NOTES.md)"); return; }
           setPreview(j.dishes);
         })
         .catch(() => { setImporting(false); setImportErr("Сеть недоступна или функция /api/menu-import не развёрнута."); });

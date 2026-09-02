@@ -63,7 +63,7 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader }) {
+function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader, onCocktails }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
@@ -241,7 +241,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
   if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
     scopeText="Введи минимум 2 буквы — найду по главам справочника, глоссарию и меню ресторана."
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} isLeader={isLeader} onSearch={() => setView("search")} onExit={onExit} />;
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

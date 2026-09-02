@@ -303,6 +303,61 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
   );
 }
 
+// ── Дополнение 125: резервная копия базы одним тапом (только владелец) ─────────
+// Free-план Supabase бэкапов не делает. Билет (backup_ticket, 3 минуты, одно
+// скачивание) → /api/backup?t=… → JSON со всеми таблицами. В Telegram файл
+// уходит через downloadFile (с подтверждением), в браузере — обычной загрузкой.
+function BackupCard({ C, cardBase, serif }) {
+  const [st, setSt] = React.useState("idle"); // idle | working | sent | error
+  const [msg, setMsg] = React.useState("");
+  const [last, setLast] = React.useState(() => { try { return localStorage.getItem("sa_backup_last") || ""; } catch (e) { return ""; } });
+  const run = () => {
+    if (st === "working") return;
+    setSt("working"); setMsg("");
+    rpc("backup_ticket", { p_token: saToken() }).then(j => {
+      if (!j || !j.ok || !j.ticket) {
+        const why = j && j.error === "forbidden" ? "Копию может скачать только владелец" : j && j.error === "auth" ? "Сессия не найдена — войди заново" : "Сервер не выдал билет — применён ли supabase-stage10-backup.sql?";
+        setSt("error"); setMsg(why); return;
+      }
+      const stamp = new Date().toISOString().slice(0, 10);
+      const fname = `service-academy-backup-${stamp}.json`;
+      const url = `${window.location.origin}/api/backup?t=${j.ticket}`;
+      const tg = window.Telegram && window.Telegram.WebApp;
+      const inTg = !!(tg && tg.initData);
+      if (inTg && typeof tg.downloadFile === "function") {
+        tg.downloadFile({ url, file_name: fname }, (ok) => { setSt(ok ? "sent" : "idle"); if (!ok) setMsg("Скачивание отменено"); });
+      } else if (inTg && typeof tg.openLink === "function") {
+        tg.openLink(url); setSt("sent");
+      } else {
+        const a = document.createElement("a"); a.href = url; a.download = fname; a.rel = "noopener";
+        document.body.appendChild(a); a.click(); a.remove(); setSt("sent");
+      }
+      const when = new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+      setLast(when); try { localStorage.setItem("sa_backup_last", when); } catch (e) {}
+      vibrate("success");
+    }).catch(() => { setSt("error"); setMsg("Нет связи с сервером — попробуй ещё раз"); });
+  };
+  return (
+    <div style={{ ...cardBase, padding: "14px 16px", marginTop: 14 }}>
+      <div style={{ color: "#D6A33A", fontSize: 10.5, letterSpacing: 1.5, fontWeight: "bold", marginBottom: 7 }}>РЕЗЕРВНАЯ КОПИЯ</div>
+      <div style={{ color: C.text, fontSize: 13.5, lineHeight: 1.5 }}>Все таблицы базы одним файлом JSON: сотрудники, меню, графики, результаты. Раз в неделю — и спокоен.</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+        <button className="sa-btn" onClick={run} disabled={st === "working"} {...onActivate(run)}
+          style={{ padding: "10px 16px", borderRadius: 12, border: `1px solid ${C.gold}88`, background: "transparent", color: C.gold,
+            fontFamily: serif, fontSize: 15, fontWeight: "bold", cursor: "pointer", opacity: st === "working" ? 0.6 : 1 }}>
+          {st === "working" ? "Собираю…" : "Скачать копию"}
+        </button>
+        <div style={{ color: C.dim, fontSize: 11.5, lineHeight: 1.45, flex: 1 }}>
+          {st === "error" ? <span style={{ color: "#D9764A" }}>{msg}</span>
+            : st === "sent" ? "Файл уходит на телефон — подтверди сохранение, если Telegram спросит"
+            : last ? `Последняя копия: ${last}` : "Копий ещё не было"}
+        </div>
+      </div>
+      <div style={{ color: C.dim, fontSize: 11, marginTop: 10, lineHeight: 1.45 }}>Файл содержит всё, включая коды входа сотрудников — храни его как пароль. Восстановление: пришли файл разработчику.</div>
+    </div>
+  );
+}
+
 export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   const C = moodPalette(a11y);
   const serif = "Georgia, 'Times New Roman', serif";
@@ -413,6 +468,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
             </div>
           </>
         )}
+        {profile?.is_admin && <BackupCard C={C} cardBase={cardBase} serif={serif} />}
       </div>
     </div>
   );

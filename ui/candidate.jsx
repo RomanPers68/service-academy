@@ -323,6 +323,13 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   // ── AI-интервью (бета): свободные ответы, уточняющие вопросы, вердикт ──
   const [aiMsgs, setAiMsgs] = React.useState([]);
   const [aiInput, setAiInput] = React.useState("");
+  const aiInputRef = React.useRef(null);
+  // Дополнение 126: поле ответа растёт и при вставке голосом
+  React.useEffect(() => {
+    const el = aiInputRef.current; if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 110) + "px";
+  }, [aiInput]);
   const [aiBusy, setAiBusy] = React.useState(false);
   const [aiErr, setAiErr] = React.useState(null);
   const [aiVerdict, setAiVerdict] = React.useState(null);
@@ -756,6 +763,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
               <textarea
+                ref={aiInputRef}
                 className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
                 value={aiInput}
                 rows={1}

@@ -169,6 +169,13 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
   const [confirmClear, setConfirmClear] = React.useState(false);
   const listRef = React.useRef(null);
   const inputRef = React.useRef(null);
+  // Дополнение 126: поле растёт и когда текст пришёл голосом (setInput мимо onChange).
+  React.useEffect(() => {
+    const el = inputRef.current; if (!el) return;
+    el.style.height = "44px";
+    const h = el.scrollHeight;
+    if (h > 44) el.style.height = Math.min(h, 122) + "px";
+  }, [input]);
   const gold = a11y ? "#8B6A30" : GOLD;
   const sub = T.modSub.color;
 

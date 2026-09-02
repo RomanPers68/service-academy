@@ -351,6 +351,7 @@ function ServiceAcademy() {
   // Дополнение 123: Справочник и Колода бармена ходят друг в друга, а история
   // навигации хранит один шаг — назад из Справочника вело обратно в Колоду по
   // кругу. Запоминаем экран, с которого зашли в эту пару, и выходим на него.
+  const [ckStart, setCkStart] = useState(null); // Доп. 130: открыть колоду на конкретном коктейле (карточка в ответе ассистента)
   const barOriginRef = useRef("roleSelect");
   useEffect(() => { if (screen !== "reference" && screen !== "cocktails") barOriginRef.current = screen; }, [screen]);
   const [completed, setCompleted] = useState({});
@@ -1254,7 +1255,7 @@ function ServiceAcademy() {
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => navigate(prevScreen || "home")} />}
         {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => navigate(prevScreen || "home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
-        {screen === "cocktails" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen T={T} a11y={a11y} onBack={() => { setRefStart(null); navigate(prevScreen || "roleSelect"); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
+        {screen === "cocktails" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); navigate(prevScreen || "roleSelect"); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
         {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
         {lessonLockMsg && (
@@ -1280,6 +1281,13 @@ function ServiceAcademy() {
               const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
               return (r && r.date === key && r.label) ? r.label : null;
             } catch (e) { return null; } })() }} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
+          // Карточка коктейля в ответе → колода на этом коктейле (Доп. 130)
+          if (dest && typeof dest === "object" && dest.cocktail) {
+            setCkStart(dest.cocktail);
+            setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
+            setScreen("cocktails");
+            return;
+          }
           // Переход на урок по id: [[lesson:ID]]
           if (dest && typeof dest === "object" && dest.lesson) {
             // Роли, доступные сотруднику: его текущая + все пройденные.
@@ -1321,7 +1329,7 @@ function ServiceAcademy() {
             return;
           }
           // Переход в раздел: [[go:key]]
-          const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor","menu"];
+          const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor","menu","cocktails"];
           if (ok.includes(dest)) { setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(dest === "menu" ? "menuTrainer" : dest); }
         }} /></Suspense>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
@@ -1339,7 +1347,7 @@ function ServiceAcademy() {
         , document.body)}
         {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
-        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => { if (prevScreen === "cocktails") { if (refStart) navigate("cocktails"); else navigate(barOriginRef.current || "roleSelect"); } else navigate(prevScreen || "roleSelect"); }} onCocktails={() => { setRefStart(null); navigate("cocktails"); }} /></Suspense>}
+        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => { if (prevScreen === "cocktails") { if (refStart) navigate("cocktails"); else navigate(barOriginRef.current || "roleSelect"); } else navigate(prevScreen || "roleSelect"); }} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
         {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} />}
         {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}

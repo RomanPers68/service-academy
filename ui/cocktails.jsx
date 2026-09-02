@@ -33,7 +33,7 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics }) {
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId }) {
   const [sr, setSr] = React.useState(loadSR);
   const [mode, setMode] = React.useState("deck");     // deck | quiz
   const [q, setQ] = React.useState("");                 // поиск
@@ -64,6 +64,12 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics }) {
   const c = list[Math.min(idx, Math.max(0, list.length - 1))];
   const total = list.length;
   React.useEffect(() => { setIdx(0); setFlip(false); }, [q, base, mode]);
+  // Доп. 130: открыть колоду сразу на нужном коктейле (карточка из ответа ассистента)
+  React.useEffect(() => {
+    if (!startId) return;
+    const i = COCKTAILS.findIndex(c => c.id === startId);
+    if (i >= 0) { setIdx(i); setFlip(false); }
+  }, [startId]);
 
   const OUT_MS = 260, IN_MS = 420;
   const go = (d) => {

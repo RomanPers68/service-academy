@@ -11,8 +11,10 @@ import { createPortal } from "react-dom";
 import { GOLD, RED, RADIUS } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
-import { SUPABASE_URL, SUPABASE_KEY, saToken } from "../api/supabase";
-import { withRefContext } from "../lib/reference-context";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
+import { withRefContext, rememberSharedMenu, dishesOf } from "../lib/reference-context";
+import { COCKTAILS } from "../data/cocktails";
+import { CocktailArt } from "./cocktail-art";
 import { UI_SVG } from "./icons";
 import { ACCENT_SERIF } from "./styles";
 
@@ -169,6 +171,15 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
   const [confirmClear, setConfirmClear] = React.useState(false);
   const listRef = React.useRef(null);
   const inputRef = React.useRef(null);
+  // Дополнение 129: ассистент знает меню команды с сервера, даже если сотрудник
+  // ни разу не открывал тренажёр меню на этом телефоне.
+  React.useEffect(() => {
+    const r = profile?.restaurant; if (!r) return;
+    rpc("menu_get", { p_restaurant: r }).then(res => {
+      const arr = typeof res === "string" ? JSON.parse(res) : res;
+      if (Array.isArray(arr)) rememberSharedMenu(r, arr);
+    }).catch(() => {});
+  }, [profile?.restaurant]);
   // Дополнение 126: поле растёт и когда текст пришёл голосом (setInput мимо onChange).
   React.useEffect(() => {
     const el = inputRef.current; if (!el) return;
@@ -292,7 +303,57 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
     sos: "Открыть SOS", glossary: "Глоссарий", leaderboard: "Рейтинг", menu: "Открыть меню",
     profile: "Мой профиль", daily: "Задания", checklist: "Чек-листы",
     reference: "Справочник", stats: "Аналитика", candidate: "Собеседование",
-    guestbook: "Книга отзывов", mentor: "Наставничество",
+    guestbook: "Книга отзывов", mentor: "Наставничество", cocktails: "Открыть колоду",
+  };
+  // Дополнение 130: карточки с картинкой в ответе. Модель ставит [[cocktail:ID]] /
+  // [[dish:ID]] (id даны ей в контексте); если забыла — ищем в тексте ответа
+  // точные названия коктейлей и блюд своего ресторана. Не больше двух карточек.
+  const myDishes = React.useMemo(() => dishesOf(profile?.restaurant), [profile?.restaurant, msgs.length]);
+  const parseCards = (text) => {
+    let clean = text || "";
+    const cards = [];
+    clean = clean.replace(/\[\[cocktail:([a-zA-Z0-9_-]+)\]\]/g, (_, id) => { const c = COCKTAILS.find(x => x.id === id); if (c) cards.push({ kind: "cocktail", c }); return ""; });
+    clean = clean.replace(/\[\[dish:([a-zA-Z0-9_-]+)\]\]/g, (_, id) => { const d = myDishes.find(x => String(x.id) === id); if (d) cards.push({ kind: "dish", d }); return ""; });
+    if (!cards.length) {
+      const low = clean.toLowerCase().replace(/ё/g, "е");
+      for (const c of COCKTAILS) { if (c.name.length >= 4 && low.includes(c.name.toLowerCase().replace(/ё/g, "е"))) { cards.push({ kind: "cocktail", c }); if (cards.length >= 2) break; } }
+      if (cards.length < 2) for (const d of myDishes) { if (d.name && d.name.length >= 4 && low.includes(d.name.toLowerCase().replace(/ё/g, "е"))) { cards.push({ kind: "dish", d }); if (cards.length >= 2) break; } }
+    }
+    return { clean: clean.replace(/\n{3,}/g, "\n\n").trim(), cards: cards.slice(0, 2) };
+  };
+  const cardBox = { marginTop: 10, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 16, cursor: "pointer",
+    border: `1px solid ${gold}55`, background: a11y ? "rgba(139,106,48,0.07)" : "rgba(200,169,110,0.07)",
+    boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.08)"}` };
+  const VisualCard = ({ card }) => {
+    if (card.kind === "cocktail") {
+      const c = card.c;
+      return (
+        <div style={cardBox} onClick={() => { vibrate("light"); onNavigate && onNavigate({ cocktail: c.id }); }} {...onActivate(() => onNavigate && onNavigate({ cocktail: c.id }))} aria-label={c.name}>
+          <div style={{ width: 92, flexShrink: 0, display: "flex", justifyContent: "center" }}><CocktailArt c={c} w={92} light={a11y} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, letterSpacing: 0.6, textTransform: "uppercase", lineHeight: 1.25 }}>{c.name}</div>
+            <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{c.method}{c.glass ? " · " : ""}{({ rocks: "рокс", highball: "хайбол", martini: "коктейльная рюмка", flute: "флюте", hurricane: "харрикейн", margarita: "маргарита", sour: "сауэр", shot: "шот", irish: "айриш", red: "винный" })[c.glass] || ""}</div>
+            <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(c.ing || []).map(i => i[1] ? `${i[0]} ${i[1]}` : i[0]).join(" · ")}</div>
+            <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть в колоде ›</div>
+          </div>
+        </div>
+      );
+    }
+    const d = card.d;
+    return (
+      <div style={cardBox} onClick={() => { vibrate("light"); onNavigate && onNavigate("menu"); }} {...onActivate(() => onNavigate && onNavigate("menu"))} aria-label={d.name}>
+        {d.img
+          ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12, flexShrink: 0, border: `1px solid ${gold}44` }} />
+          : <div style={{ width: 92, height: 92, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}66`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 11, textAlign: "center", padding: 6 }}>фото добавит менеджер</div>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, lineHeight: 1.25 }}>{d.name}</div>
+          {d.cat && <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{d.cat}</div>}
+          <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(d.ingredients || []).slice(0, 6).join(", ")}</div>
+          {(d.allergens || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>{d.allergens.map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, border: `1px solid ${RED}88`, color: RED }}>{a}</span>)}</div>}
+          <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть в меню ›</div>
+        </div>
+      </div>
+    );
   };
   const parseNav = (text) => {
     // Кнопка урока: [[lesson:ID|Подпись]]
@@ -455,9 +516,12 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
               borderRadius: RADIUS.lg,
             }}>
               {(() => {
-                const { clean, nav } = m.role === "assistant" ? parseNav(m.content) : { clean: m.content, nav: null };
+                const nv = m.role === "assistant" ? parseNav(m.content) : { clean: m.content, nav: null };
+                const { clean, cards } = m.role === "assistant" ? parseCards(nv.clean) : { clean: nv.clean, cards: [] };
+                const nav = nv.nav;
                 return (<>
                   <Rich text={clean} color={gold} />
+                  {cards.map((card, k) => <VisualCard key={k} card={card} />)}
                   {nav && onNavigate && (
                     <button className="sa-btn" onClick={() => { vibrate("light"); onNavigate(nav.lesson ? { lesson: nav.lesson } : nav.key); }}
                       style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px",

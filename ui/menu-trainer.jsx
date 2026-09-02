@@ -6,6 +6,7 @@
 // Плюс редактор блюд для менеджеров (localStorage: sa_menu_custom).
 
 import React from "react";
+import { rememberSharedMenu } from "../lib/reference-context";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
@@ -84,7 +85,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
     rpc("menu_get", { p_restaurant: restaurant }).then(res => {
       if (!alive) return;
       const arr = typeof res === "string" ? JSON.parse(res) : res;
-      if (Array.isArray(arr)) setShared(arr);
+      if (Array.isArray(arr)) { setShared(arr); rememberSharedMenu(restaurant, arr); } // кэш для ассистента (Доп. 129)
       else setShareErr(String((res && (res.message || res.error)) || "неожиданный ответ сервера").slice(0, 140));
     }).catch(() => { if (alive) setShareErr("нет связи с сервером"); });
     return () => { alive = false; };

@@ -4,7 +4,10 @@ import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
-import { MODULES, loadSpgModules } from "./data/modules";
+import { MODULES, loadRoleModules, loadAllModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
+import { useContentVersion } from "./lib/use-content";
+import { HubScreen, FirstTour } from "./ui/home-hubs";
+import { LiquidTabBar } from "./ui/tabbar";
 import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
 import { GLOSSARY } from "./data/glossary";
@@ -333,7 +336,17 @@ const SR_DAYS = [1, 3, 7, 30];
 
 function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
-  const [prevScreen, setPrevScreen] = useState(null);
+  // Дополнение 134: история навигации — стек вместо одного шага.
+  // prevScreen — вершина стека (старый код читает его как раньше), setPrevScreen — push,
+  // navigate(to) — push текущего + переход, goBack() — pop. Вкладки сбрасывают стек.
+  const [navStack, setNavStack] = useState([]);
+  const navRef = useRef([]);                 // источник истины для push/pop
+  const screenRef = useRef("roleSelect");    // текущий экран для императивных переходов
+  useEffect(() => { screenRef.current = screen; }, [screen]);
+  const commitStack = useCallback((arr) => { navRef.current = arr; setNavStack(arr); }, []);
+  const prevScreen = navStack.length ? navStack[navStack.length - 1] : null;
+  const setPrevScreen = useCallback((x) => { if (x) commitStack([...navRef.current, x].slice(-24)); }, [commitStack]);
+  const TAB_SCREENS = ["roleSelect", "shift", "teamHub", "me"];
   const [lessonLockMsg, setLessonLockMsg] = useState(null); // мягкое сообщение о закрытом уроке (Вариант В)
   const [bookFocus, setBookFocus] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState(null);
@@ -351,9 +364,8 @@ function ServiceAcademy() {
   // Дополнение 123: Справочник и Колода бармена ходят друг в друга, а история
   // навигации хранит один шаг — назад из Справочника вело обратно в Колоду по
   // кругу. Запоминаем экран, с которого зашли в эту пару, и выходим на него.
-  const [ckStart, setCkStart] = useState(null); // Доп. 130: открыть колоду на конкретном коктейле (карточка в ответе ассистента)
-  const barOriginRef = useRef("roleSelect");
-  useEffect(() => { if (screen !== "reference" && screen !== "cocktails") barOriginRef.current = screen; }, [screen]);
+  const [ckStart, setCkStart] = useState(null);
+  const [tour, setTour] = useState(() => { try { return localStorage.getItem("sa_tour_v1") !== "1"; } catch (e) { return false; } }); // Доп. 133: тур по вкладкам, один раз // Доп. 130: открыть колоду на конкретном коктейле (карточка в ответе ассистента)
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
@@ -559,7 +571,7 @@ function ServiceAcademy() {
     // Сначала ждём ленивые СПГ-модули: их уроки должны попасть в allValidIds ниже,
     // иначе при быстром ответе сервера прогресс роли СПГ отфильтруется как «неизвестные id»
     // и перезапишет localStorage без этих уроков (гонка загрузок).
-    loadSpgModules().catch(() => {}).then(() =>
+    Promise.resolve().then(() =>
     fetch(`${SUPABASE_URL}/rest/v1/progress?user_id=eq.${encodeURIComponent(profile.id)}`, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     })).then(r => r.json()).then(data => {
@@ -567,11 +579,8 @@ function ServiceAcademy() {
       if (data.length === 0) return; // пусто — не обнуляем
       {
         // Восстанавливаем completed из Supabase — авторитетный источник
-        const allValidIds = new Set(
-          Object.values(MODULES).flatMap(modules =>
-            modules.flatMap(m => m.lessons.map(l => l.id))
-          )
-        );
+        // Доп. 132: id всех уроков всех ролей — из лёгкого индекса, ленивая загрузка ролей не влияет
+        const allValidIds = new Set(allLessonIds());
         const seen = new Set();
         const validRows = data.filter(row => {
           if (!allValidIds.has(row.lesson_id)) return false;
@@ -649,7 +658,10 @@ function ServiceAcademy() {
     }).catch(() => {});
   }, [profile]);
 
-  const modules = useMemo(() => role ? MODULES[role] : [], [role]);
+  // Доп. 132: уроки роли приезжают лениво — грузим при смене роли, мемо зависит от версии контента
+  const contentVer = useContentVersion();
+  useEffect(() => { if (role) loadRoleModules(role).catch(() => {}); }, [role]);
+  const modules = useMemo(() => role ? (MODULES[role] || []) : [], [role, contentVer]);
   const totalLessons = useMemo(() => modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0), [modules]);
   const roleLesonIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id))), [modules]);
   const roleQuizIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id))), [modules]);
@@ -683,7 +695,19 @@ function ServiceAcademy() {
       }),
     }));
   }, [customLessons, role]);
-  const navigate = useCallback((to) => { setScreen(prev => { setPrevScreen(prev); return to; }); }, []);
+  const navigate = useCallback((to) => {
+    const cur = screenRef.current;
+    if (TAB_SCREENS.includes(to)) commitStack([]);                          // вкладка — новая ветка, назад некуда
+    else if (cur !== to) commitStack([...navRef.current, cur].slice(-24));  // push, без дублей при повторе
+    screenRef.current = to; setScreen(to);
+  }, [commitStack]);
+  const goBack = useCallback((fallback = "roleSelect") => {
+    const st = navRef.current.slice();
+    let to = st.pop();
+    while (to === screenRef.current && st.length) to = st.pop(); // защита от петель
+    commitStack(st);
+    const dest = to || fallback; screenRef.current = dest; setScreen(dest);
+  }, [commitStack]);
   // #5 — избранное/заметки: переключение и сохранение, с очисткой пустых записей
   const toggleFav = useCallback((k) => setSaved(prev => {
     const cur = prev[k] || {}; const next = { ...prev, [k]: { ...cur, fav: !cur.fav } };
@@ -908,7 +932,7 @@ function ServiceAcademy() {
 
       // 4. Пройдена ли вся роль? (используем СВЕЖИЕ newCompleted / newQuizDone)
       const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
-      const allDone = allLessons.every(l => l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]);
+      const allDone = allLessons.length > 0 && allLessons.every(l => l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]); // Доп. 132: пустой список — не «всё пройдено»
       const roleIdx = ROLE_ORDER.indexOf(role);
       const nextRole = roleIdx >= 0 ? ROLE_ORDER[roleIdx + 1] : undefined; // роли вне лестницы (напр. СПГ) — без следующей ступени
       const firstCompletion = nextRole ? !completedRoles.has(nextRole) : !completedRoles.has(role);
@@ -1062,12 +1086,13 @@ function ServiceAcademy() {
   const [, bumpLazyData] = useState(0);
   useEffect(() => {
     // 1) Сначала данные, без которых главные экраны неполные
-    Promise.all([loadSpgModules(), loadDialogues()]).then(() => bumpLazyData(x => x + 1));
+    Promise.all([role ? loadRoleModules(role) : Promise.resolve(), loadDialogues()]).then(() => bumpLazyData(x => x + 1));
     // 2) Затем тихо прогреваем ленивые экраны: пока человек смотрит на главную,
     //    их код доезжает фоном — и первое открытие любого раздела мгновенно,
     //    скелетон остаётся только для очень медленной сети в первые секунды.
     const warm = setTimeout(() => {
       [
+        () => loadAllModules(), // Доп. 132: остальные роли — фоном, пока человек на главной
         () => import("./ui/menu-trainer"),
         () => import("./ui/guestbook"),
         () => import("./ui/ReferenceSection"),
@@ -1133,7 +1158,7 @@ function ServiceAcademy() {
         <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {/* ── Книга отзывов ── */}
-        {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} focusId={bookFocus} onBack={() => { setBookFocus(null); navigate(prevScreen && prevScreen !== "weeklyGuest" && prevScreen !== "guestbook" ? prevScreen : "roleSelect"); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}
+        {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} focusId={bookFocus} onBack={() => { setBookFocus(null); goBack(); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}
         {/* «Гость недели»: живой диалог из книги; завершение = страница в книге */}
         {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyDialogueId()} T={T} color={"#C8A96E"} onClose={(finished) => {
           try {
@@ -1149,7 +1174,7 @@ function ServiceAcademy() {
           navigate("guestbook");
         }} pro={true} />}
         {screen === "schedule" && <Suspense fallback={<ScreenLoader T={T} />}>
-          <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")}
+          <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack()}
             dueCount={dueMistakes} onMistakes={() => navigate("mistakes")} onChecklist={() => navigate("checklist")} />
         </Suspense>}
         {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} />}
@@ -1158,7 +1183,7 @@ function ServiceAcademy() {
         {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} />}
-        {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => navigate(prevScreen || "roleSelect")} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
+        {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
@@ -1248,16 +1273,44 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")} /></div>}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
+        {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
+        {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня" items={[
+          { key:"sch", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
+          { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
+          { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
+          { key:"wg", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest") },
+          { key:"gb", icon:"book", label:"Книга отзывов", sub:"Печати, страницы, история", onClick:() => { setBookFocus(null); navigate("guestbook"); } },
+          { key:"ob", icon:"onboarding", label: role === "seasonal" ? "Первая неделя" : "Новички", sub:"Пошаговый план адаптации", onClick:() => navigate("onboarding") },
+        ]} /></div>}
+        {screen === "teamHub" && profile && (() => {
+          const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
+          const dueM = (mistakeBank || []).filter(m => !m.due || m.due <= Date.now()).length;
+          return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} items={[
+            { key:"lb", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
+            { key:"mt", icon:"mentor", label:"Наставничество", sub:"Допуски и подтверждение навыков", onClick:() => navigate("mentor") },
+            { key:"mis", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
+            staff && { key:"an", icon:"analytics", label:"Аналитика", sub:"Сводка по команде и резервная копия", onClick:() => navigate("analytics") },
+            profile?.is_admin && { key:"tm", icon:"team", label:"Сотрудники", sub:"Карточки, коды, роли", onClick:() => navigate("team") },
+            staff && { key:"hire", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
+            staff && { key:"ce", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
+          ]} /></div>;
+        })()}
+        {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title={profile.name} subtitle={profile.restaurant || "Service Academy"} items={[
+          { key:"st", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
+          CERTIFICATES_ENABLED && { key:"cert", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },
+          { key:"acc", icon:"profile", label:"Аккаунт и настройки", sub:"Тренировочная карточка, крупный шрифт, выход", onClick:() => navigate("profile") },
+          { key:"roles", icon:"roles", label:"Мои роли", sub:"Сменить трек или открыть новый", onClick:() => navigate("roleSelect") },
+        ]} /></div>}
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
-        {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => navigate(prevScreen || "home")} />}
-        {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => navigate(prevScreen || "home")} /></Suspense></div>}
-        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
-        {screen === "cocktails" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); navigate(prevScreen || "roleSelect"); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
+        {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
+        {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
+        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
+        {screen === "cocktails" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
-        {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
+        {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => goBack()} /></Suspense></div>}
         {lessonLockMsg && (
           <div onClick={() => setLessonLockMsg(null)} style={{ position: "fixed", inset: 0, zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(0,0,0,0.45)" }}>
             <div onClick={e => e.stopPropagation()} style={{ maxWidth: 340, borderRadius: 20, padding: "22px 20px", textAlign: "center",
@@ -1280,7 +1333,7 @@ function ServiceAcademy() {
               const t = new Date();
               const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
               return (r && r.date === key && r.label) ? r.label : null;
-            } catch (e) { return null; } })() }} onBack={() => navigate(prevScreen || "roleSelect")} onNavigate={(dest) => {
+            } catch (e) { return null; } })() }} onBack={() => goBack()} onNavigate={(dest) => {
           // Карточка коктейля в ответе → колода на этом коктейле (Доп. 130)
           if (dest && typeof dest === "object" && dest.cocktail) {
             setCkStart(dest.cocktail);
@@ -1294,12 +1347,7 @@ function ServiceAcademy() {
             // Вариант В: урок закрытой роли не открываем, мягко сообщаем.
             const myRoles = new Set([role, ...completedRoles]);
             // спг/сезонник — базовый уровень, всегда доступен как основа
-            const roleOfLesson = (lid) => {
-              for (const [rk, mods] of Object.entries(MODULES)) {
-                if ((mods || []).some(m => (m.lessons || []).some(x => x.id === lid))) return rk;
-              }
-              return null;
-            };
+            const roleOfLesson = (lid) => roleOfLessonId(lid); // Доп. 132: по индексу, без ожидания загрузки
             const lessonRole = roleOfLesson(dest.lesson);
             const inCustom = (customModules || []).some(m => (m.lessons || []).some(x => x.id === dest.lesson));
             // FAIL-SAFE: блокируем ТОЛЬКО когда роль урока определена ОДНОЗНАЧНО и она
@@ -1314,25 +1362,27 @@ function ServiceAcademy() {
               return;
             }
 
-            const everyMod = [...Object.values(MODULES).flat(), ...(customModules || [])];
-            let foundMod = null, foundLesson = null;
-            for (const m of everyMod) {
-              const l = (m.lessons || []).find(x => x.id === dest.lesson);
-              if (l) { foundMod = m; foundLesson = l; break; }
-            }
-            if (foundLesson) {
-              setPrevScreen("roleSelect"); setActiveModule(foundMod); openLesson(foundLesson);
-            } else {
-              setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
-              setScreen("roleSelect");
-            }
+            (lessonRole ? loadRoleModules(lessonRole).catch(() => {}) : Promise.resolve()).then(() => {
+              const everyMod = [...Object.values(MODULES).flat(), ...(customModules || [])];
+              let foundMod = null, foundLesson = null;
+              for (const m of everyMod) {
+                const l = (m.lessons || []).find(x => x.id === dest.lesson);
+                if (l) { foundMod = m; foundLesson = l; break; }
+              }
+              if (foundLesson) {
+                setPrevScreen("roleSelect"); setActiveModule(foundMod); openLesson(foundLesson);
+              } else {
+                setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
+                setScreen("roleSelect");
+              }
+            });
             return;
           }
           // Переход в раздел: [[go:key]]
           const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor","menu","cocktails"];
           if (ok.includes(dest)) { setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(dest === "menu" ? "menuTrainer" : dest); }
         }} /></Suspense>}
-        {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => navigate(prevScreen || "roleSelect")} /></Suspense></div>}
+        {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} /></Suspense></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
@@ -1347,7 +1397,7 @@ function ServiceAcademy() {
         , document.body)}
         {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
-        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => { if (prevScreen === "cocktails") { if (refStart) navigate("cocktails"); else navigate(barOriginRef.current || "roleSelect"); } else navigate(prevScreen || "roleSelect"); }} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
+        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
         {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} />}
         {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}
@@ -1378,178 +1428,34 @@ function ServiceAcademy() {
         )}
 
         {/* Плавающий AI-ассистент — главный вход во флагманскую фичу */}
-        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && !welcome && !mistakeHint && (
+        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"].includes(screen) && profile && !welcome && !mistakeHint && (
           <AiFab a11y={a11y} onClick={() => navigate("assistant")} />
         )}
 
         {/* Нижняя навигация — только на основных экранах */}
-        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team"].includes(screen) && profile && (
+        {/* Доп. 133: четыре вкладки. Экран внутри раздела подсвечивает свою вкладку. */}
+        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"].includes(screen) && profile && (
           <LiquidTabBar
             a11y={a11y}
-            activeId={screen}
+            activeId={({ roleSelect:"roleSelect", home:"roleSelect", module:"roleSelect", glossary:"roleSelect", daily:"shift", shift:"shift",
+                         leaderboard:"teamHub", team:"teamHub", playerDetail:"teamHub", teamHub:"teamHub", stats:"me", me:"me" })[screen] || screen}
             onTab={(id) => { if (screen !== id) vibrate("light"); navigate(id); }}
             tabs={[
-              { id:"roleSelect", icon:"home",        label:"Главная" },
-              { id:"daily",      icon:"daily",       label:"Задания" },
-              { id:"glossary",   icon:"glossary",    label:"Глоссарий" },
-              { id:"leaderboard",icon:"leaderboard", label:"Рейтинг" },
-              ...(profile?.is_admin ? [{ id:"team", icon:"team", label:"Команда" }] : []),
-              { id:"stats",      icon:"stats",       label:"Профиль" },
+              { id:"roleSelect", icon:"home",  label:"Учусь" },
+              { id:"shift",      icon:"daily", label:"Смена" },
+              { id:"teamHub",    icon:"team",  label:"Команда" },
+              { id:"me",         icon:"stats", label:"Я" },
             ]}
           />
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── НИЖНЯЯ НАВИГАЦИЯ: «ЖИДКОЕ СТЕКЛО» ───────────────────────────────
-// Плавающий пилл + прозрачная стеклянная «линза» в размер бара.
-// Линзу можно тянуть пальцем — она следует за пальцем и с пружиной
-// прилипает к ближайшей вкладке. При нажатии вкладка под линзой плавно
-// увеличивается (без слоя-копии — ничего не двоится).
-function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
-  const n = tabs.length;
-  const activeIdx = tabs.findIndex(t => t.id === activeId);
-  const lastIdxRef = useRef(activeIdx >= 0 ? activeIdx : 0);
-  if (activeIdx >= 0) lastIdxRef.current = activeIdx;
-  const restIdx = activeIdx >= 0 ? activeIdx : lastIdxRef.current;
-
-  const barRef = useRef(null);
-  const [barW, setBarW] = useState(0);
-  useEffect(() => {
-    const m = () => { if (barRef.current) setBarW(barRef.current.clientWidth); };
-    m();
-    window.addEventListener("resize", m);
-    return () => window.removeEventListener("resize", m);
-  }, []);
-
-  const [dragX, setDragX] = useState(null); // x центра линзы, пока её тянут пальцем
-  const [pressed, setPressed] = useState(false); // палец на баре
-  const drag = useRef(null);
-
-  const BAR_H = 58;
-  const cellW = barW > 0 ? barW / n : 0;
-  const lensW = cellW ? Math.max(44, cellW - 6) : 0; // компактнее ячейки
-  const rawC = dragX !== null ? dragX : (restIdx + 0.5) * cellW;
-  const cx = cellW ? Math.max(lensW / 2 + 4, Math.min(barW - lensW / 2 - 4, rawC)) : 0;
-  const litIdx = dragX !== null
-    ? Math.max(0, Math.min(n - 1, Math.floor(dragX / cellW)))
-    : activeIdx; // -1 — ничего не подсвечено (экран вне вкладок)
-  const lensVisible = cellW > 0 && (dragX !== null || activeIdx >= 0);
-
-  const accent = a11y ? "#6B4E1A" : GOLD;
-  const dim = a11y ? "#5C3D10" : "#9A8060";
-  const spring = "cubic-bezier(0.3,1.3,0.45,1)";
-
-  const evX = (e) => {
-    const r = barRef.current ? barRef.current.getBoundingClientRect() : { left: 0 };
-    return (e.clientX != null ? e.clientX : 0) - r.left;
-  };
-  const onDown = (e) => {
-    if (!cellW) return;
-    setPressed(true);
-    drag.current = { x0: evX(e), moved: false, last: null };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-  };
-  const onMove = (e) => {
-    if (!drag.current) return;
-    const x = evX(e);
-    if (!drag.current.moved && Math.abs(x - drag.current.x0) < 6) return;
-    drag.current.moved = true;
-    setDragX(x);
-    const hi = Math.max(0, Math.min(n - 1, Math.floor(x / cellW)));
-    if (drag.current.last !== null && drag.current.last !== hi) vibrate("light");
-    drag.current.last = hi;
-  };
-  const onUp = (e) => {
-    if (!drag.current) return;
-    const x = evX(e);
-    drag.current = null;
-    setDragX(null);
-    setPressed(false);
-    const i = Math.max(0, Math.min(n - 1, Math.floor(x / cellW)));
-    if (tabs[i]) onTab(tabs[i].id);
-  };
-  const onCancel = () => { drag.current = null; setDragX(null); setPressed(false); };
-
-  return (
-    <div style={{ position:"fixed", left:10, right:10, zIndex:200,
-      bottom:"calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)" }}>
-      {/* Разрешаем горизонтальный жест на баре: обходим глобальные touch-action и JS-блокировку свайпов */}
-      <style>{`.sa-lensbar.sa-hscroll, .sa-lensbar.sa-hscroll * { touch-action: none !important; }`}</style>
-      {/* Плавающий пилл */}
-      <div ref={barRef} className="sa-lensbar sa-hscroll"
-        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
-        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch",
-          background: a11y ? "rgba(255,252,244,0.22)" : "rgba(255,250,238,0.05)",
-          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-          border: a11y ? "1px solid rgba(139,106,48,0.32)" : "1px solid rgba(255,255,255,0.13)",
-          boxShadow: a11y
-            ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 20px rgba(120,90,30,0.14)"
-            : "inset 0 0 24px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.12), 0 10px 30px rgba(0,0,0,0.55)",
-
-          userSelect:"none", WebkitUserSelect:"none" }}>
-        {tabs.map((tab, i) => {
-          const lit = i === litIdx;
-          return (
-            <div key={tab.id} role="button" tabIndex={0} aria-label={tab.label}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTab(tab.id); } }}
-              style={{ flex:1, minWidth:0, height:"100%", display:"flex", alignItems:"center",
-                justifyContent:"center", cursor:"pointer", outline:"none" }}>
-              {/* при нажатии вкладка под линзой плавно растёт */}
-              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, maxWidth:"100%",
-                transform: (pressed && lit) ? "scale(1.16)" : "scale(1)",
-                transition:`transform 0.3s ${spring}` }}>
-                <div style={{ height:24, display:"flex", alignItems:"center", justifyContent:"center",
-                  opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
-                  {NAV_ICONS[tab.icon](lit ? accent : dim)}
-                </div>
-                <div style={{ fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
-                  whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
-                  color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
-                  transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
-              </div>
-            </div>
-          );
-        })}
-        {/* Прозрачная линза в размер бара — те же стили, что в сегментах */}
-        {lensVisible && (
-          <div aria-hidden style={{
-            position:"absolute", top:5, left: cx - lensW/2, width: lensW, height:BAR_H - 10,
-            zIndex:2, pointerEvents:"none",
-            transition: dragX !== null ? "none" : `left 0.5s ${spring}`,
-          }}>
-            <div style={{
-              position:"relative", width:"100%", height:"100%", borderRadius:999, overflow:"hidden",
-              transform: pressed ? "scale(1.04)" : "scale(1)",
-              transition:"transform 0.25s ease",
-              background: a11y
-                ? "linear-gradient(180deg, rgba(139,106,48,0.15), rgba(139,106,48,0.07))"
-                : "linear-gradient(180deg, rgba(200,169,110,0.14), rgba(200,169,110,0.08))",
-              // Капелька в стиле кнопки AI: золотое кольцо + изморозь + блик
-              boxShadow: a11y
-                ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 0 18px rgba(255,255,255,0.45), inset 0 1.5px 0 rgba(255,255,255,0.9), 0 3px 10px rgba(70,50,15,0.15)"
-                : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 18px rgba(255,230,170,0.10), inset 0 1.5px 0 rgba(255,255,255,0.18), 0 3px 10px rgba(0,0,0,0.25)",
-            }}>
-              {/* хроматическая (радужная) кромка */}
-              <div style={{
-                position:"absolute", inset:0, borderRadius:999, padding:1.5, opacity: a11y ? 0.4 : 0.3,
-                background:"conic-gradient(from 210deg, rgba(214,178,102,0.6), rgba(255,230,170,0.35), rgba(214,178,102,0.6), rgba(255,230,170,0.35), rgba(214,178,102,0.6))",
-                WebkitMask:"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-                WebkitMaskComposite:"xor", maskComposite:"exclude",
-                filter:"blur(0.6px)",
-              }} />
-              {/* тонкая световая кромка сверху */}
-              <div style={{ position:"absolute", top:1, left:"12%", right:"12%", height:1.5, borderRadius:999,
-                background:`linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,${a11y ? 0.4 : 0.18}), rgba(255,255,255,0))` }} />
-            </div>
-          </div>
+        {tour && profile && !welcome && screen === "roleSelect" && (
+          <FirstTour a11y={a11y} onDone={() => { try { localStorage.setItem("sa_tour_v1", "1"); } catch (e) {} setTour(false); }} />
         )}
       </div>
     </div>
   );
 }
+
 
 // ── КОНФЕТТИ ──────────────────────────────────────────────────────────
 // ── ЭКРАН ЗАВЕРШЕНИЯ РОЛИ ────────────────────────────────────────────

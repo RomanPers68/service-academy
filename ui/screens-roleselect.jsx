@@ -70,7 +70,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
@@ -146,6 +146,7 @@ export function RoleSelect({ onSelect, T, a11y, scores = [], onCocktails, onSche
         {role && onContinueLesson && (() => {
           const roleObj = ROLES.find(r => r.id === role);
           const mods = MODULES[role] || [];
+          if (!mods.length) return null; // Доп. 132: уроки роли ещё едут — не показывать «Путь пройден» на пустом списке
           const next = nextLessonOf(mods, completed, quizDone);
           const dueM = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
           const done = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0);
@@ -247,7 +248,7 @@ export function RoleSelect({ onSelect, T, a11y, scores = [], onCocktails, onSche
         })()}
 
         {/* ═══ Книга отзывов — слим-витрина: монограмма, печати, золотая нить ═══ */}
-        {onGuestBook && profile && (() => {
+        {!learnOnly && onGuestBook && profile && (() => {
           const bs = bookStats(MODULES, completed, quizDone, examResults);
           const unread = countUnreadPages(completed, quizDone, examResults);
           return (
@@ -324,6 +325,18 @@ export function RoleSelect({ onSelect, T, a11y, scores = [], onCocktails, onSche
           if (onContentEditor && (["manager","senior"].includes(profile?.position) || profile?.is_admin)) tiles.push({ key:"ce", label:"Редактор", onClick:onContentEditor, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z"/><path d="M14.5 6.5l3 3"/></svg>
           )});
+          // Доп. 133: вкладка «Учусь» — только учебные жетоны; рабочие и командные
+          // переехали на вкладки «Смена» и «Команда». Колода и Глоссарий — сюда.
+          if (learnOnly) {
+            const learn = new Set(["sp", "sos", "menu", "ob"]);
+            for (let i = tiles.length - 1; i >= 0; i--) if (!learn.has(tiles[i].key)) tiles.splice(i, 1);
+            if (onCocktails) tiles.splice(1, 0, { key:"ck", label:"Колода", onClick:onCocktails, icon:(
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h14l-7 9v6"/><path d="M8 21h8"/><path d="M7.5 7h9"/></svg>
+            )});
+            if (onGlossary) tiles.push({ key:"gl", label:"Глоссарий", onClick:onGlossary, icon:(
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h5"/></svg>
+            )});
+          }
           if (!tiles.length) return null;
           // ═══ Прогрессивное раскрытие: новичку без прогресса — только самое нужное.
           //     Остальные жетоны появляются после первого пройденного урока.

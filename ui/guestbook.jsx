@@ -10,6 +10,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { LiquidSegment } from "./widgets";
 import { ROLE_SVG } from "./icons";
 import { MODULES } from "../data/modules";
+import { useContentVersion } from "../lib/use-content";
 import { ROLES } from "../data/roles";
 import {
   MODULE_REVIEWS, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
@@ -116,7 +117,8 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
     return d;
   }, [completed, quizDone, examResults]);
 
-  const stats = React.useMemo(() => bookStats(MODULES, completed, quizDone, examResults), [completed, quizDone, examResults]);
+  const contentVer = useContentVersion(); // Доп. 132: пересчёт, когда роли догрузились
+  const stats = React.useMemo(() => bookStats(MODULES, completed, quizDone, examResults), [completed, quizDone, examResults, contentVer]);
 
   // Страницы текущей вкладки
   const wid = weeklyLessonId();

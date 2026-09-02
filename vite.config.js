@@ -15,10 +15,11 @@ export default defineConfig({
         manualChunks(id) {
           // Ленивые данные — отдельными чанками, чтобы они не склеивались
           // со стартовым контентом и грузились только по dynamic import:
-          if (id.includes("data/modules-spg")) return "content-spg";
+          // Доп. 132: уроки каждой роли — свой чанк, грузится только когда роль нужна.
+          // modules.js (реестр) и modules-index.js (лёгкий индекс) остаются в основном бандле.
+          const role = id.match(/data\/modules-([a-z_]+)\.js/);
+          if (role && role[1] !== "index") return "content-" + role[1];
           if (id.includes("data/dialogues.js")) return "content-dialogues";
-          // Стартовый контент (уроки официанта/менеджера) — кэшируемый чанк
-          if (id.includes("/data/modules")) return "content-core";
           if (id.includes("node_modules/react")) return "vendor";
         },
       },

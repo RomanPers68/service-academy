@@ -10,7 +10,7 @@ import { rememberSharedMenu } from "../lib/reference-context";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
-import { rpc, rpcSync, saToken } from "../api/supabase";
+import { rpc, rpcSync, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
 import { TimerBar, LiquidSegment } from "./widgets";
 
@@ -600,10 +600,29 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     setCustom(next); setForm(null); vibrate("light");
   };
   const remove = (id) => setCustom({ ...custom, [restaurant]: list.filter(d => d.id !== id) });
+  const [photoState, setPhotoState] = React.useState(""); // Доп. 135: "" | uploading | cloud | local (хук — на верхнем уровне компонента)
+  React.useEffect(() => { if (!form) setPhotoState(""); }, [form]); // закрыли форму — подпись не переезжает на следующее блюдо
 
   if (form) {
     const toggleAl = (al) => setForm(f => ({ ...f, allergens: f.allergens.includes(al) ? f.allergens.filter(x => x !== al) : [...f.allergens, al] }));
-    const onPhoto = (e) => { const file = e.target.files && e.target.files[0]; if (file) readPhoto(file, (data) => setForm(f => ({ ...f, img: data }))); e.target.value = ""; };
+    // Доп. 135: сжали на телефоне → отправили в Storage → в блюде остаётся ссылка.
+    // Не получилось (функция не развёрнута, нет сети) — base64 в localStorage, как раньше.
+    const onPhoto = (e) => {
+      const file = e.target.files && e.target.files[0]; e.target.value = "";
+      if (!file) return;
+      readPhoto(file, (data) => {
+        setForm(f => ({ ...f, img: data }));
+        setPhotoState("uploading");
+        fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+          body: JSON.stringify({ token: saToken(), restaurant, dishId: form.id || ("d" + Date.now()), image: data }),
+        }).then(r => r.json()).then(j => {
+          if (j && j.ok && j.url) { setForm(f => ({ ...f, img: j.url })); setPhotoState("cloud"); }
+          else setPhotoState("local");
+        }).catch(() => setPhotoState("local"));
+      });
+    };
     return (
       <div style={T.screen} className="sa-screen">
         {Head(form.id ? "Изменить блюдо" : "Новое блюдо")}
@@ -612,6 +631,9 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             ? <div style={{ position: "relative", marginBottom: 12 }}>
                 <img src={form.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 14, display: "block", border: `1px solid ${gold}44` }} />
                 <div onClick={() => setForm(f => ({ ...f, img: "" }))} {...onActivate(() => setForm(f => ({ ...f, img: "" })))} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>✕</div>
+                {photoState && <div style={{ position: "absolute", left: 8, bottom: 8, fontSize: 10.5, padding: "3px 8px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: photoState === "local" ? "#F0B37A" : "#EFE4C8" }}>
+                  {photoState === "uploading" ? "Отправляю в облако…" : photoState === "cloud" ? "В облаке — увидят все" : "Только на этом телефоне"}
+                </div>}
               </div>
             : <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "22px 13px", borderRadius: 14, border: `1.5px dashed ${gold}77`, color: T.para?.color, fontSize: 14, cursor: "pointer", marginBottom: 12 }}>
                 {GAME_SVG.cards(gold, 18)} Добавить фото блюда

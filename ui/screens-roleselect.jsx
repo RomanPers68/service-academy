@@ -350,12 +350,12 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
             <>
-            <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 16px 12px", overflowX:"auto",
+            <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 16px 12px", overflowX: visibleTiles.length <= 4 ? "hidden" : "auto", /* Доп. 143: ≤4 жетонов — во всю ширину поровну */
                 WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", scrollPaddingLeft:16, scrollPaddingRight:16, overscrollBehaviorX:"contain" }}>
               {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 return (
-                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex:"0 0 auto", width:88, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
+                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex: visibleTiles.length <= 4 ? "1 1 0" : "0 0 auto", width: visibleTiles.length <= 4 ? "auto" : 88, minWidth:0, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
                     <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: "transparent" }}>
                       <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.20)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
                       <TokenEyelet />

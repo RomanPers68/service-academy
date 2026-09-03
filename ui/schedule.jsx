@@ -2410,7 +2410,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                             onClick={() => setWish(me.id, d, !wishOf(me.id, d))}
                             style={{ ...ghost, width:"100%", boxSizing:"border-box",
                               padding:"9px 10px", fontSize:12.5,
-                              ...(wishOf(me.id, d) ? { borderColor:GOLD, color: a11y ? "#6B4E1A" : GOLD } : {}) }}>
+                              borderColor: wishOf(me.id, d) ? GOLD : GOLD + "66", color: wishOf(me.id, d) ? (a11y ? "#6B4E1A" : GOLD) : GOLD }}>
                             {wishes === null ? "…" : wishOf(me.id, d)
                               ? <><IcoSun size={13} dy={-2} /> Просьба о выходном отправлена — отозвать</>
                               : <><IcoSun size={13} dy={-2} /> Попросить выходной (если получится)</>}
@@ -2420,7 +2420,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                               onClick={() => setWish(me.id, d, !hardOf(me.id, d), "hard")}
                               style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:7,
                                 padding:"9px 10px", fontSize:12.5,
-                                ...(hardOf(me.id, d) ? { borderColor:P.warn, color:P.warn } : {}) }}>
+                                borderColor: hardOf(me.id, d) ? P.warn : GOLD + "66", color: hardOf(me.id, d) ? P.warn : GOLD }}>
                               {wishes === null ? "…" : hardOf(me.id, d)
                                 ? <><IcoBan size={13} color={P.warn} dy={-2} /> Отмечено «не смогу выйти» — снять</>
                                 : <><IcoBan size={13} color={P.warn} dy={-2} /> Не смогу выйти в этот день{(() => { const c = hardCapacity(d, me); return c.maxHard ? ` (мест: ${c.left})` : ""; })()}</>}
@@ -2568,7 +2568,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       <button style={{ ...btn, fontSize:13, flex:1 }} className="sa-btn" onClick={exportImage} disabled={!staff.length || shotBusy}>
         {shotBusy ? "Собираю…" : "Сохранить и отправить"}
       </button>
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 14px", flexShrink:0, ...(more ? { borderColor:GOLD } : {}) }} className="sa-btn"
+      <button style={{ ...ghost, fontSize:12.5, padding:"9px 14px", flexShrink:0, borderColor: more ? GOLD : GOLD + "66" }} className="sa-btn" /* Доп. 152: явный цвет в обе стороны */
         onClick={() => { setMore(m => !m); vibrate("light"); }} aria-label="Ещё действия">Ещё{more ? " ▴" : " ▾"}</button>
     </div>
     {more ? (

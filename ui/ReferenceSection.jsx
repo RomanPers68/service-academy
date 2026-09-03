@@ -74,8 +74,7 @@ function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader, onCocktail
     { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} · с фото`, icon: Ico.serving, on: true },
     { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
     { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
-
-    { id: "app", t: "Гид по приложению", s: `${appChapters} ${plural(appChapters)} · все возможности`, icon: Ico.compass, on: true },
+      // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
     { id: "cocktails", t: "Бар: коктейли", s: "50 карточек · состав, метод, история · основы бара", icon: Ico.cocktail, on: true, deck: true },
   ];
   return (<div style={T.screen}>

@@ -2018,3 +2018,16 @@ menu-server-stage4.sql исправлен так же, чтобы повторн
    не добавлялось (map по пустому списку).
 После публикации кэш ассистента обновляется сразу.
 
+# Дополнение 155 — «function whoami(text) does not exist»
+Скрин владельца при «Опубликовать команде». Одиннадцать функций шести
+этапов (menu_set, menu_progress_set, set_mentor_pin, confirm_skill_pin,
+log_quiz_answer, quiz_hard_questions, candidate_save/list/delete,
+backup_ticket) зовут whoami(p_token) с текстом, а whoami в базе принимает
+другой тип; внутри SQL приведения нет. supabase-stage11c-whoami-fix.sql —
+самонастраивающаяся заплатка: читает подпись whoami из pg_proc, создаёт
+переходник whoami_txt(text)→jsonb с приведением типа, пересоздаёт все
+функции, где встречается whoami(p_token), заменив вызов на whoami_txt;
+печатает отчёт (подпись whoami, список исправленных). whoami не трогает —
+второй вариант с текстом сделал бы вызов из приложения неоднозначным.
+Правило: новые функции зовут whoami_txt(p_token).
+

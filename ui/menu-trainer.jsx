@@ -7,6 +7,7 @@
 
 import React from "react";
 import { rememberSharedMenu } from "../lib/reference-context";
+import { CAT_ORDER, normCat, groupByCat, dishMatches } from "../lib/menu-sections";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
@@ -157,6 +158,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   );
 
   // ── Режимы тренировки ──────────────────────────────────────────────────────
+  if (mode === "list") return <MenuList T={T} gold={gold} red={red} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
   if (mode === "cards") return <FlashCards T={T} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} Head={Head} restaurant={restaurant} onLearned={focusNew && !learned ? markLearned : null} />;
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
@@ -172,6 +174,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
 
   // ── Главная тренажёра ──────────────────────────────────────────────────────
   const modes = [
+    { key: "list", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="20" cy="18" r="1.2" fill={c}/></svg>, title: "Меню по разделам", sub: "Все блюда с поиском: закуски, салаты, супы, горячее…" },
     { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Флеш-карточки", sub: "Состав, аллергены, сочетания — вспомни и проверь себя" },
     { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Автоматические вопросы по блюдам ресторана" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
@@ -286,6 +289,80 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Доп. 156: «Меню по разделам» — поиск, разделы, список, карточка блюда ───────
+function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
+  const [q, setQ] = React.useState("");
+  const [cat, setCat] = React.useState("");
+  const [open, setOpen] = React.useState(null); // блюдо в карточке
+  const filtered = React.useMemo(() => dishes.filter(d => dishMatches(d, q) && (!cat || normCat(d.cat) === cat)), [dishes, q, cat]);
+  const groups = React.useMemo(() => groupByCat(filtered), [filtered]);
+  const allGroups = React.useMemo(() => groupByCat(dishes.filter(d => dishMatches(d, q))), [dishes, q]);
+  const sub = T.modSub.color, text = T.modTitle.color;
+  const pill = (on) => ({ padding: "5px 11px", borderRadius: 999, fontSize: 12, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+    border: `1px solid ${on ? gold : gold + "55"}`, background: on ? `linear-gradient(180deg,#E4C88C,${gold})` : "transparent",
+    color: on ? "#1a160f" : sub, fontWeight: on ? "bold" : "normal" });
+
+  if (open) {
+    const flat = filtered; const i = flat.findIndex(d => d.id === open.id);
+    const go = (k) => { const n = flat[(i + k + flat.length) % flat.length]; if (n) { setOpen(n); vibrate("light"); } };
+    return (
+      <div style={T.screen} className="sa-screen">
+        {Head(open.cat || "Блюдо")}
+        <div style={{ padding: "8px 16px 100px" }}>
+          <div className="sa-card sa-cardpage-r" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
+            <DishPhoto src={open.img} h={190} />
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.2 }}>{open.name}</div>
+            {open.desc && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.55, margin: "8px 0 4px", fontStyle: "italic" }}>{open.desc}</div>}
+            <div style={{ marginTop: 10 }}><DishBack d={open} T={T} gold={gold} /></div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+            <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, padding: "9px 16px" }} onClick={() => go(-1)}>‹ назад</button>
+            <span style={{ fontSize: 11, color: sub, fontFamily: "monospace" }}>{i + 1} / {flat.length}</span>
+            <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, padding: "9px 16px" }} onClick={() => go(1)}>дальше ›</button>
+          </div>
+          <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", border: `1px solid ${gold}55`, color: sub }} onClick={() => setOpen(null)}>К списку</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={T.screen} className="sa-screen">
+      {Head("Меню по разделам")}
+      <div style={{ padding: "8px 16px 0" }}>
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…"
+          style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.05)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none" }} />
+        <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px", WebkitOverflowScrolling: "touch" }}>
+          <span style={pill(!cat)} onClick={() => setCat("")}>Все · {dishes.filter(d => dishMatches(d, q)).length}</span>
+          {allGroups.map(g => <span key={g.cat} style={pill(cat === g.cat)} onClick={() => setCat(cat === g.cat ? "" : g.cat)}>{g.cat} · {g.items.length}</span>)}
+        </div>
+      </div>
+      <div style={{ padding: "4px 16px 100px" }}>
+        {!groups.length && <div style={{ color: sub, fontSize: 13, padding: "20px 4px", textAlign: "center" }}>Ничего не нашлось — попробуй другое слово</div>}
+        {groups.map(g => (
+          <div key={g.cat} style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "0 2px 8px" }}>{g.cat.toUpperCase()} · {g.items.length}</div>
+            {g.items.map(d => (
+              <div key={d.id} className="sa-card" onClick={() => { setOpen(d); vibrate("light"); }} {...onActivate(() => setOpen(d))}
+                style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
+                {d.img
+                  ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
+                  : <div style={{ width: 54, height: 54, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 18 }}>🍽</div>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+                  <div style={{ fontSize: 12, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
+                  {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{a}</span>)}</div>}
+                </div>
+                <span style={{ color: gold, opacity: 0.7 }}>›</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -667,7 +744,8 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
                 <input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
               </label>}
           <input style={inputSt} placeholder="Название блюда *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          <input style={inputSt} placeholder="Категория (Стейки, Супы…)" value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} />
+          <input style={inputSt} placeholder="Раздел (Салаты, Супы, Горячие блюда…)" list="sa-cat-list" value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} />
+          <datalist id="sa-cat-list">{CAT_ORDER.map(c => <option key={c} value={c} />)}</datalist>
           <input style={inputSt} placeholder="Состав через запятую" value={form.ingredients} onChange={e => setForm(f => ({ ...f, ingredients: e.target.value }))} />
           <div style={{ fontSize: 11, letterSpacing: 1, color: gold, fontFamily: "monospace", margin: "2px 0 8px" }}>АЛЛЕРГЕНЫ</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>

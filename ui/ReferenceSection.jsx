@@ -102,7 +102,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
       {cards.map(c => (
         <div key={c.id} onClick={c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
           <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
-          {["serving","wine","coffee"].includes(c.id)
+          {["serving","wine","coffee","cocktails"].includes(c.id)
             ? <RefArt kind={c.id} light={!!a11y} size={56} /> /* Доп. 147: витражи для курсов */
             : <div style={T.modIcon}>{c.icon(gold, 24)}</div>}
           <div style={{ flex: 1 }}>

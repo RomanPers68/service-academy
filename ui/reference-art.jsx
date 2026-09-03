@@ -59,7 +59,28 @@ function Coffee({ light }) {
   );
 }
 
-const ART = { serving: Serving, wine: Wine, coffee: Coffee };
+/** Колода: коктейльная рюмка с напитком, оливка на шпажке, блик */
+function Cocktails({ light }) {
+  const L = lead(light);
+  return (
+    <svg viewBox="0 0 120 120" width="100%" height="100%" aria-hidden="true">
+      <defs><clipPath id="sa-ck-cone"><path d="M22 26 L60 74 L98 26 Z" /></clipPath></defs>
+      <path d="M22 26 L60 74 L98 26 Z" fill={glass(light)} stroke={L} strokeWidth="1.8" strokeLinejoin="round" />
+      <g clipPath="url(#sa-ck-cone)">
+        <path d="M18 42 Q60 36 102 42 V80 H18 Z" fill={light ? "rgba(200,150,40,0.45)" : "rgba(226,186,116,0.42)"} />
+        <path d="M22 46 Q60 54 98 46" fill="none" stroke={light ? "rgba(255,255,255,0.45)" : "rgba(255,245,220,0.28)"} strokeWidth="2" />
+      </g>
+      <path d="M30 32 L44 50" stroke={shine(light)} strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M60 74 V98 M42 101 Q60 96 78 101" fill="none" stroke={L} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M52 22 L74 54" stroke={L} strokeWidth="1.5" strokeLinecap="round" />
+      <ellipse cx="74" cy="56" rx="6" ry="4.5" fill={light ? "rgba(90,110,50,0.8)" : "rgba(120,140,60,0.9)"} stroke={L} strokeWidth="1.2" />
+      <circle cx="75" cy="56" r="1.4" fill={light ? "#B03A3A" : "#C94A4A"} />
+      <circle cx="104" cy="22" r="2" fill={L} opacity="0.7" /><circle cx="16" cy="30" r="1.5" fill={L} opacity="0.5" />
+    </svg>
+  );
+}
+
+const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails };
 
 export function RefArt({ kind, light = false, size = 56 }) {
   const C = ART[kind];

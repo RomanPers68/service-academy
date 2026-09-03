@@ -41,6 +41,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId }) {
   const [view, setView] = React.useState("cards");      // cards | index (оглавление)
   const [idx, setIdx] = React.useState(0);
   const [flip, setFlip] = React.useState(false);
+  const [filters, setFilters] = React.useState(false); // Доп. 149: поиск и база — за одной кнопкой
   // Дополнение 128: плавное перелистывание. Во время свайпа карточка следует
   // за пальцем через ref (без setState — тяжёлая карточка с витражом не
   // перерисовывается на каждом движении), а отпущенная — продолжает движение
@@ -135,31 +136,44 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId }) {
 
   return (
     <div style={{ padding:"8px 14px 100px" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-        <span onClick={onBack} {...onActivate(onBack)} style={{ color:GOLD, fontSize:22, cursor:"pointer", padding:"0 6px" }}>‹</span>
-        <div style={{ fontFamily:"Georgia, serif", fontSize:19, color:glass.tx, flex:1 }}>Колода бармена</div>
-        <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, color:glass.sub }}>{total ? (idx % total) + 1 : 0} / {total}</span>
-      </div>
-      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-        <span style={pill(mode === "deck")} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода · 50</span>
-        <span style={pill(mode === "quiz")} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю? · {due.length}</span>
-        {onBasics ? <span style={{ ...pill(false), marginLeft:"auto" }} onClick={() => onBasics("brc-canon")}>Основы ›</span> : null}
-      </div>
-      {/* Поиск + база + оглавление: 50 карточек — нужна навигация */}
-      <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…"
-          style={{ flex:1, padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
-            fontFamily:"Georgia, serif", fontSize:13, outline:"none", boxSizing:"border-box" }} />
-        <span style={pill(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")}>{view === "index" ? "Карточки" : "Список"}</span>
-      </div>
-      <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
-        <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11 }} onClick={() => setBase("")}>Все · {COCKTAILS.filter(c => matches(c, q)).length}</span>
-        {BASES.map(b => {
-          const n = COCKTAILS.filter(c => matches(c, q) && baseOf(c) === b).length;
-          if (!n) return null;
-          return <span key={b} style={{ ...pill(base === b), padding:"4px 10px", fontSize:11 }} onClick={() => setBase(base === b ? "" : b)}>{b} · {n}</span>;
-        })}
-      </div>
+      {/* Доп. 149: шапка в два ряда. Поиск, база и список — за иконками, раскрываются по тапу. */}
+      {(() => {
+        const open = filters || !!q || !!base;
+        const iconBtn = (on) => ({ width:34, height:34, borderRadius:17, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0,
+          border:`1px solid ${on ? GOLD + "AA" : glass.bd}`, background: on ? "rgba(214,178,102,0.16)" : glass.bg });
+        const ic = (d) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+        return (<>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+            <span onClick={onBack} {...onActivate(onBack)} style={{ color:GOLD, fontSize:22, cursor:"pointer", padding:"0 4px" }}>‹</span>
+            <div style={{ fontFamily:"Georgia, serif", fontSize:19, color:glass.tx, flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Колода бармена</div>
+            <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, color:glass.sub, marginRight:2 }}>{total ? (idx % total) + 1 : 0} / {total}</span>
+            <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и фильтр">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
+            <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+            <div style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
+              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода · 50</span>
+              <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю? · {due.length}</span>
+            </div>
+            {onBasics ? <span style={{ marginLeft:"auto", fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 4px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+          </div>
+          {open && (
+            <div className="sa-fadein" style={{ marginBottom:12 }}>
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…" autoFocus={filters && !q}
+                style={{ width:"100%", padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
+                  fontFamily:"Georgia, serif", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
+              <div className="sa-hscroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2, WebkitOverflowScrolling:"touch" }}>
+                <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase("")}>Все · {COCKTAILS.filter(c => matches(c, q)).length}</span>
+                {BASES.map(b => {
+                  const n = COCKTAILS.filter(c => matches(c, q) && baseOf(c) === b).length;
+                  if (!n) return null;
+                  return <span key={b} style={{ ...pill(base === b), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase(base === b ? "" : b)}>{b} · {n}</span>;
+                })}
+              </div>
+            </div>
+          )}
+        </>);
+      })()}
       {view === "index" ? (
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
           {pool.map((x, i) => (

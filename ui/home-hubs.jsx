@@ -28,7 +28,7 @@ const ICON = {
   mistakes: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>,
 };
 
-export function HubScreen({ T, a11y, title, subtitle, items = [], footer }) {
+export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero }) {
   const gold = a11y ? "#8B6A30" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
   const sub = T.modSub?.color || (a11y ? "#6B5A3E" : "#9C8760");
@@ -50,12 +50,13 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer }) {
         </div>
       </div>
       <div style={{ padding: "6px 16px 100px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {items.filter(Boolean).map(it => {
+        {hero}
+        {items.filter(Boolean).map((it, idx) => {
           const c = it.red ? (a11y ? "#A0402E" : "#E07A6E") : gold;
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };
           return (
-            <div key={it.key} className="sa-card" onClick={go} {...onActivate(go)} aria-label={it.label}
-              style={{ ...frost, borderRadius: 18, padding: "13px 14px", display: "flex", alignItems: "center", gap: 13, cursor: "pointer", position: "relative", overflow: "hidden", WebkitTapHighlightColor: "transparent" }}>
+            <div key={it.key} className="sa-card sa-pagein" onClick={go} {...onActivate(go)} aria-label={it.label}
+              style={{ ...frost, animationDelay: `${Math.min(idx, 8) * 45}ms`, borderRadius: 18, padding: "13px 14px", display: "flex", alignItems: "center", gap: 13, cursor: "pointer", position: "relative", overflow: "hidden", WebkitTapHighlightColor: "transparent" }}>
               <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: `linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.22)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)` }} />
               <div style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(139,106,48,0.10)" : "rgba(214,178,102,0.10)", border: `1px solid ${c}44` }}>
                 {(ICON[it.icon] || ICON.book)(c)}
@@ -74,3 +75,113 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer }) {
     </div>
   );
 }
+
+// ── Дополнение 145: живые блоки над списками хабов и скелет ──────────────────
+const frostOf = (a11y) => ({
+  background: a11y ? "rgba(250,242,222,0.62)" : "rgba(226,186,116,0.09)",
+  border: a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)",
+  boxShadow: a11y
+    ? "inset 0 0 26px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(120,85,25,0.14)"
+    : "inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.45)",
+});
+const tagStyle = (a11y) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, letterSpacing: 1.6, color: a11y ? "#8B6A30" : "#D2A85A" });
+
+/** Скелет карточки — пока данные едут (мерцание из css: .sa-skel). */
+export function SkeletonCard({ a11y, h = 74, style }) {
+  return <div className="sa-skel" aria-hidden="true" style={{ height: h, borderRadius: 18, border: a11y ? "1px solid rgba(139,106,48,0.18)" : "1px solid rgba(255,255,255,0.07)", ...style }} />;
+}
+
+const DAYS = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+/** «Смена»: сегодняшняя смена из офлайн-сводки графика (sa_today_shift). */
+export function ShiftHero({ a11y, onOpen }) {
+  const t = new Date();
+  const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+  let label = null;
+  try { const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null"); if (r && r.date === key && r.label) label = r.label; } catch (e) {}
+  const off = label === "выходной";
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5A3E" : "#9C8760", gold = a11y ? "#8B6A30" : "#D2A85A";
+  const go = () => { vibrate("light"); onOpen && onOpen(); };
+  return (
+    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+      <div style={tagStyle(a11y)}>СЕГОДНЯ · {DAYS[t.getDay()].toUpperCase()}, {t.getDate()} {MONTHS[t.getMonth()].toUpperCase()}</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 6 }}>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 26, color: off ? gold : text, lineHeight: 1.1 }}>
+          {label ? (off ? "Выходной ✦" : label) : "Смена не найдена"}
+        </div>
+      </div>
+      <div style={{ fontSize: 12.5, color: sub, marginTop: 5 }}>
+        {label ? (off ? "Отдыхай — а завтра посмотри график" : "Тап — кто в смене с тобой и старший дня") : "Открой график — сводка на сегодня появится здесь"}
+      </div>
+    </div>
+  );
+}
+
+/** «Команда»: три лидера по среднему баллу тестов. */
+export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5A3E" : "#9C8760", gold = a11y ? "#8B6A30" : "#D2A85A";
+  const mine = profile?.restaurant;
+  const pool = mine ? leaderboard.filter(p => p.restaurant === mine) : leaderboard;
+  const top = pool.slice(0, 3);
+  const me = pool.findIndex(p => p.name === profile?.name && (p.surname || "") === (profile?.surname || ""));
+  const go = () => { vibrate("light"); onOpen && onOpen(); };
+  if (!top.length) return (
+    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+      <div style={tagStyle(a11y)}>ЛИДЕРЫ РЕСТОРАНА</div>
+      <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: text, marginTop: 6 }}>Пока пусто</div>
+      <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>Первый пройденный тест откроет рейтинг</div>
+    </div>
+  );
+  const medal = ["#E7C56A", "#C9C9C9", "#C79A6B"];
+  return (
+    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <div style={tagStyle(a11y)}>ЛИДЕРЫ РЕСТОРАНА</div>
+        {me >= 0 && <div style={{ fontSize: 11.5, color: sub }}>ты — <span style={{ color: gold }}>{me + 1}-й</span></div>}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        {top.map((p, i) => {
+          const ini = `${(p.name || "?")[0]}${(p.surname || "")[0] || ""}`.toUpperCase();
+          return (
+            <div key={i} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 13, color: a11y ? "#2A1F0E" : "#1a160f", background: medal[i], boxShadow: `0 0 0 2px ${medal[i]}55` }}>{ini}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: sub }}>{p.avg}%</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** «Я»: кольцо прогресса роли, серия дней, счётчики. */
+export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen }) {
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5A3E" : "#9C8760", gold = a11y ? "#8B6A30" : "#D2A85A";
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const R = 26, C = 2 * Math.PI * R;
+  const go = () => { vibrate("light"); onOpen && onOpen(); };
+  const days = streak?.count || 0;
+  const dword = days % 10 === 1 && days % 100 !== 11 ? "день" : days % 10 >= 2 && days % 10 <= 4 && (days % 100 < 12 || days % 100 > 14) ? "дня" : "дней";
+  return (
+    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4, display: "flex", alignItems: "center", gap: 14 }}>
+      <svg width="68" height="68" viewBox="0 0 68 68" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <circle cx="34" cy="34" r={R} fill="none" stroke={a11y ? "rgba(139,106,48,0.22)" : "rgba(214,178,102,0.18)"} strokeWidth="6" />
+        <circle cx="34" cy="34" r={R} fill="none" stroke={gold} strokeWidth="6" strokeLinecap="round"
+          strokeDasharray={C} strokeDashoffset={C * (1 - pct / 100)} transform="rotate(-90 34 34)" style={{ transition: "stroke-dashoffset .8s cubic-bezier(.16,1,.3,1)" }} />
+        <text x="34" y="38" textAnchor="middle" fontSize="13" fontFamily="Georgia, serif" fill={text}>{pct}%</text>
+      </svg>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={tagStyle(a11y)}>{(roleLabel || "ТВОЙ ТРЕК").toUpperCase()}</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: text, marginTop: 4 }}>{done} из {total} уроков</div>
+        <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>
+          {days > 0 ? <><span style={{ color: gold }}>✦ {days} {dword}</span> подряд</> : "Начни серию — заходи каждый день"}
+        </div>
+      </div>
+    </div>
+  );
+}
+

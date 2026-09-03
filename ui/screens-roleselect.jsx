@@ -12,6 +12,7 @@ import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
+import { SkeletonCard } from "./home-hubs";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
@@ -91,8 +92,19 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ ...T.roleHeader, position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", top:-60, left:-40, width:200, height:200, borderRadius:"50%", background:"radial-gradient(circle, #C8A96E22 0%, transparent 70%)", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", top:100, right:-60, width:180, height:180, borderRadius:"50%", background:"radial-gradient(circle, #7C9E8722 0%, transparent 70%)", pointerEvents:"none" }} />
+        {/* Доп. 146: свет по времени суток — утром теплее и светлее, вечером глубже и золотистее */}
+        {(() => {
+          const h = new Date().getHours();
+          const L = h < 6  ? { a: "#A88A5A", b: "#4A5E8A", k: 0.85 }   // ночь — приглушённое золото, синева
+                  : h < 12 ? { a: "#F0C58A", b: "#9EC0A7", k: 1.25 }   // утро — персик, свежая зелень
+                  : h < 18 ? { a: "#C8A96E", b: "#7C9E87", k: 1.0 }    // день — как было
+                  :          { a: "#D9A44A", b: "#6A5A9E", k: 1.15 };   // вечер — густое золото, лиловая тень
+          const al = (hex, a) => hex + Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, "0");
+          return (<>
+            <div style={{ position:"absolute", top:-60, left:-40, width:220, height:220, borderRadius:"50%", background:`radial-gradient(circle, ${al(L.a, 0.14 * L.k)} 0%, transparent 70%)`, pointerEvents:"none", transition:"background 1.2s" }} />
+            <div style={{ position:"absolute", top:100, right:-60, width:190, height:190, borderRadius:"50%", background:`radial-gradient(circle, ${al(L.b, 0.13 * L.k)} 0%, transparent 70%)`, pointerEvents:"none", transition:"background 1.2s" }} />
+          </>);
+        })()}
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"20px 24px 10px" }}>
           <img src={LOGO_SRC_DARK /* тёмная версия читается на обеих темах;
                     если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" style={{ width:198, height:158, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
@@ -146,7 +158,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
         {role && onContinueLesson && (() => {
           const roleObj = ROLES.find(r => r.id === role);
           const mods = MODULES[role] || [];
-          if (!mods.length) return null; // Доп. 132: уроки роли ещё едут — не показывать «Путь пройден» на пустом списке
+          if (!mods.length) return <div style={{ padding:"0 14px 9px" }}><SkeletonCard a11y={a11y} h={92} style={{ borderRadius:16 }} /></div>; // Доп. 132/146: уроки едут — мерцающий силуэт
           const next = nextLessonOf(mods, completed, quizDone);
           const dueM = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
           const done = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0);

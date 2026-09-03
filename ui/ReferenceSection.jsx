@@ -1,6 +1,7 @@
 // ui/ReferenceSection.jsx
 // Раздел «Справочник»: хаб → курс → глава → фото-тест.
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
+import { RefArt } from "./reference-art";
 import React from "react";
 import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
@@ -63,7 +64,7 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader, onCocktails }) {
+function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
@@ -101,7 +102,9 @@ function Hub({ T, gold, dark, openCourse, onSearch, onExit, isLeader, onCocktail
       {cards.map(c => (
         <div key={c.id} onClick={c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
           <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
-          <div style={T.modIcon}>{c.icon(gold, 24)}</div>
+          {["serving","wine","coffee"].includes(c.id)
+            ? <RefArt kind={c.id} light={!!a11y} size={56} /> /* Доп. 147: витражи для курсов */
+            : <div style={T.modIcon}>{c.icon(gold, 24)}</div>}
           <div style={{ flex: 1 }}>
             <div style={{ ...T.modTag, color: gold }}>{c.deck ? "КОЛОДА" : c.on ? "КУРС" : "СКОРО"}</div>
             <div style={T.modTitle}>{c.t}</div>
@@ -240,7 +243,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
   if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
     scopeText="Введи минимум 2 буквы — найду по главам справочника, глоссарию и меню ресторана."
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

@@ -6,7 +6,7 @@ import React from "react";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
 import { MODULES, loadRoleModules, loadAllModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
-import { HubScreen } from "./ui/home-hubs";
+import { HubScreen, ShiftHero, TeamHero, MeHero } from "./ui/home-hubs";
 import { GuideScreen } from "./ui/guide";
 import { LiquidTabBar } from "./ui/tabbar";
 import { loadDialogues } from "./data/dialogues-lazy";
@@ -1313,7 +1313,7 @@ function ServiceAcademy() {
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color="#C8A96E" saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
-        {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня" items={[
+        {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня" hero={<ShiftHero a11y={a11y} onOpen={() => navigate("schedule")} />} items={[
           { key:"sch", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
           { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
           { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
@@ -1324,7 +1324,7 @@ function ServiceAcademy() {
         {screen === "teamHub" && profile && (() => {
           const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
           const dueM = (mistakeBank || []).filter(m => !m.due || m.due <= Date.now()).length;
-          return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} items={[
+          return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />} items={[
             { key:"lb", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
             { key:"mt", icon:"mentor", label:"Наставничество", sub:"Допуски и подтверждение навыков", onClick:() => navigate("mentor") },
             role !== "seasonal" && { key:"ob", icon:"onboarding", label:"Новички", sub:"План первой недели и прогресс новых сотрудников", onClick:() => navigate("onboarding") },
@@ -1342,7 +1342,10 @@ function ServiceAcademy() {
           else if (dest === "guestbook") { setBookFocus(null); navigate("guestbook"); }
           else navigate(dest);
         }} />}
-        {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title={profile.name} subtitle={profile.restaurant || "Service Academy"} items={[
+        {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title={profile.name} subtitle={profile.restaurant || "Service Academy"}
+          hero={<MeHero a11y={a11y} streak={streak} roleLabel={ROLES.find(r => r.id === role)?.label} total={totalLessons}
+            done={modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}
+            onOpen={() => navigate("stats")} />} items={[
           { key:"guide", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
           { key:"st", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
           CERTIFICATES_ENABLED && { key:"cert", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },

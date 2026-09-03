@@ -13,6 +13,23 @@ export const injectStyles = () => {
     button:focus:not(:focus-visible),
     [role="button"]:focus:not(:focus-visible),
     [tabindex]:focus:not(:focus-visible) { outline: none; }
+    /* Доп. 151: на сенсорных экранах iOS/Telegram отдаёт тапу :focus-visible и рисует
+       белое кольцо (замечено на «Ещё» в графике). Рамку фокуса оставляем только там,
+       где есть настоящая клавиатура и мышь — и делаем её золотой, в стиле. */
+    button:focus, button:focus-visible,
+    [role="button"]:focus, [role="button"]:focus-visible,
+    [tabindex]:focus, [tabindex]:focus-visible,
+    .sa-btn:focus, .sa-btn:focus-visible, .sa-card:focus, .sa-card:focus-visible {
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      button:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible,
+      .sa-btn:focus-visible, .sa-card:focus-visible {
+        outline: 2px solid rgba(214,178,102,0.55);
+        outline-offset: 2px;
+      }
+    }
     input, textarea, select, button { font-family: inherit; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(12px); }

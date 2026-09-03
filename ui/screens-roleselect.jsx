@@ -328,11 +328,10 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
           // Доп. 133: вкладка «Учусь» — только учебные жетоны; рабочие и командные
           // переехали на вкладки «Смена» и «Команда». Колода и Глоссарий — сюда.
           if (learnOnly) {
-            const learn = new Set(["sp", "sos", "menu", "ob"]);
+            // Доп. 142: Колода живёт в Справочнике; «Новички» — во вкладке «Команда».
+            // Сезоннику его «Первая неделя» остаётся на главной — это личный план.
+            const learn = new Set(["sp", "sos", "menu", ...(role === "seasonal" ? ["ob"] : [])]);
             for (let i = tiles.length - 1; i >= 0; i--) if (!learn.has(tiles[i].key)) tiles.splice(i, 1);
-            if (onCocktails) tiles.splice(1, 0, { key:"ck", label:"Колода", onClick:onCocktails, icon:(
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h14l-7 9v6"/><path d="M8 21h8"/><path d="M7.5 7h9"/></svg>
-            )});
             if (onGlossary) tiles.push({ key:"gl", label:"Глоссарий", onClick:onGlossary, icon:(
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h5"/></svg>
             )});

@@ -306,6 +306,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [tab, setTab] = React.useState("plan"); // plan · setup
   const [openSec, setOpenSec] = React.useState(1);
   const [confirmClear, setConfirmClear] = React.useState(false);
+  const [more, setMore] = React.useState(false);        // Доп. 150: редкие действия — за «Ещё»
+  const [todayOpen, setTodayOpen] = React.useState(false); // Доп. 150: «Сегодня» свёрнуто до сводки
   // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
   // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
   const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
@@ -2536,40 +2538,47 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     </div>
     {tab === "setup" ? setupView() : <>
     {monthNav}
+    {/* Доп. 150: панель в три спокойных ряда. Режимы — сегмент (они взаимоисключающие),
+        редкие и опасные действия — за «Ещё». Логика кнопок не менялась. */}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
       <button style={btn} className="sa-btn" onClick={generate}>Заполнить черновик</button>
       <button style={ghost} className="sa-btn" onClick={save} disabled={!dirty}>
         {dirty ? "Сохранить" : "Сохранено"}
       </button>
     </div>
-    <div style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
-        ...(swap ? { background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:INK_DEEP,
-          fontWeight:"bold", borderColor:GOLD } : {}) }} className="sa-btn"
-        onClick={() => { setSwap(!swap); setSwapSel(null); setFactMode(false); setFactEdit(null); vibrate("light"); }}>
-        {swap ? "Обмен: вкл" : "Обмен"}
-      </button>
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
-        ...(factMode ? { background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:INK_DEEP,
-          fontWeight:"bold", borderColor:GOLD } : {}) }} className="sa-btn"
-        onClick={() => { setFactMode(!factMode); setFactEdit(null); setSwap(false); setSwapSel(null); vibrate("light"); }}>
-        {factMode ? "Факт: вкл" : "Факт часов"}
-      </button>
+    <div style={{ display:"flex", gap:8, margin:"8px 14px 0", alignItems:"center" }}>
+      <div style={{ flex:1, display:"flex", padding:3, gap:2, borderRadius:999, border: ghost.border, background:"transparent" }}>
+        {[["edit","Правка"],["swap","Обмен"],["fact","Факт часов"]].map(([k, t]) => {
+          const on = k === "swap" ? swap : k === "fact" ? factMode : (!swap && !factMode);
+          return (
+            <button key={k} className="sa-btn" style={{ flex:1, border:"none", cursor:"pointer", padding:"7px 4px", borderRadius:999, fontFamily:serif, fontSize:12.5,
+                background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent", color: on ? INK_DEEP : P.sub, fontWeight: on ? "bold" : "normal" }}
+              onClick={() => { vibrate("light"); setSwap(k === "swap" ? !swap : false); setSwapSel(null); setFactMode(k === "fact" ? !factMode : false); setFactEdit(null); }}>
+              {t}
+            </button>
+          );
+        })}
+      </div>
       {undoRef.current ? (
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px" }} className="sa-btn"
-          onClick={undo} data-tick={undoTick}>↩ Отменить</button>
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flexShrink:0 }} className="sa-btn"
+          onClick={undo} data-tick={undoTick}>↩</button>
       ) : null}
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px" }} className="sa-btn"
-        onClick={() => { snapUndo(); setLocks({}); setDirty(true); }}>Снять закрепления</button>
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
-        borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
-        onClick={() => setConfirmClear(true)}>Очистить месяц</button>
     </div>
     <div style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
-      <button style={{ ...btn, fontSize:13 }} className="sa-btn" onClick={exportImage} disabled={!staff.length || shotBusy}>
+      <button style={{ ...btn, fontSize:13, flex:1 }} className="sa-btn" onClick={exportImage} disabled={!staff.length || shotBusy}>
         {shotBusy ? "Собираю…" : "Сохранить и отправить"}
       </button>
+      <button style={{ ...ghost, fontSize:12.5, padding:"9px 14px", flexShrink:0, ...(more ? { borderColor:GOLD } : {}) }} className="sa-btn"
+        onClick={() => { setMore(m => !m); vibrate("light"); }} aria-label="Ещё действия">Ещё{more ? " ▴" : " ▾"}</button>
     </div>
+    {more ? (
+      <div className="sa-fadein" style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px", flex:1 }} className="sa-btn"
+          onClick={() => { snapUndo(); setLocks({}); setDirty(true); setMore(false); }}>Снять закрепления</button>
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px", flex:1, borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
+          onClick={() => { setConfirmClear(true); setMore(false); }}>Очистить месяц</button>
+      </div>
+    ) : null}
     {shot ? (
       <div style={{ ...card }}>
         <div style={eyebrow}><span>График картинкой</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
@@ -2735,10 +2744,27 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
     {today ? (
       <div style={card}>
-        <div style={eyebrow}>
+        <div style={{ ...eyebrow, cursor:"pointer" }} onClick={() => { setTodayOpen(o => !o); vibrate("light"); }}>
           <span>Сегодня · {today} {MONTHS_R[M]}</span>
-          <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""}</span>
+          <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""} <span style={{ color:P.sub, marginLeft:6 }}>{todayOpen ? "▴" : "▾"}</span></span>
         </div>
+        {!todayOpen ? (() => {
+          // Доп. 150: свёрнутая сводка — позиции с числами, недоборы выделены
+          const parts = POS.map(({ id: pos, t }) => {
+            const n = needOf(today)[pos] || 0;
+            const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
+            if (!n && !onDuty.length) return null;
+            const main = onDuty.filter(x => !shiftOf(plan[x.id][today]).extra).length;
+            return { t, main, n, short: main < n };
+          }).filter(Boolean);
+          return (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 10px", fontSize:12.5, lineHeight:1.6, marginTop:2 }}>
+              {parts.map((x, i) => <span key={i} style={{ color: x.short ? P.warn : P.sub, fontWeight: x.short ? "bold" : "normal" }}>{x.t} {x.main}{x.n ? "/" + x.n : ""}{x.short ? "!" : ""}</span>)}
+              <span style={{ color:P.sub, fontStyle:"italic" }}>тап — кто в смене</span>
+            </div>
+          );
+        })() : null}
+        {todayOpen ? <>
         {days[today]?.note ? (
           <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✎ {days[today].note}</div>
         ) : null}
@@ -2775,6 +2801,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           className="sa-btn" disabled={shotBusy} onClick={exportToday}>
           {shotBusy ? "Собираю…" : "Сегодня — картинкой в чат"}
         </button>
+        </> : null}
       </div>
     ) : null}
     <div style={card}>

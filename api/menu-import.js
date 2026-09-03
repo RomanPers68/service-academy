@@ -66,7 +66,7 @@ async function viaOpenRouter(key, pdfBase64) {
   const headers = {
     Authorization: "Bearer " + key,
     "Content-Type": "application/json",
-    "X-Title": "Service Academy — импорт меню",
+    "X-Title": "Service Academy menu import", // только латиница: HTTP-заголовок — ByteString (Доп. 153)
   };
   if (process.env.VERCEL_URL) headers["HTTP-Referer"] = "https://" + process.env.VERCEL_URL;
 

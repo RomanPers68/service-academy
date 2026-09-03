@@ -6,7 +6,8 @@ import React from "react";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
 import { MODULES, loadRoleModules, loadAllModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
-import { HubScreen, FirstTour } from "./ui/home-hubs";
+import { HubScreen } from "./ui/home-hubs";
+import { GuideScreen } from "./ui/guide";
 import { LiquidTabBar } from "./ui/tabbar";
 import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
@@ -151,15 +152,51 @@ const WELCOME_CARDS = [
     text: "«Рейтинг» показывает прогресс всех — фильтр должностей сверху, стеклянную линзу можно таскать пальцем. За ступени и собранные коктейли — печати в «Книге отзывов». А если в смене жарко — красная кнопка SOS даст шпаргалку за секунды." },
 ];
 
+// Доп. 139: четыре вкладки — карточки в попапе приветствия (вместо отдельного тура)
+const WELCOME_TABS_CARDS = [
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>),
+    title: "Четыре вкладки внизу",
+    text: "Приложение стало проще: Учусь · Смена · Команда · Я. Всё, что было, на месте — просто у каждого раздела теперь свой дом. Прокрути и посмотри, где что." },
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h5"/></svg>),
+    title: "Учусь — твоя программа",
+    text: "Карточка «Твой трек» ведёт к следующему уроку. Ниже — Справочник, Колода бармена, SOS, Меню и Глоссарий, а дальше вся программа роли с галочками пройденного." },
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>),
+    title: "Смена — рабочий день",
+    text: "График, чек-листы, задание дня, Гость недели и Книга отзывов. Открывай перед сменой — здесь всё, что пригодится сегодня." },
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M2 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 19c0-2.5 2-4.5 4.5-4.5S23 16.5 23 19"/></svg>),
+    title: "Команда и Я",
+    text: "В «Команде» — рейтинг, наставничество и работа над ошибками, менеджеру — аналитика и найм. В «Я» — прогресс, сертификаты, роли и настройки, включая крупный шрифт." },
+];
+
+// Доп. 140: то, чего в попапе не хватало — по замечанию владельца
+const WELCOME_MORE_CARDS = [
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M19 3l-2 6h4l-2-6z" opacity="0.7"/></svg>),
+    title: "Меню и Колода бармена",
+    text: "Блюда с фото, составом и аллергенами — и тренажёр «Опиши за 60 секунд». Колода: 50 коктейлей, спек в мл, история и фраза гостю; свайп листает, тап переворачивает." },
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 12h8M8 16h5"/><circle cx="16" cy="8" r="0.5"/></svg>),
+    title: "Книга отзывов и Гость недели",
+    text: "Книга — твоя летопись: страницы за роли, печати за испытания. Гость недели — живой диалог с непростым гостем, новый каждую неделю; за успех — печать." },
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>),
+    title: "SOS, чек-листы и голос",
+    text: "Красная плитка SOS — шпаргалка на экстренный случай за секунду. Чек-листы смены — по пунктам с отметками. Наставнику и AI HR можно говорить голосом — микрофон в поле ввода." },
+  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>),
+    title: "Гид всегда под рукой",
+    text: "Забыл, где что? Вкладка «Я» → «Гид по приложению»: каждая функция с объяснением и кнопкой «Открыть». Этот попап больше не покажется, гид — останется." },
+];
+
 function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
   // Порядок — путь новичка: учёба → ошибки → тренажёры → знания → наставник
   // → график → признание; менеджерам и руководству — их инструменты в конце.
+  // Порядок — по вкладкам: что это → четыре вкладки → Учусь → Смена → Команда → гид
   const cards = [
     ...WELCOME_CARDS.slice(0, 2),
-    WELCOME_BUILD_CARD, WELCOME_REF_CARD, WELCOME_AI_CARD, WELCOME_SCHED_CARD,
+    ...WELCOME_TABS_CARDS,
+    WELCOME_BUILD_CARD, WELCOME_REF_CARD, WELCOME_MORE_CARDS[0], WELCOME_AI_CARD,
+    WELCOME_SCHED_CARD, WELCOME_MORE_CARDS[1], WELCOME_MORE_CARDS[2],
     ...WELCOME_CARDS.slice(2),
     ...(canHire ? [WELCOME_SCHEDIT_CARD, WELCOME_HIRE_CARD] : []),
     ...(isAdmin ? [WELCOME_ADMIN_CARD] : []),
+    WELCOME_MORE_CARDS[3],
   ];
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState("r");      // направление листания — карточка въезжает с нужной стороны
@@ -365,7 +402,6 @@ function ServiceAcademy() {
   // навигации хранит один шаг — назад из Справочника вело обратно в Колоду по
   // кругу. Запоминаем экран, с которого зашли в эту пару, и выходим на него.
   const [ckStart, setCkStart] = useState(null);
-  const [tour, setTour] = useState(() => { try { return localStorage.getItem("sa_tour_v1") !== "1"; } catch (e) { return false; } }); // Доп. 133: тур по вкладкам, один раз // Доп. 130: открыть колоду на конкретном коктейле (карточка в ответе ассистента)
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
@@ -1055,10 +1091,10 @@ function ServiceAcademy() {
   useEffect(() => {
     if (!profile || !storageLoaded) return;
     // v3: тур большого обновления — разово покажется и давним пользователям
-    try { if (localStorage.getItem("sa_welcome_seen_v4") !== "1") setWelcome(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_welcome_seen_v5") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen_v4", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v5", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };
@@ -1298,7 +1334,15 @@ function ServiceAcademy() {
             staff && { key:"ce", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
           ]} /></div>;
         })()}
+        {screen === "guide" && profile && <GuideScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("me")} onOpen={(dest) => {
+          if (dest === "menu") navigate("menuTrainer");
+          else if (dest === "reference") { setRefStart(null); navigate("reference"); }
+          else if (dest === "cocktails") { setRefStart(null); setCkStart(null); navigate("cocktails"); }
+          else if (dest === "guestbook") { setBookFocus(null); navigate("guestbook"); }
+          else navigate(dest);
+        }} />}
         {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title={profile.name} subtitle={profile.restaurant || "Service Academy"} items={[
+          { key:"guide", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
           { key:"st", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
           CERTIFICATES_ENABLED && { key:"cert", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },
           { key:"acc", icon:"profile", label:"Аккаунт и настройки", sub:"Тренировочная карточка, крупный шрифт, выход", onClick:() => navigate("profile") },
@@ -1447,9 +1491,6 @@ function ServiceAcademy() {
               { id:"me",         icon:"stats", label:"Я" },
             ]}
           />
-        )}
-        {tour && profile && !welcome && screen === "roleSelect" && (
-          <FirstTour a11y={a11y} onDone={() => { try { localStorage.setItem("sa_tour_v1", "1"); } catch (e) {} setTour(false); }} />
         )}
       </div>
     </div>

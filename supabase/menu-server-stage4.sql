@@ -10,7 +10,7 @@ create table if not exists restaurant_menu (
 );
 
 create or replace function menu_get(p_restaurant text)
-returns jsonb language sql stable as $$
+returns jsonb language sql stable security definer as $$
   select coalesce((select dishes from restaurant_menu
     where restaurant = p_restaurant), '[]'::jsonb);
 $$;
@@ -65,7 +65,7 @@ end; $$;
 
 create or replace function menu_progress_list(p_restaurant text)
 returns table (employee text, status text, score int, ts timestamptz, wave text)
-language sql stable as $$
+language sql stable security definer as $$
   with latest_wave as (
     select max(wave) w from menu_progress where restaurant = p_restaurant
   )

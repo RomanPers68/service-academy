@@ -74,36 +74,3 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer }) {
     </div>
   );
 }
-
-// ── Тур первого входа: четыре подсказки по вкладкам, показывается один раз ────
-export function FirstTour({ a11y, onDone }) {
-  const [step, setStep] = React.useState(0);
-  const steps = [
-    { t: "Учусь", d: "Твоя программа, урок «Продолжить», Справочник, Меню, Колода и Наставник." },
-    { t: "Смена", d: "График, чек-листы, гость недели и Книга отзывов — всё для рабочего дня." },
-    { t: "Команда", d: "Рейтинг, статистика и наставничество. Менеджеру — аналитика и найм." },
-    { t: "Я", d: "Профиль, роли, сертификаты и настройки. Здесь же — крупный шрифт." },
-  ];
-  const s = steps[step];
-  const gold = a11y ? "#8B6A30" : "#D2A85A";
-  return (
-    <div style={{ position: "fixed", left: 14, right: 14, bottom: "calc(90px + env(safe-area-inset-bottom, 0px))", zIndex: 410,
-      borderRadius: 18, padding: "14px 16px",
-      background: a11y ? "rgba(250,242,222,0.96)" : "rgba(28,22,13,0.96)",
-      border: `1px solid ${gold}66`,
-      boxShadow: a11y ? "inset 0 0 26px rgba(255,255,255,0.55), 0 10px 30px rgba(70,50,15,0.25)" : "inset 0 0 26px rgba(255,248,230,0.06), 0 10px 30px rgba(0,0,0,0.55)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold }}>{step + 1} / {steps.length}</span>
-        <span style={{ fontFamily: "Georgia, serif", fontSize: 17, color: a11y ? "#2A1F0E" : "#EFE4C8" }}>{s.t}</span>
-      </div>
-      <div style={{ fontSize: 13.5, lineHeight: 1.5, color: a11y ? "#4F3F22" : "#C8B898" }}>{s.d}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-        <button className="sa-btn" onClick={onDone} style={{ border: "none", background: "transparent", color: a11y ? "#6B5A3E" : "#9C8760", fontSize: 13, cursor: "pointer", padding: "6px 2px" }}>Пропустить</button>
-        <button className="sa-btn" onClick={() => (step + 1 < steps.length ? setStep(step + 1) : onDone())}
-          style={{ border: `1px solid ${gold}88`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", borderRadius: 12, padding: "8px 16px", cursor: "pointer" }}>
-          {step + 1 < steps.length ? "Дальше" : "Понятно"}
-        </button>
-      </div>
-    </div>
-  );
-}

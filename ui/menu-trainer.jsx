@@ -15,7 +15,11 @@ import { GAME_SVG, UI_SVG } from "./icons";
 import { TimerBar, LiquidSegment } from "./widgets";
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
-const HIDE_SAMPLES_KEY = "sa_menu_hide_samples"; // { [restaurant]: true }
+const HIDE_SAMPLES_KEY = "sa_menu_hide_samples"; // { [restaurant]: true|false } (нет ключа — авто: скрыты, если есть меню команды)
+const HIDDEN_IDS_KEY = "sa_menu_hidden_samples";   // Доп. 154: { [restaurant]: [id примера, …] } — удалённые поштучно
+const DELETED_KEY = "sa_menu_deleted";             // Доп. 154: { [restaurant]: [id серверного блюда, …] } — до публикации
+const loadJson = (k) => { try { return JSON.parse(localStorage.getItem(k) || "{}"); } catch (e) { return {}; } };
+const saveJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 const loadCustom = () => { try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || "{}"); } catch (e) { return {}; } };
 const saveCustom = (obj) => { try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(obj)); } catch (e) {} };
@@ -72,6 +76,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   const [mode, setMode] = React.useState(null); // null | "cards" | "quiz" | "60sec" | "edit" | "team"
   const [custom, setCustom] = React.useState(loadCustom);
   const [hideSamples, setHideSamples] = React.useState(loadHide);
+  const [hiddenIds, setHiddenIds] = React.useState(() => loadJson(HIDDEN_IDS_KEY)); // Доп. 154
+  const [deleted, setDeleted] = React.useState(() => loadJson(DELETED_KEY));        // Доп. 154
 
   // ── Этап 4: общее меню ресторана с сервера (публикует менеджер) ────────────
   // Если RPC menu_get ещё не создан (supabase/supabase-stage4.sql) — тихо работаем как раньше, только локально.
@@ -95,10 +101,16 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
     if (!restaurant) return [];
     const own = custom[restaurant] || [];
     const ownIds = new Set(own.map(d => d.id));
-    const team = shared.filter(d => d && d.id && !ownIds.has(d.id)); // своя локальная правка важнее серверной
-    const samples = hideSamples[restaurant] ? [] : (RESTAURANT_MENUS[restaurant] || []);
+    const del = new Set(deleted[restaurant] || []);
+    const team = shared.filter(d => d && d.id && !ownIds.has(d.id) && !del.has(d.id)); // своя правка важнее серверной; удалённое — до публикации не показываем
+    // Доп. 154: примеры-заготовки видны, пока нет меню команды (или если включены вручную);
+    // отредактированный пример живёт в «своих», удалённый — в скрытых.
+    const hs = hideSamples[restaurant];
+    const showSamples = hs === false ? true : hs === true ? false : shared.length === 0;
+    const hid = new Set(hiddenIds[restaurant] || []);
+    const samples = showSamples ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !ownIds.has(d.id) && !hid.has(d.id)) : [];
     return [...own, ...team, ...samples];
-  }, [restaurant, custom, shared, hideSamples]);
+  }, [restaurant, custom, shared, hideSamples, hiddenIds, deleted]);
 
   // Новые позиции: помечены isNew и добавлены за последние 30 дней
   const newDishes = React.useMemo(() =>
@@ -153,7 +165,9 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
     <MenuEditor T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
       custom={custom} setCustom={(v) => { setCustom(v); saveCustom(v); }}
       shared={shared} onPublished={(d) => setShared(d)}
-      hideSamples={hideSamples} setHideSamples={(v) => { setHideSamples(v); saveHide(v); }} />
+      hideSamples={hideSamples} setHideSamples={(v) => { setHideSamples(v); saveHide(v); }}
+      hiddenIds={hiddenIds} setHiddenIds={(v) => { setHiddenIds(v); saveJson(HIDDEN_IDS_KEY, v); }}
+      deleted={deleted} setDeleted={(v) => { setDeleted(v); saveJson(DELETED_KEY, v); }} />
   );
 
   // ── Главная тренажёра ──────────────────────────────────────────────────────
@@ -523,13 +537,22 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 }
 
 // ── Редактор меню (для менеджеров) ───────────────────────────────────────────
-function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples }) {
+function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
   const list = custom[restaurant] || [];
   // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя
   // ни поправить, ни удалить, пока не «заберёшь» в редактор
-  const orphanShared = (shared || []).filter(s => s && s.id && !list.some(d => d.id === s.id));
+  const delSet = new Set(deleted[restaurant] || []);
+  const orphanShared = (shared || []).filter(s => s && s.id && !list.some(d => d.id === s.id) && !delSet.has(s.id));
+  const hidSet = new Set(hiddenIds[restaurant] || []);
+  const hs = hideSamples[restaurant];
+  const samplesShown = hs === false ? true : hs === true ? false : (shared || []).length === 0;
+  const sampleList = samplesShown ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !list.some(x => x.id === d.id) && !hidSet.has(d.id)) : [];
+  // Доп. 154: править чужое = забрать копию в свои (та же id — своя версия побеждает); удалить серверное = пометить до публикации; удалить пример = скрыть id
+  const editForeign = (d) => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") });
+  const deleteServer = (id) => { setDeleted({ ...deleted, [restaurant]: [...(deleted[restaurant] || []), id] }); vibrate("light"); };
+  const hideSample = (id) => { setHiddenIds({ ...hiddenIds, [restaurant]: [...(hiddenIds[restaurant] || []), id] }); vibrate("light"); };
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
 
   // ── Этап 4: AI-импорт из PDF (серверная функция /api/menu-import + ключ в Vercel) ──
@@ -573,12 +596,15 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   const publish = () => {
     if (!saToken()) { _showPub(false, "Нужен вход по коду сотрудника"); return; }
     setPubBusy(true);
-    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(list) })
+    const toPublish = [...list, ...orphanShared]; // Доп. 154: свои + серверные, которые не удаляли
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(toPublish) })
       .then(res => {
         setPubBusy(false);
         if (res && res.ok === true) {
-          _showPub(true, list.length ? "Опубликовано ✓ — команда увидит меню при следующем открытии тренажёра" : "Опубликовано ✓ — серверное меню очищено");
-          if (onPublished) onPublished(list);
+          _showPub(true, toPublish.length ? "Опубликовано ✓ — команда увидит меню при следующем открытии тренажёра" : "Опубликовано ✓ — серверное меню очищено");
+          if (onPublished) onPublished(toPublish);
+          if (setDeleted) setDeleted({ ...deleted, [restaurant]: [] });
+          rememberSharedMenu(restaurant, toPublish);
           vibrate("light");
         }
         else if (res && res.ok === false) _showPub(false, res.error === "auth" ? "Сервер не подтвердил сессию — выйди и зайди по коду заново" : "Сервер отклонил: " + (res.error || "неизвестно"));
@@ -587,7 +613,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
       })
       .catch(() => {
         setPubBusy(false);
-        rpcSync("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(list) });
+        rpcSync("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(toPublish) });
         _showPub(false, "Нет сети — публикация отправится автоматически, когда связь появится");
       });
   };
@@ -596,7 +622,8 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     if (!form.name.trim()) return;
     const dish = { ...form, id: form.id || "c" + Date.now(), name: form.name.trim(), ingredients: form.ingredients.split(",").map(s => s.trim()).filter(Boolean) };
     if (!form.id) { dish.isNew = true; dish.addedAt = Date.now(); } // новое блюдо → в «Новые позиции» на 30 дней
-    const next = { ...custom, [restaurant]: form.id ? list.map(d => d.id === form.id ? dish : d) : [dish, ...list] };
+    // Доп. 154: чужое блюдо (пример или серверное) с той же id ещё не в своих — добавляем как свою версию
+    const next = { ...custom, [restaurant]: form.id && list.some(d => d.id === form.id) ? list.map(d => d.id === form.id ? dish : d) : [dish, ...list] };
     setCustom(next); setForm(null); vibrate("light");
   };
   const remove = (id) => setCustom({ ...custom, [restaurant]: list.filter(d => d.id !== id) });
@@ -703,15 +730,15 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             </button>
           </div>
         )}
-        <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: !hideSamples[restaurant] }))}
+        <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown }))}
           className="sa-card"
-          style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 13.5, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>Примеры-заготовки в тренажёре</span>
-          <b style={{ color: hideSamples[restaurant] ? red : "#5DBB8A" }}>{hideSamples[restaurant] ? "скрыты" : "видны"}</b>
+          style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 13.5, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span>Примеры-заготовки в тренажёре{hs === undefined && (shared || []).length ? <span style={{ color: T.modSub.color, fontSize: 12 }}> · скрыты сами: есть меню команды</span> : null}</span>
+          <b style={{ color: samplesShown ? "#5DBB8A" : red, flexShrink: 0 }}>{samplesShown ? "видны" : "скрыты"}</b>
         </div>
       </div>
       <div style={{ ...T.secTitle }}>Свои блюда ({list.length})</div>
-      <div style={{ padding: "0 14px 24px" }}>
+      <div style={{ padding: "0 14px 14px" }}>
         {!list.length && <div style={{ color: T.modSub.color, fontSize: 13, padding: "6px 4px" }}>Пока пусто. Добавь реальные блюда — и команда будет тренироваться на них.</div>}
         {list.map(d => (
           <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
@@ -725,6 +752,47 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
           </div>
         ))}
       </div>
+      {/* Доп. 154: серверное меню и примеры — тоже поштучно: тап — править (копия уходит в свои), ✕ — удалить */}
+      {orphanShared.length > 0 && (<>
+        <div style={{ ...T.secTitle }}>Меню команды на сервере ({orphanShared.length})</div>
+        <div style={{ padding: "0 14px 14px" }}>
+          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Тап — поправить (копия появится в своих), ✕ — удалить. Изменения уйдут команде после «Опубликовать».</div>
+          {orphanShared.map(d => (
+            <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
+              <div style={{ ...T.modBar, background: "#5DBB8A" }} />
+              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+              <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
+                <div style={T.modTitle}>{d.name}</div>
+                <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
+              </div>
+              <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => deleteServer(d.id)} {...onActivate(() => deleteServer(d.id))}>✕</div>
+            </div>
+          ))}
+        </div>
+      </>)}
+      {(deleted[restaurant] || []).length > 0 && (
+        <div style={{ margin: "0 14px 14px", fontSize: 12.5, color: red, lineHeight: 1.5 }}>
+          Помечено к удалению с сервера: {(deleted[restaurant] || []).length}. Нажми «Опубликовать команде», чтобы применить.
+          <span style={{ color: gold, marginLeft: 8, cursor: "pointer" }} onClick={() => setDeleted({ ...deleted, [restaurant]: [] })}>Вернуть</span>
+        </div>
+      )}
+      {sampleList.length > 0 && (<>
+        <div style={{ ...T.secTitle }}>Примеры-заготовки ({sampleList.length})</div>
+        <div style={{ padding: "0 14px 24px" }}>
+          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Учебные блюда для старта. Тап — переделать под своё, ✕ — убрать с этого телефона. После публикации меню команды они скроются сами.</div>
+          {sampleList.map(d => (
+            <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: 0.85 }}>
+              <div style={{ ...T.modBar, background: `${gold}66` }} />
+              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+              <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
+                <div style={T.modTitle}>{d.name}</div>
+                <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
+              </div>
+              <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => hideSample(d.id)} {...onActivate(() => hideSample(d.id))}>✕</div>
+            </div>
+          ))}
+        </div>
+      </>)}
       </>)}
     </div>
   );

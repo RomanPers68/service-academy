@@ -172,7 +172,7 @@ const WELCOME_TABS_CARDS = [
 const WELCOME_MORE_CARDS = [
   { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M19 3l-2 6h4l-2-6z" opacity="0.7"/></svg>),
     title: "Меню и Колода бармена",
-    text: "Блюда с фото, составом и аллергенами — и тренажёр «Опиши за 60 секунд». Колода: 50 коктейлей, спек в мл, история и фраза гостю; свайп листает, тап переворачивает." },
+    text: "Блюда с фото, составом и аллергенами — и тренажёр «Опиши за 60 секунд». Колода: полсотни коктейлей, спек в мл, история и фраза гостю; свайп листает, тап переворачивает." },
   { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 12h8M8 16h5"/><circle cx="16" cy="8" r="0.5"/></svg>),
     title: "Книга отзывов и Гость недели",
     text: "Книга — твоя летопись: страницы за роли, печати за испытания. Гость недели — живой диалог с непростым гостем, новый каждую неделю; за успех — печать." },
@@ -731,9 +731,10 @@ function ServiceAcademy() {
       }),
     }));
   }, [customLessons, role]);
-  const navigate = useCallback((to) => {
+  const navigate = useCallback((to, opts) => {
     const cur = screenRef.current;
     if (TAB_SCREENS.includes(to)) commitStack([]);                          // вкладка — новая ветка, назад некуда
+    else if (opts && opts.replace) { /* Доп. 158: замена экрана — текущий в историю не пишем (диалог → Книга) */ }
     else if (cur !== to) commitStack([...navRef.current, cur].slice(-24));  // push, без дублей при повторе
     screenRef.current = to; setScreen(to);
   }, [commitStack]);
@@ -1207,7 +1208,9 @@ function ServiceAcademy() {
               try { localStorage.setItem("sa_completed"+uk, JSON.stringify(nc)); } catch(e) {}
             }
           } catch(e) {}
-          navigate("guestbook");
+          // Доп. 158: успех — показать печать в Книге, но диалог из истории убрать (иначе Книга ↔ диалог по кругу);
+          // вышел без финала — просто назад, откуда пришёл
+          if (finished === true) navigate("guestbook", { replace: true }); else goBack();
         }} pro={true} />}
         {screen === "schedule" && <Suspense fallback={<ScreenLoader T={T} />}>
           <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack()}

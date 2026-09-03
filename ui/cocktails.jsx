@@ -152,7 +152,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId }) {
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
             <div style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
-              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода · 50</span>
+              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода · {COCKTAILS.length}</span>
               <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю? · {due.length}</span>
             </div>
             {onBasics ? <span style={{ marginLeft:"auto", fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 4px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
@@ -227,6 +227,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId }) {
               <ol style={{ margin:"10px 0 8px", paddingLeft:20, color:glass.tx }}>{c.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>
               <div style={{ color:glass.sub, fontStyle:"italic", fontSize:12.5 }}>{c.tip}</div>
               <div style={{ color:glass.sub, fontSize:12.5, marginTop:6 }}>К столу: {c.pair}</div>
+              {c.note ? <div style={{ marginTop:8, padding:"7px 10px", borderRadius:10, border:`1px dashed ${GOLD}66`, color:glass.sub, fontSize:12, lineHeight:1.5 }}>✦ {c.note}</div> : null}
               {COCKTAIL_STORIES[c.id] ? (
                 <div style={{ marginTop:12, paddingTop:10, borderTop:`1px solid ${glass.bd}` }}>
                   <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>ИСТОРИЯ</div>

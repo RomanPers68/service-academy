@@ -2,6 +2,7 @@
 // Раздел «Справочник»: хаб → курс → глава → фото-тест.
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
 import { RefArt } from "./reference-art";
+import { COCKTAILS } from "../data/cocktails";
 import React from "react";
 import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
@@ -76,7 +77,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
     { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
       // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
-    { id: "cocktails", t: "Бар: коктейли", s: "50 карточек · состав, метод, история · основы бара", icon: Ico.cocktail, on: true, deck: true },
+    { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} карточек · состав, метод, история · основы бара`, icon: Ico.cocktail, on: true, deck: true },
   ];
   return (<div style={T.screen}>
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>

@@ -24,7 +24,20 @@ const loadJson = (k) => { try { return JSON.parse(localStorage.getItem(k) || "{}
 const saveJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 const loadCustom = () => { try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || "{}"); } catch (e) { return {}; } };
-const saveCustom = (obj) => { try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(obj)); } catch (e) {} };
+// Доп. 174: память телефона (~5 МБ) переполняется фото-текстом. Раньше setItem падал молча —
+// блюдо жило до перезахода и исчезало. Теперь: не влезло → сохраняем без локальных фото
+// (ссылки на облако остаются) и поднимаем флаг, который редактор показывает словами.
+const isDataImg = (v) => typeof v === "string" && v.startsWith("data:");
+const stripLocalPhotos = (obj) => { const out = {}; for (const r of Object.keys(obj || {})) out[r] = (obj[r] || []).map(d => isDataImg(d.img) ? { ...d, img: "", imgLostLocal: true } : d); return out; };
+export const storageState = { full: false, listeners: new Set() };
+const setStorageFull = (v) => { if (storageState.full !== v) { storageState.full = v; storageState.listeners.forEach(f => { try { f(v); } catch (e) {} }); } };
+const saveCustom = (obj) => {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(obj)); setStorageFull(false); return true; }
+  catch (e) {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(stripLocalPhotos(obj))); } catch (e2) {}
+    setStorageFull(true); return false;
+  }
+};
 const loadHide = () => { try { return JSON.parse(localStorage.getItem(HIDE_SAMPLES_KEY) || "{}"); } catch (e) { return {}; } };
 const saveHide = (obj) => { try { localStorage.setItem(HIDE_SAMPLES_KEY, JSON.stringify(obj)); } catch (e) {} };
 
@@ -774,7 +787,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
 
   const save = () => {
     if (!form.name.trim()) return;
-    const dish = { ...form, id: form.id || "c" + Date.now(), name: form.name.trim(), ingredients: form.ingredients.split(",").map(s => s.trim()).filter(Boolean) };
+    const dish = { ...form, id: form.id || "c" + Date.now(), name: form.name.trim(), ingredients: form.ingredients.split(",").map(s => s.trim()).filter(Boolean), imgLostLocal: form.img ? false : form.imgLostLocal };
     if (!form.id) { dish.isNew = true; dish.addedAt = Date.now(); } // новое блюдо → в «Новые позиции» на 30 дней
     // Доп. 154: чужое блюдо (пример или серверное) с той же id ещё не в своих — добавляем как свою версию
     const own = custom[restaurant] || [];
@@ -782,6 +795,29 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     setCustom(next); setForm(null); vibrate("light");
   };
   // Доп. 163: удаление с отменой (6 секунд), поиск и раздел в списке, признак неопубликованных изменений
+  // Доп. 174: память телефона и фото, застрявшие на телефоне
+  const [storageFull, setStorageFull] = React.useState(storageState.full);
+  React.useEffect(() => { const f = (v) => setStorageFull(v); storageState.listeners.add(f); return () => storageState.listeners.delete(f); }, []);
+  const localPhotos = (custom[restaurant] || []).filter(d => isDataImg(d.img));
+  const lostPhotos = (custom[restaurant] || []).filter(d => d.imgLostLocal && !d.img);
+  const [reupBusy, setReupBusy] = React.useState(false);
+  const [reupMsg, setReupMsg] = React.useState("");
+  const reuploadAll = async () => {
+    if (reupBusy || !localPhotos.length) return;
+    setReupBusy(true); setReupMsg("");
+    let ok = 0, fail = 0, cur = custom[restaurant] || [];
+    for (const d of localPhotos) {
+      try {
+        const j = await fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+          body: JSON.stringify({ token: saToken(), restaurant, dishId: d.id, image: d.img }) }).then(r => r.json());
+        if (j && j.ok && j.url) { cur = cur.map(x => x.id === d.id ? { ...x, img: j.url } : x); ok++; } else fail++;
+      } catch (e) { fail++; }
+    }
+    setCustom({ ...custom, [restaurant]: cur });
+    setReupBusy(false);
+    setReupMsg(ok && !fail ? `В облаке ✓ ${ok} фото — память телефона свободна` : ok ? `${ok} ушло, ${fail} не удалось — проверь связь и функцию photo-upload` : "Не удалось: нет связи или функция photo-upload не развёрнута в Supabase");
+    if (ok) vibrate("success");
+  };
   const [undo, setUndo] = React.useState(null);
   const undoTimer = React.useRef(null);
   // Доп. 167: удаление = архив (archived:true), не небытие. Архив едет на сервер вместе с меню,
@@ -1047,6 +1083,23 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             </div>
           );
         })()}
+        {(storageFull || localPhotos.length > 0 || lostPhotos.length > 0) && (
+          <div className="sa-fadein" style={{ ...glass(T), padding: "11px 13px", marginBottom: 10, borderColor: storageFull || lostPhotos.length ? red + "77" : gold + "66" }}>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.4, color: storageFull || lostPhotos.length ? red : gold, fontFamily: "monospace", marginBottom: 6 }}>{storageFull ? "ПАМЯТЬ ТЕЛЕФОНА ЗАПОЛНЕНА" : lostPhotos.length ? "ФОТО НЕ СОХРАНИЛИСЬ" : "ФОТО ТОЛЬКО НА ТЕЛЕФОНЕ"}</div>
+            <div style={{ fontSize: 13, color: T.para?.color, lineHeight: 1.55 }}>
+              {storageFull ? "Блюда сохранены, но фото, не ушедшие в облако, на диск не влезли — после перезахода их не будет. " : ""}
+              {lostPhotos.length ? `${lostPhotos.length} ${lostPhotos.length === 1 ? "фото потерялось" : "фото потерялись"} при переполнении — переснять из редактора. ` : ""}
+              {localPhotos.length ? `${localPhotos.length} ${localPhotos.length === 1 ? "фото хранится" : "фото хранятся"} только на этом телефоне и весят память. Отправь их в облако — увидит вся команда, а память освободится.` : ""}
+            </div>
+            {localPhotos.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "9px 14px", opacity: reupBusy ? 0.55 : 1 }} disabled={reupBusy} onClick={reuploadAll}>{reupBusy ? "Отправляю…" : `Отправить в облако (${localPhotos.length})`}</button>
+                {reupMsg && <span style={{ fontSize: 12, color: /✓/.test(reupMsg) ? green : red, lineHeight: 1.4 }}>{reupMsg}</span>}
+              </div>
+            )}
+            {!localPhotos.length && reupMsg && <div style={{ fontSize: 12, color: green, marginTop: 6 }}>{reupMsg}</div>}
+          </div>
+        )}
         {pubMsg && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: pubMsg.ok ? green : red }}>{pubMsg.text}</div>}
         {!pubMsg && unpublished > 0 && <div style={{ marginTop: 8, fontSize: 12.5, color: T.modSub.color }}>Команда пока видит старую версию — {unpublished} {unpublished === 1 ? "изменение" : unpublished < 5 ? "изменения" : "изменений"} ждут публикации.</div>}
         {undo && (
@@ -1097,7 +1150,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
                   {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0, filter: d.stop ? "grayscale(1)" : "none" }} />}
                   <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") }))}>
                     <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
-                    <div style={T.modSub}>{(d.ingredients || []).length} ингр. · {(d.allergens || []).length ? (d.allergens || []).length + " аллерг." : "аллергенов нет"}{changed ? " · не опубликовано" : ""}</div>
+                    <div style={T.modSub}>{(d.ingredients || []).length} ингр. · {(d.allergens || []).length ? (d.allergens || []).length + " аллерг." : "аллергенов нет"}{changed ? " · не опубликовано" : ""}{isDataImg(d.img) ? " · фото на телефоне" : d.imgLostLocal && !d.img ? " · фото потеряно" : ""}</div>
                   </div>
                   <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => remove(d.id)} {...onActivate(() => remove(d.id))}>✕</div>
                   {/* Доп. 166: стоп · дубликат · порядок */}

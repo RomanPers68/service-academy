@@ -191,14 +191,14 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
           <div style={{ padding: "12px 16px 100px" }}>
             {mode === "quiz" ? (
               <div style={{ display: "flex", gap: 10 }}>
-                <button className="sa-btn" style={{ ...T.doneBtn, background: red || "#B8352A", flex: 1 }} onClick={() => mark(false)}>Не знал ↻</button>
-                <button className="sa-btn" style={{ ...T.doneBtn, background: green || "#5DBB8A", flex: 1 }} onClick={() => mark(true)}>Знал ✓</button>
+                <button className="sa-btn" onClick={() => mark(false)} style={{ ...pill(false), flex: 1, padding: "12px", textAlign: "center", color: red || "#D96A5E", borderColor: (red || "#D96A5E") + "66", fontSize: 13 }}>Повторить</button>
+                <button className="sa-btn" onClick={() => mark(true)} style={{ ...pill(true), flex: 1, padding: "12px", textAlign: "center", fontSize: 13 }}>Знал ✦</button>
               </div>
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, padding: "9px 16px" }} onClick={() => go(-1)}>‹ назад</button>
-                <span style={{ fontSize: 10.5, letterSpacing: 1.6, color: sub, fontFamily: "monospace" }}>СВАЙП · ЛИСТАТЬ</span>
-                <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, padding: "9px 16px" }} onClick={() => go(1)}>дальше ›</button>
+                <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 13 }}>‹ назад</button>
+                <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9.5, color: sub, letterSpacing: 1.5, whiteSpace: "nowrap" }}>СВАЙП · ЛИСТАТЬ</span>
+                <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 13 }}>дальше ›</button>
               </div>
             )}
           </div>

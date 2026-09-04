@@ -216,6 +216,8 @@ export const injectStyles = () => {
     @media (prefers-reduced-motion: reduce) { .sa-cardpage-r, .sa-cardpage-l { animation: none; } }
     /* Исключение: горизонтальные ленты (вкладки книги и т.п.) можно листать пальцем */
     .sa-hscroll, .sa-hscroll * { touch-action: pan-x pan-y !important; }
+    /* Доп. 162: в полях ввода — свои жесты: выделение текста, прокрутка внутри поля */
+    input, textarea, .sa-field { touch-action: auto !important; -webkit-user-select: text !important; user-select: text !important; }
     /* Лента жетонов: скроллбар прячем, свайп остаётся */
     .sa-tilesrow { scrollbar-width: none; }
     .sa-tilesrow::-webkit-scrollbar { display: none; }

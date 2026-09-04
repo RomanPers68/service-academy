@@ -616,6 +616,21 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 }
 
 // ── Редактор меню (для менеджеров) ───────────────────────────────────────────
+// ── Доп. 162: поле редактора блюда — многострочное, растёт под текст, «✕» очищает разом.
+// Объявлен на уровне модуля: компонент внутри рендера пересоздавался бы и терял фокус.
+function EditorField({ value, onChange, placeholder, rows = 1, style, inputSt, textColor, a11y }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => { const el = ref.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 220) + "px"; }, [value]);
+  return (
+    <div style={{ position: "relative", marginBottom: 10 }}>
+      <textarea ref={ref} className="sa-field" rows={rows} value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ ...inputSt, marginBottom: 0, paddingRight: value ? 38 : 13, resize: "none", overflow: "hidden", lineHeight: 1.45, fontFamily: "inherit", ...style }} />
+      {value ? <span onClick={() => { onChange(""); vibrate("light"); ref.current && ref.current.focus(); }} {...onActivate(() => onChange(""))} aria-label="Очистить"
+        style={{ position: "absolute", right: 10, top: 9, width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: textColor, background: a11y ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)", cursor: "pointer" }}>✕</span> : null}
+    </div>
+  );
+}
+
 function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
@@ -745,10 +760,10 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
                 {GAME_SVG.cards(gold, 18)} Добавить фото блюда
                 <input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
               </label>}
-          <input style={inputSt} placeholder="Название блюда *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          <input style={inputSt} placeholder="Раздел (Салаты, Супы, Горячие блюда…)" list="sa-cat-list" value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Название блюда *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
+          <div style={{ position: "relative" }}><input className="sa-field" style={{ ...inputSt, paddingRight: form.cat ? 38 : 13 }} placeholder="Раздел (Салаты, Супы, Горячие блюда…)" list="sa-cat-list" value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} />{form.cat ? <span onClick={() => setForm(f => ({ ...f, cat: "" }))} aria-label="Очистить" style={{ position: "absolute", right: 10, top: 9, width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: textColor, background: a11y ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)", cursor: "pointer" }}>✕</span> : null}</div>
           <datalist id="sa-cat-list">{CAT_ORDER.map(c => <option key={c} value={c} />)}</datalist>
-          <input style={inputSt} placeholder="Состав через запятую" value={form.ingredients} onChange={e => setForm(f => ({ ...f, ingredients: e.target.value }))} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Состав через запятую" value={form.ingredients} onChange={v => setForm(f => ({ ...f, ingredients: v }))} rows={2} />
           <div style={{ fontSize: 11, letterSpacing: 1, color: gold, fontFamily: "monospace", margin: "2px 0 8px" }}>АЛЛЕРГЕНЫ</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
             {ALLERGENS_LIST.map(al => (
@@ -756,9 +771,9 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
                 style={{ padding: "6px 11px", borderRadius: 10, fontSize: 12.5, cursor: "pointer", border: `1px solid ${form.allergens.includes(al) ? red : gold + "55"}`, background: form.allergens.includes(al) ? "rgba(224,120,120,0.15)" : "transparent", color: form.allergens.includes(al) ? red : T.modSub.color }}>{al}</div>
             ))}
           </div>
-          <textarea style={{ ...inputSt, minHeight: 84, resize: "vertical" }} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
-          <input style={inputSt} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={e => setForm(f => ({ ...f, pairing: e.target.value }))} />
-          <input style={inputSt} placeholder="Важно знать (прожарки, подача…)" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={v => setForm(f => ({ ...f, desc: v }))} rows={3} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={v => setForm(f => ({ ...f, pairing: v }))} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
           <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
             <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}66`, color: textColor, flex: 1 }} onClick={() => setForm(null)}>Отмена</button>
             <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1, opacity: form.name.trim() ? 1 : 0.5 }} onClick={save}>Сохранить</button>

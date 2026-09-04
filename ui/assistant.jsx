@@ -343,7 +343,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
     }
     const d = card.d;
     return (
-      <div style={cardBox} onClick={() => { vibrate("light"); onNavigate && onNavigate("menu"); }} {...onActivate(() => onNavigate && onNavigate("menu"))} aria-label={d.name}>
+      <div style={cardBox} onClick={() => { vibrate("light"); onNavigate && onNavigate({ dish: d.id }); }} {...onActivate(() => onNavigate && onNavigate({ dish: d.id }))} aria-label={d.name}>
         {d.img
           ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12, flexShrink: 0, border: `1px solid ${gold}44` }} />
           : <div style={{ width: 92, height: 92, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}66`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 11, textAlign: "center", padding: 6 }}>фото добавит менеджер</div>}
@@ -352,7 +352,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
           {d.cat && <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{d.cat}</div>}
           <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(d.ingredients || []).slice(0, 6).join(", ")}</div>
           {(d.allergens || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>{d.allergens.map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, border: `1px solid ${RED}88`, color: RED }}>{a}</span>)}</div>}
-          <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть в меню ›</div>
+          <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть карточку ›</div>
         </div>
       </div>
     );

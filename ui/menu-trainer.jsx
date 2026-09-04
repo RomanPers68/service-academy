@@ -66,7 +66,7 @@ const readPhoto = (file, cb) => {
   } catch (e) {}
 };
 
-export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
+export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const green = "#5DBB8A";
   const red = "#E07878";
@@ -99,6 +99,9 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
     return () => { alive = false; };
   }, [restaurant]);
 
+  // Доп. 170: deep-link из ответа Наставника — открыть Колоду меню сразу на блюде
+  const [deckStart, setDeckStart] = React.useState(null);
+  const startedRef = React.useRef(null);
   const dishes = React.useMemo(() => {
     if (!restaurant) return [];
     const ownAll = custom[restaurant] || [];
@@ -114,6 +117,10 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
     const samples = showSamples ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !ownIds.has(d.id) && !hid.has(d.id)) : [];
     return [...own, ...team, ...samples];
   }, [restaurant, custom, shared, hideSamples, hiddenIds, deleted]);
+  React.useEffect(() => {
+    if (!startDishId || startedRef.current === startDishId) return;
+    if (dishes.some(d => String(d.id) === String(startDishId))) { startedRef.current = startDishId; setDeckStart(startDishId); setFocusNew(false); setMode("cards"); }
+  }, [startDishId, dishes]);
 
   // Новые позиции: помечены isNew и добавлены за последние 30 дней
   const newDishes = React.useMemo(() =>
@@ -161,7 +168,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
 
   // ── Режимы тренировки ──────────────────────────────────────────────────────
   if (mode === "list") return <MenuList T={T} gold={gold} red={red} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
-  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head}
+  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart}
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;

@@ -172,7 +172,7 @@ const WELCOME_TABS_CARDS = [
 const WELCOME_MORE_CARDS = [
   { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M19 3l-2 6h4l-2-6z" opacity="0.7"/></svg>),
     title: "Меню и Колода бармена",
-    text: "Блюда с фото, составом и аллергенами — и тренажёр «Опиши за 60 секунд». Колода: полсотни коктейлей, спек в мл, история и фраза гостю; свайп листает, тап переворачивает." },
+    text: "Меню по разделам с поиском и Колода меню: свайп, переворот, «Знаю?». Красная лента «Сегодня нет» — блюдо в стопе. Колода бармена: полсотни коктейлей, спек в мл, история и фраза гостю — и сноски, как наливают у нас." },
   { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 12h8M8 16h5"/><circle cx="16" cy="8" r="0.5"/></svg>),
     title: "Книга отзывов и Гость недели",
     text: "Книга — твоя летопись: страницы за роли, печати за испытания. Гость недели — живой диалог с непростым гостем, новый каждую неделю; за успех — печать." },
@@ -184,6 +184,13 @@ const WELCOME_MORE_CARDS = [
     text: "Забыл, где что? Вкладка «Я» → «Гид по приложению»: каждая функция с объяснением и кнопкой «Открыть». Этот попап больше не покажется, гид — останется." },
 ];
 
+// Доп. 169: карточка менеджера про редактор меню
+const WELCOME_MENUEDIT_CARD = {
+  icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z" opacity="0.6"/></svg>),
+  title: "Меню: редактор, стоп-лист, архив",
+  text: "Меню → Редактор: импорт из PDF с проверкой аллергенов, три AI-варианта описания, предпросмотр «как увидит официант». «В стоп» — один тап, и команда видит «Сегодня нет». Удалённое — в архив, вернуть к сезону одним тапом. «Опубликовать · N» отправляет всё официантам.",
+};
+
 function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
   // Порядок — путь новичка: учёба → ошибки → тренажёры → знания → наставник
   // → график → признание; менеджерам и руководству — их инструменты в конце.
@@ -194,7 +201,7 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
     WELCOME_BUILD_CARD, WELCOME_REF_CARD, WELCOME_MORE_CARDS[0], WELCOME_AI_CARD,
     WELCOME_SCHED_CARD, WELCOME_MORE_CARDS[1], WELCOME_MORE_CARDS[2],
     ...WELCOME_CARDS.slice(2),
-    ...(canHire ? [WELCOME_SCHEDIT_CARD, WELCOME_HIRE_CARD] : []),
+    ...(canHire ? [WELCOME_SCHEDIT_CARD, WELCOME_MENUEDIT_CARD, WELCOME_HIRE_CARD] : []),
     ...(isAdmin ? [WELCOME_ADMIN_CARD] : []),
     WELCOME_MORE_CARDS[3],
   ];
@@ -379,7 +386,7 @@ function ServiceAcademy() {
   const [navStack, setNavStack] = useState([]);
   const navRef = useRef([]);                 // источник истины для push/pop
   const screenRef = useRef("roleSelect");    // текущий экран для императивных переходов
-  useEffect(() => { screenRef.current = screen; }, [screen]);
+  useEffect(() => { screenRef.current = screen; if (screen !== "menuTrainer") setMenuStart(null); }, [screen]);
   const commitStack = useCallback((arr) => { navRef.current = arr; setNavStack(arr); }, []);
   const prevScreen = navStack.length ? navStack[navStack.length - 1] : null;
   const setPrevScreen = useCallback((x) => { if (x) commitStack([...navRef.current, x].slice(-24)); }, [commitStack]);
@@ -402,6 +409,7 @@ function ServiceAcademy() {
   // навигации хранит один шаг — назад из Справочника вело обратно в Колоду по
   // кругу. Запоминаем экран, с которого зашли в эту пару, и выходим на него.
   const [ckStart, setCkStart] = useState(null);
+  const [menuStart, setMenuStart] = useState(null); // Доп. 170: открыть Колоду меню на блюде (карточка в ответе Наставника)
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
@@ -1092,10 +1100,10 @@ function ServiceAcademy() {
   useEffect(() => {
     if (!profile || !storageLoaded) return;
     // v3: тур большого обновления — разово покажется и давним пользователям
-    try { if (localStorage.getItem("sa_welcome_seen_v5") !== "1") setWelcome(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_welcome_seen_v6") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen_v5", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v6", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };
@@ -1358,7 +1366,7 @@ function ServiceAcademy() {
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
         {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
-        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
+        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen startDishId={menuStart} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
         {screen === "cocktails" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
         {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => goBack()} /></Suspense></div>}
@@ -1385,6 +1393,13 @@ function ServiceAcademy() {
               const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
               return (r && r.date === key && r.label) ? r.label : null;
             } catch (e) { return null; } })() }} onBack={() => goBack()} onNavigate={(dest) => {
+          // Карточка блюда в ответе → Колода меню на этом блюде (Доп. 170)
+          if (dest && typeof dest === "object" && dest.dish) {
+            setMenuStart(dest.dish);
+            setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
+            setScreen("menuTrainer");
+            return;
+          }
           // Карточка коктейля в ответе → колода на этом коктейле (Доп. 130)
           if (dest && typeof dest === "object" && dest.cocktail) {
             setCkStart(dest.cocktail);

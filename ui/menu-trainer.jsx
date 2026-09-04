@@ -644,6 +644,11 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   const samplesShown = hs === false ? true : hs === true ? false : (shared || []).length === 0;
   const sampleList = samplesShown ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !list.some(x => x.id === d.id) && !hidSet.has(d.id)) : [];
   // Доп. 154: править чужое = забрать копию в свои (та же id — своя версия побеждает); удалить серверное = пометить до публикации; удалить пример = скрыть id
+  const srvById = new Map((shared || []).filter(x => x && x.id).map(x => [x.id, x]));
+  // jsonb на сервере переставляет ключи — сравниваем в каноническом виде (ключи по алфавиту)
+  const canon = (o) => o ? JSON.stringify(o, Object.keys(o).sort()) : "";
+  const sameAsServer = (d) => canon(d) === canon(srvById.get(d.id));
+  const unpublished = list.filter(d => !sameAsServer(d)).length + (deleted[restaurant] || []).length;
   const editForeign = (d) => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") });
   const deleteServer = (id) => { setDeleted({ ...deleted, [restaurant]: [...(deleted[restaurant] || []), id] }); vibrate("light"); };
   const hideSample = (id) => { setHiddenIds({ ...hiddenIds, [restaurant]: [...(hiddenIds[restaurant] || []), id] }); vibrate("light"); };
@@ -720,7 +725,18 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     const next = { ...custom, [restaurant]: form.id && list.some(d => d.id === form.id) ? list.map(d => d.id === form.id ? dish : d) : [dish, ...list] };
     setCustom(next); setForm(null); vibrate("light");
   };
-  const remove = (id) => setCustom({ ...custom, [restaurant]: list.filter(d => d.id !== id) });
+  // Доп. 163: удаление с отменой (6 секунд), поиск и раздел в списке, признак неопубликованных изменений
+  const [undo, setUndo] = React.useState(null);
+  const undoTimer = React.useRef(null);
+  const remove = (id) => {
+    const dish = list.find(d => d.id === id);
+    setCustom({ ...custom, [restaurant]: list.filter(d => d.id !== id) });
+    if (dish) { setUndo(dish); clearTimeout(undoTimer.current); undoTimer.current = setTimeout(() => setUndo(null), 6000); vibrate("light"); }
+  };
+  const restoreRemoved = () => { if (!undo) return; setCustom({ ...custom, [restaurant]: [undo, ...(custom[restaurant] || [])] }); setUndo(null); clearTimeout(undoTimer.current); };
+  const [eq, setEq] = React.useState("");
+  const [ecat, setEcat] = React.useState("");
+  const vis = (arr) => arr.filter(d => dishMatches(d, eq) && (!ecat || normCat(d.cat) === ecat));
   const [photoState, setPhotoState] = React.useState(""); // Доп. 135: "" | uploading | cloud | local (хук — на верхнем уровне компонента)
   React.useEffect(() => { if (!form) setPhotoState(""); }, [form]); // закрыли форму — подпись не переезжает на следующее блюдо
 
@@ -744,40 +760,85 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
         }).catch(() => setPhotoState("local"));
       });
     };
+    // Доп. 163: рабочая форма — разделы, состав чипами, подсказки аллергенов, липкие кнопки
+    const secLabel = (t) => <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "14px 2px 8px" }}>{t}</div>;
+    const ingList = String(form.ingredients || "").split(",").map(x => x.trim()).filter(Boolean);
+    const setIng = (arr) => setForm(f => ({ ...f, ingredients: arr.join(", ") }));
+    const addIng = (raw) => { const parts = String(raw || "").split(",").map(x => x.trim()).filter(Boolean); if (parts.length) setIng([...ingList, ...parts.filter(x => !ingList.includes(x))]); };
+    const hints = suggestAllergens(ingList, form.allergens);
+    const cats = [...CAT_ORDER, ...[...new Set([...list, ...(shared || []), ...(RESTAURANT_MENUS[restaurant] || [])].map(d => normCat(d.cat)).filter(Boolean))].filter(c => !CAT_ORDER.some(x => x.toLowerCase() === c.toLowerCase()))];
+    const chip = (on, danger) => ({ padding: "6px 11px", borderRadius: 10, fontSize: 12.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+      border: `1px solid ${on ? (danger ? red : gold) : gold + "55"}`, background: on ? (danger ? "rgba(224,120,120,0.15)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? (danger ? red : textColor) : T.modSub.color });
+    const canSave = !!form.name.trim();
+    const isEdit = !!form.id && list.some(d => d.id === form.id);
     return (
       <div style={T.screen} className="sa-screen">
         {Head(form.id ? "Изменить блюдо" : "Новое блюдо")}
-        <div style={{ padding: "10px 16px 24px" }}>
+        <div style={{ padding: "6px 16px 130px" }}>
+          {secLabel("ФОТО")}
           {form.img
-            ? <div style={{ position: "relative", marginBottom: 12 }}>
+            ? <div style={{ position: "relative", marginBottom: 4 }}>
                 <img src={form.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 14, display: "block", border: `1px solid ${gold}44` }} />
                 <div onClick={() => setForm(f => ({ ...f, img: "" }))} {...onActivate(() => setForm(f => ({ ...f, img: "" })))} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>✕</div>
                 {photoState && <div style={{ position: "absolute", left: 8, bottom: 8, fontSize: 10.5, padding: "3px 8px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: photoState === "local" ? "#F0B37A" : "#EFE4C8" }}>
                   {photoState === "uploading" ? "Отправляю в облако…" : photoState === "cloud" ? "В облаке — увидят все" : "Только на этом телефоне"}
                 </div>}
+                <label style={{ position: "absolute", right: 8, bottom: 8, fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: "#EFE4C8", cursor: "pointer" }}>Заменить<input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} /></label>
               </div>
-            : <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "22px 13px", borderRadius: 14, border: `1.5px dashed ${gold}77`, color: T.para?.color, fontSize: 14, cursor: "pointer", marginBottom: 12 }}>
-                {GAME_SVG.cards(gold, 18)} Добавить фото блюда
+            : <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "20px 13px", borderRadius: 14, border: `1.5px dashed ${gold}77`, color: T.para?.color, fontSize: 14, cursor: "pointer" }}>
+                {GAME_SVG.cards(gold, 18)} Снять или выбрать фото
                 <input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
               </label>}
-          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Название блюда *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
-          <div style={{ position: "relative" }}><input className="sa-field" style={{ ...inputSt, paddingRight: form.cat ? 38 : 13 }} placeholder="Раздел (Салаты, Супы, Горячие блюда…)" list="sa-cat-list" value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))} />{form.cat ? <span onClick={() => setForm(f => ({ ...f, cat: "" }))} aria-label="Очистить" style={{ position: "absolute", right: 10, top: 9, width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: textColor, background: a11y ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)", cursor: "pointer" }}>✕</span> : null}</div>
-          <datalist id="sa-cat-list">{CAT_ORDER.map(c => <option key={c} value={c} />)}</datalist>
-          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Состав через запятую" value={form.ingredients} onChange={v => setForm(f => ({ ...f, ingredients: v }))} rows={2} />
-          <div style={{ fontSize: 11, letterSpacing: 1, color: gold, fontFamily: "monospace", margin: "2px 0 8px" }}>АЛЛЕРГЕНЫ</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-            {ALLERGENS_LIST.map(al => (
-              <div key={al} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}
-                style={{ padding: "6px 11px", borderRadius: 10, fontSize: 12.5, cursor: "pointer", border: `1px solid ${form.allergens.includes(al) ? red : gold + "55"}`, background: form.allergens.includes(al) ? "rgba(224,120,120,0.15)" : "transparent", color: form.allergens.includes(al) ? red : T.modSub.color }}>{al}</div>
+
+          {secLabel("ОСНОВНОЕ")}
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Название блюда *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} style={{ fontSize: 17, fontFamily: "Georgia, serif" }} />
+          <div className="sa-hscroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "2px 0 8px", WebkitOverflowScrolling: "touch" }}>
+            {cats.map(c => <span key={c} style={chip(normCat(form.cat).toLowerCase() === c.toLowerCase())} onClick={() => setForm(f => ({ ...f, cat: normCat(f.cat).toLowerCase() === c.toLowerCase() ? "" : c }))}>{c}</span>)}
+            <span style={chip(!!form.cat && !cats.some(c => c.toLowerCase() === normCat(form.cat).toLowerCase()))} onClick={() => { const v = window.prompt("Название раздела", form.cat || ""); if (v != null) setForm(f => ({ ...f, cat: v.trim() })); }}>＋ свой раздел</span>
+          </div>
+          {form.cat && !cats.some(c => c.toLowerCase() === normCat(form.cat).toLowerCase()) && <div style={{ fontSize: 12, color: T.modSub.color, margin: "-4px 2px 8px" }}>Раздел: <b style={{ color: textColor }}>{form.cat}</b></div>}
+
+          {secLabel("СОСТАВ И АЛЛЕРГЕНЫ")}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
+            {ingList.map((x, i) => (
+              <span key={i} style={{ ...chip(true), display: "inline-flex", alignItems: "center", gap: 6, paddingRight: 8 }}>
+                {x}<span onClick={() => setIng(ingList.filter((_, k) => k !== i))} style={{ opacity: 0.7, fontSize: 12 }}>✕</span>
+              </span>
             ))}
           </div>
+          <input className="sa-field" style={{ ...inputSt, marginBottom: 4 }} placeholder={ingList.length ? "Ещё ингредиент — Enter или запятая" : "Ингредиент — Enter или запятая"}
+            onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
+            onBlur={e => { if (e.currentTarget.value.trim()) { addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
+            onChange={e => { if (e.target.value.includes(",")) { addIng(e.target.value); e.target.value = ""; } }} />
+          <div style={{ fontSize: 11.5, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую — разложится на чипы.</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            {ALLERGENS_LIST.map(al => <span key={al} style={chip(form.allergens.includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{al}</span>)}
+          </div>
+          {hints.length > 0 && (
+            <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 4, borderColor: red + "66" }}>
+              <div style={{ fontSize: 11, letterSpacing: 1.2, color: red, fontFamily: "monospace", marginBottom: 6 }}>ПРОВЕРЬ АЛЛЕРГЕНЫ</div>
+              {hints.map(h => (
+                <div key={h.allergen} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: T.para?.color, marginBottom: 6 }}>
+                  <span style={{ flex: 1 }}>В составе «{h.because}…» — похоже на <b style={{ color: red }}>{h.allergen}</b></span>
+                  <span style={{ ...chip(false), padding: "4px 10px", color: red, borderColor: red + "88" }} onClick={() => toggleAl(h.allergen)}>Добавить</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {secLabel("ДЛЯ ГОСТЯ")}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={v => setForm(f => ({ ...f, desc: v }))} rows={3} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={v => setForm(f => ({ ...f, pairing: v }))} />
-          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
-          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача, выход в граммах…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
+        </div>
+        {/* липкие кнопки — всегда под рукой */}
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", zIndex: 30,
+          background: a11y ? "rgba(245,238,222,0.92)" : "rgba(21,17,11,0.92)", borderTop: `1px solid ${gold}33`, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+          <div style={{ display: "flex", gap: 10 }}>
             <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}66`, color: textColor, flex: 1 }} onClick={() => setForm(null)}>Отмена</button>
-            <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1, opacity: form.name.trim() ? 1 : 0.5 }} onClick={save}>Сохранить</button>
+            <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1.4, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={save}>{isEdit ? "Сохранить" : "Добавить в меню"}</button>
           </div>
+          {!isEdit && <div style={{ textAlign: "center", marginTop: 8 }}><span style={{ fontSize: 12.5, color: gold, cursor: canSave ? "pointer" : "default", opacity: canSave ? 1 : 0.4 }} onClick={() => { if (!canSave) return; save(); setTimeout(() => setForm({ ...empty, cat: form.cat }), 0); }}>Сохранить и добавить ещё{form.cat ? ` в «${form.cat}»` : ""} ›</span></div>}
         </div>
       </div>
     );
@@ -811,9 +872,26 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             {importing ? "Читаю PDF…" : "⚡ Импорт из PDF"}
             <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
           </label>
-          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color, opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={pubBusy}>{pubBusy ? "Отправляю…" : "Опубликовать команде"}</button>
+          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color, opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={pubBusy}>{pubBusy ? "Отправляю…" : unpublished ? `Опубликовать · ${unpublished}` : "Опубликовано ✓"}</button>
         </div>
         {pubMsg && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: pubMsg.ok ? green : red }}>{pubMsg.text}</div>}
+        {!pubMsg && unpublished > 0 && <div style={{ marginTop: 8, fontSize: 12.5, color: T.modSub.color }}>Команда пока видит старую версию — {unpublished} {unpublished === 1 ? "изменение" : unpublished < 5 ? "изменения" : "изменений"} ждут публикации.</div>}
+        {undo && (
+          <div className="sa-fadein" style={{ ...glass(T), marginTop: 10, padding: "10px 13px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: T.para?.color }}>
+            <span style={{ flex: 1 }}>«{undo.name}» удалено</span>
+            <span style={{ color: gold, fontWeight: "bold", cursor: "pointer" }} onClick={restoreRemoved} {...onActivate(restoreRemoved)}>Вернуть</span>
+          </div>
+        )}
+        {(list.length + orphanShared.length + sampleList.length) > 6 && (
+          <div style={{ marginTop: 12 }}>
+            <input className="sa-field" value={eq} onChange={e => setEq(e.target.value)} placeholder="Найти блюдо в редакторе…" style={{ ...inputSt, marginBottom: 8, padding: "9px 12px", fontSize: 14 }} />
+            <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+              {[{ cat: "", n: list.length + orphanShared.length + sampleList.length }, ...groupByCat([...list, ...orphanShared, ...sampleList]).map(g => ({ cat: g.cat, n: g.items.length }))].map(g => (
+                <span key={g.cat || "_all"} onClick={() => setEcat(g.cat === ecat ? "" : g.cat)} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${ecat === g.cat ? gold : gold + "55"}`, background: ecat === g.cat ? "rgba(214,178,102,0.16)" : "transparent", color: ecat === g.cat ? textColor : T.modSub.color }}>{g.cat || "Все"} · {g.n}</span>
+              ))}
+            </div>
+          </div>
+        )}
         {importErr && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: red }}>{importErr}</div>}
         {orphanShared.length > 0 && (
           <div style={{ ...glass(T), padding: "13px 14px", marginTop: 12, fontSize: 13, color: T.para?.color, lineHeight: 1.55 }}>
@@ -832,18 +910,26 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
           <b style={{ color: samplesShown ? "#5DBB8A" : red, flexShrink: 0 }}>{samplesShown ? "видны" : "скрыты"}</b>
         </div>
       </div>
-      <div style={{ ...T.secTitle }}>Свои блюда ({list.length})</div>
+      <div style={{ ...T.secTitle }}>Свои блюда ({vis(list).length}{eq || ecat ? ` из ${list.length}` : ""})</div>
       <div style={{ padding: "0 14px 14px" }}>
         {!list.length && <div style={{ color: T.modSub.color, fontSize: 13, padding: "6px 4px" }}>Пока пусто. Добавь реальные блюда — и команда будет тренироваться на них.</div>}
-        {list.map(d => (
-          <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
-            <div style={{ ...T.modBar, background: gold }} />
-            {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
-            <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") }))}>
-              <div style={T.modTitle}>{d.name}</div>
-              <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
-            </div>
-            <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => remove(d.id)} {...onActivate(() => remove(d.id))}>✕</div>
+        {groupByCat(vis(list)).map(g => (
+          <div key={g.cat}>
+            {list.length > 6 && <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "6px 2px 8px" }}>{g.cat.toUpperCase()} · {g.items.length}</div>}
+            {g.items.map(d => {
+              const changed = !sameAsServer(d);
+              return (
+                <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
+                  <div style={{ ...T.modBar, background: changed ? gold : green }} />
+                  {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") }))}>
+                    <div style={T.modTitle}>{d.name}</div>
+                    <div style={T.modSub}>{(d.ingredients || []).length} ингр. · {(d.allergens || []).length ? (d.allergens || []).length + " аллерг." : "аллергенов нет"}{changed ? " · не опубликовано" : ""}</div>
+                  </div>
+                  <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => remove(d.id)} {...onActivate(() => remove(d.id))}>✕</div>
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
@@ -852,7 +938,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
         <div style={{ ...T.secTitle }}>Меню команды на сервере ({orphanShared.length})</div>
         <div style={{ padding: "0 14px 14px" }}>
           <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Тап — поправить (копия появится в своих), ✕ — удалить. Изменения уйдут команде после «Опубликовать».</div>
-          {orphanShared.map(d => (
+          {vis(orphanShared).map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
               <div style={{ ...T.modBar, background: "#5DBB8A" }} />
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
@@ -875,7 +961,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
         <div style={{ ...T.secTitle }}>Примеры-заготовки ({sampleList.length})</div>
         <div style={{ padding: "0 14px 24px" }}>
           <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Учебные блюда для старта. Тап — переделать под своё, ✕ — убрать с этого телефона. После публикации меню команды они скроются сами.</div>
-          {sampleList.map(d => (
+          {vis(sampleList).map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: 0.85 }}>
               <div style={{ ...T.modBar, background: `${gold}66` }} />
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}

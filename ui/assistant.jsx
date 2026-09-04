@@ -312,8 +312,10 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
   const parseCards = (text) => {
     let clean = text || "";
     const cards = [];
-    clean = clean.replace(/\[\[cocktail:([a-zA-Z0-9_-]+)\]\]/g, (_, id) => { const c = COCKTAILS.find(x => x.id === id); if (c) cards.push({ kind: "cocktail", c }); return ""; });
-    clean = clean.replace(/\[\[dish:([a-zA-Z0-9_-]+)\]\]/g, (_, id) => { const d = myDishes.find(x => String(x.id) === id); if (d) cards.push({ kind: "dish", d }); return ""; });
+    // Доп. 164: маркер может прийти и с подписью — [[dish:id|Посмотреть карточку]] — принимаем оба вида;
+    // неизвестный id тоже вычищаем из текста, чтобы маркер не висел сырым
+    clean = clean.replace(/\[\[cocktail:([a-zA-Z0-9_-]+)(?:\|[^\]]*)?\]\]/g, (_, id) => { const c = COCKTAILS.find(x => x.id === id); if (c) cards.push({ kind: "cocktail", c }); return ""; });
+    clean = clean.replace(/\[\[dish:([a-zA-Z0-9_-]+)(?:\|[^\]]*)?\]\]/g, (_, id) => { const d = myDishes.find(x => String(x.id) === id); if (d) cards.push({ kind: "dish", d }); return ""; });
     if (!cards.length) {
       const low = clean.toLowerCase().replace(/ё/g, "е");
       for (const c of COCKTAILS) { if (c.name.length >= 4 && low.includes(c.name.toLowerCase().replace(/ё/g, "е"))) { cards.push({ kind: "cocktail", c }); if (cards.length >= 2) break; } }

@@ -24,7 +24,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
   const [sr, setSr] = React.useState(() => loadSR(restaurant));
   const [doneQuiz, setDoneQuiz] = React.useState(0); // сколько «Знал» подряд в этой сессии
 
-  const due = React.useMemo(() => dishes.filter(d => { const r = sr[d.id]; return !r || !r.due || r.due <= Date.now(); }), [dishes, sr]);
+  const due = React.useMemo(() => dishes.filter(d => !d.stop && (() => { const r = sr[d.id]; return !r || !r.due || r.due <= Date.now(); })()), [dishes, sr]); // Доп. 166: стоп не повторяем
   const pool = React.useMemo(() => dishes.filter(d => dishMatches(d, q) && (!cat || normCat(d.cat) === cat)), [dishes, q, cat]);
   const list = mode === "quiz" ? due.filter(d => pool.includes(d)) : pool;
   const d = list[Math.min(idx, Math.max(0, list.length - 1))];
@@ -151,7 +151,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                     style={{ ...glass(T), display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 6, cursor: "pointer" }}>
                     {x.img ? <img src={x.img} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} /> : <div style={{ width: 40, height: 40, borderRadius: 10, border: `1px dashed ${bd}`, flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.name}</div>
-                    <span style={{ fontSize: 11, color: known ? (green || "#5DBB8A") : sub }}>{known ? "знаю ✓" : "к повтору"}</span>
+                    <span style={{ fontSize: 11, color: x.stop ? (red || "#B8352A") : known ? (green || "#5DBB8A") : sub }}>{x.stop ? "в стопе" : known ? "знаю ✓" : "к повтору"}</span>
                   </div>
                 );
               })}
@@ -173,6 +173,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
               style={{ cursor: "pointer", willChange: "transform, opacity", touchAction: "pan-y" }}>
               <div className="sa-ck-inner" style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
                 <div className="sa-ck-face" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
+                  {d.stop && <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red || "#B8352A", color: "#fff", fontSize: 10, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div>}
                   <DishPhoto src={d.img} h={190} />
                   <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.2 }}>{d.name}</div>
@@ -181,7 +182,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                 </div>
                 <div className="sa-ck-face sa-ck-back" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
                   <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 4 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
-                  <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, marginBottom: 8 }}>{d.name}</div>
+                  <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, marginBottom: 8 }}>{d.name}{d.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                   {d.desc && <div style={{ fontSize: 13.5, color: T.para?.color || text, lineHeight: 1.55, fontStyle: "italic", marginBottom: 8 }}>{d.desc}</div>}
                   <DishBack d={d} T={T} gold={gold} />
                 </div>

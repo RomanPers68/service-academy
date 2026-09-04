@@ -7,7 +7,7 @@
 
 import React from "react";
 import { rememberSharedMenu } from "../lib/reference-context";
-import { CAT_ORDER, normCat, groupByCat, dishMatches } from "../lib/menu-sections";
+import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
 import { MenuDeck } from "./menu-deck";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
@@ -101,10 +101,11 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
 
   const dishes = React.useMemo(() => {
     if (!restaurant) return [];
-    const own = custom[restaurant] || [];
-    const ownIds = new Set(own.map(d => d.id));
+    const ownAll = custom[restaurant] || [];
+    const ownIds = new Set(ownAll.map(d => d.id));
+    const own = ownAll.filter(d => !d.archived); // Доп. 167: архив в тренажёре не показываем
     const del = new Set(deleted[restaurant] || []);
-    const team = shared.filter(d => d && d.id && !ownIds.has(d.id) && !del.has(d.id)); // своя правка важнее серверной; удалённое — до публикации не показываем
+    const team = shared.filter(d => d && d.id && !ownIds.has(d.id) && !del.has(d.id) && !d.archived); // своя правка важнее серверной; удалённое — до публикации не показываем
     // Доп. 154: примеры-заготовки видны, пока нет меню команды (или если включены вручную);
     // отредактированный пример живёт в «своих», удалённый — в скрытых.
     const hs = hideSamples[restaurant];
@@ -355,7 +356,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
                   ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
                   : <div style={{ width: 54, height: 54, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 18 }}>🍽</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+                  <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 10.5, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                   <div style={{ fontSize: 12, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
                   {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{a}</span>)}</div>}
                 </div>
@@ -631,26 +632,49 @@ function EditorField({ value, onChange, placeholder, rows = 1, style, inputSt, t
   );
 }
 
+// Доп. 166: карточка блюда как в Колоде — для предпросмотра из редактора (лицо/оборот по тапу)
+function PreviewCard({ d, T, gold, red, glass }) {
+  const [back, setBack] = React.useState(false);
+  const text = T.modTitle.color;
+  return (
+    <div className="sa-card" onClick={() => setBack(b => !b)} style={{ ...glass(T), padding: "18px 18px 16px", minHeight: 300, cursor: "pointer", position: "relative", overflow: "hidden" }}>
+      {d.stop && <div style={{ position: "absolute", top: 14, right: -34, transform: "rotate(35deg)", background: red, color: "#fff", fontSize: 10, letterSpacing: 1.5, padding: "4px 40px" }}>СЕГОДНЯ НЕТ</div>}
+      {!back ? (<>
+        <DishPhoto src={d.img} h={190} />
+        <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.2 }}>{d.name || "Без названия"}</div>
+        <div style={{ marginTop: 14, fontSize: 11.5, color: gold, fontStyle: "italic", textAlign: "center" }}>тапни — состав ✦</div>
+      </>) : (<>
+        <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 4 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, marginBottom: 8 }}>{d.name || "Без названия"}</div>
+        {d.desc ? <div style={{ fontSize: 13.5, color: T.para?.color || text, lineHeight: 1.55, fontStyle: "italic", marginBottom: 8 }}>{d.desc}</div> : <div style={{ fontSize: 13, color: T.modSub.color, fontStyle: "italic", marginBottom: 8 }}>Описания для гостя пока нет — официанту придётся импровизировать.</div>}
+        <DishBack d={d} T={T} gold={gold} />
+      </>)}
+    </div>
+  );
+}
+
 function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
-  const list = custom[restaurant] || [];
+  const list = (custom[restaurant] || []).filter(d => !d.archived);
+  const archived = (custom[restaurant] || []).filter(d => d.archived);
   // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя
   // ни поправить, ни удалить, пока не «заберёшь» в редактор
   const delSet = new Set(deleted[restaurant] || []);
-  const orphanShared = (shared || []).filter(s => s && s.id && !list.some(d => d.id === s.id) && !delSet.has(s.id));
+  const orphanShared = (shared || []).filter(s => s && s.id && !(custom[restaurant] || []).some(d => d.id === s.id) && !delSet.has(s.id)); // Доп. 168: любая своя версия (и архивная) важнее серверной
   const hidSet = new Set(hiddenIds[restaurant] || []);
   const hs = hideSamples[restaurant];
   const samplesShown = hs === false ? true : hs === true ? false : (shared || []).length === 0;
-  const sampleList = samplesShown ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !list.some(x => x.id === d.id) && !hidSet.has(d.id)) : [];
+  const sampleList = samplesShown ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !(custom[restaurant] || []).some(x => x.id === d.id) && !hidSet.has(d.id)) : [];
   // Доп. 154: править чужое = забрать копию в свои (та же id — своя версия побеждает); удалить серверное = пометить до публикации; удалить пример = скрыть id
   const srvById = new Map((shared || []).filter(x => x && x.id).map(x => [x.id, x]));
   // jsonb на сервере переставляет ключи — сравниваем в каноническом виде (ключи по алфавиту)
   const canon = (o) => o ? JSON.stringify(o, Object.keys(o).sort()) : "";
   const sameAsServer = (d) => canon(d) === canon(srvById.get(d.id));
-  const unpublished = list.filter(d => !sameAsServer(d)).length + (deleted[restaurant] || []).length;
+  const unpublished = [...list, ...archived].filter(d => !sameAsServer(d)).length + (deleted[restaurant] || []).length;
   const editForeign = (d) => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") });
-  const deleteServer = (id) => { setDeleted({ ...deleted, [restaurant]: [...(deleted[restaurant] || []), id] }); vibrate("light"); };
+  const deleteServer = (id) => { const d = orphanShared.find(x => x.id === id); if (!d) return; setCustom({ ...custom, [restaurant]: [{ ...d, archived: true, archivedAt: Date.now(), stop: null }, ...(custom[restaurant] || [])] }); vibrate("light"); };
   const hideSample = (id) => { setHiddenIds({ ...hiddenIds, [restaurant]: [...(hiddenIds[restaurant] || []), id] }); vibrate("light"); };
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
 
@@ -692,10 +716,26 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   const [pubBusy, setPubBusy] = React.useState(false);
   const [pubMsg, setPubMsg] = React.useState(null); // { ok, text }
   const _showPub = (ok, text) => { setPubMsg({ ok, text }); setTimeout(() => setPubMsg(null), 8000); };
+  const publishList = (dishesToPublish) => {
+    if (!saToken() || !restaurant) return;
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(dishesToPublish) })
+      .then(res => { if (res && res.ok === true) { if (onPublished) onPublished(dishesToPublish); rememberSharedMenu(restaurant, dishesToPublish); try { localStorage.setItem("sa_menu_pub_" + restaurant, String(Date.now())); } catch (e) {} } })
+      .catch(() => {});
+  };
+  // Доп. 166: стоп-лист. Один тап — блюдо помечено «сегодня нет» и это сразу уходит команде.
+  const toggleStop = (d) => {
+    const stopped = !d.stop;
+    const upd = { ...d, stop: stopped ? { since: Date.now() } : null };
+    const own = custom[restaurant] || []; // все свои, включая архив — иначе setCustom стёр бы архив
+    const nextOwn = own.some(x => x.id === d.id) ? own.map(x => x.id === d.id ? upd : x) : [upd, ...own];
+    setCustom({ ...custom, [restaurant]: nextOwn });
+    vibrate(stopped ? "error" : "success");
+    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id)]);
+  };
   const publish = () => {
     if (!saToken()) { _showPub(false, "Нужен вход по коду сотрудника"); return; }
     setPubBusy(true);
-    const toPublish = [...list, ...orphanShared]; // Доп. 154: свои + серверные, которые не удаляли
+    const toPublish = [...list, ...archived, ...orphanShared]; // Доп. 154/167: свои + архив (с флагом) + серверные
     rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(toPublish) })
       .then(res => {
         setPubBusy(false);
@@ -704,6 +744,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
           if (onPublished) onPublished(toPublish);
           if (setDeleted) setDeleted({ ...deleted, [restaurant]: [] });
           rememberSharedMenu(restaurant, toPublish);
+          try { localStorage.setItem("sa_menu_pub_" + restaurant, String(Date.now())); } catch (e) {}
           vibrate("light");
         }
         else if (res && res.ok === false) _showPub(false, res.error === "auth" ? "Сервер не подтвердил сессию — выйди и зайди по коду заново" : "Сервер отклонил: " + (res.error || "неизвестно"));
@@ -722,23 +763,67 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     const dish = { ...form, id: form.id || "c" + Date.now(), name: form.name.trim(), ingredients: form.ingredients.split(",").map(s => s.trim()).filter(Boolean) };
     if (!form.id) { dish.isNew = true; dish.addedAt = Date.now(); } // новое блюдо → в «Новые позиции» на 30 дней
     // Доп. 154: чужое блюдо (пример или серверное) с той же id ещё не в своих — добавляем как свою версию
-    const next = { ...custom, [restaurant]: form.id && list.some(d => d.id === form.id) ? list.map(d => d.id === form.id ? dish : d) : [dish, ...list] };
+    const own = custom[restaurant] || [];
+    const next = { ...custom, [restaurant]: form.id && own.some(d => d.id === form.id) ? own.map(d => d.id === form.id ? dish : d) : [dish, ...own] };
     setCustom(next); setForm(null); vibrate("light");
   };
   // Доп. 163: удаление с отменой (6 секунд), поиск и раздел в списке, признак неопубликованных изменений
   const [undo, setUndo] = React.useState(null);
   const undoTimer = React.useRef(null);
+  // Доп. 167: удаление = архив (archived:true), не небытие. Архив едет на сервер вместе с меню,
+  // официанты и Наставник его не видят; вернуть можно в любой момент.
+  const allOwn = custom[restaurant] || [];
   const remove = (id) => {
-    const dish = list.find(d => d.id === id);
-    setCustom({ ...custom, [restaurant]: list.filter(d => d.id !== id) });
+    const dish = allOwn.find(d => d.id === id);
+    setCustom({ ...custom, [restaurant]: allOwn.map(d => d.id === id ? { ...d, archived: true, archivedAt: Date.now(), stop: null } : d) });
     if (dish) { setUndo(dish); clearTimeout(undoTimer.current); undoTimer.current = setTimeout(() => setUndo(null), 6000); vibrate("light"); }
   };
-  const restoreRemoved = () => { if (!undo) return; setCustom({ ...custom, [restaurant]: [undo, ...(custom[restaurant] || [])] }); setUndo(null); clearTimeout(undoTimer.current); };
+  const restoreRemoved = () => { if (!undo) return; unarchive(undo.id); setUndo(null); clearTimeout(undoTimer.current); };
+  const unarchive = (id) => { setCustom({ ...custom, [restaurant]: (custom[restaurant] || []).map(d => d.id === id ? { ...d, archived: false, archivedAt: null } : d) }); vibrate("success"); };
+  const destroy = (id) => { setCustom({ ...custom, [restaurant]: (custom[restaurant] || []).filter(d => d.id !== id) }); if (setDeleted && (shared || []).some(x => x && x.id === id)) setDeleted({ ...deleted, [restaurant]: [...(deleted[restaurant] || []), id] }); vibrate("error"); };
+  // Доп. 166: дублировать (вариации) и двигать внутри раздела (порядок как в печатном меню)
+  const duplicate = (d) => { const copy = { ...d, id: "c" + Date.now(), name: d.name + " (копия)", stop: null, archived: false }; setCustom({ ...custom, [restaurant]: [copy, ...(custom[restaurant] || [])] }); vibrate("light"); setForm({ img: "", ...copy, ingredients: (copy.ingredients || []).join(", ") }); };
+  const moveIn = (d, dir) => {
+    const same = list.filter(x => normCat(x.cat) === normCat(d.cat));
+    const i = same.findIndex(x => x.id === d.id), j = i + dir;
+    if (j < 0 || j >= same.length) return;
+    const own = custom[restaurant] || [];
+    const a = own.indexOf(same[i]), b = own.indexOf(same[j]);
+    const next = own.slice(); [next[a], next[b]] = [next[b], next[a]];
+    setCustom({ ...custom, [restaurant]: next }); vibrate("light");
+  };
   const [eq, setEq] = React.useState("");
   const [ecat, setEcat] = React.useState("");
   const vis = (arr) => arr.filter(d => dishMatches(d, eq) && (!ecat || normCat(d.cat) === ecat));
   const [photoState, setPhotoState] = React.useState(""); // Доп. 135: "" | uploading | cloud | local (хук — на верхнем уровне компонента)
   React.useEffect(() => { if (!form) setPhotoState(""); }, [form]); // закрыли форму — подпись не переезжает на следующее блюдо
+  // Доп. 166: предпросмотр «как увидит официант» и AI-описание по составу
+  const [preview2, setPreview2] = React.useState(false);
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiErr, setAiErr] = React.useState("");
+  const [aiVariants, setAiVariants] = React.useState([]); // Доп. 167: три варианта на выбор
+  React.useEffect(() => { if (!form) { setPreview2(false); setAiErr(""); setAiVariants([]); } }, [form]);
+  const aiDescribe = () => {
+    if (!form || !form.name.trim() || aiBusy) return;
+    setAiBusy(true); setAiErr("");
+    const ing = String(form.ingredients || "").split(",").map(x => x.trim()).filter(Boolean).join(", ");
+    const ask = `Напиши три разных «вкусных описания» блюда для гостя ресторана «${restaurant}» — каждое два предложения, тёплым живым языком официанта, без пафоса и без перечисления ингредиентов подряд. Первое — про вкус и текстуру, второе — про происхождение или способ приготовления, третье — короткое и игривое. Блюдо: «${form.name.trim()}»${form.cat ? ` (раздел: ${form.cat})` : ""}. Состав: ${ing || "не указан"}.${form.note ? ` Важно: ${form.note}` : ""} Формат ответа строго: три абзаца, каждый начинается с «1.», «2.», «3.». Без кавычек, заголовков и пояснений.`;
+    fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: ask }] }),
+    }).then(r => r.json()).then(j => {
+      setAiBusy(false);
+      if (j && j.ok && j.reply) {
+        const raw = String(j.reply).replace(/\[\[[^\]]*\]\]/g, "");
+        const parts = raw.split(/\n?\s*(?:^|\n)\s*[1-3][.)]\s*/m).map(x => x.replace(/^["«»\s*]+|["«»\s*]+$/g, "").trim()).filter(x => x.length > 20).slice(0, 3);
+        if (parts.length >= 2) { setAiVariants(parts); vibrate("success"); }
+        else if (parts.length === 1) { setForm(f => ({ ...f, desc: parts[0] })); vibrate("success"); }
+        else setAiErr("Наставник ответил невнятно — попробуй ещё раз");
+      }
+      else setAiErr("Наставник не ответил — попробуй ещё раз");
+    }).catch(() => { setAiBusy(false); setAiErr("Нет связи с Наставником"); });
+  };
 
   if (form) {
     const toggleAl = (al) => setForm(f => ({ ...f, allergens: f.allergens.includes(al) ? f.allergens.filter(x => x !== al) : [...f.allergens, al] }));
@@ -828,6 +913,21 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
 
           {secLabel("ДЛЯ ГОСТЯ")}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={v => setForm(f => ({ ...f, desc: v }))} rows={3} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "-4px 0 10px" }}>
+            <span onClick={aiDescribe} {...onActivate(aiDescribe)} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: canSave ? "pointer" : "default", border: `1px solid ${gold}88`, color: gold, opacity: canSave && !aiBusy ? 1 : 0.5 }}>{aiBusy ? "Наставник пишет…" : aiVariants.length ? "✦ Ещё три варианта" : "✦ Три варианта описания"}</span>
+            {aiErr && <span style={{ fontSize: 12, color: red }}>{aiErr}</span>}
+          </div>
+          {aiVariants.length > 0 && (
+            <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 12 }}>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.4, color: gold, fontFamily: "monospace", marginBottom: 8 }}>ВЫБЕРИ — ПОТОМ МОЖНО ПРАВИТЬ</div>
+              {aiVariants.map((v, i) => (
+                <div key={i} onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} {...onActivate(() => setForm(f => ({ ...f, desc: v })))}
+                  style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, cursor: "pointer", fontSize: 13.5, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${form.desc === v ? gold : gold + "33"}`, background: form.desc === v ? "rgba(214,178,102,0.12)" : "transparent" }}>
+                  <span style={{ color: gold, marginRight: 6 }}>{i + 1}.</span>{v}
+                </div>
+              ))}
+            </div>
+          )}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={v => setForm(f => ({ ...f, pairing: v }))} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача, выход в граммах…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
         </div>
@@ -836,10 +936,23 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
           background: a11y ? "rgba(245,238,222,0.92)" : "rgba(21,17,11,0.92)", borderTop: `1px solid ${gold}33`, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}66`, color: textColor, flex: 1 }} onClick={() => setForm(null)}>Отмена</button>
+            <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, flex: 1, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={() => { setPreview2(true); vibrate("light"); }}>Как увидит официант</button>
             <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1.4, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={save}>{isEdit ? "Сохранить" : "Добавить в меню"}</button>
           </div>
           {!isEdit && <div style={{ textAlign: "center", marginTop: 8 }}><span style={{ fontSize: 12.5, color: gold, cursor: canSave ? "pointer" : "default", opacity: canSave ? 1 : 0.4 }} onClick={() => { if (!canSave) return; save(); setTimeout(() => setForm({ ...empty, cat: form.cat }), 0); }}>Сохранить и добавить ещё{form.cat ? ` в «${form.cat}»` : ""} ›</span></div>}
         </div>
+        {preview2 && (() => {
+          const d = { ...form, ingredients: ingList };
+          return (
+            <div onClick={() => setPreview2(false)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+              <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width: "100%", maxWidth: 420 }}>
+                <div style={{ textAlign: "center", fontSize: 10.5, letterSpacing: 1.6, color: "#EFE4C8", fontFamily: "monospace", marginBottom: 8 }}>ТАК УВИДИТ ОФИЦИАНТ · ТАП — ПЕРЕВЕРНУТЬ</div>
+                <PreviewCard d={d} T={T} gold={gold} red={red} glass={glass} />
+                <button className="sa-btn" onClick={() => setPreview2(false)} style={{ ...T.doneBtn, width: "100%", marginTop: 12, background: gold }}>Вернуться к правке</button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -850,30 +963,76 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
       {preview ? (
         <div style={{ padding: "10px 16px 24px" }}>
           <div style={{ ...glass(T), padding: "14px 15px", marginBottom: 12 }}>
-            <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>AI РАЗОБРАЛ PDF</div>
-            <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.55 }}>Нашёл <b style={{ color: gold }}>{preview.length}</b> блюд. Проверь названия — и добавляй. Составы и аллергены можно уточнить после, тапнув по блюду. Фото добавь с телефона.</div>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>AI РАЗОБРАЛ PDF · ПРОВЕРЬ ДО ДОБАВЛЕНИЯ</div>
+            <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.55 }}>Нашёл <b style={{ color: gold }}>{preview.length}</b> блюд. Разделы и аллергены можно поправить прямо здесь: тап по чипу. Блюда без аллергенов подсвечены — ИИ мог пропустить, а у стола это дорого.</div>
           </div>
-          {preview.map((d, i) => (
-            <div key={i} style={{ ...glass(T), padding: "11px 14px", marginBottom: 8 }}>
-              <div style={{ ...T.modTitle }}>{d.name || "Без названия"}</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{d.cat || "—"} · аллергены: {(d.allergens || []).join(", ") || "не указаны"}</div>
-            </div>
-          ))}
+          {(() => {
+            const catsAll = [...CAT_ORDER, ...[...new Set(preview.map(d => normCat(d.cat)).filter(Boolean))].filter(c => !CAT_ORDER.some(x => x.toLowerCase() === c.toLowerCase()))];
+            const upd = (i, patch) => setPreview(pv => pv.map((d, k) => k === i ? { ...d, ...patch } : d));
+            return preview.map((d, i) => {
+              const als = Array.isArray(d.allergens) ? d.allergens : [];
+              const ings = Array.isArray(d.ingredients) ? d.ingredients : String(d.ingredients || "").split(",").map(x => x.trim()).filter(Boolean);
+              const hints = suggestAllergens(ings, als);
+              const noAl = !als.length;
+              return (
+                <div key={i} style={{ ...glass(T), padding: "11px 14px", marginBottom: 8, borderColor: noAl ? red + "66" : undefined }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ ...T.modTitle, flex: 1 }}>{d.name || "Без названия"}</div>
+                    <span onClick={() => setPreview(pv => pv.filter((_, k) => k !== i))} style={{ color: red, cursor: "pointer", padding: "2px 6px" }}>✕</span>
+                  </div>
+                  <div style={{ ...T.modSub, whiteSpace: "normal", marginTop: 2 }}>{ings.slice(0, 6).join(", ") || "состав не распознан"}</div>
+                  <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 0 2px" }}>
+                    {catsAll.map(c => <span key={c} onClick={() => upd(i, { cat: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "" : c })} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${normCat(d.cat).toLowerCase() === c.toLowerCase() ? gold : gold + "44"}`, background: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "rgba(214,178,102,0.16)" : "transparent", color: normCat(d.cat).toLowerCase() === c.toLowerCase() ? textColor : T.modSub.color }}>{c}</span>)}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                    {ALLERGENS_LIST.map(al => { const on = als.includes(al); return <span key={al} onClick={() => upd(i, { allergens: on ? als.filter(x => x !== al) : [...als, al] })} style={{ padding: "4px 9px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${on ? red : gold + "44"}`, background: on ? "rgba(224,120,120,0.15)" : "transparent", color: on ? red : T.modSub.color }}>{al}</span>; })}
+                  </div>
+                  {hints.length > 0 && <div style={{ fontSize: 12, color: red, marginTop: 6 }}>Проверь: в составе «{hints[0].because}…» — похоже на {hints.map(h => h.allergen).join(", ")}</div>}
+                  {noAl && !hints.length && <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 6 }}>Аллергенов не найдено — если так и есть, всё в порядке.</div>}
+                </div>
+              );
+            });
+          })()}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
             <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setPreview(null)}>Отмена</button>
-            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, flex: 1, background: green, color: "#fff" }} onClick={acceptImport}>Добавить ({preview.length}) ✓</button>
+            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, flex: 1, background: green, color: "#fff" }} onClick={acceptImport} disabled={!preview.length}>Добавить ({preview.length}) ✓</button>
           </div>
         </div>
       ) : (<>
       <div style={{ padding: "10px 16px 0" }}>
-        <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%" }} onClick={() => setForm({ ...empty })}>+ Добавить блюдо</button>
-        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <label className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
-            {importing ? "Читаю PDF…" : "⚡ Импорт из PDF"}
-            <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
-          </label>
-          <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${green}88`, color: T.para?.color, opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={pubBusy}>{pubBusy ? "Отправляю…" : unpublished ? `Опубликовать · ${unpublished}` : "Опубликовано ✓"}</button>
-        </div>
+        {/* Доп. 166: шапка со статусом — менеджер всегда видит, что делать дальше */}
+        {(() => {
+          const teamCount = list.length + orphanShared.length;
+          const stopped = [...list, ...orphanShared].filter(d => d.stop).length;
+          let pubAt = 0; try { pubAt = Number(localStorage.getItem("sa_menu_pub_" + restaurant) || 0); } catch (e) {}
+          const ago = pubAt ? (() => { const m = Math.round((Date.now() - pubAt) / 60000); return m < 1 ? "только что" : m < 60 ? `${m} мин назад` : m < 1440 ? `${Math.round(m / 60)} ч назад` : `${Math.round(m / 1440)} дн назад`; })() : null;
+          return (
+            <div style={{ ...glass(T), padding: "14px 15px", marginBottom: 10 }}>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МЕНЮ КОМАНДЫ · {restaurant}</div>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 20, color: textColor, lineHeight: 1.2 }}>{teamCount} {teamCount % 10 === 1 && teamCount % 100 !== 11 ? "блюдо" : teamCount % 10 >= 2 && teamCount % 10 <= 4 && (teamCount % 100 < 12 || teamCount % 100 > 14) ? "блюда" : "блюд"}{stopped ? <span style={{ color: red, fontSize: 14 }}> · в стопе {stopped}</span> : null}</div>
+              <div style={{ fontSize: 12.5, color: unpublished ? gold : T.modSub.color, marginTop: 4 }}>
+                {unpublished ? `${unpublished} ${unpublished === 1 ? "изменение ждёт" : unpublished < 5 ? "изменения ждут" : "изменений ждут"} публикации — команда видит старую версию` : ago ? `Опубликовано ${ago} — команда видит актуальное` : "Ещё не публиковалось — команда видит примеры"}
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                {unpublished
+                  ? <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, flex: 1.5, background: green, color: "#fff", opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={pubBusy}>{pubBusy ? "Отправляю…" : `Опубликовать · ${unpublished}`}</button>
+                  : <button className="sa-btn" style={{ ...T.doneBtn, flex: 1.5, background: gold }} onClick={() => setForm({ ...empty })}>+ Добавить блюдо</button>}
+                {unpublished
+                  ? <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setForm({ ...empty })}>+ Блюдо</button>
+                  : <label className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
+                      {importing ? "Читаю PDF…" : "⚡ PDF"}
+                      <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
+                    </label>}
+              </div>
+              {unpublished ? (
+                <label className="sa-btn" style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: 12.5, color: T.modSub.color, cursor: "pointer" }}>
+                  {importing ? "Читаю PDF…" : "⚡ Импорт из PDF"}
+                  <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
+                </label>
+              ) : null}
+            </div>
+          );
+        })()}
         {pubMsg && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: pubMsg.ok ? green : red }}>{pubMsg.text}</div>}
         {!pubMsg && unpublished > 0 && <div style={{ marginTop: 8, fontSize: 12.5, color: T.modSub.color }}>Команда пока видит старую версию — {unpublished} {unpublished === 1 ? "изменение" : unpublished < 5 ? "изменения" : "изменений"} ждут публикации.</div>}
         {undo && (
@@ -919,14 +1078,23 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             {g.items.map(d => {
               const changed = !sameAsServer(d);
               return (
-                <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
-                  <div style={{ ...T.modBar, background: changed ? gold : green }} />
-                  {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+                <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", flexWrap: "wrap", opacity: d.stop ? 0.85 : 1 }}>
+                  <div style={{ ...T.modBar, background: d.stop ? red : changed ? gold : green }} />
+                  {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0, filter: d.stop ? "grayscale(1)" : "none" }} />}
                   <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") }))}>
-                    <div style={T.modTitle}>{d.name}</div>
+                    <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                     <div style={T.modSub}>{(d.ingredients || []).length} ингр. · {(d.allergens || []).length ? (d.allergens || []).length + " аллерг." : "аллергенов нет"}{changed ? " · не опубликовано" : ""}</div>
                   </div>
                   <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => remove(d.id)} {...onActivate(() => remove(d.id))}>✕</div>
+                  {/* Доп. 166: стоп · дубликат · порядок */}
+                  <div style={{ flexBasis: "100%", display: "flex", gap: 6, paddingTop: 8, marginTop: 2, borderTop: `1px solid ${gold}22` }}>
+                    <span onClick={() => toggleStop(d)} {...onActivate(() => toggleStop(d))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${d.stop ? red : gold + "55"}`, color: d.stop ? red : T.modSub.color, background: d.stop ? "rgba(224,120,120,0.12)" : "transparent" }}>{d.stop ? "Вернуть в меню" : "В стоп"}</span>
+                    <span onClick={() => duplicate(d)} {...onActivate(() => duplicate(d))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${gold}55`, color: T.modSub.color }}>⧉ Дубликат</span>
+                    <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+                      <span onClick={() => moveIn(d, -1)} {...onActivate(() => moveIn(d, -1))} style={{ width: 30, height: 26, borderRadius: 8, border: `1px solid ${gold}55`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13 }}>↑</span>
+                      <span onClick={() => moveIn(d, 1)} {...onActivate(() => moveIn(d, 1))} style={{ width: 30, height: 26, borderRadius: 8, border: `1px solid ${gold}55`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13 }}>↓</span>
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -943,9 +1111,10 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
               <div style={{ ...T.modBar, background: "#5DBB8A" }} />
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
-                <div style={T.modTitle}>{d.name}</div>
+                <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                 <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
               </div>
+              <span onClick={() => toggleStop(d)} {...onActivate(() => toggleStop(d))} style={{ padding: "5px 9px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, border: `1px solid ${d.stop ? red : gold + "55"}`, color: d.stop ? red : T.modSub.color }}>{d.stop ? "Вернуть" : "В стоп"}</span>
               <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => deleteServer(d.id)} {...onActivate(() => deleteServer(d.id))}>✕</div>
             </div>
           ))}
@@ -957,6 +1126,24 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
           <span style={{ color: gold, marginLeft: 8, cursor: "pointer" }} onClick={() => setDeleted({ ...deleted, [restaurant]: [] })}>Вернуть</span>
         </div>
       )}
+      {archived.length > 0 && (<>
+        <div style={{ ...T.secTitle }}>Архив ({archived.length})</div>
+        <div style={{ padding: "0 14px 14px" }}>
+          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Убранные позиции. Официанты и Наставник их не видят. «Вернуть» — снова в меню, «Навсегда» — без возврата.</div>
+          {archived.map(d => (
+            <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 8px", opacity: 0.8 }}>
+              <div style={{ ...T.modBar, background: T.modSub.color }} />
+              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 10, flexShrink: 0, filter: "grayscale(1)" }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={T.modTitle}>{d.name}</div>
+                <div style={T.modSub}>{d.cat || "без раздела"}{d.archivedAt ? " · убрано " + new Date(d.archivedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : ""}</div>
+              </div>
+              <span onClick={() => unarchive(d.id)} {...onActivate(() => unarchive(d.id))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${green}88`, color: green, flexShrink: 0 }}>Вернуть</span>
+              <span onClick={() => { if (window.confirm(`Удалить «${d.name}» навсегда?`)) destroy(d.id); }} {...onActivate(() => destroy(d.id))} style={{ padding: "5px 8px", fontSize: 11.5, cursor: "pointer", color: red, flexShrink: 0 }}>Навсегда</span>
+            </div>
+          ))}
+        </div>
+      </>)}
       {sampleList.length > 0 && (<>
         <div style={{ ...T.secTitle }}>Примеры-заготовки ({sampleList.length})</div>
         <div style={{ padding: "0 14px 24px" }}>

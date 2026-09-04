@@ -8,6 +8,7 @@
 import React from "react";
 import { rememberSharedMenu } from "../lib/reference-context";
 import { CAT_ORDER, normCat, groupByCat, dishMatches } from "../lib/menu-sections";
+import { MenuDeck } from "./menu-deck";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
@@ -159,7 +160,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
 
   // ── Режимы тренировки ──────────────────────────────────────────────────────
   if (mode === "list") return <MenuList T={T} gold={gold} red={red} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
-  if (mode === "cards") return <FlashCards T={T} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} Head={Head} restaurant={restaurant} onLearned={focusNew && !learned ? markLearned : null} />;
+  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head}
+    DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
   if (mode === "team") return <TeamProgress T={T} gold={gold} green={green} Head={Head} restaurant={restaurant} />;
@@ -175,7 +177,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack }) {
   // ── Главная тренажёра ──────────────────────────────────────────────────────
   const modes = [
     { key: "list", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="20" cy="18" r="1.2" fill={c}/></svg>, title: "Меню по разделам", sub: "Все блюда с поиском: закуски, салаты, супы, горячее…" },
-    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Флеш-карточки", sub: "Состав, аллергены, сочетания — вспомни и проверь себя" },
+    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Свайп, переворот, «Знаю?» — как у Колоды бармена" },
     { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Автоматические вопросы по блюдам ресторана" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
   ];

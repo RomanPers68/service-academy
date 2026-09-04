@@ -43,3 +43,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </BootBoundary>
   </React.StrictMode>
 );
+
+// Доп. 173: сервис-воркер — приложение открывается без сети (Android-Telegram, Safari/Chrome,
+// экран «Домой»). В iOS-Telegram serviceWorker недоступен — регистрация тихо пропускается.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+

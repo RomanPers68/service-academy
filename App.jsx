@@ -8,6 +8,7 @@ import { MODULES, loadRoleModules, loadAllModules, loadSpgModules, allLessonIds,
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero } from "./ui/home-hubs";
 import { GuideScreen } from "./ui/guide";
+import { OfflineScreen } from "./ui/offline";
 import { LiquidTabBar } from "./ui/tabbar";
 import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
@@ -409,7 +410,15 @@ function ServiceAcademy() {
   // навигации хранит один шаг — назад из Справочника вело обратно в Колоду по
   // кругу. Запоминаем экран, с которого зашли в эту пару, и выходим на него.
   const [ckStart, setCkStart] = useState(null);
-  const [menuStart, setMenuStart] = useState(null); // Доп. 170: открыть Колоду меню на блюде (карточка в ответе Наставника)
+  const [menuStart, setMenuStart] = useState(null);
+  // Доп. 173: индикатор сети — полоска сверху, когда связи нет
+  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine !== false));
+  useEffect(() => {
+    const on = () => setOnline(true), off = () => setOnline(false);
+    window.addEventListener("online", on); window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  const offlineHelp = { key:"offline", icon:"mistakes", label:"Без сети", sub: online ? "Как открывать приложение без связи" : "Сейчас без связи — работаем на сохранённом", onClick:() => navigate("offline") }; // Доп. 170: открыть Колоду меню на блюде (карточка в ответе Наставника)
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
@@ -1362,7 +1371,9 @@ function ServiceAcademy() {
           CERTIFICATES_ENABLED && { key:"cert", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },
           { key:"acc", icon:"profile", label:"Аккаунт и настройки", sub:"Тренировочная карточка, крупный шрифт, выход", onClick:() => navigate("profile") },
           { key:"roles", icon:"roles", label:"Мои роли", sub:"Сменить трек или открыть новый", onClick:() => navigate("roleSelect") },
+          offlineHelp,
         ]} /></div>}
+        {screen === "offline" && <OfflineScreen T={T} a11y={a11y} onBack={() => goBack("me")} />}
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
         {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
@@ -1499,6 +1510,12 @@ function ServiceAcademy() {
         )}
 
         {/* Нижняя навигация — только на основных экранах */}
+        {!online && (
+          <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:500, padding:"6px 12px calc(6px + env(safe-area-inset-top, 0px))", textAlign:"center", fontSize:12, letterSpacing:0.5,
+            background: a11y ? "rgba(139,106,48,0.92)" : "rgba(60,44,16,0.92)", color:"#EFE4C8", backdropFilter:"blur(6px)" }}>
+            Без сети — работаем на сохранённом, синхронизируем при появлении связи
+          </div>
+        )}
         {/* Доп. 133: четыре вкладки. Экран внутри раздела подсвечивает свою вкладку. */}
         {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"].includes(screen) && profile && (
           <LiquidTabBar

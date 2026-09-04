@@ -25,7 +25,8 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
   const [doneQuiz, setDoneQuiz] = React.useState(0); // сколько «Знал» подряд в этой сессии
 
   const due = React.useMemo(() => dishes.filter(d => !d.stop && (() => { const r = sr[d.id]; return !r || !r.due || r.due <= Date.now(); })()), [dishes, sr]); // Доп. 166: стоп не повторяем
-  const pool = React.useMemo(() => dishes.filter(d => dishMatches(d, q) && (!cat || normCat(d.cat) === cat)), [dishes, q, cat]);
+  // Доп. 172: порядок Колоды = порядок меню (разделы по канону, внутри раздела — как расставил менеджер)
+  const pool = React.useMemo(() => groupByCat(dishes.filter(d => dishMatches(d, q) && (!cat || normCat(d.cat) === cat))).flatMap(g => g.items), [dishes, q, cat]);
   const list = mode === "quiz" ? due.filter(d => pool.includes(d)) : pool;
   const d = list[Math.min(idx, Math.max(0, list.length - 1))];
   const total = list.length;

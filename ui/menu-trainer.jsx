@@ -83,19 +83,25 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
 
   // ── Этап 4: общее меню ресторана с сервера (публикует менеджер) ────────────
   // Если RPC menu_get ещё не создан (supabase/supabase-stage4.sql) — тихо работаем как раньше, только локально.
-  const [shared, setShared] = React.useState([]);
+  // Доп. 171: офлайн-первый порядок — сначала последняя сохранённая версия меню команды
+  // (кэш sa_menu_shared), потом обновление с сервера, когда есть связь.
+  const cachedShared = (r) => { try { const all = JSON.parse(localStorage.getItem("sa_menu_shared") || "{}"); return Array.isArray(all[r]) ? all[r] : []; } catch (e) { return []; } };
+  const [shared, setShared] = React.useState(() => cachedShared(restaurant));
   const [shareErr, setShareErr] = React.useState(null); // текст ошибки загрузки меню команды
+  const [shareStale, setShareStale] = React.useState(false); // показываем сохранённую версию, сервер недоступен
   const [focusNew, setFocusNew] = React.useState(false);
   React.useEffect(() => {
     if (!restaurant) return;
     let alive = true;
-    setShareErr(null);
+    setShareErr(null); setShareStale(false);
+    const cached = cachedShared(restaurant);
+    setShared(cached);
     rpc("menu_get", { p_restaurant: restaurant }).then(res => {
       if (!alive) return;
       const arr = typeof res === "string" ? JSON.parse(res) : res;
-      if (Array.isArray(arr)) { setShared(arr); rememberSharedMenu(restaurant, arr); } // кэш для ассистента (Доп. 129)
-      else setShareErr(String((res && (res.message || res.error)) || "неожиданный ответ сервера").slice(0, 140));
-    }).catch(() => { if (alive) setShareErr("нет связи с сервером"); });
+      if (Array.isArray(arr)) { setShared(arr); rememberSharedMenu(restaurant, arr); } // кэш для ассистента (Доп. 129) и для офлайна (Доп. 171)
+      else { if (cached.length) setShareStale(true); else setShareErr(String((res && (res.message || res.error)) || "неожиданный ответ сервера").slice(0, 140)); }
+    }).catch(() => { if (!alive) return; if (cached.length) setShareStale(true); else setShareErr("нет связи с сервером"); });
     return () => { alive = false; };
   }, [restaurant]);
 
@@ -204,6 +210,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
         В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v17</span>
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
+        {shareStale && <div style={{ color: T.modSub.color, fontSize: 12, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
       <div style={{ ...T.secTitle }}>Тренировка</div>
       <div style={{ padding: "0 14px" }}>

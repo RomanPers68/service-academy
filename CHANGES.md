@@ -2270,3 +2270,15 @@ MenuTrainerScreen получает startDishId → как только блюд�
 maskable 512 — с полями под Android. Проверено на 60/76/120/180 px:
 силуэт и свечение читаются.
 
+# Дополнение 176 — постоянные коды входа (Этап 13)
+Владелец: код входа нужен многоразовый — Telegram, Safari на экране «Домой»,
+новый телефон. Схема (по диагностике): access_codes(code_hash=crypt, used_at),
+redeem_code гасит код и создаёт сессию; whoami(uuid).
+supabase-stage13-permanent-codes.sql: колонка access_codes.permanent;
+redeem_code берёт код, если он не использован ИЛИ постоянный, и гасит только
+одноразовые; owner_issue_code('Фамилия' | 'Фамилия Имя', permanent=true) —
+выпускает код формата XXXX-XXXX (без похожих букв), owner_revoke_codes —
+гасит все коды сотрудника. Обе команды отозваны у anon/authenticated —
+работают только из SQL Editor. Сотрудникам в приложении — по-прежнему
+одноразовые через «Сотрудники → Новый код».
+

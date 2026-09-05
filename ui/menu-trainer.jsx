@@ -349,12 +349,13 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
             {open.desc && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.55, margin: "8px 0 4px", fontStyle: "italic" }}>{open.desc}</div>}
             <div style={{ marginTop: 10 }}><DishBack d={open} T={T} gold={gold} /></div>
           </div>
+          {/* Доп. 180: низ как в колодах — капсулы, счётчик одной строкой между ними */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-            <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, padding: "9px 16px" }} onClick={() => go(-1)}>‹ назад</button>
-            <span style={{ fontSize: 11, color: sub, fontFamily: "monospace" }}>{i + 1} / {flat.length}</span>
-            <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, padding: "9px 16px" }} onClick={() => go(1)}>дальше ›</button>
+            <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 13 }}>‹ назад</button>
+            <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: sub, letterSpacing: 1, whiteSpace: "nowrap" }}>{i + 1} / {flat.length}</span>
+            <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 13 }}>дальше ›</button>
           </div>
-          <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", border: `1px solid ${gold}55`, color: sub }} onClick={() => setOpen(null)}>К списку</button>
+          <button className="sa-btn" onClick={() => setOpen(null)} style={{ ...pill(false), width: "100%", marginTop: 10, padding: "11px", textAlign: "center", fontSize: 13, color: sub }}>К списку</button>
         </div>
       </div>
     );

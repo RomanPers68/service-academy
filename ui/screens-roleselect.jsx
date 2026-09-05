@@ -260,7 +260,8 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
         })()}
 
         {/* ═══ Книга отзывов — слим-витрина: монограмма, печати, золотая нить ═══ */}
-        {!learnOnly && onGuestBook && profile && (() => {
+        {/* Доп. 185: витрина Книги отзывов возвращена на главную — она про человека, а не про раздел */}
+        {onGuestBook && profile && (() => {
           const bs = bookStats(MODULES, completed, quizDone, examResults);
           const unread = countUnreadPages(completed, quizDone, examResults);
           return (

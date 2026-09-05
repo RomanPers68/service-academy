@@ -186,7 +186,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
   );
 
   // ── Режимы тренировки ──────────────────────────────────────────────────────
-  if (mode === "list") return <MenuList T={T} gold={gold} red={red} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
+  // Доп. 189: «Меню по разделам» слилось с Колодой — список живёт в ней за иконкой указателя
   if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart}
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
@@ -203,8 +203,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
 
   // ── Главная тренажёра ──────────────────────────────────────────────────────
   const modes = [
-    { key: "list", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="20" cy="18" r="1.2" fill={c}/></svg>, title: "Меню по разделам", sub: "Все блюда с поиском: закуски, салаты, супы, горячее…" },
-    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Свайп, переворот, «Знаю?» — как у Колоды бармена" },
+    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Все блюда: карточки, поиск, разделы, «Знаю?» — как у бара" },
     { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Автоматические вопросы по блюдам ресторана" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
   ];
@@ -346,7 +345,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
           <div className="sa-card sa-cardpage-r" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
             <DishPhoto src={open.img} h={190} />
             <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.2 }}>{open.name}</div>
-            {open.desc && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.55, margin: "8px 0 4px", fontStyle: "italic" }}>{open.desc}</div>}
+            {String(open.short || "").trim() && <div style={{ fontSize: 15, color: T.para?.color || text, lineHeight: 1.5, margin: "8px 0 4px", fontStyle: "italic" }}>«{open.short.trim()}»</div>}
             <div style={{ marginTop: 10 }}><DishBack d={open} T={T} gold={gold} /></div>
           </div>
           {/* Доп. 180: низ как в колодах — капсулы, счётчик одной строкой между ними */}
@@ -412,9 +411,9 @@ function DishBack({ d, T, gold }) {
       <Row label="АЛЛЕРГЕНЫ">{(d.allergens || []).length ? (d.allergens || []).map(a => (
         <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 8, border: "1px solid #E0787866", color: "#E07878", fontSize: 12, margin: "0 5px 5px 0" }}>{a}</span>
       )) : <span style={{ color: "#5DBB8A" }}>нет из «большой восьмёрки»</span>}</Row>
-      {d.desc && <Row label="КАК ОПИСАТЬ ГОСТЮ">{d.desc}</Row>}
-      {d.pairing && <Row label="СОЧЕТАНИЕ">{d.pairing}</Row>}
-      {d.note && <Row label="ВАЖНО ЗНАТЬ">{d.note}</Row>}
+      {String(d.desc || "").trim() && <Row label="КАК ОПИСАТЬ ГОСТЮ">{d.desc}</Row>}
+      {String(d.pairing || "").trim() && <Row label="СОЧЕТАНИЕ">{d.pairing}</Row>}
+      {String(d.note || "").trim() && <Row label="ВАЖНО ЗНАТЬ">{d.note}</Row>}
     </div>
   );
 }
@@ -675,7 +674,8 @@ function PreviewCard({ d, T, gold, red, glass }) {
       </>) : (<>
         <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 4 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, marginBottom: 8 }}>{d.name || "Без названия"}</div>
-        {d.desc ? <div style={{ fontSize: 13.5, color: T.para?.color || text, lineHeight: 1.55, fontStyle: "italic", marginBottom: 8 }}>{d.desc}</div> : <div style={{ fontSize: 13, color: T.modSub.color, fontStyle: "italic", marginBottom: 8 }}>Описания для гостя пока нет — официанту придётся импровизировать.</div>}
+        {String(d.short || "").trim() ? <div style={{ fontSize: 14.5, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div> : null}
+        {!String(d.desc || "").trim() && <div style={{ fontSize: 13, color: T.modSub.color, fontStyle: "italic", marginBottom: 8 }}>Описания для гостя пока нет — официанту придётся импровизировать.</div>}
         <DishBack d={d} T={T} gold={gold} />
       </>)}
     </div>
@@ -831,6 +831,30 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     setReupMsg(ok && !fail ? `В облаке ✓ ${ok} фото — память телефона свободна` : ok ? `${ok} ушло, ${fail} не удалось: ${why}` : "Не удалось: " + why);
     if (ok) vibrate("success");
   };
+  // Доп. 187: фото, потерянные на телефоне, могли уцелеть в серверной копии (публиковались как текст) — вытащить в облако
+  const recoverable = React.useMemo(() => {
+    const own = custom[restaurant] || [];
+    return own.filter(d => d.imgLostLocal && !d.img).map(d => ({ d, srv: (shared || []).find(x => x && x.id === d.id && isDataImg(x.img)) })).filter(x => x.srv);
+  }, [custom, restaurant, shared]);
+  const [recBusy, setRecBusy] = React.useState(false);
+  const [recMsg, setRecMsg] = React.useState("");
+  const recoverFromServer = async () => {
+    if (recBusy || !recoverable.length) return;
+    setRecBusy(true); setRecMsg("");
+    let ok = 0, fail = 0, why = "", cur = custom[restaurant] || [];
+    for (const { d, srv } of recoverable) {
+      try {
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+          body: JSON.stringify({ token: saToken(), restaurant, dishId: d.id, image: srv.img }) });
+        let j = null; try { j = await r.json(); } catch (e) {}
+        if (j && j.ok && j.url) { cur = cur.map(x => x.id === d.id ? { ...x, img: j.url, imgLostLocal: false } : x); ok++; }
+        else { fail++; if (!why) why = (j && (j.detail || j.error)) || ("HTTP " + r.status); }
+      } catch (e) { fail++; if (!why) why = "нет связи"; }
+    }
+    setCustom({ ...custom, [restaurant]: cur }); setRecBusy(false);
+    setRecMsg(ok && !fail ? `Восстановлено ✓ ${ok} фото — теперь в облаке. Нажми «Опубликовать», чтобы команда увидела.` : ok ? `${ok} восстановлено, ${fail} не удалось: ${why}` : "Не удалось: " + why);
+    if (ok) vibrate("success");
+  };
   const [undo, setUndo] = React.useState(null);
   const undoTimer = React.useRef(null);
   // Доп. 167: удаление = архив (archived:true), не небытие. Архив едет на сервер вместе с меню,
@@ -975,6 +999,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
           )}
 
           {secLabel("ДЛЯ ГОСТЯ")}
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Одной фразой — первое, что говорит официант (необязательно)" value={form.short || ""} onChange={v => setForm(f => ({ ...f, short: v }))} style={{ fontStyle: "italic" }} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={v => setForm(f => ({ ...f, desc: v }))} rows={3} />
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "-4px 0 10px" }}>
             <span onClick={aiDescribe} {...onActivate(aiDescribe)} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: canSave ? "pointer" : "default", border: `1px solid ${gold}88`, color: gold, opacity: canSave && !aiBusy ? 1 : 0.5 }}>{aiBusy ? "Наставник пишет…" : aiVariants.length ? "✦ Ещё три варианта" : "✦ Три варианта описания"}</span>
@@ -984,9 +1009,12 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 12 }}>
               <div style={{ fontSize: 10.5, letterSpacing: 1.4, color: gold, fontFamily: "monospace", marginBottom: 8 }}>ВЫБЕРИ — ПОТОМ МОЖНО ПРАВИТЬ</div>
               {aiVariants.map((v, i) => (
-                <div key={i} onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} {...onActivate(() => setForm(f => ({ ...f, desc: v })))}
-                  style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, cursor: "pointer", fontSize: 13.5, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${form.desc === v ? gold : gold + "33"}`, background: form.desc === v ? "rgba(214,178,102,0.12)" : "transparent" }}>
-                  <span style={{ color: gold, marginRight: 6 }}>{i + 1}.</span>{v}
+                <div key={i} style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, fontSize: 13.5, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${form.desc === v || form.short === v ? gold : gold + "33"}`, background: form.desc === v || form.short === v ? "rgba(214,178,102,0.12)" : "transparent" }}>
+                  <div onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} {...onActivate(() => setForm(f => ({ ...f, desc: v })))} style={{ cursor: "pointer" }}><span style={{ color: gold, marginRight: 6 }}>{i + 1}.</span>{v}</div>
+                  <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12 }}>
+                    <span onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ в описание</span>
+                    <span onClick={() => { setForm(f => ({ ...f, short: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ одной фразой</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1096,12 +1124,13 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             </div>
           );
         })()}
-        {(storageFull || localPhotos.length > 0 || lostPhotos.length > 0) && (
+        {(storageFull || localPhotos.length > 0 || lostPhotos.length > 0 || recoverable.length > 0) && (
           <div className="sa-fadein" style={{ ...glass(T), padding: "11px 13px", marginBottom: 10, borderColor: storageFull || lostPhotos.length ? red + "77" : gold + "66" }}>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.4, color: storageFull || lostPhotos.length ? red : gold, fontFamily: "monospace", marginBottom: 6 }}>{storageFull ? "ПАМЯТЬ ТЕЛЕФОНА ЗАПОЛНЕНА" : lostPhotos.length ? "ФОТО НЕ СОХРАНИЛИСЬ" : "ФОТО ТОЛЬКО НА ТЕЛЕФОНЕ"}</div>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.4, color: storageFull || lostPhotos.length ? red : gold, fontFamily: "monospace", marginBottom: 6 }}>{storageFull ? "ПАМЯТЬ ПРИЛОЖЕНИЯ ЗАПОЛНЕНА" : lostPhotos.length ? "ФОТО НЕ СОХРАНИЛИСЬ" : "ФОТО ТОЛЬКО НА ТЕЛЕФОНЕ"}</div>
             <div style={{ fontSize: 13, color: T.para?.color, lineHeight: 1.55 }}>
-              {storageFull ? "Блюда сохранены, но фото, не ушедшие в облако, на диск не влезли — после перезахода их не будет. " : ""}
-              {lostPhotos.length ? `${lostPhotos.length} ${lostPhotos.length === 1 ? "фото потерялось" : "фото потерялись"} при переполнении — переснять из редактора. ` : ""}
+              {storageFull ? "Это не память телефона: браузер даёт приложению ~5 МБ на всё, и фото-текст их забил. Блюда сохранены; фото, не ушедшие в облако, на диск не влезли. " : ""}
+              {lostPhotos.length ? `${lostPhotos.length} ${lostPhotos.length === 1 ? "фото потерялось" : "фото потерялись"} при переполнении. ` : ""}
+              {recoverable.length ? `${recoverable.length} из них есть в серверной копии — можно вернуть в облако одним тапом. ` : lostPhotos.length ? "В серверной копии их нет — переснять из редактора; новые фото уходят в облако сразу. " : ""}
               {localPhotos.length ? `${localPhotos.length} ${localPhotos.length === 1 ? "фото хранится" : "фото хранятся"} только на этом телефоне и весят память. Отправь их в облако — увидит вся команда, а память освободится.` : ""}
             </div>
             {localPhotos.length > 0 && (
@@ -1110,6 +1139,12 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
                 {reupMsg && <span style={{ fontSize: 12, color: /✓/.test(reupMsg) ? green : red, lineHeight: 1.4 }}>{reupMsg}</span>}
               </div>
             )}
+            {recoverable.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                <button className="sa-btn" style={{ ...T.doneBtn, background: green, color: "#fff", padding: "9px 14px", opacity: recBusy ? 0.55 : 1 }} disabled={recBusy} onClick={recoverFromServer}>{recBusy ? "Восстанавливаю…" : `Восстановить с сервера (${recoverable.length})`}</button>
+              </div>
+            )}
+            {recMsg && <div style={{ fontSize: 12, color: /✓/.test(recMsg) ? green : red, marginTop: 6, lineHeight: 1.4 }}>{recMsg}</div>}
             {!localPhotos.length && reupMsg && <div style={{ fontSize: 12, color: green, marginTop: 6 }}>{reupMsg}</div>}
           </div>
         )}

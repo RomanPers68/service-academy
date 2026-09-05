@@ -150,10 +150,14 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                 return (
                   <div key={x.id} className="sa-card" onClick={() => { const i = list.indexOf(x); if (i >= 0) { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); } else { setMode("deck"); setTimeout(() => { setIdx(pool.indexOf(x)); setView("cards"); }, 0); } }}
                     {...onActivate(() => { const i = list.indexOf(x); if (i >= 0) { setIdx(i); setView("cards"); } })}
-                    style={{ ...glass(T), display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 6, cursor: "pointer" }}>
-                    {x.img ? <img src={x.img} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} /> : <div style={{ width: 40, height: 40, borderRadius: 10, border: `1px dashed ${bd}`, flexShrink: 0 }} />}
-                    <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.name}</div>
-                    <span style={{ fontSize: 11, color: x.stop ? (red || "#B8352A") : known ? (green || "#5DBB8A") : sub }}>{x.stop ? "в стопе" : known ? "знаю ✓" : "к повтору"}</span>
+                    style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
+                    {x.img ? <img src={x.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0, filter: x.stop ? "grayscale(1)" : "none" }} /> : <div style={{ width: 54, height: 54, borderRadius: 12, border: `1px dashed ${bd}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 18 }}>🍽</div>}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "Georgia, serif" }}>{x.name}{x.stop ? <span style={{ color: red || "#B8352A", fontSize: 10.5, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
+                      <div style={{ fontSize: 12, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(x.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
+                      {(x.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{x.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${(red || "#B8352A")}77`, color: red || "#B8352A" }}>{a}</span>)}</div>}
+                    </div>
+                    <span style={{ fontSize: 11, color: known ? (green || "#5DBB8A") : sub, flexShrink: 0 }}>{known ? "знаю ✓" : x.stop ? "" : "к повтору"}</span>
                   </div>
                 );
               })}
@@ -185,7 +189,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                 <div className="sa-ck-face sa-ck-back" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
                   <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 4 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, marginBottom: 8 }}>{d.name}{d.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
-                  {d.desc && <div style={{ fontSize: 13.5, color: T.para?.color || text, lineHeight: 1.55, fontStyle: "italic", marginBottom: 8 }}>{d.desc}</div>}
+                  {String(d.short || "").trim() && <div style={{ fontSize: 14.5, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div>}
                   <DishBack d={d} T={T} gold={gold} />
                 </div>
               </div>

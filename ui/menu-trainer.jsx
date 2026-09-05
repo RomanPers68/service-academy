@@ -806,17 +806,29 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   const reuploadAll = async () => {
     if (reupBusy || !localPhotos.length) return;
     setReupBusy(true); setReupMsg("");
-    let ok = 0, fail = 0, cur = custom[restaurant] || [];
+    let ok = 0, fail = 0, cur = custom[restaurant] || [], why = "";
+    // Доп. 182: причина с сервера — словами, а не общей фразой
+    const explain = (status, j) => {
+      if (status === 404 || (j && /not found/i.test(String(j.message || j.msg || "")))) return "функция photo-upload не развёрнута в Supabase (Edge Functions → Deploy new function → Via Editor → имя photo-upload)";
+      if (j && j.error === "auth") return "сервер не подтвердил сессию — выйди и войди заново";
+      if (j && j.error === "forbidden") return "у этой учётной записи нет права загружать фото (нужен менеджер/старший/владелец)";
+      if (j && j.error === "storage") return "хранилище: " + (j.detail || "ошибка") + " — примени supabase-stage12-storage.sql";
+      if (j && j.error === "too_large") return "фото больше 2 МБ";
+      if (j && (j.error || j.detail)) return String(j.error || "") + (j.detail ? " — " + j.detail : "");
+      return "HTTP " + status;
+    };
     for (const d of localPhotos) {
       try {
-        const j = await fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-          body: JSON.stringify({ token: saToken(), restaurant, dishId: d.id, image: d.img }) }).then(r => r.json());
-        if (j && j.ok && j.url) { cur = cur.map(x => x.id === d.id ? { ...x, img: j.url } : x); ok++; } else fail++;
-      } catch (e) { fail++; }
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+          body: JSON.stringify({ token: saToken(), restaurant, dishId: d.id, image: d.img }) });
+        let j = null; try { j = await r.json(); } catch (e) {}
+        if (j && j.ok && j.url) { cur = cur.map(x => x.id === d.id ? { ...x, img: j.url } : x); ok++; }
+        else { fail++; if (!why) why = explain(r.status, j); }
+      } catch (e) { fail++; if (!why) why = "нет связи с сервером"; }
     }
     setCustom({ ...custom, [restaurant]: cur });
     setReupBusy(false);
-    setReupMsg(ok && !fail ? `В облаке ✓ ${ok} фото — память телефона свободна` : ok ? `${ok} ушло, ${fail} не удалось — проверь связь и функцию photo-upload` : "Не удалось: нет связи или функция photo-upload не развёрнута в Supabase");
+    setReupMsg(ok && !fail ? `В облаке ✓ ${ok} фото — память телефона свободна` : ok ? `${ok} ушло, ${fail} не удалось: ${why}` : "Не удалось: " + why);
     if (ok) vibrate("success");
   };
   const [undo, setUndo] = React.useState(null);

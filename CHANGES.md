@@ -2321,3 +2321,12 @@ ui/screens-team.jsx (CodeLoginScreen): «буквы, потом цифры» —
 подсказкой, где); auth — перелогиниться; forbidden — нет права; storage —
 корзины нет, применить stage12; too_large; иначе — текст ошибки сервера.
 
+# Дополнение 183 — тактильная отдача в Safari и на экране «Домой» (iPhone)
+Вопрос владельца. У Safari нет API вибрации; в Telegram отдачу даёт сам
+Telegram. Обход: системный переключатель <input type="checkbox" switch>
+(iOS 17.4+) при переключении даёт лёгкий «тик». lib/utils.js — если нет ни
+Telegram, ни navigator.vibrate, vibrate() дёргает скрытый переключатель:
+light/medium — один тик, heavy — два, success/error — три. Работает только
+внутри жеста пользователя (тап) — там vibrate и вызывается. Тише
+телеграмовской, но живая. На Android и в Telegram — как раньше.
+

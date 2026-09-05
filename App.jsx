@@ -163,7 +163,7 @@ const WELCOME_TABS_CARDS = [
     text: "Карточка «Твой трек» ведёт к следующему уроку. Ниже — Справочник (в нём же Колода бармена), SOS, Меню и Глоссарий, а дальше вся программа роли с галочками пройденного." },
   { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>),
     title: "Смена — рабочий день",
-    text: "График, чек-листы, задание дня, Гость недели и Книга отзывов. Открывай перед сменой — здесь всё, что пригодится сегодня." },
+    text: "График, чек-листы, задание дня и Гость недели. Открывай перед сменой — здесь всё, что пригодится сегодня." },
   { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M2 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 19c0-2.5 2-4.5 4.5-4.5S23 16.5 23 19"/></svg>),
     title: "Команда и Я",
     text: "В «Команде» — рейтинг, наставничество, новички и работа над ошибками, менеджеру — аналитика и найм. В «Я» — прогресс, сертификаты, роли и настройки, включая крупный шрифт." },
@@ -1338,7 +1338,6 @@ function ServiceAcademy() {
           { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
           { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
           { key:"wg", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest") },
-          { key:"gb", icon:"book", label:"Книга отзывов", sub:"Печати, страницы, история", onClick:() => { setBookFocus(null); navigate("guestbook"); } },
           role === "seasonal" && { key:"ob", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },
         ]} /></div>}
         {screen === "teamHub" && profile && (() => {

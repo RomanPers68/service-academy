@@ -8,6 +8,7 @@
 import React from "react";
 import { rememberSharedMenu } from "../lib/reference-context";
 import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
+import { buildMenuQuiz } from "../lib/menu-quiz";
 import { MenuDeck } from "./menu-deck";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
@@ -204,7 +205,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
   // ── Главная тренажёра ──────────────────────────────────────────────────────
   const modes = [
     { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Все блюда: карточки, поиск, разделы, «Знаю?» — как у бара" },
-    { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Автоматические вопросы по блюдам ресторана" },
+    { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Главные ингредиенты и аллергены — без подвохов" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
   ];
   const iconBox = { width: 38, height: 38, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
@@ -482,7 +483,10 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
 }
 
 // ── Режим 2: викторина (вопросы генерируются из данных меню) ─────────────────
-function buildQuiz(dishes) {
+// Доп. 192: викторина собирается в lib/menu-quiz.js (главные ингредиенты и аллергены, без спорных вариантов)
+const buildQuiz = (dishes) => buildMenuQuiz(dishes, { total: 10 });
+
+function buildQuizLegacy(dishes) {
   const qs = [];
   const others = (d) => dishes.filter(x => x.id !== d.id);
   // Тип А: у какого блюда есть аллерген X

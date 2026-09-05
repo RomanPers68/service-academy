@@ -30,12 +30,13 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
   const list = mode === "quiz" ? due.filter(d => pool.includes(d)) : pool;
   const d = list[Math.min(idx, Math.max(0, list.length - 1))];
   const total = list.length;
-  React.useEffect(() => { setIdx(0); setFlip(false); }, [q, cat, mode]);
+  React.useEffect(() => { const i = startId ? pool.findIndex(x => String(x.id) === String(startId)) : -1; setIdx(i >= 0 ? i : 0); setFlip(false); }, [q, cat, mode]);
+  // Доп. 181: искать блюдо в том списке, который реально листается (pool — по разделам), а не в исходном
   React.useEffect(() => {
     if (!startId) return;
-    const i = dishes.findIndex(x => x.id === startId);
-    if (i >= 0) { setIdx(i); setFlip(false); }
-  }, [startId]);
+    const i = pool.findIndex(x => String(x.id) === String(startId));
+    if (i >= 0) { setMode("deck"); setIdx(i); setFlip(false); }
+  }, [startId, pool]);
 
   // ── свайп: ведём через ref, без ререндера карточки на каждом движении
   const wrapRef = React.useRef(null);

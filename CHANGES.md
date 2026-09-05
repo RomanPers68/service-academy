@@ -2386,3 +2386,10 @@ message · statusCode) и путь файла; приложение показы
 подсказка про корзину — только при «Bucket not found». Требует повторного
 деплоя функции photo-upload (Edge Functions → photo-upload → Code → Deploy).
 
+# Дополнение 191 — фото в облако: настоящая причина — формат ключа
+Журнал photo-upload: Storage отвечал 403 «Unauthorized · Invalid Compact JWS»
+(функция оборачивала это в 400). Supabase выдал проекту серверный ключ нового
+формата (sb_secret_…), а функция передавала его как JWT в Authorization:
+Bearer. Теперь: JWT-ключи (eyJ…) — apikey + Bearer, новые — только apikey.
+Корзина, размер файла и путь были в порядке. Требует деплоя функции.
+

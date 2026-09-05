@@ -15,6 +15,12 @@ const json = (data: unknown, status = 200) =>
 
 const TR: Record<string, string> = { а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"e",ж:"zh",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"h",ц:"c",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya" };
 // Ключ объекта в Storage — только латиница, цифры и дефис: «Океан» → okean
+// Доп. 191: у Supabase два формата ключей. Старые — JWT (eyJ…): apikey + Authorization Bearer.
+// Новые (sb_secret_… / sb_publishable_…) — только apikey; в Bearer их класть нельзя
+// («Invalid Compact JWS» — журнал функции 06.09).
+const isJwt = (k: string) => /^eyJ/.test(k || "");
+const keyHeaders = (k: string): Record<string, string> => isJwt(k) ? { apikey: k, Authorization: "Bearer " + k } : { apikey: k };
+
 const slug = (s: string) => (s || "x").toLowerCase().split("").map(ch => TR[ch] ?? ch).join("")
   .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "x";
 
@@ -37,7 +43,7 @@ Deno.serve(async (req) => {
     // Кто это и можно ли ему редактировать меню
     const who = await fetch(`${url}/rest/v1/rpc/whoami`, {
       method: "POST",
-      headers: { apikey: anon || service, Authorization: "Bearer " + (anon || service), "Content-Type": "application/json" },
+      headers: { ...keyHeaders(anon || service), "Content-Type": "application/json" },
       body: JSON.stringify({ p_token: token }),
     }).then(r => r.json()).catch(() => null);
     const emp = who && who.ok ? who.employee : null;
@@ -52,7 +58,7 @@ Deno.serve(async (req) => {
 
     const up = await fetch(`${url}/storage/v1/object/menu-photos/${path}`, {
       method: "POST",
-      headers: { Authorization: "Bearer " + service, "Content-Type": m[1], "x-upsert": "true", "cache-control": "public, max-age=31536000" },
+      headers: { ...keyHeaders(service), "Content-Type": m[1], "x-upsert": "true", "cache-control": "public, max-age=31536000" },
       body: bytes,
     });
     if (!up.ok) {

@@ -68,6 +68,7 @@ begin
     v_code := v_code || substr(chars, 1 + floor(random() * length(chars))::int, 1);
   end loop;
   v_code := substr(v_code, 1, 4) || '-' || substr(v_code, 5, 4);
+  if p_permanent then update access_codes set used_at = now(), permanent = false where employee_id = v_emp.id and permanent; end if; -- один постоянный на человека
   insert into access_codes (id, employee_id, code_hash, used_at, created_at, permanent)
   values (gen_random_uuid(), v_emp.id, crypt(upper(v_code), gen_salt('bf')), null, now(), p_permanent);
   return v_emp.name || ' ' || v_emp.surname || ' → ' || v_code
@@ -92,9 +93,31 @@ begin
   return v_emp.name || ' ' || v_emp.surname || ': погашено кодов — ' || n;
 end $$;
 
+-- Из приложения (Доп. 177): владелец выдаёт постоянный код себе или сотруднику по своему токену.
+-- Право — только is_admin (менеджерам нельзя: постоянный код — это ключ от всего).
+create or replace function admin_issue_permanent_code(p_token text, p_employee_id uuid)
+returns json language plpgsql security definer
+set search_path to 'public', 'extensions' as $$
+declare v jsonb; v_emp record; v_code text := ''; chars text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; i int;
+begin
+  v := whoami_txt(p_token);
+  if coalesce((v->>'ok')::boolean, false) is not true then return json_build_object('ok', false, 'error', 'auth'); end if;
+  if not coalesce((v->'employee'->>'is_admin')::boolean, false) then return json_build_object('ok', false, 'error', 'forbidden'); end if;
+  select * into v_emp from employees where id = p_employee_id and status = 'active';
+  if v_emp is null then return json_build_object('ok', false, 'error', 'not_found'); end if;
+  for i in 1..8 loop
+    v_code := v_code || substr(chars, 1 + floor(random() * length(chars))::int, 1);
+  end loop;
+  v_code := substr(v_code, 1, 4) || '-' || substr(v_code, 5, 4);
+  update access_codes set used_at = now(), permanent = false where employee_id = v_emp.id and permanent; -- прежний постоянный гаснет
+  insert into access_codes (id, employee_id, code_hash, used_at, created_at, permanent)
+  values (gen_random_uuid(), v_emp.id, crypt(upper(v_code), gen_salt('bf')), null, now(), true);
+  return json_build_object('ok', true, 'code', v_code, 'permanent', true);
+end $$;
+
 -- Только из SQL Editor: снаружи (anon-ключом) эти две функции недоступны
 revoke all on function owner_issue_code(text, boolean) from public, anon, authenticated;
 revoke all on function owner_revoke_codes(text) from public, anon, authenticated;
 
 select 'постоянные коды: ' || (select count(*) from access_codes where permanent) ||
-       ' · функции: ' || (select count(*) from pg_proc where proname in ('redeem_code','owner_issue_code','owner_revoke_codes')) || ' из 3' as result;
+       ' · функции: ' || (select count(*) from pg_proc where proname in ('redeem_code','owner_issue_code','owner_revoke_codes','admin_issue_permanent_code')) || ' из 4' as result;

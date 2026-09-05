@@ -138,6 +138,21 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     setBusy(false);
   };
 
+  // Доп. 177: постоянный код — не сгорает при входе (Telegram, Safari на экране «Домой», новый телефон)
+  const doPermanent = async () => {
+    if (busy || !selected) return;
+    if (isDemo) { vibrate("heavy"); setIssued({ code: "ВЕГА-" + String(Math.floor(Math.random()*10000)).padStart(4, "0"), emp: selected, permanent: true }); setConfirm(null); setView("code"); return; }
+    setBusy(true); setActionError(null);
+    try {
+      const res = await rpc("admin_issue_permanent_code", { p_token: token, p_employee_id: selected.id });
+      if (res && res.ok) { vibrate("heavy"); setIssued({ code: res.code, emp: selected, permanent: true }); setConfirm(null); setView("code"); loadList(); }
+      else if (res && res.error === "forbidden") { vibrate("error"); setActionError("Постоянный код может выдать только владелец."); }
+      else if (res && res.message && /admin_issue_permanent_code/.test(res.message)) { vibrate("error"); setActionError("На сервере нет функции постоянных кодов — примени supabase-stage13-permanent-codes.sql."); }
+      else { vibrate("error"); setActionError("Не получилось. Попробуй ещё раз."); }
+    } catch(e) { vibrate("error"); setActionError("Нет связи. Попробуй ещё раз."); }
+    setBusy(false);
+  };
+
   const doToggle = async () => {
     if (busy || !selected) return;
     const next = selected.status === "disabled" ? "active" : "disabled";
@@ -292,7 +307,9 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           </div>
 
           <div style={{ color:"#B8956A", fontSize:12.5, lineHeight:1.7, textAlign:"center", maxWidth:300, margin:"22px 0" }}>
-            Код показывается <b>только сейчас</b> — отправь его сразу. Вводится один раз на одном устройстве.
+            {issued.permanent
+              ? <>Код показывается <b>только сейчас</b> — сохрани в надёжном месте. Он <b>постоянный</b>: входит сколько угодно раз и на любом устройстве. Утёк — выдай новый: прежний постоянный перестанет работать.</>
+              : <>Код показывается <b>только сейчас</b> — отправь его сразу. Вводится один раз на одном устройстве.</>}
           </div>
 
           <button className="sa-btn" style={{ ...goldBtn, maxWidth:300 }} onClick={() => shareCode(issued.code, issued.emp)}>
@@ -401,8 +418,15 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           {actionError && <div className="sa-fast" style={{ color:RED, fontSize:13, marginBottom:14 }}>{actionError}</div>}
 
           {isSelf ? (
-            <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", padding:"0 10px" }}>
-              Свою запись изменить нельзя — чтобы случайно не закрыть себе вход. 😉 Новый код себе можно выдать через SQL.
+            <div>
+              <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:8, marginBottom:12 }}>
+                <div style={{ color:GOLD, fontSize:10.5, letterSpacing:1.5, fontFamily:"monospace" }}>ПОСТОЯННЫЙ КОД ВХОДА</div>
+                <div style={{ color:T.para.color, fontSize:13, lineHeight:1.6 }}>Не сгорает при входе: Telegram, Safari на экране «Домой», новый телефон — один и тот же код. Показывается один раз.</div>
+                <button className="sa-btn" style={{ ...goldBtn, marginTop:4 }} disabled={busy} onClick={doPermanent}>{busy ? "Выдаю…" : "Выдать себе постоянный код"}</button>
+              </div>
+              <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", padding:"0 10px" }}>
+                Остальное в своей записи изменить нельзя — чтобы случайно не закрыть себе вход. 😉
+              </div>
             </div>
           ) : confirm === "reset" ? (
             <div className="sa-fast">

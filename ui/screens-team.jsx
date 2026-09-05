@@ -621,11 +621,14 @@ export function CodeLoginScreen({ T, onSuccess }) {
   }, []);
 
   // Умное поле: верхний регистр, дефис подставляется сам
+  // Доп. 179: поле принимает и старый вид «БУКВЫ-1234», и смешанный «PJM4-7ZQF»:
+  // если это буквы, потом цифры — дефис перед цифрами; иначе — дефис после четвёртого знака.
   const format = (raw) => {
     let v = (raw || "").toUpperCase().replace(/[\s-]+/g, "").replace(/[^А-ЯЁA-Z0-9]/g, "");
-    const m = v.match(/^([А-ЯЁA-Z]+)(\d{0,4})/);
-    if (m && m[2].length > 0) v = m[1] + "-" + m[2];
-    return v.slice(0, 12);
+    const m = v.match(/^([А-ЯЁA-Z]+)(\d{1,4})$/);
+    if (m) return (m[1] + "-" + m[2]).slice(0, 12);
+    if (v.length > 4) v = v.slice(0, 4) + "-" + v.slice(4, 8);
+    return v.slice(0, 9);
   };
 
   const submit = async () => {
@@ -663,7 +666,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         Вход по приглашению
       </div>
       <div style={{ color:"#9A8C74", fontSize:13, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:26 }}>
-        Введи код доступа — его выдаёт администратор. Код вводится один раз, дальше вход автоматический.
+        Введи код доступа — его выдаёт администратор. Дальше вход автоматический — код больше не понадобится.
       </div>
       <input
         value={code}

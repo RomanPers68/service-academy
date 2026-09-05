@@ -812,7 +812,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
       if (status === 404 || (j && /not found/i.test(String(j.message || j.msg || "")))) return "функция photo-upload не развёрнута в Supabase (Edge Functions → Deploy new function → Via Editor → имя photo-upload)";
       if (j && j.error === "auth") return "сервер не подтвердил сессию — выйди и войди заново";
       if (j && j.error === "forbidden") return "у этой учётной записи нет права загружать фото (нужен менеджер/старший/владелец)";
-      if (j && j.error === "storage") return "хранилище: " + (j.detail || "ошибка") + " — примени supabase-stage12-storage.sql";
+      if (j && j.error === "storage") return "хранилище: " + (j.detail || "ошибка") + (/bucket not found/i.test(String(j.detail || "")) ? " — корзины menu-photos нет, создай в Storage" : "");
       if (j && j.error === "too_large") return "фото больше 2 МБ";
       if (j && (j.error || j.detail)) return String(j.error || "") + (j.detail ? " — " + j.detail : "");
       return "HTTP " + status;

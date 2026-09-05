@@ -57,8 +57,11 @@ Deno.serve(async (req) => {
     });
     if (!up.ok) {
       const t = await up.text().catch(() => "");
-      console.error("photo-upload storage", up.status, t.slice(0, 200));
-      return json({ ok: false, error: "storage", detail: `HTTP ${up.status}` + (/Bucket not found/i.test(t) ? " — примени supabase-stage12-storage.sql" : "") }, 502);
+      console.error("photo-upload storage", up.status, t.slice(0, 300));
+      // Доп. 190: отдаём текст ответа хранилища как есть — по нему видно настоящую причину
+      let msg = t.slice(0, 220);
+      try { const j = JSON.parse(t); msg = [j.error, j.message, j.statusCode].filter(Boolean).join(" · ").slice(0, 220) || msg; } catch (e) {}
+      return json({ ok: false, error: "storage", status: up.status, detail: `HTTP ${up.status}: ${msg}`, path }, 502);
     }
     return json({ ok: true, url: `${url}/storage/v1/object/public/menu-photos/${path}` });
   } catch (e) {

@@ -23,6 +23,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
   const [flip, setFlip] = React.useState(false);
   const [sr, setSr] = React.useState(() => loadSR(restaurant));
   const [doneQuiz, setDoneQuiz] = React.useState(0); // сколько «Знал» подряд в этой сессии
+  const [zoom, setZoom] = React.useState(null); // Доп. 194: фото на весь экран (слабовидящим — щипок для увеличения)
 
   const due = React.useMemo(() => dishes.filter(d => !d.stop && (() => { const r = sr[d.id]; return !r || !r.due || r.due <= Date.now(); })()), [dishes, sr]); // Доп. 166: стоп не повторяем
   // Доп. 172: порядок Колоды = порядок меню (разделы по канону, внутри раздела — как расставил менеджер)
@@ -180,7 +181,11 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
               <div className="sa-ck-inner" style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
                 <div className="sa-ck-face" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
                   {d.stop && <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red || "#B8352A", color: "#fff", fontSize: 10, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div>}
-                  <DishPhoto src={d.img} h={190} />
+                  <div style={{ position: "relative" }}>
+                    <DishPhoto src={d.img} h={a11y ? 270 : 230} />
+                    {d.img && <span onClick={(e) => { e.stopPropagation(); setZoom(d.img); vibrate("light"); }} aria-label="Фото на весь экран"
+                      style={{ position: "absolute", right: 10, top: 10, width: 34, height: 34, borderRadius: 17, background: "rgba(0,0,0,0.55)", color: "#EFE4C8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer" }}>⤢</span>}
+                  </div>
                   <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.2 }}>{d.name}</div>
                   <div style={{ color: sub, fontSize: 13, lineHeight: 1.55, marginTop: 10 }}>Вспомни состав, аллергены и как описать гостю — потом переверни и сверься.</div>
@@ -210,6 +215,12 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
             )}
           </div>
         </>
+      )}
+      {zoom && (
+        <div onClick={() => setZoom(null)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.94)", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "auto" }}>
+          <img src={zoom} alt="" style={{ maxWidth: "100vw", maxHeight: "100vh", objectFit: "contain", touchAction: "pinch-zoom" }} />
+          <div style={{ position: "absolute", bottom: "calc(24px + env(safe-area-inset-bottom, 0px))", left: 0, right: 0, textAlign: "center", fontSize: 12, letterSpacing: 1.5, color: "#C8B898", fontFamily: "monospace" }}>ЩИПОК — УВЕЛИЧИТЬ · ТАП — ЗАКРЫТЬ</div>
+        </div>
       )}
     </div>
   );

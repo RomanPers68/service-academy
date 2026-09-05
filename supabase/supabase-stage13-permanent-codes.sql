@@ -53,7 +53,7 @@ end $$;
 create or replace function owner_issue_code(p_who text, p_permanent boolean default true)
 returns text language plpgsql security definer
 set search_path to 'public', 'extensions' as $$
-declare v_emp record; v_code text := ''; chars text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; i int;
+declare v_emp record; v_code text := ''; letters text := 'ABCDEFGHJKMNPQRSTUVWXYZ'; digits text := '23456789'; i int;
         v_surname text; v_name text;
 begin
   v_surname := lower(trim(split_part(trim(p_who), ' ', 1)));
@@ -64,10 +64,10 @@ begin
   if v_emp is null then
     raise exception 'Активный сотрудник «%» не найден (пиши «Фамилия» или «Фамилия Имя»)', p_who;
   end if;
-  for i in 1..8 loop
-    v_code := v_code || substr(chars, 1 + floor(random() * length(chars))::int, 1);
-  end loop;
-  v_code := substr(v_code, 1, 4) || '-' || substr(v_code, 5, 4);
+  -- Доп. 178: формат «4 буквы-4 цифры» — так ожидает поле ввода в приложении (буквы, потом цифры)
+  for i in 1..4 loop v_code := v_code || substr(letters, 1 + floor(random() * length(letters))::int, 1); end loop;
+  v_code := v_code || '-';
+  for i in 1..4 loop v_code := v_code || substr(digits, 1 + floor(random() * length(digits))::int, 1); end loop;
   if p_permanent then update access_codes set used_at = now(), permanent = false where employee_id = v_emp.id and permanent; end if; -- один постоянный на человека
   insert into access_codes (id, employee_id, code_hash, used_at, created_at, permanent)
   values (gen_random_uuid(), v_emp.id, crypt(upper(v_code), gen_salt('bf')), null, now(), p_permanent);
@@ -98,17 +98,17 @@ end $$;
 create or replace function admin_issue_permanent_code(p_token text, p_employee_id uuid)
 returns json language plpgsql security definer
 set search_path to 'public', 'extensions' as $$
-declare v jsonb; v_emp record; v_code text := ''; chars text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; i int;
+declare v jsonb; v_emp record; v_code text := ''; letters text := 'ABCDEFGHJKMNPQRSTUVWXYZ'; digits text := '23456789'; i int;
 begin
   v := whoami_txt(p_token);
   if coalesce((v->>'ok')::boolean, false) is not true then return json_build_object('ok', false, 'error', 'auth'); end if;
   if not coalesce((v->'employee'->>'is_admin')::boolean, false) then return json_build_object('ok', false, 'error', 'forbidden'); end if;
   select * into v_emp from employees where id = p_employee_id and status = 'active';
   if v_emp is null then return json_build_object('ok', false, 'error', 'not_found'); end if;
-  for i in 1..8 loop
-    v_code := v_code || substr(chars, 1 + floor(random() * length(chars))::int, 1);
-  end loop;
-  v_code := substr(v_code, 1, 4) || '-' || substr(v_code, 5, 4);
+  -- Доп. 178: формат «4 буквы-4 цифры» — так ожидает поле ввода в приложении (буквы, потом цифры)
+  for i in 1..4 loop v_code := v_code || substr(letters, 1 + floor(random() * length(letters))::int, 1); end loop;
+  v_code := v_code || '-';
+  for i in 1..4 loop v_code := v_code || substr(digits, 1 + floor(random() * length(digits))::int, 1); end loop;
   update access_codes set used_at = now(), permanent = false where employee_id = v_emp.id and permanent; -- прежний постоянный гаснет
   insert into access_codes (id, employee_id, code_hash, used_at, created_at, permanent)
   values (gen_random_uuid(), v_emp.id, crypt(upper(v_code), gen_salt('bf')), null, now(), true);

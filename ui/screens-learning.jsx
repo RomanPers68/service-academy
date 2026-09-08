@@ -309,7 +309,29 @@ function TapAnchored({ x, y, T, children }) {
   );
 }
 
-export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T }) {
+export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule }) {
+  // Доп. 205: после «Урок пройден ✓» кнопка становится «Далее: …» — без шторок и затемнений
+  const DoneNext = () => {
+    if (!done) return null;
+    const kind = next ? (next.lesson.type === "quiz" ? "Тест" : next.lesson.type === "dialogue" ? "Живой диалог" : next.lesson.type === "practice" ? "Практика" : next.lesson.type === "build" ? "Сборка" : "Урок") : "";
+    return (
+      <div className="sa-fadein" style={{ marginTop: 6 }}>
+        <div style={{ textAlign: "center", fontSize: 11, letterSpacing: 1.5, color: "#5DBB8A", fontFamily: "monospace", marginBottom: 8 }}>ПРОЙДЕНО ✓</div>
+        {next ? (
+          <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px" }} onClick={onNext}>
+            <span style={{ textAlign: "left", minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 10.5, letterSpacing: 1.4, opacity: 0.8, fontFamily: "monospace" }}>{next.other ? `ДАЛЬШЕ · ${next.mod.title}`.toUpperCase() : "ДАЛЕЕ"}</span>
+              <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70vw" }}>{next.lesson.title}</span>
+            </span>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>›</span>
+          </button>
+        ) : (
+          <button className="sa-btn" style={{ ...T.doneBtn, background: color, width: "100%" }} onClick={onNext}>{next === null ? "Дальше ›" : "К модулю ›"}</button>
+        )}
+        <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
+      </div>
+    );
+  };
   const nextBtnRef = React.useRef(null);
   const bodyRef = React.useRef(null);
   const [scrollPct, setScrollPct] = React.useState(0);
@@ -559,12 +581,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               {cardIdx === 0 && cards.length > 1 && (
                 <div style={{ textAlign: "center", color: T.modSub.color, fontSize: 12, fontStyle: "italic", opacity: 0.75, marginBottom: 8 }}>листай свайпом ← →</div>
               )}
-              {cardIdx === cards.length - 1 && (
-                <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 6 }} onClick={onComplete}>Урок пройден ✓</button>
+              {cardIdx === cards.length - 1 && (done
+                ? <DoneNext />
+                : <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 6 }} onClick={onComplete}>Урок пройден ✓</button>
               )}
             </div>
           ) : (
-            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
+            done ? <DoneNext /> : <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
           )}
         </div>
         {/* Живой диалог — полноэкранный «экран» с автопрокруткой: он должен жить

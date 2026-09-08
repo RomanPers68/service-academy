@@ -6,7 +6,7 @@ import React from "react";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
 import { MODULES, loadRoleModules, loadAllModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
-import { HubScreen, ShiftHero, TeamHero, MeHero } from "./ui/home-hubs";
+import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf } from "./ui/home-hubs";
 import { GuideScreen } from "./ui/guide";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
@@ -412,6 +412,7 @@ function ServiceAcademy() {
   // кругу. Запоминаем экран, с которого зашли в эту пару, и выходим на него.
   const [ckStart, setCkStart] = useState(null);
   const [menuStart, setMenuStart] = useState(null);
+  const [nextSheet, setNextSheet] = useState(null); // Доп. 204: шторка «дальше» после урока
   // Доп. 173: индикатор сети — полоска сверху, когда связи нет
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine !== false));
   useEffect(() => {
@@ -754,7 +755,7 @@ function ServiceAcademy() {
     if (TAB_SCREENS.includes(to)) commitStack([]);                          // вкладка — новая ветка, назад некуда
     else if (opts && opts.replace) { /* Доп. 158: замена экрана — текущий в историю не пишем (диалог → Книга) */ }
     else if (cur !== to) commitStack([...navRef.current, cur].slice(-24));  // push, без дублей при повторе
-    screenRef.current = to; setScreen(to);
+    screenRef.current = to; setScreen(to); setNextSheet(null);
   }, [commitStack]);
   const goBack = useCallback((fallback = "roleSelect") => {
     const st = navRef.current.slice();
@@ -1007,7 +1008,9 @@ function ServiceAcademy() {
         setTimeout(() => setScreen("roleComplete"), 50);
       } else {
         vibrate("success");
-        setTimeout(() => setScreen("module"), 50);
+        // Доп. 204: не просто вернуться в список, а предложить следующий шаг прямо здесь
+        const nx = nextLessonOf(MODULES[role] || [], newCompleted, newQuizDone);
+        setTimeout(() => { setScreen("module"); setNextSheet({ next: nx, done: activeLesson.title }); }, 50);
       }
     } catch(e) {
       console.error("completeLesson error:", e);
@@ -1524,6 +1527,38 @@ function ServiceAcademy() {
         )}
 
         {/* Нижняя навигация — только на основных экранах */}
+        {nextSheet && screen === "module" && (() => {
+          const nx = nextSheet.next;
+          const frost = frostOf(a11y); const gold = a11y ? "#8B6A30" : GOLD;
+          const close = () => setNextSheet(null);
+          const passed = !!(examResults[role] && examResults[role].passed);
+          const goNext = () => { if (!nx) return; if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); setNextSheet(null); openLesson(nx.lesson); };
+          const kind = nx ? (nx.lesson.type === "quiz" ? "Тест" : nx.lesson.type === "dialogue" ? "Живой диалог" : nx.lesson.type === "practice" ? "Практика" : nx.lesson.type === "build" ? "Сборка" : "Урок") : "";
+          return (
+            <div onClick={close} style={{ position:"fixed", inset:0, zIndex:520, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ ...frost, width:"calc(100% - 24px)", maxWidth:440, borderRadius:22, padding:"16px 16px calc(16px + env(safe-area-inset-bottom, 0px))", margin:"0 12px calc(84px + env(safe-area-inset-bottom, 0px))",
+                background: a11y ? "rgba(250,242,222,0.97)" : "rgba(28,22,12,0.97)" }}>
+                <div style={{ fontSize:10.5, letterSpacing:1.6, color:"#5DBB8A", fontFamily:"monospace", marginBottom:6 }}>ПРОЙДЕНО ✓ · {String(nextSheet.done || "").toUpperCase().slice(0, 34)}</div>
+                {nx ? (<>
+                  <div style={{ fontSize:10.5, letterSpacing:1.5, color:gold, fontFamily:"monospace", marginBottom:4 }}>{nx.mod && nx.mod.id !== activeModule?.id ? `ДАЛЬШЕ · ${nx.mod.title}`.toUpperCase() : "СЛЕДУЮЩИЙ ШАГ"}</div>
+                  <div style={{ fontFamily:"Georgia, serif", fontSize:18, color:T.modTitle.color, lineHeight:1.25 }}>{nx.lesson.title}</div>
+                  <div style={{ fontSize:12, color:T.modSub.color, marginTop:3 }}>{kind}{nx.lesson.minutes ? ` · ${nx.lesson.minutes} мин` : ""}</div>
+                  <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                    <button className="sa-btn" onClick={close} style={{ flex:1, border:`1px solid ${gold}66`, background:"transparent", color:T.modTitle.color, fontFamily:"Georgia, serif", fontSize:14, borderRadius:999, padding:"12px", cursor:"pointer" }}>К модулю</button>
+                    <button className="sa-btn" onClick={goNext} style={{ flex:1.5, border:"none", background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:"#1a160f", fontFamily:"Georgia, serif", fontSize:14.5, fontWeight:"bold", borderRadius:999, padding:"12px", cursor:"pointer", boxShadow:"0 6px 18px rgba(214,178,102,0.32)" }}>Перейти ›</button>
+                  </div>
+                </>) : (<>
+                  <div style={{ fontFamily:"Georgia, serif", fontSize:18, color:T.modTitle.color, lineHeight:1.25 }}>{passed ? "Программа роли пройдена ✦" : "Все уроки пройдены ✦"}</div>
+                  <div style={{ fontSize:12.5, color:T.modSub.color, marginTop:4, lineHeight:1.5 }}>{passed ? "Экзамен сдан. Следующая ступень и сертификат — внизу списка уроков." : "Остался экзамен ступени — «слепой» тест без подсказок. Сдал — сертификат и печать в Книге."}</div>
+                  <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                    <button className="sa-btn" onClick={close} style={{ flex:1, border:`1px solid ${gold}66`, background:"transparent", color:T.modTitle.color, fontFamily:"Georgia, serif", fontSize:14, borderRadius:999, padding:"12px", cursor:"pointer" }}>К модулю</button>
+                    {!passed && <button className="sa-btn" onClick={() => { setNextSheet(null); openExam(role); }} style={{ flex:1.5, border:"none", background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:"#1a160f", fontFamily:"Georgia, serif", fontSize:14.5, fontWeight:"bold", borderRadius:999, padding:"12px", cursor:"pointer" }}>Сдать экзамен ›</button>}
+                  </div>
+                </>)}
+              </div>
+            </div>
+          );
+        })()}
         {!online && (
           <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:500, padding:"6px 12px calc(6px + env(safe-area-inset-top, 0px))", textAlign:"center", fontSize:12, letterSpacing:0.5,
             background: a11y ? "rgba(139,106,48,0.92)" : "rgba(60,44,16,0.92)", color:"#EFE4C8", backdropFilter:"blur(6px)" }}>

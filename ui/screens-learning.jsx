@@ -246,17 +246,16 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
         const kind = next.lesson.type === "quiz" ? "Тест" : next.lesson.type === "dialogue" ? "Живой диалог" : next.lesson.type === "practice" ? "Практика" : next.lesson.type === "build" ? "Сборка" : "Урок";
         // Доп. 202: кнопка на всю ширину под названием — не прячется под кнопкой Наставника;
         // снизу воздух, чтобы кнопка Наставника висела над пустотой, а не над карточкой
+        // Доп. 203: компактно — одна строка: номер · название с подписью · капсула
         return (
-          <div className="sa-card" style={{ ...frost, margin: "10px 16px 96px", padding: "14px 16px 14px", borderRadius: 18 }}>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 6 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `СЛЕДУЮЩИЙ МОДУЛЬ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 15, color: goldA }}>{pos || "→"}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: T.modTitle.color, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{next.lesson.title}</div>
-                <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 3 }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length} в модуле` : ""}</div>
-              </div>
+          <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "10px 16px 96px", padding: "10px 12px 10px 12px", borderRadius: 18, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 9.5, letterSpacing: 1.5, color: goldA, fontFamily: "monospace", marginBottom: 2 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `ДАЛЬШЕ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.lesson.title}</div>
+              <div style={{ fontSize: 11.5, color: T.modSub.color, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length}` : ""}</div>
             </div>
-            <button className="sa-btn" onClick={go} style={{ marginTop: 12, width: "100%", border: "none", cursor: "pointer", padding: "12px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 14.5, fontWeight: "bold", boxShadow: "0 6px 18px rgba(214,178,102,0.32)" }}>Перейти к уроку ›</button>
+            <span style={{ padding: "9px 14px", borderRadius: 999, flexShrink: 0, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.32)" }}>Перейти ›</span>
           </div>
         );
       })()}

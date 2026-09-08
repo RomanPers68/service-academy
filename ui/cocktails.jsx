@@ -33,7 +33,7 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics, startId }) {
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild }) {
   const [sr, setSr] = React.useState(loadSR);
   const [mode, setMode] = React.useState("deck");     // deck | quiz
   const [q, setQ] = React.useState("");                 // поиск
@@ -228,6 +228,11 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId }) {
               <div style={{ color:glass.sub, fontStyle:"italic", fontSize:12.5 }}>{c.tip}</div>
               <div style={{ color:glass.sub, fontSize:12.5, marginTop:6 }}>К столу: {c.pair}</div>
               {c.note ? <div style={{ marginTop:8, padding:"7px 10px", borderRadius:10, border:`1px dashed ${GOLD}66`, color:glass.sub, fontSize:12, lineHeight:1.5 }}>✦ {c.note}</div> : null}
+              {onBuild && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
+                return <div onClick={(e) => { e.stopPropagation(); onBuild(c.id); }} {...onActivate(() => onBuild(c.id))} style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:12, border:`1px solid ${GOLD}66`, background:"rgba(214,178,102,0.10)", cursor:"pointer" }}>
+                  <span style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:glass.tx }}>{lv >= 3 ? "✦ Мастер · собрать ещё" : lv === 2 ? "✦ Печать · собрать ещё" : "Собрать руками"}</span>
+                  <span style={{ color:GOLD, fontSize:16 }}>›</span>
+                </div>; })()}
               {COCKTAIL_STORIES[c.id] ? (
                 <div style={{ marginTop:12, paddingTop:10, borderTop:`1px solid ${glass.bd}` }}>
                   <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>ИСТОРИЯ</div>

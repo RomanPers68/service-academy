@@ -65,7 +65,7 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails }) {
+function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
@@ -78,6 +78,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
       // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
     { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} карточек · состав, метод, история · основы бара`, icon: Ico.cocktail, on: true, deck: true },
+      { id: "barlab", t: "Сборка руками", s: "Станция, бокал, джиггер · по памяти · час пик", icon: Ico.cocktail, on: true, go: onBarLab, tag: "ТРЕНАЖЁР" },
   ];
   return (<div style={T.screen}>
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
@@ -101,13 +102,13 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     </div>
     <div style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
-        <div key={c.id} onClick={c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
+        <div key={c.id} onClick={c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
           <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
           {["serving","wine","coffee","cocktails"].includes(c.id)
             ? <RefArt kind={c.id} light={!!a11y} size={56} /> /* Доп. 147: витражи для курсов */
             : <div style={T.modIcon}>{c.icon(gold, 24)}</div>}
           <div style={{ flex: 1 }}>
-            <div style={{ ...T.modTag, color: gold }}>{c.deck ? "КОЛОДА" : c.on ? "КУРС" : "СКОРО"}</div>
+            <div style={{ ...T.modTag, color: gold }}>{c.tag || (c.deck ? "КОЛОДА" : c.on ? "КУРС" : "СКОРО")}</div>
             <div style={T.modTitle}>{c.t}</div>
             <div style={{ ...T.modSub, display: "flex", alignItems: "center", gap: 5 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
           </div>
@@ -206,7 +207,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails }) {
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab }) {
   const gold = a11y ? "#8B6A30" : GOLD;
   const dark = !a11y;
   // Глава «Инструменты руководителя» видна только менеджерам — фильтруем
@@ -244,7 +245,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
   if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
     scopeText="Введи минимум 2 буквы — найду по главам справочника, глоссарию и меню ресторана."
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

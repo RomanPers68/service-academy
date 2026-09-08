@@ -309,7 +309,7 @@ function TapAnchored({ x, y, T, children }) {
   );
 }
 
-export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule }) {
+export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule, skipped, onSkipped }) {
   // Доп. 205: после «Урок пройден ✓» кнопка становится «Далее: …» — без шторок и затемнений
   const DoneNext = () => {
     if (!done) return null;
@@ -321,7 +321,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px" }} onClick={onNext}>
             <span style={{ textAlign: "left", minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 10.5, letterSpacing: 1.4, opacity: 0.8, fontFamily: "monospace" }}>{next.other ? `ДАЛЬШЕ · ${next.mod.title}`.toUpperCase() : "ДАЛЕЕ"}</span>
-              <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70vw" }}>{next.lesson.title}</span>
+              <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70vw" }}>{next.lesson.title}{next.done ? " ✓" : ""}</span>
             </span>
             <span style={{ fontSize: 20, flexShrink: 0 }}>›</span>
           </button>
@@ -329,6 +329,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           <button className="sa-btn" style={{ ...T.doneBtn, background: color, width: "100%" }} onClick={onNext}>{next === null ? "Дальше ›" : "К модулю ›"}</button>
         )}
         <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
+        {skipped && (
+          <div onClick={onSkipped} {...onActivate(onSkipped)} style={{ marginTop: 12, padding: "9px 12px", borderRadius: 12, border: `1px dashed ${color}66`, fontSize: 12.5, lineHeight: 1.45, color: T.modSub.color, cursor: "pointer", display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ color, flexShrink: 0 }}>⚑</span>
+            <span style={{ flex: 1, minWidth: 0 }}>{skipped.count > 1 ? `Позади ${skipped.count} непройденных, первый — ` : "Позади остался "}<b style={{ color: T.modTitle.color }}>{skipped.lesson.title}</b> — стоит закрыть, чтобы ничего не упустить.</span>
+            <span style={{ color, fontWeight: "bold", flexShrink: 0 }}>Пройти ›</span>
+          </div>
+        )}
       </div>
     );
   };

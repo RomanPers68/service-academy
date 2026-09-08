@@ -1011,9 +1011,16 @@ function ServiceAcademy() {
         vibrate("success");
         // Доп. 205: текстовый урок — остаёмся на месте, кнопка превращается в «Далее: …»;
         // тест, диалог, практика, Сборка — у них свои экраны результата, возвращаемся в модуль
-        const nx = nextLessonOf(MODULES[role] || [], newCompleted, newQuizDone);
+        // Доп. 206: «Далее» в уроке — буквально следующий по порядку (после текущего), а не первый непройденный в роли
+        const seq = (MODULES[role] || []).flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
+        const cur = seq.findIndex(x => x.lesson.id === activeLesson.id);
+        const nx = cur >= 0 ? (seq[cur + 1] || null) : nextLessonOf(MODULES[role] || [], newCompleted, newQuizDone);
         if (activeLesson.type === "lesson") {
-          setLessonDone({ next: nx ? { ...nx, other: nx.mod && activeModule && nx.mod.id !== activeModule.id } : null });
+          // Доп. 207: подсказка, а не принуждение — первое непройденное ПОЗАДИ текущего
+          const isDone = (l) => l.type === "quiz" ? !!newQuizDone[l.id] : !!newCompleted[l.id];
+          const skipped = cur > 0 ? seq.slice(0, cur).find(x => !isDone(x.lesson)) : null;
+          const skippedCount = cur > 0 ? seq.slice(0, cur).filter(x => !isDone(x.lesson)).length : 0;
+          setLessonDone({ next: nx ? { ...nx, other: nx.mod && activeModule && nx.mod.id !== activeModule.id, done: isDone(nx.lesson) } : null, skipped: skipped ? { ...skipped, count: skippedCount } : null });
         } else {
           setTimeout(() => setScreen("module"), 50);
         }
@@ -1495,7 +1502,7 @@ function ServiceAcademy() {
               T={T} color={activeModule?.color} onClose={completeLesson} onResult={recordBuildResult} />
           </Suspense>
         , document.body)}
-        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
+        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}

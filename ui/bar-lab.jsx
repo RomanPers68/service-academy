@@ -11,6 +11,23 @@ import { frostOf } from "./home-hubs";
 // «По памяти» — тишина, ошибка = «вылил», заново. Мастерство → золотая печать на карточке.
 
 const ICE_RU = { cube: "Кубики", crushed: "Краш", none: "Без льда" };
+// Доп. 209: живая станция — струя, лёд, шейк, стир, «вылил», печать
+const FX_CSS = `
+@keyframes saLabPour { 0% { transform: scaleY(0); opacity: 0 } 15% { opacity: 1 } 85% { transform: scaleY(1); opacity: 1 } 100% { opacity: 0 } }
+@keyframes saLabDrop { 0% { transform: translateY(-46px) rotate(-12deg); opacity: 0 } 60% { transform: translateY(2px) rotate(4deg); opacity: 1 } 80% { transform: translateY(-3px) } 100% { transform: translateY(0) } }
+@keyframes saLabShake { 0%,100% { transform: translate(0,0) rotate(0) } 20% { transform: translate(-6px,-4px) rotate(-8deg) } 40% { transform: translate(6px,3px) rotate(7deg) } 60% { transform: translate(-5px,2px) rotate(-6deg) } 80% { transform: translate(4px,-3px) rotate(5deg) } }
+@keyframes saLabStir { from { transform: rotate(0) } to { transform: rotate(360deg) } }
+@keyframes saLabMuddle { 0%,100% { transform: translateY(0) } 50% { transform: translateY(7px) } }
+@keyframes saLabSpill { 0% { transform: rotate(0) } 30% { transform: rotate(-32deg) translate(-6px,4px) } 100% { transform: rotate(-38deg) translate(-8px,8px); opacity: .55 } }
+@keyframes saLabSplash { 0% { transform: translate(0,0) scale(1); opacity: 1 } 100% { transform: translate(var(--dx), var(--dy)) scale(.4); opacity: 0 } }
+@keyframes saLabGlow { 0% { box-shadow: 0 0 0 0 rgba(214,178,102,0) } 40% { box-shadow: 0 0 34px 6px rgba(214,178,102,.45) } 100% { box-shadow: 0 0 0 0 rgba(214,178,102,0) } }
+@keyframes saLabStamp { 0% { transform: scale(2.2) rotate(-18deg); opacity: 0 } 60% { transform: scale(.92) rotate(-8deg); opacity: 1 } 100% { transform: scale(1) rotate(-10deg); opacity: 1 } }
+@keyframes saLabSpark { 0% { transform: translate(0,0) scale(0); opacity: 1 } 100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0 } }
+@keyframes saLabIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.sa-lab-in { animation: saLabIn .32s cubic-bezier(.16,1,.3,1) backwards }
+.sa-lab-bottle:active { transform: scale(.94) }
+`;
+function LabStyle() { return <style>{FX_CSS}</style>; }
 const TOOL_ICON = { shake: "⇅", stir: "↻", strain: "◒", muddle: "⌇", blend: "✱", layer: "≡", swizzle: "∿" };
 
 // ── Бокал: простые контуры в языке витражей; жидкость — по объёму, цвет — смесь добавленного
@@ -52,6 +69,36 @@ function GlassView({ glass, fill, colors, ice, garnish, shake, a11y, spilled }) 
     </svg>
   );
 }
+
+function Bottle({ color, label, on, dim, ghost, gold, a11y, onClick, delay = 0 }) {
+  const text = a11y ? "#2A1F0E" : "#EFE4C8";
+  return (
+    <div className="sa-lab-in sa-lab-bottle" onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: `${delay}ms`, width: 64, flexShrink: 0, cursor: "pointer", opacity: dim ? 0.42 : 1, textAlign: "center", transition: "transform .12s" }}>
+      <div style={{ width: 44, height: 62, margin: "0 auto 5px", position: "relative", filter: on ? "drop-shadow(0 0 8px rgba(214,178,102,.75))" : "none" }}>
+        <svg viewBox="0 0 44 62" width="44" height="62">
+          <path d="M17 2h10v12l6 6v36a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4V20l6-6z" fill={ghost ? "none" : color} opacity={ghost ? 1 : 0.92} stroke={on ? gold : (a11y ? "#8B6A30" : "rgba(255,255,255,0.28)")} strokeWidth={on ? 1.6 : 1} />
+          <rect x="15" y="26" width="14" height="18" rx="2" fill="rgba(255,255,255,0.14)" />
+          <path d="M14 22 v30" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        {dim && <div style={{ position: "absolute", right: -2, top: -2, width: 16, height: 16, borderRadius: 8, background: "#5DBB8A", color: "#fff", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
+      </div>
+      <div style={{ fontSize: 10.5, lineHeight: 1.2, color: on ? gold : text, height: 26, overflow: "hidden" }}>{label}</div>
+    </div>
+  );
+}
+function Item({ icon, label, on, gold, a11y, onClick, delay = 0, wide }) {
+  const text = a11y ? "#2A1F0E" : "#EFE4C8";
+  return (
+    <div className="sa-lab-in sa-lab-bottle" onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: `${delay}ms`, minWidth: wide ? 88 : 64, flexShrink: 0, cursor: "pointer", textAlign: "center", transition: "transform .12s" }}>
+      <div style={{ width: 48, height: 48, margin: "0 auto 5px", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? gold : (a11y ? "#8B6A3055" : "rgba(255,255,255,0.14)")}`, background: on ? "rgba(214,178,102,0.16)" : (a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)"), boxShadow: on ? `0 0 14px rgba(214,178,102,.45)` : "none" }}>{icon}</div>
+      <div style={{ fontSize: 10.5, lineHeight: 1.2, color: on ? gold : text, height: 26, overflow: "hidden" }}>{label}</div>
+    </div>
+  );
+}
+const GlassIcon = ({ glass, a11y }) => <div style={{ width: 34, height: 34 }}><GlassView glass={glass} fill={0} colors={[]} a11y={a11y} /></div>;
+const ToolIcon = ({ id, gold }) => <span style={{ fontSize: 22, color: gold, lineHeight: 1 }}>{TOOL_ICON[id] || "•"}</span>;
+const GarnishIcon = ({ id }) => <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-block", background: id === "cherry" ? "#C4483A" : id === "olive" || id === "mint" ? "#7FA05A" : id === "cream" ? "#EFE4C8" : id === "salt" ? "#F2F2F2" : id === "onion" ? "#E8E4D0" : "#E2A63A", border: "1px solid rgba(255,255,255,0.35)" }} />;
+const IceIcon = ({ id, gold }) => <span style={{ fontSize: 20, color: gold }}>{id === "cube" ? "▢" : id === "crushed" ? "∴" : "∅"}</span>;
 
 const ukOf = (profile) => profile ? `_${profile.name}_${profile.surname || ""}` : "";
 
@@ -99,6 +146,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
     const card = (props, children) => <div className="sa-card" {...props} style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 10, cursor: props.onClick ? "pointer" : "default", ...(props.style || {}) }}>{children}</div>;
     return (
       <div style={T.screen} className="sa-screen">
+        <LabStyle />
         {Head("Сборка руками")}
         <div style={{ padding: "4px 16px 100px" }}>
           {card({ onClick: () => { setCurrent(daily); setView("pick"); vibrate("light"); } }, <>
@@ -216,6 +264,9 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const [pending, setPending] = React.useState(null); // ингредиент, ждём объём
   const [finished, setFinished] = React.useState(null);
   const [shake, setShake] = React.useState(false);
+  const [fx, setFx] = React.useState(null); // { kind: pour|drop|stir|muddle|strain|garnish|win|spill, color }
+  const fxTimer = React.useRef(null);
+  const playFx = (kind, color, ms = 650) => { clearTimeout(fxTimer.current); setFx({ kind, color, key: Date.now() }); fxTimer.current = setTimeout(() => setFx(null), ms); };
   const [tick, setTick] = React.useState(0);
   React.useEffect(() => { if (!rush) return; const t = setInterval(() => setTick(x => x + 1), 1000); return () => clearInterval(t); }, [rush]);
 
@@ -232,11 +283,17 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
     const r = checkAction(sc, done, action);
     if (r.ok) {
       setDone(r.doneIdx); setMsg(null); vibrate("light");
-      if (action.kind === "tool" && (action.id === "shake" || action.id === "blend")) { setShake(true); setTimeout(() => setShake(false), 700); }
-      if (r.done) { const clean = mistakes === 0; setFinished({ clean }); vibrate("success"); setTimeout(() => onFinish(clean), rush ? 600 : 0); }
+      if (action.kind === "ing") playFx("pour", ING_COLOR(action.name), 700);
+      else if (action.kind === "ice") playFx("drop", null, 600);
+      else if (action.kind === "tool" && (action.id === "shake" || action.id === "blend")) { setShake(true); playFx("shake", null, 800); setTimeout(() => setShake(false), 800); vibrate("medium"); }
+      else if (action.kind === "tool" && (action.id === "stir" || action.id === "swizzle")) playFx("stir", null, 900);
+      else if (action.kind === "tool" && action.id === "muddle") playFx("muddle", null, 700);
+      else if (action.kind === "tool" && action.id === "strain") playFx("pour", mix(addedIngs.map(s => ING_COLOR(s.name))), 700);
+      else if (action.kind === "garnish") playFx("drop", null, 500);
+      if (r.done) { const clean = mistakes === 0; setFinished({ clean }); vibrate("success"); setTimeout(() => playFx("win", null, 1600), 120); setTimeout(() => onFinish(clean), rush ? 900 : 0); }
     } else {
       setMistakes(m => m + 1); vibrate("error");
-      if (mode === "memory") { setSpilled(true); setMsg({ ok: false, text: r.why + " Вылил — собираем заново." }); if (rush) onPenalty(); setTimeout(() => { setDone([]); setSpilled(false); setMsg(null); setPending(null); }, 1400); }
+      if (mode === "memory") { setSpilled(true); playFx("spill", mix(addedIngs.map(s => ING_COLOR(s.name))) , 1400); setMsg({ ok: false, text: r.why + " Вылил — собираем заново." }); if (rush) onPenalty(); setTimeout(() => { setDone([]); setSpilled(false); setMsg(null); setPending(null); }, 1400); }
       else setMsg({ ok: false, text: r.why });
     }
   };
@@ -250,6 +307,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
 
   return (
     <div style={T.screen} className="sa-screen">
+      <LabStyle />
       {Head(c.name, onExit)}
       <div style={{ padding: "0 16px 110px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, letterSpacing: 1.4, fontFamily: "monospace", color: sub, marginBottom: 8 }}>
@@ -257,8 +315,16 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           <span>{rush ? `${elapsed} с` : `${done.length}/${sc.steps.length}`}{mistakes ? ` · ошибок ${mistakes}` : ""}</span>
         </div>
         <div style={{ ...frost, borderRadius: 18, padding: 14, display: "flex", gap: 14, alignItems: "center", minHeight: 150 }}>
-          <div style={{ width: 120, height: 120, flexShrink: 0 }}>
-            <GlassView glass={glassDone ? c.glass : "rocks"} fill={glassDone ? fillMl / totalMl : 0} colors={addedIngs.map(s => ING_COLOR(s.name))} ice={iceInGlass ? iceInGlass.id : null} garnish={garnishDone ? c.garnish : null} shake={shake} a11y={a11y} spilled={spilled} />
+          <div style={{ width: 132, height: 132, flexShrink: 0, position: "relative", borderRadius: 20, animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none" }}>
+            <div style={{ position: "absolute", inset: 6, animation: fx?.kind === "shake" ? "saLabShake .8s ease-in-out" : fx?.kind === "muddle" ? "saLabMuddle .35s ease-in-out 2" : fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
+              <GlassView glass={glassDone ? c.glass : "rocks"} fill={glassDone ? fillMl / totalMl : 0} colors={addedIngs.map(s => ING_COLOR(s.name))} ice={iceInGlass ? iceInGlass.id : null} garnish={garnishDone ? c.garnish : null} shake={false} a11y={a11y} spilled={false} />
+            </div>
+            {fx?.kind === "pour" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 2, width: 5, height: 58, marginLeft: -2, borderRadius: 3, background: fx.color || "#D6B266", transformOrigin: "top", animation: "saLabPour .7s ease-in-out forwards", opacity: 0.9 }} />}
+            {fx?.kind === "drop" && [0, 1, 2].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 46 + i * 16, top: 34, width: 14, height: 14, borderRadius: 4, background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.8)", animation: `saLabDrop .55s ${i * 70}ms cubic-bezier(.3,.8,.4,1.4) forwards` }} />)}
+            {fx?.kind === "stir" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 14, width: 4, height: 74, marginLeft: -2, borderRadius: 2, background: gold, transformOrigin: "50% 85%", animation: "saLabStir .9s linear", opacity: 0.8 }} />}
+            {fx?.kind === "spill" && [0, 1, 2, 3, 4].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 30, top: 70, width: 8, height: 8, borderRadius: 4, background: fx.color || "#D6B266", "--dx": `${-30 - i * 12}px`, "--dy": `${20 + (i % 3) * 14}px`, animation: `saLabSplash .8s ${i * 40}ms ease-out forwards` }} />)}
+            {fx?.kind === "win" && [0, 1, 2, 3, 4, 5, 6, 7].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 60, top: 60, width: 6, height: 6, borderRadius: 3, background: gold, "--dx": `${Math.round(Math.cos(i / 8 * Math.PI * 2) * 58)}px`, "--dy": `${Math.round(Math.sin(i / 8 * Math.PI * 2) * 58)}px`, animation: `saLabSpark .9s ${i * 30}ms ease-out forwards` }} />)}
+            {finished && finished.clean && mode === "memory" && <div style={{ position: "absolute", right: -6, bottom: -4, width: 54, height: 54, borderRadius: 27, border: `3px solid ${gold}`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 11, letterSpacing: 1, textAlign: "center", lineHeight: 1.1, background: a11y ? "rgba(250,242,222,0.9)" : "rgba(28,22,12,0.9)", animation: "saLabStamp .7s cubic-bezier(.2,1.2,.3,1) forwards", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}>ПЕ<br/>ЧАТЬ</div>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             {finished ? (
@@ -292,20 +358,18 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           </div>
         )}
 
-        {/* СТАНЦИЯ */}
-        <div style={{ marginTop: 12 }}>
+        {/* СТАНЦИЯ — бутылки с цветом напитка, стекло, лёд, инструмент, гарниш */}
+        <div style={{ marginTop: 14 }}>
           {[
-            ["СТЕКЛО", sc.station.glasses.map(g => ({ key: g, label: GLASS_RU[g], on: hint(glassStep) && g === c.glass, go: () => act({ kind: "glass", id: g }) }))],
-            ["ЛЁД", sc.station.ices.map(i => ({ key: i, label: ICE_RU[i], on: expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i, go: () => act({ kind: "ice", id: i }) }))],
-            ["ИНГРЕДИЕНТЫ", sc.station.ings.map(n => { const st = sc.steps.find(s => s.kind === "ing" && s.name === n); const added = st && done.includes(sc.steps.indexOf(st)); return { key: n, label: n, on: st && hint(st), dim: added, go: () => tapIng(n) }; })],
-            ["ИНСТРУМЕНТ", sc.station.tools.map(t => ({ key: t, label: `${TOOL_ICON[t] || ""} ${TOOLS[t]}`, on: expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t, go: () => act({ kind: "tool", id: t }) }))],
-            ["ГАРНИШ", sc.station.garnishes.map(g => ({ key: g, label: GARNISH_RU[g], on: expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g, go: () => act({ kind: "garnish", id: g }) }))],
-          ].map(([title, items]) => items.length ? (
+            ["СТЕКЛО", sc.station.glasses.map((g, k) => <Item key={g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />)],
+            ["ЛЁД", sc.station.ices.map((i, k) => <Item key={i} icon={<IceIcon id={i} gold={gold} />} label={ICE_RU[i]} on={expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "ice", id: i })} />)],
+            ["ИНГРЕДИЕНТЫ", sc.station.ings.map((n, k) => { const st = sc.steps.find(x => x.kind === "ing" && x.name === n); const added = st && done.includes(sc.steps.indexOf(st)); return <Bottle key={n} color={ING_COLOR(n)} label={n} on={st && hint(st)} dim={added} gold={gold} a11y={a11y} delay={k * 40} onClick={() => tapIng(n)} />; })],
+            ["ИНСТРУМЕНТ", sc.station.tools.map((t, k) => <Item key={t} icon={<ToolIcon id={t} gold={gold} />} label={TOOLS[t]} on={expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "tool", id: t })} />)],
+            ["ГАРНИШ", sc.station.garnishes.map((g, k) => <Item key={g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "garnish", id: g })} />)],
+          ].map(([title, nodes]) => nodes.length ? (
             <div key={title} style={{ marginTop: 10 }}>
               <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "0 2px 6px" }}>{title}</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {items.map(it => <span key={it.key} onClick={it.go} {...onActivate(it.go)} style={chip(!!it.on, { opacity: it.dim ? 0.45 : 1, boxShadow: it.on ? `0 0 0 3px ${gold}33` : "none" })}>{it.label}{it.dim ? " ✓" : ""}</span>)}
-              </div>
+              <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "2px 0 6px", WebkitOverflowScrolling: "touch" }}>{nodes}</div>
             </div>
           ) : null)}
         </div>

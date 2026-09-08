@@ -77,7 +77,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero }
 }
 
 // ── Дополнение 145: живые блоки над списками хабов и скелет ──────────────────
-const frostOf = (a11y) => ({
+export const frostOf = (a11y) => ({
   background: a11y ? "rgba(250,242,222,0.62)" : "rgba(226,186,116,0.09)",
   border: a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)",
   boxShadow: a11y

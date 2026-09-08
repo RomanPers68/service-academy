@@ -21,6 +21,7 @@ import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
+import { frostOf } from "./home-hubs";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 import { LiveDialogue } from "./screens-dialogue";
 
@@ -185,7 +186,9 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
   );
 }
 
-export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T }) {
+export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T, next, onNext, finish, a11y = false }) {
+  const frost = frostOf(a11y); // Доп. 198: «Морозный след», обе темы
+  const goldA = a11y ? "#8B6A30" : GOLD;
   return (
     <div style={T.screen} className="sa-slide-r">
       <div style={{ ...T.modHead, background:`linear-gradient(160deg, ${mod.color}99 0%, rgba(44,33,22,0.95) 100%)` }}>
@@ -216,6 +219,41 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
           );
         })}
       </div>
+      {/* Доп. 196: следующий шаг — не искать глазами, куда идти дальше */}
+      {(() => {
+        if (!next) {
+          // Доп. 197: конец программы роли — не подпись, а действие: экзамен → сертификат → следующая ступень
+          const f = finish || {};
+          const go = () => f.onGo && f.onGo();
+          return (
+            <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "6px 16px 16px", padding: "14px 16px", borderRadius: 18, cursor: f.onGo ? "pointer" : "default" }}>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 5 }}>{(f.eyebrow || "ПРОГРАММА РОЛИ ПРОЙДЕНА ✦").toUpperCase()}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: T.modTitle.color, lineHeight: 1.25 }}>{f.title || "Все уроки пройдены"}</div>
+                  {f.sub && <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 3, lineHeight: 1.45 }}>{f.sub}</div>}
+                </div>
+                {f.cta && <span style={{ padding: "9px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.35)" }}>{f.cta}</span>}
+              </div>
+              {f.secondary && <div onClick={(e) => { e.stopPropagation(); f.secondary.onGo && f.secondary.onGo(); }} style={{ marginTop: 10, fontSize: 12.5, color: goldA, cursor: "pointer" }}>{f.secondary.label} ›</div>}
+            </div>
+          );
+        }
+        const same = next.mod && mod && next.mod.id === mod.id;
+        const go = () => onNext && onNext(next);
+        return (
+          <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "6px 16px 16px", padding: "14px 16px", borderRadius: 18, cursor: "pointer" }}>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 5 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `СЛЕДУЮЩИЙ МОДУЛЬ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: T.modTitle.color, lineHeight: 1.25 }}>{next.lesson.title}</div>
+                <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 3 }}>{next.lesson.type === "quiz" ? "Тест" : next.lesson.type === "dialogue" ? "Живой диалог" : next.lesson.type === "practice" ? "Практика" : next.lesson.type === "build" ? "Сборка" : "Урок"}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}</div>
+              </div>
+              <span style={{ padding: "9px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.35)" }}>Перейти ›</span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -467,7 +505,15 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               );
             }
             if (line.startsWith("**") && line.endsWith("**")) return <div key={i} style={T.bold}>{highlightTerms(line.replace(/\*\*/g,""))}</div>;
-            if (line.startsWith("•")) return <div key={i} style={T.bullet}>{highlightTerms(line, T.bullet)}</div>;
+            // Доп. 199: жирное внутри строки — «**Ликёры** — сладкие настойки…» (раньше звёздочки печатались как есть)
+            const inline = (text, st) => {
+              if (!text.includes("**")) return highlightTerms(text, st);
+              return text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, k) =>
+                part.startsWith("**") && part.endsWith("**")
+                  ? <b key={k} style={{ color: T.bold?.color, fontWeight: "bold" }}>{highlightTerms(part.slice(2, -2), st)}</b>
+                  : <React.Fragment key={k}>{highlightTerms(part, st)}</React.Fragment>);
+            };
+            if (line.startsWith("•")) return <div key={i} style={T.bullet}>{inline(line, T.bullet)}</div>;
             const markerRow = (style, iconEl) => (
               <div key={i} style={{ ...style, display:"flex", gap:9, alignItems:"flex-start" }}>
                 <span style={{ flexShrink:0, marginTop:3, display:"inline-flex" }}>{iconEl}</span>
@@ -490,7 +536,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             if (line.startsWith("🔹")) return markerRow(T.principle,
               <span style={{ width:8, height:8, background:"#5B8DD9", transform:"rotate(45deg)", borderRadius:1, marginTop:4, boxShadow:"0 0 6px #5B8DD955", display:"inline-block" }} />);
             if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
-            return <div key={i} style={T.para}>{highlightTerms(line, T.para)}</div>;
+            return <div key={i} style={T.para}>{inline(line, T.para)}</div>;
           })}
             </div>{/* конец zIndex:1 */}
           </div>{/* конец стеклянной подложки */}

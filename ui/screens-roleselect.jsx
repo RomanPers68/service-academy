@@ -54,7 +54,7 @@ const saInner = (a11y) => a11y
   ? "rgba(250,242,222,0.60)"
   : "rgba(226,186,116,0.11)";
 // Первый непройденный урок роли — для карточки «Твой трек»
-const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
+export const nextLessonOf = (mods = [], completed = {}, quizDone = {}) => {
   for (const m of mods) for (const l of (m.lessons || [])) {
     if (l.type === "result") continue;
     if (!(l.type === "quiz" ? quizDone[l.id] : completed[l.id])) return { lesson: l, mod: m };

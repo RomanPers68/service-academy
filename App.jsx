@@ -8,6 +8,7 @@ import { MODULES, loadRoleModules, loadAllModules, loadSpgModules, allLessonIds,
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero } from "./ui/home-hubs";
 import { GuideScreen } from "./ui/guide";
+import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
 import { LiquidTabBar } from "./ui/tabbar";
 import { loadDialogues } from "./data/dialogues-lazy";
@@ -1459,7 +1460,21 @@ function ServiceAcademy() {
           if (ok.includes(dest)) { setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(dest === "menu" ? "menuTrainer" : dest); }
         }} /></Suspense>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} /></Suspense></div>}
-        {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} /></div>}
+        {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}
+          next={nextLessonOf(modules, completed, quizDone)}
+          onNext={(n) => { if (!n) return; if (n.mod && n.mod.id !== activeModule?.id) setActiveModule(n.mod); openLesson(n.lesson); }}
+          finish={(() => {
+            // Доп. 197: конец роли — экзамен ступени → сертификат → следующая ступень трека → другие треки
+            const passed = !!(examResults[role] && examResults[role].passed);
+            const group = TRACK_GROUPS.find(g => g.members.includes(role));
+            const nextRoleId = group ? group.members[group.members.indexOf(role) + 1] : null;
+            const nextRole = nextRoleId ? ROLES.find(r => r.id === nextRoleId) : null;
+            if (!passed) return { eyebrow: "Все уроки пройдены ✦", title: "Экзамен ступени", sub: "«Слепой» тест без подсказок — как у гостя нет второй попытки на первое впечатление. Сдал — сертификат и печать в Книге.", cta: "Сдать ›", onGo: () => openExam(role) };
+            if (nextRole) return { eyebrow: "Экзамен сдан ✦", title: `Следующая ступень: ${nextRole.label}`, sub: nextRole.desc || nextRole.sublabel || "Трек продолжается — новые модули уже ждут", cta: "Перейти ›", onGo: () => { selectRole(nextRole.id); commitStack([]); }, // selectRole сам открывает программу новой роли
+              secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
+            return { eyebrow: "Экзамен сдан ✦", title: "Трек пройден до конца", sub: "Можно открыть новый трек — или держать форму: «Задание дня» и «Гость недели» во вкладке «Смена».", cta: "Другие треки ›", onGo: () => navigate("roleSelect"),
+              secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
+          })()} /></div>}
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
         {screen === "lesson" && activeLesson?.type === "dialogue" && createPortal(

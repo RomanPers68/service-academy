@@ -705,7 +705,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   const canon = (o) => o ? JSON.stringify(o, Object.keys(o).sort()) : "";
   const sameAsServer = (d) => canon(d) === canon(srvById.get(d.id));
   const unpublished = [...list, ...archived].filter(d => !sameAsServer(d)).length + (deleted[restaurant] || []).length;
-  const editForeign = (d) => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") });
+  const editForeign = (d) => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") });
   const deleteServer = (id) => { const d = orphanShared.find(x => x.id === id); if (!d) return; setCustom({ ...custom, [restaurant]: [{ ...d, archived: true, archivedAt: Date.now(), stop: null }, ...(custom[restaurant] || [])] }); vibrate("light"); };
   const hideSample = (id) => { setHiddenIds({ ...hiddenIds, [restaurant]: [...(hiddenIds[restaurant] || []), id] }); vibrate("light"); };
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
@@ -734,7 +734,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   };
   const acceptImport = () => {
     const now = Date.now();
-    const added = (preview || []).map((d, i) => ({
+    const added = (preview || []).filter(d => d && String(d.name || "").trim()).map((d, i) => ({
       img: "", pairing: "", note: "", cat: "", desc: "", ...d,
       ingredients: Array.isArray(d.ingredients) ? d.ingredients : String(d.ingredients || "").split(",").map(s => s.trim()).filter(Boolean),
       allergens: Array.isArray(d.allergens) ? d.allergens.filter(a => ALLERGENS_LIST.includes(a)) : [],
@@ -791,8 +791,8 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   };
 
   const save = () => {
-    if (!form.name.trim()) return;
-    const dish = { ...form, id: form.id || "c" + Date.now(), name: form.name.trim(), ingredients: form.ingredients.split(",").map(s => s.trim()).filter(Boolean), imgLostLocal: form.img ? false : form.imgLostLocal };
+    if (!String(form.name || "").trim()) return;
+    const dish = { ...form, id: form.id || "c" + Date.now(), name: String(form.name || "").trim(), ingredients: String(form.ingredients || "").split(",").map(s => s.trim()).filter(Boolean), imgLostLocal: form.img ? false : form.imgLostLocal };
     if (!form.id) { dish.isNew = true; dish.addedAt = Date.now(); } // новое блюдо → в «Новые позиции» на 30 дней
     // Доп. 154: чужое блюдо (пример или серверное) с той же id ещё не в своих — добавляем как свою версию
     const own = custom[restaurant] || [];
@@ -873,7 +873,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   const unarchive = (id) => { setCustom({ ...custom, [restaurant]: (custom[restaurant] || []).map(d => d.id === id ? { ...d, archived: false, archivedAt: null } : d) }); vibrate("success"); };
   const destroy = (id) => { setCustom({ ...custom, [restaurant]: (custom[restaurant] || []).filter(d => d.id !== id) }); if (setDeleted && (shared || []).some(x => x && x.id === id)) setDeleted({ ...deleted, [restaurant]: [...(deleted[restaurant] || []), id] }); vibrate("error"); };
   // Доп. 166: дублировать (вариации) и двигать внутри раздела (порядок как в печатном меню)
-  const duplicate = (d) => { const copy = { ...d, id: "c" + Date.now(), name: d.name + " (копия)", stop: null, archived: false }; setCustom({ ...custom, [restaurant]: [copy, ...(custom[restaurant] || [])] }); vibrate("light"); setForm({ img: "", ...copy, ingredients: (copy.ingredients || []).join(", ") }); };
+  const duplicate = (d) => { const copy = { ...d, id: "c" + Date.now(), name: d.name + " (копия)", stop: null, archived: false }; setCustom({ ...custom, [restaurant]: [copy, ...(custom[restaurant] || [])] }); vibrate("light"); setForm({ img: "", ...copy, name: String(copy.name || ""), cat: String(copy.cat || ""), ingredients: (copy.ingredients || []).join(", ") }); };
   const moveIn = (d, dir) => {
     const same = list.filter(x => normCat(x.cat) === normCat(d.cat));
     const i = same.findIndex(x => x.id === d.id), j = i + dir;
@@ -895,10 +895,10 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   const [aiVariants, setAiVariants] = React.useState([]); // Доп. 167: три варианта на выбор
   React.useEffect(() => { if (!form) { setPreview2(false); setAiErr(""); setAiVariants([]); } }, [form]);
   const aiDescribe = () => {
-    if (!form || !form.name.trim() || aiBusy) return;
+    if (!form || !String(form.name || "").trim() || aiBusy) return;
     setAiBusy(true); setAiErr("");
     const ing = String(form.ingredients || "").split(",").map(x => x.trim()).filter(Boolean).join(", ");
-    const ask = `Напиши три разных «вкусных описания» блюда для гостя ресторана «${restaurant}» — каждое два предложения, тёплым живым языком официанта, без пафоса и без перечисления ингредиентов подряд. Первое — про вкус и текстуру, второе — про происхождение или способ приготовления, третье — короткое и игривое. Блюдо: «${form.name.trim()}»${form.cat ? ` (раздел: ${form.cat})` : ""}. Состав: ${ing || "не указан"}.${form.note ? ` Важно: ${form.note}` : ""} Формат ответа строго: три абзаца, каждый начинается с «1.», «2.», «3.». Без кавычек, заголовков и пояснений.`;
+    const ask = `Напиши три разных «вкусных описания» блюда для гостя ресторана «${restaurant}» — каждое два предложения, тёплым живым языком официанта, без пафоса и без перечисления ингредиентов подряд. Первое — про вкус и текстуру, второе — про происхождение или способ приготовления, третье — короткое и игривое. Блюдо: «${String(form.name || "").trim()}»${form.cat ? ` (раздел: ${form.cat})` : ""}. Состав: ${ing || "не указан"}.${form.note ? ` Важно: ${form.note}` : ""} Формат ответа строго: три абзаца, каждый начинается с «1.», «2.», «3.». Без кавычек, заголовков и пояснений.`;
     fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
@@ -945,7 +945,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     const cats = [...CAT_ORDER, ...[...new Set([...list, ...(shared || []), ...(RESTAURANT_MENUS[restaurant] || [])].map(d => normCat(d.cat)).filter(Boolean))].filter(c => !CAT_ORDER.some(x => x.toLowerCase() === c.toLowerCase()))];
     const chip = (on, danger) => ({ padding: "6px 11px", borderRadius: 10, fontSize: 12.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
       border: `1px solid ${on ? (danger ? red : gold) : gold + "55"}`, background: on ? (danger ? "rgba(224,120,120,0.15)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? (danger ? red : textColor) : T.modSub.color });
-    const canSave = !!form.name.trim();
+    const canSave = !!String(form.name || "").trim();
     const isEdit = !!form.id && list.some(d => d.id === form.id);
     return (
       <div style={T.screen} className="sa-screen">
@@ -1200,7 +1200,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
                 <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", flexWrap: "wrap", opacity: d.stop ? 0.85 : 1 }}>
                   <div style={{ ...T.modBar, background: d.stop ? red : changed ? gold : green }} />
                   {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0, filter: d.stop ? "grayscale(1)" : "none" }} />}
-                  <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, ingredients: (d.ingredients || []).join(", ") }))}>
+                  <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") }))}>
                     <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                     <div style={T.modSub}>{(d.ingredients || []).length} ингр. · {(d.allergens || []).length ? (d.allergens || []).length + " аллерг." : "аллергенов нет"}{changed ? " · не опубликовано" : ""}{isDataImg(d.img) ? " · фото на телефоне" : d.imgLostLocal && !d.img ? " · фото потеряно" : ""}</div>
                   </div>

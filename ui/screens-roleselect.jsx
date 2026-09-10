@@ -363,21 +363,6 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
             <>
-            {/* Доп. 210: режим дня и ежедневные пять — одна тихая полоска, не выбор из семи кнопок */}
-            {dayMode && (() => {
-              const c = Math.min(5, dayMode.count || 0); const done = c >= 5;
-              return (
-                <div onClick={dayMode.go} {...onActivate(dayMode.go)} style={{ margin:"0 16px 10px", padding:"9px 13px", borderRadius:14, display:"flex", alignItems:"center", gap:10, cursor:"pointer",
-                  border:`1px solid ${done ? "#5DBB8A66" : Cc.gold + "44"}`, background: a11y ? "rgba(250,242,222,0.5)" : "rgba(226,186,116,0.07)" }}>
-                  <div style={{ display:"flex", gap:3 }}>{[0,1,2,3,4].map(i => <span key={i} style={{ width:8, height:8, borderRadius:4, background: i < c ? (done ? "#5DBB8A" : Cc.gold) : "transparent", border:`1px solid ${done ? "#5DBB8A" : Cc.gold + "88"}` }} />)}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:10, letterSpacing:1.4, color: Cc.gold, fontFamily:"monospace" }}>{done ? "ПЯТЬ НА СЕГОДНЯ ✓" : "РЕЖИМ ДНЯ"}{dayMode.streak > 1 ? ` · СЕРИЯ ${dayMode.streak}` : ""}</div>
-                    <div style={{ fontSize:13.5, color: Cc.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{dayMode.title}<span style={{ color: Cc.muted }}> · {dayMode.sub}</span></div>
-                  </div>
-                  <span style={{ color: Cc.gold }}>›</span>
-                </div>
-              );
-            })()}
             <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 16px 12px", overflowX: visibleTiles.length <= 4 ? "hidden" : "auto", /* Доп. 143: ≤4 жетонов — во всю ширину поровну */
                 WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", scrollPaddingLeft:16, scrollPaddingRight:16, overscrollBehaviorX:"contain" }}>
               {visibleTiles.map(t => {
@@ -403,9 +388,16 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             </>
           );
         })()}
+        {/* Доп. 213: режим дня — не карточка, а строка на месте орнамента: пять точек и одна фраза */}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 20px 10px" }}>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D4A85A55, transparent)" }} />
-          <span style={{ color:GOLD_SOFT, fontSize:14 }}>✦</span>
+          {dayMode ? (() => { const c = Math.min(5, dayMode.count || 0); const done = c >= 5; return (
+            <span onClick={dayMode.go} {...onActivate(dayMode.go)} style={{ display:"inline-flex", alignItems:"center", gap:8, cursor:"pointer", whiteSpace:"nowrap" }}>
+              <span style={{ display:"inline-flex", gap:3 }}>{[0,1,2,3,4].map(i => <span key={i} style={{ width:6, height:6, borderRadius:3, background: i < c ? (done ? "#5DBB8A" : GOLD_SOFT) : "transparent", border:`1px solid ${done ? "#5DBB8A" : GOLD_SOFT}` }} />)}</span>
+              <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, letterSpacing:1.4, color: GOLD_SOFT }}>{done ? "ПЯТЬ ЕСТЬ ✓" : dayMode.title.toUpperCase()}</span>
+              <span style={{ color:GOLD_SOFT, fontSize:12 }}>›</span>
+            </span>
+          ); })() : <span style={{ color:GOLD_SOFT, fontSize:14 }}>✦</span>}
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to left, transparent, #D4A85A55, transparent)" }} />
         </div>
 

@@ -214,7 +214,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   // Доп. 214: своя карта бара — своё впереди, чужое ниже как эрудиция; Час пик и коктейль дня — из карты
   const card = React.useMemo(() => readBarcard(cachedShared(profile?.restaurant || "")), [profile]);
   const inCard = (c) => !card || card.includes(c.id);
-  const dailyC = React.useMemo(() => { if (!card || card.includes(dailyC.id)) return daily; const mine = COCKTAILS.filter(inCard); return mine.length ? dailyPick(mine) : daily; }, [card, daily]);
+  const dailyC = React.useMemo(() => { if (!card || card.includes(daily.id)) return daily; const mine = COCKTAILS.filter(inCard); return mine.length ? dailyPick(mine) : daily; }, [card, daily]);
   const save = (m) => { setMastery(m); saveMastery(uk, m); reportAch(uk, "stamps", COCKTAILS.filter(c => (m[c.id]?.level || 0) >= 2).length); }; // Доп. 216: печати — в рекорды команды
   const masteredCount = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && (mastery[c.id]?.level || 0) >= 2).length;
   const cardTotal = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && inCard(c)).length;

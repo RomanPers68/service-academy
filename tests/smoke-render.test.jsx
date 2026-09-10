@@ -15,6 +15,14 @@ const profile = { id: "u1", name: "Тест", surname: "Тестов", restauran
 describe("smoke render", () => {
   it("Колода бармена", async () => { const { CocktailsScreen } = await import("../ui/cocktails"); expect(renderToString(<CocktailsScreen T={T} profile={profile} onBack={() => {}} onBuild={() => {}} onOpenDish={() => {}} />).length).toBeGreaterThan(1000); });
   it("Сборка руками", async () => { const { BarLabScreen } = await import("../ui/bar-lab"); expect(renderToString(<BarLabScreen T={T} profile={profile} onBack={() => {}} onOpenDeck={() => {}} />).length).toBeGreaterThan(1000); });
+  it("Сборка руками — со своей картой бара и печатями (Доп. 222)", async () => {
+    store.sa_menu_shared = JSON.stringify({ [profile.restaurant]: [{ id: "__barcard__", cocktails: ["negroni", "daiquiri", "mojito"] }] });
+    store["sa_bar_mastery_" + profile.name + "_" + profile.surname] = JSON.stringify({ negroni: { level: 2, streak: 1 } });
+    const { BarLabScreen } = await import("../ui/bar-lab");
+    expect(renderToString(<BarLabScreen T={T} profile={profile} onBack={() => {}} onOpenDeck={() => {}} />).length).toBeGreaterThan(1000);
+    expect(renderToString(<BarLabScreen T={T} profile={profile} startId="daiquiri" onBack={() => {}} onOpenDeck={() => {}} />).length).toBeGreaterThan(500);
+    delete store.sa_menu_shared;
+  });
   it("Тренажёр меню", async () => { const { MenuTrainerScreen } = await import("../ui/menu-trainer"); expect(renderToString(<MenuTrainerScreen T={T} profile={profile} role="waiter" onBack={() => {}} />).length).toBeGreaterThan(500); });
   it("Рейтинг", async () => { const { LeaderboardScreen } = await import("../ui/screens-gamification"); expect(renderToString(<LeaderboardScreen T={T} leaderboard={[]} scores={[]} profile={profile} onBack={() => {}} />).length).toBeGreaterThan(500); });
   it("Книга отзывов", async () => { const { GuestBookScreen } = await import("../ui/guestbook"); expect(renderToString(<GuestBookScreen T={T} profile={profile} role="bar" onBack={() => {}} />).length).toBeGreaterThan(500); });

@@ -2,7 +2,7 @@ import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
-import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, AMOUNTS } from "../lib/bar-lab";
+import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
 import { frostOf } from "./home-hubs";
 
 // ── Дополнение 208: «Сборка руками» — тренажёр, от которого не оторваться ─────
@@ -352,7 +352,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           <div className="sa-fadein" style={{ ...frost, borderRadius: 16, padding: 12, marginTop: 10 }}>
             <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 8 }}>ДЖИГГЕР · {pending.toUpperCase()}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {AMOUNTS.map(a => <span key={a} style={chip(hint(sc.steps.find(s => s.kind === "ing" && s.name === pending)) && Number(sc.steps.find(s => s.kind === "ing" && s.name === pending).amount) === a)} onClick={() => { const n = pending; setPending(null); act({ kind: "ing", name: n, amount: a }); }}>{a} мл</span>)}
+              {jiggerFor(c).map(a => <span key={a} style={chip(hint(sc.steps.find(s => s.kind === "ing" && s.name === pending)) && Number(sc.steps.find(s => s.kind === "ing" && s.name === pending).amount) === a)} onClick={() => { const n = pending; setPending(null); act({ kind: "ing", name: n, amount: a }); }}>{a} мл</span>)}
               <span style={chip(false, { color: sub })} onClick={() => setPending(null)}>отмена</span>
             </div>
           </div>

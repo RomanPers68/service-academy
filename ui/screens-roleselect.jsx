@@ -71,7 +71,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes }) {
+export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
@@ -363,6 +363,21 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
             <>
+            {/* Доп. 210: режим дня и ежедневные пять — одна тихая полоска, не выбор из семи кнопок */}
+            {dayMode && (() => {
+              const c = Math.min(5, dayMode.count || 0); const done = c >= 5;
+              return (
+                <div onClick={dayMode.go} {...onActivate(dayMode.go)} style={{ margin:"0 16px 10px", padding:"9px 13px", borderRadius:14, display:"flex", alignItems:"center", gap:10, cursor:"pointer",
+                  border:`1px solid ${done ? "#5DBB8A66" : Cc.gold + "44"}`, background: a11y ? "rgba(250,242,222,0.5)" : "rgba(226,186,116,0.07)" }}>
+                  <div style={{ display:"flex", gap:3 }}>{[0,1,2,3,4].map(i => <span key={i} style={{ width:8, height:8, borderRadius:4, background: i < c ? (done ? "#5DBB8A" : Cc.gold) : "transparent", border:`1px solid ${done ? "#5DBB8A" : Cc.gold + "88"}` }} />)}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:10, letterSpacing:1.4, color: Cc.gold, fontFamily:"monospace" }}>{done ? "ПЯТЬ НА СЕГОДНЯ ✓" : "РЕЖИМ ДНЯ"}{dayMode.streak > 1 ? ` · СЕРИЯ ${dayMode.streak}` : ""}</div>
+                    <div style={{ fontSize:13.5, color: Cc.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{dayMode.title}<span style={{ color: Cc.muted }}> · {dayMode.sub}</span></div>
+                  </div>
+                  <span style={{ color: Cc.gold }}>›</span>
+                </div>
+              );
+            })()}
             <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 16px 12px", overflowX: visibleTiles.length <= 4 ? "hidden" : "auto", /* Доп. 143: ≤4 жетонов — во всю ширину поровну */
                 WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", scrollPaddingLeft:16, scrollPaddingRight:16, overscrollBehaviorX:"contain" }}>
               {visibleTiles.map(t => {

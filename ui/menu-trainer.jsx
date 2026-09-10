@@ -9,7 +9,8 @@ import React from "react";
 import { rememberSharedMenu } from "../lib/reference-context";
 import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
 import { buildMenuQuiz } from "../lib/menu-quiz";
-import { MenuDeck } from "./menu-deck";
+import { MenuDeck, AllergenSprint } from "./menu-deck";
+import { isBarcard } from "../lib/deck-extras";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
@@ -80,7 +81,8 @@ const readPhoto = (file, cb) => {
   } catch (e) {}
 };
 
-export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
+export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail }) {
+  const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const green = "#5DBB8A";
   const red = "#E07878";
@@ -128,7 +130,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
     const ownIds = new Set(ownAll.map(d => d.id));
     const own = ownAll.filter(d => !d.archived); // Доп. 167: архив в тренажёре не показываем
     const del = new Set(deleted[restaurant] || []);
-    const team = shared.filter(d => d && d.id && !ownIds.has(d.id) && !del.has(d.id) && !d.archived); // своя правка важнее серверной; удалённое — до публикации не показываем
+    const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && !ownIds.has(d.id) && !del.has(d.id) && !d.archived); // своя правка важнее серверной; удалённое — до публикации не показываем
     // Доп. 154: примеры-заготовки видны, пока нет меню команды (или если включены вручную);
     // отредактированный пример живёт в «своих», удалённый — в скрытых.
     const hs = hideSamples[restaurant];
@@ -137,6 +139,11 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
     const samples = showSamples ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !ownIds.has(d.id) && !hid.has(d.id)) : [];
     return [...own, ...team, ...samples];
   }, [restaurant, custom, shared, hideSamples, hiddenIds, deleted]);
+  const modeStartedRef = React.useRef(null);
+  React.useEffect(() => { // Доп. 210: режим дня с главной
+    if (!startMode || modeStartedRef.current === startMode) return; modeStartedRef.current = startMode;
+    if (startMode === "allergens") setMode("sprint"); else if (startMode === "reverse-menu" || startMode === "know-menu") { setFocusNew(false); setMode("cards"); }
+  }, [startMode]);
   React.useEffect(() => {
     if (!startDishId || startedRef.current === startDishId) return;
     if (dishes.some(d => String(d.id) === String(startDishId))) { startedRef.current = startDishId; setDeckStart(startDishId); setFocusNew(false); setMode("cards"); }
@@ -188,7 +195,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
 
   // ── Режимы тренировки ──────────────────────────────────────────────────────
   // Доп. 189: «Меню по разделам» слилось с Колодой — список живёт в ней за иконкой указателя
-  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart}
+  if (mode === "sprint") return <AllergenSprint T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={dishes} restaurant={restaurant} uk={uk} Head={Head} DishPhoto={DishPhoto} glass={glass} onExit={() => setMode(null)} />;
+  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined}
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
@@ -204,7 +212,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId }) {
 
   // ── Главная тренажёра ──────────────────────────────────────────────────────
   const modes = [
-    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Все блюда: карточки, поиск, разделы, «Знаю?» — как у бара" },
+    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Карточки, поиск, разделы, «Знаю?», «Наоборот» — как у бара" },
+    { key: "sprint", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>, title: "Аллергены на скорость", sub: "30 секунд, свайп «есть / нет», рекорд" },
     { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Главные ингредиенты и аллергены — без подвохов" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
   ];
@@ -694,7 +703,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя
   // ни поправить, ни удалить, пока не «заберёшь» в редактор
   const delSet = new Set(deleted[restaurant] || []);
-  const orphanShared = (shared || []).filter(s => s && s.id && !(custom[restaurant] || []).some(d => d.id === s.id) && !delSet.has(s.id)); // Доп. 168: любая своя версия (и архивная) важнее серверной
+  const orphanShared = (shared || []).filter(s => s && s.id && s.name && !isBarcard(s) && !(custom[restaurant] || []).some(d => d.id === s.id) && !delSet.has(s.id)); // Доп. 168/210: любая своя версия важнее серверной; карта бара — не блюдо
   const hidSet = new Set(hiddenIds[restaurant] || []);
   const hs = hideSamples[restaurant];
   const samplesShown = hs === false ? true : hs === true ? false : (shared || []).length === 0;
@@ -762,12 +771,12 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     const nextOwn = own.some(x => x.id === d.id) ? own.map(x => x.id === d.id ? upd : x) : [upd, ...own];
     setCustom({ ...custom, [restaurant]: nextOwn });
     vibrate(stopped ? "error" : "success");
-    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id)]);
+    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id), ...(shared || []).filter(isBarcard)]);
   };
   const publish = () => {
     if (!saToken()) { _showPub(false, "Нужен вход по коду сотрудника"); return; }
     setPubBusy(true);
-    const toPublish = [...list, ...archived, ...orphanShared]; // Доп. 154/167: свои + архив (с флагом) + серверные
+    const toPublish = [...list, ...archived, ...orphanShared, ...(shared || []).filter(isBarcard)]; // Доп. 154/167/210: свои + архив + серверные + карта бара
     rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(toPublish) })
       .then(res => {
         setPubBusy(false);
@@ -1025,6 +1034,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
           )}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={v => setForm(f => ({ ...f, pairing: v }))} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача, выход в граммах…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder={"Гость спрашивает — по строке «Вопрос — ответ», например:\nМожно без лука? — Да, скажи кухне при заказе"} value={form.faq || ""} onChange={v => setForm(f => ({ ...f, faq: v }))} rows={2} />
         </div>
         {/* липкие кнопки — всегда под рукой */}
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", zIndex: 30,

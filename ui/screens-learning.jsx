@@ -315,12 +315,11 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     if (!done) return null;
     const kind = next ? (next.lesson.type === "quiz" ? "Тест" : next.lesson.type === "dialogue" ? "Живой диалог" : next.lesson.type === "practice" ? "Практика" : next.lesson.type === "build" ? "Сборка" : "Урок") : "";
     return (
-      <div className="sa-fadein" style={{ marginTop: 6 }}>
-        <div style={{ textAlign: "center", fontSize: 11, letterSpacing: 1.5, color: "#5DBB8A", fontFamily: "monospace", marginBottom: 8 }}>ПРОЙДЕНО ✓</div>
+      <div className="sa-fadein" style={{ marginTop: 12 }}>
         {next ? (
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px" }} onClick={onNext}>
             <span style={{ textAlign: "left", minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 10.5, letterSpacing: 1.4, opacity: 0.8, fontFamily: "monospace" }}>{next.other ? `ДАЛЬШЕ · ${next.mod.title}`.toUpperCase() : "ДАЛЕЕ"}</span>
+              <span style={{ display: "block", fontSize: 10.5, letterSpacing: 1.4, opacity: 0.85, fontFamily: "monospace" }}>ПРОЙДЕНО ✓ · {next.other ? `ДАЛЬШЕ · ${next.mod.title}`.toUpperCase() : "ДАЛЕЕ"}</span>
               <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70vw" }}>{next.lesson.title}{next.done ? " ✓" : ""}</span>
             </span>
             <span style={{ fontSize: 20, flexShrink: 0 }}>›</span>
@@ -330,10 +329,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         )}
         <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
         {skipped && (
-          <div onClick={onSkipped} {...onActivate(onSkipped)} style={{ marginTop: 12, padding: "9px 12px", borderRadius: 12, border: `1px dashed ${color}66`, fontSize: 12.5, lineHeight: 1.45, color: T.modSub.color, cursor: "pointer", display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ color, flexShrink: 0 }}>⚑</span>
-            <span style={{ flex: 1, minWidth: 0 }}>{skipped.count > 1 ? `Позади ${skipped.count} непройденных, первый — ` : "Позади остался "}<b style={{ color: T.modTitle.color }}>{skipped.lesson.title}</b> — стоит закрыть, чтобы ничего не упустить.</span>
-            <span style={{ color, fontWeight: "bold", flexShrink: 0 }}>Пройти ›</span>
+          <div onClick={onSkipped} {...onActivate(onSkipped)} style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${color}44`, background: `${color}12`, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ color, flexShrink: 0, fontSize: 15 }}>⚑</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 10.5, letterSpacing: 1.4, color, fontFamily: "monospace" }}>{skipped.count > 1 ? `ПОЗАДИ ${skipped.count} НЕПРОЙДЕННЫХ` : "ПОЗАДИ ОСТАЛСЯ"}</span>
+              <span style={{ display: "block", fontSize: 13.5, color: T.modTitle.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{skipped.lesson.title}</span>
+            </span>
+            <span style={{ padding: "7px 12px", borderRadius: 999, border: `1px solid ${color}88`, color, fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", flexShrink: 0 }}>Пройти ›</span>
           </div>
         )}
       </div>

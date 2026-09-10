@@ -1,6 +1,6 @@
 // Сборка руками: сценарии из спеков, проверка действий, мастерство.
 import { describe, it, expect } from "vitest";
-import { buildScenario, checkAction, recordRun, tierOf, dailyPick } from "../lib/bar-lab";
+import { buildScenario, checkAction, recordRun, tierOf, dailyPick, jiggerFor } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";
 
 describe("bar lab", () => {
@@ -13,6 +13,19 @@ describe("bar lab", () => {
       for (const i of c.ing) expect(names).toContain(i[0]);
       expect(sc.station.ings.length).toBeGreaterThanOrEqual(c.ing.length + 1);
       expect(sc.station.glasses).toContain(c.glass);
+    }
+  });
+  it("каждый коктейль собираем до конца тем, что есть на станции и джиггере", () => {
+    for (const c of COCKTAILS) {
+      const sc = buildScenario(c, COCKTAILS); let done = [];
+      for (const s of sc.steps) {
+        const action = s.kind === "ing" ? { kind: "ing", name: s.name, amount: s.unit === "мл" ? s.amount : undefined } : { kind: s.kind, id: s.id };
+        if (s.kind === "ing" && s.unit === "мл") expect(jiggerFor(c)).toContain(Number(s.amount));
+        if (s.kind === "tool") expect(sc.station.tools).toContain(s.id);
+        if (s.kind === "garnish") expect(sc.station.garnishes).toContain(s.id);
+        const r = checkAction(sc, done, action); expect(r.ok).toBe(true); done = r.doneIdx;
+      }
+      expect(done.length).toBe(sc.steps.length);
     }
   });
   it("Негрони: правильная последовательность проходит, лишний ингредиент и ранний гарниш — нет", () => {

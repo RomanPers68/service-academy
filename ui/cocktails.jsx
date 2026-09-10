@@ -1,5 +1,7 @@
 import React from "react";
 import { COCKTAILS } from "../data/cocktails";
+import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, dishLinks, bumpDaily } from "../lib/deck-extras";
+import { rpc, saToken } from "../api/supabase";
 import { CocktailArt } from "./cocktail-art";
 import { COCKTAIL_STORIES } from "../data/cocktail-stories";
 import { vibrate, onActivate } from "../lib/utils";
@@ -33,7 +35,28 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild }) {
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish }) {
+  // Доп. 210: своя карта бара (флаги в меню команды), свои коктейли из меню, «наоборот», гость спрашивает, мост к меню
+  const restaurant = profile?.restaurant || "";
+  const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
+  const canEdit = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
+  const [shared, setShared] = React.useState(() => cachedShared(restaurant));
+  React.useEffect(() => { if (!restaurant) return; let alive = true; rpc("menu_get", { p_restaurant: restaurant }).then(res => { const arr = typeof res === "string" ? JSON.parse(res) : res; if (alive && Array.isArray(arr)) setShared(arr); }).catch(() => {}); return () => { alive = false; }; }, [restaurant]);
+  const barcard = readBarcard(shared); // null — карта не настроена
+  const house = React.useMemo(() => houseCocktails(shared), [shared]);
+  const ALL = React.useMemo(() => [...house, ...COCKTAILS], [house]);
+  const inCard = (x) => x.house || (barcard ? barcard.includes(x.id) : true);
+  const [pubMsg, setPubMsg] = React.useState("");
+  const toggleCard = (id) => {
+    const cur = barcard || COCKTAILS.map(x => x.id);
+    const ids = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    const next = withBarcard(shared, ids); setShared(next); vibrate("light");
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) }).then(res => setPubMsg(res && res.ok ? "Карта бара обновлена у всех ✓" : "Не сохранилось — проверь связь")).catch(() => setPubMsg("Не сохранилось — нет связи"));
+    setTimeout(() => setPubMsg(""), 2500);
+  };
+  const [reverse, setReverse] = React.useState(false);
+  const [onlyCard, setOnlyCard] = React.useState(true);
+  const [faqOpen, setFaqOpen] = React.useState(null);
   const [sr, setSr] = React.useState(loadSR);
   const [mode, setMode] = React.useState("deck");     // deck | quiz
   const [q, setQ] = React.useState("");                 // поиск
@@ -59,8 +82,12 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild })
     el.style.opacity = opacity == null ? 1 : opacity;
   };
 
-  const due = React.useMemo(() => COCKTAILS.filter(c => { const r = sr[c.id]; return !r || !r.due || r.due <= Date.now(); }), [sr]);
-  const pool = React.useMemo(() => COCKTAILS.filter(c => matches(c, q) && (!base || baseOf(c) === base)), [q, base]);
+  const due = React.useMemo(() => ALL.filter(c => inCard(c) && (() => { const r = sr[c.id]; return !r || !r.due || r.due <= Date.now(); })()), [sr, ALL, barcard]);
+  const pool = React.useMemo(() => {
+    const base_ = ALL.filter(c => matches(c, q) && (!base || (base === "Свои" ? c.house : baseOf(c) === base)));
+    const mine = base_.filter(inCard), rest = base_.filter(x => !inCard(x));
+    return onlyCard && barcard ? mine : [...mine, ...rest]; // своё — впереди, чужое — эрудиция ниже
+  }, [q, base, ALL, barcard, onlyCard]);
   const list = mode === "quiz" ? due.filter(c => pool.includes(c)) : pool;
   const c = list[Math.min(idx, Math.max(0, list.length - 1))];
   const total = list.length;
@@ -97,6 +124,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild })
     const stage = ok ? Math.min(cur.stage + 1, SR_DAYS.length) : 0;
     const next = { ...sr, [c.id]: { stage, due: Date.now() + (ok ? SR_DAYS[stage - 1] * 86400000 : 0) } };
     setSr(next); try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) {}
+    bumpDaily(uk); // Доп. 210: ежедневные пять
     vibrate(ok ? "success" : "error");
     setFlip(false);
     setIdx(i => Math.min(i, Math.max(0, (mode === "quiz" ? due.length - 1 : total) - 1)));
@@ -155,15 +183,24 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild })
               <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода · {COCKTAILS.length}</span>
               <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю? · {due.length}</span>
             </div>
-            {onBasics ? <span style={{ marginLeft:"auto", fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 4px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+            <span style={{ ...pill(reverse), padding:"6px 10px", marginLeft:"auto", fontSize:11.5 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
+            {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 4px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
           </div>
+          {(barcard || house.length > 0) && (
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11.5, color:glass.sub }}>
+              {barcard && <span style={{ ...pill(onlyCard), padding:"4px 10px", fontSize:11 }} onClick={() => setOnlyCard(v => !v)}>{onlyCard ? `Своя карта · ${pool.length}` : "Все коктейли"}</span>}
+              {house.length > 0 && <span>{house.length} своих из меню</span>}
+              {pubMsg && <span style={{ color: /✓/.test(pubMsg) ? "#5DBB8A" : "#E07878" }}>{pubMsg}</span>}
+            </div>
+          )}
           {open && (
             <div className="sa-fadein" style={{ marginBottom:12 }}>
               <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…" autoFocus={filters && !q}
                 style={{ width:"100%", padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
                   fontFamily:"Georgia, serif", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
               <div className="sa-hscroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2, WebkitOverflowScrolling:"touch" }}>
-                <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase("")}>Все · {COCKTAILS.filter(c => matches(c, q)).length}</span>
+                <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase("")}>Все · {ALL.filter(c => matches(c, q)).length}</span>
+                {house.length > 0 && <span style={{ ...pill(base === "Свои"), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase(base === "Свои" ? "" : "Свои")}>Свои · {house.length}</span>}
                 {BASES.map(b => {
                   const n = COCKTAILS.filter(c => matches(c, q) && baseOf(c) === b).length;
                   if (!n) return null;
@@ -203,9 +240,22 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild })
           <div className="sa-ck-inner" style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
             <div className="sa-ck-face sa-ck-front" style={{ ...card, padding:16 }}>
             <div style={{ textAlign:"center" }}>
-              <div style={{ fontFamily:"Georgia, serif", fontSize:24, color:glass.tx, letterSpacing:1.5, textTransform:"uppercase", lineHeight:1.2, marginTop:4 }}>{c.name}</div>
-              <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:glass.sub, letterSpacing:1.5, marginTop:6 }}>
-                {mode === "quiz" ? "ВСПОМНИ СПЕК · ТАПНИ, ЧТОБЫ ПРОВЕРИТЬ" : c.ing.map(i => i[0]).join(" · ").toUpperCase()}
+              {reverse
+                ? <>
+                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginTop:4 }}>ЧТО ЭТО? · {GLASS_RU[c.glass].toUpperCase()} · {c.method.toUpperCase()}</div>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:17, color:glass.tx, lineHeight:1.35, marginTop:8 }}>{c.ing.map(i => `${i[0]}${i[1] ? " " + i[1] : ""}${i[2] && !/мл/.test(i[2]) ? " " + i[2] : ""}`).join(" · ")}</div>
+                  </>
+                : <>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:24, color:glass.tx, letterSpacing:1.5, textTransform:"uppercase", lineHeight:1.2, marginTop:4 }}>{c.name}</div>
+                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:glass.sub, letterSpacing:1.5, marginTop:6 }}>
+                      {mode === "quiz" ? "ВСПОМНИ СПЕК · ТАПНИ, ЧТОБЫ ПРОВЕРИТЬ" : c.ing.map(i => i[0]).join(" · ").toUpperCase()}
+                    </div>
+                  </>}
+              <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:6, flexWrap:"wrap" }}>
+                {c.house && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:"#5DBB8A", border:"1px solid #5DBB8A66", borderRadius:999, padding:"3px 9px" }}>СВОЙ · ИЗ МЕНЮ</span>}
+                {c.stop && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:"#E07878", border:"1px solid #E0787866", borderRadius:999, padding:"3px 9px" }}>В СТОПЕ</span>}
+                {!c.house && canEdit && restaurant && <span onClick={(e) => { e.stopPropagation(); toggleCard(c.id); }} style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, cursor:"pointer", color: inCard(c) ? GOLD : glass.sub, border:`1px solid ${inCard(c) ? GOLD : glass.bd}`, borderRadius:999, padding:"3px 9px" }}>{inCard(c) ? "✓ В КАРТЕ БАРА" : "+ В КАРТУ БАРА"}</span>}
+                {!c.house && !canEdit && barcard && !inCard(c) && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:glass.sub, border:`1px solid ${glass.bd}`, borderRadius:999, padding:"3px 9px" }}>НЕ В КАРТЕ · ЭРУДИЦИЯ</span>}
               </div>
               <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 2px" }}><CocktailArt c={c} w={200} light={a11y} /></div>
               <div style={{ display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap" }}>
@@ -221,14 +271,30 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild })
               <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:10 }}>{GLASS_RU[c.glass]} · {c.method.toUpperCase()}</div>
               {c.ing.map((i, k) => (
                 <div key={k} style={{ display:"flex", justifyContent:"space-between", borderBottom:`1px dashed ${glass.bd}`, padding:"3px 0" }}>
-                  <span>{i[0]}</span><span style={{ fontFamily:"ui-monospace, Menlo, monospace", color:GOLD }}>{i[1]} {i[2] || "мл"}</span>
+                  <span>{i[0]}</span><span style={{ fontFamily:"ui-monospace, Menlo, monospace", color:GOLD }}>{i[1] === "" || i[1] == null ? "" : `${i[1]} ${i[2] || "мл"}`}</span>
                 </div>
               ))}
               <ol style={{ margin:"10px 0 8px", paddingLeft:20, color:glass.tx }}>{c.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>
               <div style={{ color:glass.sub, fontStyle:"italic", fontSize:12.5 }}>{c.tip}</div>
               <div style={{ color:glass.sub, fontSize:12.5, marginTop:6 }}>К столу: {c.pair}</div>
               {c.note ? <div style={{ marginTop:8, padding:"7px 10px", borderRadius:10, border:`1px dashed ${GOLD}66`, color:glass.sub, fontSize:12, lineHeight:1.5 }}>✦ {c.note}</div> : null}
-              {onBuild && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
+              {/* Доп. 210: гость спрашивает — реплика пузырём, ответ по тапу */}
+              <div style={{ marginTop:10 }}>
+                <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ГОСТЬ СПРАШИВАЕТ</div>
+                {cocktailFaq(c).map((f, k) => (
+                  <div key={k} onClick={(e) => { e.stopPropagation(); setFaqOpen(faqOpen === c.id + k ? null : c.id + k); vibrate("light"); }} style={{ marginBottom:6, cursor:"pointer" }}>
+                    <div style={{ display:"inline-block", padding:"6px 11px", borderRadius:"14px 14px 14px 4px", background: a11y ? "rgba(139,106,48,0.12)" : "rgba(255,248,230,0.08)", border:`1px solid ${glass.bd}`, fontSize:12.5, color:glass.tx }}>«{f.q}»</div>
+                    {faqOpen === c.id + k && <div className="sa-fadein" style={{ marginTop:4, marginLeft:14, padding:"6px 11px", borderRadius:"14px 4px 14px 14px", background:"rgba(214,178,102,0.14)", border:`1px solid ${GOLD}66`, fontSize:12.5, color:glass.tx, display:"inline-block" }}>{f.a}</div>}
+                  </div>
+                ))}
+              </div>
+              {c.house && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню — фото и описание ›</div>}
+              {(() => { const links = dishLinks(c.pair, shared); return links.length && onOpenDish ? (
+                <div style={{ marginTop:8 }}>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ИЗ ВАШЕГО МЕНЮ</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenDish(l.id); }} style={{ ...pill(false), fontSize:11.5, color:glass.tx }}>{l.name} ›</span>)}</div>
+                </div>) : null; })()}
+              {onBuild && !c.house && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
                 return <div onClick={(e) => { e.stopPropagation(); onBuild(c.id); }} {...onActivate(() => onBuild(c.id))} style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:12, border:`1px solid ${GOLD}66`, background:"rgba(214,178,102,0.10)", cursor:"pointer" }}>
                   <span style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:glass.tx }}>{lv >= 3 ? "✦ Мастер · собрать ещё" : lv === 2 ? "✦ Печать · собрать ещё" : "Собрать руками"}</span>
                   <span style={{ color:GOLD, fontSize:16 }}>›</span>

@@ -36,7 +36,7 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish }) {
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab }) {
   // Доп. 210: своя карта бара (флаги в меню команды), свои коктейли из меню, «наоборот», гость спрашивает, мост к меню
   const restaurant = profile?.restaurant || "";
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
@@ -187,7 +187,10 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
               <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
             </div>
-            {onBasics ? <span style={{ marginLeft:"auto", fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 4px", whiteSpace:"nowrap" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+            <span style={{ marginLeft:"auto", display:"flex", gap:10, whiteSpace:"nowrap" }}>
+              {onLab ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onLab()} {...onActivate(() => onLab())}>Сборка ›</span> : null}
+              {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+            </span>
           </div>
           {(barcard || house.length > 0) && (
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11.5, color:glass.sub }}>

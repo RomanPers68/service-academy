@@ -188,11 +188,18 @@ const WELCOME_MORE_CARDS = [
     text: "Забыл, где что? Вкладка «Я» → «Гид по приложению»: каждая функция с объяснением и кнопкой «Открыть». Этот попап больше не покажется, гид — останется." },
 ];
 
+// Доп. 214: тренажёры и колоды — карточка попапа
+const WELCOME_TRAIN_CARD = {
+  icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3h8l-1 7a3 3 0 0 1-6 0z"/><path d="M12 13v6M8 21h8"/><path d="M4 8l2-2M20 8l-2-2" opacity="0.6"/></svg>),
+  title: "Тренажёры, от которых не оторваться",
+  text: "Колоды умеют «Наоборот» (состав без названия) и «Гость спрашивает» (реплики гостя пузырями). «Аллергены на скорость» — 30 секунд свайпов. Бармену — «Сборка руками»: станция, бокал, джиггер, печати за сборку по памяти, «Час пик». На главной, на линии под жетонами, — режим дня и пять карточек на сегодня.",
+};
+
 // Доп. 169: карточка менеджера про редактор меню
 const WELCOME_MENUEDIT_CARD = {
   icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z" opacity="0.6"/></svg>),
   title: "Меню: редактор, стоп-лист, архив",
-  text: "Меню → Редактор: импорт из PDF с проверкой аллергенов, три AI-варианта описания, предпросмотр «как увидит официант». «В стоп» — один тап, и команда видит «Сегодня нет». Удалённое — в архив, вернуть к сезону одним тапом. «Опубликовать · N» отправляет всё официантам.",
+  text: "Меню → Редактор: импорт из PDF с проверкой аллергенов, три AI-варианта описания, предпросмотр «как увидит официант». «В стоп» — один тап, и команда видит «Сегодня нет». Удалённое — в архив. А в Колоде бармена отметь «В карту бара» — бармены увидят сначала своё.",
 };
 
 function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
@@ -203,7 +210,7 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
     ...WELCOME_CARDS.slice(0, 2),
     ...WELCOME_TABS_CARDS,
     WELCOME_BUILD_CARD, WELCOME_REF_CARD, WELCOME_MORE_CARDS[0], WELCOME_AI_CARD,
-    WELCOME_SCHED_CARD, WELCOME_MORE_CARDS[1], WELCOME_MORE_CARDS[2],
+    WELCOME_SCHED_CARD, WELCOME_MORE_CARDS[1], WELCOME_MORE_CARDS[2], WELCOME_TRAIN_CARD,
     ...WELCOME_CARDS.slice(2),
     ...(canHire ? [WELCOME_SCHEDIT_CARD, WELCOME_MENUEDIT_CARD, WELCOME_HIRE_CARD] : []),
     ...(isAdmin ? [WELCOME_ADMIN_CARD] : []),
@@ -1132,10 +1139,10 @@ function ServiceAcademy() {
   useEffect(() => {
     if (!profile || !storageLoaded) return;
     // v3: тур большого обновления — разово покажется и давним пользователям
-    try { if (localStorage.getItem("sa_welcome_seen_v6") !== "1") setWelcome(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_welcome_seen_v7") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen_v6", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v7", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };
@@ -1400,7 +1407,7 @@ function ServiceAcademy() {
         {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
         {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
-        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
+        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
         {screen === "cocktails" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
         {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => goBack()} /></Suspense></div>}
@@ -1479,7 +1486,7 @@ function ServiceAcademy() {
             return;
           }
           // Переход в раздел: [[go:key]]
-          const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor","menu","cocktails"];
+          const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor","menu","cocktails","barLab"];
           if (ok.includes(dest)) { setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(dest === "menu" ? "menuTrainer" : dest); }
         }} /></Suspense>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} /></Suspense></div>}

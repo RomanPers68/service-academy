@@ -367,6 +367,8 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", scrollPaddingLeft:16, scrollPaddingRight:16, overscrollBehaviorX:"contain" }}>
               {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
+                // Доп. 215: пять на сегодня ещё не закрыты — тихая золотая точка на «Меню» (сам режим дня живёт в Меню)
+                const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
                 return (
                   <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex: visibleTiles.length <= 4 ? "1 1 0" : "0 0 auto", width: visibleTiles.length <= 4 ? "auto" : 88, minWidth:0, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
                     <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: "transparent" }}>
@@ -375,6 +377,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                       <div style={{ marginTop:4, position:"relative", display:"inline-flex" }}>{React.cloneElement(t.icon, { width:16, height:16 })}</div>
                       <span style={{ position:"relative", fontSize:8.5, color: t.red ? sosR : Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1, maxWidth:"100%", overflowWrap:"break-word", letterSpacing: t.red ? 1 : 0 }}>{t.label}</span>
                     </div>
+                    {dot && <div style={{ position:"absolute", top:6, right:8, zIndex:3, width:7, height:7, borderRadius:4, background:GOLD_SOFT, boxShadow:`0 0 8px ${GOLD_SOFT}` }} />}
                     {badge && <div style={{ position:"absolute", top:-5, right:-3, zIndex:3, background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, color:"#1C1204", fontSize:8, fontWeight:"bold", fontFamily:"monospace", borderRadius:9, padding:"2px 6px", boxShadow:"0 2px 6px rgba(0,0,0,0.4)" }}>{badge}</div>}
                   </div>
                 );
@@ -388,16 +391,9 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             </>
           );
         })()}
-        {/* Доп. 213: режим дня — не карточка, а строка на месте орнамента: пять точек и одна фраза */}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 20px 10px" }}>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D4A85A55, transparent)" }} />
-          {dayMode ? (() => { const c = Math.min(5, dayMode.count || 0); const done = c >= 5; return (
-            <span onClick={dayMode.go} {...onActivate(dayMode.go)} style={{ display:"inline-flex", alignItems:"center", gap:8, cursor:"pointer", whiteSpace:"nowrap" }}>
-              <span style={{ display:"inline-flex", gap:3 }}>{[0,1,2,3,4].map(i => <span key={i} style={{ width:6, height:6, borderRadius:3, background: i < c ? (done ? "#5DBB8A" : GOLD_SOFT) : "transparent", border:`1px solid ${done ? "#5DBB8A" : GOLD_SOFT}` }} />)}</span>
-              <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, letterSpacing:1.4, color: GOLD_SOFT }}>{done ? "ПЯТЬ ЕСТЬ ✓" : dayMode.title.toUpperCase()}</span>
-              <span style={{ color:GOLD_SOFT, fontSize:12 }}>›</span>
-            </span>
-          ); })() : <span style={{ color:GOLD_SOFT, fontSize:14 }}>✦</span>}
+          <span style={{ color:GOLD_SOFT, fontSize:14 }}>✦</span>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to left, transparent, #D4A85A55, transparent)" }} />
         </div>
 

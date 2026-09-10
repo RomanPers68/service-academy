@@ -2,7 +2,8 @@ import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { groupByCat, dishMatches, normCat } from "../lib/menu-sections";
-import { dishFaq, cocktailLinks, bumpDaily } from "../lib/deck-extras";
+import { dishFaq, cocktailLinks, bumpDaily, allergenLabel } from "../lib/deck-extras";
+import { suggestAllergens } from "../lib/menu-sections";
 
 // ── Дополнение 161: Колода меню — та же механика, что у Колоды бармена ────────
 // Свайп 1:1 с продолжением движения, тап — переворот, поиск и разделы за лупой,
@@ -126,11 +127,10 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
       <div style={{ padding: "6px 16px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <div style={{ display: "flex", border: `1px solid ${bd}`, borderRadius: 999, padding: 3, background: bg, gap: 2 }}>
-            <span style={{ ...pill(mode === "deck"), border: "none", padding: "6px 14px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода · {dishes.length}</span>
-            <span style={{ ...pill(mode === "quiz"), border: "none", padding: "6px 14px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю? · {due.length}</span>
+            <span style={{ ...pill(mode === "deck"), border: "none", padding: "6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
+            <span style={{ ...pill(mode === "quiz"), border: "none", padding: "6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
           </div>
-          <span style={{ ...pill(reverse), padding: "5px 9px", marginLeft: "auto", fontSize: 11 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
-          <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: sub }}>{total ? (idx % total) + 1 : 0} / {total}</span>
+          <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: sub, whiteSpace: "nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
           <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и разделы">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
           <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
         </div>
@@ -139,6 +139,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…" autoFocus={filters && !q}
               style={{ width: "100%", padding: "9px 12px", borderRadius: 12, border: `1px solid ${bd}`, background: bg, color: text, fontFamily: "Georgia, serif", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
+              <span style={{ ...pill(reverse), padding: "4px 10px", fontSize: 11 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
               <span style={{ ...pill(!cat), padding: "4px 10px", fontSize: 11 }} onClick={() => setCat("")}>Все · {dishes.filter(x => dishMatches(x, q)).length}</span>
               {groups.map(g => <span key={g.cat} style={{ ...pill(cat === g.cat), padding: "4px 10px", fontSize: 11 }} onClick={() => setCat(cat === g.cat ? "" : g.cat)}>{g.cat} · {g.items.length}</span>)}
             </div>
@@ -161,7 +162,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 15, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "Georgia, serif" }}>{x.name}{x.stop ? <span style={{ color: red || "#B8352A", fontSize: 10.5, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                       <div style={{ fontSize: 12, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(x.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
-                      {(x.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{x.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${(red || "#B8352A")}77`, color: red || "#B8352A" }}>{a}</span>)}</div>}
+                      {(x.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{x.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${(red || "#B8352A")}77`, color: red || "#B8352A" }}>{allergenLabel(a)}</span>)}</div>}
                     </div>
                     <span style={{ fontSize: 11, color: known ? (green || "#5DBB8A") : sub, flexShrink: 0 }}>{known ? "знаю ✓" : x.stop ? "" : "к повтору"}</span>
                   </div>
@@ -270,8 +271,11 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
     const d = cands[Math.floor(Math.random() * cands.length)] || pool[Math.floor(Math.random() * pool.length)];
     if (!d) return;
     const als = d.allergens || [];
-    const askHas = als.length && Math.random() < 0.5;
-    const al = askHas ? als[Math.floor(Math.random() * als.length)] : ALL_AL.filter(a => !als.includes(a))[Math.floor(Math.random() * Math.max(1, ALL_AL.length - als.length))] || ALL_AL[0];
+    // Доп. 215: «нет» спрашиваем только там, где это железно: не отмечено И состав не подсказывает обратного
+    const hinted = new Set(suggestAllergens(d.ingredients || [], []).map(h => h.allergen));
+    const safeAbsent = ALL_AL.filter(a => !als.includes(a) && !hinted.has(a));
+    const askHas = als.length && (Math.random() < 0.5 || !safeAbsent.length);
+    const al = askHas ? als[Math.floor(Math.random() * als.length)] : (safeAbsent[Math.floor(Math.random() * safeAbsent.length)] || als[0] || ALL_AL[0]);
     setQ({ d, al, has: als.includes(al) }); setSeen(s => [...s, d.id]);
   }, [pool, seen]);
   React.useEffect(() => { if (phase !== "play") return; const t = setInterval(() => setLeft(l => { if (l <= 1) { clearInterval(t); setPhase("done"); return 0; } return l - 1; }), 1000); return () => clearInterval(t); }, [phase]);
@@ -283,7 +287,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
     if (ok) { setScore(sc => sc + 1); vibrate("light"); setFlash({ ok: true }); setTimeout(() => { setFlash(null); nextQ(); }, 220); }
     else {
       setMiss(m => m + 1); vibrate("error");
-      const why = q.has ? `Есть: «${q.d.name}» — ${(q.d.allergens || []).join(", ")}.` : `Нет: в «${q.d.name}» — ${(q.d.allergens || []).join(", ") || "аллергенов не отмечено"}.`;
+      const why = q.has ? `Есть: «${q.d.name}» — ${(q.d.allergens || []).map(allergenLabel).join(", ")}.` : `Нет: в «${q.d.name}» только ${(q.d.allergens || []).map(allergenLabel).join(", ") || "— аллергенов не отмечено"}.`;
       setFlash({ ok: false, why }); queueRef.current.push({ q, after: 2 });
       setTimeout(() => { setFlash(null); nextQ(); }, 1400);
     }
@@ -319,7 +323,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
               <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>{(q.d.ingredients || []).slice(0, 5).join(", ")}</div>
               <div style={{ marginTop: 14, textAlign: "center" }}>
                 <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>ЕСТЬ ЛИ ЗДЕСЬ</div>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 26, color: text, marginTop: 2 }}>{q.al}?</div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 26, color: text, marginTop: 2 }}>{allergenLabel(q.al)}?</div>
               </div>
               {flash && !flash.ok && <div className="sa-fadein" style={{ marginTop: 10, fontSize: 13, color: red, lineHeight: 1.45 }}>{flash.why}</div>}
             </div>

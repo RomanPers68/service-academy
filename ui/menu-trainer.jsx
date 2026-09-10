@@ -10,7 +10,7 @@ import { rememberSharedMenu } from "../lib/reference-context";
 import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
 import { buildMenuQuiz } from "../lib/menu-quiz";
 import { MenuDeck, AllergenSprint } from "./menu-deck";
-import { isBarcard } from "../lib/deck-extras";
+import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate } from "../lib/utils";
@@ -81,7 +81,7 @@ const readPhoto = (file, cb) => {
   } catch (e) {}
 };
 
-export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail }) {
+export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role }) {
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   const gold = a11y ? "#8B6A30" : "#C8A96E";
   const green = "#5DBB8A";
@@ -123,6 +123,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
 
   // Доп. 170: deep-link из ответа Наставника — открыть Колоду меню сразу на блюде
   const [deckStart, setDeckStart] = React.useState(null);
+  const [deckMode, setDeckMode] = React.useState(null); // Доп. 215: reverse | quiz — из карточки «режим дня»
   const startedRef = React.useRef(null);
   const dishes = React.useMemo(() => {
     if (!restaurant) return [];
@@ -196,7 +197,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // ── Режимы тренировки ──────────────────────────────────────────────────────
   // Доп. 189: «Меню по разделам» слилось с Колодой — список живёт в ней за иконкой указателя
   if (mode === "sprint") return <AllergenSprint T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={dishes} restaurant={restaurant} uk={uk} Head={Head} DishPhoto={DishPhoto} glass={glass} onExit={() => setMode(null)} />;
-  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined}
+  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={deckMode || (startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined)}
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
@@ -234,6 +235,23 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
         {shareStale && <div style={{ color: T.modSub.color, fontSize: 12, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
+      {/* Доп. 215: режим дня — здесь, где тренируют, а не на главной */}
+      {(() => {
+        const md = modeOfDay(new Date(), role); if (!md || md.go !== "menu") return null;
+        const c = Math.min(5, dailyCount(uk)); const done = c >= 5; const streak = dailyStreak(uk);
+        const go = () => { vibrate("light"); if (md.key === "allergens") setMode("sprint"); else { setFocusNew(false); setDeckMode(md.key === "reverse-menu" ? "reverse" : "quiz"); setMode("cards"); } };
+        return (
+          <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...glass(T), margin: "12px 16px 4px", padding: "13px 15px", cursor: "pointer", borderColor: done ? "#5DBB8A66" : gold + "66", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 8, height: 8, borderRadius: 4, background: k < c ? (done ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${done ? "#5DBB8A" : gold + "88"}` }} />)}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: done ? "#5DBB8A" : gold, fontFamily: "monospace" }}>{done ? "ПЯТЬ НА СЕГОДНЯ ✓" : "РЕЖИМ ДНЯ"}{streak > 1 ? ` · СЕРИЯ ${streak}` : ""}</div>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: textColor, lineHeight: 1.2, marginTop: 2 }}>{md.title}</div>
+              <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 2 }}>{md.sub}{done ? "" : " · пять карточек — и день закрыт"}</div>
+            </div>
+            <span style={{ color: gold, fontSize: 18 }}>›</span>
+          </div>
+        );
+      })()}
       <div style={{ ...T.secTitle }}>Тренировка</div>
       <div style={{ padding: "0 14px" }}>
         {newDishes.length > 0 && (
@@ -395,7 +413,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 10.5, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                   <div style={{ fontSize: 12, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
-                  {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{a}</span>)}</div>}
+                  {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{allergenLabel(a)}</span>)}</div>}
                 </div>
                 <span style={{ color: gold, opacity: 0.7 }}>›</span>
               </div>
@@ -419,7 +437,7 @@ function DishBack({ d, T, gold }) {
     <div>
       <Row label="СОСТАВ">{(d.ingredients || []).join(", ") || "—"}</Row>
       <Row label="АЛЛЕРГЕНЫ">{(d.allergens || []).length ? (d.allergens || []).map(a => (
-        <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 8, border: "1px solid #E0787866", color: "#E07878", fontSize: 12, margin: "0 5px 5px 0" }}>{a}</span>
+        <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 8, border: "1px solid #E0787866", color: "#E07878", fontSize: 12, margin: "0 5px 5px 0" }}>{allergenLabel(a)}</span>
       )) : <span style={{ color: "#5DBB8A" }}>нет из «большой восьмёрки»</span>}</Row>
       {String(d.desc || "").trim() && <Row label="КАК ОПИСАТЬ ГОСТЮ">{d.desc}</Row>}
       {String(d.pairing || "").trim() && <Row label="СОЧЕТАНИЕ">{d.pairing}</Row>}
@@ -997,7 +1015,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             onChange={e => { if (e.target.value.includes(",")) { addIng(e.target.value); e.target.value = ""; } }} />
           <div style={{ fontSize: 11.5, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую — разложится на чипы.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-            {ALLERGENS_LIST.map(al => <span key={al} style={chip(form.allergens.includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{al}</span>)}
+            {ALLERGENS_LIST.map(al => <span key={al} style={chip(form.allergens.includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{allergenLabel(al)}</span>)}
           </div>
           {hints.length > 0 && (
             <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 4, borderColor: red + "66" }}>
@@ -1090,7 +1108,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
                     {catsAll.map(c => <span key={c} onClick={() => upd(i, { cat: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "" : c })} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${normCat(d.cat).toLowerCase() === c.toLowerCase() ? gold : gold + "44"}`, background: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "rgba(214,178,102,0.16)" : "transparent", color: normCat(d.cat).toLowerCase() === c.toLowerCase() ? textColor : T.modSub.color }}>{c}</span>)}
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                    {ALLERGENS_LIST.map(al => { const on = als.includes(al); return <span key={al} onClick={() => upd(i, { allergens: on ? als.filter(x => x !== al) : [...als, al] })} style={{ padding: "4px 9px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${on ? red : gold + "44"}`, background: on ? "rgba(224,120,120,0.15)" : "transparent", color: on ? red : T.modSub.color }}>{al}</span>; })}
+                    {ALLERGENS_LIST.map(al => { const on = als.includes(al); return <span key={al} onClick={() => upd(i, { allergens: on ? als.filter(x => x !== al) : [...als, al] })} style={{ padding: "4px 9px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${on ? red : gold + "44"}`, background: on ? "rgba(224,120,120,0.15)" : "transparent", color: on ? red : T.modSub.color }}>{allergenLabel(al)}</span>; })}
                   </div>
                   {hints.length > 0 && <div style={{ fontSize: 12, color: red, marginTop: 6 }}>Проверь: в составе «{hints[0].because}…» — похоже на {hints.map(h => h.allergen).join(", ")}</div>}
                   {noAl && !hints.length && <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 6 }}>Аллергенов не найдено — если так и есть, всё в порядке.</div>}

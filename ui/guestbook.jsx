@@ -9,6 +9,8 @@ import { GOLD } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { LiquidSegment } from "./widgets";
 import { ROLE_SVG } from "./icons";
+import { loadMastery } from "../lib/bar-lab";
+import { COCKTAILS } from "../data/cocktails";
 import { MODULES } from "../data/modules";
 import { useContentVersion } from "../lib/use-content";
 import { ROLES } from "../data/roles";
@@ -266,6 +268,25 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                     );
                   })}
                 </div>
+                {/* Доп. 214: печати Сборки руками — та же витрина, та же книга */}
+                {(() => {
+                  const m = loadMastery(`_${profile?.name}_${profile?.surname || ""}`);
+                  const stamped = COCKTAILS.filter(c => (m[c.id]?.level || 0) >= 2);
+                  const masters = stamped.filter(c => m[c.id].level >= 3).length;
+                  return (
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed rgba(122,101,72,.3)" }}>
+                      <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>СБОРКА РУКАМИ · ПО ПАМЯТИ</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                        <div style={{ ...SCRIPT, color: INK, fontSize: 22 }}>{stamped.length}<span style={{ fontSize: 12, color: "#9A855C", marginLeft: 6 }}>из {COCKTAILS.length}{masters ? ` · мастер ${masters}` : ""}</span></div>
+                        <div style={{ display: "flex", gap: 3, flexWrap: "wrap", flex: 1, justifyContent: "flex-end" }}>
+                          {stamped.slice(0, 12).map(c => <span key={c.id} title={c.name} style={{ width: 14, height: 14, borderRadius: 7, background: m[c.id].level >= 3 ? `radial-gradient(circle at 34% 30%, ${GOLD_SOFT}, #A98A4E 60%, rgba(0,0,0,.3))` : `radial-gradient(circle at 34% 30%, ${WAX}, #8A3A2A 60%, rgba(0,0,0,.3))`, boxShadow: "0 1px 3px rgba(0,0,0,.3)" }} />)}
+                          {stamped.length > 12 && <span style={{ ...MONO, fontSize: 9, color: "#9A855C" }}>+{stamped.length - 12}</span>}
+                        </div>
+                      </div>
+                      {!stamped.length && <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, marginTop: 4 }}>СОБЕРИ КОКТЕЙЛЬ ПО ПАМЯТИ — ПЕРВАЯ ПЕЧАТЬ ЛЯЖЕТ СЮДА</div>}
+                    </div>
+                  );
+                })()}
                 <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, marginTop: 10 }}>
                   ЛУЧШИЙ ПРОГОН КАЖДОЙ СБОРКИ · ОБНОВЛЯЕТСЯ САМ
                 </div>

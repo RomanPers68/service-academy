@@ -174,17 +174,16 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
             <span onClick={onBack} {...onActivate(onBack)} style={{ color:GOLD, fontSize:22, cursor:"pointer", padding:"0 4px" }}>‹</span>
             <div style={{ fontFamily:"Georgia, serif", fontSize:19, color:glass.tx, flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Колода бармена</div>
-            <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, color:glass.sub, marginRight:2 }}>{total ? (idx % total) + 1 : 0} / {total}</span>
+            <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, color:glass.sub, marginRight:2, whiteSpace:"nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
             <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и фильтр">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
             <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
             <div style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
-              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода · {COCKTAILS.length}</span>
-              <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 14px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю? · {due.length}</span>
+              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
+              <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
             </div>
-            <span style={{ ...pill(reverse), padding:"6px 10px", marginLeft:"auto", fontSize:11.5 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
-            {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 4px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+            {onBasics ? <span style={{ marginLeft:"auto", fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 4px", whiteSpace:"nowrap" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
           </div>
           {(barcard || house.length > 0) && (
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11.5, color:glass.sub }}>
@@ -199,6 +198,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 style={{ width:"100%", padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
                   fontFamily:"Georgia, serif", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
               <div className="sa-hscroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2, WebkitOverflowScrolling:"touch" }}>
+                <span style={{ ...pill(reverse), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
                 <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase("")}>Все · {ALL.filter(c => matches(c, q)).length}</span>
                 {house.length > 0 && <span style={{ ...pill(base === "Свои"), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase(base === "Свои" ? "" : "Свои")}>Свои · {house.length}</span>}
                 {BASES.map(b => {

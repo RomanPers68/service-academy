@@ -4,6 +4,7 @@ import { GOLD } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
 import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
 import { frostOf } from "./home-hubs";
+import { readBarcard, cachedShared } from "../lib/deck-extras";
 
 // ── Дополнение 208: «Сборка руками» — тренажёр, от которого не оторваться ─────
 // Станция внизу: стекло · лёд · ингредиенты · инструмент · гарниш. Тап — действие,
@@ -112,8 +113,13 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   const [rush, setRush] = React.useState(null); // { orders, i, started, penalties }
   const [rushBest, setRushBest] = React.useState(() => { try { return Number(localStorage.getItem("sa_bar_rush_best" + uk) || 0); } catch (e) { return 0; } });
   const daily = React.useMemo(() => dailyPick(COCKTAILS), []);
+  // Доп. 214: своя карта бара — своё впереди, чужое ниже как эрудиция; Час пик и коктейль дня — из карты
+  const card = React.useMemo(() => readBarcard(cachedShared(profile?.restaurant || "")), [profile]);
+  const inCard = (c) => !card || card.includes(c.id);
+  const dailyC = React.useMemo(() => { if (!card || card.includes(dailyC.id)) return daily; const mine = COCKTAILS.filter(inCard); return mine.length ? dailyPick(mine) : daily; }, [card, daily]);
   const save = (m) => { setMastery(m); saveMastery(uk, m); };
   const masteredCount = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && (mastery[c.id]?.level || 0) >= 2).length;
+  const cardTotal = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && inCard(c)).length;
   const pill = (on) => ({ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${on ? gold : gold + "55"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : sub });
 
   const startPlay = (c, m) => { setCurrent(c); setMode(m); setView("play"); vibrate("light"); };
@@ -149,20 +155,20 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         <LabStyle />
         {Head("Сборка руками")}
         <div style={{ padding: "4px 16px 100px" }}>
-          {card({ onClick: () => { setCurrent(daily); setView("pick"); vibrate("light"); } }, <>
+          {card({ onClick: () => { setCurrent(dailyC); setView("pick"); vibrate("light"); } }, <>
             <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КОКТЕЙЛЬ ДНЯ</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 56, height: 56, flexShrink: 0 }}><GlassView glass={daily.glass} fill={0.7} colors={daily.ing.map(i => ING_COLOR(i[0]))} ice={daily.ice === "crushed" ? "crushed" : daily.ice ? "cube" : null} garnish={daily.garnish} a11y={a11y} /></div>
+              <div style={{ width: 56, height: 56, flexShrink: 0 }}><GlassView glass={dailyC.glass} fill={0.7} colors={dailyC.ing.map(i => ING_COLOR(i[0]))} ice={dailyC.ice === "crushed" ? "crushed" : dailyC.ice ? "cube" : null} garnish={dailyC.garnish} a11y={a11y} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text }}>{daily.name}</div>
-                <div style={{ fontSize: 12.5, color: sub }}>{daily.method} · {GLASS_RU[daily.glass]} · {MASTERY_LABEL[mastery[daily.id]?.level || 0]}</div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text }}>{dailyC.name}</div>
+                <div style={{ fontSize: 12.5, color: sub }}>{dailyC.method} · {GLASS_RU[dailyC.glass]} · {MASTERY_LABEL[mastery[dailyC.id]?.level || 0]}</div>
               </div>
               <span style={{ color: gold, fontSize: 18 }}>›</span>
             </div>
           </>)}
           {card({}, <>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МАСТЕРСТВО · {stamps} ИЗ {COCKTAILS.length} ПЕЧАТЕЙ</div>
-            {[1, 2, 3].map(t => { const total = COCKTAILS.filter(c => tierOf(c) === t).length; const n = masteredCount(t); return (
+            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МАСТЕРСТВО · {stamps} ИЗ {cardTotal()} ПЕЧАТЕЙ{card ? " · СВОЯ КАРТА" : ""}</div>
+            {[1, 2, 3].map(t => { const total = cardTotal(t); const n = COCKTAILS.filter(c => tierOf(c) === t && inCard(c) && (mastery[c.id]?.level || 0) >= 2).length; return (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                 <div style={{ width: 84, fontSize: 12.5, color: text }}>{TIER_LABEL[t]}</div>
                 <div style={{ flex: 1, height: 6, borderRadius: 3, background: a11y ? "rgba(139,106,48,0.18)" : "rgba(214,178,102,0.16)" }}><div style={{ width: `${total ? (n / total) * 100 : 0}%`, height: "100%", borderRadius: 3, background: gold, transition: "width .6s" }} /></div>
@@ -171,7 +177,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             <div style={{ fontSize: 12, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
           </>)}
           <div style={{ display: "flex", gap: 10 }}>
-            {card({ onClick: () => { const orders = rushOrders(COCKTAILS, mastery, 3); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); }, style: { flex: 1 } }, <>
+            {card({ onClick: () => { const orders = rushOrders(COCKTAILS, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); }, style: { flex: 1 } }, <>
               <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>3 заказа на время</div>
               <div style={{ fontSize: 12, color: sub, marginTop: 3 }}>{rushBest ? `Рекорд ${rushBest} с` : "По памяти, ошибка +10 с"}</div>
@@ -186,9 +192,9 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             <div key={t} style={{ marginTop: 14 }}>
               <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "0 2px 8px" }}>{TIER_LABEL[t].toUpperCase()} · {COCKTAILS.filter(c => tierOf(c) === t).length}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {COCKTAILS.filter(c => tierOf(c) === t).map(c => { const lv = mastery[c.id]?.level || 0; return (
+                {[...COCKTAILS.filter(c => tierOf(c) === t && inCard(c)), ...COCKTAILS.filter(c => tierOf(c) === t && !inCard(c))].map(c => { const lv = mastery[c.id]?.level || 0; const mine = inCard(c); return (
                   <div key={c.id} className="sa-card" onClick={() => { setCurrent(c); setView("pick"); vibrate("light"); }} {...onActivate(() => { setCurrent(c); setView("pick"); })}
-                    style={{ ...frost, borderRadius: 14, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderColor: lv >= 2 ? gold + "AA" : undefined }}>
+                    style={{ ...frost, borderRadius: 14, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderColor: lv >= 2 ? gold + "AA" : undefined, opacity: mine ? 1 : 0.55 }}>
                     <div style={{ width: 34, height: 34, flexShrink: 0 }}><GlassView glass={c.glass} fill={0.65} colors={c.ing.map(i => ING_COLOR(i[0]))} a11y={a11y} /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
@@ -243,7 +249,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>{rush.total <= rushBest ? "НОВЫЙ РЕКОРД ✦" : "СМЕНА ОТРАБОТАНА"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 46, color: text, margin: "6px 0" }}>{rush.total} с</div>
         <div style={{ fontSize: 13, color: sub }}>{rush.orders.map(o => o.name).join(" · ")}{rush.penalties ? ` · штрафы +${rush.penalties} с` : " · без ошибок"}</div>
-        <button className="sa-btn" onClick={() => { const orders = rushOrders(COCKTAILS, mastery, 3); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 22, width: "100%" }}>Ещё смену ›</button>
+        <button className="sa-btn" onClick={() => { const orders = rushOrders(COCKTAILS, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 22, width: "100%" }}>Ещё смену ›</button>
       </div>
     </div>
   );

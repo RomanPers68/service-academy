@@ -4,6 +4,7 @@
 // публичный API остался в ui/screens.jsx — App.jsx не менялся.
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { KEYS, BADGES, teamRecords, badgesFor, loadLocal } from "../lib/achievements";
 import React from "react";
 import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
@@ -228,6 +229,17 @@ export function WeekStar({ weekly, T }) {
 }
 
 export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}, onBack }) {
+  // Доп. 216: рекорды команды и ачивки — с сервера (achievements_list), свои — с телефона
+  const [records, setRecords] = React.useState(null);
+  const [recErr, setRecErr] = React.useState(false);
+  const [showRec, setShowRec] = React.useState(false);
+  const myUk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
+  const myStats = loadLocal(myUk); const myBadges = badgesFor(myStats);
+  React.useEffect(() => {
+    if (!profile?.restaurant) return; let alive = true;
+    rpc("achievements_list", { p_restaurant: profile.restaurant }).then(res => { const arr = typeof res === "string" ? JSON.parse(res) : res; if (alive) { if (Array.isArray(arr)) setRecords(teamRecords(arr)); else setRecErr(true); } }).catch(() => alive && setRecErr(true));
+    return () => { alive = false; };
+  }, [profile?.restaurant]);
   const myPosition = profile?.position || "waiter";
   const isAdmin = !!profile?.is_admin;
   // Доступные вкладки по должности
@@ -380,6 +392,40 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       {!detailTab ? (
         <div style={{ flex:1, padding:"12px 16px", overflowY:"auto" }}>
           <WeekStar weekly={weekStar} T={T} />
+          {/* Доп. 216: Рекорды команды — соревновательный дух: спринт, час пик, печати, серия */}
+          <div className="sa-card" style={{ padding:"12px 14px", marginBottom:12, borderRadius:16, border:`1px solid ${GOLD}55`, background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.07)" }}>
+            <div onClick={() => setShowRec(v => !v)} {...onActivate(() => setShowRec(v => !v))} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+              <div>
+                <div style={{ fontSize:10.5, letterSpacing:1.6, color:GOLD, fontFamily:"monospace" }}>РЕКОРДЫ КОМАНДЫ</div>
+                <div style={{ fontSize:13, color:T.modSub.color, marginTop:2 }}>{records ? Object.values(records).flat().length ? `Лидеры по ${Object.values(records).filter(l => l.length).length} дисциплинам` : "Пока пусто — первый рекорд твой" : recErr ? "Нужен stage14 на сервере" : "Загружаю…"}{myBadges.length ? ` · твоих ачивок ${myBadges.length}` : ""}</div>
+              </div>
+              <span style={{ color:GOLD, fontSize:18, transform: showRec ? "rotate(90deg)" : "none", transition:"transform .2s" }}>›</span>
+            </div>
+            {showRec && (
+              <div className="sa-fadein" style={{ marginTop:10 }}>
+                {records && Object.keys(KEYS).map(key => { const top = records[key] || []; const k = KEYS[key]; return (
+                  <div key={key} style={{ padding:"8px 0", borderTop:`1px solid ${GOLD}22` }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline" }}>
+                      <span style={{ fontFamily:"Georgia, serif", fontSize:14, color:T.modTitle.color }}>{k.title}</span>
+                      <span style={{ fontSize:11, color:T.modSub.color }}>{k.unit}</span>
+                    </div>
+                    {top.length ? top.map((r, i) => (
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginTop:5, fontSize:13, color: i === 0 ? GOLD : T.modSub.color }}>
+                        <span style={{ width:16, fontFamily:"monospace", fontSize:11 }}>{i + 1}</span>
+                        <span style={{ flex:1, color: i === 0 ? T.modTitle.color : T.modSub.color }}>{r.name} {r.surname || ""}{profile && r.name === profile.name && (r.surname || "") === (profile.surname || "") ? " · ты" : ""}</span>
+                        <span style={{ fontFamily:"monospace" }}>{k.fmt(r.value)}</span>
+                      </div>)) : <div style={{ fontSize:12, color:T.modSub.color, marginTop:4 }}>— ещё никто</div>}
+                  </div>); })}
+                {myBadges.length > 0 && (
+                  <div style={{ paddingTop:10, borderTop:`1px solid ${GOLD}22` }}>
+                    <div style={{ fontSize:10.5, letterSpacing:1.6, color:GOLD, fontFamily:"monospace", marginBottom:6 }}>ТВОИ АЧИВКИ</div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{myBadges.map((b, i) => <span key={i} title={b.desc} style={{ padding:"5px 10px", borderRadius:999, border:`1px solid ${GOLD}66`, fontSize:12, color:T.modTitle.color }}><span style={{ color:GOLD, marginRight:5 }}>{b.sign}</span>{b.title}</span>)}</div>
+                  </div>
+                )}
+                <div style={{ fontSize:11.5, color:T.modSub.color, marginTop:8, lineHeight:1.5 }}>Дальше: {BADGES.filter(b => !myBadges.includes(b)).slice(0, 2).map(b => `«${b.title}» — ${b.desc}`).join("; ") || "все ачивки собраны ✦"}.</div>
+              </div>
+            )}
+          </div>
           {filtered.length === 0 ? (
             <div style={{ textAlign:"center", padding:"60px 0", color:T.modSub.color, fontSize:14 }}>
               <div style={{ marginBottom:12, display:"flex", justifyContent:"center" }}>{UI_SVG.inbox(GOLD, 40)}</div>

@@ -253,6 +253,11 @@ export const injectStyles = () => {
       transition: transform .6s cubic-bezier(.2,.8,.2,1); height: 470px; }
     .sa-ck-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow-y: auto; }
     .sa-ck-back { transform: rotateY(180deg); }
+    /* Доп. 218: после переворота карточка «садится» в плоский режим — WebKit ненадёжно прокручивает
+       содержимое внутри 3D-повёрнутых элементов; в плоском режиме прокрутка оборота обычная */
+    .sa-ck-inner.sa-ck-settled { transform: none !important; transform-style: flat; -webkit-transform-style: flat; transition: none !important; }
+    .sa-ck-settled .sa-ck-front { display: none; }
+    .sa-ck-settled .sa-ck-back { transform: none !important; }
     @keyframes saCkOutL { to { transform: translateX(-125%) rotate(-10deg); opacity: 0; } }
     @keyframes saCkOutR { to { transform: translateX(125%) rotate(10deg); opacity: 0; } }
     @keyframes saCkInR { from { transform: translateX(110%) rotate(6deg); opacity: 0; } to { transform: none; opacity: 1; } }

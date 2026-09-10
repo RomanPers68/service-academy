@@ -2,6 +2,7 @@ import React from "react";
 import { COCKTAILS } from "../data/cocktails";
 import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, dishLinks, bumpDaily } from "../lib/deck-extras";
 import { rpc, saToken } from "../api/supabase";
+import { loadMastery } from "../lib/bar-lab";
 import { CocktailArt } from "./cocktail-art";
 import { COCKTAIL_STORIES } from "../data/cocktail-stories";
 import { vibrate, onActivate } from "../lib/utils";
@@ -64,6 +65,9 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
   const [view, setView] = React.useState("cards");      // cards | index (оглавление)
   const [idx, setIdx] = React.useState(0);
   const [flip, setFlip] = React.useState(false);
+  const [settled, setSettled] = React.useState(false); // Доп. 218: плоский режим после переворота
+  React.useEffect(() => { if (!flip) { setSettled(false); return; } const tm = setTimeout(() => setSettled(true), 640); return () => clearTimeout(tm); }, [flip]);
+  const toggleFlip = () => { if (flip && settled) { setSettled(false); requestAnimationFrame(() => setFlip(false)); } else setFlip(f => !f); };
   const [filters, setFilters] = React.useState(false); // Доп. 149: поиск и база — за одной кнопкой
   // Дополнение 128: плавное перелистывание. Во время свайпа карточка следует
   // за пальцем через ref (без setState — тяжёлая карточка с витражом не
@@ -212,14 +216,14 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
         </>);
       })()}
       {view === "index" ? (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:8 }}>
           {pool.map((x, i) => (
             <div key={x.id} onClick={() => { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); }}
               style={{ ...card, padding:"10px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ width:14, height:14, borderRadius:7, flexShrink:0, background:`linear-gradient(180deg,${x.color[0]},${x.color[1]})`, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.25)" }} />
               <span style={{ minWidth:0 }}>
                 <div style={{ fontFamily:"Georgia, serif", fontSize:13, color:glass.tx, lineHeight:1.2 }}>{x.name}</div>
-                <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:glass.sub, letterSpacing:0.8 }}>{GLASS_RU[x.glass]}</div>
+                <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color: (mast[x.id]?.level || 0) >= 2 ? GOLD : glass.sub, letterSpacing:0.8 }}>{(mast[x.id]?.level || 0) >= 3 ? "✦ МАСТЕР" : (mast[x.id]?.level || 0) >= 2 ? "✦ ПЕЧАТЬ" : GLASS_RU[x.glass]}</div>
               </span>
             </div>
           ))}
@@ -235,9 +239,9 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
       ) : (
         <div className="sa-ck-wrap" ref={wrapRef}
           onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE}
-          onClick={() => { if (moved.current || busy.current) return; setFlip(f => !f); vibrate("light"); }}
+          onClick={() => { if (moved.current || busy.current) return; toggleFlip(); vibrate("light"); }}
           style={{ cursor:"pointer", willChange:"transform, opacity", touchAction:"pan-y" }}>
-          <div className="sa-ck-inner" style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
+          <div className={"sa-ck-inner" + (settled ? " sa-ck-settled" : "")} style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
             <div className="sa-ck-face sa-ck-front" style={{ ...card, padding:16 }}>
             <div style={{ textAlign:"center" }}>
               {reverse

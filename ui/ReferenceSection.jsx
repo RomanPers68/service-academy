@@ -78,7 +78,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
       // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
     { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} карточек · состав, метод, история · основы бара`, icon: Ico.cocktail, on: true, deck: true },
-      { id: "barlab", t: "Сборка руками", s: "Станция, бокал, джиггер · по памяти · час пик", icon: Ico.cocktail, on: true, go: onBarLab, tag: "ТРЕНАЖЁР" },
+      { id: "barlab", t: "Сборка руками", s: "Коктейль дня · по памяти · час пик · печати", icon: Ico.cocktail, on: true, go: onBarLab, tag: "ТРЕНАЖЁР" },
   ];
   return (<div style={T.screen}>
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>

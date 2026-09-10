@@ -28,7 +28,7 @@ describe("bar lab", () => {
       expect(done.length).toBe(sc.steps.length);
     }
   });
-  it("Негрони: правильная последовательность проходит, лишний ингредиент и ранний гарниш — нет", () => {
+  it("Негрони — как на карточке: всё в рокс со льдом → стир → цедра; лишний ингредиент и ранний гарниш — нет", () => {
     const c = COCKTAILS.find(x => x.id === "negroni"); const sc = buildScenario(c, COCKTAILS);
     let done = [];
     const go = (a) => { const r = checkAction(sc, done, a); if (r.ok) done = r.doneIdx; return r; };
@@ -39,11 +39,9 @@ describe("bar lab", () => {
     expect(go({ kind: "ing", name: "Джин", amount: 30 }).ok).toBe(true);
     expect(go({ kind: "ing", name: "Лимонный сок", amount: 30 }).ok).toBe(false); // чужой
     expect(go({ kind: "ing", name: "Красный вермут", amount: 30 }).ok).toBe(true);
-    expect(go({ kind: "tool", id: "stir" }).ok).toBe(false); // сначала лёд в стакан
+    expect(go({ kind: "tool", id: "stir" }).ok).toBe(false); // по карточке: сначала лёд («всё в рокс с крупным льдом»)
     expect(go({ kind: "ice", id: "cube" }).ok).toBe(true);
     expect(go({ kind: "tool", id: "stir" }).ok).toBe(true);
-    expect(go({ kind: "ice", id: "cube" }).ok).toBe(true);
-    expect(go({ kind: "tool", id: "strain" }).ok).toBe(true);
     const last = go({ kind: "garnish", id: "peel" });
     expect(last.ok && last.done).toBe(true);
   });

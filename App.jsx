@@ -10,7 +10,6 @@ import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf } from "./ui/home-hubs"
 import { GuideScreen } from "./ui/guide";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
-import { BarLabScreen } from "./ui/bar-lab";
 import { modeOfDay, dailyCount, dailyStreak } from "./lib/deck-extras";
 import { LiquidTabBar } from "./ui/tabbar";
 import { loadDialogues } from "./data/dialogues-lazy";
@@ -34,6 +33,7 @@ const CandidateScreen = lazy(() => import("./ui/candidate").then(m => ({ default
 const AssistantScreen = lazy(() => import("./ui/assistant").then(m => ({ default: m.AssistantScreen })));
 const ScheduleScreen = lazy(() => import("./ui/schedule").then(m => ({ default: m.ScheduleScreen })));
 const BuildRunner = lazy(() => import("./ui/build").then(m => ({ default: m.BuildRunner })));
+const BarLabScreen = lazy(() => import("./ui/bar-lab").then(m => ({ default: m.BarLabScreen }))); // Доп. 218: лениво, как остальные экраны
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -1640,6 +1640,8 @@ class ErrorBoundary extends React.Component {
     return { hasError: true, errMsg: String(error && (error.message || error)) };
   }
   componentDidCatch(error, info) {
+    // Доп. 218: перекос деплоя — старый HTML тянет чанк, которого уже нет. Один раз перезагружаемся сами.
+    try { const msg = String((arguments[0] && arguments[0].message) || ""); if (/Importing a module script failed|Loading chunk|dynamically imported module|Failed to fetch dynamically/i.test(msg) && !sessionStorage.getItem("sa_chunk_reload")) { sessionStorage.setItem("sa_chunk_reload", "1"); setTimeout(() => window.location.reload(), 300); } } catch (e) {}
     console.error("ServiceAcademy crashed:", error, info);
     // Экран ошибки обязан быть ВИДЕН: если краш случился до снятия
     // брендовой заставки, она (z-index 9999, вне #root) закрыла бы бокал

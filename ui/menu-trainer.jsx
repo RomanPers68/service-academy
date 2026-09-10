@@ -212,6 +212,9 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   );
 
   // ── Главная тренажёра ──────────────────────────────────────────────────────
+  // Доп. 218: режим дня — не отдельная карточка, а пометка на нужном пункте списка (без дублей)
+  const md = modeOfDay(new Date(), role); const dayKey = md && md.go === "menu" ? (md.key === "allergens" ? "sprint" : "cards") : null;
+  const dayCount = Math.min(5, dailyCount(uk)); const dayDone = dayCount >= 5; const dayStreak = dailyStreak(uk);
   const modes = [
     { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Карточки, поиск, разделы, «Знаю?», «Наоборот» — как у бара" },
     { key: "sprint", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>, title: "Аллергены на скорость", sub: "30 секунд, свайп «есть / нет», рекорд" },
@@ -235,23 +238,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
         {shareStale && <div style={{ color: T.modSub.color, fontSize: 12, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
-      {/* Доп. 215: режим дня — здесь, где тренируют, а не на главной */}
-      {(() => {
-        const md = modeOfDay(new Date(), role); if (!md || md.go !== "menu") return null;
-        const c = Math.min(5, dailyCount(uk)); const done = c >= 5; const streak = dailyStreak(uk);
-        const go = () => { vibrate("light"); if (md.key === "allergens") setMode("sprint"); else { setFocusNew(false); setDeckMode(md.key === "reverse-menu" ? "reverse" : "quiz"); setMode("cards"); } };
-        return (
-          <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...glass(T), margin: "12px 16px 4px", padding: "13px 15px", cursor: "pointer", borderColor: done ? "#5DBB8A66" : gold + "66", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 8, height: 8, borderRadius: 4, background: k < c ? (done ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${done ? "#5DBB8A" : gold + "88"}` }} />)}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: done ? "#5DBB8A" : gold, fontFamily: "monospace" }}>{done ? "ПЯТЬ НА СЕГОДНЯ ✓" : "РЕЖИМ ДНЯ"}{streak > 1 ? ` · СЕРИЯ ${streak}` : ""}</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: textColor, lineHeight: 1.2, marginTop: 2 }}>{md.title}</div>
-              <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 2 }}>{md.sub}{done ? "" : " · пять карточек — и день закрыт"}</div>
-            </div>
-            <span style={{ color: gold, fontSize: 18 }}>›</span>
-          </div>
-        );
-      })()}
+
       <div style={{ ...T.secTitle }}>Тренировка</div>
       <div style={{ padding: "0 14px" }}>
         {newDishes.length > 0 && (
@@ -266,18 +253,22 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={T.modArrow}>›</div>
           </div>
         )}
-        {modes.map(m => (
-          <div key={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: dishes.length ? 1 : 0.45 }}
-            onClick={() => dishes.length && setMode(m.key)} {...onActivate(() => dishes.length && setMode(m.key))}>
-            <div style={{ ...T.modBar, background: gold }} />
+        {modes.map(m => { const isDay = dayKey === m.key; const open = () => { if (!dishes.length) return; if (isDay && m.key === "cards") { setFocusNew(false); setDeckMode(md.key === "reverse-menu" ? "reverse" : "quiz"); } setMode(m.key); }; return (
+          <div key={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: dishes.length ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
+            onClick={open} {...onActivate(open)}>
+            <div style={{ ...T.modBar, background: isDay && dayDone ? "#5DBB8A" : gold }} />
             <div style={iconBox}>{m.icon(gold)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={T.modTitle}>{m.title}</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{m.sub}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Сегодня — «Наоборот»: " : md.key === "know-menu" ? "Сегодня — «Знаю?»: " : "") + m.sub : m.sub}</div>
+              {isDay && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
+                <span style={{ display: "inline-flex", gap: 3 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 6, height: 6, borderRadius: 3, background: k < dayCount ? (dayDone ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${dayDone ? "#5DBB8A" : gold + "88"}` }} />)}</span>
+                <span style={{ fontSize: 9.5, letterSpacing: 1.4, fontFamily: "monospace", color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "ПЯТЬ ЕСТЬ ✓" : "РЕЖИМ ДНЯ"}{dayStreak > 1 ? ` · СЕРИЯ ${dayStreak}` : ""}</span>
+              </div>}
             </div>
             <div style={T.modArrow}>›</div>
           </div>
-        ))}
+        ); })}
         {canEdit && (
           <div className="sa-card" style={{ ...T.modCard, margin: "14px 0 10px", border: `1px dashed ${gold}88` }}
             onClick={() => setMode("edit")} {...onActivate(() => setMode("edit"))}>

@@ -5,6 +5,7 @@ import { COCKTAILS } from "../data/cocktails";
 import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
 import { frostOf } from "./home-hubs";
 import { readBarcard, cachedShared } from "../lib/deck-extras";
+import { report as reportAch } from "../lib/achievements";
 
 // ── Дополнение 208: «Сборка руками» — тренажёр, от которого не оторваться ─────
 // Станция внизу: стекло · лёд · ингредиенты · инструмент · гарниш. Тап — действие,
@@ -25,6 +26,15 @@ const FX_CSS = `
 @keyframes saLabStamp { 0% { transform: scale(2.2) rotate(-18deg); opacity: 0 } 60% { transform: scale(.92) rotate(-8deg); opacity: 1 } 100% { transform: scale(1) rotate(-10deg); opacity: 1 } }
 @keyframes saLabSpark { 0% { transform: translate(0,0) scale(0); opacity: 1 } 100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0 } }
 @keyframes saLabIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes saLabStreamIn { to { stroke-dashoffset: 0 } }
+@keyframes saLabBubble { 0% { transform: translateY(0) scale(.6); opacity: 0 } 20% { opacity: .9 } 100% { transform: translateY(-46px) scale(1.1); opacity: 0 } }
+@keyframes saLabBob { 0%,100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-1.5px) rotate(2deg) } }
+@keyframes saLabTwinkle { 0%,100% { opacity: .25 } 50% { opacity: .9 } }
+@keyframes saLabJigger { 0% { transform: translate(-50%,-10px) rotate(0); opacity: 0 } 15% { opacity: 1 } 55% { transform: translate(-50%,0) rotate(0) } 85% { transform: translate(-30%,6px) rotate(-70deg) } 100% { transform: translate(-30%,6px) rotate(-70deg); opacity: 0 } }
+@keyframes saLabJiggerFill { from { height: 0 } to { height: var(--h) } }
+@keyframes saLabDrip { 0% { transform: translateY(0); opacity: .9 } 100% { transform: translateY(70px); opacity: 0 } }
+@keyframes saLabTicket { from { transform: translateY(-14px) rotate(-3deg); opacity: 0 } to { transform: translateY(0) rotate(-1.5deg); opacity: 1 } }
+@keyframes saLabServe { 0% { transform: translateY(0) } 40% { transform: translateY(-8px) } 100% { transform: translateY(0) } }
 .sa-lab-in { animation: saLabIn .32s cubic-bezier(.16,1,.3,1) backwards }
 .sa-lab-bottle:active { transform: scale(.94) }
 `;
@@ -53,33 +63,97 @@ const ING_COLOR = (name) => {
 };
 const mix = (cols) => { if (!cols.length) return "#D6B266"; const rgb = cols.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))); const avg = [0, 1, 2].map(k => Math.round(rgb.reduce((a, c) => a + c[k], 0) / rgb.length)); return "#" + avg.map(v => v.toString(16).padStart(2, "0")).join(""); };
 
-function GlassView({ glass, fill, colors, ice, garnish, shake, a11y, spilled }) {
+function GlassView({ glass, fill, colors, ice, garnish, shake, a11y, spilled, layers, floatColor, bubbles, served }) {
   const path = GLASS_PATH[glass] || GLASS_PATH.rocks; const box = LIQ_BOX[glass] || LIQ_BOX.rocks;
   const line = a11y ? "#8B6A30" : GOLD; const liq = mix(colors);
   const [x, y, w, h] = box; const lh = Math.min(1, fill) * h;
+  // Доп. 220: слоистые коктейли — полосы по порядку; флоат — тонкий слой сверху; пузырьки; лёд покачивается; краш искрится
+  const total = layers && layers.length ? layers.reduce((a, l) => a + l.ml, 0) || 1 : 1;
+  let acc = 0;
   return (
-    <svg viewBox="0 0 120 120" width="100%" height="100%" style={{ filter: shake ? "blur(0.6px)" : "none", transform: spilled ? "rotate(-28deg) translateY(10px)" : shake ? "rotate(-3deg)" : "none", transition: "transform .35s cubic-bezier(.3,1.4,.4,1)" }}>
-      <defs><clipPath id={"gl-" + glass}><path d={path.split(" M")[0]} /></clipPath></defs>
+    <svg viewBox="0 0 120 120" width="100%" height="100%" style={{ filter: shake ? "blur(0.6px)" : "none", transform: spilled ? "rotate(-28deg) translateY(10px)" : shake ? "rotate(-3deg)" : "none", transition: "transform .35s cubic-bezier(.3,1.4,.4,1)", overflow: "visible" }}>
+      <defs><clipPath id={"gl-" + glass}><path d={path.split(" M")[0]} /></clipPath>
+        <radialGradient id="sa-spot" cx="50%" cy="0%" r="80%"><stop offset="0%" stopColor="rgba(255,236,190,0.35)" /><stop offset="100%" stopColor="rgba(255,236,190,0)" /></radialGradient></defs>
+      {served && <><ellipse cx="60" cy="114" rx="34" ry="5" fill="rgba(0,0,0,0.45)" /><ellipse cx="60" cy="112" rx="30" ry="4" fill="#3a2a12" stroke={line} strokeWidth="1" /><rect x="0" y="0" width="120" height="120" fill="url(#sa-spot)" /></>}
       <g clipPath={`url(#gl-${glass})`}>
-        {!spilled && lh > 0 && <rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.85" style={{ transition: "y .4s ease, height .4s ease" }} />}
-        {!spilled && ice === "cube" && [0, 1, 2].map(i => <rect key={i} x={x + 6 + i * (w / 3.2)} y={y + h - lh - 2 + i * 6} width={w / 4} height={w / 4} rx="3" fill="rgba(255,255,255,0.35)" stroke="rgba(255,255,255,0.6)" strokeWidth="1" />)}
-        {!spilled && ice === "crushed" && Array.from({ length: 14 }).map((_, i) => <circle key={i} cx={x + 6 + (i * 37) % w} cy={y + 8 + (i * 23) % (h - 12)} r="3.5" fill="rgba(255,255,255,0.45)" />)}
+        {!spilled && layers && layers.length > 0 ? layers.map((l, i) => { const lhh = (l.ml / total) * lh; const yy = y + h - (acc + l.ml) / total * lh; acc += l.ml; return <rect key={i} x={x} y={yy} width={w} height={lhh} fill={l.color} opacity="0.9" style={{ transition: "y .4s ease, height .4s ease" }} />; })
+          : !spilled && lh > 0 && <rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.85" style={{ transition: "y .4s ease, height .4s ease" }} />}
+        {!spilled && floatColor && lh > 0 && <rect x={x} y={y + h - lh} width={w} height={Math.max(6, lh * 0.18)} fill={floatColor} opacity="0.95" />}
+        {!spilled && ice === "cube" && [0, 1, 2].map(i => <rect key={i} x={x + 6 + i * (w / 3.2)} y={y + h - lh - 2 + i * 6} width={w / 4} height={w / 4} rx="3" fill="rgba(255,255,255,0.35)" stroke="rgba(255,255,255,0.6)" strokeWidth="1" style={{ animation: lh > 0 ? `saLabBob ${2.4 + i * 0.5}s ease-in-out infinite` : "none", transformOrigin: "center" }} />)}
+        {!spilled && ice === "crushed" && Array.from({ length: 14 }).map((_, i) => <circle key={i} cx={x + 6 + (i * 37) % w} cy={y + 8 + (i * 23) % (h - 12)} r="3.5" fill="rgba(255,255,255,0.45)" style={{ animation: `saLabTwinkle ${1.6 + (i % 4) * 0.4}s ease-in-out ${i * 0.13}s infinite` }} />)}
+        {!spilled && bubbles && lh > 0 && Array.from({ length: 9 }).map((_, i) => <circle key={i} cx={x + 6 + (i * 31) % (w - 8)} cy={y + h - 4} r={1.2 + (i % 3) * 0.6} fill="rgba(255,255,255,0.75)" style={{ animation: `saLabBubble ${1.4 + (i % 3) * 0.5}s ease-out ${i * 0.17}s infinite` }} />)}
       </g>
       <path d={path} fill="none" stroke={line} strokeWidth="2" strokeLinejoin="round" />
-      {garnish && garnish !== "none" && <g transform="translate(88 18)"><circle r="8" fill={garnish === "cherry" ? "#C4483A" : garnish === "olive" || garnish === "mint" ? "#7FA05A" : garnish === "cream" ? "#EFE4C8" : "#E2A63A"} stroke={line} strokeWidth="1.2" /></g>}
+      {garnish && garnish !== "none" && <g transform="translate(88 18)" style={{ animation: served ? "saLabBob 3s ease-in-out infinite" : "none" }}><circle r="8" fill={garnish === "cherry" ? "#C4483A" : garnish === "olive" || garnish === "mint" ? "#7FA05A" : garnish === "cream" ? "#EFE4C8" : "#E2A63A"} stroke={line} strokeWidth="1.2" /></g>}
+    </svg>
+  );
+}
+// Доп. 220: джиггер — наполняется до метки и опрокидывается в сосуд
+function Jigger({ amount, color, gold }) {
+  const frac = Math.min(1, amount / 60);
+  return (
+    <div style={{ position: "absolute", left: "50%", top: -6, width: 34, height: 44, animation: "saLabJigger 1s ease-in-out forwards", transformOrigin: "60% 90%", zIndex: 3 }}>
+      <svg viewBox="0 0 34 44" width="34" height="44">
+        <defs><clipPath id="jg"><path d="M4 2h26l-10 20 10 20H4l10-20z" /></clipPath></defs>
+        <rect x="4" y={42 - 18 * frac} width="26" height={18 * frac} fill={color} clipPath="url(#jg)" opacity="0.9" />
+        <path d="M4 2h26l-10 20 10 20H4l10-20z" fill="rgba(220,220,230,0.12)" stroke={gold} strokeWidth="1.5" />
+        <path d="M6 30h22" stroke={gold} strokeWidth="0.8" opacity="0.6" />
+      </svg>
+      <div style={{ position: "absolute", top: -12, left: 0, right: 0, textAlign: "center", fontSize: 9, letterSpacing: 1, color: gold, fontFamily: "monospace" }}>{amount} мл</div>
+    </div>
+  );
+}
+// Доп. 220: струя с изгибом и каплями
+function Stream({ color, from, to, curved }) {
+  const d = curved ? `M${from[0]} ${from[1]} Q ${(from[0] + to[0]) / 2 + 14} ${(from[1] + to[1]) / 2} ${to[0]} ${to[1]}` : `M${from[0]} ${from[1]} L${to[0]} ${to[1]}`;
+  return (
+    <svg viewBox="0 0 200 150" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}>
+      <path d={d} stroke={color} strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.9" style={{ strokeDasharray: 200, strokeDashoffset: 200, animation: "saLabStreamIn .6s ease-out forwards" }} />
+      {[0, 1, 2].map(i => <circle key={i} cx={to[0] + (i - 1) * 6} cy={to[1] - 6} r="2.6" fill={color} style={{ animation: `saLabDrip .5s ${0.45 + i * 0.08}s ease-in forwards`, opacity: 0 }} />)}
     </svg>
   );
 }
 
+// Доп. 219: форма бутылки по типу продукта
+export function bottleKind(name) {
+  const n = String(name || "").toLowerCase().replace(/ё/g, "е");
+  if (/ангостур|биттер|табаско|вустер|острый соус/.test(n)) return "dasher";
+  if (/сироп|мед\b|медов|гренадин|оржа/.test(n)) return "syrup";
+  if (/сок|морс|пюре|сливк|молок|кокос|эспрессо|кофе|вода\b/.test(n)) return "jug";
+  if (/содов|тоник|кола|лимонад|спрайт|имбирн|энергет|газиров/.test(n)) return "soda";
+  if (/шампан|просекко|игрист/.test(n)) return "champagne";
+  if (/вино|вермут/.test(n)) return "wine";
+  if (/ликер|куантро|трипл|кампари|апероль|крем де|бейлис|драмбуи|мараскино|кюрасао|самбука|абсент|мидори|калуа|гран марнье|амаретто|кассис|мюр|виолет|персиков|дынн/.test(n)) return "liqueur";
+  if (/джин|водка|текила|кашас|ром\b|виски|бурбон|скотч|коньяк|бренди/.test(n)) return "spirit";
+  return "fresh"; // мята, лайм, сахар, соль, белок, ягоды…
+}
+const BOTTLE_PATHS = {
+  spirit:   { d: "M17 2h10v11l4 5v40a4 4 0 0 1-4 4H17a4 4 0 0 1-4-4V18l4-5z", liq: [13, 22, 18, 40], label: [13, 34, 18, 12] },
+  liqueur:  { d: "M18 2h8v10c7 3 9 8 9 14v32a4 4 0 0 1-4 4H13a4 4 0 0 1-4-4V26c0-6 2-11 9-14z", liq: [9, 24, 26, 38], label: [9, 36, 26, 12] },
+  wine:     { d: "M19 2h6v14c5 2 6 6 6 10v32a4 4 0 0 1-4 4H17a4 4 0 0 1-4-4V26c0-4 1-8 6-10z", liq: [13, 26, 18, 36], label: [13, 38, 18, 12] },
+  champagne:{ d: "M19 2h6v12c6 3 7 8 7 13v31a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V27c0-5 1-10 7-13z", liq: [12, 26, 20, 36], label: [12, 38, 20, 12] },
+  soda:     { d: "M18 2h8v9l3 4v43a4 4 0 0 1-4 4H19a4 4 0 0 1-4-4V15l3-4z", liq: [15, 18, 14, 44], label: [15, 32, 14, 10] },
+  syrup:    { d: "M20 2h4l2 7v8c4 2 5 6 5 10v31a4 4 0 0 1-4 4H17a4 4 0 0 1-4-4V27c0-4 1-8 5-10V9z", liq: [13, 26, 18, 36], label: [13, 38, 18, 12] },
+  dasher:   { d: "M20 8h4v6c4 1 6 4 6 8v34a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3V22c0-4 2-7 6-8z", liq: [14, 22, 16, 37], label: [14, 34, 16, 10] },
+  jug:      { d: "M10 14h22l2 4v40a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4V18zM32 22h6v14h-6", liq: [8, 22, 26, 40], label: [8, 40, 26, 10] },
+  fresh:    { d: "M8 30a14 14 0 0 1 28 0v22a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4z", liq: [8, 30, 28, 26], label: [8, 44, 28, 10] },
+};
 function Bottle({ color, label, on, dim, ghost, gold, a11y, onClick, delay = 0 }) {
+  const kind = bottleKind(label); const sh = BOTTLE_PATHS[kind] || BOTTLE_PATHS.spirit;
   const text = a11y ? "#2A1F0E" : "#EFE4C8";
+  const short = String(label).replace(/\s*\(.*?\)/g, "").split(" ").slice(0, 2).join(" ");
   return (
-    <div className="sa-lab-in sa-lab-bottle" onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: `${delay}ms`, width: 64, flexShrink: 0, cursor: "pointer", opacity: dim ? 0.42 : 1, textAlign: "center", transition: "transform .12s" }}>
-      <div style={{ width: 44, height: 62, margin: "0 auto 5px", position: "relative", filter: on ? "drop-shadow(0 0 8px rgba(214,178,102,.75))" : "none" }}>
+    <div className="sa-lab-in sa-lab-bottle" onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: `${delay}ms`, width: 70, flexShrink: 0, cursor: "pointer", opacity: dim ? 0.42 : 1, textAlign: "center", transition: "transform .12s" }}>
+      <div style={{ width: 44, height: 62, margin: "0 auto 5px", position: "relative", filter: on ? "drop-shadow(0 0 8px rgba(214,178,102,.75))" : "drop-shadow(0 4px 4px rgba(0,0,0,.35))" }}>
         <svg viewBox="0 0 44 62" width="44" height="62">
-          <path d="M17 2h10v12l6 6v36a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4V20l6-6z" fill={ghost ? "none" : color} opacity={ghost ? 1 : 0.92} stroke={on ? gold : (a11y ? "#8B6A30" : "rgba(255,255,255,0.28)")} strokeWidth={on ? 1.6 : 1} />
-          <rect x="15" y="26" width="14" height="18" rx="2" fill="rgba(255,255,255,0.14)" />
-          <path d="M14 22 v30" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" />
+          <defs><clipPath id={"bt-" + kind}><path d={sh.d} /></clipPath></defs>
+          <path d={sh.d} fill={a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.06)"} stroke={on ? gold : (a11y ? "#8B6A30" : "rgba(255,255,255,0.28)")} strokeWidth={on ? 1.6 : 1} />
+          {!ghost && <rect x={sh.liq[0]} y={sh.liq[1]} width={sh.liq[2]} height={sh.liq[3]} fill={color} opacity="0.9" clipPath={`url(#bt-${kind})`} />}
+          {kind === "soda" && [0, 1, 2, 3].map(i => <circle key={i} cx={19 + (i * 5) % 8} cy={50 - i * 9} r="1.3" fill="rgba(255,255,255,0.7)" clipPath={`url(#bt-${kind})`} />)}
+          {kind === "fresh" && <path d="M14 30c4-6 12-6 16 0" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" />}
+          <rect x={sh.label[0] + 1} y={sh.label[1]} width={sh.label[2] - 2} height={sh.label[3]} rx="1.5" fill={a11y ? "rgba(255,252,240,0.95)" : "rgba(238,228,200,0.92)"} />
+          <text x="22" y={sh.label[1] + sh.label[3] * 0.72} textAnchor="middle" fontSize={Math.min(5.2, (sh.label[2] - 3) / Math.max(4, short.length) * 1.9)} fontFamily="Georgia, serif" fill="#2A1F0E">{short.length > 14 ? short.slice(0, 13) + "…" : short}</text>
+          <path d={`M${sh.liq[0] + 2} ${sh.liq[1] + 4} v${sh.liq[3] - 8}`} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinecap="round" />
         </svg>
         {dim && <div style={{ position: "absolute", right: -2, top: -2, width: 16, height: 16, borderRadius: 8, background: "#5DBB8A", color: "#fff", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
       </div>
@@ -101,6 +175,30 @@ const ToolIcon = ({ id, gold }) => <span style={{ fontSize: 22, color: gold, lin
 const GarnishIcon = ({ id }) => <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-block", background: id === "cherry" ? "#C4483A" : id === "olive" || id === "mint" ? "#7FA05A" : id === "cream" ? "#EFE4C8" : id === "salt" ? "#F2F2F2" : id === "onion" ? "#E8E4D0" : "#E2A63A", border: "1px solid rgba(255,255,255,0.35)" }} />;
 const IceIcon = ({ id, gold }) => <span style={{ fontSize: 20, color: gold }}>{id === "cube" ? "▢" : id === "crushed" ? "∴" : "∅"}</span>;
 
+// Доп. 219: сосуд на сцене — в него льётся, в нём лёд, он дрожит; при стрейне переливается в бокал
+function VesselView({ kind, fill, colors, ice, a11y, shake, tilt }) {
+  const line = a11y ? "#8B6A30" : GOLD; const liq = mix(colors);
+  const shapes = {
+    shaker: { d: "M38 8h44l-6 30v58a6 6 0 0 1-6 6H50a6 6 0 0 1-6-6V38z M40 8h40v-6H40z", box: [46, 40, 28, 60], cap: true },
+    mixing: { d: "M36 12h48v86a6 6 0 0 1-6 6H42a6 6 0 0 1-6-6z", box: [40, 16, 40, 84], spoon: true },
+    blender: { d: "M40 10h40l6 84a6 6 0 0 1-6 6H40a6 6 0 0 1-6-6z", box: [40, 16, 40, 82], lid: true },
+  };
+  const s = shapes[kind] || shapes.shaker; const [x, y, w, h] = s.box; const lh = Math.min(1, fill) * h;
+  return (
+    <svg viewBox="0 0 120 120" width="100%" height="100%" style={{ transform: tilt ? "rotate(-48deg) translate(14px,-8px)" : "none", transition: "transform .45s cubic-bezier(.3,1.2,.4,1)", animation: shake ? "saLabShake .8s ease-in-out" : "none" }}>
+      <defs><clipPath id={"vs-" + kind}><path d={s.d.split(" M")[0]} /></clipPath></defs>
+      <g clipPath={`url(#vs-${kind})`}>
+        {lh > 0 && <rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.88" style={{ transition: "y .4s ease, height .4s ease" }} />}
+        {ice === "cube" && [0, 1, 2, 3].map(i => <rect key={i} x={x + 4 + (i % 2) * 14} y={y + h - lh - 4 + Math.floor(i / 2) * 12} width="11" height="11" rx="3" fill="rgba(255,255,255,0.4)" stroke="rgba(255,255,255,0.65)" strokeWidth="1" />)}
+        {ice === "crushed" && Array.from({ length: 12 }).map((_, i) => <circle key={i} cx={x + 5 + (i * 29) % (w - 8)} cy={y + 6 + (i * 19) % (h - 12)} r="3" fill="rgba(255,255,255,0.45)" />)}
+      </g>
+      <path d={s.d} fill={kind === "shaker" ? "rgba(200,200,210,0.10)" : "none"} stroke={line} strokeWidth="2" strokeLinejoin="round" />
+      {s.spoon && <path d="M92 6 L64 84" stroke={line} strokeWidth="2" strokeLinecap="round" opacity="0.8" />}
+      {kind === "shaker" && <path d="M46 40h28" stroke={line} strokeWidth="1" opacity="0.5" />}
+    </svg>
+  );
+}
+
 const ukOf = (profile) => profile ? `_${profile.name}_${profile.surname || ""}` : "";
 
 export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) {
@@ -117,7 +215,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   const card = React.useMemo(() => readBarcard(cachedShared(profile?.restaurant || "")), [profile]);
   const inCard = (c) => !card || card.includes(c.id);
   const dailyC = React.useMemo(() => { if (!card || card.includes(dailyC.id)) return daily; const mine = COCKTAILS.filter(inCard); return mine.length ? dailyPick(mine) : daily; }, [card, daily]);
-  const save = (m) => { setMastery(m); saveMastery(uk, m); };
+  const save = (m) => { setMastery(m); saveMastery(uk, m); reportAch(uk, "stamps", COCKTAILS.filter(c => (m[c.id]?.level || 0) >= 2).length); }; // Доп. 216: печати — в рекорды команды
   const masteredCount = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && (mastery[c.id]?.level || 0) >= 2).length;
   const cardTotal = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && inCard(c)).length;
   const pill = (on) => ({ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${on ? gold : gold + "55"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : sub });
@@ -131,6 +229,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         const total = Math.round((Date.now() - rush.started) / 1000) + rush.penalties;
         const best = rushBest && rushBest < total ? rushBest : total;
         setRushBest(best); try { localStorage.setItem("sa_bar_rush_best" + uk, String(best)); } catch (e) {}
+        reportAch(uk, "rush_best", total); // Доп. 216
         setRush({ ...rush, done: true, total }); setView("rush");
       } else { setRush({ ...rush, i: next }); setCurrent(rush.orders[next]); setView("play"); }
     }
@@ -176,34 +275,26 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
               </div>); })}
             <div style={{ fontSize: 12, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
           </>)}
-          <div style={{ display: "flex", gap: 10 }}>
-            {card({ onClick: () => { const orders = rushOrders(COCKTAILS, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); }, style: { flex: 1 } }, <>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>3 заказа на время</div>
-              <div style={{ fontSize: 12, color: sub, marginTop: 3 }}>{rushBest ? `Рекорд ${rushBest} с` : "По памяти, ошибка +10 с"}</div>
-            </>)}
-            {card({ onClick: () => { setView("station"); vibrate("light"); }, style: { flex: 1 } }, <>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>СТАНЦИЯ</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>Подготовка к смене</div>
-              <div style={{ fontSize: 12, color: sub, marginTop: 3 }}>Расставь всё по порядку</div>
-            </>)}
-          </div>
-          {[1, 2, 3].map(t => (
-            <div key={t} style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "0 2px 8px" }}>{TIER_LABEL[t].toUpperCase()} · {COCKTAILS.filter(c => tierOf(c) === t).length}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {[...COCKTAILS.filter(c => tierOf(c) === t && inCard(c)), ...COCKTAILS.filter(c => tierOf(c) === t && !inCard(c))].map(c => { const lv = mastery[c.id]?.level || 0; const mine = inCard(c); return (
-                  <div key={c.id} className="sa-card" onClick={() => { setCurrent(c); setView("pick"); vibrate("light"); }} {...onActivate(() => { setCurrent(c); setView("pick"); })}
-                    style={{ ...frost, borderRadius: 14, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderColor: lv >= 2 ? gold + "AA" : undefined, opacity: mine ? 1 : 0.55 }}>
-                    <div style={{ width: 34, height: 34, flexShrink: 0 }}><GlassView glass={c.glass} fill={0.65} colors={c.ing.map(i => ING_COLOR(i[0]))} a11y={a11y} /></div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
-                      <div style={{ fontSize: 10.5, color: lv >= 2 ? gold : sub }}>{lv >= 3 ? "✦ мастер" : lv === 2 ? "✦ печать" : lv === 1 ? "с подсказками" : "—"}</div>
-                    </div>
-                  </div>); })}
+          {card({ onClick: () => { const orders = rushOrders(COCKTAILS, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text }}>Три заказа на время</div>
+                <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>{rushBest ? `Твой рекорд ${rushBest} с` : "По памяти · ошибка +10 с · рекорд в Рейтинг команды"}</div>
               </div>
+              <span style={{ color: gold, fontSize: 18 }}>›</span>
             </div>
-          ))}
+          </>)}
+          {onOpenDeck && card({ onClick: () => onOpenDeck(null) }, <>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ВЫБРАТЬ КОКТЕЙЛЬ</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text }}>Колода бармена</div>
+                <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>Любая карточка · на обороте «Собрать руками» · печати видны в указателе</div>
+              </div>
+              <span style={{ color: gold, fontSize: 18 }}>›</span>
+            </div>
+          </>)}
         </div>
       </div>
     );
@@ -255,7 +346,6 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   );
 
   // ─────────────────────────────────────────────── STATION PREP
-  if (view === "station") return <StationPrep T={T} a11y={a11y} gold={gold} frost={frost} Head={Head} onExit={() => setView("hub")} uk={uk} />;
   return null;
 }
 
@@ -271,6 +361,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const [finished, setFinished] = React.useState(null);
   const [shake, setShake] = React.useState(false);
   const [fx, setFx] = React.useState(null); // { kind: pour|drop|stir|muddle|strain|garnish|win|spill, color }
+  const [jig, setJig] = React.useState(null); // Доп. 220: джиггер на сцене
   const fxTimer = React.useRef(null);
   const playFx = (kind, color, ms = 650) => { clearTimeout(fxTimer.current); setFx({ kind, color, key: Date.now() }); fxTimer.current = setTimeout(() => setFx(null), ms); };
   const [tick, setTick] = React.useState(0);
@@ -279,8 +370,22 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const glassStep = sc.steps.find(s => s.kind === "glass"); const glassDone = done.includes(sc.steps.indexOf(glassStep));
   const addedIngs = sc.steps.filter((s, i) => s.kind === "ing" && done.includes(i));
   const totalMl = sc.spec.ing.reduce((a, i) => a + (String(i[2] || "мл").startsWith("мл") ? Number(i[1]) || 0 : 0), 0) || 1;
-  const fillMl = addedIngs.reduce((a, s) => a + (s.unit === "мл" ? Number(s.amount) || 0 : 0), 0);
+  // Доп. 219: сосуд на сцене — что в шейкере, что в бокале
+  const vesselKind = sc.steps.some(s => s.where === "shaker") ? "shaker" : sc.steps.some(s => s.where === "mixing") ? "mixing" : sc.steps.some(s => s.where === "blender") ? "blender" : null;
+  const strained = sc.steps.some((s, i) => s.kind === "tool" && s.id === "strain" && done.includes(i)) || (vesselKind === "blender" && sc.steps.some((s, i) => s.kind === "tool" && s.id === "blend" && done.includes(i)));
+  const inVessel = addedIngs.filter(s => s.where && s.where !== "glass");
+  const inGlassDirect = addedIngs.filter(s => !s.where || s.where === "glass");
+  const vesselMl = inVessel.reduce((a, s) => a + (s.unit === "мл" ? Number(s.amount) || 0 : 0), 0);
+  const fillMl = inGlassDirect.reduce((a, s) => a + (s.unit === "мл" ? Number(s.amount) || 0 : 0), 0) + (strained ? vesselMl : 0);
+  const glassColors = [...inGlassDirect, ...(strained ? inVessel : [])].map(s => ING_COLOR(s.name));
+  const iceInVessel = sc.steps.find((s, i) => s.kind === "ice" && s.where && s.where !== "glass" && done.includes(i));
+  // Доп. 220: слои для слоистых, флоат сверху, пузырьки после газировки
+  const layers = c.method === "слои" ? inGlassDirect.map(s => ({ color: ING_COLOR(s.name), ml: Number(s.amount) || 20 })) : null;
+  const floatStep = addedIngs.find(s => /флоат/.test(String(s.label || "")) || /флоат|взбит/.test(String((sc.spec.ing.find(i => i[0] === s.name) || [])[2] || "")));
+  const fizzy = addedIngs.some(s => /содов|тоник|кола|лимонад|спрайт|имбирн|энергет|просекко|шампан|игрист/.test(s.name.toLowerCase()));
   const iceInGlass = sc.steps.find((s, i) => s.kind === "ice" && s.where === "glass" && done.includes(i));
+  const vesselActive = vesselKind && !strained && (inVessel.length > 0 || iceInVessel || (expectedWhere() !== "glass"));
+  function expectedWhere() { const e = sc.steps.map((s, i) => ({ s, i })).find(x => !done.includes(x.i)); return e && e.s.where ? e.s.where : "glass"; }
   const garnishDone = sc.steps.find((s, i) => s.kind === "garnish" && done.includes(i));
   const expected = sc.steps.map((s, i) => ({ s, i })).find(x => !done.includes(x.i));
 
@@ -289,12 +394,13 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
     const r = checkAction(sc, done, action);
     if (r.ok) {
       setDone(r.doneIdx); setMsg(null); vibrate("light");
-      if (action.kind === "ing") playFx("pour", ING_COLOR(action.name), 700);
+      if (action.kind === "ing" && action.amount != null) { const col = ING_COLOR(action.name); setJig({ amount: action.amount, color: col, key: Date.now() }); setTimeout(() => { setJig(null); playFx("pour", col, 700); }, 850); }
+      else if (action.kind === "ing") playFx("pour", ING_COLOR(action.name), 700);
       else if (action.kind === "ice") playFx("drop", null, 600);
       else if (action.kind === "tool" && (action.id === "shake" || action.id === "blend")) { setShake(true); playFx("shake", null, 800); setTimeout(() => setShake(false), 800); vibrate("medium"); }
       else if (action.kind === "tool" && (action.id === "stir" || action.id === "swizzle")) playFx("stir", null, 900);
       else if (action.kind === "tool" && action.id === "muddle") playFx("muddle", null, 700);
-      else if (action.kind === "tool" && action.id === "strain") playFx("pour", mix(addedIngs.map(s => ING_COLOR(s.name))), 700);
+      else if (action.kind === "tool" && action.id === "strain") playFx("strain", mix(inVessel.map(s => ING_COLOR(s.name))), 900);
       else if (action.kind === "garnish") playFx("drop", null, 500);
       if (r.done) { const clean = mistakes === 0; setFinished({ clean }); vibrate("success"); setTimeout(() => playFx("win", null, 1600), 120); setTimeout(() => onFinish(clean), rush ? 900 : 0); }
     } else {
@@ -320,13 +426,35 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           <span>{mode === "hint" ? "С ПОДСКАЗКОЙ" : "ПО ПАМЯТИ ✦"}{rush ? ` · ЗАКАЗ ${rush.i + 1}/${rush.orders.length}` : ""}</span>
           <span>{rush ? `${elapsed} с` : `${done.length}/${sc.steps.length}`}{mistakes ? ` · ошибок ${mistakes}` : ""}</span>
         </div>
-        <div style={{ ...frost, borderRadius: 18, padding: 14, display: "flex", gap: 14, alignItems: "center", minHeight: 150 }}>
-          <div style={{ width: 132, height: 132, flexShrink: 0, position: "relative", borderRadius: 20, animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none" }}>
-            <div style={{ position: "absolute", inset: 6, animation: fx?.kind === "shake" ? "saLabShake .8s ease-in-out" : fx?.kind === "muddle" ? "saLabMuddle .35s ease-in-out 2" : fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
-              <GlassView glass={glassDone ? c.glass : "rocks"} fill={glassDone ? fillMl / totalMl : 0} colors={addedIngs.map(s => ING_COLOR(s.name))} ice={iceInGlass ? iceInGlass.id : null} garnish={garnishDone ? c.garnish : null} shake={false} a11y={a11y} spilled={false} />
+        {/* Доп. 220: Час пик — заказы выезжают чеками из принтера на стойке */}
+        {rush && (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 10, overflow: "hidden", height: 54 }}>
+            {rush.orders.map((o, i) => { const cur = i === rush.i, past = i < rush.i; return (
+              <div key={o.id + i} className={cur ? "sa-lab-in" : ""} style={{ flexShrink: 0, width: cur ? 150 : 96, padding: cur ? "8px 10px" : "6px 8px", background: past ? "#cfc6ad" : "#F2ECD8", color: "#2A1F0E", fontFamily: "ui-monospace, Menlo, monospace", fontSize: cur ? 12 : 10, lineHeight: 1.25, borderRadius: "2px 2px 6px 6px", boxShadow: "0 4px 10px rgba(0,0,0,.35)", opacity: past ? 0.5 : cur ? 1 : 0.75, transform: cur ? "rotate(-1.5deg)" : "translateY(10px) rotate(1deg)", animation: cur ? "saLabTicket .45s cubic-bezier(.2,1.2,.3,1)" : "none", borderTop: "2px dashed rgba(0,0,0,.25)" }}>
+                <div style={{ fontSize: 8.5, letterSpacing: 1.2, opacity: 0.6 }}>ЗАКАЗ №{i + 1}{past ? " · ГОТОВ" : cur ? " · В РАБОТЕ" : ""}</div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: cur ? 14 : 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.name}</div>
+              </div>); })}
+          </div>
+        )}
+        {/* шаги — точки, заполняются по мере сборки */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>{sc.steps.map((s, i) => <span key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: done.includes(i) ? gold : (a11y ? "rgba(139,106,48,0.22)" : "rgba(214,178,102,0.18)"), transition: "background .3s" }} />)}</div>
+        <div style={{ ...frost, borderRadius: 22, padding: "16px 14px 14px", display: "flex", gap: 14, alignItems: "center", minHeight: 176, position: "relative", overflow: "hidden",
+          background: a11y ? frost.background : "radial-gradient(ellipse 70% 80% at 28% 45%, rgba(214,178,102,0.16), rgba(0,0,0,0) 60%), rgba(255,250,238,0.04)" }}>
+          <div style={{ width: vesselKind && !strained ? 200 : 150, height: 150, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 4, animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
+            {vesselKind && !strained && (
+              <div style={{ width: 96, height: 128, position: "relative", animation: fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
+                <VesselView kind={vesselKind} fill={vesselMl / totalMl} colors={inVessel.map(s => ING_COLOR(s.name))} ice={iceInVessel ? iceInVessel.id : null} a11y={a11y} shake={fx?.kind === "shake"} tilt={fx?.kind === "strain"} />
+                {fx?.kind === "muddle" && <div style={{ position: "absolute", left: "46%", top: 0, width: 6, height: 60, borderRadius: 3, background: gold, animation: "saLabMuddle .35s ease-in-out 2" }} />}
+              </div>
+            )}
+            <div style={{ width: vesselKind && !strained ? 96 : 138, height: vesselKind && !strained ? 118 : 138, position: "relative", animation: !vesselKind || strained ? (fx?.kind === "shake" ? "saLabShake .8s ease-in-out" : fx?.kind === "muddle" ? "saLabMuddle .35s ease-in-out 2" : fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none") : "none", transition: "width .3s, height .3s" }}>
+              <GlassView glass={glassDone ? c.glass : "rocks"} fill={glassDone ? fillMl / totalMl : 0} colors={glassColors} ice={iceInGlass ? iceInGlass.id : null} garnish={garnishDone ? c.garnish : null} shake={false} a11y={a11y} spilled={false}
+                layers={layers} floatColor={floatStep ? ING_COLOR(floatStep.name) : null} bubbles={fizzy && !finished} served={!!finished} />
             </div>
-            {fx?.kind === "pour" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 2, width: 5, height: 58, marginLeft: -2, borderRadius: 3, background: fx.color || "#D6B266", transformOrigin: "top", animation: "saLabPour .7s ease-in-out forwards", opacity: 0.9 }} />}
-            {fx?.kind === "drop" && [0, 1, 2].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 46 + i * 16, top: 34, width: 14, height: 14, borderRadius: 4, background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.8)", animation: `saLabDrop .55s ${i * 70}ms cubic-bezier(.3,.8,.4,1.4) forwards` }} />)}
+            {jig && <Jigger key={jig.key} amount={jig.amount} color={jig.color} gold={gold} />}
+            {fx?.kind === "pour" && <Stream key={fx.key} color={fx.color || "#D6B266"} from={[vesselActive ? 40 : 100, -4]} to={[vesselActive ? 48 : 100, 74]} curved />}
+            {fx?.kind === "strain" && <Stream key={fx.key} color={fx.color || "#D6B266"} from={[78, 58]} to={[146, 92]} curved />}
+            {fx?.kind === "drop" && [0, 1, 2].map(i => <div key={fx.key + i} style={{ position: "absolute", left: (vesselActive ? 18 : 46) + i * 16, top: 34, width: 14, height: 14, borderRadius: 4, background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.8)", animation: `saLabDrop .55s ${i * 70}ms cubic-bezier(.3,.8,.4,1.4) forwards` }} />)}
             {fx?.kind === "stir" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 14, width: 4, height: 74, marginLeft: -2, borderRadius: 2, background: gold, transformOrigin: "50% 85%", animation: "saLabStir .9s linear", opacity: 0.8 }} />}
             {fx?.kind === "spill" && [0, 1, 2, 3, 4].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 30, top: 70, width: 8, height: 8, borderRadius: 4, background: fx.color || "#D6B266", "--dx": `${-30 - i * 12}px`, "--dy": `${20 + (i % 3) * 14}px`, animation: `saLabSplash .8s ${i * 40}ms ease-out forwards` }} />)}
             {fx?.kind === "win" && [0, 1, 2, 3, 4, 5, 6, 7].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 60, top: 60, width: 6, height: 6, borderRadius: 3, background: gold, "--dx": `${Math.round(Math.cos(i / 8 * Math.PI * 2) * 58)}px`, "--dy": `${Math.round(Math.sin(i / 8 * Math.PI * 2) * 58)}px`, animation: `saLabSpark .9s ${i * 30}ms ease-out forwards` }} />)}
@@ -335,7 +463,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           <div style={{ flex: 1, minWidth: 0 }}>
             {finished ? (
               <div className="sa-fadein">
-                <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{finished.clean ? "СОБРАНО ЧИСТО ✦" : "СОБРАНО"}</div>
+                <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{finished.clean ? "✦ ПОДАНО · ЧИСТО" : "✦ ПОДАНО"}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginTop: 4 }}>{c.name}</div>
                 <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.5 }}>{mode === "memory" && finished.clean ? "Печать на карточке твоя." : mistakes ? `Ошибок: ${mistakes}. По памяти и без ошибок — будет печать.` : "Теперь — по памяти."}</div>
                 {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 13.5 }}>Готово ›</button>}
@@ -364,20 +492,29 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           </div>
         )}
 
-        {/* СТАНЦИЯ — бутылки с цветом напитка, стекло, лёд, инструмент, гарниш */}
+        {/* СТАНЦИЯ — три полки: стекло и лёд · бутылки · инструмент и гарниш */}
         <div style={{ marginTop: 14 }}>
           {[
-            ["СТЕКЛО", sc.station.glasses.map((g, k) => <Item key={g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />)],
-            ["ЛЁД", sc.station.ices.map((i, k) => <Item key={i} icon={<IceIcon id={i} gold={gold} />} label={ICE_RU[i]} on={expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "ice", id: i })} />)],
-            ["ИНГРЕДИЕНТЫ", sc.station.ings.map((n, k) => { const st = sc.steps.find(x => x.kind === "ing" && x.name === n); const added = st && done.includes(sc.steps.indexOf(st)); return <Bottle key={n} color={ING_COLOR(n)} label={n} on={st && hint(st)} dim={added} gold={gold} a11y={a11y} delay={k * 40} onClick={() => tapIng(n)} />; })],
-            ["ИНСТРУМЕНТ", sc.station.tools.map((t, k) => <Item key={t} icon={<ToolIcon id={t} gold={gold} />} label={TOOLS[t]} on={expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "tool", id: t })} />)],
-            ["ГАРНИШ", sc.station.garnishes.map((g, k) => <Item key={g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "garnish", id: g })} />)],
-          ].map(([title, nodes]) => nodes.length ? (
-            <div key={title} style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "0 2px 6px" }}>{title}</div>
-              <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "2px 0 6px", WebkitOverflowScrolling: "touch" }}>{nodes}</div>
+            ["СТЕКЛО · ЛЁД", [
+              ...sc.station.glasses.map((g, k) => <Item key={"g" + g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />),
+              <span key="sep" style={{ width: 1, alignSelf: "stretch", background: `${gold}33`, margin: "6px 4px" }} />,
+              ...sc.station.ices.map((i, k) => <Item key={"i" + i} icon={<IceIcon id={i} gold={gold} />} label={ICE_RU[i]} on={expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i} gold={gold} a11y={a11y} delay={200 + k * 40} onClick={() => act({ kind: "ice", id: i })} />),
+            ]],
+            ["БУТЫЛКИ", sc.station.ings.map((n, k) => { const st = sc.steps.find(x => x.kind === "ing" && x.name === n); const added = st && done.includes(sc.steps.indexOf(st)); return <Bottle key={n} color={ING_COLOR(n)} label={n} on={st && hint(st)} dim={added} gold={gold} a11y={a11y} delay={k * 40} onClick={() => tapIng(n)} />; })],
+            ["ИНСТРУМЕНТ · ГАРНИШ", [
+              ...sc.station.tools.map((t, k) => <Item key={"t" + t} icon={<ToolIcon id={t} gold={gold} />} label={TOOLS[t]} on={expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "tool", id: t })} />),
+              <span key="sep2" style={{ width: 1, alignSelf: "stretch", background: `${gold}33`, margin: "6px 4px" }} />,
+              ...sc.station.garnishes.map((g, k) => <Item key={"ga" + g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={300 + k * 40} onClick={() => act({ kind: "garnish", id: g })} />),
+            ]],
+          ].map(([title, nodes]) => (
+            <div key={title} style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "0 2px 4px" }}>{title}</div>
+              <div style={{ position: "relative", borderRadius: 12, background: a11y ? "linear-gradient(180deg, rgba(255,250,235,0.55), rgba(240,228,200,0.35))" : "linear-gradient(180deg, rgba(255,248,230,0.02), rgba(255,236,190,0.06) 70%, rgba(214,178,102,0.10))", boxShadow: a11y ? "none" : "inset 0 -14px 20px -14px rgba(214,178,102,0.55)" }}>
+                <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 8px 6px", WebkitOverflowScrolling: "touch" }}>{nodes}</div>
+                <div style={{ height: 7, borderRadius: "0 0 12px 12px", background: a11y ? "linear-gradient(180deg,#B08A4E,#8B6A30)" : "linear-gradient(180deg,#6B4A22,#3B2711)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
+              </div>
             </div>
-          ) : null)}
+          ))}
         </div>
       </div>
     </div>

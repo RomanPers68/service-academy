@@ -3,6 +3,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { groupByCat, dishMatches, normCat } from "../lib/menu-sections";
 import { dishFaq, cocktailLinks, bumpDaily, allergenLabel } from "../lib/deck-extras";
+import { report as reportAch } from "../lib/achievements";
 import { suggestAllergens } from "../lib/menu-sections";
 
 // ── Дополнение 161: Колода меню — та же механика, что у Колоды бармена ────────
@@ -25,6 +26,9 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
   const [view, setView] = React.useState("cards"); // cards | index
   const [idx, setIdx] = React.useState(0);
   const [flip, setFlip] = React.useState(false);
+  const [settled, setSettled] = React.useState(false); // Доп. 218: плоский режим после переворота
+  React.useEffect(() => { if (!flip) { setSettled(false); return; } const tm = setTimeout(() => setSettled(true), 640); return () => clearTimeout(tm); }, [flip]);
+  const toggleFlip = () => { if (flip && settled) { setSettled(false); requestAnimationFrame(() => setFlip(false)); } else setFlip(f => !f); };
   const [sr, setSr] = React.useState(() => loadSR(restaurant));
   const [doneQuiz, setDoneQuiz] = React.useState(0); // сколько «Знал» подряд в этой сессии
   const [zoom, setZoom] = React.useState(null); // Доп. 194: фото на весь экран (слабовидящим — щипок для увеличения)
@@ -182,10 +186,10 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
           <div style={{ padding: "0 16px" }}>
             <div className="sa-ck-wrap" ref={wrapRef}
               onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE}
-              onClick={() => { if (moved.current || busy.current) return; setFlip(f => !f); vibrate("light"); }}
+              onClick={() => { if (moved.current || busy.current) return; toggleFlip(); vibrate("light"); }}
               style={{ cursor: "pointer", willChange: "transform, opacity", touchAction: "pan-y" }}>
-              <div className="sa-ck-inner" style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
-                <div className="sa-ck-face" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
+              <div className={"sa-ck-inner" + (settled ? " sa-ck-settled" : "")} style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
+                <div className="sa-ck-face sa-ck-front" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
                   {d.stop && <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red || "#B8352A", color: "#fff", fontSize: 10, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div>}
                   <div style={{ position: "relative" }}>
                     <DishPhoto src={d.img} h={a11y ? 270 : 230} />
@@ -279,7 +283,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
     setQ({ d, al, has: als.includes(al) }); setSeen(s => [...s, d.id]);
   }, [pool, seen]);
   React.useEffect(() => { if (phase !== "play") return; const t = setInterval(() => setLeft(l => { if (l <= 1) { clearInterval(t); setPhase("done"); return 0; } return l - 1; }), 1000); return () => clearInterval(t); }, [phase]);
-  React.useEffect(() => { if (phase === "done") { if (score > best) { setBest(score); try { localStorage.setItem(bestKey, String(score)); } catch (e) {} } vibrate(score > best ? "success" : "medium"); } }, [phase]);
+  React.useEffect(() => { if (phase === "done") { if (score > best) { setBest(score); try { localStorage.setItem(bestKey, String(score)); } catch (e) {} } reportAch(uk, "sprint_best", score); vibrate(score > best ? "success" : "medium"); } }, [phase]); // Доп. 216: рекорд в команду
   const start = () => { setScore(0); setMiss(0); setLeft(30); setSeen([]); queueRef.current = []; setFlash(null); setPhase("play"); vibrate("heavy"); setTimeout(nextQ, 0); };
   const answer = (yes) => {
     if (!q || flash) return;

@@ -2,7 +2,7 @@ import React from "react";
 import { COCKTAILS } from "../data/cocktails";
 import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, dishLinks, bumpDaily } from "../lib/deck-extras";
 import { rpc, saToken } from "../api/supabase";
-import { loadMastery } from "../lib/bar-lab";
+import { loadMastery, buildScenario } from "../lib/bar-lab";
 import { CocktailArt } from "./cocktail-art";
 import { COCKTAIL_STORIES } from "../data/cocktail-stories";
 import { vibrate, onActivate } from "../lib/utils";
@@ -281,7 +281,12 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                   <span>{i[0]}</span><span style={{ fontFamily:"ui-monospace, Menlo, monospace", color:GOLD }}>{i[1] === "" || i[1] == null ? "" : `${i[1]} ${i[2] || "мл"}`}</span>
                 </div>
               ))}
-              <ol style={{ margin:"10px 0 8px", paddingLeft:20, color:glass.tx }}>{c.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>
+              {/* Доп. 230: порядок сборки — тот же, что проверяет «Сборка руками» (один источник, без расхождений) */}
+              {!c.house ? (() => { const seq = buildScenario(c, COCKTAILS).steps; const glyph = (s) => s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? "▸" : s.kind === "garnish" ? "✿" : "●"; return (
+                <div style={{ margin:"10px 0 8px" }}>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>СБОРКА · {seq.length} ШАГОВ · КАК В ТРЕНАЖЁРЕ</div>
+                  <ol style={{ margin:0, paddingLeft:20, color:glass.tx }}>{seq.map((s, k) => <li key={k} style={{ paddingLeft:2 }}><span style={{ color:GOLD, marginRight:6, fontSize:11 }}>{glyph(s)}</span>{s.label}</li>)}</ol>
+                </div>); })() : <ol style={{ margin:"10px 0 8px", paddingLeft:20, color:glass.tx }}>{c.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>}
               <div style={{ color:glass.sub, fontStyle:"italic", fontSize:12.5 }}>{c.tip}</div>
               <div style={{ color:glass.sub, fontSize:12.5, marginTop:6 }}>К столу: {c.pair}</div>
               {c.note ? <div style={{ marginTop:8, padding:"7px 10px", borderRadius:10, border:`1px dashed ${GOLD}66`, color:glass.sub, fontSize:12, lineHeight:1.5 }}>✦ {c.note}</div> : null}

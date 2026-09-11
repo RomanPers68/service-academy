@@ -84,7 +84,9 @@ const FIZZ = [[74,0.15,1.4],[88,0.32,1.1],[104,0.22,1.6],[121,0.4,1.2],[80,0.55,
 // Испарина на холодном стекле — (x, y, r)
 const DEW = [[58,0.28,2.2],[64,0.46,1.6],[140,0.34,2.0],[146,0.55,1.5],[60,0.66,1.3],[138,0.72,1.8],[70,0.18,1.2],[132,0.2,1.4],[56,0.84,1.5],[144,0.88,1.2]];
 
-export function CocktailArt({ c, w = 200, light = false }) {
+// Доп. 228: витраж умеет собираться — fill 0…1 (уровень жидкости), showIce, showGarnish, liquid (цвета того,
+// что уже налито, вместо финального градиента). По умолчанию — как в Колоде: полный, финальный.
+export function CocktailArt({ c, w = 200, light = false, fill = 1, showIce = true, showGarnish = true, liquid = null, bubbles = null }) {
   const g = GLASS[c.glass] || GLASS.rocks;
   // Светлая тема: стекло читается тёмным золотом, а не белым (на кремовом фоне белое исчезает)
   const edge = light ? "#6B4E1A" : "#FFFFFF";
@@ -100,6 +102,9 @@ export function CocktailArt({ c, w = 200, light = false }) {
   const yBottom = Math.max(...bnums.filter((_, i) => i % 2 === 1));
   const bowlBottom = Math.max(...g.body.split(" M")[0].match(/-?\d+(\.\d+)?/g).map(Number).filter((_, i) => i % 2 === 1));
   const liqH = bowlBottom - ly0;
+  const lvl = Math.max(0, Math.min(1, fill)); const liqTop = bowlBottom - liqH * lvl; // текущая поверхность
+  const mixed = liquid && liquid.length ? (() => { const rgb = liquid.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))); const a = [0, 1, 2].map(k => Math.round(rgb.reduce((q, cc) => q + cc[k], 0) / rgb.length)); return "#" + a.map(v => v.toString(16).padStart(2, "0")).join(""); })() : null;
+  const showFizz = bubbles == null ? !!c.fizz : bubbles;
   const cold = !!c.ice && !g.stem;
   const topCol = c.layers ? c.layers[c.layers.length - 1] : c.color[0];
   const botCol = c.layers ? c.layers[0] : c.color[1];
@@ -114,7 +119,7 @@ export function CocktailArt({ c, w = 200, light = false }) {
               out.push(<stop key={"b" + i} offset={(i + 1) / n} stopColor={col} />);
             });
             return out;
-          })() : (<><stop offset="0" stopColor={c.color[0]} /><stop offset="0.55" stopColor={c.color[1]} /><stop offset="1" stopColor={c.color[1]} /></>)}
+          })() : mixed ? (<><stop offset="0" stopColor={mixed} stopOpacity="0.95" /><stop offset="1" stopColor={mixed} /></>) : (<><stop offset="0" stopColor={c.color[0]} /><stop offset="0.55" stopColor={c.color[1]} /><stop offset="1" stopColor={c.color[1]} /></>)}
         </linearGradient>
         {/* Свет сквозь напиток: тёплое сияние снизу-в-центре, тень у стенок */}
         <radialGradient id={uid + "-lum"} cx="50%" cy="78%" r="58%"><stop offset="0" stopColor="#FFF6D8" stopOpacity="0.42" /><stop offset="0.45" stopColor="#FFF6D8" stopOpacity="0.10" /><stop offset="1" stopColor="#000" stopOpacity="0.30" /></radialGradient>
@@ -131,26 +136,29 @@ export function CocktailArt({ c, w = 200, light = false }) {
         <filter id={uid + "-blur"} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2" /></filter>
         <filter id={uid + "-soft"} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.1" /></filter>
         <clipPath id={uid + "-c"}><path d={g.liq} /></clipPath>
+        <clipPath id={uid + "-lvl"}><rect x="0" y={liqTop} width="200" height={Math.max(0, bowlBottom - liqTop) + 40} /></clipPath>
         <clipPath id={uid + "-b"}><path d={g.body.split(" M")[0]} /></clipPath>
       </defs>
       {/* Сцена: сияние цвета напитка, отражение на стойке, тень */}
-      <rect width="200" height="260" fill={"url(#" + uid + "-h)"} />
+      <rect width="200" height="260" fill={"url(#" + uid + "-h)"} opacity={0.25 + 0.75 * lvl} style={{ transition: "opacity .5s" }} />
       <ellipse cx="100" cy={yBottom + 14} rx="60" ry="10" fill="#000" opacity={shadowA} filter={"url(#" + uid + "-blur)"} />
       <ellipse cx="100" cy={yBottom + 18} rx={g.stem ? 30 : 50} ry="9" fill={"url(#" + uid + "-refl)"} opacity="0.7" filter={"url(#" + uid + "-blur)"} />
-      {/* Напиток: цвет → сияние → боковые тени → тень сверху */}
-      <path d={g.liq} fill={"url(#" + uid + "-l)"} />
-      <Ice c={c} g={g} uid={uid} />
-      <path d={g.liq} fill={"url(#" + uid + "-l)"} opacity="0.34" />
-      {c.foam ? <g clipPath={"url(#" + uid + "-c)"}><rect x="0" y="0" width="200" height={ry + 34} fill="#F6EEDC" fillOpacity="0.85" /></g> : null}
-      <path d={g.liq} fill={"url(#" + uid + "-lum)"} />
-      <path d={g.liq} fill={"url(#" + uid + "-shade)"} />
-      <path d={g.liq} fill={"url(#" + uid + "-top)"} />
+      {/* Напиток: цвет → сияние → боковые тени → тень сверху. При сборке — обрезано по уровню */}
+      <g clipPath={lvl < 1 ? "url(#" + uid + "-lvl)" : undefined} style={{ transition: "all .4s" }}>
+      {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-l)"} />}
+      {showIce && <Ice c={c} g={g} uid={uid} />}
+      {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-l)"} opacity="0.34" />}
+      {c.foam && lvl >= 0.99 ? <g clipPath={"url(#" + uid + "-c)"}><rect x="0" y="0" width="200" height={ry + 34} fill="#F6EEDC" fillOpacity="0.85" /></g> : null}
+      {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-lum)"} />}
+      {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-shade)"} />}
+      {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-top)"} />}
+      </g>
       {/* Пузырьки — газированные */}
-      {c.fizz ? (
+      {showFizz && lvl > 0 ? (
         <g clipPath={"url(#" + uid + "-c)"}>
           {FIZZ.map(([x, t, r], i) => (
-            <g key={i}><circle cx={x} cy={ly0 + 6 + t * (liqH - 12)} r={r} fill="none" stroke="#FFF" strokeOpacity="0.55" strokeWidth="0.6" />
-              <circle cx={x - r * 0.35} cy={ly0 + 6 + t * (liqH - 12) - r * 0.35} r={r * 0.3} fill="#FFF" fillOpacity="0.8" /></g>
+            <g key={i}><circle cx={x} cy={liqTop + 6 + t * (bowlBottom - liqTop - 12)} r={r} fill="none" stroke="#FFF" strokeOpacity="0.55" strokeWidth="0.6" />
+              <circle cx={x - r * 0.35} cy={liqTop + 6 + t * (bowlBottom - liqTop - 12) - r * 0.35} r={r * 0.3} fill="#FFF" fillOpacity="0.8" /></g>
           ))}
         </g>
       ) : null}
@@ -164,10 +172,12 @@ export function CocktailArt({ c, w = 200, light = false }) {
           ))}
         </g>
       ) : null}
-      {/* Поверхность напитка: мениск с бликом */}
-      <g clipPath={"url(#" + uid + "-c)"}><rect x="0" y={ly0} width="200" height="8" fill="#FFF" fillOpacity="0.14" /></g>
-      <ellipse cx={(lx0 + lx1) / 2} cy={ly0} rx={(lx1 - lx0) / 2} ry="3.4" fill="#FFF" fillOpacity="0.12" stroke="#FFF" strokeOpacity="0.5" strokeWidth="1" />
-      <path d={`M${lx0 + 8} ${ly0 - 1} q${(lx1 - lx0) * 0.25} -3 ${(lx1 - lx0) * 0.5} 0`} stroke="#FFF" strokeOpacity="0.7" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+      {/* Поверхность напитка: мениск с бликом — на текущем уровне */}
+      {lvl > 0 && (() => { const k = g.stem ? (0.35 + 0.65 * lvl) : (0.8 + 0.2 * lvl); const hw = ((lx1 - lx0) / 2) * k; const cx = (lx0 + lx1) / 2; return (<>
+        <g clipPath={"url(#" + uid + "-c)"}><rect x="0" y={liqTop} width="200" height="8" fill="#FFF" fillOpacity="0.14" /></g>
+        <ellipse cx={cx} cy={liqTop} rx={hw} ry="3.4" fill="#FFF" fillOpacity="0.12" stroke="#FFF" strokeOpacity="0.5" strokeWidth="1" style={{ transition: "cy .4s, rx .4s" }} />
+        <path d={`M${cx - hw + 8} ${liqTop - 1} q${hw * 0.5} -3 ${hw} 0`} stroke="#FFF" strokeOpacity="0.7" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+      </>); })()}
       {/* Толстое дно */}
       {!g.stem ? (
         <g clipPath={"url(#" + uid + "-b)"}>
@@ -196,7 +206,66 @@ export function CocktailArt({ c, w = 200, light = false }) {
           {DEW.map(([x, t, r], i) => <circle key={i} cx={g.squat ? 44 + (x - 56) * 1.25 : x} cy={ry + 10 + t * (bowlBottom - ry - 24)} r={r} fill={"url(#" + uid + "-dew)"} />)}
         </g>
       ) : null}
-      {c.garnish === "cream" ? <Garnish kind="cream" x={100} y={ry + 30} /> : c.garnish === "salt" ? <Garnish kind="salt" x={rx} y={ry} /> : <Garnish kind={c.garnish} x={rx + rw - 4} y={garY} />}
+      {showGarnish ? (c.garnish === "cream" ? <Garnish kind="cream" x={100} y={ry + 30} /> : c.garnish === "salt" ? <Garnish kind="salt" x={rx} y={ry} /> : <Garnish kind={c.garnish} x={rx + rw - 4} y={garY} />) : null}
     </svg>
   );
 }
+
+// ── Доп. 229: сосуды в языке витражей — шейкер (бостон), смесительный стакан, блендер ─────────────
+// Те же приёмы, что у бокалов: стекло/металл с бликами, жидкость с сиянием, мениск, лёд, тень и отсвет.
+const VESSELS = {
+  // бостонский шейкер: стеклянная пинта (видно, что внутри) + металлический тин сверху
+  shaker:  { body: "M66 74 L134 74 L130 222 Q130 234 118 234 L82 234 Q70 234 70 222 Z", cap: "M60 74 L140 74 L134 40 Q134 28 122 26 L78 26 Q66 28 66 40 Z", liq: "M70 80 L130 80 L127 221 Q127 229 118 229 L82 229 Q73 229 73 221 Z", metal: false, capMetal: true, rim: [100, 74, 40] },
+  mixing:  { body: "M60 40 L140 40 L134 224 Q134 236 122 236 L78 236 Q66 236 66 224 Z M60 40 L52 32", liq: "M64 46 L136 46 L131 222 Q131 231 122 231 L78 231 Q69 231 69 222 Z", spoon: true, rim: [100, 40, 40] },
+  blender: { body: "M66 52 L134 52 L142 214 Q142 232 124 232 L76 232 Q58 232 58 214 Z M78 36 L122 36 L124 52 L76 52 Z M56 236 L144 236 L140 254 L60 254 Z", liq: "M70 58 L130 58 L137 213 Q137 227 124 227 L76 227 Q63 227 63 213 Z", ribs: true, rim: [100, 52, 34] },
+};
+export function VesselArt({ kind = "shaker", w = 120, light = false, fill = 0, liquid = null, ice = null, frost = false, shake = false, tilt = false, uidSuffix = "" }) {
+  const v = VESSELS[kind] || VESSELS.shaker;
+  const auto = React.useRef(Math.random().toString(36).slice(2, 7)); const uid = "vs-" + kind + (uidSuffix || "-" + auto.current); // id уникален на экземпляр — несколько сосудов на странице не делят маски
+  const edge = light ? "#6B4E1A" : "#FFFFFF";
+  const nums = v.liq.match(/-?\d+(\.\d+)?/g).map(Number); const ys = nums.filter((_, i) => i % 2 === 1); const ly0 = Math.min(...ys), lyB = Math.max(...ys);
+  const lvl = Math.max(0, Math.min(1, fill)); const liqTop = lyB - (lyB - ly0) * lvl;
+  const mixed = liquid && liquid.length ? (() => { const rgb = liquid.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))); const a = [0, 1, 2].map(k => Math.round(rgb.reduce((q, cc) => q + cc[k], 0) / rgb.length)); return "#" + a.map(x => x.toString(16).padStart(2, "0")).join(""); })() : "#D6B266";
+  const xs = nums.filter((_, i) => i % 2 === 0); const lx0 = Math.min(...xs), lx1 = Math.max(...xs);
+  return (
+    <svg viewBox="0 0 200 260" width={w} height={w * 1.3} style={{ display: "block", overflow: "visible", transformOrigin: "50% 92%", transform: tilt ? "rotate(-42deg) translate(16px,-10px)" : "none", transition: "transform .45s cubic-bezier(.3,1.2,.4,1)", animation: shake ? "saLabShake .8s ease-in-out" : "none" }}>
+      <defs>
+        <linearGradient id={uid + "-m"} x1="0" x2="1"><stop offset="0" stopColor="#F2F3F7" stopOpacity="0.55" /><stop offset="0.18" stopColor="#8A8E99" stopOpacity="0.45" /><stop offset="0.42" stopColor="#F6F7FA" stopOpacity="0.6" /><stop offset="0.62" stopColor="#A9ADB8" stopOpacity="0.4" /><stop offset="0.85" stopColor="#5C606B" stopOpacity="0.55" /><stop offset="1" stopColor="#D9DCE3" stopOpacity="0.4" /></linearGradient>
+        <linearGradient id={uid + "-g"} x1="0" x2="1"><stop offset="0" stopColor={edge} stopOpacity="0.2" /><stop offset="0.12" stopColor={edge} stopOpacity="0.05" /><stop offset="0.5" stopColor={edge} stopOpacity="0.01" /><stop offset="0.86" stopColor={edge} stopOpacity="0.04" /><stop offset="1" stopColor={edge} stopOpacity="0.18" /></linearGradient>
+        <linearGradient id={uid + "-e"} x1="0" x2="1"><stop offset="0" stopColor={edge} stopOpacity="0.9" /><stop offset="0.14" stopColor={edge} stopOpacity="0.06" /><stop offset="0.84" stopColor={edge} stopOpacity="0.04" /><stop offset="1" stopColor={edge} stopOpacity="0.55" /></linearGradient>
+        <linearGradient id={uid + "-l"} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mixed} stopOpacity="0.95" /><stop offset="1" stopColor={mixed} /></linearGradient>
+        <radialGradient id={uid + "-lum"} cx="50%" cy="78%" r="58%"><stop offset="0" stopColor="#FFF6D8" stopOpacity="0.42" /><stop offset="0.45" stopColor="#FFF6D8" stopOpacity="0.10" /><stop offset="1" stopColor="#000" stopOpacity="0.30" /></radialGradient>
+        <linearGradient id={uid + "-shade"} x1="0" x2="1"><stop offset="0" stopColor="#000" stopOpacity="0.28" /><stop offset="0.3" stopColor="#000" stopOpacity="0" /><stop offset="0.7" stopColor="#000" stopOpacity="0" /><stop offset="1" stopColor="#000" stopOpacity="0.34" /></linearGradient>
+        <linearGradient id={uid + "-spec"} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={edge} stopOpacity="0" /><stop offset="0.2" stopColor={edge} stopOpacity="0.85" /><stop offset="0.8" stopColor={edge} stopOpacity="0.5" /><stop offset="1" stopColor={edge} stopOpacity="0" /></linearGradient>
+        <radialGradient id={uid + "-h"} cx="50%" cy="60%" r="50%"><stop offset="0" stopColor={mixed} stopOpacity="0.28" /><stop offset="1" stopColor={mixed} stopOpacity="0" /></radialGradient>
+        <linearGradient id={uid + "-refl"} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mixed} stopOpacity="0.35" /><stop offset="1" stopColor={mixed} stopOpacity="0" /></linearGradient>
+        <radialGradient id={uid + "-dew"} cx="35%" cy="30%" r="70%"><stop offset="0" stopColor={edge} stopOpacity="0.85" /><stop offset="0.5" stopColor={edge} stopOpacity="0.15" /><stop offset="1" stopColor={edge} stopOpacity="0.02" /></radialGradient>
+        <filter id={uid + "-blur"} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2" /></filter>
+        <clipPath id={uid + "-c"}><path d={v.liq} /></clipPath>
+        <clipPath id={uid + "-b"}><path d={v.body.split(" M")[0]} /></clipPath>
+        <clipPath id={uid + "-lvl"}><rect x="0" y={liqTop} width="200" height={lyB - liqTop + 40} /></clipPath>
+      </defs>
+      <rect width="200" height="260" fill={"url(#" + uid + "-h)"} opacity={0.2 + 0.8 * lvl} style={{ transition: "opacity .5s" }} />
+      <ellipse cx="100" cy="246" rx="60" ry="10" fill="#000" opacity={light ? 0.22 : 0.45} filter={"url(#" + uid + "-blur)"} />
+      <ellipse cx="100" cy="250" rx="46" ry="9" fill={"url(#" + uid + "-refl)"} opacity="0.7" filter={"url(#" + uid + "-blur)"} />
+      {/* тело: металл или стекло */}
+      <path d={v.body.split(" M")[0]} fill={v.metal ? "url(#" + uid + "-m)" : "url(#" + uid + "-g)"} />
+      <g clipPath={lvl < 1 ? "url(#" + uid + "-lvl)" : undefined}>
+        {lvl > 0 && <><path d={v.liq} fill={"url(#" + uid + "-l)"} opacity={v.metal ? 0.55 : 0.92} /><path d={v.liq} fill={"url(#" + uid + "-lum)"} /><path d={v.liq} fill={"url(#" + uid + "-shade)"} /></>}
+        {ice && <g clipPath={"url(#" + uid + "-c)"}>{(ice === "crushed" ? Array.from({ length: 16 }).map((_, i) => [74 + (i * 37) % 50, lyB - 14 - (i * 23) % 100, 4]) : [[82, lyB - 22, 0], [108, lyB - 30, 6], [92, lyB - 52, -8], [116, lyB - 58, 4]]).map(([cx, cy, rot], i) => ice === "crushed"
+          ? <circle key={i} cx={cx} cy={cy} r="4" fill="#FFF" fillOpacity="0.5" />
+          : <g key={i} transform={`rotate(${rot} ${cx} ${cy})`} style={{ animation: `saLabBob ${2.2 + i * 0.4}s ease-in-out infinite` }}><rect x={cx - 10} y={cy - 10} width="20" height="20" rx="4" fill="#FFF" fillOpacity="0.28" stroke="#FFF" strokeOpacity="0.7" strokeWidth="1.2" /><path d={`M${cx - 6} ${cy - 4} l4 -4`} stroke="#FFF" strokeOpacity="0.9" strokeWidth="1.2" strokeLinecap="round" /></g>)}</g>}
+        {lvl > 0 && (() => { const k = 0.85 + 0.15 * lvl; const hw = ((lx1 - lx0) / 2) * k; return (<><g clipPath={"url(#" + uid + "-c)"}><rect x="0" y={liqTop} width="200" height="8" fill="#FFF" fillOpacity="0.14" /></g><ellipse cx="100" cy={liqTop} rx={hw} ry="3.4" fill="#FFF" fillOpacity="0.12" stroke="#FFF" strokeOpacity="0.5" strokeWidth="1" /></>); })()}
+      </g>
+      {v.ribs && <g clipPath={"url(#" + uid + "-b)"}>{[70, 84, 98, 112, 126].map(x => <path key={x} d={`M${x} 60 L${x + (x < 100 ? 2 : -2)} 226`} stroke="#000" strokeOpacity="0.14" strokeWidth="3" />)}</g>}
+      <path d={v.body} fill="none" stroke={edge} strokeOpacity="0.16" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d={v.body} fill="none" stroke={"url(#" + uid + "-e)"} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+      {v.cap && <><path d={v.cap} fill={"url(#" + uid + "-m)"} stroke={"url(#" + uid + "-e)"} strokeWidth="2" strokeLinejoin="round" /><path d="M70 60 L130 60" stroke={edge} strokeOpacity="0.35" strokeWidth="1" /><path d="M76 34 q0 18 3 34" stroke={edge} strokeOpacity="0.7" strokeWidth="2" fill="none" strokeLinecap="round" /></>}
+      <ellipse cx={v.rim[0]} cy={v.rim[1]} rx={v.rim[2]} ry="5" fill={edge} fillOpacity="0.05" stroke={edge} strokeOpacity="0.5" strokeWidth="1.4" />
+      <path d={kind === "shaker" ? "M76 84 q-2 60 4 128" : "M72 54 q-2 70 6 158"} stroke={"url(#" + uid + "-spec)"} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      {v.spoon && <><path d="M146 8 L92 200" stroke={edge} strokeOpacity="0.85" strokeWidth="2.4" strokeLinecap="round" /><path d="M146 8 L92 200" stroke={edge} strokeOpacity="0.35" strokeWidth="5" strokeLinecap="round" /><ellipse cx="90" cy="206" rx="8" ry="5" fill={edge} fillOpacity="0.85" transform="rotate(-70 90 206)" /></>}
+      {frost && <g clipPath={"url(#" + uid + "-b)"} style={{ animation: "saLabFrost 2.6s ease-out forwards" }}>{[[78, 0.2, 5], [118, 0.35, 3.5], [90, 0.55, 4], [124, 0.7, 5], [82, 0.82, 3], [104, 0.9, 4.5], [110, 0.15, 2.5], [96, 0.42, 2.5]].map(([x, t, r], i) => <circle key={i} cx={x} cy={ly0 + 10 + t * (lyB - ly0 - 24)} r={r} fill={"url(#" + uid + "-dew)"} />)}</g>}
+    </svg>
+  );
+}
+

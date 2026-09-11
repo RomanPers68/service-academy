@@ -5,7 +5,7 @@ import { COCKTAILS } from "../data/cocktails";
 import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
 import { frostOf } from "./home-hubs";
 import { readBarcard, cachedShared } from "../lib/deck-extras";
-import { CocktailArt } from "./cocktail-art";
+import { CocktailArt, VesselArt } from "./cocktail-art";
 import { report as reportAch } from "../lib/achievements";
 
 // ── Дополнение 208: «Сборка руками» — тренажёр, от которого не оторваться ─────
@@ -78,19 +78,30 @@ function GlassView({ glass, fill, colors, ice, garnish, shake, a11y, spilled, la
   const total = layers && layers.length ? layers.reduce((a, l) => a + l.ml, 0) || 1 : 1;
   let acc = 0;
   return (
-    <svg viewBox="0 0 120 120" width="100%" height="100%" style={{ filter: shake ? "blur(0.6px)" : "none", transform: spilled ? "rotate(-28deg) translateY(10px)" : shake ? "rotate(-3deg)" : "none", transition: "transform .35s cubic-bezier(.3,1.4,.4,1)", overflow: "visible" }}>
+    <svg viewBox="0 0 120 134" width="100%" height="100%" preserveAspectRatio="xMidYEnd meet" style={{ filter: shake ? "blur(0.6px)" : "none", transform: spilled ? "rotate(-28deg) translateY(10px)" : shake ? "rotate(-3deg)" : "none", transition: "transform .35s cubic-bezier(.3,1.4,.4,1)", overflow: "visible" }}>
       <defs><clipPath id={"gl-" + glass}><path d={path.split(" M")[0]} /></clipPath>
-        <radialGradient id="sa-spot" cx="50%" cy="0%" r="80%"><stop offset="0%" stopColor="rgba(255,236,190,0.35)" /><stop offset="100%" stopColor="rgba(255,236,190,0)" /></radialGradient></defs>
+        <radialGradient id="sa-spot" cx="50%" cy="0%" r="80%"><stop offset="0%" stopColor="rgba(255,236,190,0.35)" /><stop offset="100%" stopColor="rgba(255,236,190,0)" /></radialGradient>
+        <linearGradient id="sa-glassbody" x1="0" x2="1"><stop offset="0" stopColor="rgba(255,255,255,0.16)" /><stop offset="0.35" stopColor="rgba(255,255,255,0.03)" /><stop offset="0.7" stopColor="rgba(255,255,255,0.02)" /><stop offset="1" stopColor="rgba(255,255,255,0.14)" /></linearGradient>
+        <linearGradient id={"sa-liq-" + glass} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="rgba(255,255,255,0.28)" /><stop offset="0.25" stopColor="rgba(255,255,255,0)" /><stop offset="1" stopColor="rgba(0,0,0,0.28)" /></linearGradient>
+        <linearGradient id="sa-refl" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="white" stopOpacity="0.75" /><stop offset="1" stopColor="white" stopOpacity="0" /></linearGradient>
+        <mask id={"sa-reflm-" + glass}><rect x="0" y="112" width="120" height="22" fill={`url(#sa-refl)`} /></mask></defs>
+      {/* Доп. 227: отражение в стойке — перевёрнутая копия, гаснет книзу */}
+      {!spilled && !served && <g mask={`url(#sa-reflm-${glass})`} opacity="0.55"><g transform="translate(0 220) scale(1 -1)">
+        {lh > 0 && <rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.7" clipPath={`url(#gl-${glass})`} />}
+        <path d={path.split(" M")[0]} fill="url(#sa-glassbody)" stroke={line} strokeWidth="1.2" opacity="0.6" />
+      </g></g>}
       {served && <><ellipse cx="60" cy="114" rx="34" ry="5" fill="rgba(0,0,0,0.45)" /><ellipse cx="60" cy="112" rx="30" ry="4" fill="#3a2a12" stroke={line} strokeWidth="1" /><rect x="0" y="0" width="120" height="120" fill="url(#sa-spot)" /></>}
+      <path d={path.split(" M")[0]} fill="url(#sa-glassbody)" />
       <g clipPath={`url(#gl-${glass})`}>
         {!spilled && layers && layers.length > 0 ? layers.map((l, i) => { const lhh = (l.ml / total) * lh; const yy = y + h - (acc + l.ml) / total * lh; acc += l.ml; return <rect key={i} x={x} y={yy} width={w} height={lhh} fill={l.color} opacity="0.9" style={{ transition: "y .4s ease, height .4s ease" }} />; })
-          : !spilled && lh > 0 && <rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.85" style={{ transition: "y .4s ease, height .4s ease" }} />}
+          : !spilled && lh > 0 && <><rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.85" style={{ transition: "y .4s ease, height .4s ease" }} /><rect x={x} y={y + h - lh} width={w} height={lh} fill={`url(#sa-liq-${glass})`} style={{ transition: "y .4s ease, height .4s ease" }} /><ellipse cx={x + w / 2} cy={y + h - lh} rx={w / 2} ry="2.6" fill="rgba(255,255,255,0.22)" style={{ transition: "cy .4s ease" }} /></>}
         {!spilled && floatColor && lh > 0 && <rect x={x} y={y + h - lh} width={w} height={Math.max(6, lh * 0.18)} fill={floatColor} opacity="0.95" />}
         {!spilled && ice === "cube" && [0, 1, 2].map(i => <rect key={i} x={x + 6 + i * (w / 3.2)} y={y + h - lh - 2 + i * 6} width={w / 4} height={w / 4} rx="3" fill="rgba(255,255,255,0.35)" stroke="rgba(255,255,255,0.6)" strokeWidth="1" style={{ animation: lh > 0 ? `saLabBob ${2.4 + i * 0.5}s ease-in-out infinite` : "none", transformOrigin: "center" }} />)}
         {!spilled && ice === "crushed" && Array.from({ length: 14 }).map((_, i) => <circle key={i} cx={x + 6 + (i * 37) % w} cy={y + 8 + (i * 23) % (h - 12)} r="3.5" fill="rgba(255,255,255,0.45)" style={{ animation: `saLabTwinkle ${1.6 + (i % 4) * 0.4}s ease-in-out ${i * 0.13}s infinite` }} />)}
         {!spilled && bubbles && lh > 0 && Array.from({ length: 9 }).map((_, i) => <circle key={i} cx={x + 6 + (i * 31) % (w - 8)} cy={y + h - 4} r={1.2 + (i % 3) * 0.6} fill="rgba(255,255,255,0.75)" style={{ animation: `saLabBubble ${1.4 + (i % 3) * 0.5}s ease-out ${i * 0.17}s infinite` }} />)}
       </g>
       <path d={path} fill="none" stroke={line} strokeWidth="2" strokeLinejoin="round" />
+      <path d={path.split(" M")[0]} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1" strokeDasharray="14 200" strokeDashoffset="-6" strokeLinecap="round" />
       {garnish && garnish !== "none" && <g transform="translate(88 18)" style={{ animation: served ? "saLabBob 3s ease-in-out infinite" : "none" }}><circle r="8" fill={garnish === "cherry" ? "#C4483A" : garnish === "olive" || garnish === "mint" ? "#7FA05A" : garnish === "cream" ? "#EFE4C8" : "#E2A63A"} stroke={line} strokeWidth="1.2" /></g>}
     </svg>
   );
@@ -151,14 +162,15 @@ function Bottle({ color, label, on, dim, ghost, gold, a11y, onClick, delay = 0, 
   const short = String(label).replace(/\s*\(.*?\)/g, "").split(" ").slice(0, 2).join(" ");
   return (
     <div className={"sa-lab-in sa-lab-bottle" + (lifting ? " sa-lab-lift" : "")} onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: lifting ? "0ms" : `${delay}ms`, width: 78, flexShrink: 0, cursor: "pointer", opacity: dim ? 0.42 : 1, textAlign: "center", transition: "transform .12s" }}>
-      <div style={{ width: 52, height: 73, margin: "0 auto 5px", position: "relative", filter: on ? "drop-shadow(0 0 8px rgba(214,178,102,.75))" : "drop-shadow(0 4px 4px rgba(0,0,0,.35))" }}>
+      <div style={{ width: 52, height: 73, margin: "0 auto 5px", position: "relative", filter: "drop-shadow(0 4px 4px rgba(0,0,0,.35))" }}>
+        {on && <div style={{ position: "absolute", left: -8, right: -8, bottom: -4, height: 12, borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(214,178,102,.55), rgba(214,178,102,0) 70%)", animation: "saLabPulse 1.4s ease-in-out infinite" }} />}
         <svg viewBox="0 0 44 62" width="52" height="73">
           <defs><clipPath id={"bt-" + kind}><path d={sh.d} /></clipPath></defs>
           <path d={sh.d} fill={a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.06)"} stroke={on ? gold : (a11y ? "#8B6A30" : "rgba(255,255,255,0.28)")} strokeWidth={on ? 1.6 : 1} />
           {!ghost && <rect x={sh.liq[0]} y={sh.liq[1]} width={sh.liq[2]} height={sh.liq[3]} fill={color} opacity="0.9" clipPath={`url(#bt-${kind})`} />}
           {kind === "soda" && [0, 1, 2, 3].map(i => <circle key={i} cx={19 + (i * 5) % 8} cy={50 - i * 9} r="1.3" fill="rgba(255,255,255,0.7)" clipPath={`url(#bt-${kind})`} />)}
           {kind === "fresh" && <path d="M14 30c4-6 12-6 16 0" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" />}
-          <rect x={sh.label[0] + 1} y={sh.label[1]} width={sh.label[2] - 2} height={sh.label[3]} rx="1.5" fill={a11y ? "rgba(255,252,240,0.95)" : "rgba(238,228,200,0.92)"} />
+          <rect x={sh.label[0] + 1} y={sh.label[1]} width={sh.label[2] - 2} height={sh.label[3]} rx="1.5" fill={on ? "#E8CC8A" : (a11y ? "rgba(255,252,240,0.95)" : "rgba(238,228,200,0.92)")} stroke={on ? gold : "none"} strokeWidth="0.8" />
           <text x="22" y={sh.label[1] + sh.label[3] * 0.72} textAnchor="middle" fontSize={Math.min(5.2, (sh.label[2] - 3) / Math.max(4, short.length) * 1.9)} fontFamily="Georgia, serif" fill="#2A1F0E">{short.length > 14 ? short.slice(0, 13) + "…" : short}</text>
           <path d={`M${sh.liq[0] + 2} ${sh.liq[1] + 4} v${sh.liq[3] - 8}`} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinecap="round" />
         </svg>
@@ -193,13 +205,17 @@ function VesselView({ kind, fill, colors, ice, a11y, shake, tilt }) {
   const s = shapes[kind] || shapes.shaker; const [x, y, w, h] = s.box; const lh = Math.min(1, fill) * h;
   return (
     <svg viewBox="0 0 120 120" width="100%" height="100%" style={{ transform: tilt ? "rotate(-48deg) translate(14px,-8px)" : "none", transition: "transform .45s cubic-bezier(.3,1.2,.4,1)", animation: shake ? "saLabShake .8s ease-in-out" : "none" }}>
-      <defs><clipPath id={"vs-" + kind}><path d={s.d.split(" M")[0]} /></clipPath></defs>
+      <defs><clipPath id={"vs-" + kind}><path d={s.d.split(" M")[0]} /></clipPath>
+        <linearGradient id="sa-metal" x1="0" x2="1"><stop offset="0" stopColor="rgba(230,232,240,0.55)" /><stop offset="0.3" stopColor="rgba(120,124,135,0.35)" /><stop offset="0.55" stopColor="rgba(235,238,245,0.5)" /><stop offset="1" stopColor="rgba(90,94,105,0.45)" /></linearGradient>
+        <linearGradient id="sa-glassv" x1="0" x2="1"><stop offset="0" stopColor="rgba(255,255,255,0.16)" /><stop offset="0.4" stopColor="rgba(255,255,255,0.03)" /><stop offset="1" stopColor="rgba(255,255,255,0.14)" /></linearGradient></defs>
+      <path d={s.d.split(" M")[0]} fill={kind === "shaker" ? "url(#sa-metal)" : "url(#sa-glassv)"} />
       <g clipPath={`url(#vs-${kind})`}>
-        {lh > 0 && <rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.88" style={{ transition: "y .4s ease, height .4s ease" }} />}
-        {ice === "cube" && [0, 1, 2, 3].map(i => <rect key={i} x={x + 4 + (i % 2) * 14} y={y + h - lh - 4 + Math.floor(i / 2) * 12} width="11" height="11" rx="3" fill="rgba(255,255,255,0.4)" stroke="rgba(255,255,255,0.65)" strokeWidth="1" />)}
+        {lh > 0 && <><rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity={kind === "shaker" ? "0.55" : "0.88"} style={{ transition: "y .4s ease, height .4s ease" }} /><ellipse cx={x + w / 2} cy={y + h - lh} rx={w / 2} ry="2.4" fill="rgba(255,255,255,0.2)" /></>}
+        {ice === "cube" && [0, 1, 2, 3].map(i => <rect key={i} x={x + 4 + (i % 2) * 14} y={y + h - Math.max(lh, 26) + 4 + Math.floor(i / 2) * 12} width="11" height="11" rx="3" fill="rgba(255,255,255,0.4)" stroke="rgba(255,255,255,0.65)" strokeWidth="1" style={{ animation: `saLabBob ${2.2 + i * 0.4}s ease-in-out infinite` }} />)}
         {ice === "crushed" && Array.from({ length: 12 }).map((_, i) => <circle key={i} cx={x + 5 + (i * 29) % (w - 8)} cy={y + 6 + (i * 19) % (h - 12)} r="3" fill="rgba(255,255,255,0.45)" />)}
       </g>
-      <path d={s.d} fill={kind === "shaker" ? "rgba(200,200,210,0.10)" : "none"} stroke={line} strokeWidth="2" strokeLinejoin="round" />
+      <path d={s.d} fill="none" stroke={line} strokeWidth="2" strokeLinejoin="round" />
+      <path d={s.d.split(" M")[0]} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1" strokeDasharray="18 300" strokeDashoffset="-8" strokeLinecap="round" />
       {s.spoon && <path d="M92 6 L64 84" stroke={line} strokeWidth="2" strokeLinecap="round" opacity="0.8" />}
       {kind === "shaker" && <path d="M46 40h28" stroke={line} strokeWidth="1" opacity="0.5" />}
     </svg>
@@ -457,25 +473,33 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               {i < sc.steps.length - 1 && <span style={{ width: 6, height: 1, background: isDone ? gold : dim }} />}
             </span>; })}
         </div>
-        <div style={{ ...frost, borderRadius: 22, padding: "16px 12px 12px", display: "flex", gap: 12, alignItems: "center", minHeight: 210, position: "relative", overflow: "hidden",
+        <div style={{ ...frost, borderRadius: 22, padding: "16px 12px 18px", display: "flex", gap: 12, alignItems: "center", minHeight: 210, position: "relative", overflow: "hidden",
+          borderBottom: "none", boxShadow: (frost.boxShadow || "") + ", inset 0 -34px 40px -20px rgba(30,18,6,.9)",
           background: a11y ? frost.background : "radial-gradient(ellipse 70% 80% at 28% 45%, rgba(214,178,102,0.16), rgba(0,0,0,0) 60%), rgba(255,250,238,0.04)" }}>
-          <div style={{ width: vesselKind && !strained ? 224 : 168, height: 176, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 4, animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
+          <div style={{ width: vesselKind && !strained ? 232 : 168, height: 208, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 6, animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
             {vesselKind && !strained && (
-              <div style={{ width: 108, height: 150, position: "relative", animation: fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
-                <VesselView kind={vesselKind} fill={vesselMl / totalMl} colors={inVessel.map(s => ING_COLOR(s.name))} ice={iceInVessel ? iceInVessel.id : null} a11y={a11y} shake={fx?.kind === "shake"} tilt={fx?.kind === "strain"} />
-                {frostOn && <div style={{ position: "absolute", inset: "10% 18% 6% 18%", borderRadius: "8px 8px 12px 12px", background: "linear-gradient(90deg, rgba(255,255,255,.55), rgba(255,255,255,.08) 30%, rgba(255,255,255,.08) 70%, rgba(255,255,255,.55))", filter: "blur(2px)", animation: "saLabFrost 2.6s ease-out forwards", pointerEvents: "none" }} />}
+              <div style={{ width: 108, height: 140, position: "relative", display: "flex", alignItems: "flex-end", animation: fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
+                <VesselArt kind={vesselKind} w={108} light={a11y} fill={Math.min(0.78, (vesselMl / totalMl) * 0.78)} liquid={inVessel.map(s => ING_COLOR(s.name))} ice={iceInVessel ? iceInVessel.id : null} shake={fx?.kind === "shake"} tilt={fx?.kind === "strain"} frost={frostOn} />
                 {fx?.kind === "muddle" && <div style={{ position: "absolute", left: "46%", top: 0, width: 6, height: 60, borderRadius: 3, background: gold, animation: "saLabMuddle .35s ease-in-out 2" }} />}
               </div>
             )}
-            {finished && <div className="sa-fadein" style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "center", zIndex: 2, animation: "saLabIn .6s ease-out" }}><CocktailArt c={c} w={168} light={a11y} /></div>}
-            <div style={{ width: vesselKind && !strained ? 108 : 160, height: vesselKind && !strained ? 136 : 160, position: "relative", opacity: finished ? 0 : 1, transition: "opacity .5s", animation: !vesselKind || strained ? (fx?.kind === "shake" ? "saLabShake .8s ease-in-out" : fx?.kind === "muddle" ? "saLabMuddle .35s ease-in-out 2" : fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none") : "none", transition: "width .3s, height .3s" }}>
-              <GlassView glass={glassDone ? c.glass : "rocks"} fill={glassDone ? fillMl / totalMl : 0} colors={glassColors} ice={iceInGlass ? iceInGlass.id : null} garnish={garnishDone ? c.garnish : null} shake={false} a11y={a11y} spilled={false}
+            {/* Доп. 228: бокал — тот же витраж, что в Колоде, только собирается по ходу */}
+            <div style={{ width: vesselKind && !strained ? 118 : 160, height: vesselKind && !strained ? 153 : 208, position: "relative", display: "flex", alignItems: "flex-end", justifyContent: "center", transition: "width .3s, height .3s",
+              animation: !vesselKind || strained ? (fx?.kind === "shake" ? "saLabShake .8s ease-in-out" : fx?.kind === "muddle" ? "saLabMuddle .35s ease-in-out 2" : fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none") : "none" }}>
+              <CocktailArt c={c} w={vesselKind && !strained ? 118 : 160} light={a11y}
+                fill={glassDone ? (finished ? 1 : Math.min(0.86, (fillMl / totalMl) * 0.86)) : 0}
+                showIce={!!iceInGlass || (finished && !!c.ice)} showGarnish={!!garnishDone}
+                liquid={finished ? null : (glassColors.length ? glassColors : null)} bubbles={finished ? null : (fizzy ? true : false)} />
+              {frostOn && (!vesselKind || strained) && <div style={{ position: "absolute", inset: "18% 26% 16% 26%", borderRadius: "10px", background: "linear-gradient(90deg, rgba(255,255,255,.5), rgba(255,255,255,.06) 30%, rgba(255,255,255,.06) 70%, rgba(255,255,255,.5))", filter: "blur(2px)", animation: "saLabFrost 2.6s ease-out forwards", pointerEvents: "none" }} />}
+            </div>
+            <div style={{ display: "none", width: vesselKind && !strained ? 108 : 160, height: vesselKind && !strained ? 136 : 160, position: "relative", opacity: finished ? 0 : 1, transition: "opacity .5s", animation: !vesselKind || strained ? (fx?.kind === "shake" ? "saLabShake .8s ease-in-out" : fx?.kind === "muddle" ? "saLabMuddle .35s ease-in-out 2" : fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none") : "none", transition: "width .3s, height .3s" }}>
+              <GlassView glass={glassDone ? c.glass : "rocks"} fill={glassDone ? Math.min(0.86, (fillMl / totalMl) * 0.86) : 0} colors={glassColors} ice={iceInGlass ? iceInGlass.id : null} garnish={garnishDone ? c.garnish : null} shake={false} a11y={a11y} spilled={false}
                 layers={layers} floatColor={floatStep ? ING_COLOR(floatStep.name) : null} bubbles={fizzy && !finished} served={!!finished} />
               {frostOn && (!vesselKind || strained) && <div style={{ position: "absolute", inset: "14% 22% 12% 22%", borderRadius: "10px", background: "linear-gradient(90deg, rgba(255,255,255,.5), rgba(255,255,255,.06) 30%, rgba(255,255,255,.06) 70%, rgba(255,255,255,.5))", filter: "blur(2px)", animation: "saLabFrost 2.6s ease-out forwards", pointerEvents: "none" }} />}
             </div>
             {jig && <Jigger key={jig.key} amount={jig.amount} color={jig.color} gold={gold} />}
-            {fx?.kind === "pour" && (() => { const W = vesselActive ? 224 : 168, tx = vesselActive ? 54 : 84; return <Stream key={fx.key} w={W} h={176} color={fx.color || "#D6B266"} from={[tx - 8, -4]} to={[tx, vesselActive ? 92 : 96]} curved />; })()}
-            {fx?.kind === "strain" && <Stream key={fx.key} w={224} h={176} color={fx.color || "#D6B266"} from={[92, 64]} to={[170, 104]} curved />}
+            {fx?.kind === "pour" && (() => { const W = vesselActive ? 232 : 168, tx = vesselActive ? 54 : 84; return <Stream key={fx.key} w={W} h={208} color={fx.color || "#D6B266"} from={[tx - 8, -4]} to={[tx, vesselActive ? 110 : 96]} curved />; })()}
+            {fx?.kind === "strain" && <Stream key={fx.key} w={232} h={208} color={fx.color || "#D6B266"} from={[92, 76]} to={[174, 104]} curved />}
             {fx?.kind === "drop" && [0, 1, 2].map(i => <div key={fx.key + i} style={{ position: "absolute", left: (vesselActive ? 18 : 46) + i * 16, top: 34, width: 14, height: 14, borderRadius: 4, background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.8)", animation: `saLabDrop .55s ${i * 70}ms cubic-bezier(.3,.8,.4,1.4) forwards` }} />)}
             {fx?.kind === "stir" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 14, width: 4, height: 74, marginLeft: -2, borderRadius: 2, background: gold, transformOrigin: "50% 85%", animation: "saLabStir .9s linear", opacity: 0.8 }} />}
             {fx?.kind === "spill" && [0, 1, 2, 3, 4].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 30, top: 70, width: 8, height: 8, borderRadius: 4, background: fx.color || "#D6B266", "--dx": `${-30 - i * 12}px`, "--dy": `${20 + (i % 3) * 14}px`, animation: `saLabSplash .8s ${i * 40}ms ease-out forwards` }} />)}

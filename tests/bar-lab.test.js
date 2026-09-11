@@ -45,6 +45,13 @@ describe("bar lab", () => {
     const last = go({ kind: "garnish", id: "peel" });
     expect(last.ok && last.done).toBe(true);
   });
+  it("карточка и тренажёр — один источник: последовательность детерминирована и у каждого ингредиента объём со спека", () => {
+    for (const c of COCKTAILS) {
+      const a = buildScenario(c, COCKTAILS).steps.map(s => s.label), b = buildScenario(c, COCKTAILS).steps.map(s => s.label);
+      expect(a.join("|")).toBe(b.join("|"));
+      for (const s of buildScenario(c, COCKTAILS).steps) if (s.kind === "ing") { const spec = c.ing.find(i => i[0] === s.name); expect(!!spec).toBe(true); expect(Number(s.amount)).toBe(Number(spec[1])); }
+    }
+  });
   it("мастерство: подсказки → 1, по памяти → 2, три чистых подряд → 3, ошибка сбрасывает серию", () => {
     let m = recordRun({}, "x", "hint", true); expect(m.x.level).toBe(1);
     m = recordRun(m, "x", "memory", true); expect(m.x.level).toBe(2);

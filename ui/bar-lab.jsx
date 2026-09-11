@@ -14,6 +14,7 @@ import { report as reportAch } from "../lib/achievements";
 // «По памяти» — тишина, ошибка = «вылил», заново. Мастерство → золотая печать на карточке.
 
 const ICE_RU = { cube: "Кубики", crushed: "Краш", none: "Без льда" };
+const GLASS_SHORT = { rocks: "Рокс", highball: "Хайбол", martini: "Купе", sour: "Сауэр", flute: "Флюте", hurricane: "Харрикейн", shot: "Шот", irish: "Айриш", margarita: "Маргарита", red: "Винный" };
 // Доп. 209: живая станция — струя, лёд, шейк, стир, «вылил», печать
 const FX_CSS = `
 @keyframes saLabPour { 0% { transform: scaleY(0); opacity: 0 } 15% { opacity: 1 } 85% { transform: scaleY(1); opacity: 1 } 100% { opacity: 0 } }
@@ -386,6 +387,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const sc = React.useMemo(() => buildScenario(c, COCKTAILS), [c]);
   const [done, setDone] = React.useState([]);
   const [msg, setMsg] = React.useState(null); // { ok, text }
+  const msgTimer = React.useRef(null);
   const [mistakes, setMistakes] = React.useState(0);
   const [spilled, setSpilled] = React.useState(false);
   const [pending, setPending] = React.useState(null); // ингредиент, ждём объём
@@ -396,6 +398,15 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const [lift, setLift] = React.useState(null); // Доп. 224: «рука бармена» — какая бутылка сейчас в руке
   const [frostOn, setFrostOn] = React.useState(false); // Доп. 225: иней после шейка/стира
   const narrow = useNarrow();
+  // Доп. 234: станция с вкладками — одна полка на экране; сделанное сворачивается
+  const [tab, setTab] = React.useState("glass");
+  const TABS = [["glass", "Стекло"], ["ice", "Лёд"], ["ing", "Бутылки"], ["tool", "Инструмент"], ["garnish", "Гарниш"]];
+  // Доп. 235: с подсказкой полка открывается сама — подсказка так подсказка; по памяти выбрать полку — часть навыка
+  React.useEffect(() => {
+    if (mode !== "hint") return;
+    const e = sc.steps.map((s, i) => ({ s, i })).find(x => !done.includes(x.i));
+    if (e) setTab(e.s.kind);
+  }, [mode, done, sc]);
   const fxTimer = React.useRef(null);
   const playFx = (kind, color, ms = 650) => { clearTimeout(fxTimer.current); setFx({ kind, color, key: Date.now() }); fxTimer.current = setTimeout(() => setFx(null), ms); };
   const [tick, setTick] = React.useState(0);
@@ -440,8 +451,21 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
       if (r.done) { const clean = mistakes === 0; setFinished({ clean }); vibrate("success"); setTimeout(() => playFx("win", null, 1600), 120); setTimeout(() => onFinish(clean), rush ? 900 : 0); }
     } else {
       setMistakes(m => m + 1); vibrate("error");
-      if (mode === "memory") { setSpilled(true); playFx("spill", mix(addedIngs.map(s => ING_COLOR(s.name))) , 1400); setMsg({ ok: false, text: r.why + " Вылил — собираем заново." }); if (rush) onPenalty(); setTimeout(() => { setDone([]); setSpilled(false); setMsg(null); setPending(null); }, 1400); }
-      else setMsg({ ok: false, text: r.why });
+      if (mode === "memory") {
+        setSpilled(true); playFx("spill", mix(addedIngs.map(s => ING_COLOR(s.name))), 1400);
+        // Доп. 237: где споткнулся — номер шага и полка, но не ответ
+        const stepNo = done.length + 1; const kindRu = { glass: "стекло", ice: "лёд", ing: "бутылки", tool: "инструмент", garnish: "гарниш" };
+        const where = r.expected ? ` Споткнулся на шаге ${stepNo} из ${sc.steps.length} — полка «${kindRu[r.expected.kind] || ""}».` : "";
+        setMsg({ ok: false, text: r.why + where + " Собираем заново." });
+        if (rush) onPenalty();
+        setTimeout(() => { setDone([]); setSpilled(false); setPending(null); }, 1400);
+        clearTimeout(msgTimer.current); msgTimer.current = setTimeout(() => setMsg(null), 3400); // подсказка живёт ещё две секунды после сброса
+      }
+      else {
+        const nowLabel = r.expected ? ` Сейчас: ${r.expected.label.toLowerCase()}.` : "";
+        setMsg({ ok: false, text: r.why + nowLabel });
+        clearTimeout(msgTimer.current); msgTimer.current = setTimeout(() => setMsg(null), 2200); // Доп. 236: доска возвращается сама
+      }
     }
   };
   const tapIng = (name) => {
@@ -472,6 +496,8 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           </div>
         )}
         {/* шаги — точки, заполняются по мере сборки */}
+        {/* Доп. 233: сцена прилипает к верху — полки прокручиваются под ней, анимация всегда в кадре */}
+        <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px", padding: "6px 16px 10px", background: a11y ? "linear-gradient(180deg, rgba(250,242,222,0.98) 85%, rgba(250,242,222,0))" : "linear-gradient(180deg, rgba(24,19,9,0.98) 85%, rgba(24,19,9,0))" }}>
         {/* Доп. 225: цепочка шагов — значки в порядке сборки; по памяти — только счёт, без подсказки видов */}
         <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 10, flexWrap: "wrap" }}>
           {sc.steps.map((s, i) => { const isDone = done.includes(i); const cur = !finished && expected && expected.i === i; const dim = a11y ? "rgba(139,106,48,0.35)" : "rgba(214,178,102,0.28)";
@@ -482,10 +508,10 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               {i < sc.steps.length - 1 && <span style={{ width: 6, height: 1, background: isDone ? gold : dim }} />}
             </span>; })}
         </div>
-        <div style={{ ...frost, borderRadius: 22, padding: narrow ? "12px 12px 14px" : "16px 12px 18px", display: "flex", flexDirection: narrow ? "column" : "row", gap: narrow ? 10 : 12, alignItems: "center", minHeight: narrow ? 0 : 210, position: "relative", overflow: "hidden",
-          borderBottom: "none", boxShadow: (frost.boxShadow || "") + ", inset 0 -34px 40px -20px rgba(30,18,6,.9)",
+        <div style={{ ...frost, borderRadius: 22, padding: narrow ? "8px 10px 10px" : "16px 12px 18px", display: "flex", flexDirection: narrow ? "column" : "row", gap: narrow ? 6 : 12, alignItems: "center", minHeight: narrow ? 0 : 210, position: "relative", overflow: "hidden",
+          borderBottom: "none", boxShadow: (frost.boxShadow || "") + (a11y ? ", inset 0 -30px 36px -22px rgba(120,85,25,.28)" : ", inset 0 -34px 40px -20px rgba(30,18,6,.9)"), // Доп. 238: столешница — тёплая в светлой теме
           background: a11y ? frost.background : "radial-gradient(ellipse 70% 80% at 28% 45%, rgba(214,178,102,0.16), rgba(0,0,0,0) 60%), rgba(255,250,238,0.04)" }}>
-          <div style={{ width: vesselKind && !strained ? (narrow ? 200 : 232) : (narrow ? 140 : 168), height: narrow ? 176 : 208, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 6, transform: narrow ? "scale(.92)" : "none", transformOrigin: "50% 100%", animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
+          <div style={{ width: vesselKind && !strained ? (narrow ? 200 : 232) : (narrow ? 140 : 168), height: narrow ? 150 : 208, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 6, transform: narrow ? "scale(.8)" : "none", transformOrigin: "50% 100%", animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
             {vesselKind && !strained && (
               <div style={{ width: 108, height: 140, position: "relative", display: "flex", alignItems: "flex-end", animation: fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
                 <VesselArt kind={vesselKind} w={108} light={a11y} fill={Math.min(0.78, (vesselMl / totalMl) * 0.78)} liquid={inVessel.map(s => ING_COLOR(s.name))} ice={iceInVessel ? iceInVessel.id : null} shake={fx?.kind === "shake"} tilt={fx?.kind === "strain"} frost={frostOn} />
@@ -524,21 +550,25 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
                 {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 13.5 }}>Готово ›</button>}
               </div>
             ) : msg ? (
-              <div className="sa-fadein" style={{ fontSize: 13.5, color: "#E07878", lineHeight: 1.5 }}>{msg.text}</div>
+              <div className="sa-fadein" style={{ padding: narrow ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2a1f1f,#1d1515)", border: narrow ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
+                <div style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,180,170,.7)", fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "memory" ? "вылил" : "не то"}</div>
+                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", cursive', fontSize: narrow ? 14 : 15, color: "rgba(255,200,190,.95)", lineHeight: 1.35, marginTop: 2 }}>{msg.text}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "hint" ? "продолжай — нужное подсвечено" : "заново, с пустого бокала"}</div>
+              </div>
             ) : pending ? (
               <div className="sa-fadein">
                 <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ДЖИГГЕР · {pending.toUpperCase()}</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                <div className="sa-hscroll" style={{ display: "flex", flexWrap: narrow ? "nowrap" : "wrap", overflowX: narrow ? "auto" : "visible", gap: 5, paddingBottom: narrow ? 4 : 0 }}>
                   {jiggerFor(c).map(a => { const st = sc.steps.find(s => s.kind === "ing" && s.name === pending); return <span key={a} style={chip(hint(st) && Number(st.amount) === a, { padding: "6px 9px", fontSize: 12 })} onClick={() => { const n = pending; setPending(null); act({ kind: "ing", name: n, amount: a }); }}>{a}</span>; })}
                   <span style={chip(false, { padding: "6px 9px", fontSize: 12, color: sub })} onClick={() => setPending(null)}>✕</span>
                 </div>
                 <div style={{ fontSize: 10.5, color: sub, marginTop: 6 }}>мл</div>
               </div>
             ) : mode === "hint" && expected ? (
-              <div style={{ padding: narrow ? "8px 12px 10px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: narrow ? "none" : "rotate(-1.2deg)" }}>
-                <div style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive' }}>теперь</div>
-                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: narrow ? 16 : 17, color: "rgba(255,255,255,.92)", marginTop: 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)" }}>{expected.s.label}</div>
-                {c.tip && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
+              <div style={{ padding: narrow ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: narrow ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: "none", display: narrow ? "flex" : "block", alignItems: "baseline", gap: 10 }}>
+                <div style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', flexShrink: 0 }}>теперь</div>
+                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: narrow ? 15 : 16, color: "rgba(255,255,255,.92)", marginTop: narrow ? 0 : 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)", minWidth: 0 }}>{expected.s.label}</div>
+                {c.tip && !narrow && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
               </div>
             ) : (
               <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.5 }}>{pending ? `Сколько ${pending.toLowerCase()}?` : "Тапай по станции: стекло → лёд или ингредиенты → инструмент → гарниш."}</div>
@@ -547,30 +577,40 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         </div>
 
 
-        {/* СТАНЦИЯ — три полки: стекло и лёд · бутылки · инструмент и гарниш */}
-        <div style={{ marginTop: 14 }}>
-          {[
-            ["СТЕКЛО · ЛЁД", [
-              ...sc.station.glasses.map((g, k) => <Item key={"g" + g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />),
-              <span key="sep" style={{ width: 1, alignSelf: "stretch", background: `${gold}33`, margin: "6px 4px" }} />,
-              ...sc.station.ices.map((i, k) => <Item key={"i" + i} icon={<IceIcon id={i} gold={gold} />} label={ICE_RU[i]} on={expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i} gold={gold} a11y={a11y} delay={200 + k * 40} onClick={() => act({ kind: "ice", id: i })} />),
-            ]],
-            ["БУТЫЛКИ", sc.station.ings.map((n, k) => { const st = sc.steps.find(x => x.kind === "ing" && x.name === n); const added = st && done.includes(sc.steps.indexOf(st)); return <Bottle key={n} color={ING_COLOR(n)} label={n} on={st && hint(st)} dim={added} gold={gold} a11y={a11y} delay={k * 40} lifting={lift === n} onClick={() => tapIng(n)} />; })],
-            ["ИНСТРУМЕНТ · ГАРНИШ", [
-              ...sc.station.tools.map((t, k) => <Item key={"t" + t} icon={<ToolIcon id={t} gold={gold} />} label={TOOLS[t]} on={expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "tool", id: t })} />),
-              <span key="sep2" style={{ width: 1, alignSelf: "stretch", background: `${gold}33`, margin: "6px 4px" }} />,
-              ...sc.station.garnishes.map((g, k) => <Item key={"ga" + g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={300 + k * 40} onClick={() => act({ kind: "garnish", id: g })} />),
-            ]],
-          ].map(([title, nodes]) => (
-            <div key={title} style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "0 2px 4px" }}>{title}</div>
-              <div style={{ position: "relative", borderRadius: 12, background: a11y ? "linear-gradient(180deg, rgba(255,250,235,0.55), rgba(240,228,200,0.35))" : "linear-gradient(180deg, rgba(255,248,230,0.02), rgba(255,236,190,0.06) 70%, rgba(214,178,102,0.10))", boxShadow: a11y ? "none" : "inset 0 -14px 20px -14px rgba(214,178,102,0.55)" }}>
-                <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 8px 8px", WebkitOverflowScrolling: "touch" }}>{nodes}</div>
-                <div style={{ height: 7, borderRadius: "0 0 12px 12px", background: a11y ? "linear-gradient(180deg,#B08A4E,#8B6A30)" : "linear-gradient(180deg,#6B4A22,#3B2711)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
-              </div>
-            </div>
-          ))}
         </div>
+        {/* СТАНЦИЯ — вкладки и одна полка (Доп. 234). Сделанное сворачивается в строку; гарниш — когда всё остальное готово */}
+        {(() => {
+          const allIngsDone = sc.steps.filter(s => s.kind === "ing").every((s) => done.includes(sc.steps.indexOf(s)));
+          const garnishStep = sc.steps.find(s => s.kind === "garnish");
+          const restDone = sc.steps.every((s, i) => s.kind === "garnish" || done.includes(i));
+          const iceSteps = sc.steps.filter(s => s.kind === "ice"); const iceAllDone = iceSteps.length > 0 && iceSteps.every(s => done.includes(sc.steps.indexOf(s)));
+          const usedIng = (n) => { const st = sc.steps.find(x => x.kind === "ing" && x.name === n); return st && done.includes(sc.steps.indexOf(st)); };
+          const rowStyle = { display: "flex", gap: 8, overflowX: "auto", padding: "10px 10px 8px", WebkitOverflowScrolling: "touch" };
+          const shelf = (nodes) => (
+            <div style={{ position: "relative", borderRadius: 14, background: a11y ? "linear-gradient(180deg, rgba(255,250,235,0.55), rgba(240,228,200,0.35))" : "linear-gradient(180deg, rgba(255,248,230,0.02), rgba(255,236,190,0.06) 70%, rgba(214,178,102,0.10))", boxShadow: a11y ? "none" : "inset 0 -14px 20px -14px rgba(214,178,102,0.55)" }}>
+              <div className="sa-hscroll" style={rowStyle}>{nodes}</div>
+              <div style={{ height: 5, borderRadius: "0 0 14px 14px", background: a11y ? "linear-gradient(180deg,#B08A4E,#8B6A30)" : "linear-gradient(180deg,#6B4A22,#3B2711)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
+            </div>);
+          const doneLine = (text, more = true) => <div className="sa-fadein" style={{ padding: "10px 14px", borderRadius: 14, border: `1px solid ${gold}33`, color: sub, fontSize: 13 }}>✓ {text}{more && !finished ? <span style={{ display: "block", marginTop: 4, fontSize: 11.5, color: gold, opacity: 0.85 }}>{mode === "hint" ? "полка переключится сама" : "дальше — на вкладках выше"}</span> : null}</div>;
+          const content = tab === "glass"
+            ? (glassDone ? doneLine(`Бокал — ${GLASS_SHORT[c.glass] || GLASS_RU[c.glass]}`) : shelf(sc.station.glasses.map((g, k) => <Item key={"g" + g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_SHORT[g] || GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />)))
+            : tab === "ice"
+            ? (iceAllDone ? doneLine(`Лёд — ${ICE_RU[iceSteps[iceSteps.length - 1].id].toLowerCase()}`) : shelf(sc.station.ices.map((i, k) => <Item key={"i" + i} icon={<IceIcon id={i} gold={gold} />} label={ICE_RU[i]} on={expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "ice", id: i })} />)))
+            : tab === "ing"
+            ? shelf([...sc.station.ings.filter(n => !usedIng(n)), ...sc.station.ings.filter(usedIng)].map((n, k) => { const st = sc.steps.find(x => x.kind === "ing" && x.name === n); return <Bottle key={n} color={ING_COLOR(n)} label={n} on={st && hint(st)} dim={usedIng(n)} gold={gold} a11y={a11y} delay={k * 40} lifting={lift === n} onClick={() => tapIng(n)} />; }))
+            : tab === "tool"
+            ? shelf(sc.station.tools.map((t, k) => <Item key={"t" + t} icon={<ToolIcon id={t} gold={gold} />} label={TOOLS[t]} on={expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "tool", id: t })} />))
+            : (!garnishStep ? doneLine("Без гарниша") : garnishDone ? doneLine(`Гарниш — ${GARNISH_RU[c.garnish]}`) : !restDone ? doneLine("Гарниш — в самом конце, когда напиток собран") : shelf(sc.station.garnishes.map((g, k) => <Item key={"ga" + g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "garnish", id: g })} />)));
+          return (
+            <div style={{ marginTop: 12 }}>
+              <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8 }}>
+                {TABS.map(([key, label]) => { const on = tab === key; const doneMark = key === "glass" ? glassDone : key === "ice" ? iceAllDone : key === "ing" ? allIngsDone : key === "garnish" ? (!!garnishDone || !garnishStep) : false;
+                  return <span key={key} onClick={() => { setTab(key); vibrate("light"); }} {...onActivate(() => setTab(key))} style={{ padding: "7px 13px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, border: `1px solid ${on ? gold : gold + "44"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : doneMark ? gold : sub }}>{label}{doneMark ? " ✓" : ""}</span>; })}
+              </div>
+              {content}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -40,6 +40,8 @@ const FX_CSS = `
 @keyframes saLabDrip { 0% { transform: translateY(0); opacity: .9 } 100% { transform: translateY(70px); opacity: 0 } }
 @keyframes saLabTicket { from { transform: translateY(-14px) rotate(-3deg); opacity: 0 } to { transform: translateY(0) rotate(-1.5deg); opacity: 1 } }
 @keyframes saLabServe { 0% { transform: translateY(0) } 40% { transform: translateY(-8px) } 100% { transform: translateY(0) } }
+@keyframes saLabFrost { 0% { opacity: 0 } 25% { opacity: .85 } 70% { opacity: .55 } 100% { opacity: 0 } }
+@keyframes saLabPulse { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.25); opacity: 1 } }
 .sa-lab-in { animation: saLabIn .32s cubic-bezier(.16,1,.3,1) backwards }
 .sa-lab-bottle:active { transform: scale(.94) }
 `;
@@ -109,10 +111,10 @@ function Jigger({ amount, color, gold }) {
   );
 }
 // Доп. 220: струя с изгибом и каплями
-function Stream({ color, from, to, curved }) {
-  const d = curved ? `M${from[0]} ${from[1]} Q ${(from[0] + to[0]) / 2 + 14} ${(from[1] + to[1]) / 2} ${to[0]} ${to[1]}` : `M${from[0]} ${from[1]} L${to[0]} ${to[1]}`;
+function Stream({ color, from, to, curved, w = 224, h = 176 }) {
+  const d = curved ? `M${from[0]} ${from[1]} Q ${(from[0] + to[0]) / 2 + 12} ${(from[1] + to[1]) / 2} ${to[0]} ${to[1]}` : `M${from[0]} ${from[1]} L${to[0]} ${to[1]}`;
   return (
-    <svg viewBox="0 0 200 150" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}>
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", overflow: "visible" }}>
       <path d={d} stroke={color} strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.9" style={{ strokeDasharray: 200, strokeDashoffset: 200, animation: "saLabStreamIn .6s ease-out forwards" }} />
       {[0, 1, 2].map(i => <circle key={i} cx={to[0] + (i - 1) * 6} cy={to[1] - 6} r="2.6" fill={color} style={{ animation: `saLabDrip .5s ${0.45 + i * 0.08}s ease-in forwards`, opacity: 0 }} />)}
     </svg>
@@ -368,6 +370,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const [fx, setFx] = React.useState(null); // { kind: pour|drop|stir|muddle|strain|garnish|win|spill, color }
   const [jig, setJig] = React.useState(null); // Доп. 220: джиггер на сцене
   const [lift, setLift] = React.useState(null); // Доп. 224: «рука бармена» — какая бутылка сейчас в руке
+  const [frostOn, setFrostOn] = React.useState(false); // Доп. 225: иней после шейка/стира
   const fxTimer = React.useRef(null);
   const playFx = (kind, color, ms = 650) => { clearTimeout(fxTimer.current); setFx({ kind, color, key: Date.now() }); fxTimer.current = setTimeout(() => setFx(null), ms); };
   const [tick, setTick] = React.useState(0);
@@ -404,8 +407,8 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
       if (action.kind === "ing" && action.amount != null) { const col = ING_COLOR(action.name); setJig({ amount: action.amount, color: col, key: Date.now() }); setTimeout(() => { setJig(null); playFx("pour", col, 700); }, 850); }
       else if (action.kind === "ing") setTimeout(() => playFx("pour", ING_COLOR(action.name), 700), 350);
       else if (action.kind === "ice") playFx("drop", null, 600);
-      else if (action.kind === "tool" && (action.id === "shake" || action.id === "blend")) { setShake(true); playFx("shake", null, 800); setTimeout(() => setShake(false), 800); vibrate("medium"); }
-      else if (action.kind === "tool" && (action.id === "stir" || action.id === "swizzle")) playFx("stir", null, 900);
+      else if (action.kind === "tool" && (action.id === "shake" || action.id === "blend")) { setShake(true); playFx("shake", null, 800); setTimeout(() => setShake(false), 800); vibrate("medium"); if (action.id === "shake") { setFrostOn(true); setTimeout(() => setFrostOn(false), 2600); } }
+      else if (action.kind === "tool" && (action.id === "stir" || action.id === "swizzle")) { playFx("stir", null, 900); setFrostOn(true); setTimeout(() => setFrostOn(false), 2600); }
       else if (action.kind === "tool" && action.id === "muddle") playFx("muddle", null, 700);
       else if (action.kind === "tool" && action.id === "strain") playFx("strain", mix(inVessel.map(s => ING_COLOR(s.name))), 900);
       else if (action.kind === "garnish") playFx("drop", null, 500);
@@ -444,13 +447,23 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           </div>
         )}
         {/* шаги — точки, заполняются по мере сборки */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>{sc.steps.map((s, i) => <span key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: done.includes(i) ? gold : (a11y ? "rgba(139,106,48,0.22)" : "rgba(214,178,102,0.18)"), transition: "background .3s" }} />)}</div>
+        {/* Доп. 225: цепочка шагов — значки в порядке сборки; по памяти — только счёт, без подсказки видов */}
+        <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 10, flexWrap: "wrap" }}>
+          {sc.steps.map((s, i) => { const isDone = done.includes(i); const cur = !finished && expected && expected.i === i; const dim = a11y ? "rgba(139,106,48,0.35)" : "rgba(214,178,102,0.28)";
+            const glyph = mode === "memory" && !isDone ? "·" : s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? (TOOL_ICON[s.id] || "•") : s.kind === "garnish" ? "✿" : "●";
+            const col = isDone ? gold : cur ? gold : dim;
+            return <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+              <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: s.kind === "ing" ? 9 : 11, color: s.kind === "ing" && (isDone || (cur && mode === "hint")) ? ING_COLOR(s.name) : col, border: `1px solid ${isDone ? gold : cur ? gold : dim}`, background: isDone ? "rgba(214,178,102,0.16)" : "transparent", animation: cur && mode === "hint" ? "saLabPulse 1.2s ease-in-out infinite" : "none" }}>{glyph}</span>
+              {i < sc.steps.length - 1 && <span style={{ width: 6, height: 1, background: isDone ? gold : dim }} />}
+            </span>; })}
+        </div>
         <div style={{ ...frost, borderRadius: 22, padding: "16px 12px 12px", display: "flex", gap: 12, alignItems: "center", minHeight: 210, position: "relative", overflow: "hidden",
           background: a11y ? frost.background : "radial-gradient(ellipse 70% 80% at 28% 45%, rgba(214,178,102,0.16), rgba(0,0,0,0) 60%), rgba(255,250,238,0.04)" }}>
           <div style={{ width: vesselKind && !strained ? 224 : 168, height: 176, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 4, animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
             {vesselKind && !strained && (
               <div style={{ width: 108, height: 150, position: "relative", animation: fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
                 <VesselView kind={vesselKind} fill={vesselMl / totalMl} colors={inVessel.map(s => ING_COLOR(s.name))} ice={iceInVessel ? iceInVessel.id : null} a11y={a11y} shake={fx?.kind === "shake"} tilt={fx?.kind === "strain"} />
+                {frostOn && <div style={{ position: "absolute", inset: "10% 18% 6% 18%", borderRadius: "8px 8px 12px 12px", background: "linear-gradient(90deg, rgba(255,255,255,.55), rgba(255,255,255,.08) 30%, rgba(255,255,255,.08) 70%, rgba(255,255,255,.55))", filter: "blur(2px)", animation: "saLabFrost 2.6s ease-out forwards", pointerEvents: "none" }} />}
                 {fx?.kind === "muddle" && <div style={{ position: "absolute", left: "46%", top: 0, width: 6, height: 60, borderRadius: 3, background: gold, animation: "saLabMuddle .35s ease-in-out 2" }} />}
               </div>
             )}
@@ -458,10 +471,11 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
             <div style={{ width: vesselKind && !strained ? 108 : 160, height: vesselKind && !strained ? 136 : 160, position: "relative", opacity: finished ? 0 : 1, transition: "opacity .5s", animation: !vesselKind || strained ? (fx?.kind === "shake" ? "saLabShake .8s ease-in-out" : fx?.kind === "muddle" ? "saLabMuddle .35s ease-in-out 2" : fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none") : "none", transition: "width .3s, height .3s" }}>
               <GlassView glass={glassDone ? c.glass : "rocks"} fill={glassDone ? fillMl / totalMl : 0} colors={glassColors} ice={iceInGlass ? iceInGlass.id : null} garnish={garnishDone ? c.garnish : null} shake={false} a11y={a11y} spilled={false}
                 layers={layers} floatColor={floatStep ? ING_COLOR(floatStep.name) : null} bubbles={fizzy && !finished} served={!!finished} />
+              {frostOn && (!vesselKind || strained) && <div style={{ position: "absolute", inset: "14% 22% 12% 22%", borderRadius: "10px", background: "linear-gradient(90deg, rgba(255,255,255,.5), rgba(255,255,255,.06) 30%, rgba(255,255,255,.06) 70%, rgba(255,255,255,.5))", filter: "blur(2px)", animation: "saLabFrost 2.6s ease-out forwards", pointerEvents: "none" }} />}
             </div>
             {jig && <Jigger key={jig.key} amount={jig.amount} color={jig.color} gold={gold} />}
-            {fx?.kind === "pour" && <Stream key={fx.key} color={fx.color || "#D6B266"} from={[vesselActive ? 40 : 100, -4]} to={[vesselActive ? 48 : 100, 74]} curved />}
-            {fx?.kind === "strain" && <Stream key={fx.key} color={fx.color || "#D6B266"} from={[78, 58]} to={[146, 92]} curved />}
+            {fx?.kind === "pour" && (() => { const W = vesselActive ? 224 : 168, tx = vesselActive ? 54 : 84; return <Stream key={fx.key} w={W} h={176} color={fx.color || "#D6B266"} from={[tx - 8, -4]} to={[tx, vesselActive ? 92 : 96]} curved />; })()}
+            {fx?.kind === "strain" && <Stream key={fx.key} w={224} h={176} color={fx.color || "#D6B266"} from={[92, 64]} to={[170, 104]} curved />}
             {fx?.kind === "drop" && [0, 1, 2].map(i => <div key={fx.key + i} style={{ position: "absolute", left: (vesselActive ? 18 : 46) + i * 16, top: 34, width: 14, height: 14, borderRadius: 4, background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.8)", animation: `saLabDrop .55s ${i * 70}ms cubic-bezier(.3,.8,.4,1.4) forwards` }} />)}
             {fx?.kind === "stir" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 14, width: 4, height: 74, marginLeft: -2, borderRadius: 2, background: gold, transformOrigin: "50% 85%", animation: "saLabStir .9s linear", opacity: 0.8 }} />}
             {fx?.kind === "spill" && [0, 1, 2, 3, 4].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 30, top: 70, width: 8, height: 8, borderRadius: 4, background: fx.color || "#D6B266", "--dx": `${-30 - i * 12}px`, "--dy": `${20 + (i % 3) * 14}px`, animation: `saLabSplash .8s ${i * 40}ms ease-out forwards` }} />)}
@@ -488,10 +502,10 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
                 <div style={{ fontSize: 10.5, color: sub, marginTop: 6 }}>мл</div>
               </div>
             ) : mode === "hint" && expected ? (
-              <div>
-                <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>ТЕПЕРЬ</div>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: text, marginTop: 4, lineHeight: 1.3 }}>{expected.s.label}</div>
-                {c.steps && c.steps[Math.min(c.steps.length - 1, Math.floor(done.length / Math.max(1, sc.steps.length / c.steps.length)))] && <div style={{ fontSize: 12, color: sub, marginTop: 6, fontStyle: "italic" }}>{c.tip}</div>}
+              <div style={{ padding: "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: "rotate(-1.2deg)" }}>
+                <div style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive' }}>теперь</div>
+                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: 17, color: "rgba(255,255,255,.92)", marginTop: 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)" }}>{expected.s.label}</div>
+                {c.tip && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
               </div>
             ) : (
               <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.5 }}>{pending ? `Сколько ${pending.toLowerCase()}?` : "Тапай по станции: стекло → лёд или ингредиенты → инструмент → гарниш."}</div>

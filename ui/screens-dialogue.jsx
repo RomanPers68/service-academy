@@ -407,7 +407,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     .dlg-in { animation: dlgMsgIn 0.4s cubic-bezier(0.22,1,0.36,1) both; will-change: transform, opacity; }
     .dlg-in-left { animation-name: dlgMsgInL; }
     .dlg-in-right { animation-name: dlgMsgInR; }
-    .dlg-opt:active { transform: scale(0.975); background: rgba(255,255,255,0.08) !important; }
+    .dlg-opt:active { transform: scale(0.975); background: rgba(255,255,255,0.08) !important; transition-delay: 70ms; }
     .dlg-opt-out { opacity: 0; transform: translateY(-6px) scale(0.97); pointer-events: none; }
     .dlg-opt-picked { transform: scale(1.02); pointer-events: none; }
     @media (prefers-reduced-motion: reduce) { .dlg-in { animation-duration: 0.01s; } }`}</style>

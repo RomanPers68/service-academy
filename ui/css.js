@@ -78,6 +78,7 @@ export const injectStyles = () => {
       transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
     }
     .sa-card:active {
+      transition-delay: 70ms; /* Доп. 239: прокрутка отменяет нажатие раньше, чем оно проявится */
       transform: scale(0.97);
       box-shadow: none !important;
       opacity: 0.85;
@@ -94,16 +95,18 @@ export const injectStyles = () => {
       animation: chipPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .sa-btn:active {
+      transition-delay: 70ms; /* Доп. 239: прокрутка отменяет нажатие раньше, чем оно проявится */
       transform: scale(0.96);
       opacity: 0.85;
     }
     .sa-btn-pulse:active {
-      animation: pulse 0.4s ease;
+      animation: pulse 0.4s ease 70ms;
     }
     .sa-opt {
       transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
     }
     .sa-opt:active {
+      transition-delay: 70ms; /* Доп. 239: прокрутка отменяет нажатие раньше, чем оно проявится */
       transform: scale(0.98);
     }
     .sa-stagger > * {
@@ -149,7 +152,7 @@ export const injectStyles = () => {
       box-shadow:inset 0 0 16px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10),
                  0 5px 16px rgba(0,0,0,0.30);
       transition:border-color .2s ease,background .2s ease,transform .12s ease}
-    .sa-step:active{transform:scale(.99)}
+    .sa-step:active{transform:scale(.99);transition-delay:70ms}
     .sa-step.locked{opacity:.45;cursor:default}
     .sa-step::before{content:"";position:absolute;left:-17px;top:50%;width:15px;height:2px;
       background:rgba(200,169,110,0.34)}
@@ -193,6 +196,7 @@ export const injectStyles = () => {
          мерцание карточек ролей/уроков. Лёд по всему приложению без блюра. */
     }
     .sa-glass:active {
+      transition-delay: 70ms; /* Доп. 239: прокрутка отменяет нажатие раньше, чем оно проявится */
       transform: scale(0.97);
       opacity: 0.88;
     }
@@ -442,7 +446,7 @@ export const injectStyles = () => {
     .sa-bld-term{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;
       font-family:Georgia,serif;font-size:11px;color:#D4A85A;background:rgba(200,169,110,0.12);
       border:1px solid rgba(200,169,110,0.34);cursor:pointer;transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease}
-    .sa-bld-term:active{transform:scale(.96)}
+    .sa-bld-term:active{transform:scale(.96);transition-delay:70ms}
     .sa-bld-term.flat{cursor:default;opacity:.85}
     .sa-bld-term.open{background:rgba(200,169,110,0.20);border-color:rgba(200,169,110,0.5)}
     .sa-bld-article{margin-top:8px;padding:9px 11px;border-radius:10px;font-size:12.5px;line-height:1.5;
@@ -459,7 +463,7 @@ export const injectStyles = () => {
     .sa-bld-opt{width:100%;text-align:left;display:flex;align-items:center;gap:11px;
       cursor:pointer;font-family:Georgia,serif;
       transition:border-color .2s,box-shadow .2s,opacity .2s,transform .12s}
-    .sa-bld-opt:active{transform:scale(.985)}
+    .sa-bld-opt:active{transform:scale(.985);transition-delay:70ms}
     .sa-bld-opt[disabled]{cursor:default}
     .sa-bld-optk{flex:0 0 24px;height:24px;border-radius:7px;display:grid;place-items:center;
       font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#B09060;

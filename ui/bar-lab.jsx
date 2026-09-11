@@ -44,7 +44,7 @@ const FX_CSS = `
 @keyframes saLabFrost { 0% { opacity: 0 } 25% { opacity: .85 } 70% { opacity: .55 } 100% { opacity: 0 } }
 @keyframes saLabPulse { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.25); opacity: 1 } }
 .sa-lab-in { animation: saLabIn .32s cubic-bezier(.16,1,.3,1) backwards }
-.sa-lab-bottle:active { transform: scale(.94) }
+.sa-lab-bottle:active { transform: scale(.94); transition-delay: 70ms }
 `;
 function LabStyle() { return <style>{FX_CSS}</style>; }
 const TOOL_ICON = { shake: "⇅", stir: "↻", strain: "◒", muddle: "⌇", blend: "✱", layer: "≡", swizzle: "∿" };

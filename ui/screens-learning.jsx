@@ -671,7 +671,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         // Если показали уже всё — сбрасываем историю
         const finalUsedIds = newUsedIds.length >= pool.length ? [] : newUsedIds;
         setPracticeState({ step:0, choice:null, results:[], done:false, lives:3, score:0, combo:0, situations:shuffled, flash:null, timerActive:false, timeLeft:10, inputVal:"", usedIds:finalUsedIds });
-        setGameKey(k => k+1);
+        // Доп. 232: setGameKey здесь не существует (состояние App) — сброс practiceState выше уже перезапускает игру
       };
       return (
         <div style={T.screen} className="sa-screen">

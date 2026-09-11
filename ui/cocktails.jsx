@@ -62,7 +62,8 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
   const [mode, setMode] = React.useState("deck");     // deck | quiz
   const [q, setQ] = React.useState("");                 // поиск
   const [base, setBase] = React.useState("");           // фильтр по базе
-  const [view, setView] = React.useState("cards");      // cards | index (оглавление)
+  const [view, setView] = React.useState("cards");
+  const mast = React.useMemo(() => loadMastery(uk), [uk, view]); // Доп. 218: печати Сборки — в указателе колоды      // cards | index (оглавление)
   const [idx, setIdx] = React.useState(0);
   const [flip, setFlip] = React.useState(false);
   const [settled, setSettled] = React.useState(false); // Доп. 218: плоский режим после переворота

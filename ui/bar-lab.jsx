@@ -184,7 +184,7 @@ function Item({ icon, label, on, gold, a11y, onClick, delay = 0, wide }) {
   const text = a11y ? "#2A1F0E" : "#EFE4C8";
   return (
     <div className="sa-lab-in sa-lab-bottle" onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: `${delay}ms`, minWidth: wide ? 88 : 64, flexShrink: 0, cursor: "pointer", textAlign: "center", transition: "transform .12s" }}>
-      <div style={{ width: 54, height: 54, margin: "0 auto 5px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? gold : (a11y ? "#8B6A3055" : "rgba(255,255,255,0.14)")}`, background: on ? "rgba(214,178,102,0.16)" : (a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)"), boxShadow: on ? `0 0 14px rgba(214,178,102,.45)` : "none" }}>{icon}</div>
+      <div style={{ width: 54, height: 54, margin: "0 auto 5px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? gold : (a11y ? "#8B6A3055" : "rgba(255,255,255,0.14)")}`, background: on ? "radial-gradient(circle at 50% 60%, rgba(214,178,102,0.34), rgba(214,178,102,0.08) 70%)" : (a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)"), boxShadow: on ? `inset 0 0 0 1.5px ${gold}, inset 0 0 12px rgba(214,178,102,.5)` : "none", animation: on ? "saLabPulse 1.6s ease-in-out infinite" : "none" }}>{icon}</div>
       <div style={{ fontSize: 10.5, lineHeight: 1.2, color: on ? gold : text, height: 26, overflow: "hidden" }}>{label}</div>
     </div>
   );
@@ -220,6 +220,14 @@ function VesselView({ kind, fill, colors, ice, a11y, shake, tilt }) {
       {kind === "shaker" && <path d="M46 40h28" stroke={line} strokeWidth="1" opacity="0.5" />}
     </svg>
   );
+}
+
+// Доп. 231: узкие экраны (iPhone SE/XS, 375 px) — сцена столбиком, размеры меньше
+function useNarrow(threshold = 400) {
+  const get = () => typeof window !== "undefined" && window.innerWidth < threshold;
+  const [n, setN] = React.useState(get);
+  React.useEffect(() => { const on = () => setN(get()); window.addEventListener("resize", on); return () => window.removeEventListener("resize", on); }, []);
+  return n;
 }
 
 const ukOf = (profile) => profile ? `_${profile.name}_${profile.surname || ""}` : "";
@@ -387,6 +395,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const [jig, setJig] = React.useState(null); // Доп. 220: джиггер на сцене
   const [lift, setLift] = React.useState(null); // Доп. 224: «рука бармена» — какая бутылка сейчас в руке
   const [frostOn, setFrostOn] = React.useState(false); // Доп. 225: иней после шейка/стира
+  const narrow = useNarrow();
   const fxTimer = React.useRef(null);
   const playFx = (kind, color, ms = 650) => { clearTimeout(fxTimer.current); setFx({ kind, color, key: Date.now() }); fxTimer.current = setTimeout(() => setFx(null), ms); };
   const [tick, setTick] = React.useState(0);
@@ -473,10 +482,10 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               {i < sc.steps.length - 1 && <span style={{ width: 6, height: 1, background: isDone ? gold : dim }} />}
             </span>; })}
         </div>
-        <div style={{ ...frost, borderRadius: 22, padding: "16px 12px 18px", display: "flex", gap: 12, alignItems: "center", minHeight: 210, position: "relative", overflow: "hidden",
+        <div style={{ ...frost, borderRadius: 22, padding: narrow ? "12px 12px 14px" : "16px 12px 18px", display: "flex", flexDirection: narrow ? "column" : "row", gap: narrow ? 10 : 12, alignItems: "center", minHeight: narrow ? 0 : 210, position: "relative", overflow: "hidden",
           borderBottom: "none", boxShadow: (frost.boxShadow || "") + ", inset 0 -34px 40px -20px rgba(30,18,6,.9)",
           background: a11y ? frost.background : "radial-gradient(ellipse 70% 80% at 28% 45%, rgba(214,178,102,0.16), rgba(0,0,0,0) 60%), rgba(255,250,238,0.04)" }}>
-          <div style={{ width: vesselKind && !strained ? 232 : 168, height: 208, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 6, animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
+          <div style={{ width: vesselKind && !strained ? (narrow ? 200 : 232) : (narrow ? 140 : 168), height: narrow ? 176 : 208, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 6, transform: narrow ? "scale(.92)" : "none", transformOrigin: "50% 100%", animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
             {vesselKind && !strained && (
               <div style={{ width: 108, height: 140, position: "relative", display: "flex", alignItems: "flex-end", animation: fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
                 <VesselArt kind={vesselKind} w={108} light={a11y} fill={Math.min(0.78, (vesselMl / totalMl) * 0.78)} liquid={inVessel.map(s => ING_COLOR(s.name))} ice={iceInVessel ? iceInVessel.id : null} shake={fx?.kind === "shake"} tilt={fx?.kind === "strain"} frost={frostOn} />
@@ -506,7 +515,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
             {fx?.kind === "win" && [0, 1, 2, 3, 4, 5, 6, 7].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 60, top: 60, width: 6, height: 6, borderRadius: 3, background: gold, "--dx": `${Math.round(Math.cos(i / 8 * Math.PI * 2) * 58)}px`, "--dy": `${Math.round(Math.sin(i / 8 * Math.PI * 2) * 58)}px`, animation: `saLabSpark .9s ${i * 30}ms ease-out forwards` }} />)}
             {finished && finished.clean && mode === "memory" && <div style={{ position: "absolute", right: -6, bottom: -4, width: 54, height: 54, borderRadius: 27, border: `3px solid ${gold}`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 11, letterSpacing: 1, textAlign: "center", lineHeight: 1.1, background: a11y ? "rgba(250,242,222,0.9)" : "rgba(28,22,12,0.9)", animation: "saLabStamp .7s cubic-bezier(.2,1.2,.3,1) forwards", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}>ПЕ<br/>ЧАТЬ</div>}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, width: narrow ? "100%" : undefined }}>
             {finished ? (
               <div className="sa-fadein">
                 <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{finished.clean ? "✦ ПОДАНО · ЧИСТО" : "✦ ПОДАНО"}</div>
@@ -526,9 +535,9 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
                 <div style={{ fontSize: 10.5, color: sub, marginTop: 6 }}>мл</div>
               </div>
             ) : mode === "hint" && expected ? (
-              <div style={{ padding: "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: "rotate(-1.2deg)" }}>
+              <div style={{ padding: narrow ? "8px 12px 10px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: narrow ? "none" : "rotate(-1.2deg)" }}>
                 <div style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive' }}>теперь</div>
-                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: 17, color: "rgba(255,255,255,.92)", marginTop: 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)" }}>{expected.s.label}</div>
+                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: narrow ? 16 : 17, color: "rgba(255,255,255,.92)", marginTop: 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)" }}>{expected.s.label}</div>
                 {c.tip && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
               </div>
             ) : (
@@ -556,7 +565,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
             <div key={title} style={{ marginTop: 12 }}>
               <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "0 2px 4px" }}>{title}</div>
               <div style={{ position: "relative", borderRadius: 12, background: a11y ? "linear-gradient(180deg, rgba(255,250,235,0.55), rgba(240,228,200,0.35))" : "linear-gradient(180deg, rgba(255,248,230,0.02), rgba(255,236,190,0.06) 70%, rgba(214,178,102,0.10))", boxShadow: a11y ? "none" : "inset 0 -14px 20px -14px rgba(214,178,102,0.55)" }}>
-                <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 8px 6px", WebkitOverflowScrolling: "touch" }}>{nodes}</div>
+                <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 8px 8px", WebkitOverflowScrolling: "touch" }}>{nodes}</div>
                 <div style={{ height: 7, borderRadius: "0 0 12px 12px", background: a11y ? "linear-gradient(180deg,#B08A4E,#8B6A30)" : "linear-gradient(180deg,#6B4A22,#3B2711)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
               </div>
             </div>

@@ -1641,7 +1641,8 @@ class ErrorBoundary extends React.Component {
   }
   componentDidCatch(error, info) {
     // Доп. 218: перекос деплоя — старый HTML тянет чанк, которого уже нет. Один раз перезагружаемся сами.
-    try { const msg = String((arguments[0] && arguments[0].message) || ""); if (/Importing a module script failed|Loading chunk|dynamically imported module|Failed to fetch dynamically/i.test(msg) && !sessionStorage.getItem("sa_chunk_reload")) { sessionStorage.setItem("sa_chunk_reload", "1"); setTimeout(() => window.location.reload(), 300); } } catch (e) {}
+    // Доп. 226: не «раз за сессию» (Telegram держит сессию сутками), а не чаще раза в 30 секунд
+    try { const msg = String((error && error.message) || ""); if (/Importing a module script failed|Loading chunk|dynamically imported module|Failed to fetch dynamically/i.test(msg)) { const last = Number(sessionStorage.getItem("sa_chunk_reload_at") || 0); if (Date.now() - last > 30000) { sessionStorage.setItem("sa_chunk_reload_at", String(Date.now())); this.setState({ updating: true }); setTimeout(() => window.location.reload(), 600); } } } catch (e) {}
     console.error("ServiceAcademy crashed:", error, info);
     // Экран ошибки обязан быть ВИДЕН: если краш случился до снятия
     // брендовой заставки, она (z-index 9999, вне #root) закрыла бы бокал
@@ -1657,9 +1658,9 @@ class ErrorBoundary extends React.Component {
       return (
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "Georgia, serif" }}>
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>{ROLE_SVG.bar("#C8A96E", 44)}</div>
-          <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Что-то пошло не так</div>
+          <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>{this.state.updating ? "Приложение обновилось" : "Что-то пошло не так"}</div>
           <div style={{ color: "#9A8060", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
-            Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение.
+            {this.state.updating ? "Вышла новая версия — перезагружаю, секунду…" : "Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение."}
           </div>
           <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
             Перезагрузить

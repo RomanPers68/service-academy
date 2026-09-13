@@ -19,7 +19,15 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
   const [copied, setCopied] = React.useState(false);
   const asText = () => list.map(c => { const sc = buildScenario(c, COCKTAILS).steps; return `${c.name.toUpperCase()} · ${c.method} · ${GLASS_RU[c.glass] || c.glass}\n${c.ing.map(i => `  ${i[0]} — ${i[1] ?? ""} ${i[2] || (i[1] ? "мл" : "")}`.trimEnd()).join("\n")}\n  Сборка: ${sc.map((s, k) => `${k + 1}) ${s.label}`).join(" · ")}`; }).join("\n\n");
   const copy = async () => { try { await navigator.clipboard.writeText(`КАРТА БАРА · ${restaurant}\n\n` + asText()); setCopied(true); vibrate("success"); setTimeout(() => setCopied(false), 2000); } catch (e) { vibrate("error"); } };
-  const print = () => { try { window.print(); } catch (e) {} };
+  // Доп. 246: Telegram блокирует window.print() — открываем в системном браузере, там печать и «Сохранить в PDF» есть
+  const tg = typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp;
+  const inTelegram = !!(tg && tg.initData !== undefined);
+  const [hint, setHint] = React.useState("");
+  const openBrowser = () => { const url = location.origin + location.pathname + "?print=bar"; try { if (tg && tg.openLink) { tg.openLink(url, { try_instant_view: false }); return; } } catch (e) {} try { window.open(url, "_blank"); } catch (e) { setHint("Не удалось открыть браузер — скопируй текстом"); } };
+  const print = () => {
+    if (inTelegram) { openBrowser(); setHint("Открываю в браузере — там «Поделиться → Печать» и «Сохранить в PDF»"); setTimeout(() => setHint(""), 6000); return; }
+    try { window.print(); } catch (e) { setHint("Печать недоступна — скопируй текстом"); }
+  };
   return (
     <div style={T.screen} className="sa-screen">
       <style>{`@media print { body * { visibility: hidden !important; } #sa-print, #sa-print * { visibility: visible !important; } #sa-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; color: #1a1408 !important; background: #fff !important; } #sa-print .sa-noprint { display: none !important; } #sa-print .sa-pcard { break-inside: avoid; border-bottom: 1px solid #ccc; } }`}</style>
@@ -31,10 +39,11 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
         </div>
       </div>
       <div style={{ padding: "4px 16px 12px", display: "flex", gap: 8 }} className="sa-noprint">
-        <button className="sa-btn" onClick={print} style={{ ...T.doneBtn, flex: 1, marginTop: 0, background: gold }}>Печать / PDF</button>
+        <button className="sa-btn" onClick={print} style={{ ...T.doneBtn, flex: 1, marginTop: 0, background: gold }}>{inTelegram ? "Открыть в браузере" : "Печать / PDF"}</button>
         <button className="sa-btn" onClick={copy} style={{ ...T.doneBtn, flex: 1, marginTop: 0, background: "transparent", border: `1px solid ${gold}88`, color: text }}>{copied ? "Скопировано ✓" : "Скопировать текстом"}</button>
       </div>
-      <div style={{ padding: "0 16px 6px", fontSize: 12, color: sub, lineHeight: 1.5 }} className="sa-noprint">{list.length} коктейлей карты, без стопа. В Telegram печати может не быть — тогда «Скопировать текстом» или открыть в браузере.</div>
+      {hint && <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: gold, lineHeight: 1.5 }} className="sa-noprint">{hint}</div>}
+      <div style={{ padding: "0 16px 6px", fontSize: 12, color: sub, lineHeight: 1.5 }} className="sa-noprint">{list.length} коктейлей карты, без стопа. {inTelegram ? "Телеграм не умеет печатать — кнопка откроет ту же страницу в браузере, оттуда «Поделиться → Печать» или «Сохранить в PDF»." : "«Печать / PDF» — системный диалог печати."}</div>
       <div id="sa-print" style={{ padding: "0 16px 100px" }}>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 20, color: text, margin: "8px 0 4px" }}>{restaurant} · карта бара</div>
         <div style={{ fontSize: 11, color: sub, marginBottom: 10 }}>{new Date().toLocaleDateString("ru-RU")} · {list.length} позиций · спеки и порядок сборки как в Колоде</div>

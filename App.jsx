@@ -21,21 +21,23 @@ import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituati
 // ── Ленивые экраны: код и данные подгружаются при первом открытии ──
 // (тренажёр меню, книга, SOS, наставничество, поиск, справочник,
 //  карта обучения и собеседование не входят в стартовый бандл)
-const SearchScreen = lazy(() => import("./ui/search").then(m => ({ default: m.SearchScreen })));
-const MenuTrainerScreen = lazy(() => import("./ui/menu-trainer").then(m => ({ default: m.MenuTrainerScreen })));
-const CocktailsScreen = lazy(() => import("./ui/cocktails").then(m => ({ default: m.CocktailsScreen })));
-const GuestBookScreen = lazy(() => import("./ui/guestbook").then(m => ({ default: m.GuestBookScreen })));
-const MentorScreen = lazy(() => import("./ui/mentor").then(m => ({ default: m.MentorScreen })));
-const SOSScreen = lazy(() => import("./ui/sos").then(m => ({ default: m.SOSScreen })));
-const TrainingCardScreen = lazy(() => import("./ui/training-card").then(m => ({ default: m.TrainingCardScreen })));
-const ReferenceSection = lazy(() => import("./ui/ReferenceSection").then(m => ({ default: m.ReferenceSection })));
-const CandidateScreen = lazy(() => import("./ui/candidate").then(m => ({ default: m.CandidateScreen })));
-const AssistantScreen = lazy(() => import("./ui/assistant").then(m => ({ default: m.AssistantScreen })));
-const ScheduleScreen = lazy(() => import("./ui/schedule").then(m => ({ default: m.ScheduleScreen })));
-const BuildRunner = lazy(() => import("./ui/build").then(m => ({ default: m.BuildRunner })));
-const BarLabScreen = lazy(() => import("./ui/bar-lab").then(m => ({ default: m.BarLabScreen }))); // Доп. 218: лениво, как остальные экраны
-const CocktailEditor = lazy(() => import("./ui/cocktail-editor").then(m => ({ default: m.CocktailEditor }))); // Доп. 240
-const BarCardPrint = lazy(() => import("./ui/bar-card-print").then(m => ({ default: m.BarCardPrint }))); // Доп. 244
+// Доп. 245: ленивый чанк на плохой связи — повторяем сами (3 попытки), а не роняем экран
+const retryImport = (loader, tries = 3, delay = 600) => loader().catch(err => { if (tries <= 1 || (typeof navigator !== "undefined" && navigator.onLine === false && tries <= 2)) throw err; return new Promise(r => setTimeout(r, delay)).then(() => retryImport(loader, tries - 1, delay * 2)); });
+const SearchScreen = lazy(() => retryImport(() => import("./ui/search")).then(m => ({ default: m.SearchScreen })));
+const MenuTrainerScreen = lazy(() => retryImport(() => import("./ui/menu-trainer")).then(m => ({ default: m.MenuTrainerScreen })));
+const CocktailsScreen = lazy(() => retryImport(() => import("./ui/cocktails")).then(m => ({ default: m.CocktailsScreen })));
+const GuestBookScreen = lazy(() => retryImport(() => import("./ui/guestbook")).then(m => ({ default: m.GuestBookScreen })));
+const MentorScreen = lazy(() => retryImport(() => import("./ui/mentor")).then(m => ({ default: m.MentorScreen })));
+const SOSScreen = lazy(() => retryImport(() => import("./ui/sos")).then(m => ({ default: m.SOSScreen })));
+const TrainingCardScreen = lazy(() => retryImport(() => import("./ui/training-card")).then(m => ({ default: m.TrainingCardScreen })));
+const ReferenceSection = lazy(() => retryImport(() => import("./ui/ReferenceSection")).then(m => ({ default: m.ReferenceSection })));
+const CandidateScreen = lazy(() => retryImport(() => import("./ui/candidate")).then(m => ({ default: m.CandidateScreen })));
+const AssistantScreen = lazy(() => retryImport(() => import("./ui/assistant")).then(m => ({ default: m.AssistantScreen })));
+const ScheduleScreen = lazy(() => retryImport(() => import("./ui/schedule")).then(m => ({ default: m.ScheduleScreen })));
+const BuildRunner = lazy(() => retryImport(() => import("./ui/build")).then(m => ({ default: m.BuildRunner })));
+const BarLabScreen = lazy(() => retryImport(() => import("./ui/bar-lab")).then(m => ({ default: m.BarLabScreen }))); // Доп. 218: лениво, как остальные экраны
+const CocktailEditor = lazy(() => retryImport(() => import("./ui/cocktail-editor")).then(m => ({ default: m.CocktailEditor }))); // Доп. 240
+const BarCardPrint = lazy(() => retryImport(() => import("./ui/bar-card-print")).then(m => ({ default: m.BarCardPrint }))); // Доп. 244
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -425,6 +427,8 @@ function ServiceAcademy() {
   const [menuStart, setMenuStart] = useState(null);
   const [labStart, setLabStart] = useState(null); // Доп. 208: открыть Сборку руками на коктейле
   const [ckEdit, setCkEdit] = useState(null); // Доп. 240: редактор коктейлей — открыть на записи
+  // Доп. 246: ссылка ?print=bar из Telegram — сразу карта бара для печати
+  useEffect(() => { try { if (new URLSearchParams(location.search).get("print") === "bar") navigate("barPrint"); } catch (e) {} }, []);
   const [menuMode, setMenuMode] = useState(null); // Доп. 210: режим дня → тренажёр меню
   const [ckMode, setCkMode] = useState(null);
   useEffect(() => { try { window.__saUk = profile ? `_${profile.name}_${profile.surname || ""}` : ""; } catch (e) {} }, [profile]);
@@ -1639,15 +1643,21 @@ function ServiceAcademy() {
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, updating: false, offline: false };
   }
   static getDerivedStateFromError(error) {
     return { hasError: true, errMsg: String(error && (error.message || error)) };
   }
   componentDidCatch(error, info) {
     // Доп. 218: перекос деплоя — старый HTML тянет чанк, которого уже нет. Один раз перезагружаемся сами.
-    // Доп. 226: не «раз за сессию» (Telegram держит сессию сутками), а не чаще раза в 30 секунд
-    try { const msg = String((error && error.message) || ""); if (/Importing a module script failed|Loading chunk|dynamically imported module|Failed to fetch dynamically/i.test(msg)) { const last = Number(sessionStorage.getItem("sa_chunk_reload_at") || 0); if (Date.now() - last > 30000) { sessionStorage.setItem("sa_chunk_reload_at", String(Date.now())); this.setState({ updating: true }); setTimeout(() => window.location.reload(), 600); } } } catch (e) {}
+    // Доп. 226/245: чанк не загрузился. Нет сети — это обрыв связи: показываем «Повторить» без перезагрузки.
+    // Сеть есть — скорее всего перекос деплоя: перезагружаемся, не чаще раза в 30 секунд.
+    try { const msg = String((error && error.message) || ""); if (/Importing a module script failed|Loading chunk|dynamically imported module|Failed to fetch dynamically/i.test(msg)) {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) { this.setState({ offline: true }); return; }
+      const last = Number(sessionStorage.getItem("sa_chunk_reload_at") || 0);
+      if (Date.now() - last > 30000) { sessionStorage.setItem("sa_chunk_reload_at", String(Date.now())); this.setState({ updating: true }); setTimeout(() => window.location.reload(), 600); }
+      else this.setState({ offline: true }); // уже перезагружались только что — значит, дело в связи
+    } } catch (e) {}
     console.error("ServiceAcademy crashed:", error, info);
     // Экран ошибки обязан быть ВИДЕН: если краш случился до снятия
     // брендовой заставки, она (z-index 9999, вне #root) закрыла бы бокал
@@ -1663,9 +1673,9 @@ class ErrorBoundary extends React.Component {
       return (
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "Georgia, serif" }}>
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>{ROLE_SVG.bar("#C8A96E", 44)}</div>
-          <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>{this.state.updating ? "Приложение обновилось" : "Что-то пошло не так"}</div>
+          <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>{this.state.updating ? "Приложение обновилось" : this.state.offline ? "Экран не докачался" : "Что-то пошло не так"}</div>
           <div style={{ color: "#9A8060", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
-            {this.state.updating ? "Вышла новая версия — перезагружаю, секунду…" : "Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение."}
+            {this.state.updating ? "Вышла новая версия — перезагружаю, секунду…" : this.state.offline ? "Похоже, связь оборвалась на полпути. Прогресс на месте — проверь интернет и нажми «Повторить»." : "Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение."}
           </div>
           <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
             Перезагрузить

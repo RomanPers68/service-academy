@@ -2821,30 +2821,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
       );
     })()}
-    {/* Доп. 259: неделя одним взглядом — закрыт день или есть недобор */}
-    {(() => {
-      const wk = weekIdx != null ? (weeks[weekIdx] || []) : (weeks.find(w => w.includes(today)) || weeks[0] || []);
-      if (!wk.length) return null;
-      const gap = (d) => { const need = needOf(d); let miss = 0;
-        POS.forEach(({ id: pos }) => { const n = need[pos] || 0; if (!n) return;
-          const have = staff.filter(x => { const sh = x.pos === pos && shiftOf(plan[x.id]?.[d]); return sh && !sh.extra; }).length;
-          if (have < n) miss += n - have; });
-        return miss; };
-      return (
-        <div style={{ display:"flex", gap:5, margin:"12px 14px 0" }}>
-          {wk.map(d => { const m = gap(d), isT = d === today;
-            return (
-              <div key={d} onClick={() => setDayEdit(d)} {...onActivate(() => setDayEdit(d))}
-                style={{ flex:1, padding:"6px 2px", borderRadius:10, textAlign:"center", cursor:"pointer",
-                  background: m ? (a11y ? "rgba(163,58,42,0.10)" : "rgba(224,144,144,0.12)") : (a11y ? "rgba(120,90,30,0.07)" : "rgba(212,168,90,0.07)"),
-                  border:`1px solid ${isT ? GOLD : m ? (a11y ? "rgba(163,58,42,0.35)" : "rgba(224,144,144,0.3)") : "transparent"}` }}>
-                <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1, color:P.sub }}>{DOWL[dow(d)]}</div>
-                <div style={{ fontFamily:serif, fontSize:14, color: isT ? GOLD : P.text, fontWeight: isT ? "bold" : "normal" }}>{d}</div>
-                <div style={{ fontSize:9.5, fontFamily:mono, color: m ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{m ? `−${m}` : "✓"}</div>
-              </div>); })}
-        </div>
-      );
-    })()}
     {/* Доп. 262: меньше рядов — отмена рядом с кнопками, редкое ушло в «Ещё» */}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
       <button style={btn} className="sa-btn" onClick={generate}>Заполнить черновик</button>
@@ -3068,6 +3044,28 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
           );
         })() : null}
+        {/* Доп. 263: неделя — одной понятной строкой вместо ряда квадратиков */}
+        {(() => {
+          const wk = weeks.find(w => w.includes(today)) || [];
+          if (!wk.length) return null;
+          const gapOf = (d) => { const need = needOf(d); let miss = 0;
+            POS.forEach(({ id: pos }) => { const n = need[pos] || 0; if (!n) return;
+              const have = staff.filter(x => { const sh = x.pos === pos && shiftOf(plan[x.id]?.[d]); return sh && !sh.extra; }).length;
+              if (have < n) miss += n - have; });
+            return miss; };
+          const gaps = wk.map(d => ({ d, m: gapOf(d) }));
+          const total = gaps.reduce((a, g) => a + g.m, 0);
+          const worst = gaps.slice().sort((a, b) => b.m - a.m)[0];
+          const goTo = () => { const i = weeks.findIndex(w => w.includes(today)); if (i >= 0) { setWeekIdx(i); vibrate("light"); } };
+          return (
+            <div onClick={goTo} {...onActivate(goTo)} style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${GOLD}22`, fontSize:12.5, lineHeight:1.55, color:P.sub, cursor:"pointer" }}>
+              <span style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.4, color:P.acc }}>НА ЭТОЙ НЕДЕЛЕ</span>{" "}
+              {total === 0
+                ? <span style={{ color: a11y ? "#4A6B4A" : "#7FA05A" }}>всё закрыто ✓</span>
+                : <>не хватает <b style={{ color:P.warn }}>{total}</b> {total === 1 ? "смены" : total < 5 ? "смен" : "смен"}{worst && worst.m ? <>, тяжелее всего <b style={{ color:P.text }}>{DOWL[dow(worst.d)]} {worst.d}</b> (−{worst.m})</> : null} · <span style={{ color:P.acc }}>показать неделю ›</span></>}
+            </div>
+          );
+        })()}
         {todayOpen ? <>
         {days[today]?.note ? (
           <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✎ {days[today].note}</div>

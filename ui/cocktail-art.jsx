@@ -86,7 +86,7 @@ const DEW = [[58,0.28,2.2],[64,0.46,1.6],[140,0.34,2.0],[146,0.55,1.5],[60,0.66,
 
 // Доп. 228: витраж умеет собираться — fill 0…1 (уровень жидкости), showIce, showGarnish, liquid (цвета того,
 // что уже налито, вместо финального градиента). По умолчанию — как в Колоде: полный, финальный.
-export function CocktailArt({ c, w = 200, light = false, fill = 1, showIce = true, showGarnish = true, liquid = null, bubbles = null }) {
+export function CocktailArt({ c, w = 200, light = false, fill = 1, showIce = true, showGarnish = true, liquid = null, bubbles = null, live = false }) {
   const g = GLASS[c.glass] || GLASS.rocks;
   // Светлая тема: стекло читается тёмным золотом, а не белым (на кремовом фоне белое исчезает)
   const edge = light ? "#6B4E1A" : "#FFFFFF";
@@ -144,7 +144,8 @@ export function CocktailArt({ c, w = 200, light = false, fill = 1, showIce = tru
       <ellipse cx="100" cy={yBottom + 14} rx="60" ry="10" fill="#000" opacity={shadowA} filter={"url(#" + uid + "-blur)"} />
       <ellipse cx="100" cy={yBottom + 18} rx={g.stem ? 30 : 50} ry="9" fill={"url(#" + uid + "-refl)"} opacity="0.7" filter={"url(#" + uid + "-blur)"} />
       {/* Напиток: цвет → сияние → боковые тени → тень сверху. При сборке — обрезано по уровню */}
-      <g clipPath={lvl < 1 ? "url(#" + uid + "-lvl)" : undefined} style={{ transition: "all .4s" }}>
+      {live && <style>{`@keyframes saArtSway { 0%,100% { transform: translateX(0) skewX(0) } 50% { transform: translateX(1.2px) skewX(-1.2deg) } } @keyframes saArtGleam { 0% { transform: translateX(-30px); opacity: 0 } 40% { opacity: .55 } 100% { transform: translateX(40px); opacity: 0 } }`}</style>}
+      <g clipPath={lvl < 1 ? "url(#" + uid + "-lvl)" : undefined} style={{ transition: "all .4s", transformOrigin: "50% 100%", animation: live ? "saArtSway 5.5s ease-in-out infinite" : "none" }}>
       {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-l)"} />}
       {showIce && <Ice c={c} g={g} uid={uid} />}
       {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-l)"} opacity="0.34" />}
@@ -172,6 +173,7 @@ export function CocktailArt({ c, w = 200, light = false, fill = 1, showIce = tru
           ))}
         </g>
       ) : null}
+      {live && lvl > 0 && <g clipPath={"url(#" + uid + "-c)"}><rect x="60" y={ly0 - 10} width="14" height={liqH + 20} fill="#FFF" fillOpacity="0.16" transform="skewX(-14)" style={{ animation: "saArtGleam 7s ease-in-out infinite" }} /></g>}
       {/* Поверхность напитка: мениск с бликом — на текущем уровне */}
       {lvl > 0 && (() => { const k = g.stem ? (0.35 + 0.65 * lvl) : (0.8 + 0.2 * lvl); const hw = ((lx1 - lx0) / 2) * k; const cx = (lx0 + lx1) / 2; return (<>
         <g clipPath={"url(#" + uid + "-c)"}><rect x="0" y={liqTop} width="200" height="8" fill="#FFF" fillOpacity="0.14" /></g>

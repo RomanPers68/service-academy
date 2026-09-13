@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { buildScenario, checkAction, recordRun, tierOf, dailyPick, jiggerFor } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";
+import { recToCocktail, withCocktail, cocktailRecords, houseCocktails, isFullCocktail, familyOf, cocktailFaqSmart, FAMILIES } from "../lib/deck-extras";
 
 describe("bar lab", () => {
   it("у каждого из 56 коктейлей есть сценарий: бокал первым, гарниш последним, все ингредиенты внутри", () => {
@@ -64,3 +65,40 @@ describe("bar lab", () => {
     expect(dailyPick(COCKTAILS, new Date(2026, 8, 9))).not.toBe(dailyPick(COCKTAILS, new Date(2026, 8, 10)));
   });
 });
+
+describe("редактор коктейлей (Доп. 240)", () => {
+  const rec = { id: "ck-1", kind: "cocktail", name: "Океан", base: "джин", glass: "highball", method: "билд", ice: "cube", garnish: "lime", color: ["#5AA7D8", "#2A5F8F"], strength: 2, sweet: 2,
+    ing: [["Джин", 40, "мл"], ["Ликёр блю кюрасао", 15, "мл"], ["Сок лайма", 15, "мл"], ["Тоник", 90, "доверху"]], steps: ["Хайбол со льдом", "Джин, кюрасао, лайм", "Тоник доверху, один оборот", "Долька лайма"] };
+  it("запись → коктейль → сборка проходится до конца, топпер последним, гарниш в конце", () => {
+    const c = recToCocktail(rec); expect(isFullCocktail(c)).toBe(true);
+    const sc = buildScenario(c, COCKTAILS); const kinds = sc.steps.map(s => s.kind + (s.name ? ":" + s.name : ""));
+    expect(kinds[0]).toBe("glass"); expect(kinds[kinds.length - 1]).toBe("garnish");
+    expect(kinds.indexOf("ing:Тоник")).toBeGreaterThan(kinds.indexOf("ing:Джин"));
+    let done = []; for (const s of sc.steps) { const r = checkAction(sc, done, s.kind === "ing" ? { kind: "ing", name: s.name, amount: s.unit === "мл" ? s.amount : undefined } : { kind: s.kind, id: s.id }); expect(r.ok).toBe(true); done = r.doneIdx; }
+    expect(done.length).toBe(sc.steps.length);
+  });
+  it("хранится в меню команды рядом с блюдами и картой бара, не смешиваясь", () => {
+    const shared = withCocktail([{ id: "d1", name: "Сельдь", cat: "Закуски", ingredients: [] }, { id: "__barcard__", cocktails: ["negroni"] }], rec);
+    expect(cocktailRecords(shared).length).toBe(1);
+    expect(houseCocktails(shared).filter(isFullCocktail).map(c => c.name)).toEqual(["Океан"]);
+    expect(shared.filter(d => d.name === "Сельдь").length).toBe(1);
+  });
+});
+
+describe("семейства и замены (Доп. 244)", () => {
+  it("каждый id в семействах существует; у Негрони родня — Бульвардье; у своего — по составу", () => {
+    const ids = new Set(COCKTAILS.map(c => c.id));
+    for (const f of FAMILIES) for (const id of f.ids) expect(ids.has(id)).toBe(true);
+    const neg = COCKTAILS.find(c => c.id === "negroni"); const fam = familyOf(neg, COCKTAILS);
+    expect(fam.items.map(x => x.id)).toContain("boulevardier");
+    const house = recToCocktail({ id: "ck-x", name: "Свой сауэр", glass: "sour", method: "шейк", ice: "none", ing: [["Бурбон", 50], ["Сок лимона", 25], ["Сахарный сироп", 15]], steps: ["Всё в шейкер со льдом", "Шейк", "Стрейн"] });
+    const f2 = familyOf(house, COCKTAILS); expect(!!f2 && f2.items.length > 0).toBe(true);
+  });
+  it("«Гость спрашивает» предлагает замену из карты и не предлагает то, что в стопе", () => {
+    const neg = COCKTAILS.find(c => c.id === "negroni");
+    const faq = cocktailFaqSmart(neg, COCKTAILS.map(c => c.id === "gin-tonic" ? { ...c, stop: { since: 1 } } : c), () => true);
+    expect(faq.length).toBeGreaterThan(2);
+    for (const f of faq) if (f.go) expect(f.go === "gin-tonic").toBe(false);
+  });
+});
+

@@ -23,6 +23,8 @@ describe("smoke render", () => {
     expect(renderToString(<BarLabScreen T={T} profile={profile} startId="daiquiri" onBack={() => {}} onOpenDeck={() => {}} />).length).toBeGreaterThan(500);
     delete store.sa_menu_shared;
   });
+  it("Редактор коктейлей (Доп. 240)", async () => { const { CocktailEditor } = await import("../ui/cocktail-editor"); expect(renderToString(<CocktailEditor T={T} profile={profile} onBack={() => {}} onOpenCard={() => {}} />).length).toBeGreaterThan(500); });
+  it("Карта бара для печати (Доп. 244)", async () => { const { BarCardPrint } = await import("../ui/bar-card-print"); expect(renderToString(<BarCardPrint T={T} profile={profile} onBack={() => {}} />).length).toBeGreaterThan(1000); });
   it("Тренажёр меню", async () => { const { MenuTrainerScreen } = await import("../ui/menu-trainer"); expect(renderToString(<MenuTrainerScreen T={T} profile={profile} role="waiter" onBack={() => {}} />).length).toBeGreaterThan(500); });
   it("Рейтинг", async () => { const { LeaderboardScreen } = await import("../ui/screens-gamification"); expect(renderToString(<LeaderboardScreen T={T} leaderboard={[]} scores={[]} profile={profile} onBack={() => {}} />).length).toBeGreaterThan(500); });
   it("Книга отзывов", async () => { const { GuestBookScreen } = await import("../ui/guestbook"); expect(renderToString(<GuestBookScreen T={T} profile={profile} role="bar" onBack={() => {}} />).length).toBeGreaterThan(500); });

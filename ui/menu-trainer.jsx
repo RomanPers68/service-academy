@@ -13,7 +13,7 @@ import { MenuDeck, AllergenSprint } from "./menu-deck";
 import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
-import { onActivate, shuffleArray, vibrate } from "../lib/utils";
+import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { rpc, rpcSync, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
 import { TimerBar, LiquidSegment } from "./widgets";
@@ -61,25 +61,7 @@ const DishPhoto = ({ src, h = 170 }) => src ? (
 ) : null;
 
 // Сжатие фото с телефона перед сохранением (localStorage не резиновый)
-const readPhoto = (file, cb) => {
-  try {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const max = 700;
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      let data = c.toDataURL("image/jpeg", 0.72);
-      if (data.length > 400000) data = c.toDataURL("image/jpeg", 0.55); // крупные — жмём сильнее
-      cb(data);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); };
-    img.src = url;
-  } catch (e) {}
-};
+// readPhoto — общий, в lib/utils (Доп. 242)
 
 export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role }) {
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
@@ -131,7 +113,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
     const ownIds = new Set(ownAll.map(d => d.id));
     const own = ownAll.filter(d => !d.archived); // Доп. 167: архив в тренажёре не показываем
     const del = new Set(deleted[restaurant] || []);
-    const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && !ownIds.has(d.id) && !del.has(d.id) && !d.archived); // своя правка важнее серверной; удалённое — до публикации не показываем
+    const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && d.kind !== "cocktail" && !ownIds.has(d.id) && !del.has(d.id) && !d.archived); // своя правка важнее серверной; удалённое — до публикации не показываем
     // Доп. 154: примеры-заготовки видны, пока нет меню команды (или если включены вручную);
     // отредактированный пример живёт в «своих», удалённый — в скрытых.
     const hs = hideSamples[restaurant];
@@ -712,7 +694,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя
   // ни поправить, ни удалить, пока не «заберёшь» в редактор
   const delSet = new Set(deleted[restaurant] || []);
-  const orphanShared = (shared || []).filter(s => s && s.id && s.name && !isBarcard(s) && !(custom[restaurant] || []).some(d => d.id === s.id) && !delSet.has(s.id)); // Доп. 168/210: любая своя версия важнее серверной; карта бара — не блюдо
+  const orphanShared = (shared || []).filter(s => s && s.id && s.name && !isBarcard(s) && s.kind !== "cocktail" && !(custom[restaurant] || []).some(d => d.id === s.id) && !delSet.has(s.id)); // Доп. 168/210/240: карта бара и коктейли — не блюда
   const hidSet = new Set(hiddenIds[restaurant] || []);
   const hs = hideSamples[restaurant];
   const samplesShown = hs === false ? true : hs === true ? false : (shared || []).length === 0;
@@ -780,12 +762,12 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
     const nextOwn = own.some(x => x.id === d.id) ? own.map(x => x.id === d.id ? upd : x) : [upd, ...own];
     setCustom({ ...custom, [restaurant]: nextOwn });
     vibrate(stopped ? "error" : "success");
-    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id), ...(shared || []).filter(isBarcard)]);
+    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id), ...(shared || []).filter(x => isBarcard(x) || (x && x.kind === "cocktail"))]);
   };
   const publish = () => {
     if (!saToken()) { _showPub(false, "Нужен вход по коду сотрудника"); return; }
     setPubBusy(true);
-    const toPublish = [...list, ...archived, ...orphanShared, ...(shared || []).filter(isBarcard)]; // Доп. 154/167/210: свои + архив + серверные + карта бара
+    const toPublish = [...list, ...archived, ...orphanShared, ...(shared || []).filter(d => isBarcard(d) || (d && d.kind === "cocktail"))]; // Доп. 154/167/210/240: + карта бара + коктейли бара
     rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(toPublish) })
       .then(res => {
         setPubBusy(false);

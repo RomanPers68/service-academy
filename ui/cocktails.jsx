@@ -1,6 +1,6 @@
 import React from "react";
 import { COCKTAILS } from "../data/cocktails";
-import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, dishLinks, bumpDaily } from "../lib/deck-extras";
+import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, cocktailFaqSmart, familyOf, dishLinks, bumpDaily } from "../lib/deck-extras";
 import { rpc, saToken } from "../api/supabase";
 import { loadMastery, buildScenario } from "../lib/bar-lab";
 import { CocktailArt } from "./cocktail-art";
@@ -36,7 +36,7 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab }) {
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint }) {
   // Доп. 210: своя карта бара (флаги в меню команды), свои коктейли из меню, «наоборот», гость спрашивает, мост к меню
   const restaurant = profile?.restaurant || "";
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
@@ -63,7 +63,9 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
   const [q, setQ] = React.useState("");                 // поиск
   const [base, setBase] = React.useState("");           // фильтр по базе
   const [view, setView] = React.useState("cards");
-  const mast = React.useMemo(() => loadMastery(uk), [uk, view]); // Доп. 218: печати Сборки — в указателе колоды      // cards | index (оглавление)
+  const mast = React.useMemo(() => loadMastery(uk), [uk, view]); // Доп. 218: печати Сборки — в указателе колоды
+  // Доп. 244: прыжок к карточке по id (родня, замена)
+  const jumpTo = (id) => { const i = pool.findIndex(x => x.id === id); if (i >= 0) { setView("cards"); setIdx(i); setFlip(false); vibrate("light"); } else { setBase(""); setOnlyCard(false); setQ(""); setTimeout(() => { const j = ALL.findIndex(x => x.id === id); if (j >= 0) { setView("cards"); setIdx(j); setFlip(false); } }, 0); } };      // cards | index (оглавление)
   const [idx, setIdx] = React.useState(0);
   const [flip, setFlip] = React.useState(false);
   const [settled, setSettled] = React.useState(false); // Доп. 218: плоский режим после переворота
@@ -189,6 +191,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
             </div>
             <span style={{ marginLeft:"auto", display:"flex", gap:10, whiteSpace:"nowrap" }}>
+              {onEdit && canEdit ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
               {onLab ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onLab()} {...onActivate(() => onLab())}>Сборка ›</span> : null}
               {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
             </span>
@@ -196,6 +199,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
           {(barcard || house.length > 0) && (
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11.5, color:glass.sub }}>
               {barcard && <span style={{ ...pill(onlyCard), padding:"4px 10px", fontSize:11 }} onClick={() => setOnlyCard(v => !v)}>{onlyCard ? `Своя карта · ${pool.length}` : "Все коктейли"}</span>}
+              {canEdit && onPrint && <span style={{ ...pill(false), padding:"4px 10px", fontSize:11 }} onClick={() => onPrint()}>Печать карты ›</span>}
               {house.length > 0 && <span>{house.length} своих из меню</span>}
               {pubMsg && <span style={{ color: /✓/.test(pubMsg) ? "#5DBB8A" : "#E07878" }}>{pubMsg}</span>}
             </div>
@@ -265,7 +269,13 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 {!c.house && canEdit && restaurant && <span onClick={(e) => { e.stopPropagation(); toggleCard(c.id); }} style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, cursor:"pointer", color: inCard(c) ? GOLD : glass.sub, border:`1px solid ${inCard(c) ? GOLD : glass.bd}`, borderRadius:999, padding:"3px 9px" }}>{inCard(c) ? "✓ В КАРТЕ БАРА" : "+ В КАРТУ БАРА"}</span>}
                 {!c.house && !canEdit && barcard && !inCard(c) && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:glass.sub, border:`1px solid ${glass.bd}`, borderRadius:999, padding:"3px 9px" }}>НЕ В КАРТЕ · ЭРУДИЦИЯ</span>}
               </div>
-              <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 2px" }}><CocktailArt c={c} w={200} light={a11y} /></div>
+              {/* Доп. 242: у своего коктейля с фото — фото на лице, витраж в углу (он живёт в Сборке и указателе) */}
+              {c.img ? (
+                <div style={{ position:"relative", margin:"6px 0 2px", borderRadius:16, overflow:"hidden", height:230, background:`url(${c.img}) center/cover` }}>
+                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.45))" }} />
+                  <div style={{ position:"absolute", right:8, bottom:6, width:64, filter:"drop-shadow(0 2px 6px rgba(0,0,0,.6))" }}><CocktailArt c={c} w={64} light={a11y} /></div>
+                </div>
+              ) : <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 2px" }}><CocktailArt c={c} w={200} light={a11y} live /></div>}
               <div style={{ display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap" }}>
                 <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:GOLD }}>КРЕПОСТЬ {dots(c.strength)}</span>
                 <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:GOLD }}>СЛАДОСТЬ {dots(c.sweet)}</span>
@@ -294,34 +304,39 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               {/* Доп. 210: гость спрашивает — реплика пузырём, ответ по тапу */}
               <div style={{ marginTop:10 }}>
                 <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ГОСТЬ СПРАШИВАЕТ</div>
-                {cocktailFaq(c).map((f, k) => (
+                {cocktailFaqSmart(c, ALL, inCard).map((f, k) => (
                   <div key={k} onClick={(e) => { e.stopPropagation(); setFaqOpen(faqOpen === c.id + k ? null : c.id + k); vibrate("light"); }} style={{ marginBottom:6, cursor:"pointer" }}>
                     <div style={{ display:"inline-block", padding:"6px 11px", borderRadius:"14px 14px 14px 4px", background: a11y ? "rgba(139,106,48,0.12)" : "rgba(255,248,230,0.08)", border:`1px solid ${glass.bd}`, fontSize:12.5, color:glass.tx }}>«{f.q}»</div>
-                    {faqOpen === c.id + k && <div className="sa-fadein" style={{ marginTop:4, marginLeft:14, padding:"6px 11px", borderRadius:"14px 4px 14px 14px", background:"rgba(214,178,102,0.14)", border:`1px solid ${GOLD}66`, fontSize:12.5, color:glass.tx, display:"inline-block" }}>{f.a}</div>}
+                    {faqOpen === c.id + k && <div className="sa-fadein" style={{ marginTop:4, marginLeft:14, padding:"6px 11px", borderRadius:"14px 4px 14px 14px", background:"rgba(214,178,102,0.14)", border:`1px solid ${GOLD}66`, fontSize:12.5, color:glass.tx, display:"inline-block" }}>{f.a}{f.go ? <span onClick={(e) => { e.stopPropagation(); jumpTo(f.go); }} style={{ marginLeft:8, color:GOLD, fontWeight:"bold", cursor:"pointer" }}>открыть ›</span> : null}</div>}
                   </div>
                 ))}
               </div>
-              {c.house && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню — фото и описание ›</div>}
+              {c.house && !c.full && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню — фото и описание ›</div>}
+              {c.house && canEdit && onEdit && <div onClick={(e) => { e.stopPropagation(); onEdit(c.full ? c.id : null); }} style={{ marginTop:8, fontSize:12.5, color:GOLD, cursor:"pointer" }}>{c.full ? "Править в редакторе ›" : "Дописать спек в редакторе ›"}</div>}
+              {(() => { const fam = familyOf(c, ALL); return fam ? (
+                <div style={{ marginTop:10 }}>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>{fam.title.toUpperCase()}</div>
+                  <div style={{ fontSize:12, color:glass.sub, lineHeight:1.45, marginBottom:6 }}>{fam.note}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); jumpTo(x.id); }} style={{ ...pill(false), fontSize:11.5, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:5, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
+                </div>) : null; })()}
               {(() => { const links = dishLinks(c.pair, shared); return links.length && onOpenDish ? (
                 <div style={{ marginTop:8 }}>
                   <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ИЗ ВАШЕГО МЕНЮ</div>
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenDish(l.id); }} style={{ ...pill(false), fontSize:11.5, color:glass.tx }}>{l.name} ›</span>)}</div>
                 </div>) : null; })()}
-              {onBuild && !c.house && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
+              {onBuild && (!c.house || c.full) && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
                 return <div onClick={(e) => { e.stopPropagation(); onBuild(c.id); }} {...onActivate(() => onBuild(c.id))} style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:12, border:`1px solid ${GOLD}66`, background:"rgba(214,178,102,0.10)", cursor:"pointer" }}>
                   <span style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:glass.tx }}>{lv >= 3 ? "✦ Мастер · собрать ещё" : lv === 2 ? "✦ Печать · собрать ещё" : "Собрать руками"}</span>
                   <span style={{ color:GOLD, fontSize:16 }}>›</span>
                 </div>; })()}
-              {COCKTAIL_STORIES[c.id] ? (
+              {(() => { const st = COCKTAIL_STORIES[c.id] || (c.house && (c.story || c.short) ? { story: c.story, guest: c.short } : null); return st ? (
                 <div style={{ marginTop:12, paddingTop:10, borderTop:`1px solid ${glass.bd}` }}>
                   <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>ИСТОРИЯ</div>
-                  <div style={{ fontSize:13, lineHeight:1.55 }}>{COCKTAIL_STORIES[c.id].story}</div>
-                  {COCKTAIL_STORIES[c.id].guest ? (
-                    <div style={{ marginTop:8, fontStyle:"italic", color:glass.sub, fontSize:12.5 }}>Гостю: «{COCKTAIL_STORIES[c.id].guest}»</div>
-                  ) : null}
+                  {st.story ? <div style={{ fontSize:13, lineHeight:1.55 }}>{st.story}</div> : null}
+                  {st.guest ? <div style={{ marginTop:8, fontStyle:"italic", color:glass.sub, fontSize:12.5 }}>Гостю: «{st.guest}»</div> : null}
                 </div>
-              ) : null}
-              {c.house ? <div style={{ color:GOLD, fontSize:11, marginTop:8 }}>✦ без канона — спек по карточке заведения</div> : null}
+              ) : null; })()}
+              {c.house ? <div style={{ color:GOLD, fontSize:11, marginTop:8 }}>✦ авторский коктейль бара — спек по карточке заведения</div> : null}
             </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { GOLD } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
 import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
 import { frostOf } from "./home-hubs";
-import { readBarcard, cachedShared } from "../lib/deck-extras";
+import { readBarcard, cachedShared, houseCocktails, isFullCocktail } from "../lib/deck-extras";
 import { CocktailArt, VesselArt } from "./cocktail-art";
 import { report as reportAch } from "../lib/achievements";
 
@@ -238,18 +238,20 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   const uk = ukOf(profile);
   const [mastery, setMastery] = React.useState(() => loadMastery(uk));
   const [view, setView] = React.useState(startId ? "pick" : "hub"); // hub | pick | play | rush | station
-  const [current, setCurrent] = React.useState(() => startId ? COCKTAILS.find(c => c.id === startId) || null : null);
+  // Доп. 240: свои коктейли со спеком — наравне с классикой
+  const ALL = React.useMemo(() => [...houseCocktails(cachedShared(profile?.restaurant || "")).filter(c => isFullCocktail(c) && !c.stop), ...COCKTAILS], [profile]); // в стопе — не тренируем сегодня
+  const [current, setCurrent] = React.useState(() => startId ? ALL.find(c => c.id === startId) || null : null);
   const [mode, setMode] = React.useState("hint");
   const [rush, setRush] = React.useState(null); // { orders, i, started, penalties }
   const [rushBest, setRushBest] = React.useState(() => { try { return Number(localStorage.getItem("sa_bar_rush_best" + uk) || 0); } catch (e) { return 0; } });
-  const daily = React.useMemo(() => dailyPick(COCKTAILS), []);
+  const daily = React.useMemo(() => dailyPick(ALL), [ALL]);
   // Доп. 214: своя карта бара — своё впереди, чужое ниже как эрудиция; Час пик и коктейль дня — из карты
   const card = React.useMemo(() => readBarcard(cachedShared(profile?.restaurant || "")), [profile]);
-  const inCard = (c) => !card || card.includes(c.id);
-  const dailyC = React.useMemo(() => { if (!card || card.includes(daily.id)) return daily; const mine = COCKTAILS.filter(inCard); return mine.length ? dailyPick(mine) : daily; }, [card, daily]);
-  const save = (m) => { setMastery(m); saveMastery(uk, m); reportAch(uk, "stamps", COCKTAILS.filter(c => (m[c.id]?.level || 0) >= 2).length); }; // Доп. 216: печати — в рекорды команды
-  const masteredCount = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && (mastery[c.id]?.level || 0) >= 2).length;
-  const cardTotal = (t) => COCKTAILS.filter(c => (t ? tierOf(c) === t : true) && inCard(c)).length;
+  const inCard = (c) => c.house || !card || card.includes(c.id);
+  const dailyC = React.useMemo(() => { if (!card || card.includes(daily.id)) return daily; const mine = ALL.filter(inCard); return mine.length ? dailyPick(mine) : daily; }, [card, daily]);
+  const save = (m) => { setMastery(m); saveMastery(uk, m); reportAch(uk, "stamps", ALL.filter(c => (m[c.id]?.level || 0) >= 2).length); }; // Доп. 216: печати — в рекорды команды
+  const masteredCount = (t) => ALL.filter(c => (t ? tierOf(c) === t : true) && (mastery[c.id]?.level || 0) >= 2).length;
+  const cardTotal = (t) => ALL.filter(c => (t ? tierOf(c) === t : true) && inCard(c)).length;
   const pill = (on) => ({ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${on ? gold : gold + "55"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : sub });
 
   const startPlay = (c, m) => { setCurrent(c); setMode(m); setView("play"); vibrate("light"); };
@@ -299,7 +301,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
           </>)}
           {card({}, <>
             <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МАСТЕРСТВО · {stamps} ИЗ {cardTotal()} ПЕЧАТЕЙ{card ? " · СВОЯ КАРТА" : ""}</div>
-            {[1, 2, 3].map(t => { const total = cardTotal(t); const n = COCKTAILS.filter(c => tierOf(c) === t && inCard(c) && (mastery[c.id]?.level || 0) >= 2).length; return (
+            {[1, 2, 3].map(t => { const total = cardTotal(t); const n = ALL.filter(c => tierOf(c) === t && inCard(c) && (mastery[c.id]?.level || 0) >= 2).length; return (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                 <div style={{ width: 84, fontSize: 12.5, color: text }}>{TIER_LABEL[t]}</div>
                 <div style={{ flex: 1, height: 6, borderRadius: 3, background: a11y ? "rgba(139,106,48,0.18)" : "rgba(214,178,102,0.16)" }}><div style={{ width: `${total ? (n / total) * 100 : 0}%`, height: "100%", borderRadius: 3, background: gold, transition: "width .6s" }} /></div>
@@ -307,7 +309,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
               </div>); })}
             <div style={{ fontSize: 12, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
           </>)}
-          {card({ onClick: () => { const orders = rushOrders(COCKTAILS, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
+          {card({ onClick: () => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
             <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
@@ -372,7 +374,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>{rush.total <= rushBest ? "НОВЫЙ РЕКОРД ✦" : "СМЕНА ОТРАБОТАНА"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 46, color: text, margin: "6px 0" }}>{rush.total} с</div>
         <div style={{ fontSize: 13, color: sub }}>{rush.orders.map(o => o.name).join(" · ")}{rush.penalties ? ` · штрафы +${rush.penalties} с` : " · без ошибок"}</div>
-        <button className="sa-btn" onClick={() => { const orders = rushOrders(COCKTAILS, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 22, width: "100%" }}>Ещё смену ›</button>
+        <button className="sa-btn" onClick={() => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 22, width: "100%" }}>Ещё смену ›</button>
       </div>
     </div>
   );
@@ -384,7 +386,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
 // ── Игровой экран одного коктейля ──────────────────────────────────────────────
 function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, onFinish }) {
   const text = T.modTitle.color, sub = T.modSub.color;
-  const sc = React.useMemo(() => buildScenario(c, COCKTAILS), [c]);
+  const sc = React.useMemo(() => buildScenario(c, COCKTAILS), [c]); // обманки — из классики (достаточно)
   const [done, setDone] = React.useState([]);
   const [msg, setMsg] = React.useState(null); // { ok, text }
   const msgTimer = React.useRef(null);

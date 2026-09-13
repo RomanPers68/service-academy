@@ -10,6 +10,7 @@ import { rememberSharedMenu } from "../lib/reference-context";
 import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
 import { buildMenuQuiz } from "../lib/menu-quiz";
 import { MenuDeck, AllergenSprint } from "./menu-deck";
+import { MenuPrint } from "./menu-print";
 import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
@@ -178,6 +179,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
 
   // ── Режимы тренировки ──────────────────────────────────────────────────────
   // Доп. 189: «Меню по разделам» слилось с Колодой — список живёт в ней за иконкой указателя
+  if (mode === "print") return <MenuPrint T={T} a11y={a11y} dishes={dishes} restaurant={restaurant} onBack={() => setMode(null)} />;   // Доп. 261
   if (mode === "sprint") return <AllergenSprint T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={dishes} restaurant={restaurant} uk={uk} Head={Head} DishPhoto={DishPhoto} glass={glass} onExit={() => setMode(null)} />;
   if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={deckMode || (startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined)}
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
@@ -251,6 +253,18 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={T.modArrow}>›</div>
           </div>
         ); })}
+        {/* Доп. 261: меню на лист — учить с бумаги, раздать распечатки */}
+        {dishes.length > 0 && (
+          <div className="sa-card" style={{ ...T.modCard, margin: "10px 0" }}
+            onClick={() => setMode("print")} {...onActivate(() => setMode("print"))}>
+            <div style={iconBox}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={T.modTitle}>Меню для печати</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Лист картинкой: фото, состав, аллергены — учить с бумаги или раздать команде</div>
+            </div>
+            <div style={T.modArrow}>›</div>
+          </div>
+        )}
         {canEdit && (
           <div className="sa-card" style={{ ...T.modCard, margin: "14px 0 10px", border: `1px dashed ${gold}88` }}
             onClick={() => setMode("edit")} {...onActivate(() => setMode("edit"))}>

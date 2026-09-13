@@ -22,7 +22,21 @@ const MONTHS_N = ["Январь","Февраль","Март","Апрель","М�
 const MONTHS_R = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
 // Порядок позиций: сверху руководство, дальше по залу
-export const POS = [
+export // Доп. 248/250: типовые заведения — один источник для раздела настройки и мастера
+const VENUE_PRESETS = [
+  { id: "rest", t: "Ресторан с кухней", s: "12:00–24:00 · утро, день, вечер", hours: [[12,24],[12,24],[12,24],[12,24],[12,2],[12,2],[12,24]],
+    shifts: [{k:"У",name:"Утро",from:11,to:19},{k:"Д",name:"День",from:12,to:20},{k:"В",name:"Вечер",from:16,to:24},{k:"К",name:"Кейтеринг",from:10,to:22,extra:1}], dayShift: "Д" },
+  { id: "bar", t: "Бар вечерний", s: "16:00–02:00 · день и ночь", hours: [[16,2],[16,2],[16,2],[16,2],[16,4],[16,4],[16,2]],
+    shifts: [{k:"Д",name:"День",from:16,to:24},{k:"В",name:"Ночь",from:19,to:3},{k:"К",name:"Кейтеринг",from:14,to:22,extra:1}], dayShift: "Д" },
+  { id: "cafe", t: "Кофейня", s: "08:00–22:00 · две смены", hours: [[8,22],[8,22],[8,22],[8,22],[8,23],[9,23],[9,22]],
+    shifts: [{k:"У",name:"Утро",from:8,to:15},{k:"Д",name:"Вечер",from:15,to:22},{k:"К",name:"Кейтеринг",from:8,to:16,extra:1}], dayShift: "У" },
+  { id: "day", t: "Столовая / бизнес-ланч", s: "09:00–18:00 · одна смена", hours: [[9,18],[9,18],[9,18],[9,18],[9,18],[10,16],[0,0]],
+    shifts: [{k:"Д",name:"Смена",from:9,to:18},{k:"К",name:"Кейтеринг",from:8,to:16,extra:1}], dayShift: "Д" },
+  { id: "24", t: "Круглосуточно", s: "две смены по 12 часов", hours: [[0,24],[0,24],[0,24],[0,24],[0,24],[0,24],[0,24]],
+    shifts: [{k:"Д",name:"День",from:8,to:20},{k:"В",name:"Ночь",from:20,to:8},{k:"К",name:"Подмена",from:12,to:20,extra:1}], dayShift: "Д" },
+];
+
+const POS = [
   { id: "manager", t: "Менеджер" }, { id: "host", t: "Хостес" }, { id: "call", t: "Колл-центр" },
   { id: "bar", t: "Бар" }, { id: "barback", t: "Барбек" },
   { id: "waiter", t: "Официант" }, { id: "runner", t: "Раннер" },
@@ -305,9 +319,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [dbg, setDbg] = React.useState("");     // сырой ответ сервера для разбора
   const [tab, setTab] = React.useState("plan"); // plan · setup
   const [openSec, setOpenSec] = React.useState(1);
+  const wizTried = React.useRef(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const [more, setMore] = React.useState(false);        // Доп. 150: редкие действия — за «Ещё»
-  const [todayOpen, setTodayOpen] = React.useState(false); // Доп. 150: «Сегодня» свёрнуто до сводки
+  // Доп. 250: мастер первого входа — четыре вопроса вместо шести разделов
+  const [wiz, setWiz] = React.useState(null);           // null | { step, preset, need, rows }
+  const wizDone = () => { try { return localStorage.getItem("sa_sched_wizard_" + (profile?.restaurant || "")) === "1"; } catch (e) { return true; } };
+  const markWizDone = () => { try { localStorage.setItem("sa_sched_wizard_" + (profile?.restaurant || ""), "1"); } catch (e) {} };
+  const [todayOpen, setTodayOpen] = React.useState(false); // Доп. 150/262: «Сегодня» свёрнуто — пульс дня даёт полоска недели
   // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
   // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
   const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
@@ -334,6 +353,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     setMsg("Вернул как было — не забудь сохранить"); setTimeout(() => setMsg(""), 2500);
   };
   const [swap, setSwap] = React.useState(false);       // режим обмена сменами (менеджер)
+  const [repl, setRepl] = React.useState(false);        // Доп. 256: режим «Кто вместо?»
+  const [replAsk, setReplAsk] = React.useState(null);   // { id, d } — по какой смене ищем замену
+  const [posFilter, setPosFilter] = React.useState(""); // Доп. 257: показывать одну позицию
+  const [prevPlan, setPrevPlan] = React.useState(null); // Доп. 258: план прошлого месяца целиком
   const [swapSel, setSwapSel] = React.useState(null);  // первая выбранная клетка обмена
   // Факт часов: сотрудник ушёл раньше (нет столов) или задержался —
   // менеджер отмечает отработанное по факту, и ВСЯ математика (часы,
@@ -621,7 +644,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               for (let d = pdays - 6; d <= pdays; d++) arr.push((ds || {})[d] || "");
               if (arr.some(Boolean)) tail[id] = arr;
             });
-            setPrevTail(tail);
+            setPrevTail(tail); setPrevPlan({ plan: pl2, days: pdays });   // Доп. 258: пригодится для «как в прошлом месяце»
             // Динамика: агрегаты прошлого месяца теми же правилами денег
             const f2 = (m2 && m2.payload && m2.payload.facts) || {};
             let psh = 0, phr = 0, pfund = 0;
@@ -893,9 +916,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   };
 
   // ── Проверка ──────────────────────────────────────────────────────
+  // Доп. 247: почему дыру не закрыли — причина по каждому свободному человеку
+  // этой позиции (генератор объясняет отказ теми же правилами, что и применяет).
+  const holeWhy = (d, pos, why) => {
+    try {
+      if (!why) return "";
+      const kinds = (cfg.shifts || []).filter(x => !x.extra);
+      const reasons = new Map();
+      staff.filter(x => x.pos === pos && !plan[x.id]?.[d]).forEach(x => {
+        let best = null;
+        for (const sh of kinds) { const r = why(plan, x, d, sh.k); if (r === null) { best = null; break; } if (!best) best = r; }
+        if (best) { const list = reasons.get(best) || []; list.push(x.name.split(" ")[0]); reasons.set(best, list); }
+      });
+      if (!reasons.size) return "";
+      const top = [...reasons.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 2)
+        .map(([r, names]) => `${names.slice(0, 3).join(", ")}${names.length > 3 ? ` и ещё ${names.length - 3}` : ""} — ${r}`);
+      return ` · ${top.join("; ")}`;
+    } catch (e) { return ""; }
+  };
   const audit = () => {
     if (!cfg) return [];
     const R = cfg.rules, out = [];
+    let why = null;
+    try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
     for (let d = 1; d <= DAYS; d++) {
       const need = needOf(d);
       POS.forEach(({ id: pos }) => {
@@ -903,7 +946,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         const have = staff.filter(s => {
           const sh = s.pos === pos && shiftOf(plan[s.id]?.[d]); return sh && !sh.extra;
         }).length;
-        if (have < n) out.push(`${d} ${MONTHS_R[M]} · ${posName(pos).toLowerCase()}: ${have} из ${n}`);
+        if (have < n) out.push(`${d} ${MONTHS_R[M]} · ${posName(pos).toLowerCase()}: ${have} из ${n}${holeWhy(d, pos, why)}`);
       });
     }
     staff.forEach(s => {
@@ -1033,6 +1076,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       }
       setFactEdit({ id: s.id, d }); vibrate("light"); return;
     }
+    // Доп. 256: «Кто вместо?» — тап по смене открывает список, кто может её взять
+    if (repl) {
+      if (!shiftOf(plan[s.id]?.[d])) { setMsg("Выбери смену, которую нужно кем-то закрыть"); setTimeout(() => setMsg(""), 2200); return; }
+      setReplAsk({ id: s.id, d }); vibrate("light"); return;
+    }
     // Режим обмена: две тапнутые клетки меняются содержимым. Самая частая
     // просьба смены — «поменяйся со мной» — решается двумя касаниями.
     if (swap) {
@@ -1078,6 +1126,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     });
     setDirty(true);
   };
+
+
+  // Доп. 258/262: перенос прошлого месяца — теперь общий, вызывается из «Ещё»
+  const copyPrevMonth = () => {
+              const fb = frozenBefore();
+              const src = prevPlan.plan || {}; let n = 0;
+              snapUndo();
+              setPlan(pl => {
+                const nx = { ...pl };
+                staff.forEach(st => {
+                  const row = { ...(nx[st.id] || {}) }; const from = src[st.id] || {};
+                  for (let d = Math.max(1, fb); d <= DAYS; d++) {
+                    const k = from[d] || "";                       // день в день: ритм месяца обычно повторяется
+                    if (k && !row[d] && (cfg.shifts || []).some(x => x.k === k)) { row[d] = k; n++; }
+                  }
+                  nx[st.id] = row;
+                });
+                return nx;
+              });
+              setDirty(true); setGenKey(k2 => k2 + 1); vibrate(n ? "success" : "light");
+              setMsg(n ? `Перенесено ${n} смен из прошлого месяца — проверь и жми «Заполнить»` : "В прошлом месяце нечего переносить");
+              setTimeout(() => setMsg(""), 6000);
+            };
 
   const P = a11y
     ? { text:"#2A1F0E", sub:"#6B5B40", acc:"#7A5A22", warn:"#A33A2A",
@@ -1126,6 +1197,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       <div style={{ height:24 }} />
     </div>
   );
+
+  // Доп. 250: пустой график у руководителя — предлагаем мастер сами, но только раз
+  if (state === "ok" && cfg && isAdmin && !wiz && !wizTried.current && !(cfg.staff || []).length && !wizDone()) {
+    wizTried.current = true;
+    setTimeout(() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] }), 0);
+  }
 
   if (state === "load") return shell(<div style={{ ...card, textAlign:"center", color:P.sub }}>Загружаю график…</div>);
   if (state === "error") return shell(
@@ -1561,6 +1638,90 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // они пересоздавались на каждый рендер, React размонтировал поле,
   // и клавиатура закрывалась на первом же нажатии.
   const inp = INP(a11y, P);
+
+  // ── Доп. 250: мастер первого входа ───────────────────────────────────────
+  if (wiz && cfg) {
+    const W = wiz; const set = (o) => setWiz({ ...W, ...o });
+    const mainPos = [{ id: "waiter", t: "Официанты" }, { id: "bar", t: "Бар" }, { id: "host", t: "Хостес" }, { id: "manager", t: "Менеджеры" }];
+    const nextBtn = (label, on, dis) => <button className="sa-btn" disabled={dis} onClick={on} style={{ ...T.doneBtn, width:"100%", marginTop:18, background:P.acc, opacity: dis ? 0.5 : 1 }}>{label}</button>;
+    const step = W.step;
+    const finish = () => {
+      const pr = W.preset;
+      patch(c => {
+        if (pr) { c.hours = pr.hours.map(x => [...x]); c.shifts = pr.shifts.map(x => ({ ...x })); c.dayShift = pr.dayShift;
+          const keys = pr.shifts.filter(x => !x.extra).map(x => x.k);
+          c.split = Object.fromEntries(Object.entries(c.split || {}).map(([pos, m]) => [pos, Object.fromEntries(Object.entries(m || {}).filter(([k]) => keys.includes(k)))]).filter(([, m]) => Object.keys(m).length));
+          if (c.evening && !keys.includes(c.evening.shift)) c.evening = { ...c.evening, shift: keys[keys.length - 1] };
+        }
+        // потребность: обычный день → уровни 1–2, пик → уровень 3
+        c.need = { 1: {}, 2: {}, 3: {} };
+        mainPos.forEach(({ id }) => { const n = Number(W.need[id] || 0), np = Number(W.peak[id] || n); if (n) { c.need[1][id] = n; c.need[2][id] = n; } if (np) c.need[3][id] = np; });
+        // люди
+        let nid = Math.max(0, ...(c.staff || []).map(x => +x.id || 0));
+        (W.rows || []).filter(r => String(r.name).trim()).forEach(r => { c.staff.push({ id: ++nid, name: String(r.name).trim(), pos: r.pos, norm: monthNorm(40) }); });
+      });
+      markWizDone(); setWiz(null); setTab("plan");
+      setMsg("Настроено. Теперь жми «Заполнить» — расставлю смены"); setTimeout(() => setMsg(""), 7000); vibrate("success");
+    };
+    return shell(
+      <div style={{ ...card }}>
+        <div style={{ display:"flex", gap:4, marginBottom:12 }}>{[1,2,3,4].map(i => <span key={i} style={{ flex:1, height:3, borderRadius:2, background: i <= step ? P.acc : `${P.acc}33` }} />)}</div>
+        <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>ШАГ {step} ИЗ 4</div>
+        {step === 1 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>На что похоже заведение?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Выставлю часы работы и смены — потом их можно поправить.</div>
+          {VENUE_PRESETS.map(pr => (
+            <div key={pr.id} className="sa-card" onClick={() => set({ preset: pr })} {...onActivate(() => set({ preset: pr }))}
+              style={{ padding:"11px 13px", marginBottom:8, borderRadius:14, cursor:"pointer", border:`1px solid ${W.preset?.id === pr.id ? P.acc : P.acc + "33"}`, background: W.preset?.id === pr.id ? "rgba(214,178,102,0.10)" : "transparent" }}>
+              <div style={{ fontFamily:"Georgia, serif", fontSize:15, color:P.text }}>{pr.t}</div>
+              <div style={{ fontSize:12, color:P.sub, marginTop:2 }}>{pr.s}</div>
+            </div>
+          ))}
+          {nextBtn("Дальше ›", () => set({ step: 2 }), !W.preset)}
+        </>}
+        {step === 2 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>Сколько человек в обычный день?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Сколько должно быть в смене одновременно. Ноль — такой позиции нет.</div>
+          {mainPos.map(({ id, t }) => (
+            <div key={id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+              <span style={{ flex:1, fontSize:14, color:P.text }}>{t}</span>
+              <Num inp={inp} v={Number(W.need[id] || 0)} min={0} max={20} set={v => set({ need: { ...W.need, [id]: v } })} />
+            </div>
+          ))}
+          {nextBtn("Дальше ›", () => set({ step: 3, peak: { ...W.need, ...W.peak } }))}
+        </>}
+        {step === 3 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>А в пятницу и субботу?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>В пиковые дни обычно нужно больше. Если так же — оставь как есть.</div>
+          {mainPos.map(({ id, t }) => (
+            <div key={id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+              <span style={{ flex:1, fontSize:14, color:P.text }}>{t}</span>
+              <Num inp={inp} v={Number(W.peak[id] ?? W.need[id] ?? 0)} min={0} max={20} set={v => set({ peak: { ...W.peak, [id]: v } })} />
+            </div>
+          ))}
+          {nextBtn("Дальше ›", () => set({ step: 4 }))}
+        </>}
+        {step === 4 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>Кто работает?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Имя и позиция. Часы, отпуска и пожелания добавишь потом в «Сотрудниках».</div>
+          {(W.rows || []).map((r, k) => (
+            <div key={k} style={{ display:"flex", gap:6, marginBottom:6 }}>
+              <input style={{ ...inp, flex:1 }} placeholder="Имя" value={r.name} onChange={e => set({ rows: W.rows.map((x, i) => i === k ? { ...x, name: e.target.value } : x) })} />
+              <select style={{ ...inp, width:118 }} value={r.pos} onChange={e => set({ rows: W.rows.map((x, i) => i === k ? { ...x, pos: e.target.value } : x) })}>
+                {POS.map(pp => <option key={pp.id} value={pp.id}>{pp.t}</option>)}
+              </select>
+              <span onClick={() => set({ rows: W.rows.filter((_, i) => i !== k) })} style={{ color:P.warn, cursor:"pointer", padding:"0 4px", fontSize:17 }}>✕</span>
+            </div>
+          ))}
+          <button className="sa-btn" style={{ ...ghost, marginTop:6, padding:"9px 12px", fontSize:12.5 }} onClick={() => set({ rows: [...(W.rows || []), { name:"", pos:"waiter" }] })}>+ ещё человек</button>
+          {nextBtn("Готово — настроить", finish, !(W.rows || []).some(r => String(r.name).trim()))}
+        </>}
+        <div onClick={() => { markWizDone(); setWiz(null); }} {...onActivate(() => { markWizDone(); setWiz(null); })}
+          style={{ textAlign:"center", fontSize:12.5, color:P.sub, marginTop:14, cursor:"pointer" }}>Пропустить — настрою вручную</div>
+      </div>
+    );
+  }
+
   const rowStyle = ROW(a11y);
   const hintStyle = { fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic", lineHeight:1.5 };
 
@@ -1600,6 +1761,76 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           })()}
         </div>
       </div>
+      {/* Доп. 248: «Настроить за один тап» — типовые заведения. Часы, смены,
+          потребность и правила выставляются разом; дальше — только люди. */}
+      {(() => {
+        const PRESETS = VENUE_PRESETS;
+        const apply = (pr) => {
+          if (!window.confirm(`Настроить как «${pr.t}»? Часы, смены и правила заменятся. Расставленные смены и люди останутся.`)) return;
+          patch(c => {
+            c.hours = pr.hours.map(x => [...x]); c.shifts = pr.shifts.map(x => ({ ...x })); c.dayShift = pr.dayShift;
+            const keys = pr.shifts.filter(x => !x.extra).map(x => x.k);
+            // потребность и разбивка — под новые смены, лишние ключи убираем
+            c.split = Object.fromEntries(Object.entries(c.split || {}).map(([pos, m]) => [pos, Object.fromEntries(Object.entries(m || {}).filter(([k]) => keys.includes(k)))]).filter(([, m]) => Object.keys(m).length));
+            if (c.evening && !keys.includes(c.evening.shift)) c.evening = { ...c.evening, shift: keys[keys.length - 1] };
+          });
+          setMsg(`Настроено как «${pr.t}» — проверь «Сколько людей нужно» и жми «Заполнить»`); setTimeout(() => setMsg(""), 6000); vibrate("success");
+        };
+        return (
+          <Sec no={<IcoBulb size={13} />} title="Настроить за один тап" hint="типовые заведения — часы, смены и правила разом" P={P} open={openSec===9} onToggle={() => setOpenSec(openSec===9?0:9)}>
+            <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:10 }}>Выбери, на что похоже заведение — часы работы, смены и правила выставятся сами. Останется вписать людей в разделе «Сотрудники» и нажать «Заполнить».</div>
+            <button className="sa-btn" onClick={() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] })}
+              style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:13, marginBottom:12 }}>✦ Мастер: четыре вопроса — и график готов</button>
+            {PRESETS.map(pr => (
+              <div key={pr.id} className="sa-card" onClick={() => apply(pr)} {...onActivate(() => apply(pr))}
+                style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 13px", marginBottom:8, borderRadius:14, border:`1px solid ${P.acc}44`, cursor:"pointer" }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"Georgia, serif", fontSize:15, color:P.text }}>{pr.t}</div>
+                  <div style={{ fontSize:12, color:P.sub, marginTop:2 }}>{pr.s}</div>
+                </div>
+                <span style={{ color:P.acc, fontSize:17 }}>›</span>
+              </div>
+            ))}
+          </Sec>
+        );
+      })()}
+      {/* Доп. 260: хватит ли людей — заранее, а не после «Заполнить» */}
+      {(() => {
+        const rows = POS.map(({ id: pos, t }) => {
+          let need = 0; for (let d = 1; d <= DAYS; d++) need += (cfg.need?.[lvlOf(d)] || {})[pos] || 0;
+          if (!need) return null;
+          const list = staff.filter(x => x.pos === pos);
+          let cap = 0;
+          list.forEach(x => {
+            let avail = 0; for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d)) avail++;
+            let c = Math.min(avail, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7));
+            if ((cfg.posRules?.[pos]?.pattern) === "2x2") c = Math.min(c, Math.ceil(DAYS / 2));
+            cap += c;
+          });
+          return { pos, t, need, cap, n: list.length };
+        }).filter(Boolean);
+        if (!rows.length) return null;
+        const bad = rows.filter(r => r.cap < r.need);
+        return (
+          <Sec no={<IcoBulb size={13} />} title="Хватит ли людей" hint={bad.length ? `${bad.length} позиц. в дефиците` : "штата хватает"} P={P} open={openSec===8} onToggle={() => setOpenSec(openSec===8?0:8)}>
+            <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:10 }}>Считаю по-честному: отпуска, постоянные выходные, недельная норма отдыха и цикл 2/2. Оценка верхняя — в жизни выйдет чуть меньше.</div>
+            {rows.map(r => {
+              const lack = r.need - r.cap;
+              return (
+                <div key={r.pos} style={{ display:"flex", alignItems:"baseline", gap:8, padding:"7px 0", borderBottom:`1px solid ${GOLD}22` }}>
+                  <span style={{ flex:1, fontSize:13.5, color:P.text }}>{r.t}<span style={{ color:P.sub, fontSize:11.5 }}> · {r.n} чел</span></span>
+                  <span style={{ fontFamily:mono, fontSize:12, color: lack > 0 ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{r.cap} из {r.need} смен</span>
+                </div>);
+            })}
+            {bad.length ? (
+              <div style={{ marginTop:10, fontSize:12.5, color:P.warn, lineHeight:1.6 }}>
+                {bad.map(r => { const perShift = Math.max(1, Math.round((r.need - r.cap) / DAYS * 10) / 10);
+                  return <div key={r.pos}>{r.t}: не хватит примерно {r.need - r.cap} смен за месяц — это {perShift} человека в день. Либо ещё {Math.max(1, Math.ceil((r.need - r.cap) / Math.max(1, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7))))} чел в штат, либо меньше людей в смене.</div>; })}
+              </div>
+            ) : <div style={{ marginTop:10, fontSize:12.5, color: a11y ? "#4A6B4A" : "#7FA05A" }}>Штата достаточно под текущую потребность ✓</div>}
+          </Sec>
+        );
+      })()}
       <Sec no={1} title="Часы работы" hint={openSec===1 ? "Когда открываемся и закрываемся в каждый день недели" : sum1} P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
         {DOWL.map((dl, i) => (
           <div key={i} style={rowStyle}>
@@ -2540,42 +2771,115 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     {monthNav}
     {/* Доп. 150: панель в три спокойных ряда. Режимы — сегмент (они взаимоисключающие),
         редкие и опасные действия — за «Ещё». Логика кнопок не менялась. */}
+    {/* Доп. 256: «Кто вместо?» — кто может взять смену и почему не могут остальные */}
+    {replAsk && (() => {
+      const who = staff.find(x => String(x.id) === String(replAsk.id)); const d = replAsk.d;
+      const k = plan[replAsk.id]?.[d]; const sh = shiftOf(k); if (!who || !sh) return null;
+      let why = null;
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      const others = staff.filter(x => x.pos === who.pos && String(x.id) !== String(who.id));
+      const free = [], busy = [];
+      others.forEach(x => {
+        const r = why ? why(plan, x, d, k) : (plan[x.id]?.[d] ? "уже в смене" : null);
+        (r ? busy : free).push({ x, r });
+      });
+      const put = (x) => {
+        snapUndo();
+        setPlan(pl => ({ ...pl, [who.id]: { ...(pl[who.id] || {}), [d]: "" }, [x.id]: { ...(pl[x.id] || {}), [d]: k } }));
+        setLocks(l => { const a = { ...(l[who.id] || {}) }; delete a[d]; const b = { ...(l[x.id] || {}) }; b[d] = 1; return { ...l, [who.id]: a, [x.id]: b }; });
+        setDirty(true); setReplAsk(null); vibrate("success");
+        setMsg(`${d} ${MONTHS_R[M]}: вместо ${who.name.split(" ")[0]} выходит ${x.name.split(" ")[0]} — не забудь «Сохранить»`); setTimeout(() => setMsg(""), 5000);
+      };
+      return (
+        <div onClick={() => setReplAsk(null)} style={{ position:"fixed", inset:0, zIndex:60, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width:"calc(100% - 24px)", maxWidth:440, margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))",
+            borderRadius:20, padding:16, maxHeight:"76vh", overflowY:"auto",
+            background: a11y ? "rgba(250,242,222,0.98)" : "rgba(26,20,10,0.98)", border:`1px solid ${GOLD}55` }}>
+            <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>КТО ВМЕСТО · {d} {MONTHS_R[M].toUpperCase()}</div>
+            <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:3 }}>{who.name} · {sh.name} {sh.from}:00–{sh.to}:00</div>
+            <div style={{ fontSize:12, color:P.sub, marginTop:2, marginBottom:10 }}>{posName(who.pos)}</div>
+            {free.length ? <>
+              <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>МОГУТ ВЫЙТИ · {free.length}</div>
+              {free.map(({ x }) => (
+                <div key={x.id} onClick={() => put(x)} {...onActivate(() => put(x))} className="sa-card"
+                  style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", marginBottom:6, borderRadius:12, cursor:"pointer", border:`1px solid ${GOLD}44` }}>
+                  <span style={{ flex:1, fontSize:14, color:P.text }}>{x.name}</span>
+                  <span style={{ fontSize:11.5, color:P.sub }}>{breakdownOf(x).hours} ч</span>
+                  <span style={{ color:P.acc, fontSize:16 }}>›</span>
+                </div>))}
+            </> : <div style={{ fontSize:13, color:P.warn, marginBottom:8 }}>Свободных нет — ниже видно, что мешает каждому.</div>}
+            {busy.length ? <>
+              <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.sub, margin:"10px 0 6px" }}>НЕ МОГУТ · {busy.length}</div>
+              {busy.map(({ x, r }) => (
+                <div key={x.id} style={{ display:"flex", gap:8, padding:"6px 2px", fontSize:12.5, color:P.sub }}>
+                  <span style={{ flex:"0 0 40%", color:P.text }}>{x.name}</span>
+                  <span style={{ flex:1 }}>{r}</span>
+                </div>))}
+            </> : null}
+            <button className="sa-btn" onClick={() => setReplAsk(null)} style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
+          </div>
+        </div>
+      );
+    })()}
+    {/* Доп. 259: неделя одним взглядом — закрыт день или есть недобор */}
+    {(() => {
+      const wk = weekIdx != null ? (weeks[weekIdx] || []) : (weeks.find(w => w.includes(today)) || weeks[0] || []);
+      if (!wk.length) return null;
+      const gap = (d) => { const need = needOf(d); let miss = 0;
+        POS.forEach(({ id: pos }) => { const n = need[pos] || 0; if (!n) return;
+          const have = staff.filter(x => { const sh = x.pos === pos && shiftOf(plan[x.id]?.[d]); return sh && !sh.extra; }).length;
+          if (have < n) miss += n - have; });
+        return miss; };
+      return (
+        <div style={{ display:"flex", gap:5, margin:"12px 14px 0" }}>
+          {wk.map(d => { const m = gap(d), isT = d === today;
+            return (
+              <div key={d} onClick={() => setDayEdit(d)} {...onActivate(() => setDayEdit(d))}
+                style={{ flex:1, padding:"6px 2px", borderRadius:10, textAlign:"center", cursor:"pointer",
+                  background: m ? (a11y ? "rgba(163,58,42,0.10)" : "rgba(224,144,144,0.12)") : (a11y ? "rgba(120,90,30,0.07)" : "rgba(212,168,90,0.07)"),
+                  border:`1px solid ${isT ? GOLD : m ? (a11y ? "rgba(163,58,42,0.35)" : "rgba(224,144,144,0.3)") : "transparent"}` }}>
+                <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1, color:P.sub }}>{DOWL[dow(d)]}</div>
+                <div style={{ fontFamily:serif, fontSize:14, color: isT ? GOLD : P.text, fontWeight: isT ? "bold" : "normal" }}>{d}</div>
+                <div style={{ fontSize:9.5, fontFamily:mono, color: m ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{m ? `−${m}` : "✓"}</div>
+              </div>); })}
+        </div>
+      );
+    })()}
+    {/* Доп. 262: меньше рядов — отмена рядом с кнопками, редкое ушло в «Ещё» */}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
       <button style={btn} className="sa-btn" onClick={generate}>Заполнить черновик</button>
       <button style={ghost} className="sa-btn" onClick={save} disabled={!dirty}>
         {dirty ? "Сохранить" : "Сохранено"}
       </button>
+      {undoRef.current ? (
+        <button style={{ ...ghost, fontSize:13, padding:"9px 12px", flexShrink:0 }} className="sa-btn" onClick={undo} data-tick={undoTick} aria-label="Отменить">↩</button>
+      ) : null}
     </div>
     <div style={{ display:"flex", gap:8, margin:"8px 14px 0", alignItems:"center" }}>
       <div style={{ flex:1, display:"flex", padding:3, gap:2, borderRadius:999, border: ghost.border, background:"transparent" }}>
-        {[["edit","Правка"],["swap","Обмен"],["fact","Факт часов"]].map(([k, t]) => {
-          const on = k === "swap" ? swap : k === "fact" ? factMode : (!swap && !factMode);
+        {[["edit","Правка"],["repl","Кто вместо?"],["swap","Обмен"],["fact","Факт часов"]].map(([k, t]) => {
+          const on = k === "swap" ? swap : k === "fact" ? factMode : k === "repl" ? repl : (!swap && !factMode && !repl);
           return (
             <button key={k} className="sa-btn" style={{ flex:1, border:"none", cursor:"pointer", padding:"7px 4px", borderRadius:999, fontFamily:serif, fontSize:12.5,
                 background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent", color: on ? INK_DEEP : P.sub, fontWeight: on ? "bold" : "normal" }}
-              onClick={() => { vibrate("light"); setSwap(k === "swap" ? !swap : false); setSwapSel(null); setFactMode(k === "fact" ? !factMode : false); setFactEdit(null); }}>
+              onClick={() => { vibrate("light"); setSwap(k === "swap" ? !swap : false); setSwapSel(null); setFactMode(k === "fact" ? !factMode : false); setFactEdit(null); setRepl(k === "repl" ? !repl : false); setReplAsk(null); }}>
               {t}
             </button>
           );
         })}
       </div>
-      {undoRef.current ? (
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flexShrink:0 }} className="sa-btn"
-          onClick={undo} data-tick={undoTick}>↩</button>
-      ) : null}
-    </div>
-    <div style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
-      <button style={{ ...btn, fontSize:13, flex:1 }} className="sa-btn" onClick={exportImage} disabled={!staff.length || shotBusy}>
-        {shotBusy ? "Собираю…" : "Сохранить и отправить"}
-      </button>
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 14px", flexShrink:0, borderColor: more ? GOLD : GOLD + "66" }} className="sa-btn" /* Доп. 152: явный цвет в обе стороны */
-        onClick={() => { setMore(m => !m); vibrate("light"); }} aria-label="Ещё действия">Ещё{more ? " ▴" : " ▾"}</button>
+      <span onClick={() => { setMore(m => !m); vibrate("light"); }} {...onActivate(() => setMore(m => !m))}
+        style={{ flexShrink:0, fontSize:12.5, color: more ? GOLD : P.sub, cursor:"pointer", padding:"9px 6px" }}>Ещё{more ? " ▴" : " ▾"}</span>
     </div>
     {more ? (
-      <div className="sa-fadein" style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px", flex:1 }} className="sa-btn"
+      <div className="sa-fadein" style={{ display:"flex", gap:8, margin:"8px 14px 0", flexWrap:"wrap" }}>
+        <button style={{ ...btn, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { exportImage(); setMore(false); }} disabled={!staff.length || shotBusy}>
+          {shotBusy ? "Собираю…" : "Картинкой команде"}
+        </button>
+        {prevPlan ? <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { copyPrevMonth(); setMore(false); }}>Как в прошлом месяце</button> : null}
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
           onClick={() => { snapUndo(); setLocks({}); setDirty(true); setMore(false); }}>Снять закрепления</button>
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px", flex:1, borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%", borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
           onClick={() => { setConfirmClear(true); setMore(false); }}>Очистить месяц</button>
       </div>
     ) : null}
@@ -2871,6 +3175,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             пост. выходной
           </span>
         </div>
+        {/* Доп. 257: фильтр по позиции — таблица на 20 человек не влезает в экран */}
+        {(() => {
+          const groups = POS.map(pp => ({ ...pp, n: staff.filter(x => x.pos === pp.id).length })).filter(g => g.n);
+          if (groups.length < 2 || staff.length < 8) return null;   // Доп. 262: на маленькой команде фильтр — лишний шум
+          const chip = (on) => ({ padding:"5px 11px", borderRadius:999, fontSize:11.5, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0,
+            border:`1px solid ${on ? GOLD : (a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)")}`,
+            background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? P.text : P.sub });
+          return (
+            <div className="sa-hscroll" style={{ display:"flex", gap:6, margin:"0 0 8px", overflowX:"auto", paddingBottom:2 }}>
+              <span style={chip(!posFilter)} onClick={() => { setPosFilter(""); vibrate("light"); }}>Все · {staff.length}</span>
+              {groups.map(g => <span key={g.id} style={chip(posFilter === g.id)} onClick={() => { setPosFilter(posFilter === g.id ? "" : g.id); vibrate("light"); }}>{g.t} · {g.n}</span>)}
+            </div>
+          );
+        })()}
         <div className="sa-schedgrid sa-hscroll">
           <table style={{ borderCollapse:"separate", borderSpacing:0, fontFamily:mono }}>
             <tbody key={"g" + genKey + ":" + weekIdx} className="sa-weekin">
@@ -2878,8 +3196,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <th className="sa-schednm" style={{ width:100, minWidth:100 }} />
                 {visibleDays.map(d => (
                   <th key={d} style={{ width:26, minWidth:26, fontSize:9, color:P.sub, padding:"3px 0", lineHeight:1.2,
-                    background: d === today ? (a11y ? "rgba(175,140,65,0.12)" : "rgba(212,168,90,0.09)") : undefined,
-                    boxShadow: d === today ? `0 2px 0 ${GOLD} inset` : undefined,
+                    background: d === today ? (a11y ? "rgba(175,140,65,0.16)" : "rgba(212,168,90,0.12)") : undefined,
+                    boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset, 0 2px 0 ${GOLD} inset` : undefined,
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                     <b onClick={() => setDayEdit(d)} style={{ display:"block", fontSize:10.5, cursor:"pointer",
                       fontWeight: d === today ? "bold" : "normal",
@@ -2890,6 +3208,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 ))}
               </tr>
               {POS.map(({ id: pos, t }) => {
+                if (posFilter && pos !== posFilter) return null;   // Доп. 257: показываем одну позицию
                 const list = staff.filter(s => s.pos === pos);
                 if (!list.length) return null;
                 return (
@@ -2908,7 +3227,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         return (
                           <td key={d} className="sa-schedgrp" style={{ fontSize:8.5, minWidth:26, height:22, textAlign:"center",
                             color: short ? P.warn : P.sub, fontWeight: short ? "bold" : "normal",
-                            background: d === today ? (a11y ? "rgba(175,140,65,0.10)" : "rgba(212,168,90,0.07)") : undefined,
+                            background: d === today ? (a11y ? "rgba(175,140,65,0.13)" : "rgba(212,168,90,0.09)") : undefined,
+                            boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset` : undefined,
                             borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                             {n ? `${have}/${n}` : (have || "·")}
                           </td>
@@ -2939,7 +3259,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                               <td key={d} onClick={() => tapCell(s, d)}
                                 className={"sa-schedcell" + (dow(d) >= 5 ? " sa-schedwe" : "")}
                                 style={{ width:26, minWidth:26, height:30, cursor:"pointer", textAlign:"center",
-                                  background: d === today ? (a11y ? "rgba(175,140,65,0.07)" : "rgba(212,168,90,0.05)") : undefined,
+                                  background: d === today ? (a11y ? "rgba(175,140,65,0.10)" : "rgba(212,168,90,0.07)") : undefined,
+                                  boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset` : undefined,
                                   borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                                 <div style={{
                                   width:22, height:22, margin:"0 auto", borderRadius:6, display:"grid", placeItems:"center",

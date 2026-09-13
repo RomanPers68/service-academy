@@ -50,14 +50,14 @@ function LabStyle() { return <style>{FX_CSS}</style>; }
 const TOOL_ICON = { shake: "⇅", stir: "↻", strain: "◒", muddle: "⌇", blend: "✱", layer: "≡", swizzle: "∿" };
 
 // ── Бокал: простые контуры в языке витражей; жидкость — по объёму, цвет — смесь добавленного
-const GLASS_PATH = {
+export const GLASS_PATH = {
   rocks: "M22 30 H98 L94 108 H26 Z", highball: "M34 14 H86 L84 112 H36 Z", martini: "M14 22 L60 74 L106 22 Z M60 74 V102 M40 106 H80",
   sour: "M30 26 Q28 74 60 78 Q92 74 90 26 Z M60 78 V102 M40 106 H80", flute: "M42 14 Q40 70 60 76 Q80 70 78 14 Z M60 76 V104 M42 108 H78",
   hurricane: "M36 14 Q30 50 52 64 Q30 84 36 108 H84 Q90 84 68 64 Q90 50 84 14 Z", shot: "M40 40 H80 L76 108 H44 Z",
   irish: "M32 26 H88 Q92 70 74 82 V100 H46 V82 Q28 70 32 26 Z", margarita: "M20 30 H100 L80 60 Q72 68 60 68 Q48 68 40 60 Z M60 68 V102 M40 106 H80", red: "M28 24 Q24 72 60 78 Q96 72 92 24 Z M60 78 V104 M40 108 H80",
 };
-const LIQ_BOX = { rocks: [26, 34, 68, 72], highball: [37, 18, 46, 92], martini: [22, 26, 76, 44], sour: [32, 30, 56, 44], flute: [44, 20, 32, 52], hurricane: [38, 20, 44, 84], shot: [42, 44, 36, 60], irish: [34, 30, 52, 50], margarita: [24, 34, 72, 30], red: [30, 28, 60, 46] };
-const ING_COLOR = (name) => {
+export const LIQ_BOX = { rocks: [26, 34, 68, 72], highball: [37, 18, 46, 92], martini: [22, 26, 76, 44], sour: [32, 30, 56, 44], flute: [44, 20, 32, 52], hurricane: [38, 20, 44, 84], shot: [42, 44, 36, 60], irish: [34, 30, 52, 50], margarita: [24, 34, 72, 30], red: [30, 28, 60, 46] };
+export const ING_COLOR = (name) => {
   const n = name.toLowerCase();
   if (/кампари|апероль|гренадин|клюкв|вишн|клубн|малин/.test(n)) return "#C4483A";
   if (/апельсин|манго|персик|ананас/.test(n)) return "#E2A63A";

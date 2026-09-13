@@ -102,3 +102,21 @@ describe("семейства и замены (Доп. 244)", () => {
   });
 });
 
+describe("подписи сборки (Доп. 252)", () => {
+  it("нет двух одинаковых подписей подряд и лёд всегда назван льдом", () => {
+    for (const c of COCKTAILS) {
+      const st = buildScenario(c, COCKTAILS).steps;
+      for (let i = 1; i < st.length; i++) expect(st[i].label === st[i - 1].label).toBe(false);
+      for (const s of st) if (s.kind === "ice") expect(/лёд|краш/i.test(s.label)).toBe(true);
+    }
+  });
+  it("сосуд — по словам карточки: Олд фэшн собирается в бокале, Манхэттен — в смесительном стакане", () => {
+    const of = buildScenario(COCKTAILS.find(c => c.id === "old-fashioned"), COCKTAILS).steps;
+    expect(of.find(s => s.kind === "ice").label).toMatch(/в бокал/);
+    expect(of.some(s => s.kind === "tool" && s.id === "strain")).toBe(false);
+    const mh = buildScenario(COCKTAILS.find(c => c.id === "manhattan"), COCKTAILS).steps;
+    expect(mh.find(s => s.kind === "ice").label).toMatch(/смесительн/);
+    expect(mh.some(s => s.kind === "tool" && s.id === "strain")).toBe(true);
+  });
+});
+

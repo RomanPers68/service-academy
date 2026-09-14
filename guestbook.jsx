@@ -1,0 +1,353 @@
+// ui/guestbook.jsx
+// «Книга отзывов» — каждый пройденный модуль превращается в живой отзыв гостя.
+// Экзамен роли — легендарная страница с сургучной печатью. Раз в неделю —
+// «гость недели»: испытание на живом диалоге. Только победы: провал не
+// оставляет плохих страниц — «гость просто ушёл без отзыва и вернётся».
+
+import React from "react";
+import { GOLD } from "./tokens";
+import { onActivate, vibrate } from "../lib/utils";
+import { LiquidSegment } from "./widgets";
+import { ROLE_SVG } from "./icons";
+import { loadMastery } from "../lib/bar-lab";
+import { COCKTAILS } from "../data/cocktails";
+import { MODULES } from "../data/modules";
+import { useContentVersion } from "../lib/use-content";
+import { ROLES } from "../data/roles";
+import {
+  MODULE_REVIEWS, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
+  moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
+} from "../data/reviews";
+
+const GOLD_SOFT = "#D4A85A", PAPER = "#FBF5E8", PAPER_DIM = "#EFE6D2",
+  INK = "#2A1F0E", BROWN = "#7A6548", WAX = "#8B3020";
+const MONO = { fontFamily: "ui-monospace, Menlo, monospace" };
+const SCRIPT = { fontFamily: "'Marck Script', 'Caveat', 'Segoe Script', cursive" };
+
+const BOOK_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Marck+Script&family=Caveat:wght@500&display=swap');
+  @keyframes gbPageR { from { opacity:0; transform:translateX(24px) rotate(.5deg);} to { opacity:1; transform:none;} }
+  @keyframes gbPageL { from { opacity:0; transform:translateX(-24px) rotate(-.5deg);} to { opacity:1; transform:none;} }
+  @keyframes gbSeal { 0% { transform:scale(0) rotate(-18deg);} 70% { transform:scale(1.12) rotate(3deg);} 100% { transform:scale(1);} }
+  .gb-page-r { animation: gbPageR .38s cubic-bezier(.16,1,.3,1) both; }
+  .gb-page-l { animation: gbPageL .38s cubic-bezier(.16,1,.3,1) both; }
+  .gb-seal { animation: gbSeal .5s cubic-bezier(.34,1.56,.64,1) .2s both; }
+  @media (prefers-reduced-motion: reduce) { .gb-page-r,.gb-page-l,.gb-seal { animation:none; } }
+`;
+
+// Даты получения страниц: фиксируем при первом появлении (раньше не хранились)
+const loadDates = () => { try { return JSON.parse(localStorage.getItem("sa_book_dates") || "{}"); } catch (e) { return {}; } };
+const ruDate = (ts) => new Date(ts).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+
+// ── Прочитанные страницы: страница считается прочитанной, когда реально показана в книге ──
+const loadRead = () => { try { return JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) { return []; } };
+const markRead = (key) => { try { const r = loadRead(); if (!r.includes(key)) localStorage.setItem("sa_book_read", JSON.stringify([...r, key])); } catch (e) {} };
+
+
+// ── Сборка страниц одной роли ──
+function buildRolePages(roleId, completed, quizDone, examResults, dates) {
+  const pages = [];
+  for (const m of (MODULES[roleId] || [])) {
+    const rv = MODULE_REVIEWS[m.id];
+    if (!rv) continue;
+    if (moduleDone(m, completed, quizDone)) pages.push({ kind: "earned", key: m.id, ...rv, source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, date: dates[m.id] ? ruDate(dates[m.id]) : "" });
+    else pages.push({ kind: "locked", key: m.id, source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, hint: `Пройди «${m.title}» — и этот разворот займёт гость, для которого ты это сделаешь по-настоящему.` });
+  }
+  const lg = LEGEND_REVIEWS[roleId];
+  if (lg) {
+    if (examResults?.[roleId]?.passed) pages.push({ kind: "legend", key: "lg_" + roleId, ...lg, source: "ЭКЗАМЕН РОЛИ · СДАН", date: dates["lg_" + roleId] ? ruDate(dates["lg_" + roleId]) : "" });
+    else pages.push({ kind: "locked", key: "lg_" + roleId, legend: true, source: "ЛЕГЕНДАРНАЯ СТРАНИЦА", hint: "Сдай экзамен роли — и её займёт гость, о котором рассказывают истории. С печатью." });
+  }
+  return pages;
+}
+
+
+// ── Экран книги ──
+export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, practiceStars = {}, onBack, onWeekly, focusId }) {
+  const [tab, setTab] = React.useState(role && MODULES[role] ? role : "seasonal");
+  const [idx, setIdx] = React.useState(0);
+  const [dir, setDir] = React.useState("r");
+  const [readList, setReadList] = React.useState(loadRead); // прочитанные страницы (живое состояние для подсветки)
+
+  // Открытие по уведомлению: листаем к заработанной странице
+  React.useEffect(() => {
+    if (!focusId) return;
+    for (const [rid, mods] of Object.entries(MODULES)) {
+      if ((mods || []).some(m => m.id === focusId)) {
+        const p = buildRolePages(rid, completed, quizDone, examResults, loadDates());
+        const i = p.findIndex(pg => pg.key === focusId);
+        if (i >= 0) { setTab(rid); setIdx(i); setDir("r"); }
+        return;
+      }
+    }
+  }, [focusId]);
+
+  // Открытие с плитки (без фокуса): сразу листаем к первой непрочитанной странице —
+  // бейдж становится «кликабельным»: тапнул — увидел, что именно не прочитано.
+  React.useEffect(() => {
+    if (focusId) return;
+    const read = loadRead();
+    const d = loadDates();
+    for (const r of ROLES) {
+      if (!MODULES[r.id] || !(MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])) continue;
+      const p = buildRolePages(r.id, completed, quizDone, examResults, d);
+      const i = p.findIndex(pg => (pg.kind === "earned" || pg.kind === "legend") && !read.includes(pg.key));
+      if (i >= 0) { setTab(r.id); setIdx(i); setDir("r"); return; }
+    }
+  }, []);
+
+  // Свайп по листу: влево — вперёд, вправо — назад
+  const touchRef = React.useRef(null);
+  const onSwipeStart = (e) => { const t = e.touches && e.touches[0]; if (t) touchRef.current = { x: t.clientX, y: t.clientY }; };
+  const onSwipeEnd = (e) => {
+    const st = touchRef.current; touchRef.current = null;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!st || !t) return;
+    const dx = t.clientX - st.x, dy = t.clientY - st.y;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) go(dx < 0 ? 1 : -1);
+  };
+
+  // Даты: фиксируем момент первого появления заработанных страниц
+  const dates = React.useMemo(() => {
+    const d = loadDates(); let changed = false;
+    for (const [rid, mods] of Object.entries(MODULES)) {
+      for (const m of mods) if (MODULE_REVIEWS[m.id] && moduleDone(m, completed, quizDone) && !d[m.id]) { d[m.id] = Date.now(); changed = true; }
+      if (examResults?.[rid]?.passed && !d["lg_" + rid]) { d["lg_" + rid] = Date.now(); changed = true; }
+    }
+    if (completed[weeklyLessonId()] && !d[weeklyLessonId()]) { d[weeklyLessonId()] = Date.now(); changed = true; }
+    if (changed) try { localStorage.setItem("sa_book_dates", JSON.stringify(d)); } catch (e) {}
+    return d;
+  }, [completed, quizDone, examResults]);
+
+  const contentVer = useContentVersion(); // Доп. 132: пересчёт, когда роли догрузились
+  const stats = React.useMemo(() => bookStats(MODULES, completed, quizDone, examResults), [completed, quizDone, examResults, contentVer]);
+
+  // Страницы текущей вкладки
+  const wid = weeklyLessonId();
+  const pages = React.useMemo(() => {
+    if (tab === "weekly") {
+      return completed[wid]
+        ? [{ kind: "legend", key: wid, ...WEEKLY_REVIEW, seal: "ВЫИГРАН", source: "ГОСТЬ НЕДЕЛИ · ПРОЙДЕН", date: dates[wid] ? ruDate(dates[wid]) : "" }]
+        : [{ kind: "challenge", key: wid }];
+    }
+    if (tab === "builds") return [{ kind: "builds", key: "builds_page" }];
+    return buildRolePages(tab, completed, quizDone, examResults, dates);
+  }, [tab, completed, quizDone, examResults, dates, wid]);
+
+  // Страница считается прочитанной только когда реально показана на экране
+  React.useEffect(() => {
+    const p = pages[Math.min(idx, pages.length - 1)];
+    if (p && (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key)) {
+      markRead(p.key);
+      setReadList(loadRead());
+    }
+  }, [pages, idx]);
+
+  // Если у роли ещё нет ни одной страницы (не заведены отзывы для её модулей),
+  // подставляем заглушку вместо undefined — иначе экран падает на page.kind.
+  const page = pages[Math.min(idx, pages.length - 1)] || pages[0] || {
+    kind: "locked", key: "empty_" + tab, source: "СТРАНИЦ ПОКА НЕТ",
+    hint: "Для этой роли отзывы ещё готовятся. Проходи разделы — страницы появятся здесь.",
+  };
+  const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };
+  const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
+
+  const chips = [...ROLES.filter(r => MODULES[r.id] && (MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])).map(r => ({ id: r.id, label: r.shortLabel || r.label })),
+    ...((MODULES.bar || []).some(m => (m.lessons || []).some(l => l.type === "build")) ? [{ id: "builds", label: "Сборка" }] : []),
+    { id: "weekly", label: "✦ Гость недели" }];
+  // Витрина сборки: build-уроки роли «Бар» и лучшие звёзды по каждому.
+  // Данные — из общего контура practice_stars, отдельного хранилища нет.
+  const buildLessons = React.useMemo(() =>
+    (MODULES.bar || []).flatMap(m => (m.lessons || []).filter(l => l.type === "build")), []);
+  const myBuildStars = practiceStars[`${profile?.name}|${profile?.surname ?? ""}`] || {};
+  // В каких вкладках есть непрочитанные страницы — для золотой точки на вкладке
+  const unreadByTab = React.useMemo(() => {
+    const d = loadDates(); const map = {};
+    for (const r of ROLES) {
+      if (!MODULES[r.id]) continue;
+      const p = buildRolePages(r.id, completed, quizDone, examResults, d);
+      map[r.id] = p.some(pg => (pg.kind === "earned" || pg.kind === "legend") && !readList.includes(pg.key));
+    }
+    return map;
+  }, [completed, quizDone, examResults, readList]);
+  const earnedInTab = pages.filter(p => p.kind !== "locked" && p.kind !== "challenge").length;
+
+  return (
+    <div style={T.screen} className="sa-screen">
+      <style>{BOOK_CSS}</style>
+
+      {/* Шапка */}
+      <div style={{ ...T.lessHead, justifyContent: "space-between" }}>
+        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z" /><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z" /><path d="M15 8h2M15 11h2" /></svg>
+          <span>Книга отзывов</span></div>
+        <div style={{ width: 24 }} />
+      </div>
+
+      {/* Звание и прогресс */}
+      <div style={{ padding: "10px 16px 0" }}>
+        <div style={{ ...T.modCard, alignItems: "center", gap: 12 }}>
+          <div style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, border: `1.5px solid ${GOLD}66`, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="1.6"/></svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...T.modTitle, fontSize: 16 }}>{stats.rank.label}</div>
+            <div style={{ ...T.modSub, marginTop: 2 }}>
+              {stats.pages} стр. · {stats.seals} {stats.seals === 1 ? "печать" : stats.seals >= 2 && stats.seals <= 4 ? "печати" : "печатей"}
+              {stats.next ? ` · до «${stats.next.label}» — ${stats.next.min - stats.score}` : " · высшее звание"}
+            </div>
+          </div>
+          <div style={{ ...MONO, color: GOLD, fontSize: 10, letterSpacing: 1, flexShrink: 0 }}>{stats.pages}/{stats.total}</div>
+        </div>
+      </div>
+
+      {/* Разделы книги */}
+      <div style={{ padding: "12px 16px 2px" }}>
+        <LiquidSegment a11y={a11y} equal={false} scroll accent={GOLD} muted={T.modSub.color}
+          itemStyle={{ ...MONO, fontSize: 10, letterSpacing: .5, padding: "7px 12px" }}
+          items={chips.map(c => ({ id: c.id, render: () => (<>
+            {c.label}
+            {unreadByTab[c.id] && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: GOLD, marginLeft: 5, boxShadow: `0 0 5px ${GOLD}`, verticalAlign: "middle" }} />}
+          </>) }))}
+          activeId={tab}
+          onSelect={setTabSafe} />
+      </div>
+
+      {/* Книга */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 16px 6px" }}>
+        <div style={{ position: "relative" }} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
+          {/* стопка страниц позади */}
+          <div style={{ position: "absolute", inset: "8px -5px -7px -5px", borderRadius: 14, background: "#E8DCC2", transform: "rotate(-1.1deg)", opacity: .45 }} />
+          <div style={{ position: "absolute", inset: "5px -3px -4px -3px", borderRadius: 14, background: "#F2E8D0", transform: "rotate(.7deg)", opacity: .65 }} />
+
+          <div key={tab + ":" + idx} className={dir === "r" ? "gb-page-r" : "gb-page-l"}
+            style={{ position: "relative", borderRadius: 14, minHeight: 348, padding: "20px 18px 16px", background: page.kind === "locked" ? PAPER_DIM : PAPER, border: page.kind === "legend" ? `1.5px solid ${GOLD_SOFT}` : "1px solid rgba(140,110,50,.25)", boxShadow: "0 12px 30px rgba(0,0,0,.45), inset 0 1px 0 #fff", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {/* фактура: линейки + прошивка */}
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(transparent, transparent 27px, rgba(122,101,72,.10) 28px)", backgroundPosition: "0 78px", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", left: 8, top: 12, bottom: 12, width: 1, borderLeft: "1px dashed rgba(122,101,72,.35)", pointerEvents: "none" }} />
+
+            {page.kind === "challenge" ? (
+              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 11 }}>
+                <div style={{ ...MONO, color: BROWN, fontSize: 9, letterSpacing: 3 }}>НОВОЕ ИСПЫТАНИЕ КАЖДУЮ НЕДЕЛЮ</div>
+                <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.3" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6" /><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z" /><path d="M6.5 14v7M17.5 14v7M7 17.5h10" /></svg>
+                <div style={{ ...SCRIPT, color: INK, fontSize: 25, lineHeight: 1.2 }}>Гость недели уже за столиком…</div>
+                <div style={{ color: BROWN, fontSize: 13.5, lineHeight: 1.65, maxWidth: 258 }}>Сложный живой диалог. Проведи его достойно — и получи страницу с печатью. Не получится — гость уйдёт без отзыва, но вернётся: попробуешь снова.</div>
+                <button onClick={onWeekly} {...onActivate(onWeekly)} style={{ ...MONO, marginTop: 4, fontSize: 11, letterSpacing: 2, color: PAPER, background: `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, border: "none", borderRadius: 16, padding: "10px 22px", boxShadow: "0 4px 14px rgba(139,106,48,.4)", cursor: "pointer" }}>ПРИНЯТЬ СТОЛ ›</button>
+              </div>
+            ) : page.kind === "builds" ? (
+              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>РОЛЬ «БАР» · ЛУЧШИЕ ПРОГОНЫ</div>
+                  <span style={{ display:"inline-flex", verticalAlign:"-3px" }}>{ROLE_SVG.bar("#C8A96E", 16)}</span>
+                </div>
+                <div style={{ ...SCRIPT, color: INK, fontSize: 24, marginTop: 10 }}>Витрина сборки</div>
+                <div style={{ marginTop: 6, flex: 1 }}>
+                  {buildLessons.map(l => {
+                    const st = myBuildStars[l.id] || 0;
+                    const verdict = st === 3 ? "безупречно" : st === 2 ? "с замечанием" : st === 1 ? "пересобрать" : "ещё не собрано";
+                    const col = st === 3 ? GOLD_SOFT : st === 2 ? "#A98A4E" : st === 1 ? WAX : "rgba(122,101,72,.55)";
+                    return (
+                      <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px dashed rgba(122,101,72,.2)" }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11,
+                          border: st ? "none" : `1.5px dashed ${col}`, color: st ? PAPER : col,
+                          background: st ? `radial-gradient(circle at 34% 30%, ${col}, ${col} 58%, rgba(0,0,0,.3))` : "transparent",
+                          boxShadow: st ? "inset 0 1px 2px rgba(255,255,255,.3), 0 2px 5px rgba(0,0,0,.25)" : "none" }}>
+                          {st ? "✦" : "·"}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: INK, fontSize: 13, fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {(l.title || "").replace(/^Сборка:\s*/i, "")}
+                          </div>
+                          <div style={{ ...MONO, color: col, fontSize: 8.5, letterSpacing: 1.5, marginTop: 2, textTransform: "uppercase" }}>{verdict}</div>
+                        </div>
+                        <div style={{ color: GOLD_SOFT, fontSize: 11, letterSpacing: 1, flexShrink: 0 }}>
+                          {"★".repeat(st)}<span style={{ opacity: .22 }}>{"★".repeat(3 - st)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Доп. 214: печати Сборки руками — та же витрина, та же книга */}
+                {(() => {
+                  const m = loadMastery(`_${profile?.name}_${profile?.surname || ""}`);
+                  const stamped = COCKTAILS.filter(c => (m[c.id]?.level || 0) >= 2);
+                  const masters = stamped.filter(c => m[c.id].level >= 3).length;
+                  return (
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed rgba(122,101,72,.3)" }}>
+                      <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>СБОРКА РУКАМИ · ПО ПАМЯТИ</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                        <div style={{ ...SCRIPT, color: INK, fontSize: 22 }}>{stamped.length}<span style={{ fontSize: 12, color: "#9A855C", marginLeft: 6 }}>из {COCKTAILS.length}{masters ? ` · мастер ${masters}` : ""}</span></div>
+                        <div style={{ display: "flex", gap: 3, flexWrap: "wrap", flex: 1, justifyContent: "flex-end" }}>
+                          {stamped.slice(0, 12).map(c => <span key={c.id} title={c.name} style={{ width: 14, height: 14, borderRadius: 7, background: m[c.id].level >= 3 ? `radial-gradient(circle at 34% 30%, ${GOLD_SOFT}, #A98A4E 60%, rgba(0,0,0,.3))` : `radial-gradient(circle at 34% 30%, ${WAX}, #8A3A2A 60%, rgba(0,0,0,.3))`, boxShadow: "0 1px 3px rgba(0,0,0,.3)" }} />)}
+                          {stamped.length > 12 && <span style={{ ...MONO, fontSize: 9, color: "#9A855C" }}>+{stamped.length - 12}</span>}
+                        </div>
+                      </div>
+                      {!stamped.length && <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, marginTop: 4 }}>СОБЕРИ КОКТЕЙЛЬ ПО ПАМЯТИ — ПЕРВАЯ ПЕЧАТЬ ЛЯЖЕТ СЮДА</div>}
+                    </div>
+                  );
+                })()}
+                <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, marginTop: 10 }}>
+                  ЛУЧШИЙ ПРОГОН КАЖДОЙ СБОРКИ · ОБНОВЛЯЕТСЯ САМ
+                </div>
+              </div>
+            ) : page.kind === "locked" ? (
+              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 11, opacity: .88 }}>
+                {page.legend
+                  ? <div style={{ width: 52, height: 52, borderRadius: "50%", border: `1.5px dashed ${BROWN}`, display: "flex", alignItems: "center", justifyContent: "center", color: BROWN, fontSize: 20 }}>✦</div>
+                  : <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>}
+                <div style={{ ...SCRIPT, color: BROWN, fontSize: 24 }}>Здесь появится отзыв</div>
+                <div style={{ color: BROWN, fontSize: 13.5, lineHeight: 1.65, maxWidth: 250 }}>{page.hint}</div>
+                <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2, border: "1px solid rgba(122,101,72,.3)", borderRadius: 10, padding: "5px 12px" }}>{page.source}</div>
+              </div>
+            ) : (
+              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>{(page.date ? page.date + " · " : "") + page.table.toUpperCase()}</div>
+                  <div style={{ color: GOLD_SOFT, fontSize: 13, letterSpacing: 2 }}>★★★★★</div>
+                </div>
+                <div style={{ ...SCRIPT, color: INK, fontSize: 20.5, lineHeight: "28px", marginTop: 14, flex: 1 }}>{page.text}</div>
+                <div style={{ ...SCRIPT, color: BROWN, fontSize: 20, textAlign: "right", marginTop: 6 }}>— {page.guest}</div>
+                <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                  <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, border: "1px solid rgba(122,101,72,.35)", borderRadius: 8, padding: "5px 10px", transform: "rotate(-2deg)" }}>✓ {page.source}</div>
+                  {page.kind === "legend" && (
+                    <div className="gb-seal" style={{ width: 58, height: 58, borderRadius: "50%", flexShrink: 0, background: `radial-gradient(circle at 34% 30%, #B0492F, ${WAX} 62%, #5E1F12)`, boxShadow: "0 4px 10px rgba(94,31,18,.45), inset 0 2px 4px rgba(255,255,255,.22), inset 0 -3px 6px rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 43, height: 43, borderRadius: "50%", border: "1px solid rgba(255,220,190,.4)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                        <span style={{ fontSize: 12 }}>✦</span>
+                        <span style={{ ...MONO, color: "#F5DFC8", fontSize: 5.5, letterSpacing: 1 }}>{page.seal}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Листание */}
+        {pages.length > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, padding: "0 4px" }}>
+            <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", maxWidth: 220 }}>
+              {pages.map((p, i) => {
+                const isUnread = (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key);
+                return (
+                <div key={p.key} onClick={() => { if (i !== idx) vibrate("light"); setDir(i > idx ? "r" : "l"); setIdx(i); }}
+                  style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all .25s ease", background: i === idx ? GOLD : p.kind === "locked" ? (a11y ? "rgba(120,100,60,.3)" : "#3A2E1E") : p.kind === "legend" ? WAX : "rgba(200,169,110,.45)", boxShadow: isUnread ? `0 0 7px ${GOLD}` : undefined }} />
+                );
+              })}
+            </div>
+            <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
+          </div>
+        )}
+        <div style={{ ...MONO, color: T.modSub.color, fontSize: 9, letterSpacing: 1, textAlign: "center", marginTop: 10, opacity: .8 }}>
+          {tab === "weekly" ? "НОВЫЙ ГОСТЬ — КАЖДЫЙ ПОНЕДЕЛЬНИК" : tab === "builds" ? "СОБЕРИ ВСЕ НА «БЕЗУПРЕЧНО» — ТРИ ЗВЕЗДЫ В КАЖДОЙ СТРОКЕ" : `ЗАПОЛНЕНО В РАЗДЕЛЕ: ${earnedInTab} ИЗ ${pages.length}`}
+        </div>
+        <div style={{ height: 10 }} />
+      </div>
+    </div>
+  );
+}
+
+// Пропуск веса: звание для профиля считается через bookStats из data/reviews.
+export { bookStats, weeklyDialogueId, weeklyLessonId };

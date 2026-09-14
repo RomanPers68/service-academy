@@ -1,0 +1,362 @@
+import React from "react";
+import { COCKTAILS } from "../data/cocktails";
+import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, cocktailFaqSmart, familyOf, dishLinks, bumpDaily } from "../lib/deck-extras";
+import { rpc, saToken } from "../api/supabase";
+import { loadMastery, buildScenario } from "../lib/bar-lab";
+import { CocktailArt } from "./cocktail-art";
+import { COCKTAIL_STORIES } from "../data/cocktail-stories";
+import { vibrate, onActivate } from "../lib/utils";
+import { GOLD, INK_DEEP } from "./tokens";
+
+// Колода бармена: свайп — листать, тап — перевернуть (рецепт), режим
+// «Знаю?» — интервальное повторение (1·3·7·30 дней), как у банка ошибок.
+const SR_DAYS = [1, 3, 7, 30];
+const KEY = "sa_cocktail_sr";
+const loadSR = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } };
+
+const GLASS_RU = { rocks:"Олд фэшн", highball:"Хайбол", martini:"Бокал для мартини", hurricane:"Харрикейн", red:"Бокал для красного вина",
+  white:"Бокал для белого вина", irish:"Бокал для айриш-кофе", flute:"Флюте", margarita:"Бокал «Маргарита»", shot:"Шот", sour:"Бокал сауэр" };
+const dots = (n) => "●".repeat(n) + "○".repeat(4 - n);
+// Навигация по колоде: база напитка (по первому ингредиенту), поиск
+const BASES = ["Джин", "Водка", "Ром", "Текила", "Виски", "Бренди", "Другое"];
+const baseOf = (c) => {
+  const f = (c.ing[0] && c.ing[0][0] || "").toLowerCase();
+  if (f.includes("джин")) return "Джин";
+  if (f.includes("водк")) return "Водка";
+  if (f.includes("ром")) return "Ром";
+  if (f.includes("текил")) return "Текила";
+  if (f.includes("виски") || f.includes("бурбон") || f.includes("скотч")) return "Виски";
+  if (f.includes("коньяк") || f.includes("бренди")) return "Бренди";
+  return "Другое";
+};
+const norm = (x) => String(x || "").toLowerCase().replace(/ё/g, "е");
+const matches = (c, q) => {
+  if (!q) return true;
+  const n = norm(q);
+  return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
+};
+
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint }) {
+  // Доп. 210: своя карта бара (флаги в меню команды), свои коктейли из меню, «наоборот», гость спрашивает, мост к меню
+  const restaurant = profile?.restaurant || "";
+  const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
+  const canEdit = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
+  const [shared, setShared] = React.useState(() => cachedShared(restaurant));
+  React.useEffect(() => { if (!restaurant) return; let alive = true; rpc("menu_get", { p_restaurant: restaurant }).then(res => { const arr = typeof res === "string" ? JSON.parse(res) : res; if (alive && Array.isArray(arr)) setShared(arr); }).catch(() => {}); return () => { alive = false; }; }, [restaurant]);
+  const barcard = readBarcard(shared); // null — карта не настроена
+  const house = React.useMemo(() => houseCocktails(shared), [shared]);
+  const ALL = React.useMemo(() => [...house, ...COCKTAILS], [house]);
+  const inCard = (x) => x.house || (barcard ? barcard.includes(x.id) : true);
+  const [pubMsg, setPubMsg] = React.useState("");
+  const toggleCard = (id) => {
+    const cur = barcard || COCKTAILS.map(x => x.id);
+    const ids = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    const next = withBarcard(shared, ids); setShared(next); vibrate("light");
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) }).then(res => setPubMsg(res && res.ok ? "Карта бара обновлена у всех ✓" : "Не сохранилось — проверь связь")).catch(() => setPubMsg("Не сохранилось — нет связи"));
+    setTimeout(() => setPubMsg(""), 2500);
+  };
+  const [reverse, setReverse] = React.useState(false);
+  const [onlyCard, setOnlyCard] = React.useState(true);
+  const [faqOpen, setFaqOpen] = React.useState(null);
+  const [sr, setSr] = React.useState(loadSR);
+  const [mode, setMode] = React.useState("deck");     // deck | quiz
+  const [q, setQ] = React.useState("");                 // поиск
+  const [base, setBase] = React.useState("");           // фильтр по базе
+  const [view, setView] = React.useState("cards");
+  const mast = React.useMemo(() => loadMastery(uk), [uk, view]); // Доп. 218: печати Сборки — в указателе колоды
+  // Доп. 244: прыжок к карточке по id (родня, замена)
+  const jumpTo = (id) => { const i = pool.findIndex(x => x.id === id); if (i >= 0) { setView("cards"); setIdx(i); setFlip(false); vibrate("light"); } else { setBase(""); setOnlyCard(false); setQ(""); setTimeout(() => { const j = ALL.findIndex(x => x.id === id); if (j >= 0) { setView("cards"); setIdx(j); setFlip(false); } }, 0); } };      // cards | index (оглавление)
+  const [idx, setIdx] = React.useState(0);
+  const [flip, setFlip] = React.useState(false);
+  const [settled, setSettled] = React.useState(false); // Доп. 218: плоский режим после переворота
+  React.useEffect(() => { if (!flip) { setSettled(false); return; } const tm = setTimeout(() => setSettled(true), 640); return () => clearTimeout(tm); }, [flip]);
+  const toggleFlip = () => { if (flip && settled) { setSettled(false); requestAnimationFrame(() => setFlip(false)); } else setFlip(f => !f); };
+  const [filters, setFilters] = React.useState(false); // Доп. 149: поиск и база — за одной кнопкой
+  // Дополнение 128: плавное перелистывание. Во время свайпа карточка следует
+  // за пальцем через ref (без setState — тяжёлая карточка с витражом не
+  // перерисовывается на каждом движении), а отпущенная — продолжает движение
+  // с той же точки, а не прыгает в центр перед вылетом.
+  const wrapRef = React.useRef(null);
+  const touch = React.useRef(null);        // { x, y, t, axis, dx, vx }
+  const busy = React.useRef(false);        // идёт анимация перелистывания
+  const snapRef = React.useRef(false);     // при смене карточки переворот сбрасывается мгновенно, а не за 0.6с
+  const [anim] = React.useState(null);     // совместимость: класс анимации больше не используется
+  const moved = React.useRef(false);
+  const setWrap = (transform, transition, opacity) => {
+    const el = wrapRef.current; if (!el) return;
+    el.style.transition = transition || "none";
+    el.style.transform = transform || "none";
+    el.style.opacity = opacity == null ? 1 : opacity;
+  };
+
+  const due = React.useMemo(() => ALL.filter(c => inCard(c) && (() => { const r = sr[c.id]; return !r || !r.due || r.due <= Date.now(); })()), [sr, ALL, barcard]);
+  const pool = React.useMemo(() => {
+    const base_ = ALL.filter(c => matches(c, q) && (!base || (base === "Свои" ? c.house : baseOf(c) === base)));
+    const mine = base_.filter(inCard), rest = base_.filter(x => !inCard(x));
+    return onlyCard && barcard ? mine : [...mine, ...rest]; // своё — впереди, чужое — эрудиция ниже
+  }, [q, base, ALL, barcard, onlyCard]);
+  const list = mode === "quiz" ? due.filter(c => pool.includes(c)) : pool;
+  const c = list[Math.min(idx, Math.max(0, list.length - 1))];
+  const total = list.length;
+  React.useEffect(() => { setIdx(0); setFlip(false); }, [q, base, mode]);
+  // Доп. 130: открыть колоду сразу на нужном коктейле (карточка из ответа ассистента)
+  React.useEffect(() => {
+    if (!startId) return;
+    const i = COCKTAILS.findIndex(c => c.id === startId);
+    if (i >= 0) { setIdx(i); setFlip(false); }
+  }, [startId]);
+
+  const OUT_MS = 260, IN_MS = 420;
+  const go = (d) => {
+    if (!total || busy.current) return;
+    busy.current = true;
+    vibrate("light");
+    const sign = d > 0 ? -1 : 1; // вперёд — улетает влево
+    setWrap(`translateX(${sign * 120}%) rotate(${sign * 9}deg) scale(.96)`,
+      `transform ${OUT_MS}ms cubic-bezier(.3,.6,.4,1), opacity ${OUT_MS}ms ease-out`, 0);
+    setTimeout(() => {
+      snapRef.current = true; setFlip(false); setIdx(i => (i + d + total) % total);
+      // новая карточка ставится за кадром с противоположной стороны без анимации…
+      setWrap(`translateX(${-sign * 70}%) rotate(${-sign * 5}deg) scale(.94)`, "none", 0);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        // …и въезжает с мягким доездом (overshoot ~2%)
+        setWrap("none", `transform ${IN_MS}ms cubic-bezier(.16,1.1,.3,1), opacity ${IN_MS * 0.6}ms ease-out`, 1);
+        snapRef.current = false;
+        setTimeout(() => { busy.current = false; }, IN_MS);
+      }));
+    }, OUT_MS);
+  };
+  const mark = (ok) => {
+    const cur = sr[c.id] || { stage: 0 };
+    const stage = ok ? Math.min(cur.stage + 1, SR_DAYS.length) : 0;
+    const next = { ...sr, [c.id]: { stage, due: Date.now() + (ok ? SR_DAYS[stage - 1] * 86400000 : 0) } };
+    setSr(next); try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) {}
+    bumpDaily(uk); // Доп. 210: ежедневные пять
+    vibrate(ok ? "success" : "error");
+    setFlip(false);
+    setIdx(i => Math.min(i, Math.max(0, (mode === "quiz" ? due.length - 1 : total) - 1)));
+  };
+  const onTS = (e) => {
+    if (busy.current) { touch.current = null; return; }
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: 0, vx: 0, lx: t.clientX, lt: Date.now() };
+    moved.current = false;
+  };
+  const onTM = (e) => {
+    const s = touch.current; if (!s) return;
+    const t = e.touches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
+    if (!s.axis) { if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; }
+    if (s.axis !== "x") return; // вертикальный жест — это скролл состава, не листание
+    moved.current = true;
+    const now = Date.now(); if (now > s.lt) { s.vx = (t.clientX - s.lx) / (now - s.lt); s.lx = t.clientX; s.lt = now; }
+    s.dx = dx;
+    const fade = Math.max(0.55, 1 - Math.abs(dx) / 700);
+    setWrap(`translateX(${dx * 0.9}px) rotate(${dx * 0.03}deg)`, "none", fade);
+  };
+  const onTE = () => {
+    const s = touch.current; touch.current = null;
+    if (!s || s.axis !== "x") return;
+    const flick = Math.abs(s.vx) > 0.45 && Math.sign(s.vx) === Math.sign(s.dx);
+    if (Math.abs(s.dx) > 70 || (flick && Math.abs(s.dx) > 24)) go(s.dx < 0 ? 1 : -1);
+    else setWrap("none", "transform .38s cubic-bezier(.16,1.1,.3,1), opacity .25s ease-out", 1); // не дотянул — пружиной назад
+  };
+
+  const glass = a11y ? { bg:"rgba(250,242,222,0.7)", bd:"rgba(150,112,40,0.35)", tx:"#3A2E1C", sub:"#6B5A3A" }
+                     : { bg:"rgba(255,250,238,0.035)", bd:"rgba(145,108,40,0.3)", tx:"#EFE4C8", sub:"#9C8760" };
+  const card = { borderRadius:20, background:glass.bg, border:`1px solid ${glass.bd}`, borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.45)" : "rgba(210,168,65,0.35)"}`,
+    boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5)" : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.1), 0 14px 40px rgba(0,0,0,0.45)" };
+  const pill = (on) => ({ padding:"6px 13px", borderRadius:999, fontSize:12, cursor:"pointer", fontFamily:"Georgia, serif",
+    color: on ? INK_DEEP : glass.sub, background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
+    border: `1px solid ${on ? "transparent" : glass.bd}` });
+
+  return (
+    <div style={{ padding:"8px 14px 100px" }}>
+      {/* Доп. 149: шапка в два ряда. Поиск, база и список — за иконками, раскрываются по тапу. */}
+      {(() => {
+        const open = filters || !!q || !!base;
+        const iconBtn = (on) => ({ width:34, height:34, borderRadius:17, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0,
+          border:`1px solid ${on ? GOLD + "AA" : glass.bd}`, background: on ? "rgba(214,178,102,0.16)" : glass.bg });
+        const ic = (d) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+        return (<>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+            <span onClick={onBack} {...onActivate(onBack)} style={{ color:GOLD, fontSize:22, cursor:"pointer", padding:"0 4px" }}>‹</span>
+            <div style={{ fontFamily:"Georgia, serif", fontSize:19, color:glass.tx, flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Колода бармена</div>
+            <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, color:glass.sub, marginRight:2, whiteSpace:"nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
+            <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и фильтр">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
+            <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+            <div style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
+              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
+              <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
+            </div>
+            <span style={{ marginLeft:"auto", display:"flex", gap:10, whiteSpace:"nowrap" }}>
+              {onEdit && canEdit ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
+              {onLab ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onLab()} {...onActivate(() => onLab())}>Сборка ›</span> : null}
+              {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+            </span>
+          </div>
+          {(barcard || house.length > 0) && (
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11.5, color:glass.sub }}>
+              {barcard && <span style={{ ...pill(onlyCard), padding:"4px 10px", fontSize:11 }} onClick={() => setOnlyCard(v => !v)}>{onlyCard ? `Своя карта · ${pool.length}` : "Все коктейли"}</span>}
+              {canEdit && onPrint && <span style={{ ...pill(false), padding:"4px 10px", fontSize:11 }} onClick={() => onPrint()}>Печать карты ›</span>}
+              {house.length > 0 && <span>{house.length} своих из меню</span>}
+              {pubMsg && <span style={{ color: /✓/.test(pubMsg) ? "#5DBB8A" : "#E07878" }}>{pubMsg}</span>}
+            </div>
+          )}
+          {open && (
+            <div className="sa-fadein" style={{ marginBottom:12 }}>
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…" autoFocus={filters && !q}
+                style={{ width:"100%", padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
+                  fontFamily:"Georgia, serif", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
+              <div className="sa-hscroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2, WebkitOverflowScrolling:"touch" }}>
+                <span style={{ ...pill(reverse), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
+                <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase("")}>Все · {ALL.filter(c => matches(c, q)).length}</span>
+                {house.length > 0 && <span style={{ ...pill(base === "Свои"), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase(base === "Свои" ? "" : "Свои")}>Свои · {house.length}</span>}
+                {BASES.map(b => {
+                  const n = COCKTAILS.filter(c => matches(c, q) && baseOf(c) === b).length;
+                  if (!n) return null;
+                  return <span key={b} style={{ ...pill(base === b), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase(base === b ? "" : b)}>{b} · {n}</span>;
+                })}
+              </div>
+            </div>
+          )}
+        </>);
+      })()}
+      {view === "index" ? (
+        <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:8 }}>
+          {pool.map((x, i) => (
+            <div key={x.id} onClick={() => { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); }}
+              style={{ ...card, padding:"10px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ width:14, height:14, borderRadius:7, flexShrink:0, background:`linear-gradient(180deg,${x.color[0]},${x.color[1]})`, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.25)" }} />
+              <span style={{ minWidth:0 }}>
+                <div style={{ fontFamily:"Georgia, serif", fontSize:13, color:glass.tx, lineHeight:1.2 }}>{x.name}</div>
+                <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color: (mast[x.id]?.level || 0) >= 2 ? GOLD : glass.sub, letterSpacing:0.8 }}>{(mast[x.id]?.level || 0) >= 3 ? "✦ МАСТЕР" : (mast[x.id]?.level || 0) >= 2 ? "✦ ПЕЧАТЬ" : GLASS_RU[x.glass]}</div>
+              </span>
+            </div>
+          ))}
+          {!pool.length ? <div style={{ gridColumn:"1 / -1", color:glass.sub, fontFamily:"Georgia, serif", textAlign:"center", padding:20 }}>Ничего не нашлось — попробуй другое слово</div> : null}
+        </div>
+      ) : null}
+      <div style={{ display: view === "index" ? "none" : "block" }}>
+
+      {!c ? (
+        <div style={{ ...card, padding:28, textAlign:"center", color:glass.sub, fontFamily:"Georgia, serif" }}>
+          Всё повторено ✦ Карточки вернутся по кривой памяти — через день, три, неделю, месяц.
+        </div>
+      ) : (
+        <div className="sa-ck-wrap" ref={wrapRef}
+          onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE}
+          onClick={() => { if (moved.current || busy.current) return; toggleFlip(); vibrate("light"); }}
+          style={{ cursor:"pointer", willChange:"transform, opacity", touchAction:"pan-y" }}>
+          <div className={"sa-ck-inner" + (settled ? " sa-ck-settled" : "")} style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
+            <div className="sa-ck-face sa-ck-front" style={{ ...card, padding:16 }}>
+            <div style={{ textAlign:"center" }}>
+              {reverse
+                ? <>
+                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginTop:4 }}>ЧТО ЭТО? · {GLASS_RU[c.glass].toUpperCase()} · {c.method.toUpperCase()}</div>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:17, color:glass.tx, lineHeight:1.35, marginTop:8 }}>{c.ing.map(i => `${i[0]}${i[1] ? " " + i[1] : ""}${i[2] && !/мл/.test(i[2]) ? " " + i[2] : ""}`).join(" · ")}</div>
+                  </>
+                : <>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:24, color:glass.tx, letterSpacing:1.5, textTransform:"uppercase", lineHeight:1.2, marginTop:4 }}>{c.name}</div>
+                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:glass.sub, letterSpacing:1.5, marginTop:6 }}>
+                      {mode === "quiz" ? "ВСПОМНИ СПЕК · ТАПНИ, ЧТОБЫ ПРОВЕРИТЬ" : c.ing.map(i => i[0]).join(" · ").toUpperCase()}
+                    </div>
+                  </>}
+              <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:6, flexWrap:"wrap" }}>
+                {c.house && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:"#5DBB8A", border:"1px solid #5DBB8A66", borderRadius:999, padding:"3px 9px" }}>СВОЙ · ИЗ МЕНЮ</span>}
+                {c.stop && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:"#E07878", border:"1px solid #E0787866", borderRadius:999, padding:"3px 9px" }}>В СТОПЕ</span>}
+                {!c.house && canEdit && restaurant && <span onClick={(e) => { e.stopPropagation(); toggleCard(c.id); }} style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, cursor:"pointer", color: inCard(c) ? GOLD : glass.sub, border:`1px solid ${inCard(c) ? GOLD : glass.bd}`, borderRadius:999, padding:"3px 9px" }}>{inCard(c) ? "✓ В КАРТЕ БАРА" : "+ В КАРТУ БАРА"}</span>}
+                {!c.house && !canEdit && barcard && !inCard(c) && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:glass.sub, border:`1px solid ${glass.bd}`, borderRadius:999, padding:"3px 9px" }}>НЕ В КАРТЕ · ЭРУДИЦИЯ</span>}
+              </div>
+              {/* Доп. 242: у своего коктейля с фото — фото на лице, витраж в углу (он живёт в Сборке и указателе) */}
+              {c.img ? (
+                <div style={{ position:"relative", margin:"6px 0 2px", borderRadius:16, overflow:"hidden", height:230, background:`url(${c.img}) center/cover` }}>
+                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.45))" }} />
+                  <div style={{ position:"absolute", right:8, bottom:6, width:64, filter:"drop-shadow(0 2px 6px rgba(0,0,0,.6))" }}><CocktailArt c={c} w={64} light={a11y} /></div>
+                </div>
+              ) : <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 2px" }}><CocktailArt c={c} w={200} light={a11y} live /></div>}
+              <div style={{ display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap" }}>
+                <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:GOLD }}>КРЕПОСТЬ {dots(c.strength)}</span>
+                <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:GOLD }}>СЛАДОСТЬ {dots(c.sweet)}</span>
+              </div>
+              <div style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:12, color:glass.sub, marginTop:10 }}>тапни — рецепт ✦</div>
+            </div>
+            </div>
+            <div className="sa-ck-face sa-ck-back" style={{ ...card, padding:16 }}>
+            <div style={{ fontFamily:"Georgia, serif", color:glass.tx, fontSize:14, lineHeight:1.55 }}>
+              <div style={{ fontSize:20, letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>{c.name}</div>
+              <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:10 }}>{GLASS_RU[c.glass]} · {c.method.toUpperCase()}</div>
+              {c.ing.map((i, k) => (
+                <div key={k} style={{ display:"flex", justifyContent:"space-between", borderBottom:`1px dashed ${glass.bd}`, padding:"3px 0" }}>
+                  <span>{i[0]}</span><span style={{ fontFamily:"ui-monospace, Menlo, monospace", color:GOLD }}>{i[1] === "" || i[1] == null ? "" : `${i[1]} ${i[2] || "мл"}`}</span>
+                </div>
+              ))}
+              {/* Доп. 230: порядок сборки — тот же, что проверяет «Сборка руками» (один источник, без расхождений) */}
+              {!c.house ? (() => { const seq = buildScenario(c, COCKTAILS).steps; const glyph = (s) => s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? "▸" : s.kind === "garnish" ? "✿" : "●"; return (
+                <div style={{ margin:"10px 0 8px" }}>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>СБОРКА · {seq.length} ШАГОВ · КАК В ТРЕНАЖЁРЕ</div>
+                  <ol style={{ margin:0, paddingLeft:20, color:glass.tx }}>{seq.map((s, k) => <li key={k} style={{ paddingLeft:2 }}><span style={{ color:GOLD, marginRight:6, fontSize:11 }}>{glyph(s)}</span>{s.label}</li>)}</ol>
+                </div>); })() : <ol style={{ margin:"10px 0 8px", paddingLeft:20, color:glass.tx }}>{c.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>}
+              <div style={{ color:glass.sub, fontStyle:"italic", fontSize:12.5 }}>{c.tip}</div>
+              <div style={{ color:glass.sub, fontSize:12.5, marginTop:6 }}>К столу: {c.pair}</div>
+              {c.note ? <div style={{ marginTop:8, padding:"7px 10px", borderRadius:10, border:`1px dashed ${GOLD}66`, color:glass.sub, fontSize:12, lineHeight:1.5 }}>✦ {c.note}</div> : null}
+              {/* Доп. 210: гость спрашивает — реплика пузырём, ответ по тапу */}
+              <div style={{ marginTop:10 }}>
+                <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ГОСТЬ СПРАШИВАЕТ</div>
+                {cocktailFaqSmart(c, ALL, inCard).map((f, k) => (
+                  <div key={k} onClick={(e) => { e.stopPropagation(); setFaqOpen(faqOpen === c.id + k ? null : c.id + k); vibrate("light"); }} style={{ marginBottom:6, cursor:"pointer" }}>
+                    <div style={{ display:"inline-block", padding:"6px 11px", borderRadius:"14px 14px 14px 4px", background: a11y ? "rgba(139,106,48,0.12)" : "rgba(255,248,230,0.08)", border:`1px solid ${glass.bd}`, fontSize:12.5, color:glass.tx }}>«{f.q}»</div>
+                    {faqOpen === c.id + k && <div className="sa-fadein" style={{ marginTop:4, marginLeft:14, padding:"6px 11px", borderRadius:"14px 4px 14px 14px", background:"rgba(214,178,102,0.14)", border:`1px solid ${GOLD}66`, fontSize:12.5, color:glass.tx, display:"inline-block" }}>{f.a}{f.go ? <span onClick={(e) => { e.stopPropagation(); jumpTo(f.go); }} style={{ marginLeft:8, color:GOLD, fontWeight:"bold", cursor:"pointer" }}>открыть ›</span> : null}</div>}
+                  </div>
+                ))}
+              </div>
+              {c.house && !c.full && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню — фото и описание ›</div>}
+              {c.house && canEdit && onEdit && <div onClick={(e) => { e.stopPropagation(); onEdit(c.full ? c.id : null); }} style={{ marginTop:8, fontSize:12.5, color:GOLD, cursor:"pointer" }}>{c.full ? "Править в редакторе ›" : "Дописать спек в редакторе ›"}</div>}
+              {(() => { const fam = familyOf(c, ALL); return fam ? (
+                <div style={{ marginTop:10 }}>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>{fam.title.toUpperCase()}</div>
+                  <div style={{ fontSize:12, color:glass.sub, lineHeight:1.45, marginBottom:6 }}>{fam.note}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); jumpTo(x.id); }} style={{ ...pill(false), fontSize:11.5, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:5, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
+                </div>) : null; })()}
+              {(() => { const links = dishLinks(c.pair, shared); return links.length && onOpenDish ? (
+                <div style={{ marginTop:8 }}>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ИЗ ВАШЕГО МЕНЮ</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenDish(l.id); }} style={{ ...pill(false), fontSize:11.5, color:glass.tx }}>{l.name} ›</span>)}</div>
+                </div>) : null; })()}
+              {onBuild && (!c.house || c.full) && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
+                return <div onClick={(e) => { e.stopPropagation(); onBuild(c.id); }} {...onActivate(() => onBuild(c.id))} style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:12, border:`1px solid ${GOLD}66`, background:"rgba(214,178,102,0.10)", cursor:"pointer" }}>
+                  <span style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:glass.tx }}>{lv >= 3 ? "✦ Мастер · собрать ещё" : lv === 2 ? "✦ Печать · собрать ещё" : "Собрать руками"}</span>
+                  <span style={{ color:GOLD, fontSize:16 }}>›</span>
+                </div>; })()}
+              {(() => { const st = COCKTAIL_STORIES[c.id] || (c.house && (c.story || c.short) ? { story: c.story, guest: c.short } : null); return st ? (
+                <div style={{ marginTop:12, paddingTop:10, borderTop:`1px solid ${glass.bd}` }}>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>ИСТОРИЯ</div>
+                  {st.story ? <div style={{ fontSize:13, lineHeight:1.55 }}>{st.story}</div> : null}
+                  {st.guest ? <div style={{ marginTop:8, fontStyle:"italic", color:glass.sub, fontSize:12.5 }}>Гостю: «{st.guest}»</div> : null}
+                </div>
+              ) : null; })()}
+              {c.house ? <div style={{ color:GOLD, fontSize:11, marginTop:8 }}>✦ авторский коктейль бара — спек по карточке заведения</div> : null}
+            </div>
+            </div>
+          </div>
+        </div>
+
+      )}
+
+      {c && mode === "quiz" && flip ? (
+        <div style={{ display:"flex", gap:10, marginTop:12 }}>
+          <button className="sa-btn" onClick={() => mark(false)} style={{ ...pill(false), flex:1, padding:"12px", textAlign:"center", color:"#D96A5E", borderColor:"#D96A5E66" }}>Повторить</button>
+          <button className="sa-btn" onClick={() => mark(true)} style={{ ...pill(true), flex:1, padding:"12px", textAlign:"center" }}>Знал ✦</button>
+        </div>
+      ) : c ? (
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:12 }}>
+          <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding:"10px 18px" }}>‹ назад</button>
+          <span style={{ alignSelf:"center", fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:glass.sub, letterSpacing:1.5 }}>СВАЙП · ЛИСТАТЬ</span>
+          <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding:"10px 18px" }}>дальше ›</button>
+        </div>
+      ) : null}
+      </div>
+    </div>
+  );
+}

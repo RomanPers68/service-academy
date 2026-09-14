@@ -129,7 +129,7 @@ const WELCOME_SCHEDIT_CARD = {
     </svg>
   ),
   title: "График: режим редактора",
-  text: "Настрой смены, правила и оплату — и жми «Заполнить черновик»: генератор закроет дыры, не тронув расставленное, продолжит ритм 2/2 из прошлого месяца и учтёт просьбы команды. «Факт часов» делает зарплату честной, секции внизу считают фонд. Экспорт — в чат или листом А4.",
+  text: "Пустой график предложит мастер из четырёх вопросов — и месяц соберётся сам. «Заполнить черновик» закрывает дыры, не трогая расставленное, и продолжает ритм 2/2 из прошлого месяца. Если день закрыть некем, проверка скажет почему и с именами; «Кто вместо?» подскажет замену на звонок «я заболел». «Факт часов» делает зарплату честной, «Хватит ли людей» предупреждает о нехватке штата заранее.",
 };
 
 // Карточка AI-собеседования — менеджерам и руководству
@@ -192,6 +192,13 @@ const WELCOME_MORE_CARDS = [
     text: "Забыл, где что? Вкладка «Я» → «Гид по приложению»: каждая функция с объяснением и кнопкой «Открыть». Этот попап больше не покажется, гид — останется." },
 ];
 
+// Доп. 267: что можно унести с собой — меню, карта бара, график
+const WELCOME_PAPER_CARD = {
+  icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>),
+  title: "Унести с собой",
+  text: "Меню и карта бара собираются в лист картинкой: фото, состав, аллергены, КБЖУ — или спеки и порядок сборки. По страницам, сохраняется в галерею и уходит в любой чат — вход и коды при этом не нужны. Удобно учить с бумаги и раздавать новичкам. График так же уходит картинкой всей смене.",
+};
+
 // Доп. 214: тренажёры и колоды — карточка попапа
 const WELCOME_TRAIN_CARD = {
   icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3h8l-1 7a3 3 0 0 1-6 0z"/><path d="M12 13v6M8 21h8"/><path d="M4 8l2-2M20 8l-2-2" opacity="0.6"/></svg>),
@@ -203,7 +210,7 @@ const WELCOME_TRAIN_CARD = {
 const WELCOME_MENUEDIT_CARD = {
   icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z" opacity="0.6"/></svg>),
   title: "Меню: редактор, стоп-лист, архив",
-  text: "Меню → Редактор: импорт из PDF с проверкой аллергенов, три AI-варианта описания, предпросмотр «как увидит официант». «В стоп» — один тап, и команда видит «Сегодня нет». Удалённое — в архив. В Колоде бармена — «В карту бара» и «Свои ›»: редактор авторских коктейлей с витражом и сборкой.",
+  text: "Меню → Редактор: импорт из PDF с проверкой аллергенов, три AI-варианта описания, предпросмотр «как увидит официант», строка КБЖУ с подстановкой из ведомости. «В стоп» — один тап, и команда видит «Сегодня нет». Удалённое — в архив. В Колоде бармена — «В карту бара» и «Свои ›»: редактор авторских коктейлей с витражом и сборкой.",
 };
 
 function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
@@ -215,7 +222,7 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
     ...WELCOME_TABS_CARDS,
     WELCOME_BUILD_CARD, WELCOME_REF_CARD, WELCOME_MORE_CARDS[0], WELCOME_AI_CARD,
     WELCOME_SCHED_CARD, WELCOME_MORE_CARDS[1], WELCOME_MORE_CARDS[2], WELCOME_TRAIN_CARD,
-    ...WELCOME_CARDS.slice(2),
+    ...WELCOME_CARDS.slice(2), WELCOME_PAPER_CARD,
     ...(canHire ? [WELCOME_SCHEDIT_CARD, WELCOME_MENUEDIT_CARD, WELCOME_HIRE_CARD] : []),
     ...(isAdmin ? [WELCOME_ADMIN_CARD] : []),
     WELCOME_MORE_CARDS[3],
@@ -1146,10 +1153,10 @@ function ServiceAcademy() {
   useEffect(() => {
     if (!profile || !storageLoaded) return;
     // v3: тур большого обновления — разово покажется и давним пользователям
-    try { if (localStorage.getItem("sa_welcome_seen_v8") !== "1") setWelcome(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_welcome_seen_v9") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen_v8", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v9", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };

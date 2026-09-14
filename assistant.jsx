@@ -1,0 +1,648 @@
+// ui/assistant.jsx
+// ─────────────────────────────────────────────────────────────────────
+// AI-ассистент «Наставник»: чат с ИИ, знающим стандарты Service Academy.
+// Работает через Supabase Edge Function ai-chat (ключ провайдера — на
+// сервере). История хранится локально на устройстве, на сервер уходят
+// только последние реплики для контекста. Пока функция не развёрнута,
+// экран честно объясняет, что настроить (supabase/AI-SETUP.md).
+// ─────────────────────────────────────────────────────────────────────
+import React from "react";
+import { createPortal } from "react-dom";
+import { GOLD, RED, RADIUS } from "./tokens";
+import { vibrate, onActivate } from "../lib/utils";
+import { MicButton } from "./mic";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
+import { withRefContext, rememberSharedMenu, dishesOf } from "../lib/reference-context";
+import { COCKTAILS } from "../data/cocktails";
+import { CocktailArt } from "./cocktail-art";
+import { UI_SVG } from "./icons";
+import { ACCENT_SERIF } from "./styles";
+
+const STORE = "sa_ai_chats_v2"; // сессии чатов: { uid: { sessions: [...], activeId } }
+const OLD_STORE = "sa_ai_chat_v1";
+const MAX_STORED = 60;   // реплик на чат храним на устройстве
+const MAX_SENT = 12;     // последних реплик уходит в контекст
+const MAX_CHATS = 20;    // чатов в списке
+
+const freshSession = () => ({
+  id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+  title: "Новый чат", msgs: [], updatedAt: Date.now(),
+});
+const titleOf = (msgs) => {
+  const u = msgs.find(m => m.role === "user");
+  if (!u) return "Новый чат";
+  return u.content.length > 34 ? u.content.slice(0, 34) + "…" : u.content;
+};
+const loadStore = (uid) => {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORE) || "{}");
+    if (all[uid]?.sessions?.length) return all[uid];
+  } catch (e) {}
+  // миграция старой одиночной истории в первый чат
+  let msgs = [];
+  try {
+    const old = JSON.parse(localStorage.getItem(OLD_STORE) || "{}");
+    if (Array.isArray(old[uid])) msgs = old[uid];
+  } catch (e) {}
+  const s = { ...freshSession(), title: titleOf(msgs), msgs };
+  return { sessions: [s], activeId: s.id };
+};
+const saveStore = (uid, st) => {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORE) || "{}");
+    all[uid] = {
+      activeId: st.activeId,
+      sessions: st.sessions.slice(0, MAX_CHATS).map(s => ({ ...s, msgs: s.msgs.slice(-MAX_STORED) })),
+    };
+    localStorage.setItem(STORE, JSON.stringify(all));
+  } catch (e) {}
+};
+
+// Мини-разметка ответа: **жирное** и переносы строк, без полного markdown
+function Rich({ text, color }) {
+  const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <span style={{ whiteSpace: "pre-wrap" }}>
+      {parts.map((p, i) =>
+        p.startsWith("**") && p.endsWith("**")
+          ? <b key={i} style={{ color }}>{p.slice(2, -2)}</b>
+          : <span key={i}>{p}</span>
+      )}
+    </span>
+  );
+}
+
+const QUICK_ZAL = [
+  "Гость недоволен блюдом — что говорить?",
+  "Как красиво предложить десерт?",
+  "Запара, всё горит — с чего начать?",
+  "Гость спросил про аллергены",
+];
+const QUICK_BAR = [
+  "Гость просит посоветовать коктейль",
+  "Чем стир отличается от шейка?",
+  "Гость перебрал — как отказать?",
+  "Ингредиент в стопе, что делать?",
+];
+// Барменам — свои подсказки, остальным прежние
+const quickFor = (position) => ["bartender", "senior_bartender"].includes(position) ? QUICK_BAR : QUICK_ZAL;
+
+const ERRORS = {
+  not_configured: "Ассистент ещё не подключён на сервере. Менеджеру: инструкция — supabase/AI-SETUP.md в проекте.",
+  rate_limit: (() => {
+    // Лимит OpenRouter сбрасывается в полночь UTC. Показываем это время
+    // в часах пользователя — чтобы «ждать до полуночи UTC» стало понятным.
+    try {
+      const now = new Date();
+      const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+      const hhmm = next.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      return `Дневной лимит бесплатного ИИ исчерпан. Обновится примерно в ${hhmm} по вашему времени. Можно подождать или попросить менеджера переключить модель.`;
+    } catch (e) {
+      return "Дневной лимит бесплатного ИИ исчерпан — попробуйте позже или попросите менеджера переключить модель.";
+    }
+  })(),
+  daily_limit: (() => {
+    // Персональный лимит 20/сутки. Сброс — полночь UTC, показываем в часах пользователя.
+    try {
+      const now = new Date();
+      const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+      const hhmm = next.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      return `На сегодня лимит вопросов Наставнику исчерпан (20 в сутки). Обновится примерно в ${hhmm} по вашему времени. Загляни в уроки или SOS — там тоже много ответов!`;
+    } catch (e) {
+      return "На сегодня лимит вопросов Наставнику исчерпан (20 в сутки). Попробуй завтра — или загляни в уроки и SOS.";
+    }
+  })(),
+  auth: "Не удалось подтвердить твой доступ. Перезайди в приложение по своему коду.",
+  network: "Нет связи с сервером. Проверь интернет и попробуй ещё раз.",
+  provider: "ИИ-провайдер сейчас недоступен. Попробуй через минуту.",
+  empty: "Ассистент промолчал — попробуй переформулировать вопрос.",
+  server: "Что-то пошло не так на сервере. Попробуй ещё раз.",
+};
+
+export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner }) {
+  const uid = String(profile?.id || "anon");
+  const [store, setStore] = React.useState(() => loadStore(uid));
+  const active = store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
+  const msgs = active.msgs;
+  const [showChats, setShowChats] = React.useState(false);
+  const [delArm, setDelArm] = React.useState(null); // чат, «взведённый» на удаление
+  // обновить реплики активного чата (+ заголовок и время) и сохранить
+  const updMsgs = React.useCallback((nextMsgs) => {
+    setStore(st => {
+      const sessions = st.sessions.map(s =>
+        s.id === st.activeId ? { ...s, msgs: nextMsgs, title: titleOf(nextMsgs), updatedAt: Date.now() } : s);
+      const next = { ...st, sessions };
+      saveStore(uid, next);
+      return next;
+    });
+  }, [uid]);
+  const newChat = () => {
+    vibrate("light");
+    setShowChats(false); setError(null);
+    if (msgs.length === 0) return; // текущий и так пустой
+    setStore(st => {
+      const s = freshSession();
+      const next = { activeId: s.id, sessions: [s, ...st.sessions].slice(0, MAX_CHATS) };
+      saveStore(uid, next);
+      return next;
+    });
+  };
+  const switchChat = (id) => {
+    vibrate("light");
+    setError(null);
+    setStore(st => { const next = { ...st, activeId: id }; saveStore(uid, next); return next; });
+    setShowChats(false);
+  };
+  const deleteChat = (id) => {
+    vibrate("light");
+    setStore(st => {
+      let sessions = st.sessions.filter(s => s.id !== id);
+      if (!sessions.length) sessions = [freshSession()];
+      const activeId = st.activeId === id ? sessions[0].id : st.activeId;
+      const next = { sessions, activeId };
+      saveStore(uid, next);
+      return next;
+    });
+  };
+  const [input, setInput] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const [remaining, setRemaining] = React.useState(-1); // -1 = неизвестно/безлимит
+  const [confirmClear, setConfirmClear] = React.useState(false);
+  const listRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+  // Дополнение 129: ассистент знает меню команды с сервера, даже если сотрудник
+  // ни разу не открывал тренажёр меню на этом телефоне.
+  React.useEffect(() => {
+    const r = profile?.restaurant; if (!r) return;
+    rpc("menu_get", { p_restaurant: r }).then(res => {
+      const arr = typeof res === "string" ? JSON.parse(res) : res;
+      if (Array.isArray(arr)) rememberSharedMenu(r, arr);
+    }).catch(() => {});
+  }, [profile?.restaurant]);
+  // Дополнение 126: поле растёт и когда текст пришёл голосом (setInput мимо onChange).
+  React.useEffect(() => {
+    const el = inputRef.current; if (!el) return;
+    el.style.height = "44px";
+    const h = el.scrollHeight;
+    if (h > 44) el.style.height = Math.min(h, 122) + "px";
+  }, [input]);
+  const gold = a11y ? "#8B6A30" : GOLD;
+  const sub = T.modSub.color;
+
+  const glass = {
+    background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
+    border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
+    boxShadow: T.lessGlass?.shadow || "0 6px 22px rgba(0,0,0,0.50), 0 2px 0 rgba(200,160,60,0.18) inset",
+    borderRadius: RADIUS.lg,
+  };
+
+  // Пока чат открыт — глушим жест «потяни вниз, чтобы свернуть» у Telegram
+  React.useEffect(() => {
+    // Жесты Telegram настраиваются глобально при старте (index.html):
+    // expand + disableVerticalSwipes. Локально не переключаем, чтобы уход
+    // с экрана не возвращал жест сворачивания.
+  }, []);
+
+  // Клавиатура iOS выезжает ПОВЕРХ fixed-элементов — следим за видимой
+  // областью (visualViewport) и приподнимаем низ экрана на её высоту,
+  // чтобы строка ввода всегда оставалась над клавиатурой.
+  const [kb, setKb] = React.useState(0);
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const measure = () => setKb(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    vv.addEventListener("resize", measure);
+    vv.addEventListener("scroll", measure);
+    measure();
+    return () => { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); };
+  }, []);
+
+  // автопрокрутка к последним репликам
+  React.useEffect(() => {
+    const el = listRef.current;
+    if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }, [msgs, sending, kb]);
+
+  const send = React.useCallback((textArg) => {
+    const text = (textArg ?? input).trim();
+    if (!text || sending) return;
+    vibrate("light");
+    setError(null);
+    setInput("");
+    if (inputRef.current) inputRef.current.style.height = "44px";
+    const next = [...msgs, { role: "user", content: text, t: Date.now() }];
+    updMsgs(next);
+    setSending(true);
+    fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        token: saToken(),
+        // Справочник подмешивается в копию последнего вопроса (клиентский RAG):
+        // ассистент отвечает по главам приложения, история в UI остаётся чистой.
+        messages: withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content })), profile, learner),
+      }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d?.ok && d.reply) {
+          const done = [...next, { role: "assistant", content: d.reply, t: Date.now() }];
+          updMsgs(done);
+          vibrate("light");
+          if (typeof d.remaining === "number") setRemaining(d.remaining);
+        } else {
+          setError(ERRORS[d?.error] || ERRORS.server);
+        }
+      })
+      .catch(() => setError(ERRORS.network))
+      .finally(() => setSending(false));
+  }, [input, msgs, sending, uid, updMsgs]);
+
+  const clearChat = () => {
+    vibrate("light");
+    updMsgs([]);
+    setConfirmClear(false); setError(null);
+  };
+
+  const lastUser = [...msgs].reverse().find(m => m.role === "user");
+
+  // Модальные панели (список чатов, подтверждение): плотное стекло,
+  // накрывающее контент — в отличие от карточного lessGlass, которое
+  // в светлой теме слишком прозрачно и «тонет» в переписке
+  const panel = {
+    borderRadius: RADIUS.lg,
+    background: a11y ? "rgba(250,242,222,0.86)" : "rgba(28,20,8,0.90)",
+    backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+    border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(255,255,255,0.16)",
+    boxShadow: a11y
+      ? "inset 0 0 26px rgba(255,250,235,0.6), inset 0 1px 0 rgba(255,252,240,0.9), 0 14px 40px rgba(70,50,15,0.28)"
+      : "inset 0 0 26px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.14), 0 14px 40px rgba(0,0,0,0.55)",
+  };
+
+  // «Морозный лёд»: прозрачное стекло с внутренним инеем — морозность
+  // без backdrop-blur, работает на любой платформе. mine = реплика человека.
+  const frost = (mine) => a11y
+    ? (mine
+      ? { background: "rgba(139,106,48,0.09)", border: "1px solid rgba(139,106,48,0.42)",
+          boxShadow: "inset 0 0 22px rgba(255,255,255,0.40), inset 0 1px 0 rgba(255,255,255,0.70)", color: "#3A2E1C" }
+      : { background: "rgba(250,242,222,0.55)", border: "1px solid rgba(139,106,48,0.30)",
+          boxShadow: "inset 0 0 22px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)", color: "#3A2E1C" })
+    : (mine
+      ? { background: "rgba(200,169,110,0.10)", border: "1px solid rgba(214,178,102,0.35)",
+          boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#F5E9CE" }
+      : { background: "rgba(255,250,238,0.05)", border: "1px solid rgba(255,255,255,0.13)",
+          boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#EFE6D2" });
+
+  // Уровень 2: [[go:ключ|Подпись]] в конце ответа → кнопка-переход
+  const NAV_LABELS = {
+    sos: "Открыть SOS", glossary: "Глоссарий", leaderboard: "Рейтинг", menu: "Открыть меню",
+    profile: "Мой профиль", daily: "Задания", checklist: "Чек-листы",
+    reference: "Справочник", stats: "Аналитика", candidate: "Собеседование",
+    guestbook: "Книга отзывов", mentor: "Наставничество", cocktails: "Открыть колоду",
+  };
+  // Дополнение 130: карточки с картинкой в ответе. Модель ставит [[cocktail:ID]] /
+  // [[dish:ID]] (id даны ей в контексте); если забыла — ищем в тексте ответа
+  // точные названия коктейлей и блюд своего ресторана. Не больше двух карточек.
+  const myDishes = React.useMemo(() => dishesOf(profile?.restaurant), [profile?.restaurant, msgs.length]);
+  const parseCards = (text) => {
+    let clean = text || "";
+    const cards = [];
+    // Доп. 164: маркер может прийти и с подписью — [[dish:id|Посмотреть карточку]] — принимаем оба вида;
+    // неизвестный id тоже вычищаем из текста, чтобы маркер не висел сырым
+    clean = clean.replace(/\[\[cocktail:([a-zA-Z0-9_-]+)(?:\|[^\]]*)?\]\]/g, (_, id) => { const c = COCKTAILS.find(x => x.id === id); if (c) cards.push({ kind: "cocktail", c }); return ""; });
+    clean = clean.replace(/\[\[dish:([a-zA-Z0-9_-]+)(?:\|[^\]]*)?\]\]/g, (_, id) => { const d = myDishes.find(x => String(x.id) === id); if (d) cards.push({ kind: "dish", d }); return ""; });
+    if (!cards.length) {
+      const low = clean.toLowerCase().replace(/ё/g, "е");
+      for (const c of COCKTAILS) { if (c.name.length >= 4 && low.includes(c.name.toLowerCase().replace(/ё/g, "е"))) { cards.push({ kind: "cocktail", c }); if (cards.length >= 2) break; } }
+      if (cards.length < 2) for (const d of myDishes) { if (d.name && d.name.length >= 4 && low.includes(d.name.toLowerCase().replace(/ё/g, "е"))) { cards.push({ kind: "dish", d }); if (cards.length >= 2) break; } }
+    }
+    return { clean: clean.replace(/\n{3,}/g, "\n\n").trim(), cards: cards.slice(0, 2) };
+  };
+  const cardBox = { marginTop: 10, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 16, cursor: "pointer",
+    border: `1px solid ${gold}55`, background: a11y ? "rgba(139,106,48,0.07)" : "rgba(200,169,110,0.07)",
+    boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.08)"}` };
+  const VisualCard = ({ card }) => {
+    if (card.kind === "cocktail") {
+      const c = card.c;
+      return (
+        <div style={cardBox} onClick={() => { vibrate("light"); onNavigate && onNavigate({ cocktail: c.id }); }} {...onActivate(() => onNavigate && onNavigate({ cocktail: c.id }))} aria-label={c.name}>
+          <div style={{ width: 92, flexShrink: 0, display: "flex", justifyContent: "center" }}><CocktailArt c={c} w={92} light={a11y} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, letterSpacing: 0.6, textTransform: "uppercase", lineHeight: 1.25 }}>{c.name}</div>
+            <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{c.method}{c.glass ? " · " : ""}{({ rocks: "рокс", highball: "хайбол", martini: "коктейльная рюмка", flute: "флюте", hurricane: "харрикейн", margarita: "маргарита", sour: "сауэр", shot: "шот", irish: "айриш", red: "винный" })[c.glass] || ""}</div>
+            <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(c.ing || []).map(i => i[1] ? `${i[0]} ${i[1]}` : i[0]).join(" · ")}</div>
+            <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть в колоде ›</div>
+          </div>
+        </div>
+      );
+    }
+    const d = card.d;
+    return (
+      <div style={cardBox} onClick={() => { vibrate("light"); onNavigate && onNavigate({ dish: d.id }); }} {...onActivate(() => onNavigate && onNavigate({ dish: d.id }))} aria-label={d.name}>
+        {d.img
+          ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12, flexShrink: 0, border: `1px solid ${gold}44` }} />
+          : <div style={{ width: 92, height: 92, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}66`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 11, textAlign: "center", padding: 6 }}>фото добавит менеджер</div>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, lineHeight: 1.25 }}>{d.name}</div>
+          {d.cat && <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{d.cat}</div>}
+          <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(d.ingredients || []).slice(0, 6).join(", ")}</div>
+          {(d.allergens || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>{d.allergens.map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, border: `1px solid ${RED}88`, color: RED }}>{a}</span>)}</div>}
+          <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть карточку ›</div>
+        </div>
+      </div>
+    );
+  };
+  const parseNav = (text) => {
+    // Кнопка урока: [[lesson:ID|Подпись]]
+    const ml = (text || "").match(/\[\[lesson:([a-zA-Z0-9_-]+)(?:\|([^\]]+))?\]\]/);
+    if (ml) {
+      return { clean: text.replace(ml[0], "").trim(), nav: { lesson: ml[1], label: (ml[2] || "Открыть урок").trim() } };
+    }
+    // Кнопка раздела: [[go:key|Подпись]]
+    const m = (text || "").match(/\[\[go:([a-z]+)(?:\|([^\]]+))?\]\]/i);
+    if (!m) return { clean: text, nav: null };
+    let key = m[1].toLowerCase();
+    // Страховка: модель на сервере иногда путает ключ и пишет go:glossary
+    // с подписью «Открыть Справочник». Подпись — честное намерение, ключ —
+    // промах; верим подписи и ведём человека в Справочник.
+    if (key === "glossary" && /справочник/i.test(m[2] || "")) key = "reference";
+    if (!NAV_LABELS[key]) return { clean: text.replace(m[0], "").trim(), nav: null };
+    return { clean: text.replace(m[0], "").trim(), nav: { key, label: (m[2] || NAV_LABELS[key]).trim() } };
+  };
+
+  const miniBtn = {
+    width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    background: a11y ? "rgba(139,106,48,0.10)" : "rgba(250,240,215,0.08)",
+    border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,160,80,0.35)"}`,
+  };
+  const fmtWhen = (ts) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) + " · " +
+           d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  return createPortal(
+    <div className="sa-screen sa-dlg"
+      style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
+        transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
+        background: a11y
+          ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
+          : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)" }}>
+      {/* ── Шапка ── */}
+      <div style={T.lessHead}>
+        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
+          Наставник
+          <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI</span>
+        </div>
+        <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+          <button className="sa-btn" style={miniBtn} aria-label="Список чатов"
+            onClick={() => { vibrate("light"); setConfirmClear(false); setDelArm(null); setShowChats(v => !v); }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>
+            </svg>
+          </button>
+          <button className="sa-btn" style={miniBtn} aria-label="Новый чат" onClick={newChat}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14"/><path d="M5 12h14"/>
+            </svg>
+          </button>
+          {msgs.length > 0 && (
+            <button className="sa-btn" style={miniBtn} aria-label="Очистить переписку"
+              onClick={() => { setShowChats(false); setConfirmClear(true); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Оверлеи под шапкой: подтверждение очистки и список чатов ──
+          Абсолютные, поверх ленты — видны при любой длине переписки.
+          Подложка-ловушка: тап мимо панели закрывает её */}
+      {(showChats || confirmClear) && (
+        <div onClick={() => { setShowChats(false); setConfirmClear(false); setDelArm(null); }}
+          style={{ position: "absolute", inset: 0, zIndex: 5 }} />
+      )}
+      {confirmClear && (
+        <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
+            ...panel, padding: 14, borderColor: RED }}>
+          <div style={{ ...T.bold, marginTop: 0, marginBottom: 6 }}>Очистить переписку?</div>
+          <div style={{ color: sub, fontSize: 12.5, marginBottom: 12 }}>История хранится только на этом устройстве и восстановлению не подлежит.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="sa-btn" onClick={() => setConfirmClear(false)}
+              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Оставить</button>
+            <button className="sa-btn" onClick={clearChat}
+              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${RED}66`, background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Очистить</button>
+          </div>
+        </div>
+      )}
+      {showChats && (
+        <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
+            ...panel, padding: "6px 6px", maxHeight: "55vh", overflowY: "auto", WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain" }} >
+          {store.sessions.map(s => (
+            <div key={s.id}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 10px", borderRadius: RADIUS.md, cursor: "pointer",
+                border: s.id === store.activeId ? `1px solid ${gold}66` : "1px solid transparent",
+                background: s.id === store.activeId ? (a11y ? "rgba(139,106,48,0.08)" : "rgba(200,169,110,0.07)") : "transparent" }}>
+              <div onClick={() => switchChat(s.id)} {...onActivate(() => switchChat(s.id))} style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: T.modTitle.color, fontSize: 13, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                <div style={{ color: sub, fontSize: 10.5, marginTop: 2, fontFamily: "monospace" }}>{fmtWhen(s.updatedAt)}{s.msgs.length ? ` · ${s.msgs.length}` : " · пусто"}</div>
+              </div>
+              {delArm === s.id ? (
+                <button className="sa-btn" onClick={() => deleteChat(s.id)}
+                  style={{ flexShrink: 0, padding: "7px 10px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${RED}66`,
+                    background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 11.5, fontWeight: "bold" }}>Удалить?</button>
+              ) : (
+                <button className="sa-btn" onClick={() => { vibrate("light"); setDelArm(s.id); }} aria-label="Удалить чат"
+                  style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 14, cursor: "pointer", border: "none",
+                    background: "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={sub} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Лента ── */}
+      <div ref={listRef} className="sa-dlgscroll"
+        style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", padding: "14px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
+
+        {msgs.length === 0 && !confirmClear && (
+          <div className="sa-pagein" style={{ ...glass, padding: "20px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 27, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
+                {UI_SVG.sparkle(gold, 26)}
+              </div>
+            </div>
+            <div style={{ color: T.lessHeadTitle?.color, fontFamily: ACCENT_SERIF, fontSize: a11y ? 20 : 18, fontWeight: "bold", textAlign: "center", marginBottom: 8 }}>
+              Привет, {profile?.name || "коллега"}!
+            </div>
+            <div style={{ color: sub, fontSize: a11y ? 14.5 : 13, lineHeight: 1.65, textAlign: "center", marginBottom: 4 }}>
+              Я знаю стандарты Service Academy и помогу с любой рабочей ситуацией:
+              гости, конфликты, подача, запара. Спрашивай как коллегу — или начни с готового вопроса:
+            </div>
+          </div>
+        )}
+
+        {msgs.length === 0 && !confirmClear && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {quickFor(profile?.position).map((q, i) => (
+              <button key={i} className="sa-btn sa-pagein" onClick={() => send(q)}
+                style={{ ...glass, animationDelay: (i * 0.06) + "s", padding: "12px 14px", textAlign: "left", cursor: "pointer", color: T.modTitle.color, fontFamily: "Georgia, serif", fontSize: a11y ? 14.5 : 13.5, lineHeight: 1.45 }}>
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {msgs.map((m, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            <div className="dlg-in" style={{
+              maxWidth: "86%", padding: "11px 14px", fontSize: a11y ? 15 : 13.5, lineHeight: 1.6,
+              fontFamily: "Georgia, serif",
+              ...frost(m.role === "user"),
+              borderRadius: RADIUS.lg,
+            }}>
+              {(() => {
+                const nv = m.role === "assistant" ? parseNav(m.content) : { clean: m.content, nav: null };
+                const { clean, cards } = m.role === "assistant" ? parseCards(nv.clean) : { clean: nv.clean, cards: [] };
+                const nav = nv.nav;
+                return (<>
+                  <Rich text={clean} color={gold} />
+                  {cards.map((card, k) => <VisualCard key={k} card={card} />)}
+                  {nav && onNavigate && (
+                    <button className="sa-btn" onClick={() => { vibrate("light"); onNavigate(nav.lesson ? { lesson: nav.lesson } : nav.key); }}
+                      style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px",
+                        borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}66`,
+                        background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.12)",
+                        color: gold, fontFamily: "Georgia, serif", fontSize: 13.5, fontWeight: "bold",
+                        boxShadow: `inset 0 0 14px ${a11y ? "rgba(255,255,255,0.4)" : "rgba(255,230,170,0.10)"}` }}>
+                      {nav.label}
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </button>
+                  )}
+                </>);
+              })()}
+            </div>
+          </div>
+        ))}
+
+        {sending && (
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div style={{ ...frost(false), padding: "12px 16px", borderRadius: RADIUS.lg, display: "flex", gap: 5 }}>
+              {[0, 1, 2].map(i => (
+                <span key={i} className="sa-pulse" style={{ width: 6, height: 6, borderRadius: 3, background: gold, animationDelay: (i * 0.18) + "s" }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="sa-pagein" style={{ ...glass, padding: "12px 14px", borderColor: `${RED}66` }}>
+            <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginBottom: lastUser ? 10 : 0 }}>{error}</div>
+            {lastUser && (
+              <button className="sa-btn" onClick={() => send(lastUser.content)}
+                style={{ padding: "9px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>
+                ↻ Повторить
+              </button>
+            )}
+          </div>
+        )}
+
+        {remaining >= 0 && remaining <= 5 && !sending && (
+          <div style={{ color: remaining <= 2 ? "#D98880" : gold, fontSize: 12, textAlign: "center", fontFamily: "Georgia, serif", padding: "5px 0", fontStyle: "italic", fontWeight: remaining <= 2 ? "bold" : "normal" }}>
+            {remaining === 0
+              ? (() => {
+                  try {
+                    const now = new Date();
+                    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+                    const hhmm = next.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                    return `Лимит исчерпан · обновится в ${hhmm}`;
+                  } catch (e) { return "Лимит на сегодня исчерпан"; }
+                })()
+              : `Осталось сообщений: ${remaining} · формулируй по сути`}
+          </div>
+        )}
+        {msgs.length > 0 && !sending && (
+          <div style={{ color: sub, fontSize: 10, textAlign: "center", opacity: 0.7, fontFamily: "monospace", letterSpacing: 1, padding: "4px 0" }}>
+            ИИ МОЖЕТ ОШИБАТЬСЯ · СТАНДАРТЫ РЕСТОРАНА ГЛАВНЕЕ
+          </div>
+        )}
+      </div>
+
+      {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
+      <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
+        {/* Быстрые чипы: пустое поле пугает — готовые вопросы приглашают.
+              Собираются из learner-контекста, живут пока поле пустое */}
+          {!input && msgs.length === 0 && (() => {
+            const qs = [];
+            if (learner && learner.dueMistakes > 0) qs.push("Что мне повторить перед сменой?");
+            if (learner && learner.todayShift && learner.todayShift !== "выходной") qs.push("Подготовь меня к сегодняшней смене");
+            // Без контекста чип не нужен: приветствие уже предлагает вопросы
+            if (!qs.length) return null;
+            return (
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", padding:"0 2px 8px" }}>
+                {qs.slice(0, 3).map(t => (
+                  <span key={t} onClick={() => setInput(t)}
+                    style={{ fontSize:11.5, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
+                      background:"rgba(200,169,110,0.08)", border:"1px solid rgba(200,169,110,0.3)",
+                      WebkitTapHighlightColor:"transparent" }}>{t}</span>
+                ))}
+              </div>
+            );
+          })()}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 29,
+            background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
+            backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",
+            boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)"}, 0 6px 22px rgba(0,0,0,${a11y ? 0.10 : 0.38})` }}>
+          <textarea
+            ref={inputRef}
+            className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
+            value={input}
+            rows={1}
+            onChange={e => {
+              setInput(e.target.value);
+              // авто-рост: от базовой высоты до ~5 строк, дальше внутренний скролл
+              e.target.style.height = "44px";
+              const h = e.target.scrollHeight;
+              if (h > 44) e.target.style.height = Math.min(h, 122) + "px";
+            }}
+            placeholder="Спроси наставника…"
+            maxLength={600}
+            style={{ flex: 1, minWidth: 0, padding: "11px 0", fontSize: 15, fontFamily: "Georgia, serif",
+              lineHeight: 1.45, resize: "none", height: 44, minHeight: 44, maxHeight: 122, overflowY: "auto", boxSizing: "border-box",
+              caretColor: a11y ? "#8B6A30" : "#C8A96E",
+              background: "transparent", border: "none", outline: "none",
+              color: a11y ? "#3A2E1C" : "#F0E8D8" }}
+          />
+          <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
+            headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
+            onText={t => setInput(v => (v ? v.trimEnd() + " " : "") + t)}
+            onError={m => { setInput(v => v); try { window.Telegram?.WebApp?.showAlert?.(m); } catch (e) { alert(m); } }} />
+          <button className="sa-btn" onClick={() => send()} disabled={sending || !input.trim()}
+            style={{ width: 44, height: 44, borderRadius: 22, border: "none", cursor: "pointer", flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: input.trim() && !sending ? "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)" : "rgba(160,120,60,0.22)",
+              boxShadow: input.trim() && !sending ? "0 4px 14px rgba(200,160,80,0.3)" : "none", transition: "all 0.2s ease" }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  , document.body);
+}

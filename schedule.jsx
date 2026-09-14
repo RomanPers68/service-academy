@@ -22,7 +22,21 @@ const MONTHS_N = ["Январь","Февраль","Март","Апрель","М�
 const MONTHS_R = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
 // Порядок позиций: сверху руководство, дальше по залу
-export const POS = [
+export // Доп. 248/250: типовые заведения — один источник для раздела настройки и мастера
+const VENUE_PRESETS = [
+  { id: "rest", t: "Ресторан с кухней", s: "12:00–24:00 · утро, день, вечер", hours: [[12,24],[12,24],[12,24],[12,24],[12,2],[12,2],[12,24]],
+    shifts: [{k:"У",name:"Утро",from:11,to:19},{k:"Д",name:"День",from:12,to:20},{k:"В",name:"Вечер",from:16,to:24},{k:"К",name:"Кейтеринг",from:10,to:22,extra:1}], dayShift: "Д" },
+  { id: "bar", t: "Бар вечерний", s: "16:00–02:00 · день и ночь", hours: [[16,2],[16,2],[16,2],[16,2],[16,4],[16,4],[16,2]],
+    shifts: [{k:"Д",name:"День",from:16,to:24},{k:"В",name:"Ночь",from:19,to:3},{k:"К",name:"Кейтеринг",from:14,to:22,extra:1}], dayShift: "Д" },
+  { id: "cafe", t: "Кофейня", s: "08:00–22:00 · две смены", hours: [[8,22],[8,22],[8,22],[8,22],[8,23],[9,23],[9,22]],
+    shifts: [{k:"У",name:"Утро",from:8,to:15},{k:"Д",name:"Вечер",from:15,to:22},{k:"К",name:"Кейтеринг",from:8,to:16,extra:1}], dayShift: "У" },
+  { id: "day", t: "Столовая / бизнес-ланч", s: "09:00–18:00 · одна смена", hours: [[9,18],[9,18],[9,18],[9,18],[9,18],[10,16],[0,0]],
+    shifts: [{k:"Д",name:"Смена",from:9,to:18},{k:"К",name:"Кейтеринг",from:8,to:16,extra:1}], dayShift: "Д" },
+  { id: "24", t: "Круглосуточно", s: "две смены по 12 часов", hours: [[0,24],[0,24],[0,24],[0,24],[0,24],[0,24],[0,24]],
+    shifts: [{k:"Д",name:"День",from:8,to:20},{k:"В",name:"Ночь",from:20,to:8},{k:"К",name:"Подмена",from:12,to:20,extra:1}], dayShift: "Д" },
+];
+
+const POS = [
   { id: "manager", t: "Менеджер" }, { id: "host", t: "Хостес" }, { id: "call", t: "Колл-центр" },
   { id: "bar", t: "Бар" }, { id: "barback", t: "Барбек" },
   { id: "waiter", t: "Официант" }, { id: "runner", t: "Раннер" },
@@ -172,6 +186,7 @@ function Pill({ on, children, onClick, a11y, P, style }) {
     <button onClick={onClick} className="sa-btn" style={{
       padding:"6px 10px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:11.5,
       color: on ? GOLD : P.sub, background: on ? "rgba(200,169,110,0.13)" : "transparent",
+      boxShadow: on ? "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 12px rgba(255,230,170,0.09), inset 0 1px 0 rgba(255,255,255,0.14)" : "none",
       border:`1px solid ${on ? GOLD + "99" : (a11y ? "rgba(175,140,65,0.3)" : "rgba(145,108,40,0.3)")}`,
       ...style }}>{children}</button>
   );
@@ -181,16 +196,97 @@ function Pill({ on, children, onClick, a11y, P, style }) {
 // звонит; stopPropagation — чтобы тап не сворачивал раскрытый день.
 // Компонент на уровне модуля: объявленный внутри экрана, он получал бы новую
 // идентичность каждый рендер, и React пересоздавал бы DOM ссылки впустую.
+// Фирменные линейные иконки вместо эмодзи: эмодзи в латунном интерьере
+// выглядели чужими (замечание владельца). Стиль — как у плиток главной:
+// тонкий штрих, скруглённые концы.
+const Ico = ({ size = 12, color = "#C8A96E", sw = 1.7, children, dy = 0 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+    style={{ flexShrink:0, verticalAlign: dy }}>{children}</svg>
+);
+const IcoUsers = (p) => <Ico {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" /><circle cx="17" cy="9" r="2.4" /><path d="M15.8 14.4c2.2.4 3.7 1.8 4.2 4.1" /></Ico>;
+const IcoClock = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Ico>;
+const IcoBulb = (p) => <Ico {...p}><path d="M9.5 18h5M10.5 21h3" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.7.5 1 1.3 1 2.1h5c0-.8.3-1.6 1-2.1A6 6 0 0 0 12 3z" /></Ico>;
+const IcoBan = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><path d="M6.2 6.2l11.6 11.6" /></Ico>;
+const IcoSun = (p) => <Ico {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" /></Ico>;
+const IcoTarget = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.3" /><circle cx="12" cy="12" r="0.8" fill={p.color || "#C8A96E"} stroke="none" /></Ico>;
+const IcoWave = (p) => <Ico {...p}><path d="M2.5 10c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /><path d="M2.5 16c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /></Ico>;
+const IcoPhone = (p) => <Ico {...p}><path d="M5.5 4h3.4l1.6 4-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4 1.6v3.4a2 2 0 0 1-2.2 2A17 17 0 0 1 3.5 6.2 2 2 0 0 1 5.5 4z" /></Ico>;
+// Числа с достоинством: значение досчитывается за ~0.6с (ease-out).
+// Движутся ЦИФРЫ, не поверхности — морозный лёд статичен.
+function NumUp({ v }) {
+  const [k, setK] = React.useState(0);
+  React.useEffect(() => {
+    let raf; const t0 = performance.now();
+    const step = (t) => {
+      const pr = Math.min(1, (t - t0) / 600);
+      setK(Math.round(v * (1 - Math.pow(1 - pr, 3))));
+      if (pr < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [v]);
+  return <>{k.toLocaleString("ru-RU")}</>;
+}
 const telHref = ph => "tel:" + String(ph).replace(/[^+\d]/g, "");
 function CallName({ who, label, color }) {
-  return who && who.phone ? (
-    <a href={telHref(who.phone)} onClick={e => e.stopPropagation()}
-      style={{ color, textDecoration:"none", borderBottom:`1px dashed ${color}AA` }}>{label}</a>
-  ) : <>{label}</>;
+  // Контакт-капсула: имя с трубкой (без служебного пунктира — замечание
+  // владельца), тап раскрывает ЗОЛОТУЮ кнопку с номером. Тап по номеру —
+  // сразу звонилка: и якорь tel:, и принудительный переход location.href
+  // (разные клиенты Telegram глушат разное — бьём с двух рук), а номер
+  // заодно тихо ложится в буфер на случай, если WebView глушит всё.
+  const [shown, setShown] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  if (!(who && who.phone)) return <>{label}</>;
+  const url = telHref(who.phone);
+  const tap = (e) => { e.stopPropagation(); setShown(v => !v); };
+  const dial = (e) => {
+    e.stopPropagation();
+    // Прод-факт: Telegram-WebView глушит и tel:-якорь, и location.href.
+    // Официальная дверь — t.me-ссылка на профиль по номеру: открывается
+    // самим Telegram, в профиле — родная кнопка звонка и номер. Снаружи
+    // Telegram (Safari) работает обычный tel:. Буфер — третий рубеж.
+    try {
+      navigator.clipboard?.writeText(String(who.phone));
+      setCopied(true); setTimeout(() => setCopied(false), 1800);
+    } catch (err) {}
+    const raw = String(who.phone).replace(/\D/g, "");
+    const intl = raw.length === 11 && raw[0] === "8" ? "7" + raw.slice(1) : raw;
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && typeof tg.openTelegramLink === "function" && intl.length >= 10) {
+      try { tg.openTelegramLink("https://t.me/+" + intl); } catch (err) {}
+    }
+    try { window.location.href = url; } catch (err) {}
+  };
+  return (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:6, flexWrap:"wrap", verticalAlign:"middle" }}>
+      <span onClick={tap} style={{ display:"inline-flex", alignItems:"center", gap:5, color, cursor:"pointer",
+        padding:"2px 9px", borderRadius:999, border:`1px solid ${color}44`,
+        background:"rgba(200,169,110,0.08)", WebkitTapHighlightColor:"transparent" }}>
+        <IcoPhone size={10} color={color} />
+        {label}
+      </span>
+      {shown ? (
+        <a href={url} onClick={dial}
+          style={{ display:"inline-flex", alignItems:"center", gap:6, textDecoration:"none",
+            fontFamily:mono, fontSize:"0.95em", fontWeight:700, color:INK_DEEP,
+            background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"4px 12px",
+            borderRadius:999, whiteSpace:"nowrap", boxShadow:"0 2px 8px rgba(0,0,0,0.25)" }}>
+          <IcoPhone size={11} color={INK_DEEP} sw={2.1} />
+          {who.phone}
+        </a>
+      ) : null}
+      {copied ? (
+        <span style={{ fontSize:"0.78em", fontFamily:mono, color, opacity:.8, whiteSpace:"nowrap" }}>
+          номер скопирован
+        </span>
+      ) : null}
+    </span>
+  );
 }
 function Sec({ no, title, hint, open, onToggle, P, children }) {
   return (
-    <div className="sa-schedsec" style={{ marginBottom:8, borderRadius:14, overflow:"hidden" }}>
+    <div className="sa-schedsec" style={{ marginBottom:8, borderRadius:14, overflow:"hidden", flexShrink:0 }}>
       <div onClick={onToggle} {...onActivate(onToggle)}
         style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 13px", cursor:"pointer" }}>
         <div className="sa-schedno">{no}</div>
@@ -206,8 +302,10 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
   );
 }
 
-export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
-  const isAdmin = !!profile?.is_admin;
+export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist }) {
+  // Редактор графика — не только владелец: менеджеры и руководители тоже
+  // (та же формула, что у собеседования кандидатов — canHire в App).
+  const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
   const now = new Date();
   const [Y, setY] = React.useState(now.getFullYear());
   const [M, setM] = React.useState(now.getMonth());
@@ -221,7 +319,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [dbg, setDbg] = React.useState("");     // сырой ответ сервера для разбора
   const [tab, setTab] = React.useState("plan"); // plan · setup
   const [openSec, setOpenSec] = React.useState(1);
+  const wizTried = React.useRef(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
+  const [more, setMore] = React.useState(false);        // Доп. 150: редкие действия — за «Ещё»
+  // Доп. 250: мастер первого входа — четыре вопроса вместо шести разделов
+  const [wiz, setWiz] = React.useState(null);           // null | { step, preset, need, rows }
+  const wizDone = () => { try { return localStorage.getItem("sa_sched_wizard_" + (profile?.restaurant || "")) === "1"; } catch (e) { return true; } };
+  const markWizDone = () => { try { localStorage.setItem("sa_sched_wizard_" + (profile?.restaurant || ""), "1"); } catch (e) {} };
+  const [todayOpen, setTodayOpen] = React.useState(false); // Доп. 150/262: «Сегодня» свёрнуто — пульс дня даёт полоска недели
   // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
   // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
   const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
@@ -231,22 +336,54 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const [shotMode, setShotMode] = React.useState("chat");  // chat · a4
   const [openDay, setOpenDay] = React.useState(0);     // раскрытый день в виде сотрудника
   const [openEmp, setOpenEmp] = React.useState(0);     // раскрытая карточка сотрудника в настройках
+  const [offRange, setOffRange] = React.useState(false); // календарь дат: режим «диапазон»
+  const [offAnchor, setOffAnchor] = React.useState(null); // первый тап диапазона {i, d}
   // Отмена последнего крупного действия (генерация, обмен, очистка, снятие
   // замков): один снапшот, честная страховка от «ой, не то нажал».
   const undoRef = React.useRef(null);
   const [undoTick, setUndoTick] = React.useState(0);
   const snapUndo = () => {
-    undoRef.current = { plan: JSON.parse(JSON.stringify(plan)), locks: JSON.parse(JSON.stringify(locks)) };
+    undoRef.current = { plan: JSON.parse(JSON.stringify(plan)), locks: JSON.parse(JSON.stringify(locks)), facts: JSON.parse(JSON.stringify(facts)) };
     setUndoTick(t => t + 1);
   };
   const undo = () => {
     const u = undoRef.current; if (!u) return;
-    setPlan(u.plan); setLocks(u.locks); undoRef.current = null;
+    setPlan(u.plan); setLocks(u.locks); if (u.facts) setFacts(u.facts); undoRef.current = null;
     setUndoTick(t => t + 1); setDirty(true); vibrate("light");
     setMsg("Вернул как было — не забудь сохранить"); setTimeout(() => setMsg(""), 2500);
   };
   const [swap, setSwap] = React.useState(false);       // режим обмена сменами (менеджер)
+  const [repl, setRepl] = React.useState(false);        // Доп. 256: режим «Кто вместо?»
+  const [replAsk, setReplAsk] = React.useState(null);   // { id, d } — по какой смене ищем замену
+  const [posFilter, setPosFilter] = React.useState(""); // Доп. 257: показывать одну позицию
+  const [prevPlan, setPrevPlan] = React.useState(null); // Доп. 258: план прошлого месяца целиком
   const [swapSel, setSwapSel] = React.useState(null);  // первая выбранная клетка обмена
+  // Факт часов: сотрудник ушёл раньше (нет столов) или задержался —
+  // менеджер отмечает отработанное по факту, и ВСЯ математика (часы,
+  // зарплата, фонд, экспорт) считает честно. { staffId: { day: часы } }
+  const [facts, setFacts] = React.useState({});
+  const [factMode, setFactMode] = React.useState(false);
+  const [factEdit, setFactEdit] = React.useState(null);   // { id, d }
+  // Аналитика внизу страницы свёрнута в секции-кнопки (замечание владельца:
+  // «страница перегружена — сделай как в настройках»). Раскрыт максимум один.
+  const [anOpen, setAnOpen] = React.useState(null);
+  // Хвост прошлого месяца (последняя неделя каждого): шов месяцев —
+  // ритм 2/2 продолжается, «подряд» и отдых считаются через границу
+  const [prevTail, setPrevTail] = React.useState({});
+  // Офлайн-копия: последний загруженный месяц живёт в кеше устройства —
+  // график открывается в подсобке без сети (метка времени копии)
+  const [offlineAt, setOfflineAt] = React.useState(null);
+  // Динамика к прошлому месяцу: смены/часы/фонд (считается из той же
+  // фоновой подгрузки, что кормит шов месяцев)
+  const [prevStats, setPrevStats] = React.useState(null);
+  const [dayEdit, setDayEdit] = React.useState(null);   // заметка ко дню (менеджер)
+  const [backupText, setBackupText] = React.useState("");   // страховка настроек
+  const [swaps, setSwaps] = React.useState([]);       // обмены сменами (сервер)
+  const [swapDay, setSwapDay] = React.useState(0);    // выбранный день для предложения
+  const [prevPay, setPrevPay] = React.useState({});   // заработок прошлого месяца по людям
+  const [planDiff, setPlanDiff] = React.useState([]);  // мои изменённые дни с прошлого визита
+  const [empFilter, setEmpFilter] = React.useState(""); // фильтр сотрудников в настройках
+  const [contactsOpen, setContactsOpen] = React.useState(false);   // «на связи» свёрнуто
   const [covShown, setCovShown] = React.useState(0);    // покрытие, догоняющее настоящее
   const covTarget = React.useRef(0);
 
@@ -278,6 +415,99 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       return nx;
     });
   };
+
+  // Пожелания «прошу выходной»: null — грузятся, false — сервер без функции
+  // (schedule-wishes.sql не применён), объект — карта staffId → [дни].
+  // ВАЖНО: блок стоит ПОСЛЕ mkey/venueKey — их имена живут в deps-массивах,
+  // которые вычисляются при рендере (тот же TDZ, что уже ронял заметки).
+  const [wishes, setWishes] = React.useState(null);
+  // Жёсткие «не смогу выйти» (kind='hard'): для генератора — запрет,
+  // для менеджера — красный уголок. Требует schedule-wishes-v2.sql;
+  // на старом сервере кнопка честно деградирует в подсказку.
+  const [hardOff, setHardOff] = React.useState({});
+  const [wishesV2, setWishesV2] = React.useState(true);
+  const wishOf = (id, d) => wishes && Array.isArray(wishes[id]) && wishes[id].includes(d);
+  const hardOf = (id, d) => Array.isArray(hardOff[id]) && hardOff[id].includes(d);
+
+  const loadWishes = React.useCallback(async () => {
+    try {
+      const r = await rpc("schedule_wishes_get", {
+        p_token: saToken(), p_restaurant: profile?.restaurant || "",
+        p_venue_key: venueKey, p_month: mkey,
+      });
+      if (r && r.ok === true) {
+        const map = {}, hard = {};
+        (r.wishes || []).forEach(w => {
+          const tgt = w.kind === "hard" ? hard : map;
+          (tgt[w.staff_id] = tgt[w.staff_id] || []).push(w.day);
+        });
+        setWishes(map); setHardOff(hard);
+      } else if (String(r?.message || r?.error || "").toLowerCase().includes("schedule_wishes_get")) {
+        setWishes(false);   // функции нет на сервере — фича честно спит
+      } else setWishes({});
+    } catch (e) { setWishes(false); }
+  }, [mkey, venueKey, profile]);
+  React.useEffect(() => { if (state === "ok") { setWishes(null); loadWishes(); } }, [state, loadWishes]);
+  const setWish = async (staffId, d, on, kind = "off") => {
+    if (wishes === false) return;
+    let cap = null;
+    if (kind === "hard" && on) {
+      const meObj = staff.find(x => String(x.id) === String(staffId));
+      cap = meObj ? hardCapacity(d, meObj) : null;
+      if (cap && cap.left <= 0) {
+        // мест нет — честно и сразу, без похода на сервер
+        setWishNote({ d, text: cap.maxHard === 0
+          ? "На этот день никто не может брать «не смогу»: людей ровно столько, сколько нужно залу. Поговори с менеджером"
+          : `Мест на этот день уже нет (${cap.taken} из ${cap.maxHard} заняли коллеги) — кто успел, тот успел. Поговори с менеджером` });
+        vibrate("light");
+        return;
+      }
+    }
+    setWishNote(null);
+    const applyLocal = (setter) => setter(w => {
+      const nx = { ...(w || {}) };
+      const arr = new Set(nx[staffId] || []);
+      on ? arr.add(d) : arr.delete(d);
+      nx[staffId] = [...arr].sort((a, b) => a - b);
+      if (!nx[staffId].length) delete nx[staffId];
+      return nx;
+    });
+    applyLocal(kind === "hard" ? setHardOff : setWishes);
+    // один день — одно состояние: жёсткое и мягкое взаимоисключаются
+    if (on) {
+      const other = kind === "hard" ? setWishes : setHardOff;
+      other(w => { if (!w || !Array.isArray(w[staffId])) return w;
+        const nx = { ...w, [staffId]: w[staffId].filter(x => x !== d) };
+        if (!nx[staffId].length) delete nx[staffId]; return nx; });
+    }
+    vibrate("light");
+    try {
+      const args = {
+        p_token: saToken(), p_restaurant: profile?.restaurant || "",
+        p_venue_key: venueKey, p_month: mkey, p_staff_id: staffId, p_day: d, p_on: on,
+      };
+      let r = await rpc("schedule_wish_set", { ...args, p_kind: kind,
+        ...(cap ? { p_peers: cap.peers, p_max: cap.maxHard } : {}) });
+      if (r && r.ok !== true && r.error === "day_full") {
+        // гонка: пока думал — коллеги заняли места; сервер отбил честно
+        loadWishes();
+        setWishNote({ d, text: "Пока ты думал(а), коллеги заняли последние места на этот день — кто успел, тот успел. Поговори с менеджером" });
+        return;
+      }
+      const miss = (x) => String(x?.message || x?.error || "").toLowerCase().includes("schedule_wish_set");
+      if ((!r || r.ok !== true) && miss(r) && kind !== "hard") {
+        // старый сервер без p_kind: мягкие работают по-старому
+        setWishesV2(false);
+        r = await rpc("schedule_wish_set", args);
+      } else if ((!r || r.ok !== true) && miss(r) && kind === "hard") {
+        setWishesV2(false); loadWishes(); return;
+      }
+      if (!r || r.ok !== true) {
+        if (miss(r)) setWishes(false);
+        else loadWishes();   // рассинхрон — перечитать правду с сервера
+      }
+    } catch (e) { setWishes(false); }
+  };
   const holName = d => HOLIDAYS[`${String(M+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`];
 
   const shiftOf = k => (cfg?.shifts || []).find(s => s.k === k);
@@ -299,11 +529,30 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   const holOf = d => { const o = days[d]; return o && o.hol !== undefined ? o.hol : !!holName(d); };
   const needOf = d => (cfg?.need || {})[lvlOf(d)] || {};
   const onVac = (s, d) => s.vac && s.vac[2] === mkey && d >= s.vac[0] && d <= s.vac[1];
+  // Заморозка живого месяца: прошедшие дни (и сегодня — смена уже идёт)
+  // неприкосновенны для генерации/раздачи/очистки. Прошлый месяц заморожен
+  // целиком, будущий — свободен весь.
+  const frozenBefore = () => {
+    const cur = new Date(now.getFullYear(), now.getMonth());
+    const view = new Date(Y, M);
+    if (view < cur) return DAYS + 1;
+    if (view > cur) return 0;
+    return now.getDate() + 1;
+  };
+  // Норма с учётом отпуска: 160 ч при 11 днях отпуска — это не 160 ч в
+  // оставшиеся дни. Уменьшаем пропорционально — генератор перестаёт
+  // трамбовать отпускника, а «Проверка» — ныть о недоработке.
+  const effNorm = (s) => {
+    if (!(s.vac && s.vac[2] === mkey && s.vac[0])) return s.norm || 0;
+    const vd = Math.max(0, Math.min(DAYS, s.vac[1]) - Math.max(1, s.vac[0]) + 1);
+    return Math.round((s.norm || 0) * (DAYS - vd) / DAYS);
+  };
   const vacOn = (s) => !!(s.vac && s.vac[2] === mkey && s.vac[0]);
   // Выходные по конкретным числам. Хранятся по месяцам: «14-е» в августе
   // не должно тянуться в сентябрь.
   const offDays = (s) => (s.offDays && s.offDays[mkey]) || [];
   const isDayOff = (s, d) => (s.off || []).includes(dow(d)) || offDays(s).includes(d);
+
   const isLocked = (id, d) => !!(locks[id] && locks[id][d]);
 
   // ── Загрузка ──────────────────────────────────────────────────────
@@ -329,11 +578,115 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       setCfg(v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG });
       const m = (r.months || []).find(x => x.venue_key === venueKey);
       const pl = m?.payload || {};
-      setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {});
+      setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {}); setFacts(pl.facts || {});
       setSwapSel(null);   // выбор обмена не переживает смену месяца
       undoRef.current = null; setUndoTick(t => t + 1);   // и отмена тоже
-      setDirty(false); setState("ok");
-    } catch (e) { setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e)); }
+      setDirty(false); setState("ok"); setOfflineAt(null);
+      let prevSnap = null;
+      try {
+        try { prevSnap = JSON.parse(localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey) || "null"); } catch (e9) {}
+        localStorage.setItem("sa_sched_cache_" + venueKey + "_" + mkey, JSON.stringify({
+          cfg: v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG },
+          plan: pl.plan || {}, locks: pl.locks || {}, days: pl.days || {}, facts: pl.facts || {},
+          ts: Date.now() }));
+      } catch (e2) {}
+      // Сводка «моя смена сегодня» — для плитки на главной и наставника
+      try {
+        const t0 = new Date();
+        if (t0.getFullYear() === Y && t0.getMonth() === M) {
+          const cfgL = v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG };
+          const full = ((profile?.name || "") + " " + (profile?.surname || "")).trim().toLowerCase();
+          const nrm = x => String(x || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+          const tks = x => new Set(nrm(x).split(" ").filter(Boolean));
+          const ptk = tks(full);
+          const allIn2 = (A, B) => [...A].every(w => B.has(w));
+          const cands = (cfgL.staff || []).filter(st => {
+            const et = tks(st.name);
+            return et.size && ptk.size && (allIn2(et, ptk) || allIn2(ptk, et));
+          });
+          const meS = cands.find(st => tks(st.name).size === ptk.size && allIn2(tks(st.name), ptk))
+            || (cands.length === 1 ? cands[0] : null);
+          // «График обновился»: сравниваем мой план со снимком прошлого визита
+          if (meS && prevSnap && prevSnap.plan) {
+            const oldMy = prevSnap.plan[meS.id] || {}, newMy = (pl.plan || {})[meS.id] || {}, ch = [];
+            for (let d = 1; d <= 31; d++) if ((oldMy[d] || "") !== (newMy[d] || "")) ch.push(d + "-е");
+            setPlanDiff(ch.slice(0, 6));
+          } else setPlanDiff([]);
+          const k0 = meS && (pl.plan || {})[meS.id]?.[t0.getDate()];
+          const sh0 = k0 && (cfgL.shifts || []).find(q => q.k === k0);
+          localStorage.setItem("sa_today_shift", JSON.stringify({
+            date: t0.getFullYear() + "-" + String(t0.getMonth() + 1).padStart(2, "0") + "-" + String(t0.getDate()).padStart(2, "0"),
+            label: sh0 ? sh0.name + " · " + sh0.from + ":00–" + (sh0.to === 24 ? "24" : sh0.to) + ":00" : (meS ? "выходной" : null) }));
+        }
+      } catch (e5) {}
+      // Обмены сменами: активные заявки заведения (тихо, ошибки безвредны)
+      (async () => { try {
+        const r3 = await rpc("swap_list", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue: venueKey, p_month: mkey });
+        if (r3 && r3.ok) setSwaps(Array.isArray(r3.swaps) ? r3.swaps : []);
+      } catch (e6) {} })();
+      // Хвост прошлого месяца — тихо, в фоне: не задерживает открытие,
+      // при любой ошибке остаётся пустым (генератор работает как раньше)
+      setPrevTail({});
+      (async () => {
+        try {
+          const py = M === 0 ? Y - 1 : Y, pmo = M === 0 ? 11 : M - 1;
+          const pk = py + "-" + String(pmo + 1).padStart(2, "0");
+          const r2 = await rpc("schedule_load", {
+            p_token: saToken(), p_restaurant: profile?.restaurant || "", p_month: pk,
+          });
+          if (r2 && r2.ok === true) {
+            const m2 = (r2.months || []).find(x => x.venue_key === venueKey);
+            const pl2 = (m2 && m2.payload && m2.payload.plan) || {};
+            const pdays = new Date(py, pmo + 1, 0).getDate();
+            const tail = {};
+            Object.entries(pl2).forEach(([id, ds]) => {
+              const arr = [];
+              for (let d = pdays - 6; d <= pdays; d++) arr.push((ds || {})[d] || "");
+              if (arr.some(Boolean)) tail[id] = arr;
+            });
+            setPrevTail(tail); setPrevPlan({ plan: pl2, days: pdays });   // Доп. 258: пригодится для «как в прошлом месяце»
+            // Динамика: агрегаты прошлого месяца теми же правилами денег
+            const f2 = (m2 && m2.payload && m2.payload.facts) || {};
+            let psh = 0, phr = 0, pfund = 0;
+            const pp2 = {};
+            (cfg?.staff || []).forEach(st => {
+              const ds = pl2[st.id] || {}; let hh = 0, nn = 0;
+              for (let d = 1; d <= pdays; d++) {
+                const sh2 = (cfg?.shifts || []).find(q => q.k === ds[d]);
+                if (!sh2) continue;
+                nn++; const f = f2[st.id]?.[d];
+                hh += (typeof f === "number" && f >= 0) ? f : (sh2.to - sh2.from);
+              }
+              psh += nn; phr += hh;
+              pp2[st.id] = { hh, nn };
+              if (st.rate > 0) {
+                const md = st.rateMode || "hour";
+                pfund += md === "month" ? st.rate : md === "shift" ? nn * st.rate : hh * st.rate;
+              }
+            });
+            setPrevStats(psh > 0 ? { shifts: psh, hours: phr, fund: pfund } : null);
+            const pm2 = {};
+            (cfg?.staff || []).forEach(st => { const q = pp2[st.id]; if (!q || !(st.rate > 0)) return;
+              const md = st.rateMode || "hour";
+              pm2[st.id] = md === "month" ? st.rate : md === "shift" ? q.nn * st.rate : q.hh * st.rate; });
+            setPrevPay(pm2);
+          }
+        } catch (e) {}
+      })();
+    } catch (e) {
+      // Сети нет — поднимаем офлайн-копию, если она есть
+      try {
+        const raw = localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey);
+        if (raw) {
+          const c = JSON.parse(raw);
+          setCfg(c.cfg || { ...DEFAULT_CONFIG });
+          setPlan(c.plan || {}); setLocks(c.locks || {}); setDays(c.days || {}); setFacts(c.facts || {});
+          setOfflineAt(c.ts || Date.now()); setDirty(false); setState("ok");
+          return;
+        }
+      } catch (e3) {}
+      setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e));
+    }
   }, [mkey, profile?.restaurant]);
 
   React.useEffect(() => { load(); }, [load]);
@@ -344,7 +697,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     try {
       const r = await rpc("schedule_save_month", {
         p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue_key: venueKey,
-        p_month: mkey, p_payload: JSON.stringify({ plan, locks, days }),
+        p_month: mkey, p_payload: JSON.stringify({ plan, locks, days, facts }),
       });
       if (r && r.ok === true) { setDirty(false); setMsg("Сохранено"); vibrate("success"); }
       else setMsg(r?.error === "forbidden" ? "Нет прав на изменение графика"
@@ -353,7 +706,24 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     setTimeout(() => setMsg(""), 2500);
   };
 
-  const staff = cfg?.staff || [];
+  // Сотрудники месяца: метка till (последний рабочий mkey) закрывает
+  // человека С месяца, не трогая прошлое (прод-урок владельца: удаление
+  // в октябре стирало и сентябрь). Редактор видит всех (staffAll).
+  const staffAll = cfg?.staff || [];
+  const staff = staffAll.filter(q => !q.till || mkey <= q.till);
+  const [wishNote, setWishNote] = React.useState(null);   // { d, text } — отказ очереди в раскрытом дне
+  // Очередь жёстких «не смогу выйти»: мест на день ровно столько, чтобы
+  // зал ещё закрывался — доступные коллеги должности минус потребность.
+  // Кто успел, тот успел; отпуск и постоянные выходные место не занимают
+  // (эти люди и так не в строю).
+  const hardCapacity = (d, meObj) => {
+    const peers = staff.filter(x => x.pos === meObj.pos);
+    const avail = peers.filter(x => !onVac(x, d) && !isDayOff(x, d));
+    const need = needOf(d)[meObj.pos] || 0;
+    const maxHard = Math.max(0, avail.length - need);
+    const taken = avail.filter(x => String(x.id) !== String(meObj.id) && hardOf(x.id, d)).length;
+    return { maxHard, taken, left: Math.max(0, maxHard - taken), peers: peers.map(x => x.id) };
+  };
 
   // Смещение цикла 2/2 у каждого своё, иначе вся позиция уйдёт отдыхать разом.
   const cycleOffset = (s) => {
@@ -382,20 +752,105 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   // Очистка месяца: снимает и расстановку, и замки. Настройки заведения
   // при этом остаются — они общие для всех месяцев.
-  const clearMonth = async () => {
-    snapUndo();   // очистку можно отменить (вернётся локально — жми «Сохранить»)
-    setPlan({}); setLocks({}); setConfirmClear(false);
-    if (!isAdmin) return;
-    setMsg("Очищаю…");
-    try {
-      const r = await rpc("schedule_save_month", {
-        p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue_key: venueKey,
-        p_month: mkey, p_payload: JSON.stringify({ plan: {}, locks: {}, days }),
+  // Очистка — ЛОКАЛЬНЫЙ черновик: сервер не трогаем до осознанного
+  // «Сохранить». Случайная очистка теперь безобидна всегда: «Отменить»
+  // вернёт как было, а закрытие приложения просто оставит сервер прежним.
+  // scope: {} — весь месяц; { pos } — должность; { staffId } — один человек.
+  const clearScope = (scope = {}) => {
+    snapUndo();
+    const fb = frozenBefore();
+    const match = (id) => {
+      if (scope.staffId) return String(id) === String(scope.staffId);
+      if (scope.pos) return staff.some(x => String(x.id) === String(id) && x.pos === scope.pos);
+      return true;
+    };
+    const strip = (obj) => {
+      const nx = {};
+      Object.entries(obj || {}).forEach(([id, v]) => {
+        if (!match(id)) { nx[id] = v; return; }
+        // прошедшие дни живого месяца неприкосновенны — стирается будущее
+        const past = {};
+        Object.entries(v || {}).forEach(([d, val]) => { if (+d < fb && val) past[d] = val; });
+        if (Object.keys(past).length) nx[id] = past;
       });
-      if (r && r.ok === true) { setDirty(false); setMsg("Месяц очищен"); vibrate("light"); }
-      else setMsg(r?.error === "forbidden" ? "Нет прав на изменение графика" : "Очистить не удалось");
-    } catch (e) { setMsg("Нет связи с сервером"); }
-    setTimeout(() => setMsg(""), 2500);
+      return nx;
+    };
+    setPlan(p => strip(p)); setLocks(l => strip(l)); setFacts(f => strip(f));
+    setDirty(true); setConfirmClear(false); vibrate("light");
+    const what = scope.staffId
+      ? `у ${staff.find(x => String(x.id) === String(scope.staffId))?.name || "сотрудника"}`
+      : scope.pos ? `у должности «${POS.find(pp => pp.id === scope.pos)?.t || scope.pos}»` : "за месяц";
+    setMsg(`Смены ${what} стёрты в черновике — «Сохранить» закрепит, «↩ Отменить» вернёт`);
+    setTimeout(() => setMsg(""), 4000);
+  };
+
+  // Сотрудник уходит: раздать ЕГО смены другим, не тронув ни одной чужой
+  // клетки. Механика — виртуальные замки: всё существующее у остальных
+  // фиксируется на время прогона, уходящий исключается из штата, и
+  // генератор заполняет только его дыры по всем правилам. Виртуальные
+  // замки в стейт не попадают — это инструмент прогона, не данные.
+  const redistribute = (staffId) => {
+    const gone = staff.find(x => String(x.id) === String(staffId));
+    if (!gone) return;
+    const fb = frozenBefore();
+    if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
+    snapUndo();
+    // Отработанное остаётся у уходящего — это история и зарплата;
+    // раздаём коллегам только будущие смены
+    const gonePast = {};
+    Object.entries(plan[staffId] || {}).forEach(([d, v]) => { if (+d < fb && v) gonePast[d] = v; });
+    const planWo = {};
+    Object.entries(plan).forEach(([id, ds]) => { if (String(id) !== String(staffId)) planWo[id] = { ...ds }; });
+    const vLocks = {};
+    Object.entries(planWo).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    Object.entries(locks).forEach(([id, ds]) => {
+      if (String(id) === String(staffId)) return;
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    const cfg2 = { ...cfg, staff: staff.filter(x => String(x.id) !== String(staffId)) };
+    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
+    if (!res.plan) return;
+    // прошлое уходящего возвращается в план (генератор его не знает — он
+    // исключён из штата на прогон)
+    setPlan(Object.keys(gonePast).length ? { ...res.plan, [staffId]: gonePast } : res.plan);
+    setLocks(l => { const nx = { ...l }; delete nx[staffId]; return nx; });
+    setDirty(true); setConfirmClear(false); setGenKey(k => k + 1); vibrate("success");
+    setMsg(res.shortage
+      ? `Будущие смены ${gone.name} розданы, но ${res.shortage} закрыть некем — детали в проверке. «Сохранить» закрепит, «↩ Отменить» вернёт`
+      : `Будущие смены ${gone.name} розданы коллегам (отработанное осталось в графике) — проверь черновик и сохрани. Не забудь убрать человека в настройках`);
+    setTimeout(() => setMsg(""), 6000);
+  };
+
+  // Новенький в живом месяце: отдать ему ДЫРЫ будущего, ничего не меняя
+  // у остальных. Механика: все существующие клетки фиксируются
+  // виртуальными замками, а назначать генератору разрешено только ему
+  // (onlyIds) — коллеги остаются фоном занятости.
+  const onboardNew = (staffId) => {
+    const nw = staff.find(x => String(x.id) === String(staffId));
+    if (!nw) return;
+    const fb = frozenBefore();
+    if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
+    snapUndo();
+    const vLocks = {};
+    Object.entries(plan).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    Object.entries(locks).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey,
+      wishes: wishes || {}, hardOff, onlyIds: new Set([String(staffId)]), prevTail, freezeBefore: fb });
+    if (!res.plan) return;
+    setPlan(res.plan);
+    setDirty(true); setConfirmClear(false); setGenKey(k => k + 1); vibrate("success");
+    const got = Object.values(res.plan[staffId] || {}).filter(Boolean).length
+      - Object.values(plan[staffId] || {}).filter(Boolean).length;
+    setMsg(got > 0
+      ? `${nw.name} получил(а) ${got} ${got === 1 ? "смену" : got < 5 ? "смены" : "смен"} в свободные дыры — проверь черновик и сохрани`
+      : `Свободных дыр для ${nw.name} не нашлось: график уже закрыт. Сними смены у коллег (очисткой или тапами) и повтори`);
+    setTimeout(() => setMsg(""), 6000);
   };
 
   // Настройки заведения сохраняются отдельно от месяца: они общие для всех месяцев
@@ -428,21 +883,62 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // вручную клетки сохраняются и достраиваются вокруг — как раньше.
   const generate = () => {
     if (!cfg || !staff.length) return;
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks, POS, mkey });
+    const fb = frozenBefore();
+    if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
+    // ДОЗАПОЛНЕНИЕ, а не пересборка: всё уже расставленное фиксируется
+    // виртуальными замками — генератор закрывает только дыры. Прод-кейс:
+    // стёр одну должность → «Заполнить» перетасовывал весь месяц, хотя
+    // люди уже видели свои смены. Пересборка с нуля — через очистку.
+    const vLocks = {};
+    Object.entries(plan).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    Object.entries(locks).forEach(([id, ds]) => {
+      Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
+    });
+    const cells = (pm) => Object.values(pm || {}).reduce((a, ds) => a + Object.values(ds || {}).filter(Boolean).length, 0);
+    const before = cells(plan);
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
     if (!res.plan) return;
+    const added = cells(res.plan) - before;
     snapUndo();
     setPlan(res.plan); setDirty(true); setGenKey(k => k + 1);
     vibrate(res.shortage ? "light" : "success");
-    setMsg(res.shortage
-      ? `Черновик готов: не хватило людей на ${res.shortage} ${res.shortage === 1 ? "смену" : res.shortage < 5 ? "смены" : "смен"} — детали в проверке ниже`
-      : "Черновик готов: все смены закрыты");
-    setTimeout(() => setMsg(""), 3500);
+    const frozenNote = fb > 1 ? ", прошедшие дни не тронуты" : "";
+    setMsg(added > 0
+      ? (res.shortage
+        ? `Дозаполнено ${added} ${added === 1 ? "смена" : added < 5 ? "смены" : "смен"} (ген 3${frozenNote}), но ${res.shortage} закрыть некем — детали в проверке`
+        : `Дозаполнено ${added} ${added === 1 ? "смена" : added < 5 ? "смены" : "смен"} (ген 3${frozenNote}) — существующие не тронуты`)
+      : (res.shortage
+        ? `Дыры есть (${res.shortage}), но закрыть их некем — детали в проверке ниже`
+        : "Всё уже расставлено. Пересобрать с нуля? Сначала «Очистить месяц» (или должность) — потом «Заполнить»"));
+    setTimeout(() => setMsg(""), 5000);
   };
 
   // ── Проверка ──────────────────────────────────────────────────────
+  // Доп. 247: почему дыру не закрыли — причина по каждому свободному человеку
+  // этой позиции (генератор объясняет отказ теми же правилами, что и применяет).
+  const holeWhy = (d, pos, why) => {
+    try {
+      if (!why) return "";
+      const kinds = (cfg.shifts || []).filter(x => !x.extra);
+      const reasons = new Map();
+      staff.filter(x => x.pos === pos && !plan[x.id]?.[d]).forEach(x => {
+        let best = null;
+        for (const sh of kinds) { const r = why(plan, x, d, sh.k); if (r === null) { best = null; break; } if (!best) best = r; }
+        if (best) { const list = reasons.get(best) || []; list.push(x.name.split(" ")[0]); reasons.set(best, list); }
+      });
+      if (!reasons.size) return "";
+      const top = [...reasons.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 2)
+        .map(([r, names]) => `${names.slice(0, 3).join(", ")}${names.length > 3 ? ` и ещё ${names.length - 3}` : ""} — ${r}`);
+      return ` · ${top.join("; ")}`;
+    } catch (e) { return ""; }
+  };
   const audit = () => {
     if (!cfg) return [];
     const R = cfg.rules, out = [];
+    let why = null;
+    try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
     for (let d = 1; d <= DAYS; d++) {
       const need = needOf(d);
       POS.forEach(({ id: pos }) => {
@@ -450,7 +946,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         const have = staff.filter(s => {
           const sh = s.pos === pos && shiftOf(plan[s.id]?.[d]); return sh && !sh.extra;
         }).length;
-        if (have < n) out.push(`${d} ${MONTHS_R[M]} · ${posName(pos).toLowerCase()}: ${have} из ${n}`);
+        if (have < n) out.push(`${d} ${MONTHS_R[M]} · ${posName(pos).toLowerCase()}: ${have} из ${n}${holeWhy(d, pos, why)}`);
       });
     }
     staff.forEach(s => {
@@ -462,8 +958,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         const pv = d > 1 ? plan[s.id]?.[d - 1] : "", q = pv && shiftOf(pv);
         if (sh && q) { const r = 24 - q.to + sh.from; if (r < R.minRest) out.push(`${s.name}: между ${d-1} и ${d} только ${r} ч отдыха`); }
       }
+      const en = effNorm(s);
       if ((R.normMode || "floor") === "cap" && h > s.norm) out.push(`${s.name}: переработка ${h - s.norm} ч`);
-      if ((R.normMode || "floor") === "floor" && h < s.norm) out.push(`${s.name}: недоработка ${s.norm - h} ч до нормы`);
+      if ((R.normMode || "floor") === "floor" && h < en) out.push(`${s.name}: недоработка ${en - h} ч до нормы${en !== s.norm ? " (с учётом отпуска)" : ""}`);
       if (mx > R.maxRow) out.push(`${s.name}: ${mx} смен подряд при пределе ${R.maxRow}`);
     });
     return [...new Set(out)];
@@ -499,14 +996,61 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     return { hours, shifts, by };
   };
 
+  // Часы конкретного дня: факт (если менеджер отметил) важнее плана
+  const dayHoursOf = (s, d) => {
+    const sh = shiftOf(plan[s.id]?.[d]);
+    if (!sh) return 0;
+    const f = facts[s.id]?.[d];
+    return typeof f === "number" && f >= 0 ? f : len(sh);
+  };
   const hoursOf = s => {
     let h = 0;
-    for (let d = 1; d <= DAYS; d++) { const sh = shiftOf(plan[s.id]?.[d]); if (sh) h += len(sh); }
+    for (let d = 1; d <= DAYS; d++) h += dayHoursOf(s, d);
     return h;
+  };
+  const shiftsOf = s => {
+    let n = 0;
+    for (let d = 1; d <= DAYS; d++) if (shiftOf(plan[s.id]?.[d])) n++;
+    return n;
+  };
+  // Оплата труда: официанты — почасовая, бар/барбек/менеджеры — оклад,
+  // у кого-то посменная. Тип у каждого свой (rateMode), деньги — одна
+  // формула на всё приложение.
+  const payOf = (x) => {
+    if (!(x.rate > 0)) return null;
+    const mode = x.rateMode || "hour";
+    if (mode === "month") return { sum: x.rate, note: "оклад / мес" };
+    if (mode === "shift") { const n = shiftsOf(x); return { sum: n * x.rate, note: `${n} смен × ${x.rate}` }; }
+    return { sum: hoursOf(x) * x.rate, note: `${hoursOf(x)} ч × ${x.rate}` };
   };
   const leadObj = d =>
     staff.find(s => s.pos === "manager" && plan[s.id]?.[d] && !shiftOf(plan[s.id][d])?.extra) || null;
   const leadOn = d => { const m = leadObj(d); return m ? m.name : null; };
+
+  // Координаты клеток-нарушителей: та же логика, что в audit(), но с адресами
+  // — красная точка на клетке показывает проблему прямо в сетке.
+  // ВАЖНО: это ХУК, и он обязан жить ДО первых ранних return (загрузка,
+  // ошибка, вид сотрудника) — иначе число хуков меняется между рендерами
+  // и React падает с #310. Уже падал: третий бокал вина за день.
+  const badCells = React.useMemo(() => {
+    const bad = new Set(); if (!cfg) return bad;
+    const R = cfg.rules;
+    staff.forEach(sf => {
+      let run = [];
+      for (let d = 1; d <= DAYS + 1; d++) {
+        const sh = d <= DAYS ? shiftOf(plan[sf.id]?.[d]) : null;
+        if (sh) run.push(d);
+        else { if (run.length > R.maxRow) run.forEach(x => bad.add(sf.id + ":" + x)); run = []; }
+        if (d <= DAYS && sh && d > 1) {
+          const q = shiftOf(plan[sf.id]?.[d - 1]);
+          if (q && (24 - q.to + sh.from) < R.minRest) { bad.add(sf.id + ":" + d); bad.add(sf.id + ":" + (d - 1)); }
+        }
+        if (d <= DAYS && plan[sf.id]?.[d] && onVac(sf, d)) bad.add(sf.id + ":" + d);
+      }
+    });
+    return bad;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, cfg, staff, DAYS]);
 
   // Цифра покрытия догоняет настоящее значение за полсекунды — так видно,
   // что генератор отработал, а не просто перерисовалась таблица.
@@ -525,6 +1069,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   const tapCell = (s, d) => {
     if (!isAdmin) return;
+    if (factMode) {
+      if (!shiftOf(plan[s.id]?.[d])) {
+        setMsg("Тут нет смены — факт отмечается на рабочем дне"); setTimeout(() => setMsg(""), 2200);
+        return;
+      }
+      setFactEdit({ id: s.id, d }); vibrate("light"); return;
+    }
+    // Доп. 256: «Кто вместо?» — тап по смене открывает список, кто может её взять
+    if (repl) {
+      if (!shiftOf(plan[s.id]?.[d])) { setMsg("Выбери смену, которую нужно кем-то закрыть"); setTimeout(() => setMsg(""), 2200); return; }
+      setReplAsk({ id: s.id, d }); vibrate("light"); return;
+    }
     // Режим обмена: две тапнутые клетки меняются содержимым. Самая частая
     // просьба смены — «поменяйся со мной» — решается двумя касаниями.
     if (swap) {
@@ -571,6 +1127,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     setDirty(true);
   };
 
+
+  // Доп. 258/262: перенос прошлого месяца — теперь общий, вызывается из «Ещё»
+  const copyPrevMonth = () => {
+              const fb = frozenBefore();
+              const src = prevPlan.plan || {}; let n = 0;
+              snapUndo();
+              setPlan(pl => {
+                const nx = { ...pl };
+                staff.forEach(st => {
+                  const row = { ...(nx[st.id] || {}) }; const from = src[st.id] || {};
+                  for (let d = Math.max(1, fb); d <= DAYS; d++) {
+                    const k = from[d] || "";                       // день в день: ритм месяца обычно повторяется
+                    if (k && !row[d] && (cfg.shifts || []).some(x => x.k === k)) { row[d] = k; n++; }
+                  }
+                  nx[st.id] = row;
+                });
+                return nx;
+              });
+              setDirty(true); setGenKey(k2 => k2 + 1); vibrate(n ? "success" : "light");
+              setMsg(n ? `Перенесено ${n} смен из прошлого месяца — проверь и жми «Заполнить»` : "В прошлом месяце нечего переносить");
+              setTimeout(() => setMsg(""), 6000);
+            };
+
   const P = a11y
     ? { text:"#2A1F0E", sub:"#6B5B40", acc:"#7A5A22", warn:"#A33A2A",
         danger:"#8B3020", dangerBg:"#A33A2A", dangerFg:"#FFF4F1" }
@@ -608,10 +1187,22 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           <div style={{ color:P.text, fontSize:16, fontFamily:serif }}>{MONTHS_N[M]} {Y}</div>
         </div>
       </div>
+      {offlineAt ? (
+        <div style={{ margin:"0 14px 10px", padding:"8px 12px", borderRadius:12, fontSize:11.5,
+          color:"#D2A85A", background:"rgba(210,168,90,0.09)", border:"1px solid rgba(210,168,90,0.3)" }}>
+          Офлайн-копия от {new Date(offlineAt).toLocaleString("ru-RU", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} — свежесть проверь при связи
+        </div>
+      ) : null}
       {kids}
       <div style={{ height:24 }} />
     </div>
   );
+
+  // Доп. 250: пустой график у руководителя — предлагаем мастер сами, но только раз
+  if (state === "ok" && cfg && isAdmin && !wiz && !wizTried.current && !(cfg.staff || []).length && !wizDone()) {
+    wizTried.current = true;
+    setTimeout(() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] }), 0);
+  }
 
   if (state === "load") return shell(<div style={{ ...card, textAlign:"center", color:P.sub }}>Загружаю график…</div>);
   if (state === "error") return shell(
@@ -643,8 +1234,6 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     </div>
   );
 
-
-
   // ── Выгрузка графика картинкой ────────────────────────────────────
   // Рисуем на canvas вручную: внутри Telegram печать в PDF недоступна,
   // а PNG открывается прямо в чате и не требует ни сервера, ни библиотек.
@@ -663,9 +1252,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       bad:"#A33A2A", good:"#4A6B4A", hol:"#A33A2A", empty:"#CFC5AE",
     };
     const S = 2;                                     // множитель под ретину
-    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 58;
+    const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 64;
     const groups = POS.map(p => ({ ...p, list: staff.filter(x => x.pos === p.id) })).filter(g => g.list.length);
-    const rows = groups.reduce((a, g) => a + g.list.length + 2, 0);   // +заголовок +строка добора
+    // Экспорт без строки «есть/нужно» в ОБЕИХ версиях: полотно — витрина
+    // для команды, аудит недоборов живёт в таблице приложения
+    const rows = groups.reduce((a, g) => a + g.list.length + 1, 0);
     const W = NAME + DAYS * CELL;
     const H = HEAD + rows * ROW + FOOT;
 
@@ -681,7 +1272,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     x.fillText("График смен", 16, 30);
     x.fillStyle = C.dim; x.font = "13px Georgia, serif";
     x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} сотрудников`, 16, 54);
-    x.fillText(`составлен ${new Date().toLocaleDateString("ru-RU")}`, 16, 74);
+    // Вордмарк и служебная строка — правым краем: слева им тесно
+    // (строка «составлен» упиралась в числа первых дней)
+    x.fillStyle = C.faint; x.font = "600 10px ui-monospace, Menlo, monospace";
+    const wm = "S E R V I C E   A C A D E M Y";
+    x.fillText(wm, W - 16 - x.measureText(wm).width, 30);
+    x.fillStyle = C.dim; x.font = "12px Georgia, serif";
+    const made = `составлен ${new Date().toLocaleDateString("ru-RU")} · ген 3`;
+    x.fillText(made, W - 16 - x.measureText(made).width, 50);
+    // Диагностика конфига из экспорта убрана (Доп. 54): аудит живёт в
+    // таблице приложения, полотно — чистая витрина для команды.
+    // Золотая линия отделяет шапку от полотна (в печати — серая)
+    x.strokeStyle = forPrint ? C.lineHard : "#C8A96E"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(0, HEAD - 26); x.lineTo(W, HEAD - 26); x.stroke();
 
     // шапка дней
     let y = HEAD;
@@ -699,51 +1302,55 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
     const line = (yy, c = C.line) => { x.strokeStyle = c; x.lineWidth = 1;
       x.beginPath(); x.moveTo(0, yy + .5); x.lineTo(W, yy + .5); x.stroke(); };
+    const kColor = (k) => forPrint ? C.text : (k === "В" ? "#8A6520" : k === "У" ? "#4A6B4A" : C.text);
+    // Чипы под редкими буквами (только чат-версия): «Д» — спокойный текст,
+    // остальные буквы глаз выхватывает по цвету, не вглядываясь
+    const CHIP = forPrint ? null : {
+      "В": { bg: "rgba(138,101,32,0.16)", fg: "#6E4F14" },
+      "У": { bg: "rgba(74,107,74,0.16)",  fg: "#3E5C3E" },
+      "К": { bg: "rgba(90,74,110,0.16)",  fg: "#55446B" },
+      "О": { bg: "rgba(163,58,42,0.11)",  fg: C.hol },
+    };
+    const rr = (x0, y0, w, h, r) => { x.beginPath();
+      x.moveTo(x0 + r, y0); x.arcTo(x0 + w, y0, x0 + w, y0 + h, r);
+      x.arcTo(x0 + w, y0 + h, x0, y0 + h, r); x.arcTo(x0, y0 + h, x0, y0, r);
+      x.arcTo(x0, y0, x0 + w, y0, r); x.closePath(); };
 
     groups.forEach(g => {
       // заголовок должности
       x.fillStyle = C.grpBg; x.fillRect(0, y, W, ROW);
       x.fillStyle = C.text; x.font = "600 11px ui-monospace, Menlo, monospace";
       x.fillText(g.t.toUpperCase(), 12, y + ROW / 2);
-      x.font = "11px ui-monospace, Menlo, monospace";
-      for (let d = 1; d <= DAYS; d++) {
-        x.fillStyle = C.faint;
-        x.fillText(String(needOf(d)[g.id] || 0), NAME + (d - 1) * CELL + CELL / 2 - 3, y + ROW / 2);
-      }
       line(y); line(y + ROW); y += ROW;
 
       // люди
-      g.list.forEach(s => {
-        let h = 0;
-        for (let d = 1; d <= DAYS; d++) { const sh = shiftOf(plan[s.id]?.[d]); if (sh) h += len(sh); }
+      g.list.forEach((s, si) => {
+        const h = hoursOf(s);   // с учётом фактов «ушёл раньше»
+        // Зебра чётных строк — глазу легче вести длинную строку (не в печати)
+        if (!forPrint && si % 2 === 1) { x.fillStyle = "rgba(43,31,14,0.03)"; x.fillRect(0, y + 1, W, ROW - 1); }
         x.fillStyle = C.text; x.font = "13px Georgia, serif";
         x.fillText(s.name.length > 17 ? s.name.slice(0, 16) + "…" : s.name, 12, y + ROW / 2 - 5);
+        const en = effNorm(s);
         x.fillStyle = C.faint; x.font = "10px ui-monospace, Menlo, monospace";
-        x.fillText(`${h} / ${s.norm} ч`, 12, y + ROW / 2 + 8);
+        x.fillText(`${h} / ${en} ч${en !== s.norm ? "*" : ""}`, 12, y + ROW / 2 + 8);
         for (let d = 1; d <= DAYS; d++) {
           const cx = NAME + (d - 1) * CELL;
-          if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y, CELL, ROW); }
+          // +1/-1: заливка не съедает горизонтальные линии (прод-артефакт
+          // «линия прерывается» — fillRect ложился ровно на штрих)
+          if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y + 1, CELL, ROW - 1); }
           const k = plan[s.id]?.[d] || "";
           const vac = onVac(s, d), fix = !k && !vac && (s.off || []).includes(dow(d));
+          const glyph = k || (vac ? "О" : fix ? "✕" : "·");
+          const chip = CHIP && CHIP[glyph];
+          if (chip) { x.fillStyle = chip.bg; rr(cx + 5, y + 5, CELL - 10, ROW - 10, 6); x.fill(); }
           x.font = "600 13px ui-monospace, Menlo, monospace";
-          x.fillStyle = k ? C.text : vac ? C.hol : fix ? C.faint : C.empty;
-          x.fillText(k || (vac ? "О" : fix ? "×" : "·"), cx + CELL / 2 - 5, y + ROW / 2);
+          x.fillStyle = chip ? chip.fg : k ? kColor(k) : vac ? C.hol : fix ? C.dim : C.empty;
+          x.fillText(glyph, cx + CELL / 2 - 5, y + ROW / 2);
         }
         line(y + ROW); y += ROW;
       });
 
-      // добор
-      x.font = "10px ui-monospace, Menlo, monospace";
-      x.fillStyle = C.faint; x.fillText("есть / нужно", 12, y + ROW / 2);
-      for (let d = 1; d <= DAYS; d++) {
-        const n = needOf(d)[g.id] || 0;
-        const have = g.list.filter(s => { const sh = shiftOf(plan[s.id]?.[d]); return sh && !sh.extra; }).length;
-        const short = have < n;
-        x.fillStyle = short ? C.bad : C.good;
-        x.font = short ? "600 10px ui-monospace, Menlo, monospace" : "10px ui-monospace, Menlo, monospace";
-        x.fillText(`${have}/${n}` + (short ? "!" : ""), NAME + (d - 1) * CELL + CELL / 2 - (short ? 12 : 9), y + ROW / 2);
-      }
-      line(y + ROW, C.lineHard); y += ROW;
+      line(y, C.lineHard);   // жирная граница группы
     });
 
     // вертикальные линии недель
@@ -754,16 +1361,25 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     }
     x.beginPath(); x.moveTo(NAME + .5, HEAD - 26); x.lineTo(NAME + .5, y); x.stroke();
 
-    // подвал: расшифровка смен
-    x.fillStyle = C.dim; x.font = "11px Georgia, serif";
-    const legend = (cfg.shifts || []).map(sh =>
-      `${sh.k} — ${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00${sh.extra ? " (вручную)" : ""}`
-    ).concat(["О — отпуск", "× — постоянный выходной"]);
+    // подвал: расшифровка смен (буквы — в цветах сетки) + диагностика
+    const legend = (cfg.shifts || []).map(sh => ({
+      mark: sh.k, mc: kColor(sh.k),
+      rest: ` — ${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00${sh.extra ? " (вручную)" : ""}`,
+    })).concat([{ mark: "О", mc: C.hol, rest: " — отпуск" }, { mark: "✕", mc: C.dim, rest: " — постоянный выходной" }]);
     let lx = 12, ly = y + 22;
     legend.forEach(t => {
-      const w = x.measureText(t).width + 18;
+      x.font = "600 11px ui-monospace, Menlo, monospace";
+      const wMark = x.measureText(t.mark).width;
+      x.font = "11px Georgia, serif";
+      const w = wMark + x.measureText(t.rest).width + 18;
       if (lx + w > W - 12) { lx = 12; ly += 17; }
-      x.fillText(t, lx, ly); lx += w;
+      const lchip = CHIP && CHIP[t.mark];
+      if (lchip) { x.fillStyle = lchip.bg; rr(lx - 4, ly - 8, wMark + 8, 16, 5); x.fill(); }
+      x.fillStyle = lchip ? lchip.fg : t.mc; x.font = "600 11px ui-monospace, Menlo, monospace";
+      x.fillText(t.mark, lx, ly);
+      x.fillStyle = C.dim; x.font = "11px Georgia, serif";
+      x.fillText(t.rest, lx + wMark, ly);
+      lx += w;
     });
     return cv;
   };
@@ -814,7 +1430,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     const bd = breakdownOf(me);
     x.fillStyle = C.dim; x.font = "12.5px Georgia, serif";
     x.fillText(`${me.name} · ${MONTHS_N[M]} ${Y}`, 16, 50);
-    x.fillText(`${profile?.restaurant || ""} · ${bd.shifts} смен · ${bd.hours} из ${me.norm} ч`, 16, 69);
+    x.fillText(`${profile?.restaurant || ""} · ${bd.shifts} смен · ${bd.hours} из ${effNorm(me)} ч`, 16, 69);
     let y = HEAD;
     for (let d = 1; d <= DAYS; d++) {
       const k = plan[me.id]?.[d], sh = k && shiftOf(k), vac = onVac(me, d), w = dow(d), note = notes[d];
@@ -843,6 +1459,153 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     x.fillStyle = C.faint; x.font = "10.5px Georgia, serif";
     x.fillText(`составлено ${new Date().toLocaleDateString("ru-RU")}`, 16, y + 20);
     return cv;
+  };
+  // Карточка недели 9:16 (мост «экспорт → в карман»): ближайшие 7 дней
+  // одним стильным вертикальным изображением — на обои или в избранное
+  const drawWeekCard = (me) => {
+    const t = new Date();
+    const start = (t.getFullYear() === Y && t.getMonth() === M) ? t.getDate() : 1;
+    const days = []; for (let d = start; d <= Math.min(DAYS, start + 6); d++) days.push(d);
+    const W = 1080, H = 1920, cv = document.createElement("canvas");
+    cv.width = W; cv.height = H; const x = cv.getContext("2d");
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#1B1409"); g.addColorStop(1, "#2A1F0E");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.textBaseline = "middle";
+    x.fillStyle = "#C8A96E"; x.font = "600 26px ui-monospace, Menlo, monospace"; x.textAlign = "center";
+    x.fillText("S E R V I C E   A C A D E M Y", W / 2, 92);
+    x.fillStyle = "#EFE4C8"; x.font = "54px Georgia, serif";
+    x.fillText(me.name, W / 2, 172);
+    const dn = ["вс","пн","вт","ср","чт","пт","сб"];
+    const p1 = days[0], p2 = days[days.length - 1];
+    x.fillStyle = "#8F7B57"; x.font = "30px ui-monospace, Menlo, monospace";
+    x.fillText(p1 + "–" + p2 + " " + MONTHS_R[M].toLowerCase() + " · моя неделя", W / 2, 232);
+    x.strokeStyle = "rgba(200,169,110,0.4)"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(140, 278); x.lineTo(W - 140, 278); x.stroke();
+    const rowH = 188, top = 330; let wh = 0;
+    days.forEach((d, i) => {
+      const yc = top + i * rowH + rowH / 2;
+      const k = plan[me.id]?.[d]; const sh = shiftOf(k);
+      const vac = onVac(me, d);
+      const wd = new Date(Y, M, d).getDay();
+      const rr2 = (xx, yy, w2, h2, r2) => { x.beginPath(); x.moveTo(xx + r2, yy); x.arcTo(xx + w2, yy, xx + w2, yy + h2, r2);
+        x.arcTo(xx + w2, yy + h2, xx, yy + h2, r2); x.arcTo(xx, yy + h2, xx, yy, r2); x.arcTo(xx, yy, xx + w2, yy, r2); x.closePath(); };
+      // «морозный лёд» и на холсте: стекло + латунная рамка + блик кромки
+      const ry = yc - rowH / 2 + 12, rh = rowH - 24;
+      x.fillStyle = "rgba(255,250,238,0.045)";
+      rr2(80, ry, W - 160, rh, 26); x.fill();
+      x.strokeStyle = "rgba(145,108,40,0.35)"; x.lineWidth = 2;
+      rr2(80, ry, W - 160, rh, 26); x.stroke();
+      x.strokeStyle = "rgba(255,255,255,0.10)"; x.lineWidth = 2;
+      x.beginPath(); x.moveTo(108, ry + 2); x.lineTo(W - 108, ry + 2); x.stroke();
+      x.textAlign = "left";
+      x.fillStyle = [0, 6].includes(wd) ? "#D2A85A" : "#8F7B57";
+      x.font = "600 28px ui-monospace, Menlo, monospace";
+      x.fillText(dn[wd], 130, yc - 30);
+      x.fillStyle = "#EFE4C8"; x.font = "64px Georgia, serif";
+      x.fillText(String(d), 130, yc + 24);
+      if (sh) {
+        wh += dayHoursOf(me, d);
+        const ci = (cfg.shifts || []).findIndex(q => q.k === k);
+        const cc = SHIFT_COLORS[(ci < 0 ? 0 : ci) % SHIFT_COLORS.length];
+        x.fillStyle = cc.bg; rr2(300, yc - 42, 84, 84, 20); x.fill();
+        x.strokeStyle = cc.bd; x.lineWidth = 2.4; rr2(300, yc - 42, 84, 84, 20); x.stroke();
+        x.fillStyle = cc.fg; x.font = "600 44px ui-monospace, Menlo, monospace"; x.textAlign = "center";
+        x.fillText(k, 342, yc + 2);
+        x.textAlign = "left"; x.fillStyle = "#EFE4C8"; x.font = "42px Georgia, serif";
+        x.fillText(sh.name, 428, yc - 18);
+        x.fillStyle = "#9C8760"; x.font = "30px ui-monospace, Menlo, monospace";
+        x.fillText(sh.from + ":00–" + (sh.to === 24 ? "24" : sh.to) + ":00 · " + dayHoursOf(me, d) + " ч", 428, yc + 30);
+      } else if (vac) {
+        x.fillStyle = "#D98A80"; x.font = "42px Georgia, serif";
+        x.fillText("Отпуск", 300, yc);
+      } else {
+        x.fillStyle = "#8F7B57"; x.font = "italic 40px Georgia, serif";
+        x.fillText("Отдыхай ✦", 300, yc);
+      }
+    });
+    x.textAlign = "center"; x.fillStyle = "#C8A96E"; x.font = "34px ui-monospace, Menlo, monospace";
+    x.fillText("часов за неделю: " + wh, W / 2, top + days.length * rowH + 64);
+    x.fillStyle = "#6E5C3E"; x.font = "24px ui-monospace, Menlo, monospace";
+    x.fillText("составлено в Service Academy", W / 2, H - 64);
+    return cv;
+  };
+  // Карточка «Сегодня» для чата: состав смены по позициям одной картинкой
+  const drawTodayCard = () => {
+    const t = new Date(); const td = t.getDate();
+    const W = 1080, H = 1350, cv = document.createElement("canvas");
+    cv.width = W; cv.height = H; const x = cv.getContext("2d");
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#1B1409"); g.addColorStop(1, "#2A1F0E");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.textBaseline = "middle"; x.textAlign = "center";
+    x.fillStyle = "#C8A96E"; x.font = "600 24px ui-monospace, Menlo, monospace";
+    x.fillText("S E R V I C E   A C A D E M Y", W / 2, 76);
+    x.fillStyle = "#EFE4C8"; x.font = "50px Georgia, serif";
+    x.fillText("Сегодня · " + td + " " + MONTHS_R[M].toLowerCase(), W / 2, 148);
+    let y = 208;
+    const note = days[td] && days[td].note;
+    if (note) { x.fillStyle = "#D2A85A"; x.font = "italic 30px Georgia, serif";
+      x.fillText("✎ " + note, W / 2, y); y += 52; }
+    const dm = String(td).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
+    const bd = staff.filter(q => (q.bday || "") === dm);
+    if (bd.length) { x.fillStyle = "#D2A85A"; x.font = "30px Georgia, serif";
+      x.fillText("✦ День рождения: " + bd.map(q => q.name).join(", "), W / 2, y); y += 52; }
+    y += 8;
+    x.textAlign = "left";
+    POS.forEach(({ id: pos, t: pt }) => {
+      const inShift = staff.filter(q => q.pos === pos && shiftOf(plan[q.id]?.[td]));
+      const nd = (needOf(td) || {})[pos] || 0;
+      if (!inShift.length && !nd) return;
+      x.fillStyle = "#8F7B57"; x.font = "600 22px ui-monospace, Menlo, monospace";
+      x.fillText(pt.toUpperCase(), 90, y); 
+      if (nd > inShift.length) {
+        x.fillStyle = "#D96A5E"; x.font = "22px ui-monospace, Menlo, monospace"; x.textAlign = "right";
+        x.fillText(inShift.length + " из " + nd, W - 90, y); x.textAlign = "left";
+      }
+      y += 44;
+      inShift.forEach(q => {
+        const k = plan[q.id][td]; const sh = shiftOf(k);
+        const ci = (cfg.shifts || []).findIndex(z => z.k === k);
+        const cc = SHIFT_COLORS[(ci < 0 ? 0 : ci) % SHIFT_COLORS.length];
+        x.fillStyle = cc.bg; x.fillRect(90, y - 19, 40, 38);
+        x.strokeStyle = cc.bd; x.lineWidth = 2; x.strokeRect(90, y - 19, 40, 38);
+        x.fillStyle = cc.fg; x.font = "600 23px ui-monospace, Menlo, monospace"; x.textAlign = "center";
+        x.fillText(k, 110, y + 1); x.textAlign = "left";
+        x.fillStyle = "#EFE4C8"; x.font = "31px Georgia, serif";
+        x.fillText(q.name, 152, y);
+        x.fillStyle = "#9C8760"; x.font = "22px ui-monospace, Menlo, monospace"; x.textAlign = "right";
+        x.fillText(sh.from + ":00–" + (sh.to === 24 ? "24" : sh.to) + ":00", W - 90, y); x.textAlign = "left";
+        y += 46;
+      });
+      y += 18;
+    });
+    const ld = leadOn(td);
+    if (ld) { x.fillStyle = "#C8A96E"; x.font = "26px Georgia, serif"; x.textAlign = "center";
+      x.fillText("Старший: " + ld, W / 2, Math.min(y + 8, H - 110)); }
+    x.textAlign = "center"; x.fillStyle = "#6E5C3E"; x.font = "22px ui-monospace, Menlo, monospace";
+    x.fillText("составлено в Service Academy", W / 2, H - 56);
+    return cv;
+  };
+  const exportToday = async () => {
+    setShotBusy(true);
+    try {
+      const cv = drawTodayCard();
+      const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+      setShot({ url: URL.createObjectURL(blob), blob, name: "Сегодня_в_смене.png" });
+      vibrate("success");
+    } catch (e) { setMsg("Не собралась карточка"); setTimeout(() => setMsg(""), 2500); }
+    setShotBusy(false);
+  };
+  const exportWeek = async (me) => {
+    setShotBusy(true);
+    try {
+      const cv = drawWeekCard(me);
+      const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+      setShot({ url: URL.createObjectURL(blob), blob, name: ("Моя_неделя_" + MONTHS_N[M] + ".png").replace(/\s/g, "_") });
+      vibrate("success");
+    } catch (e) { setMsg("Не удалось собрать карточку"); setTimeout(() => setMsg(""), 2500); }
+    setShotBusy(false);
   };
   const exportMy = async (me) => {
     setShotBusy(true);
@@ -875,6 +1638,90 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
   // они пересоздавались на каждый рендер, React размонтировал поле,
   // и клавиатура закрывалась на первом же нажатии.
   const inp = INP(a11y, P);
+
+  // ── Доп. 250: мастер первого входа ───────────────────────────────────────
+  if (wiz && cfg) {
+    const W = wiz; const set = (o) => setWiz({ ...W, ...o });
+    const mainPos = [{ id: "waiter", t: "Официанты" }, { id: "bar", t: "Бар" }, { id: "host", t: "Хостес" }, { id: "manager", t: "Менеджеры" }];
+    const nextBtn = (label, on, dis) => <button className="sa-btn" disabled={dis} onClick={on} style={{ ...T.doneBtn, width:"100%", marginTop:18, background:P.acc, opacity: dis ? 0.5 : 1 }}>{label}</button>;
+    const step = W.step;
+    const finish = () => {
+      const pr = W.preset;
+      patch(c => {
+        if (pr) { c.hours = pr.hours.map(x => [...x]); c.shifts = pr.shifts.map(x => ({ ...x })); c.dayShift = pr.dayShift;
+          const keys = pr.shifts.filter(x => !x.extra).map(x => x.k);
+          c.split = Object.fromEntries(Object.entries(c.split || {}).map(([pos, m]) => [pos, Object.fromEntries(Object.entries(m || {}).filter(([k]) => keys.includes(k)))]).filter(([, m]) => Object.keys(m).length));
+          if (c.evening && !keys.includes(c.evening.shift)) c.evening = { ...c.evening, shift: keys[keys.length - 1] };
+        }
+        // потребность: обычный день → уровни 1–2, пик → уровень 3
+        c.need = { 1: {}, 2: {}, 3: {} };
+        mainPos.forEach(({ id }) => { const n = Number(W.need[id] || 0), np = Number(W.peak[id] || n); if (n) { c.need[1][id] = n; c.need[2][id] = n; } if (np) c.need[3][id] = np; });
+        // люди
+        let nid = Math.max(0, ...(c.staff || []).map(x => +x.id || 0));
+        (W.rows || []).filter(r => String(r.name).trim()).forEach(r => { c.staff.push({ id: ++nid, name: String(r.name).trim(), pos: r.pos, norm: monthNorm(40) }); });
+      });
+      markWizDone(); setWiz(null); setTab("plan");
+      setMsg("Настроено. Теперь жми «Заполнить» — расставлю смены"); setTimeout(() => setMsg(""), 7000); vibrate("success");
+    };
+    return shell(
+      <div style={{ ...card }}>
+        <div style={{ display:"flex", gap:4, marginBottom:12 }}>{[1,2,3,4].map(i => <span key={i} style={{ flex:1, height:3, borderRadius:2, background: i <= step ? P.acc : `${P.acc}33` }} />)}</div>
+        <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>ШАГ {step} ИЗ 4</div>
+        {step === 1 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>На что похоже заведение?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Выставлю часы работы и смены — потом их можно поправить.</div>
+          {VENUE_PRESETS.map(pr => (
+            <div key={pr.id} className="sa-card" onClick={() => set({ preset: pr })} {...onActivate(() => set({ preset: pr }))}
+              style={{ padding:"11px 13px", marginBottom:8, borderRadius:14, cursor:"pointer", border:`1px solid ${W.preset?.id === pr.id ? P.acc : P.acc + "33"}`, background: W.preset?.id === pr.id ? "rgba(214,178,102,0.10)" : "transparent" }}>
+              <div style={{ fontFamily:"Georgia, serif", fontSize:15, color:P.text }}>{pr.t}</div>
+              <div style={{ fontSize:12, color:P.sub, marginTop:2 }}>{pr.s}</div>
+            </div>
+          ))}
+          {nextBtn("Дальше ›", () => set({ step: 2 }), !W.preset)}
+        </>}
+        {step === 2 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>Сколько человек в обычный день?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Сколько должно быть в смене одновременно. Ноль — такой позиции нет.</div>
+          {mainPos.map(({ id, t }) => (
+            <div key={id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+              <span style={{ flex:1, fontSize:14, color:P.text }}>{t}</span>
+              <Num inp={inp} v={Number(W.need[id] || 0)} min={0} max={20} set={v => set({ need: { ...W.need, [id]: v } })} />
+            </div>
+          ))}
+          {nextBtn("Дальше ›", () => set({ step: 3, peak: { ...W.need, ...W.peak } }))}
+        </>}
+        {step === 3 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>А в пятницу и субботу?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>В пиковые дни обычно нужно больше. Если так же — оставь как есть.</div>
+          {mainPos.map(({ id, t }) => (
+            <div key={id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+              <span style={{ flex:1, fontSize:14, color:P.text }}>{t}</span>
+              <Num inp={inp} v={Number(W.peak[id] ?? W.need[id] ?? 0)} min={0} max={20} set={v => set({ peak: { ...W.peak, [id]: v } })} />
+            </div>
+          ))}
+          {nextBtn("Дальше ›", () => set({ step: 4 }))}
+        </>}
+        {step === 4 && <>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>Кто работает?</div>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Имя и позиция. Часы, отпуска и пожелания добавишь потом в «Сотрудниках».</div>
+          {(W.rows || []).map((r, k) => (
+            <div key={k} style={{ display:"flex", gap:6, marginBottom:6 }}>
+              <input style={{ ...inp, flex:1 }} placeholder="Имя" value={r.name} onChange={e => set({ rows: W.rows.map((x, i) => i === k ? { ...x, name: e.target.value } : x) })} />
+              <select style={{ ...inp, width:118 }} value={r.pos} onChange={e => set({ rows: W.rows.map((x, i) => i === k ? { ...x, pos: e.target.value } : x) })}>
+                {POS.map(pp => <option key={pp.id} value={pp.id}>{pp.t}</option>)}
+              </select>
+              <span onClick={() => set({ rows: W.rows.filter((_, i) => i !== k) })} style={{ color:P.warn, cursor:"pointer", padding:"0 4px", fontSize:17 }}>✕</span>
+            </div>
+          ))}
+          <button className="sa-btn" style={{ ...ghost, marginTop:6, padding:"9px 12px", fontSize:12.5 }} onClick={() => set({ rows: [...(W.rows || []), { name:"", pos:"waiter" }] })}>+ ещё человек</button>
+          {nextBtn("Готово — настроить", finish, !(W.rows || []).some(r => String(r.name).trim()))}
+        </>}
+        <div onClick={() => { markWizDone(); setWiz(null); }} {...onActivate(() => { markWizDone(); setWiz(null); })}
+          style={{ textAlign:"center", fontSize:12.5, color:P.sub, marginTop:14, cursor:"pointer" }}>Пропустить — настрою вручную</div>
+      </div>
+    );
+  }
+
   const rowStyle = ROW(a11y);
   const hintStyle = { fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic", lineHeight:1.5 };
 
@@ -891,6 +1738,99 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     <div style={card}>
       <div style={eyebrow}><span>Настройки графика</span><span style={{ color:P.acc }}>{staff.length} чел.</span></div>
 
+      {/* Паспорт заведения: контекст до того, как открыл хоть одну секцию */}
+      <div style={{ ...card, marginBottom:10, padding:"12px 14px" }}>
+        <div style={{ fontFamily:serif, fontSize:15, color:P.text, marginBottom:6 }}>
+          {profile?.restaurant || "Заведение"}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", fontSize:11, color:P.sub }}>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}><IcoUsers size={12} color={P.sub} /> {staff.length} {staff.length % 10 === 1 && staff.length % 100 !== 11 ? "сотрудник" : [2,3,4].includes(staff.length % 10) && ![12,13,14].includes(staff.length % 100) ? "сотрудника" : "сотрудников"}</span>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+            {(cfg.shifts || []).map((sh2, i2) => {
+              const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
+              return <span key={sh2.k} style={{ width:15, height:15, borderRadius:4, display:"grid", placeItems:"center",
+                fontSize:8.5, color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
+                border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{sh2.k}</span>;
+            })}
+          </span>
+          {(() => {
+            const sums = [1, 2, 3].map(l => POS.reduce((a, pp) => a + ((cfg.need?.[l] || {})[pp.id] || 0), 0)).filter(Boolean);
+            if (!sums.length) return null;
+            const lo = Math.min(...sums), hi = Math.max(...sums);
+            return <span>в день: {lo === hi ? lo : `${lo}–${hi}`} чел</span>;
+          })()}
+        </div>
+      </div>
+      {/* Доп. 248: «Настроить за один тап» — типовые заведения. Часы, смены,
+          потребность и правила выставляются разом; дальше — только люди. */}
+      {(() => {
+        const PRESETS = VENUE_PRESETS;
+        const apply = (pr) => {
+          if (!window.confirm(`Настроить как «${pr.t}»? Часы, смены и правила заменятся. Расставленные смены и люди останутся.`)) return;
+          patch(c => {
+            c.hours = pr.hours.map(x => [...x]); c.shifts = pr.shifts.map(x => ({ ...x })); c.dayShift = pr.dayShift;
+            const keys = pr.shifts.filter(x => !x.extra).map(x => x.k);
+            // потребность и разбивка — под новые смены, лишние ключи убираем
+            c.split = Object.fromEntries(Object.entries(c.split || {}).map(([pos, m]) => [pos, Object.fromEntries(Object.entries(m || {}).filter(([k]) => keys.includes(k)))]).filter(([, m]) => Object.keys(m).length));
+            if (c.evening && !keys.includes(c.evening.shift)) c.evening = { ...c.evening, shift: keys[keys.length - 1] };
+          });
+          setMsg(`Настроено как «${pr.t}» — проверь «Сколько людей нужно» и жми «Заполнить»`); setTimeout(() => setMsg(""), 6000); vibrate("success");
+        };
+        return (
+          <Sec no={<IcoBulb size={13} />} title="Настроить за один тап" hint="типовые заведения — часы, смены и правила разом" P={P} open={openSec===9} onToggle={() => setOpenSec(openSec===9?0:9)}>
+            <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:10 }}>Выбери, на что похоже заведение — часы работы, смены и правила выставятся сами. Останется вписать людей в разделе «Сотрудники» и нажать «Заполнить».</div>
+            <button className="sa-btn" onClick={() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] })}
+              style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:13, marginBottom:12 }}>✦ Мастер: четыре вопроса — и график готов</button>
+            {PRESETS.map(pr => (
+              <div key={pr.id} className="sa-card" onClick={() => apply(pr)} {...onActivate(() => apply(pr))}
+                style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 13px", marginBottom:8, borderRadius:14, border:`1px solid ${P.acc}44`, cursor:"pointer" }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"Georgia, serif", fontSize:15, color:P.text }}>{pr.t}</div>
+                  <div style={{ fontSize:12, color:P.sub, marginTop:2 }}>{pr.s}</div>
+                </div>
+                <span style={{ color:P.acc, fontSize:17 }}>›</span>
+              </div>
+            ))}
+          </Sec>
+        );
+      })()}
+      {/* Доп. 260: хватит ли людей — заранее, а не после «Заполнить» */}
+      {(() => {
+        const rows = POS.map(({ id: pos, t }) => {
+          let need = 0; for (let d = 1; d <= DAYS; d++) need += (cfg.need?.[lvlOf(d)] || {})[pos] || 0;
+          if (!need) return null;
+          const list = staff.filter(x => x.pos === pos);
+          let cap = 0;
+          list.forEach(x => {
+            let avail = 0; for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d)) avail++;
+            let c = Math.min(avail, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7));
+            if ((cfg.posRules?.[pos]?.pattern) === "2x2") c = Math.min(c, Math.ceil(DAYS / 2));
+            cap += c;
+          });
+          return { pos, t, need, cap, n: list.length };
+        }).filter(Boolean);
+        if (!rows.length) return null;
+        const bad = rows.filter(r => r.cap < r.need);
+        return (
+          <Sec no={<IcoBulb size={13} />} title="Хватит ли людей" hint={bad.length ? `${bad.length} позиц. в дефиците` : "штата хватает"} P={P} open={openSec===8} onToggle={() => setOpenSec(openSec===8?0:8)}>
+            <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:10 }}>Считаю по-честному: отпуска, постоянные выходные, недельная норма отдыха и цикл 2/2. Оценка верхняя — в жизни выйдет чуть меньше.</div>
+            {rows.map(r => {
+              const lack = r.need - r.cap;
+              return (
+                <div key={r.pos} style={{ display:"flex", alignItems:"baseline", gap:8, padding:"7px 0", borderBottom:`1px solid ${GOLD}22` }}>
+                  <span style={{ flex:1, fontSize:13.5, color:P.text }}>{r.t}<span style={{ color:P.sub, fontSize:11.5 }}> · {r.n} чел</span></span>
+                  <span style={{ fontFamily:mono, fontSize:12, color: lack > 0 ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{r.cap} из {r.need} смен</span>
+                </div>);
+            })}
+            {bad.length ? (
+              <div style={{ marginTop:10, fontSize:12.5, color:P.warn, lineHeight:1.6 }}>
+                {bad.map(r => { const perShift = Math.max(1, Math.round((r.need - r.cap) / DAYS * 10) / 10);
+                  return <div key={r.pos}>{r.t}: не хватит примерно {r.need - r.cap} смен за месяц — это {perShift} человека в день. Либо ещё {Math.max(1, Math.ceil((r.need - r.cap) / Math.max(1, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7))))} чел в штат, либо меньше людей в смене.</div>; })}
+              </div>
+            ) : <div style={{ marginTop:10, fontSize:12.5, color: a11y ? "#4A6B4A" : "#7FA05A" }}>Штата достаточно под текущую потребность ✓</div>}
+          </Sec>
+        );
+      })()}
       <Sec no={1} title="Часы работы" hint={openSec===1 ? "Когда открываемся и закрываемся в каждый день недели" : sum1} P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
         {DOWL.map((dl, i) => (
           <div key={i} style={rowStyle}>
@@ -1033,38 +1973,78 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
           color:P.sub, padding:"14px 0 5px" }}>разбивка по сменам</div>
         {POS.map(({ id, t }) => {
-          const sp = (cfg.split || {})[id];
-          const total = Math.max(...[1,2,3].map(l => cfg.need[l]?.[id] || 0));
-          if (!total) return null;
-          const sum = sp ? Object.values(sp).reduce((a, v) => a + (v || 0), 0) : 0;
+          const spRaw = (cfg.split || {})[id];
+          const byLvl = !!spRaw && Object.keys(spRaw).length > 0
+            && Object.keys(spRaw).every(k => k === "1" || k === "2" || k === "3");
+          const totalMax = Math.max(...[1, 2, 3].map(l => cfg.need[l]?.[id] || 0));
+          if (!totalMax) return null;
+          const letters = (cfg.shifts || []).filter(x => !x.extra);
+          const writeFlat = (k, v) => patch(c => {
+            if (!c.split) c.split = {};
+            const cur = { ...(c.split[id] || {}) };
+            if (v) cur[k] = v; else delete cur[k];
+            if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
+          });
+          const writeLvl = (lv, k, v) => patch(c => {
+            if (!c.split) c.split = {};
+            const cur = { ...(c.split[id] || {}) };
+            const lo = { ...(cur[lv] || {}) };
+            if (v) lo[k] = v; else delete lo[k];
+            if (Object.keys(lo).length) cur[lv] = lo; else delete cur[lv];
+            if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
+          });
+          const steppers = (spCur, write) => letters.map(sh => (
+            <div key={sh.k} style={{ display:"flex", alignItems:"center", gap:5 }}>
+              <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{sh.k}</span>
+              <Num inp={inp} v={(spCur && spCur[sh.k]) || 0} min={0} max={20} set={v => write(sh.k, v)} />
+            </div>
+          ));
+          const sumOf = (o) => o ? Object.values(o).reduce((a, v) => a + (v || 0), 0) : 0;
           return (
             <div key={id} style={{ ...rowStyle, flexWrap:"wrap" }}>
-              <span style={{ flex:"1 1 100%", fontSize:12.5, color:P.sub, marginBottom:4 }}>
-                {t}
-                {sp ? <span style={{ color: sum === total ? P.acc : P.warn }}> · {sum} из {total}</span>
-                    : <span style={{ color:P.sub }}> · все в основную смену</span>}
+              <span style={{ flex:"1 1 100%", fontSize:12.5, color:P.sub, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ flex:1 }}>{t}</span>
+                <Pill a11y={a11y} P={P} on={!byLvl} style={{ padding:"5px 9px", fontSize:10.5 }}
+                  onClick={() => { if (!byLvl) return; patch(c => {
+                    const base = (c.split?.[id]?.["1"]) || (c.split?.[id]?.["3"]) || {};
+                    if (Object.keys(base).length) c.split[id] = { ...base }; else if (c.split) delete c.split[id];
+                  }); }}>одинаковая</Pill>
+                <Pill a11y={a11y} P={P} on={byLvl} style={{ padding:"5px 9px", fontSize:10.5 }}
+                  onClick={() => { if (byLvl) return; patch(c => {
+                    if (!c.split) c.split = {};
+                    c.split[id] = { "1": { ...(c.split[id] || {}) } };
+                  }); }}>по типу дня</Pill>
               </span>
-              {(cfg.shifts || []).filter(x => !x.extra).map(sh => (
-                <div key={sh.k} style={{ display:"flex", alignItems:"center", gap:5 }}>
-                  <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{sh.k}</span>
-                  <Num inp={inp} v={(sp && sp[sh.k]) || 0} min={0} max={20}
-                    set={v => patch(c => {
-                      if (!c.split) c.split = {};
-                      const cur = { ...(c.split[id] || {}) };
-                      if (v) cur[sh.k] = v; else delete cur[sh.k];
-                      if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
-                    })} />
-                </div>
-              ))}
+              {!byLvl ? (<>
+                <span style={{ flex:"1 1 100%", fontSize:11, color: sumOf(spRaw) === 0 ? P.sub : sumOf(spRaw) <= totalMax ? P.acc : P.warn, marginBottom:4 }}>
+                  {sumOf(spRaw) === 0 ? "все в основную смену" : sumOf(spRaw) + " из " + totalMax + (sumOf(spRaw) > totalMax ? " — больше потребности!" : "")}
+                </span>
+                {steppers(spRaw, writeFlat)}
+              </>) : ([["1", "обычный день"], ["2", "высокий"], ["3", "пик"]].map(([lv, nm]) => {
+                const spL = spRaw[lv]; const needL = cfg.need[+lv]?.[id] || 0;
+                return (
+                  <div key={lv} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:5 }}>
+                    <span style={{ fontFamily:mono, fontSize:10, color:P.sub, width:92 }}>{nm} · {needL} чел</span>
+                    {steppers(spL, (k, v) => writeLvl(lv, k, v))}
+                    {spL && sumOf(spL) > needL ? <span style={{ fontSize:10, color:P.warn }}>больше потребности!</span> : null}
+                  </div>
+                );
+              }))}
             </div>
           );
         })}
-        <div style={hintStyle}>Сколько человек в какой смене. Сумма должна совпадать с потребностью позиции —
-          если не совпадает, цифра краснеет. Ноль везде означает, что все выходят в основную смену.</div>
+        <div style={hintStyle}>Сколько человек в какой смене. «По типу дня» — своя структура для обычного,
+          высокого и пикового дня: межсезонье в будни ставит утро вместо вечера, выходные возвращают вечер.
+          Сумма может быть меньше потребности — остаток добирается основной сменой. Пустой уровень = весь
+          день в основную смену.</div>
       </Sec>
 
       <Sec no={5} title="Сотрудники" hint={openSec===5 ? "Кто работает, на какой позиции и сколько часов" : sum5} P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
-        {staff.map((sf, i) => { const openE = openEmp === sf.id; return (
+        <Text inp={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:8 }} v={empFilter}
+          placeholder="Найти по имени или должности…" set={setEmpFilter} />
+        {staffAll.map((sf, i) => { const openE = openEmp === sf.id;
+          if (empFilter && !((sf.name + " " + sf.pos).toLowerCase().includes(empFilter.toLowerCase()))) return null;
+          return (
           <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:7 }}>
             {/* Свёрнутая строка: обзор без простыни из десяти полей на человека */}
             <div onClick={() => { vibrate("light"); setOpenEmp(openE ? 0 : sf.id); }}
@@ -1074,7 +2054,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <div style={{ fontSize:13.5, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sf.name}</div>
                 <div style={{ fontSize:10.5, color:P.sub }}>
                   {posName(sf.pos)} · {sf.norm} ч
-                  {sf.phone ? " · ✆" : ""}
+                  {sf.phone ? <> · <IcoPhone size={10} color={P.sub} dy={-1} /></> : ""}
+                  {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { delete c.staff[i].till; }); }}
+                    style={{ marginLeft:6, fontSize:9.5, color:P.warn, border:`1px solid ${P.warn}55`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}>не работает · вернуть</span> : null}
+                  {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { c.staff.splice(i, 1); }); }}
+                    style={{ marginLeft:5, fontSize:9.5, color:P.danger, border:`1px solid ${P.danger}66`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}
+                    title="Стереть из всех месяцев">✕ насовсем</span> : null}
                   {vacOn(sf) ? " · отпуск" : ""}
                   {((sf.off || []).length || offDays(sf).length) ? " · есть выходные" : ""}
                 </div>
@@ -1089,7 +2074,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                   set={val => patch(c => { c.staff[i].name = val; })} />
               </Field>
               <button className="sa-btn" title="Удалить сотрудника"
-                onClick={() => patch(c => { c.staff.splice(i, 1); })}
+                onClick={() => patch(c => {
+                  // Закрываем прошлым месяцем: этот и будущие не видят,
+                  // прошлые целы. Повторный тап по бейджу — вернуть.
+                  const pv2 = M === 0 ? (Y - 1) + "-12" : Y + "-" + String(M).padStart(2, "0");
+                  c.staff[i].till = pv2;
+                })}
                 style={{ flex:"0 0 34px", width:34, height:34, minWidth:34, boxSizing:"border-box",
                   background:"transparent", border:`1px solid ${P.danger}66`, color:P.danger,
                   borderRadius:9, fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1,
@@ -1106,10 +2096,24 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <Num inp={inp} v={sf.norm} min={0} max={320} set={v => patch(c => { c.staff[i].norm = v; })} />
               </Field>
             </div>
-            <div style={{ ...rowStyle, borderTop:"none" }}>
-              <Field label="телефон · для связи в смене" P={P}>
+            <div style={{ ...rowStyle, borderTop:"none", display:"flex", gap:8 }}>
+              <Field label="телефон · для связи" P={P}>
                 <Text inp={inp} v={sf.phone || ""} maxLength={20} style={{ width:"100%" }}
                   set={val => patch(c => { c.staff[i].phone = val; })} />
+              </Field>
+              <Field label={"оплата, " + ({ hour:"₽/час", shift:"₽/смена", month:"₽/мес" }[sf.rateMode || "hour"])} P={P}>
+                <Num inp={inp} v={sf.rate || 0} min={0} max={sf.rateMode === "month" ? 2000000 : 20000}
+                  set={v => patch(c => { c.staff[i].rate = v; })} />
+              </Field>
+            </div>
+            <div style={{ display:"flex", gap:6, marginTop:6 }}>
+              {[["hour", "почасовая"], ["shift", "за смену"], ["month", "оклад/мес"]].map(([v, t]) => (
+                <Pill key={v} a11y={a11y} P={P} on={(sf.rateMode || "hour") === v} style={{ flex:1, padding:"7px 4px", fontSize:11 }}
+                  onClick={() => patch(c => { c.staff[i].rateMode = v; })}>{t}</Pill>
+              ))}
+              <Field label="д.р." P={P}>
+                <Text inp={{ ...inp, width:64 }} v={sf.bday || ""} maxLength={5} placeholder="дд.мм"
+                  set={val => patch(c => { c.staff[i].bday = val; })} />
               </Field>
             </div>
 
@@ -1125,6 +2129,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 <Num inp={inp} v={vacOn(sf) ? sf.vac[1] : 0} min={0} max={DAYS}
                   set={v => patch(c => {
                     if (c.staff[i].vac) c.staff[i].vac[1] = Math.max(c.staff[i].vac[0], v);
+                    else if (v) c.staff[i].vac = [v, v, mkey];   // «по» первым — тоже работает, а не теряется молча
                   })} />
               </Field>
               <Field label="статус" P={P}>
@@ -1153,27 +2158,66 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             {/* Выходные по конкретным датам — поверх недельного шаблона */}
             <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
               color:P.sub, padding:"10px 0 5px" }}>
-              выходные по датам · {MONTHS_R[M]}
-              {offDays(sf).length ? <span style={{ color:P.acc }}> · выбрано {offDays(sf).length}</span> : null}
+              <span>выходные по датам · {MONTHS_R[M]}
+                {offDays(sf).length ? <span style={{ color:P.acc }}> · выбрано {offDays(sf).length}</span> : null}</span>
+              <button className="sa-btn" onClick={() => { setOffRange(!offRange); setOffAnchor(null); vibrate("light"); }}
+                style={{ float:"right", padding:"3px 9px", borderRadius:8, cursor:"pointer", fontFamily:mono, fontSize:9,
+                  letterSpacing:1, textTransform:"uppercase",
+                  color: offRange ? INK_DEEP : P.sub,
+                  background: offRange ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
+                  border:`1px solid ${offRange ? GOLD : (a11y ? "rgba(175,140,65,.28)" : "rgba(145,108,40,.28)")}` }}>
+                ↔ диапазон
+              </button>
             </div>
+            {offRange ? (
+              <div style={{ fontSize:10.5, color:P.acc, fontStyle:"italic", marginBottom:6 }}>
+                {offAnchor && offAnchor.i === i
+                  ? `Начало: ${offAnchor.d} ${MONTHS_R[M]} — теперь тапни последний день`
+                  : "Тапни первый и последний день — заполню всё между ними"}
+              </div>
+            ) : null}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
               {Array.from({ length: DAYS }, (_, k) => k + 1).map(d => {
                 const on = offDays(sf).includes(d);
                 const weekly = (sf.off || []).includes(dow(d));
                 return (
                   <button key={d} className="sa-btn" disabled={weekly}
-                    onClick={() => patch(c => {
-                      const st = c.staff[i];
-                      if (!st.offDays) st.offDays = {};
-                      const cur = st.offDays[mkey] || [];
-                      st.offDays[mkey] = cur.includes(d) ? cur.filter(v => v !== d) : [...cur, d].sort((a, b) => a - b);
-                      if (!st.offDays[mkey].length) delete st.offDays[mkey];
-                    })}
+                    onClick={() => {
+                      // Режим диапазона: первый тап — якорь, второй заливает всё
+                      // между. Если вся полоса уже выбрана — второй тап её снимает.
+                      if (offRange) {
+                        if (!offAnchor || offAnchor.i !== i) { setOffAnchor({ i, d }); vibrate("light"); return; }
+                        const lo = Math.min(offAnchor.d, d), hi = Math.max(offAnchor.d, d);
+                        setOffAnchor(null);
+                        patch(c => {
+                          const st = c.staff[i];
+                          if (!st.offDays) st.offDays = {};
+                          const cur = new Set(st.offDays[mkey] || []);
+                          const span = [];
+                          for (let x = lo; x <= hi; x++) if (!(st.off || []).includes(dow(x))) span.push(x);
+                          const allOn = span.every(x => cur.has(x));
+                          span.forEach(x => allOn ? cur.delete(x) : cur.add(x));
+                          st.offDays[mkey] = [...cur].sort((a, b) => a - b);
+                          if (!st.offDays[mkey].length) delete st.offDays[mkey];
+                        });
+                        vibrate("success");
+                        return;
+                      }
+                      patch(c => {
+                        const st = c.staff[i];
+                        if (!st.offDays) st.offDays = {};
+                        const cur = st.offDays[mkey] || [];
+                        st.offDays[mkey] = cur.includes(d) ? cur.filter(v => v !== d) : [...cur, d].sort((a, b) => a - b);
+                        if (!st.offDays[mkey].length) delete st.offDays[mkey];
+                      });
+                    }}
                     style={{ padding:"7px 0", borderRadius:8, cursor: weekly ? "default" : "pointer",
                       fontFamily:mono, fontSize:11, opacity: weekly ? .35 : 1,
                       color: on ? INK_DEEP : (holOf(d) ? P.warn : P.sub),
                       background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
                       border:`1px solid ${on ? GOLD : (a11y ? "rgba(175,140,65,.28)" : "rgba(145,108,40,.28)")}`,
+                      boxShadow: (offAnchor && offAnchor.i === i && offAnchor.d === d)
+                        ? `0 0 0 2px ${GOLD}, 0 0 8px ${GOLD}88` : undefined,
                       fontWeight: on ? "bold" : "normal" }}>{d}</button>
                 );
               })}
@@ -1223,14 +2267,46 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
           шаблон вроде «не работает по вторникам», <b>выходные по датам</b> — разовые числа. Генератор не нарушает
           ни одно из них.</div>
       </Sec>
+      {/* Страховка: настройки целиком текстом — скопировать в заметки,
+          а после беды вставить обратно и применить (запрос владельца) */}
+      <Sec no={6} title="Страховка настроек" hint="копия текстом — на чёрный день"
+        open={openSec === 6} onToggle={() => setOpenSec(openSec === 6 ? 0 : 6)} P={P}>
+        <textarea value={backupText} onChange={e => setBackupText(e.target.value)}
+          style={{ ...inp, width:"100%", minHeight:120, fontFamily:mono, fontSize:10.5, boxSizing:"border-box" }} />
+        <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+            onClick={() => { setBackupText(JSON.stringify(cfg)); setMsg("Настройки в поле — выдели всё и скопируй в заметки"); setTimeout(() => setMsg(""), 3000); }}>
+            Выгрузить в поле</button>
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+            onClick={() => { try {
+              const o = JSON.parse(backupText);
+              if (!o || !Array.isArray(o.shifts) || !Array.isArray(o.staff)) throw new Error("bad");
+              patch(c => { Object.keys(c).forEach(k => delete c[k]); Object.assign(c, o); });
+              setMsg("Настройки восстановлены — проверь и сохрани"); setTimeout(() => setMsg(""), 3000);
+            } catch (e) { setMsg("Это не похоже на копию настроек"); setTimeout(() => setMsg(""), 2500); } }}>
+            Применить из поля</button>
+        </div>
+      </Sec>
     </div>
     );
   };
 
   // ── Вид сотрудника: только свои смены ─────────────────────────────
   if (!isAdmin) {
-    const me = staff.find(s => `${s.name}`.toLowerCase() === `${profile?.name || ""} ${profile?.surname || ""}`.trim().toLowerCase())
-            || staff.find(s => `${s.name}`.toLowerCase().includes((profile?.name || "").toLowerCase()));
+    // Прод-баг «двух Дмитриев»: includes-фолбэк отдавал первого, чьё имя
+    // содержит «Дмитрий» — оба видели чужой график. Токен-движок Доп. 75.
+    const meNorm = x => String(x || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+    const meToks = x => new Set(meNorm(x).split(" ").filter(Boolean));
+    const mePT = meToks((profile?.name || "") + " " + (profile?.surname || ""));
+    const meEq = [], meSub = [];
+    staff.forEach(s2 => {
+      const st2 = meToks(s2.name);
+      if (!st2.size || !mePT.size) return;
+      const allIn = (A, B) => [...A].every(w => B.has(w));
+      if (st2.size === mePT.size && allIn(st2, mePT)) meEq.push(s2);
+      else if (allIn(mePT, st2) || allIn(st2, mePT)) meSub.push(s2);
+    });
+    const me = meEq.length === 1 ? meEq[0] : (meEq.length === 0 && meSub.length === 1 ? meSub[0] : null);
     return shell(<>
       {monthNav}
       {!me ? (
@@ -1240,7 +2316,158 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       ) : (<>
         <div style={card}>
-          <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {me.norm} ч</span></div>
+          <div style={eyebrow}><span>{me.name}</span><span style={{ color:P.acc }}>{hoursOf(me)} / {effNorm(me)} ч{effNorm(me) !== me.norm ? <span style={{ color:P.sub }}> · отпуск учтён</span> : null}</span></div>
+          {payOf(me) ? (
+            <div style={{ fontSize:12.5, color:P.text, margin:"2px 0 8px" }}>
+              Заработок за месяц: <b style={{ color:P.acc }}>≈ <NumUp v={payOf(me).sum} /> ₽</b>
+              <span style={{ color:P.sub }}> · {payOf(me).note}{(me.rateMode || "hour") !== "month" ? ", по сменам в графике" : ""}</span>
+            </div>
+          ) : null}
+          {prevPay[me.id] > 0 ? (
+            <div style={{ fontSize:11, color:P.sub, margin:"-4px 0 8px" }}>Прошлый месяц: ≈ {Math.round(prevPay[me.id]).toLocaleString("ru-RU")} ₽</div>
+          ) : null}
+          {planDiff.length ? (
+            <div style={{ fontSize:11.5, color:P.acc, margin:"0 0 8px" }}>✎ С прошлого визита изменились твои дни: {planDiff.join(", ")}</div>
+          ) : null}
+          {/* Мост «зарплата → мотивация»: сколько принесут ещё две смены */}
+          {(() => {
+            const po = payOf(me);
+            if (!po || (me.rateMode || "hour") === "month") return null;
+            const n = shiftsOf(me);
+            const per = (me.rateMode === "shift") ? me.rate : (n > 0 ? Math.round(hoursOf(me) / n) * me.rate : 0);
+            if (!(per > 0)) return null;
+            return (
+              <div style={{ fontSize:11.5, color:P.sub, margin:"-4px 0 8px" }}>
+                Возьмёшь ещё 2 смены — будет примерно <b style={{ color:P.acc }}>+{(per * 2).toLocaleString("ru-RU")} ₽</b>
+              </div>
+            );
+          })()}
+          {/* Достижения из реальной работы: считаются из самого графика */}
+          {(() => {
+            const chips = [];
+            const en2 = effNorm(me);
+            if (en2 > 0 && hoursOf(me) >= en2) chips.push("норма закрыта");
+            let peaks = 0;
+            for (let d = 1; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d]) && lvlOf(d) === 3) peaks++;
+            if (peaks >= 3) chips.push(peaks + " пиковых смен");
+            if (en2 > 0 && hoursOf(me) < en2) {
+              const lack = en2 - hoursOf(me);
+              const n2 = shiftsOf(me);
+              const avg = n2 > 0 ? Math.max(1, Math.round(hoursOf(me) / n2)) : 12;
+              chips.push("до нормы " + lack + " ч ≈ " + Math.ceil(lack / avg) + " см.");
+            }
+            if (!chips.length) return null;
+            return (
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", margin:"0 0 10px" }}>
+                {chips.map(c => (
+                  <span key={c} style={{ fontSize:11, color:P.acc, padding:"3px 10px", borderRadius:999,
+                    background: a11y ? "rgba(250,242,222,0.65)" : "rgba(200,169,110,0.10)",
+                    border:`1px solid ${GOLD}55` }}>✦ {c}</span>
+                ))}
+              </div>
+            );
+          })()}
+          {/* Обмен сменами: предложить свою / взять чужую (сервер swaps) */}
+          {(() => {
+            const t0 = new Date();
+            const isCur = t0.getFullYear() === Y && t0.getMonth() === M;
+            const td0 = isCur ? t0.getDate() : 1;
+            const myAct = swaps.find(w => String(w.from_staff) === String(me.id));
+            const mine = swaps.filter(w => String(w.to_staff) === String(me.id) && w.status === "taken");
+            const offers = swaps.filter(w => w.status === "open" && String(w.from_staff) !== String(me.id)
+              && (staff.find(q => String(q.id) === String(w.from_staff)) || {}).pos === me.pos
+              && !shiftOf(plan[me.id]?.[w.day]));
+            const myDays = [];
+            for (let d = td0; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d])) myDays.push(d);
+            if (!myAct && !offers.length && !mine.length && !myDays.length) return null;
+            const act = async (fn, args, okMsg) => { try {
+              const r = await rpc(fn, { p_token: saToken(), p_restaurant: profile?.restaurant || "", ...args });
+              if (r && r.ok) { setMsg(okMsg); const r3 = await rpc("swap_list", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue: venueKey, p_month: mkey });
+                if (r3 && r3.ok) setSwaps(r3.swaps || []); }
+              else setMsg(r && r.error === "busy" ? "Смену уже взяли" : r && r.error === "already" ? "На этот день заявка уже есть" : "Не получилось");
+              setTimeout(() => setMsg(""), 2500);
+            } catch (e) { setMsg("Нет связи"); setTimeout(() => setMsg(""), 2000); } };
+            return (
+              <div style={{ margin:"0 0 12px", padding:"11px 13px", borderRadius:14,
+                background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
+                border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}`,
+                boxShadow: a11y ? "none" : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
+                <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:7 }}>обмен сменами</div>
+                {myAct ? (
+                  <div style={{ fontSize:12, color:P.text, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    Ты отдаёшь {myAct.day}-е ({myAct.k}){myAct.status === "taken" ? <> — берёт <b style={{ color:P.acc }}>{myAct.to_name}</b>, ждём менеджера</> : " — ждём желающих"}
+                    <span onClick={() => act("swap_cancel", { p_id: myAct.id, p_staff: String(me.id) }, "Заявка отозвана")}
+                      style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>отозвать</span>
+                  </div>
+                ) : myDays.length ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <select value={swapDay || myDays[0]} onChange={e => setSwapDay(+e.target.value)}
+                      style={{ ...inp, padding:"6px 8px", fontSize:12 }}>
+                      {myDays.map(d => <option key={d} value={d}>{d}-е · {shiftOf(plan[me.id][d]).name}</option>)}
+                    </select>
+                    <span onClick={() => { const d = swapDay || myDays[0];
+                      act("swap_create", { p_venue: venueKey, p_month: mkey, p_day: d, p_k: plan[me.id][d], p_staff: String(me.id), p_name: me.name }, "Предложение отправлено"); }}
+                      style={{ padding:"5px 12px", borderRadius:999, cursor:"pointer", fontSize:11.5, fontWeight:"bold",
+                        color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>Предложить обмен</span>
+                  </div>
+                ) : null}
+                {offers.map(w => (
+                  <div key={w.id} style={{ fontSize:12, color:P.text, marginTop:7, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <b style={{ color:P.acc }}>{w.from_name}</b> отдаёт {w.day}-е ({w.k})
+                    <span onClick={() => act("swap_take", { p_id: w.id, p_staff: String(me.id), p_name: me.name }, "Ты взял смену — ждём менеджера")}
+                      style={{ padding:"4px 11px", borderRadius:999, cursor:"pointer", fontSize:11, fontWeight:"bold",
+                        color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>Возьму</span>
+                  </div>
+                ))}
+                {mine.map(w => (
+                  <div key={w.id} style={{ fontSize:12, color:P.text, marginTop:7 }}>
+                    Ты берёшь {w.day}-е у {w.from_name} — ждём менеджера{" "}
+                    <span onClick={() => act("swap_cancel", { p_id: w.id, p_staff: String(me.id) }, "Отклик снят")}
+                      style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>передумал</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          {/* Мост «график → обучение и чек-листы»: перед сменой — по делу */}
+          {(() => {
+            const t = new Date();
+            if (!(t.getFullYear() === Y && t.getMonth() === M)) return null;
+            const td = t.getDate();
+            const kT = shiftOf(plan[me.id]?.[td]);
+            const kN = td < DAYS ? shiftOf(plan[me.id]?.[td + 1]) : null;
+            if (!kT && !kN) return null;
+            const pill = { display:"inline-flex", alignItems:"center", gap:5, padding:"5px 11px", borderRadius:999,
+              cursor:"pointer", fontSize:11.5, fontFamily:serif, color:INK_DEEP, fontWeight:"bold",
+              background:`linear-gradient(180deg,#E4C88C,${GOLD})`, WebkitTapHighlightColor:"transparent" };
+            return (
+              <div style={{ display:"flex", flexDirection:"column", gap:8, margin:"0 0 12px",
+                padding:"11px 13px", borderRadius:14,
+                // «морозный лёд»: полупрозрачное стекло, изморозь-свечение
+                // изнутри и блик по верхней кромке — как у всех карточек
+                background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
+                border: `1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}`,
+                borderTop: `1px solid ${a11y ? "rgba(175,135,50,0.4)" : "rgba(210,168,65,0.32)"}`,
+                boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.5)"
+                  : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
+                {dueCount > 0 && onMistakes ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <span style={{ fontSize:12, color:P.text }}>
+                      {kT ? "Сегодня смена" : "Завтра смена"} · <b style={{ color:P.acc }}>{dueCount}</b> {dueCount === 1 ? "вопрос ждёт" : dueCount < 5 ? "вопроса ждут" : "вопросов ждут"} повтора
+                    </span>
+                    <span onClick={onMistakes} {...onActivate(onMistakes)} style={pill}>Повторить перед сменой</span>
+                  </div>
+                ) : null}
+                {kT && onChecklist ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:12, color:P.sub }}>Смена {kT.name.toLowerCase()} · {kT.from}:00–{kT.to === 24 ? "24" : kT.to}:00</span>
+                    <span onClick={onChecklist} {...onActivate(onChecklist)} style={{ ...pill, background:"transparent",
+                      color:P.acc, border:`1px solid ${GOLD}66`, fontWeight:"normal" }}>Чек-лист смены</span>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
           {(() => {
             // Первый вопрос при открытии графика — «когда моя ближайшая смена?».
             // Отвечаем сразу, в одну строку, не заставляя сканировать список.
@@ -1262,6 +2489,38 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
               </div>
             );
           })()}
+          {(() => {
+            // Контакты «на связи»: раньше телефоны жили только в настройках
+            // и у старшего смены — сотрудник их не видел (замечание владельца)
+            const bosses = staff.filter(x => x.phone && x.id !== me.id);
+            if (!bosses.length) return null;
+            // Компактно (замечание владельца: 15 капсул грузили экран):
+            // свёрнуто в одну строку-кнопку, список раскрывается по тапу
+            return (
+              <div style={{ margin:"0 0 10px", paddingBottom:9,
+                borderBottom:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+                <span onClick={() => setContactsOpen(o => !o)} {...onActivate(() => setContactsOpen(o => !o))}
+                  style={{ display:"inline-flex", alignItems:"center", gap:6, cursor:"pointer",
+                    padding:"4px 11px", borderRadius:999, fontSize:11.5, color:P.acc,
+                    background: a11y ? "rgba(250,242,222,0.6)" : "rgba(200,169,110,0.08)",
+                    border:`1px solid ${GOLD}44`, WebkitTapHighlightColor:"transparent" }}>
+                  <IcoPhone size={11} color={P.acc} />
+                  на связи · {bosses.length}
+                  <span style={{ fontSize:13, transform: contactsOpen ? "rotate(90deg)" : "none",
+                    transition:"transform .25s", display:"inline-block" }}>›</span>
+                </span>
+                {contactsOpen ? (
+                <div style={{ display:"flex", alignItems:"baseline", gap:7, flexWrap:"wrap", marginTop:8 }}>
+                {bosses.map(b => (
+                  <span key={b.id} style={{ fontSize:12.5 }}>
+                    <CallName who={b} label={b.name} color={P.acc} />
+                  </span>
+                ))}
+              </div>
+                ) : null}
+              </div>
+            );
+          })()}
           {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
             const k = plan[me.id]?.[d], sh = k && shiftOf(k), vac = onVac(me, d), col = k && colorOf(k);
             // Состав смены по тапу: первый вопрос любой смены — «кто сегодня
@@ -1280,9 +2539,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                   <div style={{ fontSize:17, color: holOf(d) ? P.warn : P.text }}>{d}</div>
                   <div style={{ fontFamily:mono, fontSize:8.5, color:P.sub }}>{DOWL[dow(d)]}</div>
                   {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
+                  {days[d]?.note ? <div style={{ width:4, height:4, borderRadius:2, background:GOLD, margin:"1px auto 0" }} /> : null}
+                  {wishOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoSun size={10} /></div> : null}
+                  {hardOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoBan size={10} color={P.warn} /></div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? "Отпуск" : sh ? sh.name : "Выходной"}</div>
+                  {days[d]?.note ? <div style={{ fontSize:10.5, color:P.acc, marginBottom:1 }}>✎ {days[d].note}</div> : null}
+                  <div style={{ fontSize:14, color:P.text }}>{vac && !sh ? <>Отпуск <IcoWave size={13} color={P.acc} dy={-2} /></> : sh ? sh.name
+                    : ["Выходной", "Отдыхай ✦", "Твой день"][d % 3]}</div>
                   <div style={{ fontSize:11.5, color:P.sub }}>
                     {sh ? `${sh.from}:00 – ${sh.to > 24 ? sh.to - 24 : sh.to}:00` : (holName(d) || "")}
                     {sh && leadObj(d) ? <span style={{ color:P.acc }}> · старший:{" "}
@@ -1322,6 +2586,34 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                           );
                         })}
                       </>) : null}
+                      {/* Кто отдыхает в этот день — чтобы найти замену одним звонком
+                          (вопрос владельца). Своя позиция первой, отпускники не в счёт */}
+                      {(() => {
+                        const rest = staff.filter(x => x.id !== me.id && !shiftOf(plan[x.id]?.[d]) && !onVac(x, d));
+                        if (!rest.length) return null;
+                        const order = [me.pos, ...POS.map(q => q.id).filter(q => q !== me.pos)];
+                        return (
+                          <>
+                            <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
+                              color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>отдыхают · можно попросить подменить</div>
+                            {order.map(pos => {
+                              const list = rest.filter(x => x.pos === pos);
+                              if (!list.length) return null;
+                              const t = (POS.find(q => q.id === pos) || {}).t || pos;
+                              return (
+                                <div key={pos} style={{ display:"flex", gap:8, fontSize:12, lineHeight:1.7, opacity: pos === me.pos ? 1 : 0.75 }}>
+                                  <span style={{ flex:"0 0 84px", color:P.sub }}>{t}</span>
+                                  <span style={{ flex:1, color:P.text }}>
+                                    {list.map((x, xi) => (
+                                      <span key={x.id}>{xi ? ", " : ""}<CallName who={x} label={x.name} color={P.text} /></span>
+                                    ))}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
                       {/* Личная заметка дня: чаевые, важные события, напоминания */}
                       <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
                         color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>заметка</div>
@@ -1329,9 +2621,57 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                         placeholder="Чаевые, важный день, напоминание…"
                         onFocus={focusScroll} onBlur={e => saveNote(d, e.target.value)}
                         style={{ ...INP(a11y, P), width:"100%", resize:"none", fontFamily:serif, fontSize:13, lineHeight:1.5 }} />
+                      {typeof facts[me.id]?.[d] === "number" && sh ? (
+                        <div style={{ fontSize:12, color:P.text, margin:"6px 0 2px" }}>
+                          Учтено по факту: <b style={{ color:P.acc }}>{facts[me.id][d]} ч</b>
+                          <span style={{ color:P.sub }}> · план {len(sh)} ч</span>
+                        </div>
+                      ) : null}
                       <div style={{ fontSize:10.5, color:P.sub, marginTop:4, fontStyle:"italic" }}>
                         Заметки видишь только ты — они живут на этом устройстве
                       </div>
+                      {/* Пожелание выходного: видит менеджер, уважает генератор */}
+                      {wishes === false ? (
+                        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+                          Просьбы о выходных пока не включены — менеджеру нужно применить SQL-файл schedule-wishes.sql в Supabase
+                        </div>
+                      ) : !sh ? (
+                        <div style={{ marginTop:9 }}>
+                          <button className="sa-btn" disabled={wishes === null}
+                            onClick={() => setWish(me.id, d, !wishOf(me.id, d))}
+                            style={{ ...ghost, width:"100%", boxSizing:"border-box",
+                              padding:"9px 10px", fontSize:12.5,
+                              borderColor: wishOf(me.id, d) ? GOLD : GOLD + "66", color: wishOf(me.id, d) ? (a11y ? "#6B4E1A" : GOLD) : GOLD }}>
+                            {wishes === null ? "…" : wishOf(me.id, d)
+                              ? <><IcoSun size={13} dy={-2} /> Просьба о выходном отправлена — отозвать</>
+                              : <><IcoSun size={13} dy={-2} /> Попросить выходной (если получится)</>}
+                          </button>
+                          {wishesV2 ? (
+                            <button className="sa-btn" disabled={wishes === null}
+                              onClick={() => setWish(me.id, d, !hardOf(me.id, d), "hard")}
+                              style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:7,
+                                padding:"9px 10px", fontSize:12.5,
+                                borderColor: hardOf(me.id, d) ? P.warn : GOLD + "66", color: hardOf(me.id, d) ? P.warn : GOLD }}>
+                              {wishes === null ? "…" : hardOf(me.id, d)
+                                ? <><IcoBan size={13} color={P.warn} dy={-2} /> Отмечено «не смогу выйти» — снять</>
+                                : <><IcoBan size={13} color={P.warn} dy={-2} /> Не смогу выйти в этот день{(() => { const c = hardCapacity(d, me); return c.maxHard ? ` (мест: ${c.left})` : ""; })()}</>}
+                            </button>
+                          ) : (
+                            <div style={{ fontSize:10.5, color:P.sub, marginTop:7, fontStyle:"italic" }}>
+                              «Не смогу выйти» появится после обновления сервера (schedule-wishes-v2.sql)
+                            </div>
+                          )}
+                          {wishNote && wishNote.d === d ? (
+                            <div style={{ fontSize:11.5, color:P.warn, marginTop:7, lineHeight:1.5 }}>
+                              {wishNote.text}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+                          На этот день уже стоит смена — о замене договорись с менеджером
+                        </div>
+                      )}
                     </div>
                   );
                 })() : null}
@@ -1339,10 +2679,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             );
           })}
         </div>
-        <div style={{ margin:"0 14px" }}>
-          <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"11px 12px", fontSize:13 }}
+        <div style={{ margin:"0 14px", display:"flex", gap:8 }}>
+          <button style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
             className="sa-btn" disabled={shotBusy} onClick={() => exportMy(me)}>
-            {shotBusy ? "Собираю…" : "Сохранить смены картинкой"}
+            {shotBusy ? "Собираю…" : "Месяц картинкой"}
+          </button>
+          <button style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
+            className="sa-btn" disabled={shotBusy} onClick={() => exportWeek(me)}>
+            {shotBusy ? "Собираю…" : "Карточка недели"}
           </button>
         </div>
         {shot ? (
@@ -1366,27 +2710,40 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
 
   // ── Вид менеджера: таблица ────────────────────────────────────────
   const warns = audit();
-  // Координаты клеток-нарушителей: та же логика, что в audit(), но с адресами
-  // — красная точка на клетке показывает проблему прямо в сетке.
-  const badCells = React.useMemo(() => {
-    const bad = new Set(); if (!cfg) return bad;
-    const R = cfg.rules;
-    staff.forEach(sf => {
-      let run = [];
-      for (let d = 1; d <= DAYS + 1; d++) {
-        const sh = d <= DAYS ? shiftOf(plan[sf.id]?.[d]) : null;
-        if (sh) run.push(d);
-        else { if (run.length > R.maxRow) run.forEach(x => bad.add(sf.id + ":" + x)); run = []; }
-        if (d <= DAYS && sh && d > 1) {
-          const q = shiftOf(plan[sf.id]?.[d - 1]);
-          if (q && (24 - q.to + sh.from) < R.minRest) { bad.add(sf.id + ":" + d); bad.add(sf.id + ":" + (d - 1)); }
-        }
-        if (d <= DAYS && plan[sf.id]?.[d] && onVac(sf, d)) bad.add(sf.id + ":" + d);
-      }
+  // Советник ёмкости: если потребность НЕДОСТИЖИМА штатом даже в идеале
+  // (отпуска, недельные выходные, цикл 2/2) — сказать прямо, а не сыпать
+  // десятками одинаковых недоборов. Классика межсезонья: людей ужали,
+  // потребность забыли. Оценка верхняя: реальность будет чуть ниже.
+  POS.forEach(({ id: pos, t }) => {
+    let needTotal = 0;
+    // Разбивка после «ген 3» — структура В ПРЕДЕЛАХ потребности, а не
+    // объём поверх неё: честный месячный объём — сумма потребности по дням
+    for (let d = 1; d <= DAYS; d++) needTotal += needOf(d)[pos] || 0;
+    if (!needTotal) return;
+    let cap = 0;
+    staff.filter(x => x.pos === pos).forEach(x => {
+      let avail = 0;
+      for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d)) avail++;
+      let c = Math.min(avail, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7));
+      if ((cfg.posRules?.[pos]?.pattern) === "2x2") c = Math.min(c, Math.ceil(DAYS / 2));
+      cap += c;
     });
-    return bad;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, cfg, staff, DAYS]);
+    if (cap < needTotal) warns.unshift(
+      `${t}: потребность ${needTotal} смен в месяц, а ёмкость штата ≈ ${cap} — нехватка структурная. Уменьши потребность в настройках (межсезонье?) или добавь людей`
+    );
+  });
+  // Нарушенные пожелания — отдельно от нарушений правил: это просьбы,
+  // а не запреты; менеджер решает сам, но должен их видеть.
+  if (wishes && typeof wishes === "object") {
+    staff.forEach(sf => (wishes[sf.id] || []).forEach(d => {
+      const q = shiftOf(plan[sf.id]?.[d]);
+      if (q && !q.extra) warns.push(`${sf.name} просил(а) выходной ${d}-го — стоит смена ${q.k}`);
+    }));
+  }
+  staff.forEach(sf => (hardOff[sf.id] || []).forEach(d => {
+    const q = shiftOf(plan[sf.id]?.[d]);
+    if (q) warns.push(`${sf.name} НЕ СМОЖЕТ выйти ${d}-го — а смена ${q.k} стоит! Срочно замени`);
+  }));
   let need = 0, have = 0;
   for (let d = 1; d <= DAYS; d++) POS.forEach(({ id: pos }) => {
     const n = needOf(d)[pos] || 0; need += n;
@@ -1412,34 +2769,96 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
     </div>
     {tab === "setup" ? setupView() : <>
     {monthNav}
+    {/* Доп. 150: панель в три спокойных ряда. Режимы — сегмент (они взаимоисключающие),
+        редкие и опасные действия — за «Ещё». Логика кнопок не менялась. */}
+    {/* Доп. 256: «Кто вместо?» — кто может взять смену и почему не могут остальные */}
+    {replAsk && (() => {
+      const who = staff.find(x => String(x.id) === String(replAsk.id)); const d = replAsk.d;
+      const k = plan[replAsk.id]?.[d]; const sh = shiftOf(k); if (!who || !sh) return null;
+      let why = null;
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      const others = staff.filter(x => x.pos === who.pos && String(x.id) !== String(who.id));
+      const free = [], busy = [];
+      others.forEach(x => {
+        const r = why ? why(plan, x, d, k) : (plan[x.id]?.[d] ? "уже в смене" : null);
+        (r ? busy : free).push({ x, r });
+      });
+      const put = (x) => {
+        snapUndo();
+        setPlan(pl => ({ ...pl, [who.id]: { ...(pl[who.id] || {}), [d]: "" }, [x.id]: { ...(pl[x.id] || {}), [d]: k } }));
+        setLocks(l => { const a = { ...(l[who.id] || {}) }; delete a[d]; const b = { ...(l[x.id] || {}) }; b[d] = 1; return { ...l, [who.id]: a, [x.id]: b }; });
+        setDirty(true); setReplAsk(null); vibrate("success");
+        setMsg(`${d} ${MONTHS_R[M]}: вместо ${who.name.split(" ")[0]} выходит ${x.name.split(" ")[0]} — не забудь «Сохранить»`); setTimeout(() => setMsg(""), 5000);
+      };
+      return (
+        <div onClick={() => setReplAsk(null)} style={{ position:"fixed", inset:0, zIndex:60, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width:"calc(100% - 24px)", maxWidth:440, margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))",
+            borderRadius:20, padding:16, maxHeight:"76vh", overflowY:"auto",
+            background: a11y ? "rgba(250,242,222,0.98)" : "rgba(26,20,10,0.98)", border:`1px solid ${GOLD}55` }}>
+            <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>КТО ВМЕСТО · {d} {MONTHS_R[M].toUpperCase()}</div>
+            <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:3 }}>{who.name} · {sh.name} {sh.from}:00–{sh.to}:00</div>
+            <div style={{ fontSize:12, color:P.sub, marginTop:2, marginBottom:10 }}>{posName(who.pos)}</div>
+            {free.length ? <>
+              <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>МОГУТ ВЫЙТИ · {free.length}</div>
+              {free.map(({ x }) => (
+                <div key={x.id} onClick={() => put(x)} {...onActivate(() => put(x))} className="sa-card"
+                  style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", marginBottom:6, borderRadius:12, cursor:"pointer", border:`1px solid ${GOLD}44` }}>
+                  <span style={{ flex:1, fontSize:14, color:P.text }}>{x.name}</span>
+                  <span style={{ fontSize:11.5, color:P.sub }}>{breakdownOf(x).hours} ч</span>
+                  <span style={{ color:P.acc, fontSize:16 }}>›</span>
+                </div>))}
+            </> : <div style={{ fontSize:13, color:P.warn, marginBottom:8 }}>Свободных нет — ниже видно, что мешает каждому.</div>}
+            {busy.length ? <>
+              <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.sub, margin:"10px 0 6px" }}>НЕ МОГУТ · {busy.length}</div>
+              {busy.map(({ x, r }) => (
+                <div key={x.id} style={{ display:"flex", gap:8, padding:"6px 2px", fontSize:12.5, color:P.sub }}>
+                  <span style={{ flex:"0 0 40%", color:P.text }}>{x.name}</span>
+                  <span style={{ flex:1 }}>{r}</span>
+                </div>))}
+            </> : null}
+            <button className="sa-btn" onClick={() => setReplAsk(null)} style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
+          </div>
+        </div>
+      );
+    })()}
+    {/* Доп. 262: меньше рядов — отмена рядом с кнопками, редкое ушло в «Ещё» */}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
       <button style={btn} className="sa-btn" onClick={generate}>Заполнить черновик</button>
       <button style={ghost} className="sa-btn" onClick={save} disabled={!dirty}>
         {dirty ? "Сохранить" : "Сохранено"}
       </button>
-    </div>
-    <div style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
-        ...(swap ? { background:`linear-gradient(180deg,#E4C88C,${GOLD})`, color:INK_DEEP,
-          fontWeight:"bold", borderColor:GOLD } : {}) }} className="sa-btn"
-        onClick={() => { setSwap(!swap); setSwapSel(null); vibrate("light"); }}>
-        {swap ? "Обмен: вкл" : "Обмен"}
-      </button>
       {undoRef.current ? (
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px" }} className="sa-btn"
-          onClick={undo} data-tick={undoTick}>↩ Отменить</button>
+        <button style={{ ...ghost, fontSize:13, padding:"9px 12px", flexShrink:0 }} className="sa-btn" onClick={undo} data-tick={undoTick} aria-label="Отменить">↩</button>
       ) : null}
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px" }} className="sa-btn"
-        onClick={() => { snapUndo(); setLocks({}); setDirty(true); }}>Снять закрепления</button>
-      <button style={{ ...ghost, fontSize:12.5, padding:"9px 8px",
-        borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
-        onClick={() => setConfirmClear(true)}>Очистить месяц</button>
     </div>
-    <div style={{ display:"flex", gap:8, margin:"8px 14px 0" }}>
-      <button style={{ ...btn, fontSize:13 }} className="sa-btn" onClick={exportImage} disabled={!staff.length || shotBusy}>
-        {shotBusy ? "Собираю…" : "Сохранить и отправить"}
-      </button>
+    <div style={{ display:"flex", gap:8, margin:"8px 14px 0", alignItems:"center" }}>
+      <div style={{ flex:1, display:"flex", padding:3, gap:2, borderRadius:999, border: ghost.border, background:"transparent" }}>
+        {[["edit","Правка"],["repl","Кто вместо?"],["swap","Обмен"],["fact","Факт часов"]].map(([k, t]) => {
+          const on = k === "swap" ? swap : k === "fact" ? factMode : k === "repl" ? repl : (!swap && !factMode && !repl);
+          return (
+            <button key={k} className="sa-btn" style={{ flex:1, border:"none", cursor:"pointer", padding:"7px 4px", borderRadius:999, fontFamily:serif, fontSize:12.5,
+                background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent", color: on ? INK_DEEP : P.sub, fontWeight: on ? "bold" : "normal" }}
+              onClick={() => { vibrate("light"); setSwap(k === "swap" ? !swap : false); setSwapSel(null); setFactMode(k === "fact" ? !factMode : false); setFactEdit(null); setRepl(k === "repl" ? !repl : false); setReplAsk(null); }}>
+              {t}
+            </button>
+          );
+        })}
+      </div>
+      <span onClick={() => { setMore(m => !m); vibrate("light"); }} {...onActivate(() => setMore(m => !m))}
+        style={{ flexShrink:0, fontSize:12.5, color: more ? GOLD : P.sub, cursor:"pointer", padding:"9px 6px" }}>Ещё{more ? " ▴" : " ▾"}</span>
     </div>
+    {more ? (
+      <div className="sa-fadein" style={{ display:"flex", gap:8, margin:"8px 14px 0", flexWrap:"wrap" }}>
+        <button style={{ ...btn, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { exportImage(); setMore(false); }} disabled={!staff.length || shotBusy}>
+          {shotBusy ? "Собираю…" : "Картинкой команде"}
+        </button>
+        {prevPlan ? <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { copyPrevMonth(); setMore(false); }}>Как в прошлом месяце</button> : null}
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
+          onClick={() => { snapUndo(); setLocks({}); setDirty(true); setMore(false); }}>Снять закрепления</button>
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%", borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
+          onClick={() => { setConfirmClear(true); setMore(false); }}>Очистить месяц</button>
+      </div>
+    ) : null}
     {shot ? (
       <div style={{ ...card }}>
         <div style={eyebrow}><span>График картинкой</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
@@ -1468,27 +2887,196 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
       </div>
     ) : null}
 
+    {factEdit ? (() => {
+      const fs = staff.find(x => String(x.id) === String(factEdit.id));
+      const k = fs && plan[fs.id]?.[factEdit.d];
+      const sh = k && shiftOf(k);
+      if (!fs || !sh) return null;
+      const planH = len(sh);
+      const cur = facts[fs.id]?.[factEdit.d];
+      const val = typeof cur === "number" ? cur : planH;
+      const setFact = (v) => {
+        setFacts(f => {
+          const nx = { ...f, [fs.id]: { ...(f[fs.id] || {}) } };
+          if (v === planH || v == null) { delete nx[fs.id][factEdit.d]; if (!Object.keys(nx[fs.id]).length) delete nx[fs.id]; }
+          else nx[fs.id][factEdit.d] = v;
+          return nx;
+        });
+        setDirty(true);
+      };
+      return (
+        <div style={{ ...card, marginTop:10 }}>
+          <div style={{ fontSize:13.5, color:P.text, marginBottom:8 }}>
+            <b>{fs.name}</b> · {factEdit.d} {MONTHS_R[M]} · смена {sh.name} ({planH} ч по плану)
+          </div>
+          <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap" }}>
+            <Field label="отработано по факту, ч" P={P}>
+              <Num inp={inp} v={val} min={0} max={24} set={setFact} />
+            </Field>
+            {typeof cur === "number" ? (
+              <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+                onClick={() => { setFact(null); vibrate("light"); }}>Вернуть по плану</button>
+            ) : null}
+            <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+              onClick={() => setFactEdit(null)}>Готово</button>
+          </div>
+          <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+            Часы и зарплата пересчитаются сразу. Не забудь «Сохранить», чтобы факт увидели все.
+          </div>
+        </div>
+      );
+    })() : null}
+    {swaps.filter(w => w.status === "taken").length > 0 ? (
+      <div style={{ ...card, marginTop:10 }}>
+        <div style={eyebrow}><span>Обмены ждут решения</span><span /></div>
+        {swaps.filter(w => w.status === "taken").map(w => (
+          <div key={w.id} style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", fontSize:12.5, color:P.text, padding:"6px 0" }}>
+            <span><b style={{ color:P.acc }}>{w.from_name}</b> → <b style={{ color:P.acc }}>{w.to_name}</b> · {w.day}-е ({w.k})</span>
+            <span onClick={async () => { try {
+              const r = await rpc("swap_resolve", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_id: w.id, p_approve: true });
+              if (r && r.ok) {
+                setPlan(pp => { const nx = { ...pp, [w.from_staff]: { ...(pp[w.from_staff] || {}) }, [w.to_staff]: { ...(pp[w.to_staff] || {}) } };
+                  delete nx[w.from_staff][w.day]; nx[w.to_staff][w.day] = w.k; return nx; });
+                setDirty(true); setSwaps(ws => ws.filter(x => x.id !== w.id));
+                setMsg("Обмен применён — не забудь «Сохранить»"); setTimeout(() => setMsg(""), 3000);
+              } } catch (e) {} }}
+              style={{ padding:"4px 11px", borderRadius:999, cursor:"pointer", fontSize:11, fontWeight:"bold",
+                color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>Подтвердить</span>
+            <span onClick={async () => { try {
+              const r = await rpc("swap_resolve", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_id: w.id, p_approve: false });
+              if (r && r.ok) setSwaps(ws => ws.filter(x => x.id !== w.id)); } catch (e) {} }}
+              style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>отклонить</span>
+          </div>
+        ))}
+      </div>
+    ) : null}
+    {dayEdit ? (
+      <div style={{ ...card, marginTop:10 }}>
+        <div style={{ fontSize:13.5, color:P.text, marginBottom:8 }}>
+          Заметка ко дню <b>{dayEdit} {MONTHS_R[M]}</b> — увидит вся команда
+        </div>
+        <Text inp={inp} v={days[dayEdit]?.note || ""} maxLength={80} style={{ width:"100%" }}
+          set={val => { setDays(dd => ({ ...dd, [dayEdit]: { ...(dd[dayEdit] || {}), note: val || undefined } })); setDirty(true); }} />
+        <div style={{ display:"flex", gap:8, marginTop:8 }}>
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
+        </div>
+        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+          Банкет, инвентаризация, проверка — короткая строка у даты. Не забудь «Сохранить».
+        </div>
+      </div>
+    ) : null}
     {confirmClear ? (
       <div style={{ ...card, marginTop:10 }}>
-        <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:12 }}>
-          Стереть весь график за {MONTHS_R[M]} {Y}? Сотрудники, смены и правила останутся —
-          сотрётся только расстановка и закрепления.
+        <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:10 }}>
+          Что стереть за {MONTHS_R[M]} {Y}? Расстановка и закрепления сотрутся
+          <b> только в черновике</b> — на сервере всё останется, пока не нажмёшь «Сохранить».
+          Передумал — «↩ Отменить» вернёт как было.
+          {frozenBefore() > 1 && frozenBefore() <= DAYS ? <span> <b>Прошедшие дни и сегодня не трогаются</b> — сотрётся только будущее.</span> : null}
         </div>
-        <div style={{ display:"flex", gap:8 }}>
-          <button style={{ ...btn, background:P.dangerBg, color:P.dangerFg }} className="sa-btn"
-            onClick={clearMonth}>Да, стереть</button>
-          <button style={ghost} className="sa-btn" onClick={() => setConfirmClear(false)}>Отмена</button>
+        <button style={{ ...btn, background:P.dangerBg, color:P.dangerFg, width:"100%", boxSizing:"border-box", marginBottom:10 }}
+          className="sa-btn" onClick={() => clearScope({})}>Стереть весь месяц</button>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          или только одну должность
         </div>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
+          {POS.filter(pp => staff.some(x => x.pos === pp.id)).map(pp => (
+            <button key={pp.id} style={{ ...ghost, padding:"7px 11px", fontSize:12 }} className="sa-btn"
+              onClick={() => clearScope({ pos: pp.id })}>{pp.t}</button>
+          ))}
+        </div>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          или одного сотрудника
+        </div>
+        <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
+          onChange={e => { if (e.target.value) clearScope({ staffId: e.target.value }); }}>
+          <option value="">Выбрать сотрудника…</option>
+          {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          новенький пришёл — дать ему смены
+        </div>
+        <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
+          Сначала добавь человека в настройках. Он получит только свободные
+          дыры будущих дней — чужие смены не изменятся.
+        </div>
+        <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
+          onChange={e => { if (e.target.value) onboardNew(e.target.value); }}>
+          <option value="">Выбрать новенького…</option>
+          {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          сотрудник уходит — раздать его смены другим
+        </div>
+        <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
+          Чужие смены останутся как есть: генератор заполнит только освободившиеся
+          дни, соблюдая отдых, «подряд» и нормы.
+        </div>
+        <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
+          onChange={e => { if (e.target.value) redistribute(e.target.value); }}>
+          <option value="">Выбрать уходящего…</option>
+          {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <button style={{ ...ghost, width:"100%", boxSizing:"border-box" }} className="sa-btn"
+          onClick={() => setConfirmClear(false)}>Отмена</button>
       </div>
     ) : null}
     {msg ? <div style={{ textAlign:"center", fontSize:12, color:P.sub, marginTop:8 }}>{msg}</div> : null}
 
     {today ? (
       <div style={card}>
-        <div style={eyebrow}>
+        <div style={{ ...eyebrow, cursor:"pointer" }} onClick={() => { setTodayOpen(o => !o); vibrate("light"); }}>
           <span>Сегодня · {today} {MONTHS_R[M]}</span>
-          <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""}</span>
+          <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""} <span style={{ color:P.sub, marginLeft:6 }}>{todayOpen ? "▴" : "▾"}</span></span>
         </div>
+        {!todayOpen ? (() => {
+          // Доп. 150: свёрнутая сводка — позиции с числами, недоборы выделены
+          const parts = POS.map(({ id: pos, t }) => {
+            const n = needOf(today)[pos] || 0;
+            const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
+            if (!n && !onDuty.length) return null;
+            const main = onDuty.filter(x => !shiftOf(plan[x.id][today]).extra).length;
+            return { t, main, n, short: main < n };
+          }).filter(Boolean);
+          return (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 10px", fontSize:12.5, lineHeight:1.6, marginTop:2 }}>
+              {parts.map((x, i) => <span key={i} style={{ color: x.short ? P.warn : P.sub, fontWeight: x.short ? "bold" : "normal" }}>{x.t} {x.main}{x.n ? "/" + x.n : ""}{x.short ? "!" : ""}</span>)}
+              <span style={{ color:P.sub, fontStyle:"italic" }}>тап — кто в смене</span>
+            </div>
+          );
+        })() : null}
+        {/* Доп. 263: неделя — одной понятной строкой вместо ряда квадратиков */}
+        {(() => {
+          const wk = weeks.find(w => w.includes(today)) || [];
+          if (!wk.length) return null;
+          const gapOf = (d) => { const need = needOf(d); let miss = 0;
+            POS.forEach(({ id: pos }) => { const n = need[pos] || 0; if (!n) return;
+              const have = staff.filter(x => { const sh = x.pos === pos && shiftOf(plan[x.id]?.[d]); return sh && !sh.extra; }).length;
+              if (have < n) miss += n - have; });
+            return miss; };
+          const gaps = wk.map(d => ({ d, m: gapOf(d) }));
+          const total = gaps.reduce((a, g) => a + g.m, 0);
+          const worst = gaps.slice().sort((a, b) => b.m - a.m)[0];
+          const goTo = () => { const i = weeks.findIndex(w => w.includes(today)); if (i >= 0) { setWeekIdx(i); vibrate("light"); } };
+          return (
+            <div onClick={goTo} {...onActivate(goTo)} style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${GOLD}22`, fontSize:12.5, lineHeight:1.55, color:P.sub, cursor:"pointer" }}>
+              <span style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.4, color:P.acc }}>НА ЭТОЙ НЕДЕЛЕ</span>{" "}
+              {total === 0
+                ? <span style={{ color: a11y ? "#4A6B4A" : "#7FA05A" }}>всё закрыто ✓</span>
+                : <>не хватает <b style={{ color:P.warn }}>{total}</b> {total === 1 ? "смены" : total < 5 ? "смен" : "смен"}{worst && worst.m ? <>, тяжелее всего <b style={{ color:P.text }}>{DOWL[dow(worst.d)]} {worst.d}</b> (−{worst.m})</> : null} · <span style={{ color:P.acc }}>показать неделю ›</span></>}
+            </div>
+          );
+        })()}
+        {todayOpen ? <>
+        {days[today]?.note ? (
+          <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✎ {days[today].note}</div>
+        ) : null}
+        {(() => {
+          const dm = String(today).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
+          const bd = staff.filter(x => (x.bday || "") === dm);
+          return bd.length ? (
+            <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✦ День рождения: {bd.map(x => x.name).join(", ")}</div>
+          ) : null;
+        })()}
         {POS.map(({ id: pos, t }) => {
           const n = needOf(today)[pos] || 0;
           const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
@@ -1511,6 +3099,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </div>
           );
         })}
+        <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12, marginTop:10 }}
+          className="sa-btn" disabled={shotBusy} onClick={exportToday}>
+          {shotBusy ? "Собираю…" : "Сегодня — картинкой в чат"}
+        </button>
+        </> : null}
       </div>
     ) : null}
     <div style={card}>
@@ -1549,28 +3142,71 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginBottom:7 }}>
           {swap
             ? (swapSel ? "Теперь тапни вторую клетку — смены поменяются местами" : "Обмен: тапни первую клетку")
+            : factMode
+            ? "Факт часов: тапни клетку со сменой — отметишь, сколько человек отработал на самом деле"
             : weekIdx == null
             ? "Весь месяц: таблица листается вбок. Выбери неделю — влезет без прокрутки"
             : "Тап по клетке меняет смену и закрепляет её"}
         </div>
+        {/* Мини-легенда: палитра смен читается без экспорта и без памяти */}
+        <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", margin:"2px 0 9px" }}>
+          {(cfg.shifts || []).map((sh2, i2) => {
+            const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
+            return (
+              <span key={sh2.k} style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
+                <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:9,
+                  color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
+                  border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{sh2.k}</span>
+                {sh2.name}
+              </span>
+            );
+          })}
+          <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
+            <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:9,
+              color: a11y ? "#8B3020" : "#E0A0A0", background: a11y ? "rgba(224,120,120,.14)" : "rgba(224,120,120,.10)",
+              border:"1px solid rgba(224,120,120,.35)" }}>О</span>
+            отпуск
+          </span>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
+            <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:12,
+              fontWeight:600, color: a11y ? "#6B5B40" : "#9A8A72" }}>✕</span>
+            пост. выходной
+          </span>
+        </div>
+        {/* Доп. 257: фильтр по позиции — таблица на 20 человек не влезает в экран */}
+        {(() => {
+          const groups = POS.map(pp => ({ ...pp, n: staff.filter(x => x.pos === pp.id).length })).filter(g => g.n);
+          if (groups.length < 2 || staff.length < 8) return null;   // Доп. 262: на маленькой команде фильтр — лишний шум
+          const chip = (on) => ({ padding:"5px 11px", borderRadius:999, fontSize:11.5, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0,
+            border:`1px solid ${on ? GOLD : (a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)")}`,
+            background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? P.text : P.sub });
+          return (
+            <div className="sa-hscroll" style={{ display:"flex", gap:6, margin:"0 0 8px", overflowX:"auto", paddingBottom:2 }}>
+              <span style={chip(!posFilter)} onClick={() => { setPosFilter(""); vibrate("light"); }}>Все · {staff.length}</span>
+              {groups.map(g => <span key={g.id} style={chip(posFilter === g.id)} onClick={() => { setPosFilter(posFilter === g.id ? "" : g.id); vibrate("light"); }}>{g.t} · {g.n}</span>)}
+            </div>
+          );
+        })()}
         <div className="sa-schedgrid sa-hscroll">
           <table style={{ borderCollapse:"separate", borderSpacing:0, fontFamily:mono }}>
-            <tbody key={"g" + genKey + ":" + weekIdx}>
+            <tbody key={"g" + genKey + ":" + weekIdx} className="sa-weekin">
               <tr>
                 <th className="sa-schednm" style={{ width:100, minWidth:100 }} />
                 {visibleDays.map(d => (
                   <th key={d} style={{ width:26, minWidth:26, fontSize:9, color:P.sub, padding:"3px 0", lineHeight:1.2,
-                    background: d === today ? (a11y ? "rgba(175,140,65,0.12)" : "rgba(212,168,90,0.09)") : undefined,
-                    boxShadow: d === today ? `0 2px 0 ${GOLD} inset` : undefined,
+                    background: d === today ? (a11y ? "rgba(175,140,65,0.16)" : "rgba(212,168,90,0.12)") : undefined,
+                    boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset, 0 2px 0 ${GOLD} inset` : undefined,
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
-                    <b style={{ display:"block", fontSize:10.5,
+                    <b onClick={() => setDayEdit(d)} style={{ display:"block", fontSize:10.5, cursor:"pointer",
                       fontWeight: d === today ? "bold" : "normal",
                       color: d === today ? GOLD : holOf(d) ? P.warn : dow(d) >= 5 ? P.acc : SAND }}>{d}</b>
                     {DOWL[dow(d)]}
+                    {days[d]?.note ? <span style={{ display:"block", width:4, height:4, borderRadius:2, background:GOLD, margin:"1px auto 0" }} /> : null}
                   </th>
                 ))}
               </tr>
               {POS.map(({ id: pos, t }) => {
+                if (posFilter && pos !== posFilter) return null;   // Доп. 257: показываем одну позицию
                 const list = staff.filter(s => s.pos === pos);
                 if (!list.length) return null;
                 return (
@@ -1589,7 +3225,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                         return (
                           <td key={d} className="sa-schedgrp" style={{ fontSize:8.5, minWidth:26, height:22, textAlign:"center",
                             color: short ? P.warn : P.sub, fontWeight: short ? "bold" : "normal",
-                            background: d === today ? (a11y ? "rgba(175,140,65,0.10)" : "rgba(212,168,90,0.07)") : undefined,
+                            background: d === today ? (a11y ? "rgba(175,140,65,0.13)" : "rgba(212,168,90,0.09)") : undefined,
+                            boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset` : undefined,
                             borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                             {n ? `${have}/${n}` : (have || "·")}
                           </td>
@@ -1597,7 +3234,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                       })}
                     </tr>
                     {list.map((s, ri) => {
-                      const h = hoursOf(s), pct = Math.min(100, Math.round(h / (s.norm || 1) * 100));
+                      const en = effNorm(s);
+                      const h = hoursOf(s), pct = Math.min(100, Math.round(h / (en || 1) * 100));
                       return (
                         <tr key={s.id} className={ri % 2 ? "sa-schedzeb" : ""}>
                           <td className="sa-schednm" style={{ fontFamily:serif, fontSize:12.5, padding:"0 8px",
@@ -1606,9 +3244,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                             <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
                               <span className="sa-schedbar">
                                 <span style={{ display:"block", height:"100%", width:pct + "%", borderRadius:2,
-                                  background: h > s.norm ? "linear-gradient(90deg,#E07878,#C04A4A)" : "linear-gradient(90deg,#D4A85A,#C8A96E)" }} />
+                                  background: h > en ? "linear-gradient(90deg,#E07878,#C04A4A)" : "linear-gradient(90deg,#D4A85A,#C8A96E)" }} />
                               </span>
-                              <span style={{ fontFamily:mono, fontSize:8, color:P.sub }}>{h}/{s.norm}</span>
+                              <span style={{ fontFamily:mono, fontSize:8, color:P.sub }}>{h}/{en}{en !== s.norm ? "*" : ""}</span>
                             </div>
                           </td>
                           {visibleDays.map((d, di) => {
@@ -1619,14 +3257,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                               <td key={d} onClick={() => tapCell(s, d)}
                                 className={"sa-schedcell" + (dow(d) >= 5 ? " sa-schedwe" : "")}
                                 style={{ width:26, minWidth:26, height:30, cursor:"pointer", textAlign:"center",
-                                  background: d === today ? (a11y ? "rgba(175,140,65,0.07)" : "rgba(212,168,90,0.05)") : undefined,
+                                  background: d === today ? (a11y ? "rgba(175,140,65,0.10)" : "rgba(212,168,90,0.07)") : undefined,
+                                  boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset` : undefined,
                                   borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                                 <div style={{
                                   width:22, height:22, margin:"0 auto", borderRadius:6, display:"grid", placeItems:"center",
-                                  fontSize:9, position:"relative",
+                                  // Крестик постоянного выходного — крупнее и плотнее: девятый
+                                  // кегль тусклым цветом было «для зорких» (замечание владельца)
+                                  fontSize: !k && !vac && fixedOff ? 13 : 9,
+                                  fontWeight: !k && !vac && fixedOff ? 600 : undefined,
+                                  position:"relative",
                                   color: col ? (a11y ? col.fgL : col.fg)
                                     : vac ? (a11y ? "#8B3020" : "#E0A0A0")
-                                    : fixedOff ? (a11y ? "#8A7A5C" : "#7A6A54")
+                                    : fixedOff ? (a11y ? "#6B5B40" : "#9A8A72")
                                     : (a11y ? "#B9AE97" : "#4A4136"),
                                   background: col ? (a11y ? col.bgL : col.bg)
                                     : vac ? (a11y ? "rgba(224,120,120,.14)" : "rgba(224,120,120,.10)")
@@ -1638,10 +3281,22 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                                     : isLocked(s.id, d) ? `0 0 0 1.5px ${GOLD}D0` : undefined,
                                   animationDelay: `${ri * 45 + di * 7}ms`,
                                 }} className={k ? "sa-schedchip" : undefined}
-                                >{k || (vac ? "О" : fixedOff ? "×" : "·")}
+                                >{k || (vac ? "О" : fixedOff ? "✕" : "·")}
                                   {badCells.has(s.id + ":" + d) ? (
                                     <span style={{ position:"absolute", top:-2, right:-2, width:6, height:6,
                                       borderRadius:3, background:P.warn, boxShadow:"0 0 4px rgba(224,120,120,0.8)" }} />
+                                  ) : null}
+                                  {wishOf(s.id, d) ? (
+                                    <span style={{ position:"absolute", bottom:-2, left:-2, width:6, height:6,
+                                      borderRadius:3, border:`1.4px solid ${GOLD}`, background:"transparent" }} />
+                                  ) : null}
+                                  {hardOf(s.id, d) ? (
+                                    <span style={{ position:"absolute", bottom:-2, left:-2, width:6, height:6,
+                                      borderRadius:3, border:`1.4px solid ${P.warn}`, background:"transparent" }} />
+                                  ) : null}
+                                  {typeof facts[s.id]?.[d] === "number" && k ? (
+                                    <span style={{ position:"absolute", bottom:-2, right:-2, width:6, height:6,
+                                      borderRadius:3, background:"#D4A85A", boxShadow:"0 0 4px rgba(212,168,90,0.7)" }} />
                                   ) : null}
                                 </div>
                               </td>
@@ -1656,6 +3311,33 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </tbody>
           </table>
         </div>
+        {/* Месяц одной строкой: менеджер видит масштаб без калькулятора */}
+        {(() => {
+          let shifts = 0, hours = 0;
+          staff.forEach(x => {
+            for (let d = 1; d <= DAYS; d++) {
+              const q = shiftOf(plan[x.id]?.[d]);
+              if (q) { shifts++; hours += dayHoursOf(x, d); }
+            }
+          });
+          if (!shifts) return null;
+          const fund = staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0);
+          return (
+            <div style={{ fontFamily:mono, fontSize:10, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
+              итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
+              {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}><NumUp v={fund} /> ₽</span></> : null}
+              {prevStats ? (() => {
+                const ar = (d) => d > 0 ? "↑" + d.toLocaleString("ru-RU") : d < 0 ? "↓" + Math.abs(d).toLocaleString("ru-RU") : "=";
+                return (
+                  <span style={{ display:"block", marginTop:3, opacity:.85 }}>
+                    к прошлому месяцу: смены {ar(shifts - prevStats.shifts)} · часы {ar(hours - prevStats.hours)}
+                    {fund > 0 && prevStats.fund > 0 ? <> · фонд {ar(fund - prevStats.fund)} ₽</> : null}
+                  </span>
+                );
+              })() : null}
+            </div>
+          );
+        })()}
         </>
       )}
 
@@ -1685,10 +3367,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       ) : null}
     </div>
-
+    {/* Аналитика — в подвале, как задумано владельцем: график во главе.
+        Сжатие в «полоски» побеждено flexShrink:0 (Доп. 66) — низ безопасен */}
     {staff.length ? (
-      <div style={card}>
-        <div style={eyebrow}><span>Отработано по людям</span><span style={{ color:P.acc }}>{MONTHS_R[M]}</span></div>
+      <Sec no={<IcoUsers size={13} />} title="Отработано по людям" hint={staff.length + " чел · " + MONTHS_R[M] + " · часы, смены и нормы каждого"}
+        open={anOpen === "people"} onToggle={() => setAnOpen(anOpen === "people" ? null : "people")} P={P}>
         {POS.map(({ id: pos, t }) => {
           const list = staff.filter(x => x.pos === pos);
           if (!list.length) return null;
@@ -1702,7 +3385,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
                 return (
                   <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
                     <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>{s.name}</div>
+                      <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>
+                        {/* Контакты команды для руководителя: у кого телефон
+                            заполнен — капсула со звонком прямо здесь, а не
+                            только в настройках (вопрос владельца) */}
+                        <CallName who={s} label={s.name} color={P.text} />
+                      </div>
                       <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
                       <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
                     </div>
@@ -1731,7 +3419,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             </div>
           );
         })}
-      </div>
+      </Sec>
     ) : null}
 
     {staff.length ? (() => {
@@ -1743,9 +3431,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
       }, 0);
       return (
-        <div style={card}>
-          <div style={eyebrow}><span>Часы за месяц</span>
-            <span style={{ color:P.acc }}>норма месяца {monthNorm(40)} ч</span></div>
+        <Sec no={<IcoClock size={13} />} title="Часы за месяц" hint={shifts + " смен · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
+          open={anOpen === "month"} onToggle={() => setAnOpen(anOpen === "month" ? null : "month")} P={P}>
           <div style={{ display:"flex", gap:10 }}>
             {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (
               <div key={i} style={{ flex:1, textAlign:"center", padding:"11px 6px", borderRadius:14,
@@ -1768,7 +3455,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
             {over.length ? <span style={{ color:P.warn }}> Переработка у {over.length}: {over.map(s => s.name).join(", ")}.</span> : null}
             {under.length ? <span> Заметный недобор у {under.length}: {under.map(s => s.name).join(", ")}.</span> : null}
           </div>
-        </div>
+        </Sec>
       );
     })() : null}
 
@@ -1782,20 +3469,44 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack }) {
         </div>
       </div>
     ) : (
-    <div style={card}>
-      <div style={eyebrow}><span>Проверка</span></div>
+    <Sec no={<IcoBulb size={13} />} title="Проверка и зарплата"
+      hint={(warns.length ? warns.length + " " + (warns.length === 1 ? "замечание" : warns.length < 5 ? "замечания" : "замечаний") : "нарушений нет")
+        + (staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0) > 0
+          ? " · фонд ≈ " + staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU") + " ₽" : "")}
+      open={anOpen === "audit"} onToggle={() => setAnOpen(anOpen === "audit" ? null : "audit")} P={P}>
       {!warns.length ? (
-        <div className="sa-schednote ok">🎯 Нарушений нет: смены закрыты, нормы соблюдены.</div>
+        <div className="sa-schednote ok"><IcoTarget size={13} dy={-2} /> Нарушений нет: смены закрыты, нормы соблюдены.</div>
       ) : (
         <div className="sa-schednote bad">
-          💡 Замечаний: {warns.length} · клетки-нарушители помечены красной точкой в таблице
-          <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
+          <IcoBulb size={13} dy={-2} /> Замечаний: {warns.length} · красная точка = нарушение, золотой уголок = просьба о выходном, красный уголок = «не смогу выйти», звёздочка = отпуск в норме
+        <ul style={{ margin:"7px 0 0", paddingLeft:17 }}>
             {warns.slice(0, 10).map((w, i) => <li key={i} style={{ marginBottom:4 }}>{w}</li>)}
             {warns.length > 10 ? <li>…и ещё {warns.length - 10}</li> : null}
           </ul>
         </div>
       )}
-    </div>
+      {staff.some(x => x.rate > 0) ? (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+          <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+            зарплата · по ставкам и сменам черновика
+          </div>
+          {staff.filter(x => payOf(x)).map(x => (
+            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
+              <span>{x.name}</span>
+              <span style={{ fontFamily:mono }}>{payOf(x).note} = <b style={{ color:P.acc }}>{payOf(x).sum.toLocaleString("ru-RU")} ₽</b></span>
+            </div>
+          ))}
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"6px 0 0", marginTop:4,
+            borderTop:`1px solid ${a11y ? "rgba(120,90,30,0.3)" : "rgba(255,255,255,0.15)"}` }}>
+            <b>Итого фонд</b>
+            <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU")} ₽</b>
+          </div>
+          <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
+            Почасовые и посменные — по сменам текущего черновика; оклады — фиксированно. У кого оплата не задана — в фонд не входит.
+          </div>
+        </div>
+      ) : null}
+    </Sec>
     )}
     </>}
   </>);

@@ -2,6 +2,7 @@
 // «Гость спрашивает», мосты между колодами, ежедневные пять и режим дня. Без React.
 import { COCKTAILS } from "../data/cocktails";
 import { dishNutrition, nutritionLine } from "./nutrition";
+import { report as reportAchievement } from "./achievements";   // Доп. 268: статический импорт — Vite ругался на смешанный
 
 const norm = (s) => String(s || "").toLowerCase().replace(/ё/g, "е");
 
@@ -125,7 +126,7 @@ export function dishLinks(pairText, dishes) {
 export const dayKey = (d = new Date()) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 const D5 = (uk) => "sa_daily5" + (uk || "");
 export function dailyCount(uk) { try { const j = JSON.parse(localStorage.getItem(D5(uk)) || "{}"); return j.day === dayKey() ? (j.n || 0) : 0; } catch (e) { return 0; } }
-export function bumpDaily(uk) { try { const j = JSON.parse(localStorage.getItem(D5(uk)) || "{}"); const n = (j.day === dayKey() ? (j.n || 0) : 0) + 1; const streak = j.day === dayKey() ? (j.streak || 0) : (j.last === dayKey(new Date(Date.now() - 86400000)) ? (j.streak || 0) + 1 : 1); localStorage.setItem(D5(uk), JSON.stringify({ day: dayKey(), n, streak, last: n >= 5 ? dayKey() : j.last })); if (n === 5) { import("./achievements").then(m => m.report(uk, "streak", streak)).catch(() => {}); } return n; } catch (e) { return 0; } }
+export function bumpDaily(uk) { try { const j = JSON.parse(localStorage.getItem(D5(uk)) || "{}"); const n = (j.day === dayKey() ? (j.n || 0) : 0) + 1; const streak = j.day === dayKey() ? (j.streak || 0) : (j.last === dayKey(new Date(Date.now() - 86400000)) ? (j.streak || 0) + 1 : 1); localStorage.setItem(D5(uk), JSON.stringify({ day: dayKey(), n, streak, last: n >= 5 ? dayKey() : j.last })); if (n === 5) { try { reportAchievement(uk, "streak", streak); } catch (e) {} } return n; } catch (e) { return 0; } }
 export function dailyStreak(uk) { try { const j = JSON.parse(localStorage.getItem(D5(uk)) || "{}"); return j.streak || 0; } catch (e) { return 0; } }
 export const MODES = [
   { key: "allergens", title: "Аллергены на скорость", sub: "30 секунд, свайп «есть / нет»", go: "menu" },

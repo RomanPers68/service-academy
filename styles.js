@@ -1,0 +1,184 @@
+// ui/styles.js
+// Тема оформления: S — тёмная (основная), A — светлая (режим чтения).
+// A наследует S через спред. Из App.jsx (строки 8702–8872).
+
+import { GOLD, GOLD_LOGO, GOLD_SOFT, GREEN, GREEN_DARK, RED, RED_DARK, CREAM, CREAM_SOFT, SAND, SAND_DEEP, PAPER, INK, INK_DEEP, BROWN, BROWN_GOLD, BROWN_NOTE, MUTED, MUTED_2, MUTED_3, CLAY, BG_DARK, PANEL, PANEL_2 } from "./tokens";
+
+// Акцентный шрифт витрины: ТОЛЬКО заголовки и крупные цифры результатов.
+// Основной текст остаётся на Georgia — ритм чтения не трогаем (урок Spectral).
+// Если шрифт не загрузится (нет сети/блокировка) — фолбэк на Georgia, без миганий.
+export const ACCENT_SERIF = "'Piazzolla', Georgia, serif";
+
+export const S = {
+  app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:`radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, ${BG_DARK} 0%, #1C1509 50%, #14110A 100%)`, fontFamily:"Georgia, serif", overflowX:"hidden" },
+  phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh" },
+  screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"transparent", overflowX:"hidden" },
+
+  a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.08)" },
+  a11yLabel: { color:"#A09080", fontSize:11, fontFamily:"monospace", letterSpacing:1 },
+  a11yBtn: { border:"none", borderRadius:11, color:"#fff", fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"monospace", boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 8px rgba(0,0,0,0.25)" },
+
+  roleHeader: { background:"transparent" },
+  logoText: { color:GOLD_LOGO, fontSize:14, letterSpacing:5, fontFamily:"monospace" },
+  logoRow: { display:"flex", alignItems:"center", gap:8, marginBottom:4 },
+  logoStar: { color:GOLD_LOGO, fontSize:16 },
+  roleSubtitle: { color:CREAM, fontSize:17, fontWeight:"bold", marginTop:0 },
+  roleList: { padding:"2px 14px 4px", display:"flex", flexDirection:"column", gap:8 },
+  roleCard: { background:"rgba(226,186,116,0.11)", border:"1px solid rgba(255,255,255,0.13)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 8px 26px rgba(0,0,0,0.35)", borderRadius:22, padding:"10px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", position:"relative", overflow:"hidden" },
+  roleAccent: { position:"absolute", left:0, top:0, bottom:0, width:3, borderRadius:"3px 0 0 3px" },
+  roleIcon: { fontSize:38, flexShrink:0, width:54, height:54, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:14 },
+  roleInfo: { flex:1 },
+  roleLabel: { fontSize:18, fontWeight:"bold", marginBottom:1 },
+  roleSublabel: { color:"#B8B0A0", fontSize:13, marginBottom:2 },
+  roleDesc: { color:"#A2907A", fontSize:13, lineHeight:1.45 },
+  roleArrow: { color:"#3C3428", fontSize:20 },
+  roleQuote: { margin:"2px 14px 14px", padding:"10px 14px", borderLeft:"2px solid #D4A85A44", color:MUTED, fontSize:12, fontStyle:"italic", lineHeight:1.7 },
+
+  homeHead: { padding:"36px 18px 12px", background:"transparent" },
+  homeTopRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 },
+  changeRoleBtn: { background:"transparent", border:"1px solid #4A3525", borderRadius:20, color:MUTED, fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"Georgia, serif" },
+  homeRoleBadge: { display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, border:"1px solid" },
+
+  progCard: { margin:"6px 14px", background:"rgba(255,250,238,0.05)", boxShadowExtra:"none", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 1px 0 rgba(190,152,56,0.12) inset", borderRadius:16, padding:"12px 16px", border:"1.5px solid transparent" },
+  progTop: { display:"flex", justifyContent:"space-between", marginBottom:8 },
+  progLabel: { color:MUTED, fontSize:12 },
+  progPct: { fontSize:14, fontWeight:"bold" },
+  progBar: { height:4, background:"#2A2418", borderRadius:2, overflow:"hidden", marginBottom:6 },
+  progFill: { height:"100%", borderRadius:2, transition:"width 0.6s cubic-bezier(0.4,0,0.2,1)" },
+  progSub: { color:MUTED_2, fontSize:11 },
+  secTitle: { color:MUTED_2, fontSize:9, letterSpacing:4, padding:"14px 20px 6px", fontFamily:"monospace", textTransform:"uppercase" },
+
+  modList: { padding:"0 14px 32px", display:"flex", flexDirection:"column", gap:8 },
+  modCard: { background:"rgba(226,186,116,0.11)", border:"1px solid rgba(214,178,102,0.28)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 20px rgba(0,0,0,0.35)", borderRadius:20, padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", position:"relative", overflow:"hidden" },
+  modBar: { position:"absolute", left:0, top:0, bottom:0, width:3 },
+  modIcon: { fontSize:22, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:10, flexShrink:0 },
+  modInfo: { flex:1 },
+  modTag: { fontSize:9, letterSpacing:2, fontFamily:"monospace", marginBottom:2, textTransform:"uppercase" },
+  modTitle: { color:CREAM, fontSize:15, fontWeight:"bold", marginBottom:1, fontFamily:ACCENT_SERIF },
+  modSub: { color:MUTED_3, fontSize:12 },
+  modRight: { display:"flex", flexDirection:"column", alignItems:"center", gap:2 },
+  modArrow: { color:"#3E3428", fontSize:16 },
+
+  modHead: { padding:"44px 18px 20px", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)" },
+  backBtn: { background:"none", border:"none", color:"rgba(255,255,255,0.4)", fontSize:14, cursor:"pointer", padding:0, marginBottom:18, display:"flex", alignItems:"center", gap:8 },
+  lessList: { padding:"10px 14px 28px", flex:1 },
+  lessCard: { display:"flex", alignItems:"center", gap:10, background:"rgba(226,186,116,0.11)", boxShadow:"inset 0 0 20px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 5px 16px rgba(0,0,0,0.32)", borderRadius:18, padding:"11px 14px", marginBottom:6, cursor:"pointer", border:"1px solid rgba(145,108,40,0.36)", borderTop:"1px solid rgba(210,168,65,0.44)" },
+  lessNum: { width:28, height:28, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", flexShrink:0 },
+  lessInfo: { flex:1 },
+  lessTitle: { color:CREAM, fontSize:14, marginBottom:2, fontWeight:"600" },
+  lessArrow: { color:"#3E3428", fontSize:16 },
+
+  lessHead: { display:"flex", alignItems:"center", gap:10, padding:"44px 18px 14px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.10)" },
+  backBtn2: { background:"none", border:"none", color:MUTED_3, fontSize:26, cursor:"pointer", padding:0, lineHeight:1 },
+  lessHeadTitle: { color:CREAM, fontSize:15, fontWeight:"bold", flex:1, lineHeight:1.3, fontFamily:ACCENT_SERIF },
+  lessBody: { flex:1, padding:"18px 18px 44px", overflowY:"auto", background:"transparent" },
+  termPopupBg: "rgba(255,250,238,0.07)",
+  lessGlass: { bg:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", shadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.35)", glare:"linear-gradient(180deg, rgba(255,250,235,0.05) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 60%)", blur:"none" },
+
+  para: { color:SAND_DEEP, fontSize:15, lineHeight:1.85, marginBottom:5 },
+  bold: { color:CREAM, fontSize:15, fontWeight:"bold", marginBottom:6, marginTop:16, letterSpacing:0.1 },
+  bullet: { color:"#C8BEA8", fontSize:15, lineHeight:1.8, paddingLeft:2, marginBottom:4 },
+  check: { color:GREEN, fontSize:15, lineHeight:1.8, marginBottom:4 },
+  forbidden: { color:RED, fontSize:15, marginBottom:4, lineHeight:1.7 },
+  good: { color:GREEN, fontSize:15, marginBottom:4, lineHeight:1.7 },
+  bad: { color:RED, fontSize:15, marginBottom:4, lineHeight:1.7 },
+  note: { color:GOLD_LOGO, fontSize:12, fontStyle:"italic", marginBottom:5, marginTop:6, lineHeight:1.65, padding:"10px 14px", background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", borderRadius:12, border:"1px solid rgba(200,160,60,0.20)", borderTop:"1px solid rgba(210,170,70,0.28)", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.12) inset" },
+  principle: { color:SAND_DEEP, fontSize:15, lineHeight:1.85, marginBottom:6 },
+  quote: { color:GOLD_LOGO, fontSize:13, fontStyle:"italic", paddingLeft:14, borderLeft:"2px solid rgba(210,170,70,0.5)", margin:"12px 0", lineHeight:1.85, background:"linear-gradient(150deg, rgba(58,42,16,0.6) 0%, rgba(40,28,8,0.4) 100%)", borderRadius:"0 10px 10px 0", padding:"10px 14px", boxShadow:"0 2px 10px rgba(0,0,0,0.25)" },
+  doneBtn: { width:"100%", padding:"14px", border:"1px solid rgba(255,255,255,0.2)", borderRadius:16, color:"#fff", fontSize:15, fontWeight:"bold", cursor:"pointer", marginTop:24, fontFamily:"Georgia, serif", letterSpacing:0.3, boxShadow:"0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15)" },
+
+  quizWrap: { flex:1, padding:"16px 18px 36px" },
+  quizProgress: { color:MUTED_3, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
+  quizQ: { color:CREAM, fontSize:15, lineHeight:1.75, marginBottom:18, fontWeight:"bold", whiteSpace:"pre-wrap" },
+  quizOpt: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 12px 12px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.10) inset" },
+  resultWrap: { display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 18px 20px", gap:16 },
+  resultCircle: { width:100, height:100, borderRadius:"50%", background:"rgba(255,250,238,0.05)", border:"3px solid", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), 0 0 24px rgba(200,160,80,0.18)" },
+  resultScore: { fontSize:28, fontWeight:"bold", fontFamily:ACCENT_SERIF },
+  resultTxt: { color:SAND_DEEP, fontSize:15, textAlign:"center", lineHeight:1.6 },
+
+  simWrap: { flex:1, padding:"14px 18px 36px" },
+  simScen: { background:"rgba(255,250,238,0.05)", borderRadius:12, padding:"13px", color:"#C8B89A", fontSize:13, lineHeight:1.8, marginBottom:13, border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 12px rgba(0,0,0,0.30)" },
+  simQ: { color:CREAM, fontSize:14, fontWeight:"bold", marginBottom:13 },
+  simOpt: { border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", background:"rgba(255,250,238,0.05)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 16px rgba(0,0,0,0.38), 0 1px 0 rgba(195,155,58,0.12) inset", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:13, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  simFb: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, margin:"0 0 8px", background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 10px 10px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35)" },
+};
+
+export const A = {
+  ...S,
+  a11y: true, // флаг светлой темы: компоненты проверяют T.a11y для светлых вариантов стилей
+  app:        { ...S.app, background:`radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), ${SAND}`, fontFamily:"Georgia, serif" },
+  phone:      { ...S.phone, background:"transparent" },
+  screen:     { ...S.screen, background:"transparent" },
+
+  a11yBar:    { ...S.a11yBar, background:"transparent", borderBottom:"1px solid rgba(160,120,60,0.25)" },
+  a11yLabel:  { ...S.a11yLabel, color:BROWN, fontSize:12 },
+
+  roleHeader: { ...S.roleHeader, background:"transparent" },
+  roleSubtitle:{ ...S.roleSubtitle, color:INK, fontSize:22, fontWeight:"bold" },
+  roleList:   { ...S.roleList, gap:10 },
+  roleCard:   { ...S.roleCard, background:"rgba(250,242,222,0.60)", border:"1px solid rgba(139,106,48,0.30)", boxShadow:"inset 0 0 22px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.85), 0 4px 16px rgba(120,90,30,0.10)", borderRadius:20 },
+  roleIcon:   { ...S.roleIcon, background:"transparent" },
+  roleSublabel:{ ...S.roleSublabel, color:BROWN, fontSize:15 },
+  roleDesc:   { ...S.roleDesc, color:BROWN, fontSize:15 },
+  roleArrow:  { ...S.roleArrow, color:CLAY },
+  roleQuote:  { ...S.roleQuote, color:BROWN, fontSize:15 },
+
+  homeHead:   { ...S.homeHead, background:"transparent" },
+  changeRoleBtn:{ ...S.changeRoleBtn, background:"transparent", border:"1px solid rgba(160,120,60,0.3)", color:BROWN },
+  homeRoleBadge:{ ...S.homeRoleBadge },
+
+  progCard:   { ...S.progCard, background:"rgba(250,242,222,0.55)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1.5px solid transparent", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.5) inset", borderRadius:16 },
+  progLabel:  { ...S.progLabel, color:INK, fontSize:16 },
+  progBar:    { ...S.progBar, background:"rgba(160,120,60,0.15)" },
+  progSub:    { ...S.progSub, color:BROWN, fontSize:14 },
+  secTitle:   { ...S.secTitle, color:"#9A8060", fontSize:13, fontWeight:"normal" },
+
+  modList:    { ...S.modList, gap:10 },
+  modCard:    { ...S.modCard, background:"rgba(250,242,222,0.60)", border:"1px solid rgba(139,106,48,0.35)", boxShadow:"inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 14px rgba(120,90,30,0.10)" },
+  modIcon:    { ...S.modIcon, background:"transparent" },
+  modTitle:   { ...S.modTitle, color:INK, fontSize:17, fontWeight:"bold" },
+  modSub:     { ...S.modSub, color:BROWN, fontSize:15 },
+  modArrow:   { ...S.modArrow, color:CLAY },
+  modTag:     { ...S.modTag, fontSize:13 },
+
+  lessCard:   { ...S.lessCard, background:"rgba(250,242,222,0.60)", boxShadow:"inset 0 0 20px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 12px rgba(120,90,30,0.10), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.65)",  },
+  lessTitle:  { ...S.lessTitle, color:INK, fontSize:17 },
+  lessArrow:  { ...S.lessArrow, color:CLAY },
+  lessNum:    { ...S.lessNum, fontSize:16 },
+  lessNumColor: "#5A3E1B",
+  lessNumBorder: "2px solid rgba(120,80,20,0.6)",
+
+  lessHead:   { ...S.lessHead, background:"transparent", borderBottom:"1px solid rgba(160,120,60,0.2)" },
+  backBtn:    { ...S.backBtn, color:"rgba(100,70,25,0.65)" },
+  backBtn2:   { ...S.backBtn2, color:BROWN, fontSize:22 },
+  lessHeadTitle:{ ...S.lessHeadTitle, color:INK, fontSize:17, fontWeight:"bold" },
+  lessBody:   { ...S.lessBody, background:"transparent" },
+  termPopupBg: "rgba(255,252,244,0.30)",
+  lessGlass:  { bg:"rgba(250,242,222,0.60)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", shadow:"inset 0 0 22px rgba(255,250,235,0.55), inset 0 1px 0 rgba(255,252,240,0.9), 0 4px 16px rgba(120,90,30,0.10)", glare:"linear-gradient(180deg, rgba(255,248,230,0.40) 0%, transparent 100%)", edgeLeft:"linear-gradient(180deg, rgba(255,246,225,0.5) 0%, transparent 60%)", blur:"none" },
+
+  para:       { ...S.para, color:INK, fontSize:18, lineHeight:2.1 },
+  bold:       { ...S.bold, color:INK_DEEP, fontSize:19, marginTop:18 },
+  bullet:     { ...S.bullet, color:INK, fontSize:18 },
+  check:      { ...S.check, color:GREEN_DARK, fontSize:18 },
+  forbidden:  { ...S.forbidden, color:RED_DARK, fontSize:18 },
+  good:       { ...S.good, color:GREEN_DARK, fontSize:18 },
+  bad:        { ...S.bad, color:RED_DARK, fontSize:18 },
+  note:       { ...S.note, color:BROWN_NOTE, background:"rgba(235,218,185,0.72)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.22)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, padding:"12px 16px", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },
+  principle:  { ...S.principle, color:INK, fontSize:18 },
+  quote:      { ...S.quote, color:BROWN_GOLD, fontSize:16, background:"rgba(232,215,180,0.60)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderLeft:"2px solid rgba(160,120,50,0.5)", boxShadow:"0 2px 10px rgba(120,90,30,0.08), 0 1px 0 rgba(255,245,210,0.5) inset" },
+  doneBtn:    { ...S.doneBtn, fontSize:17, padding:"16px", border:"1px solid rgba(160,120,60,0.3)", color:"#fff", boxShadow:"0 4px 20px rgba(100,70,20,0.2), inset 0 1px 0 rgba(255,220,140,0.2)" },
+
+  quizWrap:      { ...S.quizWrap, background:"transparent" },
+  quizProgress:  { ...S.quizProgress, color:"#9A8060", fontSize:14 },
+  quizQ:         { ...S.quizQ, color:INK, fontSize:18, lineHeight:1.9 },
+  quizOpt:       { ...S.quizOpt, background:"rgba(250,242,222,0.55)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", boxShadow:"inset 0 0 18px rgba(255,250,235,0.5), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset", color:INK, fontSize:16, padding:"14px 16px",  },
+  explain:       { ...S.explain, color:INK, background:"rgba(235,220,192,0.75)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.20)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },
+  resultCircle:  { ...S.resultCircle, background:"rgba(250,242,222,0.55)", border:"2px solid", boxShadow:"inset 0 0 22px rgba(255,250,235,0.5), 0 0 24px rgba(200,160,80,0.15)" },
+  resultTxt:     { ...S.resultTxt, color:INK, fontSize:17 },
+
+  simScen:  { ...S.simScen, background:"rgba(235,220,192,0.70)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:INK, border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", boxShadow:"0 3px 14px rgba(120,90,30,0.11), 0 1px 0 rgba(255,248,230,0.68) inset", fontSize:15 },
+  simQ:     { ...S.simQ, color:INK, fontSize:17 },
+  simOpt:   { ...S.simOpt, background:"rgba(250,242,222,0.55)", boxShadow:"inset 0 0 18px rgba(255,255,255,0.45), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", color:INK, fontSize:16,  },
+  simFb:    { ...S.simFb, color:INK, background:"rgba(232,218,188,0.68)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(170,135,62,0.18)", borderTop:"1px solid rgba(255,238,195,0.60)", fontSize:16, boxShadow:"0 2px 10px rgba(120,90,30,0.08)" },
+};

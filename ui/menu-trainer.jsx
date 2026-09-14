@@ -12,6 +12,7 @@ import { buildMenuQuiz } from "../lib/menu-quiz";
 import { MenuDeck, AllergenSprint } from "./menu-deck";
 import { MenuPrint } from "./menu-print";
 import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
+import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
@@ -423,6 +424,12 @@ function DishBack({ d, T, gold }) {
   return (
     <div>
       <Row label="СОСТАВ">{(d.ingredients || []).join(", ") || "—"}</Row>
+      {/* Доп. 264: КБЖУ из выгрузки — на порцию; подбирается по названию */}
+      {(() => { const n = dishNutrition(d); return n ? (
+        <Row label="КБЖУ НА ПОРЦИЮ">
+          <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13 }}>{nutritionLine(n)}</span>
+          {!n.own && n.score < 1 ? <span style={{ display: "block", fontSize: 11, color: T.modSub?.color, marginTop: 3 }}>по позиции «{n.n}»</span> : null}
+        </Row>) : null; })()}
       <Row label="АЛЛЕРГЕНЫ">{(d.allergens || []).length ? (d.allergens || []).map(a => (
         <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 8, border: "1px solid #E0787866", color: "#E07878", fontSize: 12, margin: "0 5px 5px 0" }}>{allergenLabel(a)}</span>
       )) : <span style={{ color: "#5DBB8A" }}>нет из «большой восьмёрки»</span>}</Row>
@@ -806,7 +813,8 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
 
   const save = () => {
     if (!String(form.name || "").trim()) return;
-    const dish = { ...form, id: form.id || "c" + Date.now(), name: String(form.name || "").trim(), ingredients: String(form.ingredients || "").split(",").map(s => s.trim()).filter(Boolean), imgLostLocal: form.img ? false : form.imgLostLocal };
+    const num = (v) => { const x = Number(String(v ?? "").replace(",", ".")); return isFinite(x) && x > 0 ? Math.round(x * 10) / 10 : undefined; };   // Доп. 266
+    const dish = { ...form, out: num(form.out), kcal: num(form.kcal), prot: num(form.prot), fat: num(form.fat), carb: num(form.carb), id: form.id || "c" + Date.now(), name: String(form.name || "").trim(), ingredients: String(form.ingredients || "").split(",").map(s => s.trim()).filter(Boolean), imgLostLocal: form.img ? false : form.imgLostLocal };
     if (!form.id) { dish.isNew = true; dish.addedAt = Date.now(); } // новое блюдо → в «Новые позиции» на 30 дней
     // Доп. 154: чужое блюдо (пример или серверное) с той же id ещё не в своих — добавляем как свою версию
     const own = custom[restaurant] || [];
@@ -1038,6 +1046,31 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             </div>
           )}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={v => setForm(f => ({ ...f, pairing: v }))} />
+          {/* Доп. 266: КБЖУ вручную — цифры из ведомости можно подставить и поправить */}
+          {(() => {
+            const table = nutritionOf(form.name);
+            const cell = (key, ph, w) => (
+              <input inputMode="decimal" placeholder={ph} value={form[key] ?? ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                style={{ ...inputSt, width: w, flex: "none", textAlign: "center", padding: "9px 4px", marginTop: 0 }} />
+            );
+            const fill = () => { if (!table) return; setForm(f => ({ ...f, out: table.out, kcal: table.kcal, prot: table.p, fat: table.f, carb: table.c })); vibrate("success"); };
+            const clear = () => { setForm(f => ({ ...f, out: "", kcal: "", prot: "", fat: "", carb: "" })); vibrate("light"); };
+            const own = String(form.kcal ?? "").trim() !== "";
+            return (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КБЖУ НА ПОРЦИЮ</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {cell("out", "г", 58)}{cell("kcal", "ккал", 66)}{cell("prot", "Б", 52)}{cell("fat", "Ж", 52)}{cell("carb", "У", 52)}
+                </div>
+                <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  {table && !own && <span onClick={fill} {...onActivate(fill)} style={{ color: gold, cursor: "pointer" }}>Подставить из ведомости: {nutritionLine(table)}</span>}
+                  {table && own && <span onClick={fill} {...onActivate(fill)} style={{ color: gold, cursor: "pointer" }}>Вернуть как в ведомости</span>}
+                  {own && <span onClick={clear} {...onActivate(clear)} style={{ color: red, cursor: "pointer" }}>Очистить</span>}
+                  {!table && !own && <span style={{ color: T.modSub.color }}>В ведомости этого блюда нет — впиши руками, если нужно</span>}
+                </div>
+              </div>
+            );
+          })()}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача, выход в граммах…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder={"Гость спрашивает — по строке «Вопрос — ответ», например:\nМожно без лука? — Да, скажи кухне при заказе"} value={form.faq || ""} onChange={v => setForm(f => ({ ...f, faq: v }))} rows={2} />
         </div>

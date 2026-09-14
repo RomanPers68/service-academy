@@ -3,6 +3,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { allergenLabel } from "../lib/deck-extras";
 import { groupByCat } from "../lib/menu-sections";
+import { dishNutrition, nutritionLine } from "../lib/nutrition";
 
 // ── Дополнение 261: меню для печати ────────────────────────────────────────────
 // Тот же путь, что у карты бара: рисуем лист на canvas и отдаём PNG постранично.
@@ -45,8 +46,9 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
         probe.font = "15px Georgia, serif"; const ing = wrap(probe, (d.ingredients || []).join(" · "), W - TX - PAD);
         probe.font = "13.5px Georgia, serif"; const desc = wrap(probe, d.desc || d.short || "", W - TX - PAD);
         const al = (d.allergens || []).map(allergenLabel).join(" · ");
-        const h = Math.max(withPhoto ? PH + 16 : 0, 28 + ing.length * 20 + desc.length * 19 + (al ? 22 : 0) + 14);
-        return { d, cat: o.cat, ing, desc, al, img: imgs[i], h };
+        const nut = nutritionLine(dishNutrition(d));                       // Доп. 264
+        const h = Math.max(withPhoto ? PH + 16 : 0, 28 + ing.length * 20 + desc.length * 19 + (al ? 22 : 0) + (nut ? 20 : 0) + 14);
+        return { d, cat: o.cat, ing, desc, al, nut, img: imgs[i], h };
       });
       const pages = []; for (let i = 0; i < rows.length; i += PER_PAGE) pages.push(rows.slice(i, i + PER_PAGE));
       const out = [];
@@ -75,6 +77,7 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
           let yy = y + 32;
           if (r.ing.length) { x.fillStyle = C.text; x.font = "15px Georgia, serif"; for (const ln of r.ing) { x.fillText(ln, TX, yy); yy += 20; } }
           if (r.al) { x.fillStyle = C.warn; x.font = "13px Georgia, serif"; x.fillText("Аллергены: " + r.al, TX, yy); yy += 22; }
+          if (r.nut) { x.fillStyle = C.faint; x.font = "12.5px ui-monospace, Menlo, monospace"; x.fillText(r.nut, TX, yy); yy += 20; }
           if (r.desc.length) { x.fillStyle = C.dim; x.font = "13.5px Georgia, serif"; for (const ln of r.desc) { x.fillText(ln, TX, yy); yy += 19; } }
           y += r.h;
           x.strokeStyle = C.line; x.beginPath(); x.moveTo(PAD, y - 8); x.lineTo(W - PAD, y - 8); x.stroke();

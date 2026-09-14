@@ -39,7 +39,7 @@ export const S = {
   changeRoleBtn: { background:"transparent", border:"1px solid #4A3525", borderRadius:20, color:MUTED, fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"Georgia, serif" },
   homeRoleBadge: { display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, border:"1px solid" },
 
-  progCard: { margin:"6px 14px", background:"rgba(255,250,238,0.05)", border:"1px solid rgba(214,178,102,0.28)", boxShadowExtra:"none", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 1px 0 rgba(190,152,56,0.12) inset", borderRadius:16, padding:"12px 16px", border:"1.5px solid transparent" },
+  progCard: { margin:"6px 14px", background:"rgba(255,250,238,0.05)", boxShadowExtra:"none", boxShadow:"0 5px 18px rgba(0,0,0,0.48), 0 1px 0 rgba(190,152,56,0.12) inset", borderRadius:16, padding:"12px 16px", border:"1.5px solid transparent" },
   progTop: { display:"flex", justifyContent:"space-between", marginBottom:8 },
   progLabel: { color:MUTED, fontSize:12 },
   progPct: { fontSize:14, fontWeight:"bold" },
@@ -90,7 +90,7 @@ export const S = {
   quizWrap: { flex:1, padding:"16px 18px 36px" },
   quizProgress: { color:MUTED_3, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
   quizQ: { color:CREAM, fontSize:15, lineHeight:1.75, marginBottom:18, fontWeight:"bold", whiteSpace:"pre-wrap" },
-  quizOpt: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  quizOpt: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
   explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 12px 12px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.10) inset" },
   resultWrap: { display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 18px 20px", gap:16 },
   resultCircle: { width:100, height:100, borderRadius:"50%", background:"rgba(255,250,238,0.05)", border:"3px solid", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), 0 0 24px rgba(200,160,80,0.18)" },
@@ -100,7 +100,7 @@ export const S = {
   simWrap: { flex:1, padding:"14px 18px 36px" },
   simScen: { background:"rgba(255,250,238,0.05)", borderRadius:12, padding:"13px", color:"#C8B89A", fontSize:13, lineHeight:1.8, marginBottom:13, border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 12px rgba(0,0,0,0.30)" },
   simQ: { color:CREAM, fontSize:14, fontWeight:"bold", marginBottom:13 },
-  simOpt: { border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", background:"rgba(255,250,238,0.05)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06)", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:13, lineHeight:1.6, boxShadow:"0 4px 16px rgba(0,0,0,0.38), 0 1px 0 rgba(195,155,58,0.12) inset", transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
+  simOpt: { border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", background:"rgba(255,250,238,0.05)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 16px rgba(0,0,0,0.38), 0 1px 0 rgba(195,155,58,0.12) inset", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:13, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
   simFb: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, margin:"0 0 8px", background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 10px 10px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35)" },
 };
 
@@ -128,7 +128,7 @@ export const A = {
   changeRoleBtn:{ ...S.changeRoleBtn, background:"transparent", border:"1px solid rgba(160,120,60,0.3)", color:BROWN },
   homeRoleBadge:{ ...S.homeRoleBadge },
 
-  progCard:   { ...S.progCard, background:"rgba(250,242,222,0.55)", border:"1px solid rgba(139,106,48,0.35)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1.5px solid transparent", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.5) inset", borderRadius:16 },
+  progCard:   { ...S.progCard, background:"rgba(250,242,222,0.55)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1.5px solid transparent", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.5) inset", borderRadius:16 },
   progLabel:  { ...S.progLabel, color:INK, fontSize:16 },
   progBar:    { ...S.progBar, background:"rgba(160,120,60,0.15)" },
   progSub:    { ...S.progSub, color:BROWN, fontSize:14 },
@@ -142,7 +142,7 @@ export const A = {
   modArrow:   { ...S.modArrow, color:CLAY },
   modTag:     { ...S.modTag, fontSize:13 },
 
-  lessCard:   { ...S.lessCard, background:"rgba(250,242,222,0.60)", boxShadow:"inset 0 0 20px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 12px rgba(120,90,30,0.10)", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.65)", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset" },
+  lessCard:   { ...S.lessCard, background:"rgba(250,242,222,0.60)", boxShadow:"inset 0 0 20px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 12px rgba(120,90,30,0.10), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.65)",  },
   lessTitle:  { ...S.lessTitle, color:INK, fontSize:17 },
   lessArrow:  { ...S.lessArrow, color:CLAY },
   lessNum:    { ...S.lessNum, fontSize:16 },
@@ -172,13 +172,13 @@ export const A = {
   quizWrap:      { ...S.quizWrap, background:"transparent" },
   quizProgress:  { ...S.quizProgress, color:"#9A8060", fontSize:14 },
   quizQ:         { ...S.quizQ, color:INK, fontSize:18, lineHeight:1.9 },
-  quizOpt:       { ...S.quizOpt, background:"rgba(250,242,222,0.55)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", boxShadow:"inset 0 0 18px rgba(255,250,235,0.5)", color:INK, fontSize:16, padding:"14px 16px", boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset" },
+  quizOpt:       { ...S.quizOpt, background:"rgba(250,242,222,0.55)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", boxShadow:"inset 0 0 18px rgba(255,250,235,0.5), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset", color:INK, fontSize:16, padding:"14px 16px",  },
   explain:       { ...S.explain, color:INK, background:"rgba(235,220,192,0.75)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.20)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },
   resultCircle:  { ...S.resultCircle, background:"rgba(250,242,222,0.55)", border:"2px solid", boxShadow:"inset 0 0 22px rgba(255,250,235,0.5), 0 0 24px rgba(200,160,80,0.15)" },
   resultTxt:     { ...S.resultTxt, color:INK, fontSize:17 },
 
   simScen:  { ...S.simScen, background:"rgba(235,220,192,0.70)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", color:INK, border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", boxShadow:"0 3px 14px rgba(120,90,30,0.11), 0 1px 0 rgba(255,248,230,0.68) inset", fontSize:15 },
   simQ:     { ...S.simQ, color:INK, fontSize:17 },
-  simOpt:   { ...S.simOpt, background:"rgba(250,242,222,0.55)", boxShadow:"inset 0 0 18px rgba(255,255,255,0.45)", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", color:INK, fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset" },
+  simOpt:   { ...S.simOpt, background:"rgba(250,242,222,0.55)", boxShadow:"inset 0 0 18px rgba(255,255,255,0.45), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.68) inset", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.62)", color:INK, fontSize:16,  },
   simFb:    { ...S.simFb, color:INK, background:"rgba(232,218,188,0.68)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(170,135,62,0.18)", borderTop:"1px solid rgba(255,238,195,0.60)", fontSize:16, boxShadow:"0 2px 10px rgba(120,90,30,0.08)" },
 };

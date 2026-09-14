@@ -10,17 +10,23 @@ describe("КБЖУ по названию", () => {
       expect(typeof r.n).toBe("string");
       expect(r.kcal >= 0 && r.kcal < 3000).toBe(true);
       expect(r.p >= 0 && r.f >= 0 && r.c >= 0).toBe(true);
+      // порция должна сходиться со «100 г», умноженными на выход
+      if (r.out && r.k100) expect(Math.abs(r.kcal - r.k100 * r.out / 100) / Math.max(1, r.kcal) < 0.15).toBe(true);
+      // штучные позиции: выход в штуках, «на 100 г» ведомость не даёт — не выдумываем
+      if (r.unit) { expect(r.out).toBe(0); expect(r.k100 === undefined).toBe(true); }
+      else expect(r.out > 0).toBe(true);
     }
   });
   it("точные названия находятся как есть", () => {
     const a = nutritionOf("Ассорти паштетов из морепродуктов");
-    expect(a && a.kcal).toBe(212);
+    expect(a.kcal).toBe(446);          // на порцию 210 г
+    expect(a.k100).toBe(212);          // и на 100 г — как в ведомости
     expect(nutritionOf("Устрица Стелла Марис").out).toBe(60);
   });
   it("расхождения в названии не мешают: число, тире, служебные хвосты, лишние слова", () => {
     expect(nutritionOf("Креветка темпура").n).toMatch(/Креветк. темпура/);   // множественное ↔ единственное
-    expect(nutritionOf("Тыквенный крем-суп с крабом").kcal).toBe(158);        // дефис
-    expect(nutritionOf("Пончик с крабом").kcal).toBe(305);                    // хвост «ОКЕАН БЛЮДО» снят
+    expect(nutritionOf("Тыквенный крем-суп с крабом").k100).toBe(158);       // дефис
+    expect(nutritionOf("Пончик с крабом").kcal).toBe(550);                    // хвост «ОКЕАН БЛЮДО» снят; 305 ккал — это на 100 г
     expect(nutritionOf("Кальмар в азиатском стиле").n).toMatch(/кальмара в азиатском стиле/);
   });
   it("чужого не выдумывает", () => {
@@ -33,8 +39,13 @@ describe("КБЖУ по названию", () => {
     expect(nutritionOf("Стейк")).toBe(null);
     expect(nutritionOf("   ")).toBe(null);
   });
+  it("штучные позиции подписаны штукой, а не граммами", () => {
+    const o = nutritionOf("Императорская устрица");
+    expect(o.unit).toBe("1 шт"); expect(o.kcal).toBe(53);
+    expect(nutritionLine(o)).toMatch(/^1 шт · 53 ккал/);
+  });
   it("строка для карточки читается", () => {
-    expect(nutritionLine(nutritionOf("Пончик с крабом"))).toMatch(/^180 г · 305 ккал · Б .* · Ж .* · У /);
+    expect(nutritionLine(nutritionOf("Пончик с крабом"))).toMatch(/^180 г · 550 ккал · Б .* · Ж .* · У /);
     expect(nutritionLine(null)).toBe("");
   });
 });
@@ -47,10 +58,10 @@ describe("свои цифры менеджера (Доп. 266)", () => {
     expect(nutritionLine(n)).toMatch(/^200 г · 410 ккал/);
   });
   it("без своих цифр берётся ведомость, а мусор игнорируется", () => {
-    expect(dishNutrition({ name: "Пончик с крабом" }).kcal).toBe(305);
-    expect(dishNutrition({ name: "Пончик с крабом", kcal: "" }).kcal).toBe(305);
-    expect(dishNutrition({ name: "Пончик с крабом", kcal: "не знаю" }).kcal).toBe(305);
-    expect(dishNutrition({ name: "Пончик с крабом", kcal: 0 }).kcal).toBe(305);
+    expect(dishNutrition({ name: "Пончик с крабом" }).kcal).toBe(550);
+    expect(dishNutrition({ name: "Пончик с крабом", kcal: "" }).kcal).toBe(550);
+    expect(dishNutrition({ name: "Пончик с крабом", kcal: "не знаю" }).kcal).toBe(550);
+    expect(dishNutrition({ name: "Пончик с крабом", kcal: 0 }).kcal).toBe(550);
     expect(dishNutrition({ name: "Своё блюдо", kcal: "320,5" }).kcal).toBe(321);   // запятая как в жизни
     expect(dishNutrition({ name: "Чужое блюдо" })).toBe(null);
     expect(dishNutrition(null)).toBe(null);

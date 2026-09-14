@@ -108,6 +108,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // Доп. 170: deep-link из ответа Наставника — открыть Колоду меню сразу на блюде
   const [deckStart, setDeckStart] = React.useState(null);
   const [deckMode, setDeckMode] = React.useState(null); // Доп. 215: reverse | quiz — из карточки «режим дня»
+  const [editStart, setEditStart] = React.useState(null);  // Доп. 274: открыть редактор на блюде
+  const [showNoNut, setShowNoNut] = React.useState(false);
   const startedRef = React.useRef(null);
   const dishes = React.useMemo(() => {
     if (!restaurant) return [];
@@ -188,7 +190,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
   if (mode === "team") return <TeamProgress T={T} gold={gold} green={green} Head={Head} restaurant={restaurant} />;
   if (mode === "edit") return (
-    <MenuEditor T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
+    <MenuEditor startEditId={editStart} T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
       custom={custom} setCustom={(v) => { setCustom(v); saveCustom(v); }}
       shared={shared} onPublished={(d) => setShared(d)}
       hideSamples={hideSamples} setHideSamples={(v) => { setHideSamples(v); saveHide(v); }}
@@ -219,7 +221,26 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v18 · КБЖУ</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v20</span>
+        {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
+        {dishes.length > 0 && (() => {
+          const miss = dishes.filter(d => !dishNutrition(d));
+          const have = dishes.length - miss.length;
+          return (
+            <div style={{ marginTop: 5 }}>
+              <span style={{ fontSize: 12.5 }}>Пищевая ценность: <b style={{ color: miss.length ? gold : green }}>{have}</b> из {dishes.length}</span>
+              {miss.length > 0 && canEdit && <span onClick={() => setShowNoNut(v => !v)} {...onActivate(() => setShowNoNut(v => !v))} style={{ color: gold, cursor: "pointer", fontSize: 12.5, marginLeft: 8 }}>{showNoNut ? "скрыть" : `у ${miss.length} нет — дописать`}</span>}
+              {showNoNut && miss.length > 0 && (
+                <div className="sa-fadein" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {miss.map(d => (
+                    <span key={d.id} onClick={() => { setEditStart(d.id); setMode("edit"); vibrate("light"); }} {...onActivate(() => { setEditStart(d.id); setMode("edit"); })}
+                      style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${gold}55`, color: textColor }}>{d.name} ›</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
         {shareStale && <div style={{ color: T.modSub.color, fontSize: 12, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
@@ -268,7 +289,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
         )}
         {canEdit && (
           <div className="sa-card" style={{ ...T.modCard, margin: "14px 0 10px", border: `1px dashed ${gold}88` }}
-            onClick={() => setMode("edit")} {...onActivate(() => setMode("edit"))}>
+            onClick={() => { setEditStart(null); setMode("edit"); }} {...onActivate(() => { setEditStart(null); setMode("edit"); })}>
             <div style={{ ...iconBox, marginLeft: 2 }}>{UI_SVG.pencil(gold, 19)}</div>
             <div style={{ flex: 1 }}>
               <div style={T.modTitle}>Редактор меню</div>
@@ -440,7 +461,7 @@ function DishBack({ d, T, gold }) {
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${gold}33` }}>
               <div style={{ textAlign: "center", minWidth: 76 }}>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 24, color: gold, lineHeight: 1 }}>{n.kcal}</div>
-                <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 3 }}>ККАЛ{n.out ? ` · ${n.out} Г` : ""}</div>
+                <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 3 }}>ККАЛ · {n.out ? `ПОРЦИЯ ${n.out} Г` : (n.unit || "ПОРЦИЯ").toUpperCase()}</div>
               </div>
               <div style={{ width: 1, alignSelf: "stretch", background: `${gold}26` }} />
               {cell("БЕЛКИ", n.p)}{cell("ЖИРЫ", n.f)}{cell("УГЛЕВОДЫ", n.c)}
@@ -726,9 +747,17 @@ function PreviewCard({ d, T, gold, red, glass }) {
   );
 }
 
-function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
+function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
+  // Доп. 274: пришли «дописать пищевую ценность» — сразу открываем карточку блюда
+  const startedRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!startEditId || startedRef.current === startEditId) return; startedRef.current = startEditId;
+    const all = [...(custom[restaurant] || []), ...(shared || [])];
+    const d = all.find(x => x && x.id === startEditId);
+    if (d) setForm({ ...d, ingredients: (d.ingredients || []).join(", ") });
+  }, [startEditId]);
   const list = (custom[restaurant] || []).filter(d => !d.archived);
   const archived = (custom[restaurant] || []).filter(d => d.archived);
   // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя

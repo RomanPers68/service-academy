@@ -219,7 +219,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v17</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v18 · КБЖУ</span>
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
         {shareStale && <div style={{ color: T.modSub.color, fontSize: 12, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
@@ -424,12 +424,31 @@ function DishBack({ d, T, gold }) {
   return (
     <div>
       <Row label="СОСТАВ">{(d.ingredients || []).join(", ") || "—"}</Row>
-      {/* Доп. 264: КБЖУ из выгрузки — на порцию; подбирается по названию */}
-      {(() => { const n = dishNutrition(d); return n ? (
-        <Row label="КБЖУ НА ПОРЦИЮ">
-          <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13 }}>{nutritionLine(n)}</span>
-          {!n.own && n.score < 1 ? <span style={{ display: "block", fontSize: 11, color: T.modSub?.color, marginTop: 3 }}>по позиции «{n.n}»</span> : null}
-        </Row>) : null; })()}
+      {/* Доп. 264/270: КБЖУ — не строка цифр, а панель: калории крупно, рядом Б · Ж · У */}
+      {(() => {
+        const n = dishNutrition(d); if (!n) return null;
+        const g = (v) => (Math.round(v * 10) / 10).toString().replace(".", ",").replace(",0", "");
+        const cell = (label, v) => (
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.para?.color, lineHeight: 1.1 }}>{g(v)}<span style={{ fontSize: 10.5, opacity: 0.6 }}> г</span></div>
+            <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>{label}</div>
+          </div>
+        );
+        return (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 5 }}>ПИЩЕВАЯ ЦЕННОСТЬ</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${gold}33` }}>
+              <div style={{ textAlign: "center", minWidth: 76 }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 24, color: gold, lineHeight: 1 }}>{n.kcal}</div>
+                <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 3 }}>ККАЛ{n.out ? ` · ${n.out} Г` : ""}</div>
+              </div>
+              <div style={{ width: 1, alignSelf: "stretch", background: `${gold}26` }} />
+              {cell("БЕЛКИ", n.p)}{cell("ЖИРЫ", n.f)}{cell("УГЛЕВОДЫ", n.c)}
+            </div>
+            {!n.own && n.score < 1 ? <div style={{ fontSize: 11, color: T.modSub?.color, marginTop: 4 }}>посчитано по позиции «{n.n}»</div> : null}
+          </div>
+        );
+      })()}
       <Row label="АЛЛЕРГЕНЫ">{(d.allergens || []).length ? (d.allergens || []).map(a => (
         <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 8, border: "1px solid #E0787866", color: "#E07878", fontSize: 12, margin: "0 5px 5px 0" }}>{allergenLabel(a)}</span>
       )) : <span style={{ color: "#5DBB8A" }}>нет из «большой восьмёрки»</span>}</Row>

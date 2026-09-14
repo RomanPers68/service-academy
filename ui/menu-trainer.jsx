@@ -221,7 +221,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v20</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v23</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));

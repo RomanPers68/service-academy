@@ -1,6 +1,7 @@
 {
   "name": "Service Academy",
   "short_name": "SA",
+  "id": "/",
   "description": "Академия сервиса: уроки, меню, коктейли, график, наставник",
   "start_url": "/",
   "scope": "/",
@@ -9,9 +10,28 @@
   "background_color": "#171208",
   "theme_color": "#171208",
   "lang": "ru",
+  "categories": [
+    "education",
+    "business",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

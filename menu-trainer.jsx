@@ -107,7 +107,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
 
   // Доп. 170: deep-link из ответа Наставника — открыть Колоду меню сразу на блюде
   const [deckStart, setDeckStart] = React.useState(null);
-  const [deckMode, setDeckMode] = React.useState(null); // Доп. 215: reverse | quiz — из карточки «режим дня»
+  const [editStart, setEditStart] = React.useState(null);  // Доп. 274: открыть редактор на блюде
+  const [showNoNut, setShowNoNut] = React.useState(false);
   const startedRef = React.useRef(null);
   const dishes = React.useMemo(() => {
     if (!restaurant) return [];
@@ -182,13 +183,13 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // Доп. 189: «Меню по разделам» слилось с Колодой — список живёт в ней за иконкой указателя
   if (mode === "print") return <MenuPrint T={T} a11y={a11y} dishes={dishes} restaurant={restaurant} onBack={() => setMode(null)} />;   // Доп. 261
   if (mode === "sprint") return <AllergenSprint T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={dishes} restaurant={restaurant} uk={uk} Head={Head} DishPhoto={DishPhoto} glass={glass} onExit={() => setMode(null)} />;
-  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={deckMode || (startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined)}
+  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined}   /* Доп. 282: только если пришли с карточки режима дня */
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
   if (mode === "team") return <TeamProgress T={T} gold={gold} green={green} Head={Head} restaurant={restaurant} />;
   if (mode === "edit") return (
-    <MenuEditor T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
+    <MenuEditor startEditId={editStart} T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
       custom={custom} setCustom={(v) => { setCustom(v); saveCustom(v); }}
       shared={shared} onPublished={(d) => setShared(d)}
       hideSamples={hideSamples} setHideSamples={(v) => { setHideSamples(v); saveHide(v); }}
@@ -219,7 +220,26 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v17</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v25</span>
+        {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
+        {dishes.length > 0 && (() => {
+          const miss = dishes.filter(d => !dishNutrition(d));
+          const have = dishes.length - miss.length;
+          return (
+            <div style={{ marginTop: 5 }}>
+              <span style={{ fontSize: 12.5 }}>Пищевая ценность: <b style={{ color: miss.length ? gold : green }}>{have}</b> из {dishes.length}</span>
+              {miss.length > 0 && canEdit && <span onClick={() => setShowNoNut(v => !v)} {...onActivate(() => setShowNoNut(v => !v))} style={{ color: gold, cursor: "pointer", fontSize: 12.5, marginLeft: 8 }}>{showNoNut ? "скрыть" : `у ${miss.length} нет — дописать`}</span>}
+              {showNoNut && miss.length > 0 && (
+                <div className="sa-fadein" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {miss.map(d => (
+                    <span key={d.id} onClick={() => { setEditStart(d.id); setMode("edit"); vibrate("light"); }} {...onActivate(() => { setEditStart(d.id); setMode("edit"); })}
+                      style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${gold}55`, color: textColor }}>{d.name} ›</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
         {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
         {shareStale && <div style={{ color: T.modSub.color, fontSize: 12, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
@@ -238,14 +258,15 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={T.modArrow}>›</div>
           </div>
         )}
-        {modes.map(m => { const isDay = dayKey === m.key; const open = () => { if (!dishes.length) return; if (isDay && m.key === "cards") { setFocusNew(false); setDeckMode(md.key === "reverse-menu" ? "reverse" : "quiz"); } setMode(m.key); }; return (
+        {/* Доп. 282: колода всегда открывается обычной — «Наоборот» включают руками */}
+        {modes.map(m => { const isDay = dayKey === m.key; const open = () => { if (!dishes.length) return; if (isDay && m.key === "cards") setFocusNew(false); setMode(m.key); }; return (
           <div key={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: dishes.length ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
             onClick={open} {...onActivate(open)}>
             <div style={{ ...T.modBar, background: isDay && dayDone ? "#5DBB8A" : gold }} />
             <div style={iconBox}>{m.icon(gold)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={T.modTitle}>{m.title}</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Сегодня — «Наоборот»: " : md.key === "know-menu" ? "Сегодня — «Знаю?»: " : "") + m.sub : m.sub}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Режим дня — попробуй «Наоборот» внутри: " : md.key === "know-menu" ? "Режим дня — «Знаю?»: " : "") + m.sub : m.sub}</div>
               {isDay && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
                 <span style={{ display: "inline-flex", gap: 3 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 6, height: 6, borderRadius: 3, background: k < dayCount ? (dayDone ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${dayDone ? "#5DBB8A" : gold + "88"}` }} />)}</span>
                 <span style={{ fontSize: 9.5, letterSpacing: 1.4, fontFamily: "monospace", color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "ПЯТЬ ЕСТЬ ✓" : "РЕЖИМ ДНЯ"}{dayStreak > 1 ? ` · СЕРИЯ ${dayStreak}` : ""}</span>
@@ -268,7 +289,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
         )}
         {canEdit && (
           <div className="sa-card" style={{ ...T.modCard, margin: "14px 0 10px", border: `1px dashed ${gold}88` }}
-            onClick={() => setMode("edit")} {...onActivate(() => setMode("edit"))}>
+            onClick={() => { setEditStart(null); setMode("edit"); }} {...onActivate(() => { setEditStart(null); setMode("edit"); })}>
             <div style={{ ...iconBox, marginLeft: 2 }}>{UI_SVG.pencil(gold, 19)}</div>
             <div style={{ flex: 1 }}>
               <div style={T.modTitle}>Редактор меню</div>
@@ -424,12 +445,31 @@ function DishBack({ d, T, gold }) {
   return (
     <div>
       <Row label="СОСТАВ">{(d.ingredients || []).join(", ") || "—"}</Row>
-      {/* Доп. 264: КБЖУ из выгрузки — на порцию; подбирается по названию */}
-      {(() => { const n = dishNutrition(d); return n ? (
-        <Row label="КБЖУ НА ПОРЦИЮ">
-          <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13 }}>{nutritionLine(n)}</span>
-          {!n.own && n.score < 1 ? <span style={{ display: "block", fontSize: 11, color: T.modSub?.color, marginTop: 3 }}>по позиции «{n.n}»</span> : null}
-        </Row>) : null; })()}
+      {/* Доп. 264/270: КБЖУ — не строка цифр, а панель: калории крупно, рядом Б · Ж · У */}
+      {(() => {
+        const n = dishNutrition(d); if (!n) return null;
+        const g = (v) => (Math.round(v * 10) / 10).toString().replace(".", ",").replace(",0", "");
+        const cell = (label, v) => (
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.para?.color, lineHeight: 1.1 }}>{g(v)}<span style={{ fontSize: 10.5, opacity: 0.6 }}> г</span></div>
+            <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>{label}</div>
+          </div>
+        );
+        return (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 5 }}>ПИЩЕВАЯ ЦЕННОСТЬ</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${gold}33` }}>
+              <div style={{ textAlign: "center", minWidth: 76 }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 24, color: gold, lineHeight: 1 }}>{n.kcal}</div>
+                <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 3 }}>ККАЛ · {n.out ? `ПОРЦИЯ ${n.out} Г` : (n.unit || "ПОРЦИЯ").toUpperCase()}</div>
+              </div>
+              <div style={{ width: 1, alignSelf: "stretch", background: `${gold}26` }} />
+              {cell("БЕЛКИ", n.p)}{cell("ЖИРЫ", n.f)}{cell("УГЛЕВОДЫ", n.c)}
+            </div>
+            {!n.own && n.score < 1 ? <div style={{ fontSize: 11, color: T.modSub?.color, marginTop: 4 }}>посчитано по позиции «{n.n}»</div> : null}
+          </div>
+        );
+      })()}
       <Row label="АЛЛЕРГЕНЫ">{(d.allergens || []).length ? (d.allergens || []).map(a => (
         <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 8, border: "1px solid #E0787866", color: "#E07878", fontSize: 12, margin: "0 5px 5px 0" }}>{allergenLabel(a)}</span>
       )) : <span style={{ color: "#5DBB8A" }}>нет из «большой восьмёрки»</span>}</Row>
@@ -707,9 +747,17 @@ function PreviewCard({ d, T, gold, red, glass }) {
   );
 }
 
-function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
+function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
+  // Доп. 274: пришли «дописать пищевую ценность» — сразу открываем карточку блюда
+  const startedRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!startEditId || startedRef.current === startEditId) return; startedRef.current = startEditId;
+    const all = [...(custom[restaurant] || []), ...(shared || [])];
+    const d = all.find(x => x && x.id === startEditId);
+    if (d) setForm({ ...d, ingredients: (d.ingredients || []).join(", ") });
+  }, [startEditId]);
   const list = (custom[restaurant] || []).filter(d => !d.archived);
   const archived = (custom[restaurant] || []).filter(d => d.archived);
   // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя
@@ -939,23 +987,28 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
   };
 
   if (form) {
-    const toggleAl = (al) => setForm(f => ({ ...f, allergens: f.allergens.includes(al) ? f.allergens.filter(x => x !== al) : [...f.allergens, al] }));
+    const toggleAl = (al) => setForm(f => { const cur = Array.isArray(f.allergens) ? f.allergens : []; return { ...f, allergens: cur.includes(al) ? cur.filter(x => x !== al) : [...cur, al] }; });
     // Доп. 135: сжали на телефоне → отправили в Storage → в блюде остаётся ссылка.
     // Не получилось (функция не развёрнута, нет сети) — base64 в localStorage, как раньше.
     const onPhoto = (e) => {
       const file = e.target.files && e.target.files[0]; e.target.value = "";
       if (!file) return;
+      // Доп. 278: несколько фото подряд — ответ первой загрузки приходил, когда открыто уже
+      // другое блюдо, и перетирал форму объектом без аллергенов → падение на allergens.includes.
+      // Теперь ответ принимается, только если открыта та же карточка.
+      const myId = form.id || ("d" + Date.now());
+      const mine = (f) => f && (f.id || myId) === myId;
       readPhoto(file, (data) => {
-        setForm(f => ({ ...f, img: data }));
+        setForm(f => (mine(f) ? { ...f, img: data } : f));
         setPhotoState("uploading");
         fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-          body: JSON.stringify({ token: saToken(), restaurant, dishId: form.id || ("d" + Date.now()), image: data }),
+          body: JSON.stringify({ token: saToken(), restaurant, dishId: myId, image: data }),
         }).then(r => r.json()).then(j => {
-          if (j && j.ok && j.url) { setForm(f => ({ ...f, img: j.url })); setPhotoState("cloud"); }
-          else setPhotoState("local");
-        }).catch(() => setPhotoState("local"));
+          if (j && j.ok && j.url) { setForm(f => (mine(f) ? { ...f, img: j.url } : f)); setPhotoState(f2 => (f2 === "uploading" ? "cloud" : f2)); }
+          else setPhotoState(f2 => (f2 === "uploading" ? "local" : f2));
+        }).catch(() => setPhotoState(f2 => (f2 === "uploading" ? "local" : f2)));
       });
     };
     // Доп. 163: рабочая форма — разделы, состав чипами, подсказки аллергенов, липкие кнопки
@@ -1010,7 +1063,7 @@ function MenuEditor({ T, gold, red, green, textColor, a11y, Head, restaurant, cu
             onChange={e => { if (e.target.value.includes(",")) { addIng(e.target.value); e.target.value = ""; } }} />
           <div style={{ fontSize: 11.5, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую — разложится на чипы.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-            {ALLERGENS_LIST.map(al => <span key={al} style={chip(form.allergens.includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{allergenLabel(al)}</span>)}
+            {ALLERGENS_LIST.map(al => <span key={al} style={chip((form.allergens || []).includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{allergenLabel(al)}</span>)}
           </div>
           {hints.length > 0 && (
             <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 4, borderColor: red + "66" }}>

@@ -351,7 +351,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
           <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, lineHeight: 1.25 }}>{d.name}</div>
           {d.cat && <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{d.cat}</div>}
           <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(d.ingredients || []).slice(0, 6).join(", ")}</div>
-          {(d.allergens || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>{d.allergens.map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, border: `1px solid ${RED}88`, color: RED }}>{a}</span>)}</div>}
+          {(d.allergens || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>{(d.allergens || []).map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, border: `1px solid ${RED}88`, color: RED }}>{a}</span>)}</div>}
           <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть карточку ›</div>
         </div>
       </div>

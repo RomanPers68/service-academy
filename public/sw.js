@@ -19,6 +19,9 @@ self.addEventListener("install", (e) => {
   })());
 });
 
+// Доп. 279: страница просит новый воркер не ждать — тогда обновление приезжает сразу
+self.addEventListener("message", (e) => { if (e.data === "skip-waiting") self.skipWaiting(); });
+
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     const keep = new Set([SHELL, ASSETS, IMAGES]);

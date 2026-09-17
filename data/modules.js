@@ -73,3 +73,21 @@ export function roleOfLessonId(lid) {
   }
   return null;
 }
+
+/**
+ * Доп. 280: фоном греем не все роли подряд (это около трёх мегабайт), а только те,
+ * что человек реально может открыть. И не трогаем сеть, если она бережётся или медленная.
+ */
+export function loadOpenModules(profile) {
+  try {
+    const c = typeof navigator !== "undefined" && navigator.connection;
+    if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))) return Promise.resolve();
+  } catch (e) {}
+  const pos = (profile && profile.position) || "waiter";
+  const open = new Set(["spg", "seasonal"]);
+  if (pos === "bartender" || pos === "senior_bartender") open.add("bar");
+  if (pos === "waiter" || pos === "senior" || pos === "manager") open.add("core");
+  if (pos === "manager" || pos === "senior" || (profile && profile.is_admin)) { open.add("manager"); open.add("core"); }
+  if (profile && profile.is_admin) { open.add("service_manager"); open.add("bar"); }
+  return Promise.all([...open].map(r => loadRoleModules(r).catch(() => {})));
+}

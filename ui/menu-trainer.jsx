@@ -221,7 +221,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v23</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v24</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -987,23 +987,28 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   };
 
   if (form) {
-    const toggleAl = (al) => setForm(f => ({ ...f, allergens: f.allergens.includes(al) ? f.allergens.filter(x => x !== al) : [...f.allergens, al] }));
+    const toggleAl = (al) => setForm(f => { const cur = Array.isArray(f.allergens) ? f.allergens : []; return { ...f, allergens: cur.includes(al) ? cur.filter(x => x !== al) : [...cur, al] }; });
     // Доп. 135: сжали на телефоне → отправили в Storage → в блюде остаётся ссылка.
     // Не получилось (функция не развёрнута, нет сети) — base64 в localStorage, как раньше.
     const onPhoto = (e) => {
       const file = e.target.files && e.target.files[0]; e.target.value = "";
       if (!file) return;
+      // Доп. 278: несколько фото подряд — ответ первой загрузки приходил, когда открыто уже
+      // другое блюдо, и перетирал форму объектом без аллергенов → падение на allergens.includes.
+      // Теперь ответ принимается, только если открыта та же карточка.
+      const myId = form.id || ("d" + Date.now());
+      const mine = (f) => f && (f.id || myId) === myId;
       readPhoto(file, (data) => {
-        setForm(f => ({ ...f, img: data }));
+        setForm(f => (mine(f) ? { ...f, img: data } : f));
         setPhotoState("uploading");
         fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-          body: JSON.stringify({ token: saToken(), restaurant, dishId: form.id || ("d" + Date.now()), image: data }),
+          body: JSON.stringify({ token: saToken(), restaurant, dishId: myId, image: data }),
         }).then(r => r.json()).then(j => {
-          if (j && j.ok && j.url) { setForm(f => ({ ...f, img: j.url })); setPhotoState("cloud"); }
-          else setPhotoState("local");
-        }).catch(() => setPhotoState("local"));
+          if (j && j.ok && j.url) { setForm(f => (mine(f) ? { ...f, img: j.url } : f)); setPhotoState(f2 => (f2 === "uploading" ? "cloud" : f2)); }
+          else setPhotoState(f2 => (f2 === "uploading" ? "local" : f2));
+        }).catch(() => setPhotoState(f2 => (f2 === "uploading" ? "local" : f2)));
       });
     };
     // Доп. 163: рабочая форма — разделы, состав чипами, подсказки аллергенов, липкие кнопки
@@ -1058,7 +1063,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             onChange={e => { if (e.target.value.includes(",")) { addIng(e.target.value); e.target.value = ""; } }} />
           <div style={{ fontSize: 11.5, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую — разложится на чипы.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-            {ALLERGENS_LIST.map(al => <span key={al} style={chip(form.allergens.includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{allergenLabel(al)}</span>)}
+            {ALLERGENS_LIST.map(al => <span key={al} style={chip((form.allergens || []).includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{allergenLabel(al)}</span>)}
           </div>
           {hints.length > 0 && (
             <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 4, borderColor: red + "66" }}>

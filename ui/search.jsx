@@ -172,7 +172,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
                   )}
                   {(d.allergens || []).length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
-                      {d.allergens.map(a => (
+                      {(d.allergens || []).map(a => (
                         <span key={a} style={{ fontSize: 10.5, fontWeight: "bold", color: red, border: `1px solid ${red}66`, background: a11y ? "rgba(160,56,40,0.06)" : "rgba(224,120,120,0.08)", borderRadius: 9, padding: "3px 8px" }}>{a}</span>
                       ))}
                     </div>

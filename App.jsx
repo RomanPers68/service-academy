@@ -4,10 +4,9 @@ import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
-import { MODULES, loadRoleModules, loadAllModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
+import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf } from "./ui/home-hubs";
-import { GuideScreen } from "./ui/guide";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
 import { modeOfDay, dailyCount, dailyStreak } from "./lib/deck-extras";
@@ -37,7 +36,8 @@ const ScheduleScreen = lazy(() => retryImport(() => import("./ui/schedule")).the
 const BuildRunner = lazy(() => retryImport(() => import("./ui/build")).then(m => ({ default: m.BuildRunner })));
 const BarLabScreen = lazy(() => retryImport(() => import("./ui/bar-lab")).then(m => ({ default: m.BarLabScreen }))); // Доп. 218: лениво, как остальные экраны
 const CocktailEditor = lazy(() => retryImport(() => import("./ui/cocktail-editor")).then(m => ({ default: m.CocktailEditor }))); // Доп. 240
-const BarCardPrint = lazy(() => retryImport(() => import("./ui/bar-card-print")).then(m => ({ default: m.BarCardPrint }))); // Доп. 244
+const BarCardPrint = lazy(() => retryImport(() => import("./ui/bar-card-print")).then(m => ({ default: m.BarCardPrint })));
+const GuideScreen = lazy(() => retryImport(() => import("./ui/guide")).then(m => ({ default: m.GuideScreen })));   // Доп. 280: 73 КБ мимо старта // Доп. 244
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -1184,13 +1184,18 @@ function ServiceAcademy() {
   const [, bumpLazyData] = useState(0);
   useEffect(() => {
     // 1) Сначала данные, без которых главные экраны неполные
-    Promise.all([role ? loadRoleModules(role) : Promise.resolve(), loadDialogues()]).then(() => bumpLazyData(x => x + 1));
+    // Доп. 280: диалоги (полмегабайта) нужны только на практике — не держим их на старте
+    Promise.all([role ? loadRoleModules(role) : Promise.resolve()]).then(() => bumpLazyData(x => x + 1));
     // 2) Затем тихо прогреваем ленивые экраны: пока человек смотрит на главную,
     //    их код доезжает фоном — и первое открытие любого раздела мгновенно,
     //    скелетон остаётся только для очень медленной сети в первые секунды.
-    const warm = setTimeout(() => {
+    // Доп. 280: на бережной или медленной сети фоновый прогрев не делаем вовсе —
+    // экраны доедут по требованию, зато трафик человека остаётся при нём.
+    const thrifty = (() => { try { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); } catch (e) { return false; } })();
+    const warm = thrifty ? null : setTimeout(() => {
       [
-        () => loadAllModules(), // Доп. 132: остальные роли — фоном, пока человек на главной
+        () => loadDialogues().then(() => bumpLazyData(x => x + 1)),
+        () => loadOpenModules(profile), // Доп. 280: фоном — только роли, открытые этому человеку
         () => import("./ui/menu-trainer"),
         () => import("./ui/guestbook"),
         () => import("./ui/ReferenceSection"),
@@ -1202,7 +1207,7 @@ function ServiceAcademy() {
         () => import("./ui/assistant"),
       ].reduce((p, load) => p.then(() => load().catch(() => {})), Promise.resolve());
     }, 1500);
-    return () => clearTimeout(warm);
+    return () => { if (warm) clearTimeout(warm); };
   }, []);
 
   if (!storageLoaded) return (
@@ -1398,13 +1403,13 @@ function ServiceAcademy() {
             staff && { key:"ce", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
           ]} /></div>;
         })()}
-        {screen === "guide" && profile && <GuideScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("me")} onOpen={(dest) => {
+        {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("me")} onOpen={(dest) => {
           if (dest === "menu") navigate("menuTrainer");
           else if (dest === "reference") { setRefStart(null); navigate("reference"); }
           else if (dest === "cocktails") { setRefStart(null); setCkStart(null); navigate("cocktails"); }
           else if (dest === "guestbook") { setBookFocus(null); navigate("guestbook"); }
           else navigate(dest);
-        }} />}
+        }} /></Suspense>}
         {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title={profile.name} subtitle={profile.restaurant || "Service Academy"}
           hero={<MeHero a11y={a11y} streak={streak} roleLabel={ROLES.find(r => r.id === role)?.label} total={totalLessons}
             done={modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}

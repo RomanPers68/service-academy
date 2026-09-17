@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "check:content": "node scripts/check-content.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:scope": "bash tests/scope-check.sh",
+    "check:all": "npm run check:content && npm run check:scope && npm run test && npm run build"
   },
   "dependencies": {
     "react": "^18.2.0",

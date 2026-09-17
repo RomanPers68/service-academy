@@ -326,7 +326,7 @@ export const injectStyles = () => {
        и прокручивать становится нечего. */
     .sa-schedgrid table{width:max-content;min-width:100%}
     .sa-schedgrid td,.sa-schedgrid th{min-width:26px}
-    .sa-schedgrid td.sa-schednm,.sa-schedgrid th.sa-schednm{min-width:100px}
+    .sa-schedgrid td.sa-schednm,.sa-schedgrid th.sa-schednm{min-width:92px;max-width:92px}
     .sa-schedgrid table{border-collapse:separate;border-spacing:0}
     /* липкая шапка с числами */
     .sa-schedgrid tr:first-child th{position:sticky;top:0;z-index:4;

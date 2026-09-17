@@ -107,7 +107,6 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
 
   // Доп. 170: deep-link из ответа Наставника — открыть Колоду меню сразу на блюде
   const [deckStart, setDeckStart] = React.useState(null);
-  const [deckMode, setDeckMode] = React.useState(null); // Доп. 215: reverse | quiz — из карточки «режим дня»
   const [editStart, setEditStart] = React.useState(null);  // Доп. 274: открыть редактор на блюде
   const [showNoNut, setShowNoNut] = React.useState(false);
   const startedRef = React.useRef(null);
@@ -184,7 +183,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // Доп. 189: «Меню по разделам» слилось с Колодой — список живёт в ней за иконкой указателя
   if (mode === "print") return <MenuPrint T={T} a11y={a11y} dishes={dishes} restaurant={restaurant} onBack={() => setMode(null)} />;   // Доп. 261
   if (mode === "sprint") return <AllergenSprint T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={dishes} restaurant={restaurant} uk={uk} Head={Head} DishPhoto={DishPhoto} glass={glass} onExit={() => setMode(null)} />;
-  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={deckMode || (startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined)}
+  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined}   /* Доп. 282: только если пришли с карточки режима дня */
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
@@ -221,7 +220,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v24</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v25</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -259,14 +258,15 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={T.modArrow}>›</div>
           </div>
         )}
-        {modes.map(m => { const isDay = dayKey === m.key; const open = () => { if (!dishes.length) return; if (isDay && m.key === "cards") { setFocusNew(false); setDeckMode(md.key === "reverse-menu" ? "reverse" : "quiz"); } setMode(m.key); }; return (
+        {/* Доп. 282: колода всегда открывается обычной — «Наоборот» включают руками */}
+        {modes.map(m => { const isDay = dayKey === m.key; const open = () => { if (!dishes.length) return; if (isDay && m.key === "cards") setFocusNew(false); setMode(m.key); }; return (
           <div key={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: dishes.length ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
             onClick={open} {...onActivate(open)}>
             <div style={{ ...T.modBar, background: isDay && dayDone ? "#5DBB8A" : gold }} />
             <div style={iconBox}>{m.icon(gold)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={T.modTitle}>{m.title}</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Сегодня — «Наоборот»: " : md.key === "know-menu" ? "Сегодня — «Знаю?»: " : "") + m.sub : m.sub}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Режим дня — попробуй «Наоборот» внутри: " : md.key === "know-menu" ? "Режим дня — «Знаю?»: " : "") + m.sub : m.sub}</div>
               {isDay && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
                 <span style={{ display: "inline-flex", gap: 3 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 6, height: 6, borderRadius: 3, background: k < dayCount ? (dayDone ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${dayDone ? "#5DBB8A" : gold + "88"}` }} />)}</span>
                 <span style={{ fontSize: 9.5, letterSpacing: 1.4, fontFamily: "monospace", color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "ПЯТЬ ЕСТЬ ✓" : "РЕЖИМ ДНЯ"}{dayStreak > 1 ? ` · СЕРИЯ ${dayStreak}` : ""}</span>

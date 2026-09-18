@@ -28,6 +28,18 @@ const MONTHS_R = ["января","февраля","марта","апреля","�
 // поэтому «автозаполнение не слушается»: cfg.rules.autoFill приходил
 // с сервера как undefined, и эффект автосборки выходил на первой же проверке.
 // То же и с wishDeadline — срок приёма пожеланий не показывался никому.
+// Отпуска списком по месяцам: vacs = { "2026-09": [[10,20],[28,30]] }.
+// Раньше было одно поле на человека за всё время — vac = [с, по, месяц], —
+// и отпуск на октябрь молча стирал сентябрьский. Старый формат читается как
+// один период, чтобы сохранённое не пропало при обновлении.
+const vacRanges = (s, mk) => {
+  const out = [];
+  const v2 = s && s.vacs && s.vacs[mk];
+  if (Array.isArray(v2)) v2.forEach(r => { if (Array.isArray(r) && r[0]) out.push([r[0], r[1] || r[0]]); });
+  else if (s && Array.isArray(s.vac) && s.vac[2] === mk && s.vac[0]) out.push([s.vac[0], s.vac[1] || s.vac[0]]);
+  return out;
+};
+
 const mergeCfg = (saved) => {
   const out = { ...DEFAULT_CONFIG, ...(saved || {}) };
   ["rules", "need", "split", "posRules"].forEach(k => {
@@ -209,6 +221,23 @@ function Text({ v, set, inp, style, maxLength }) {
       onFocus={focusScroll} onChange={e => set(e.target.value)} />
   );
 }
+// Длинная справка под кнопкой. Абзацы курсива нужны один раз при знакомстве,
+// а занимали по полэкрана в каждом разделе постоянно — из-за них настройки и
+// выглядели стеной текста.
+function Hint({ children, P, label = "как это работает?" }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div style={{ margin:"7px 0 2px" }}>
+      <span onClick={() => setOpen(o => !o)} style={{ fontSize:11, color: open ? GOLD : P.sub, cursor:"pointer" }}>
+        {open ? "скрыть пояснение ▴" : label + " ▾"}
+      </span>
+      {open ? (
+        <div style={{ fontSize:11.5, color:P.sub, fontStyle:"italic", lineHeight:1.6, marginTop:5 }}>{children}</div>
+      ) : null}
+    </div>
+  );
+}
+
 function Pill({ on, children, onClick, a11y, P, style }) {
   return (
     <button onClick={onClick} className="sa-btn" style={{
@@ -394,6 +423,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const autoDone = React.useRef({});                       // месяцы, где автосборка уже отработала
   const flushRef = React.useRef(() => {});                 // дописать несохранённые настройки
   const [legend, setLegend] = React.useState(false);       // легенда смен раскрыта
+  const [openSplit, setOpenSplit] = React.useState("");    // какая должность раскрыта в разбивке по сменам
   // Факт часов: сотрудник ушёл раньше (нет столов) или задержался —
   // менеджер отмечает отработанное по факту, и ВСЯ математика (часы,
   // зарплата, фонд, экспорт) считает честно. { staffId: { day: часы } }
@@ -555,19 +585,34 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     const i = (cfg?.shifts || []).findIndex(x => x.k === k);
     return i < 0 ? null : SHIFT_COLORS[i % SHIFT_COLORS.length];
   };
+  const lvl2Distinct = POS.some(({ id }) => {
+    const a = cfg?.need?.[1]?.[id] || 0, b = cfg?.need?.[2]?.[id] || 0, c = cfg?.need?.[3]?.[id] || 0;
+    return b !== a && b !== c;
+  });
+  const levels = (cfg?.rules?.levels === 2 || cfg?.rules?.levels === 3)
+    ? cfg.rules.levels : (lvl2Distinct ? 3 : 2);
+  // Один список уровней на все три экрана настроек: потребность, разбивка
+  // по сменам и расшифровка дней — чтобы они не разъезжались.
+  const LVLS = levels === 3
+    ? [[1, "обычный"], [2, "высокий"], [3, "пиковый"]]
+    : [[1, "обычный"], [3, "пиковый"]];
+
   const lvlOf = d => {
     const o = days[d];
-    if (o && o.lvl) return o.lvl;
+    // Ручная пометка дня «высоким» при двух уровнях читается как пик:
+    // иначе день попал бы на уровень, которого на экране больше нет.
+    if (o && o.lvl) return (o.lvl === 2 && levels === 2) ? 3 : o.lvl;
     const R = cfg?.rules || DEFAULT_CONFIG.rules;
     if (holName(d) && R.holidayPeak) return 3;
     const w = dow(d);
     if (R.peakDows.includes(w)) return 3;
-    if (R.highDows.includes(w)) return 2;
+    if (levels === 3 && R.highDows.includes(w)) return 2;
     return 1;
   };
   const holOf = d => { const o = days[d]; return o && o.hol !== undefined ? o.hol : !!holName(d); };
   const needOf = d => (cfg?.need || {})[lvlOf(d)] || {};
-  const onVac = (s, d) => s.vac && s.vac[2] === mkey && d >= s.vac[0] && d <= s.vac[1];
+  const onVac = (s, d) => vacRanges(s, mkey).some(r => d >= r[0] && d <= r[1]);
+  const vacsOf = (s) => vacRanges(s, mkey);
   // Заморозка живого месяца: прошедшие дни (и сегодня — смена уже идёт)
   // неприкосновенны для генерации/раздачи/очистки. Прошлый месяц заморожен
   // целиком, будущий — свободен весь.
@@ -582,11 +627,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // оставшиеся дни. Уменьшаем пропорционально — генератор перестаёт
   // трамбовать отпускника, а «Проверка» — ныть о недоработке.
   const effNorm = (s) => {
-    if (!(s.vac && s.vac[2] === mkey && s.vac[0])) return s.norm || 0;
-    const vd = Math.max(0, Math.min(DAYS, s.vac[1]) - Math.max(1, s.vac[0]) + 1);
+    const rs = vacRanges(s, mkey);
+    if (!rs.length) return s.norm || 0;
+    // Периоды могут пересекаться — считаем уникальные дни, иначе норма съедется
+    const seen = new Set();
+    rs.forEach(r => { for (let d = Math.max(1, r[0]); d <= Math.min(DAYS, r[1]); d++) seen.add(d); });
+    const vd = seen.size;
     return Math.round((s.norm || 0) * (DAYS - vd) / DAYS);
   };
-  const vacOn = (s) => !!(s.vac && s.vac[2] === mkey && s.vac[0]);
+  const vacOn = (s) => vacRanges(s, mkey).length > 0;
   // Выходные по конкретным числам. Хранятся по месяцам: «14-е» в августе
   // не должно тянуться в сентябрь.
   const offDays = (s) => (s.offDays && s.offDays[mkey]) || [];
@@ -1903,7 +1952,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     // открытая — «что это значит». Обзор всех настроек без единого тапа.
     const sum1 = `с ${Math.min(...cfg.hours.map(h => h[0]))}:00 до ${Math.max(...cfg.hours.map(h => h[1]))}:00`;
     const sum2 = `${cfg.shifts.map(x => x.k).join(" ")} · авто: ${cfg.shifts.filter(x => !x.extra).length}`;
-    const sum3 = [1, 2, 3].map(l => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.";
+    const sum3 = LVLS.map(([l]) => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.";
     const sum4 = `пик: ${cfg.rules.peakDows.map(w => DOWL[w]).join(",") || "—"} · до ${cfg.rules.maxRow} подряд · отдых ${cfg.rules.minRest} ч`;
     const nVac = staff.filter(vacOn).length;
     const sum5 = `${staff.length} чел.` + (nVac ? ` · в отпуске: ${nVac}` : "");
@@ -1927,7 +1976,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             })}
           </span>
           {(() => {
-            const sums = [1, 2, 3].map(l => POS.reduce((a, pp) => a + ((cfg.need?.[l] || {})[pp.id] || 0), 0)).filter(Boolean);
+            // Только показанные уровни: при двух «высокий» держится равным
+            // обычному и в диапазон «в день» ничего нового не добавляет
+            const sums = LVLS.map(([l]) => POS.reduce((a, pp) => a + ((cfg.need?.[l] || {})[pp.id] || 0), 0)).filter(Boolean);
             if (!sums.length) return null;
             const lo = Math.min(...sums), hi = Math.max(...sums);
             return <span>в день: {lo === hi ? lo : `${lo}–${hi}`} чел</span>;
@@ -2055,14 +2106,46 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         <div style={{ display:"flex", gap:8, fontFamily:mono, fontSize:8.5, letterSpacing:1.2,
           textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>
           <span style={{ flex:1 }}>позиция</span>
-          {["обычный","высокий","пик"].map(x => <span key={x} style={{ flex:"0 0 56px", textAlign:"center" }}>{x}</span>)}
+          {LVLS.map(([, nm]) => <span key={nm} style={{ flex:"0 0 56px", textAlign:"center" }}>{nm}</span>)}
         </div>
+        {/* Какие дни относятся к уровню — задаётся в РАЗДЕЛЕ 4, и здесь этого
+            было не видно: вводишь число для пика, не зная, что пик не назначен
+            вовсе. Тогда колонка мертва — число сохраняется и никогда не
+            применяется. Теперь расшифровка и предупреждение стоят на месте. */}
+        {(() => {
+          const pk = (cfg.rules.peakDows || []).map(w => DOWL[w]);
+          const hg = (cfg.rules.highDows || []).map(w => DOWL[w]);
+          const hasNum = (lvl) => POS.some(({ id }) => (cfg.need[lvl]?.[id] || 0) > 0);
+          const dead = [];
+          if (!pk.length && hasNum(3)) dead.push("пиковый");
+          if (levels === 3 && !hg.length && hasNum(2)) dead.push("высокий");
+          return (
+            <div style={{ fontSize:11, color:P.sub, lineHeight:1.55, padding:"0 0 8px" }}>
+              пиковый: <b style={{ color: pk.length ? P.acc : P.warn }}>{pk.length ? pk.join(", ") : "не назначен"}</b>
+              {levels === 3 ? <>{" · "}высокий: <b style={{ color: hg.length ? P.acc : P.sub }}>{hg.length ? hg.join(", ") : "не назначен"}</b></> : null}
+              {" · "}обычный: остальные дни
+              {cfg.rules.holidayPeak ? <> · праздники считаются пиком</> : null}
+              {dead.length ? (
+                <div style={{ color:P.warn, marginTop:4 }}>
+                  Колонка «{dead.join("» и «")}» сейчас ни на что не влияет: таких дней в месяце нет.
+                  Назначь дни недели в разделе «Правила смен» — или числа так и останутся без дела.
+                </div>
+              ) : null}
+            </div>
+          );
+        })()}
         {POS.map(({ id, t }) => (
           <div key={id} style={rowStyle}>
             <span style={{ flex:1, fontSize:12.5, color:P.sub }}>{t}</span>
-            {[1,2,3].map(lvl => (
+            {LVLS.map(([lvl]) => (
               <Num key={lvl} inp={inp} v={cfg.need[lvl]?.[id] || 0} min={0} max={9}
-                set={v => patch(c => { if (!c.need[lvl]) c.need[lvl] = {}; c.need[lvl][id] = v; })} />
+                set={v => patch(c => {
+                  if (!c.need[lvl]) c.need[lvl] = {};
+                  c.need[lvl][id] = v;
+                  // При двух уровнях «высокий» не показан — держим его равным
+                  // обычному, чтобы вручную помеченный день вёл себя предсказуемо
+                  if (levels === 2 && lvl === 1) { if (!c.need[2]) c.need[2] = {}; c.need[2][id] = v; }
+                })} />
             ))}
           </div>
         ))}
@@ -2104,6 +2187,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               })}>{dl}</Pill>
           ))}
         </div>
+        {levels === 3 ? (<>
         <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>высокие дни</div>
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
@@ -2114,6 +2198,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   ? c.rules.highDows.filter(x => x !== wi) : [...c.rules.highDows, wi];
               }); }}>{dl}</Pill>
           ))}
+        </div>
+        </>) : null}
+        {/* Третий уровень загрузки. По умолчанию их два: «обычный» и «пиковый».
+            «Высокий» и «пик» оба значат «людей нужно больше обычного», и два
+            названия для одного смысла путают при настройке. Кому нужна разница
+            между «четверг чуть плотнее» и «суббота забита» — включает третий. */}
+        <div style={{ display:"flex", alignItems:"flex-start", gap:9, margin:"4px 0 8px" }}>
+          <Pill a11y={a11y} P={P} on={levels === 3} style={{ flexShrink:0, padding:"7px 12px" }}
+            onClick={() => patch(c => {
+              const to = levels === 3 ? 2 : 3;
+              c.rules.levels = to;
+              // Уходя на два уровня, гасим «высокие дни»: иначе день остался бы
+              // на уровне, которого на экране больше нет, и потребность для
+              // него задать было бы нечем.
+              if (to === 2) c.rules.highDows = [];
+            })}>
+            {levels === 3 ? "три уровня" : "два уровня"}
+          </Pill>
+          <span style={{ fontSize:11.5, color:P.sub, flex:1, lineHeight:1.45 }}>
+            {levels === 3
+              ? "Обычный, высокий и пиковый. Высокий — для дней между буднями и полной загрузкой."
+              : "Обычный и пиковый. Достаточно почти всем: либо день как обычно, либо людей нужно больше."}
+          </span>
         </div>
         <div style={rowStyle}>
           <Field label="смен подряд" P={P}><Num inp={inp} v={cfg.rules.maxRow} min={1} max={14} set={v => patch(c => { c.rules.maxRow = v; })} /></Field>
@@ -2134,12 +2241,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               onClick={() => patch(c => { c.rules.normMode = v; })}>{t}</Pill>
           ))}
         </div>
-        <div style={hintStyle}>
+        <Hint P={P} label="что это значит?">
           {(cfg.rules.normMode || "floor") === "floor"
             ? "Норму нужно выработать, всё сверху — законная переработка. Генератор закрывает смены до конца месяца и делит их поровну по числу рабочих дней."
             : "Норму превышать нельзя. Генератор скорее оставит смену незакрытой, чем выведет человека сверх нормы."}
-        </div>
-        <div style={hintStyle}>Эти правила генератор не нарушает: он скорее оставит смену незакрытой, чем поставит человека сверх предела.</div>
+          {" "}Эти правила генератор не нарушает: он скорее оставит смену незакрытой, чем поставит человека сверх предела.
+        </Hint>
 
         <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
           color:P.sub, padding:"14px 0 5px" }}>как выходит каждая позиция</div>
@@ -2201,10 +2308,32 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
           ));
           const sumOf = (o) => o ? Object.values(o).reduce((a, v) => a + (v || 0), 0) : 0;
+          const open2 = openSplit === id;
+          // Короткая сводка в свёрнутом виде: «1У+3Д» вместо пятнадцати нулей
+          const brief = (o) => letters.map(x => (o && o[x.k]) ? `${o[x.k]}${x.k}` : "").filter(Boolean).join("+");
+          const summary = byLvl
+            ? (() => {
+                const parts = LVLS.map(([lvN, nm]) => {
+                    const b = brief(spRaw[String(lvN)]);
+                    return b ? `${nm === "обычный" ? "об" : nm === "высокий" ? "выс" : "пик"} ${b}` : "";
+                  })
+                  .filter(Boolean);
+                return parts.length ? "по типу дня · " + parts.join(" · ") : "по типу дня · не заполнено";
+              })()
+            : (brief(spRaw) || "все в основную смену");
           return (
             <div key={id} style={{ ...rowStyle, flexWrap:"wrap" }}>
               <span style={{ flex:"1 1 100%", fontSize:12.5, color:P.sub, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ flex:1 }}>{t}</span>
+                {/* Свёрнуто. Развёрнутыми были ВСЕ должности сразу: пятнадцать
+                    полей на каждую при разбивке по типу дня, почти все нули, —
+                    из-за этого раздел и выглядел стеной. */}
+                <span onClick={() => { setOpenSplit(open2 ? "" : id); vibrate("light"); }}
+                  style={{ flex:1, cursor:"pointer", color: open2 ? P.text : P.sub }}>
+                  {t}
+                  <span style={{ fontSize:10.5, color:P.sub, marginLeft:7 }}>
+                    {summary}{open2 ? " ▴" : " ▾"}
+                  </span>
+                </span>
                 <Pill a11y={a11y} P={P} on={!byLvl} style={{ padding:"5px 9px", fontSize:10.5 }}
                   onClick={() => { if (!byLvl) return; patch(c => {
                     const base = (c.split?.[id]?.["1"]) || (c.split?.[id]?.["3"]) || {};
@@ -2216,33 +2345,60 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     c.split[id] = { "1": { ...(c.split[id] || {}) } };
                   }); }}>по типу дня</Pill>
               </span>
-              {!byLvl ? (<>
+              {open2 ? (!byLvl ? (<>
                 <span style={{ flex:"1 1 100%", fontSize:11, color: sumOf(spRaw) === 0 ? P.sub : sumOf(spRaw) <= totalMax ? P.acc : P.warn, marginBottom:4 }}>
                   {sumOf(spRaw) === 0 ? "все в основную смену" : sumOf(spRaw) + " из " + totalMax + (sumOf(spRaw) > totalMax ? " — больше потребности!" : "")}
                 </span>
                 {steppers(spRaw, writeFlat)}
-              </>) : ([["1", "обычный день"], ["2", "высокий"], ["3", "пик"]].map(([lv, nm]) => {
+              </>) : (LVLS.map(([lvN, nm]) => { const lv = String(lvN);
                 const spL = spRaw[lv]; const needL = cfg.need[+lv]?.[id] || 0;
+                const put = sumOf(spL);
                 return (
                   <div key={lv} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:5 }}>
                     <span style={{ fontFamily:mono, fontSize:10, color:P.sub, width:92 }}>{nm} · {needL} чел</span>
                     {steppers(spL, (k, v) => writeLvl(lv, k, v))}
-                    {spL && sumOf(spL) > needL ? <span style={{ fontSize:10, color:P.warn }}>больше потребности!</span> : null}
+                    {/* Раньше сходимость с потребностью нужно было считать в уме:
+                        подписано «5 чел», а сумма по буквам — 4, и что будет с
+                        пятым, подсказывал только абзац справки внизу. */}
+                    <span style={{ flex:"1 1 100%", fontSize:10, marginTop:1,
+                      color: put > needL ? P.warn : put ? P.sub : P.sub }}>
+                      {put > needL ? `расписано ${put} — больше потребности!`
+                        : put === 0 ? "весь день в основную смену"
+                        : put === needL ? `расписаны все ${needL}`
+                        : `расписано ${put} из ${needL}, остальные ${needL - put} — в основную смену`}
+                    </span>
                   </div>
                 );
-              }))}
+              }))) : null}
             </div>
           );
         })}
-        <div style={hintStyle}>Сколько человек в какой смене. «По типу дня» — своя структура для обычного,
+        <Hint P={P} label="зачем разбивка?">Сколько человек в какой смене. «По типу дня» — своя структура для обычного,
           высокого и пикового дня: межсезонье в будни ставит утро вместо вечера, выходные возвращают вечер.
           Сумма может быть меньше потребности — остаток добирается основной сменой. Пустой уровень = весь
-          день в основную смену.</div>
+          день в основную смену.</Hint>
       </Sec>
 
       <Sec no={5} title="Сотрудники" hint={openSec===5 ? "Кто работает, на какой позиции и сколько часов" : sum5} P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
         <Text inp={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:8 }} v={empFilter}
           placeholder="Найти по имени или должности…" set={setEmpFilter} />
+        <div style={{ marginBottom:12, padding:"10px 12px", borderRadius:12,
+          background: a11y ? "rgba(200,169,110,0.14)" : "rgba(200,169,110,0.10)",
+          border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(200,169,110,0.3)"}` }}>
+          <div style={{ fontSize:12.5, color:P.text, lineHeight:1.55 }}>
+            Норма {MONTHS_R[M]} при полной ставке — <b style={{ color:P.acc }}>{monthNorm(40)} ч</b>
+            <span style={{ color:P.sub }}> · при 36 часах в неделю {monthNorm(36)} ч</span>
+          </div>
+          <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
+            {[40, 36, 24].map(h => (
+              <Pill key={h} a11y={a11y} P={P} on={false} style={{ flex:"1 1 auto" }}
+                onClick={() => patch(c => { c.staff.forEach(x => { x.norm = monthNorm(h); }); })}>
+                поставить всем {monthNorm(h)} ч
+              </Pill>
+            ))}
+          </div>
+        </div>
+
         {staffAll.map((sf, i) => { const openE = openEmp === sf.id;
           if (empFilter && !((sf.name + " " + sf.pos).toLowerCase().includes(empFilter.toLowerCase()))) return null;
           return (
@@ -2328,21 +2484,70 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               </Field>
             </div>
 
-            {/* Отпуск задаётся числами того месяца, который открыт сейчас */}
+            {/* Отпуска месяца списком: периодов может быть сколько угодно, и
+                каждый месяц независим. Правка всегда пишет в новый формат
+                vacs[mkey]; старое поле vac переносится сюда при первом
+                изменении, чтобы данные не раздваивались. */}
+            <div style={{ padding:"8px 0 2px" }}>
+              <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:5 }}>
+                отпуск · {MONTHS_R[M]}
+              </div>
+              {(() => {
+                const rs = vacsOf(sf);
+                // Любая правка сначала переводит человека на новый формат
+                const writeVacs = (c, list) => {
+                  const st = c.staff[i];
+                  const vs = { ...(st.vacs || {}) };
+                  if (!st.vacs && Array.isArray(st.vac) && st.vac[0] && st.vac[2] && st.vac[2] !== mkey) {
+                    vs[st.vac[2]] = [[st.vac[0], st.vac[1] || st.vac[0]]];   // чужой месяц не теряем
+                  }
+                  if (list.length) vs[mkey] = list; else delete vs[mkey];
+                  st.vacs = vs;
+                  if (Array.isArray(st.vac) && st.vac[2] === mkey) delete st.vac;
+                };
+                return (
+                  <>
+                    {rs.map((r, ri2) => (
+                      <div key={ri2} style={{ display:"flex", alignItems:"flex-end", gap:8, marginBottom:6 }}>
+                        <Field label="с" P={P}>
+                          <Num inp={inp} v={r[0]} min={0} max={DAYS} set={v => patch(c => {
+                            const list = vacsOf(sf).map(x => [x[0], x[1]]);
+                            if (!v) list.splice(ri2, 1); else { list[ri2][0] = v; list[ri2][1] = Math.max(v, list[ri2][1]); }
+                            writeVacs(c, list);
+                          })} />
+                        </Field>
+                        <Field label="по" P={P}>
+                          <Num inp={inp} v={r[1]} min={0} max={DAYS} set={v => patch(c => {
+                            const list = vacsOf(sf).map(x => [x[0], x[1]]);
+                            list[ri2][1] = Math.max(list[ri2][0], v);
+                            writeVacs(c, list);
+                          })} />
+                        </Field>
+                        <button className="sa-btn" title="Убрать период"
+                          onClick={() => patch(c => {
+                            const list = vacsOf(sf).map(x => [x[0], x[1]]); list.splice(ri2, 1); writeVacs(c, list);
+                          })}
+                          style={{ flex:"0 0 34px", width:34, height:34, minWidth:34, boxSizing:"border-box",
+                            background:"transparent", border:`1px solid ${P.danger}55`, color:P.danger,
+                            borderRadius:9, fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1,
+                            padding:0, display:"grid", placeItems:"center" }}>✕</button>
+                      </div>
+                    ))}
+                    <button className="sa-btn" onClick={() => patch(c => {
+                      const list = vacsOf(sf).map(x => [x[0], x[1]]); list.push([1, 1]); writeVacs(c, list);
+                    })} style={{ ...ghost, fontSize:12, padding:"7px 11px" }}>
+                      {rs.length ? "+ ещё период" : "+ добавить отпуск"}
+                    </button>
+                    {rs.length ? (
+                      <span style={{ fontSize:11, color:P.sub, marginLeft:9 }}>
+                        всего {rs.reduce((a, r) => a + (Math.min(DAYS, r[1]) - Math.max(1, r[0]) + 1), 0)} дн.
+                      </span>
+                    ) : null}
+                  </>
+                );
+              })()}
+            </div>
             <div style={{ ...rowStyle, borderTop:"none" }}>
-              <Field label={"отпуск с · " + MONTHS_R[M]} P={P}>
-                <Num inp={inp} v={vacOn(sf) ? sf.vac[0] : 0} min={0} max={DAYS}
-                  set={v => patch(c => {
-                    c.staff[i].vac = v ? [v, Math.max(v, (vacOn(sf) ? sf.vac[1] : v)), mkey] : null;
-                  })} />
-              </Field>
-              <Field label="по" P={P}>
-                <Num inp={inp} v={vacOn(sf) ? sf.vac[1] : 0} min={0} max={DAYS}
-                  set={v => patch(c => {
-                    if (c.staff[i].vac) c.staff[i].vac[1] = Math.max(c.staff[i].vac[0], v);
-                    else if (v) c.staff[i].vac = [v, v, mkey];   // «по» первым — тоже работает, а не теряется молча
-                  })} />
-              </Field>
               <Field label="статус" P={P}>
                 <span style={{ fontFamily:mono, fontSize:9, letterSpacing:1, padding:"3px 8px",
                   borderRadius:999, display:"inline-block",
@@ -2449,34 +2654,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </>) : null}
           </div>
         ); })}
-        <div style={{ marginTop:10, padding:"10px 12px", borderRadius:12,
-          background: a11y ? "rgba(200,169,110,0.14)" : "rgba(200,169,110,0.10)",
-          border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(200,169,110,0.3)"}` }}>
-          <div style={{ fontSize:12.5, color:P.text, lineHeight:1.55 }}>
-            Норма {MONTHS_R[M]} при полной ставке — <b style={{ color:P.acc }}>{monthNorm(40)} ч</b>
-            <span style={{ color:P.sub }}> · при 36 часах в неделю {monthNorm(36)} ч</span>
-          </div>
-          <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
-            {[40, 36, 24].map(h => (
-              <Pill key={h} a11y={a11y} P={P} on={false} style={{ flex:"1 1 auto" }}
-                onClick={() => patch(c => { c.staff.forEach(x => { x.norm = monthNorm(h); }); })}>
-                поставить всем {monthNorm(h)} ч
-              </Pill>
-            ))}
-          </div>
-        </div>
-
         <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"10px 12px", fontSize:12.5 }}
           onClick={() => {
             const nid = Math.max(0, ...(cfg.staff || []).map(x => +x.id || 0)) + 1;
             patch(c => { c.staff.push({ id: nid, name:"Новый сотрудник", pos:"waiter", norm: monthNorm(40) }); });
             setOpenEmp(nid);   // новая карточка сразу раскрыта — заполняй
           }}>+ добавить сотрудника</button>
-        <div style={hintStyle}>Имена лучше писать так же, как в профиле сотрудника: по ним человек увидит свои смены.
+        <Hint P={P} label="как заполнять карточку?">Имена лучше писать так же, как в профиле сотрудника: по ним человек увидит свои смены.
           Телефон виден коллегам в их графике — имя становится звонком по тапу: выручает, когда кто-то проспал или заболел.
           У каждого три вида нерабочих дней: <b>отпуск</b> — период в этом месяце, <b>дни недели</b> — постоянный
           шаблон вроде «не работает по вторникам», <b>выходные по датам</b> — разовые числа. Генератор не нарушает
-          ни одно из них.</div>
+          ни одно из них. Отпусков в месяце может быть несколько, и каждый месяц независим.</Hint>
       </Sec>
       {/* Страховка: настройки целиком текстом — скопировать в заметки,
           а после беды вставить обратно и применить (запрос владельца) */}
@@ -3160,6 +3348,38 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // нужен ответ «кто сейчас в смене», а не таблица месяца целиком.
   const today = (now.getFullYear() === Y && now.getMonth() === M) ? now.getDate() : 0;
 
+  // «Сегодня» столбцом. Было: два жёстких золотых рельса по 2 px на каждой
+  // клетке — они читались как скобки, рассекающие таблицу, проходили сквозь
+  // строки должностей и обрывались внизу ни на чём. Стало: столб света —
+  // мягкая заливка, тонкая грань в пол-пикселя и свечение изнутри, та же
+  // «морозная» рецептура, что у карточек. Шапка получает шапочку с бликом
+  // и скруглением, последняя строка — донышко, чтобы столбец был закрыт.
+  const todayCol = (role) => {
+    const edge = a11y ? "rgba(175,135,50,0.42)" : "rgba(214,178,102,0.38)";
+    const glow = a11y ? "inset 0 0 14px rgba(255,255,255,0.45)"
+                      : "inset 0 0 14px rgba(255,230,170,0.075)";
+    const sides = `inset 1px 0 0 ${edge}, inset -1px 0 0 ${edge}`;
+    if (role === "head") return {
+      background: a11y
+        ? "linear-gradient(180deg,rgba(214,178,102,0.34),rgba(214,178,102,0.15))"
+        : "linear-gradient(180deg,rgba(212,168,90,0.26),rgba(212,168,90,0.10))",
+      borderRadius: "9px 9px 0 0",
+      boxShadow: `${sides}, inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,240,205,0.34)"}, ${glow}`,
+    };
+    const base = {
+      background: role === "group"
+        ? (a11y ? "rgba(175,140,65,0.125)" : "rgba(212,168,90,0.085)")
+        : (a11y ? "rgba(175,140,65,0.085)" : "rgba(212,168,90,0.06)"),
+      boxShadow: `${sides}, ${glow}`,
+    };
+    if (role === "last") return {
+      ...base,
+      borderRadius: "0 0 9px 9px",
+      boxShadow: `${sides}, inset 0 -1px 0 ${edge}, ${glow}`,
+    };
+    return base;
+  };
+
   return shell(<>
     <div style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
       background: a11y ? "rgba(120,90,30,0.10)" : "rgba(0,0,0,0.3)",
@@ -3699,8 +3919,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <th className="sa-schednm" style={{ width:92, minWidth:92 }} />
                 {visibleDays.map(d => (
                   <th key={d} style={{ width:26, minWidth:26, fontSize:9, color:P.sub, padding:"3px 0", lineHeight:1.2,
-                    background: d === today ? (a11y ? "rgba(175,140,65,0.16)" : "rgba(212,168,90,0.12)") : undefined,
-                    boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset, 0 2px 0 ${GOLD} inset` : undefined,
+                    ...(d === today ? todayCol("head") : null),
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                     <b onClick={() => setDayEdit(d)} style={{ display:"block", fontSize:10.5, cursor:"pointer",
                       fontWeight: d === today ? "bold" : "normal",
@@ -3710,10 +3929,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   </th>
                 ))}
               </tr>
-              {POS.map(({ id: pos, t }) => {
+              {POS.map(({ id: pos, t }, gi) => {
                 if (posFilter && pos !== posFilter) return null;   // Доп. 257: показываем одну позицию
                 const list = staff.filter(s => s.pos === pos);
                 if (!list.length) return null;
+                // Какая должность идёт последней на экране — чтобы «сегодняшний»
+                // столбец закрылся донышком, а не обрывался в пустоту.
+                const lastPos = POS.filter(q => (!posFilter || q.id === posFilter)
+                  && staff.some(x => x.pos === q.id)).slice(-1)[0];
+                const isLastGroup = lastPos && lastPos.id === pos;
                 return (
                   <React.Fragment key={pos}>
                     <tr>
@@ -3730,8 +3954,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         return (
                           <td key={d} className="sa-schedgrp" style={{ fontSize:8.5, minWidth:26, height:22, textAlign:"center",
                             color: short ? P.warn : P.sub, fontWeight: short ? "bold" : "normal",
-                            background: d === today ? (a11y ? "rgba(175,140,65,0.13)" : "rgba(212,168,90,0.09)") : undefined,
-                            boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset` : undefined,
+                            ...(d === today ? todayCol("group") : null),
                             borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                             {n ? `${have}/${n}` : (have || "·")}
                           </td>
@@ -3739,6 +3962,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       })}
                     </tr>
                     {list.map((s, ri) => {
+                      const isLastRow = isLastGroup && ri === list.length - 1;
                       const en = effNorm(s);
                       const h = hoursOf(s), pct = Math.min(100, Math.round(h / (en || 1) * 100));
                       return (
@@ -3762,8 +3986,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                               <td key={d} onClick={() => tapCell(s, d)}
                                 className={"sa-schedcell" + (dow(d) >= 5 ? " sa-schedwe" : "")}
                                 style={{ width:26, minWidth:26, height:30, cursor:"pointer", textAlign:"center",
-                                  background: d === today ? (a11y ? "rgba(175,140,65,0.10)" : "rgba(212,168,90,0.07)") : undefined,
-                                  boxShadow: d === today ? `2px 0 0 ${GOLD} inset, -2px 0 0 ${GOLD} inset` : undefined,
+                                  ...(d === today ? todayCol(isLastRow ? "last" : "cell") : null),
                                   borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                                 <div style={{
                                   width:22, height:22, margin:"0 auto", borderRadius:6, display:"grid", placeItems:"center",

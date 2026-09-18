@@ -21,6 +21,24 @@ const DOWL = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 const MONTHS_N = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const MONTHS_R = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
+// Слияние сохранённых настроек с умолчаниями. Было поверхностным:
+// `{ ...DEFAULT_CONFIG, ...v.config }`. Любой объект внутри сохранённой
+// настройки (rules, need, split, posRules) заменял умолчание ЦЕЛИКОМ, и
+// каждое новое поле пропадало у всех, кто настраивался раньше. Именно
+// поэтому «автозаполнение не слушается»: cfg.rules.autoFill приходил
+// с сервера как undefined, и эффект автосборки выходил на первой же проверке.
+// То же и с wishDeadline — срок приёма пожеланий не показывался никому.
+const mergeCfg = (saved) => {
+  const out = { ...DEFAULT_CONFIG, ...(saved || {}) };
+  ["rules", "need", "split", "posRules"].forEach(k => {
+    const d = DEFAULT_CONFIG[k];
+    if (d && typeof d === "object" && !Array.isArray(d)) {
+      out[k] = { ...d, ...((saved || {})[k] || {}) };
+    }
+  });
+  return out;
+};
+
 // «Каирлинова А.» вместо «Каирлинова Анастасия»: в колонке таблицы длинное
 // имя переносится на вторую строку и удваивает высоту ряда. На девятнадцати
 // людях это лишний экран прокрутки. Полное имя остаётся в подсказке и во
@@ -374,6 +392,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [wishAsk, setWishAsk] = React.useState(null);      // {from,to} — лист выбора отметки
   const [wishBusy, setWishBusy] = React.useState("");      // текст прогресса при отметке периода
   const autoDone = React.useRef({});                       // месяцы, где автосборка уже отработала
+  const flushRef = React.useRef(() => {});                 // дописать несохранённые настройки
   const [legend, setLegend] = React.useState(false);       // легенда смен раскрыта
   // Факт часов: сотрудник ушёл раньше (нет столов) или задержался —
   // менеджер отмечает отработанное по факту, и ВСЯ математика (часы,
@@ -595,7 +614,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         return;
       }
       const v = (r.venues || []).find(x => x.venue_key === venueKey);
-      setCfg(v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG });
+      setCfg(mergeCfg(v ? v.config : null));
       const m = (r.months || []).find(x => x.venue_key === venueKey);
       const pl = m?.payload || {};
       setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {}); setFacts(pl.facts || {});
@@ -699,7 +718,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         const raw = localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey);
         if (raw) {
           const c = JSON.parse(raw);
-          setCfg(c.cfg || { ...DEFAULT_CONFIG });
+          setCfg(mergeCfg(c.cfg));
           setPlan(c.plan || {}); setLocks(c.locks || {}); setDays(c.days || {}); setFacts(c.facts || {});
           setOfflineAt(c.ts || Date.now()); setDirty(false); setState("ok");
           return;
@@ -709,7 +728,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     }
   }, [mkey, profile?.restaurant]);
 
-  React.useEffect(() => { load(); }, [load]);
+  React.useEffect(() => { flushRef.current(); load(); }, [load]);
 
   const save = async () => {
     if (!isAdmin) return;
@@ -773,11 +792,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // посев из месяца результат воспроизводим, поэтому собирать можно заранее.
   // Условия намеренно строгие, чтобы автоматика никогда не спорила с человеком:
   //   • включено в настройках (rules.autoFill);
-  //   • месяц ПОЛНОСТЬЮ пуст — ни одной расставленной смены;
   //   • нет несохранённых правок;
   //   • месяц не прошлый;
   //   • срок приёма пожеланий закрыт (или срока нет вовсе);
   //   • один раз на месяц за сессию.
+  // Главное — работает ПО ДОЛЖНОСТЯМ, а не по месяцу целиком. Раньше условием
+  // было «месяц полностью пуст», и в реальном заведении автосборка не
+  // срабатывала никогда: менеджер и хостес ходят 2/2 и ставятся заранее,
+  // а официанты плавающие и заполняются позже. Теперь берутся только те
+  // должности, где не стоит НИ ОДНОЙ смены, — начатое не трогается.
   // Результат — ЧЕРНОВИК. На сервер по-прежнему уходит только по «Сохранить».
   React.useEffect(() => {
     if (state !== "ok" || !isAdmin || !cfg || !staff.length) return;
@@ -785,16 +808,21 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     if (autoDone.current[mkey]) return;
     if (dirty) return;
     if (frozenBefore() > DAYS) return;                       // прошлый месяц — только чтение
-    const filled = Object.values(plan || {}).some(ds => Object.values(ds || {}).some(Boolean));
-    if (filled) return;                                      // уже что-то стоит — не лезем
     const dl = (cfg.rules || {}).wishDeadline || 0;
     if (dl) {
       const isCur = now.getFullYear() === Y && now.getMonth() === M;
       if (isCur && now.getDate() <= dl) return;              // пожелания ещё собираются
     }
+    const emptyPos = POS.map(q => q.id).filter(pos => {
+      const ids = staff.filter(x => x.pos === pos).map(x => String(x.id));
+      if (!ids.length) return false;                         // должности нет в штате
+      return !ids.some(id => Object.values(plan[id] || {}).some(Boolean));
+    });
+    if (!emptyPos.length) return;                            // всё начато — не лезем
     autoDone.current[mkey] = 1;
-    generate();
-    setMsg("Черновик собран автоматически — проверь и сохрани");
+    generate(emptyPos);
+    const names = emptyPos.map(posName).join(", ");
+    setMsg(`Черновик собран автоматически: ${names} — проверь и сохрани`);
     setTimeout(() => setMsg(""), 6000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, isAdmin, mkey, cfg, staff.length, plan, dirty]);
@@ -962,22 +990,58 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     } catch (e) { setMsg("Нет связи с сервером"); }
     setTimeout(() => setMsg(""), 2000);
   };
-  // Правки применяются мгновенно, а на сервер уходят через паузу —
-  // иначе каждая нажатая буква била бы запросом.
+  // Правки применяются мгновенно, а на сервер уходят через паузу — иначе
+  // каждая нажатая буква била бы запросом. Но паузу никто не дожидался:
+  // закрыл приложение или переключил месяц в эти 900 мс — таймер умирал
+  // вместе с компонентом, и настройка пропадала бесследно. Именно так
+  // выглядело «настройки не сохраняются»: переключил, вышел, вернулся —
+  // всё как было. Теперь несохранённое лежит в pendingCfg и дописывается
+  // принудительно: при уходе со страницы, при сворачивании приложения и
+  // перед любой перезагрузкой месяца.
   const saveTimer = React.useRef(null);
+  const pendingCfg = React.useRef(null);
   const patch = (fn) => {
     const next = JSON.parse(JSON.stringify(cfg)); fn(next);
     setCfg(next);
+    pendingCfg.current = next;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveCfg(next), 900);
+    saveTimer.current = setTimeout(() => { pendingCfg.current = null; saveCfg(next); }, 900);
   };
+  flushRef.current = () => {
+    if (!pendingCfg.current) return;
+    const next = pendingCfg.current; pendingCfg.current = null;
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    saveCfg(next);
+  };
+  React.useEffect(() => {
+    const onHide = () => flushRef.current();
+    const onVis = () => { if (document.visibilityState === "hidden") flushRef.current(); };
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVis);
+      flushRef.current();          // и при размонтировании тоже
+    };
+  }, []);
 
   // ── Автозаполнение ────────────────────────────────────────────────
   // Алгоритм живёт в lib/schedule-gen.js (там же тесты гоняются в Node):
   // мультистарт из 24 прогонов с ремонтом дыр перестановками. Закреплённые
   // вручную клетки сохраняются и достраиваются вокруг — как раньше.
-  const generate = () => {
+  const generate = (scopePos = null) => {
     if (!cfg || !staff.length) return;
+    // scopePos: id должности или массив id — назначать смены только им.
+    // Остальные остаются фоном занятости: их смены видны генератору при
+    // подсчёте потребности, но ни одна чужая клетка не двигается.
+    const scope = scopePos == null ? null
+      : (Array.isArray(scopePos) ? scopePos : [scopePos]);
+    const onlyIds = scope
+      ? new Set(staff.filter(x => scope.includes(x.pos)).map(x => String(x.id)))
+      : null;
+    if (onlyIds && !onlyIds.size) {
+      setMsg("В этой должности некого ставить"); setTimeout(() => setMsg(""), 2500); return;
+    }
     const fb = frozenBefore();
     if (fb > DAYS) { setMsg("Это прошлый месяц — он только для чтения"); setTimeout(() => setMsg(""), 2500); return; }
     // ДОЗАПОЛНЕНИЕ, а не пересборка: всё уже расставленное фиксируется
@@ -993,7 +1057,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     });
     const cells = (pm) => Object.values(pm || {}).reduce((a, ds) => a + Object.values(ds || {}).filter(Boolean).length, 0);
     const before = cells(plan);
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb, seed: genSeed });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb, seed: genSeed, onlyIds });
     if (!res.plan) return;
     const added = cells(res.plan) - before;
     snapUndo();
@@ -3240,7 +3304,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     })()}
     {/* Доп. 262: меньше рядов — отмена рядом с кнопками, редкое ушло в «Ещё» */}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
-      <button style={btn} className="sa-btn" onClick={generate}>Заполнить черновик</button>
+      <button style={btn} className="sa-btn" onClick={() => generate(posFilter || null)}>
+        {posFilter ? `Заполнить: ${posName(posFilter)}` : "Заполнить черновик"}
+      </button>
       <button style={ghost} className="sa-btn" onClick={save} disabled={!dirty}>
         {dirty ? "Сохранить" : "Сохранено"}
       </button>

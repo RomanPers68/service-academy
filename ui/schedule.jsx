@@ -1770,7 +1770,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     return cv;
   };
   // Карточка «Сегодня» для чата: состав смены по позициям одной картинкой
-  const drawTodayCard = () => {
+  const drawTodayCard = (print = false) => {
+    // Два вида одной карточки. Тёмный — для чата, совпадает с приложением.
+    // Печатный — светлый: на бумаге тёмная заливка съедает тонер и делает
+    // подписи нечитаемыми, а такую картинку вешают на стену, а не смотрят
+    // с экрана. Отсюда же крупнее шрифты и три подписи под кружком.
+    const C = print
+      ? { bg1:"#FFFDF7", bg2:"#F6EFDF", head:"#8A6A20", title:"#2A2113", sub:"#6E5C3C",
+          name:"#2A2113", ring:"rgba(138,106,32,.55)", ringLead:"#A8801E",
+          fill:"rgba(214,178,102,.18)", fillLead:"rgba(214,178,102,.42)",
+          warn:"#A8362A", warnSoft:"#B4685E", line:"rgba(138,106,32,.3)", chipBg:"#FFFDF7" }
+      : { bg1:"#1B1409", bg2:"#2A1F0E", head:"#C8A96E", title:"#EFE4C8", sub:"#8F7B57",
+          name:"#EFE4C8", ring:"rgba(145,108,40,.5)", ringLead:"#D6B266",
+          fill:"rgba(255,250,238,.05)", fillLead:"rgba(214,178,102,.22)",
+          warn:"#D96A5E", warnSoft:"#B5726F", line:"rgba(145,108,40,.28)", chipBg:"#241A0C" };
     // Печать «кто на смене». Был список: должность, под ней строки со значком
     // смены, именем и часами. Стало то же, что в приложении, — лица, сгруппи-
     // рованные по времени прихода. Под кружком полная фамилия и часы в две
@@ -1778,7 +1791,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     // ней нельзя — вся нужная подпись должна быть нарисована.
     const t = new Date(); const td = t.getDate();
     const W = 1080, cv = document.createElement("canvas");
-    const COLS = 4, CW = 250, AV = 104;            // колонки, ширина ячейки, диаметр кружка
+    const COLS = 4, CW = 250, AV = 112;            // колонки, ширина ячейки, диаметр кружка
     const GX = (W - COLS * CW) / 2;
 
     // Группы по часу начала — порядок по времени, а не по алфавиту смен
@@ -1797,7 +1810,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     });
 
     // Высоту считаем заранее: сколько рядов выйдет в каждой группе
-    const ROW = 196, HEAD = 108;
+    const ROW = 232, HEAD = 112;
     let body = 0;
     hours.forEach((h, hi) => {
       const n = byHour[h].length + (hi === 0 ? holes.length : 0);
@@ -1807,23 +1820,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     cv.width = W; cv.height = H; const x = cv.getContext("2d");
 
     const g = x.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#1B1409"); g.addColorStop(1, "#2A1F0E");
+    g.addColorStop(0, C.bg1); g.addColorStop(1, C.bg2);
     x.fillStyle = g; x.fillRect(0, 0, W, H);
     x.textBaseline = "middle"; x.textAlign = "center";
-    x.fillStyle = "#C8A96E"; x.font = "600 24px ui-monospace, Menlo, monospace";
+    x.fillStyle = C.head; x.font = "600 24px ui-monospace, Menlo, monospace";
     x.fillText("S E R V I C E   A C A D E M Y", W / 2, 76);
-    x.fillStyle = "#EFE4C8"; x.font = "50px Georgia, serif";
+    x.fillStyle = C.title; x.font = "54px Georgia, serif";
     x.fillText("Сегодня · " + td + " " + MONTHS_R[M].toLowerCase(), W / 2, 148);
-    x.fillStyle = "#9C8760"; x.font = "26px Georgia, serif";
+    x.fillStyle = C.sub; x.font = "28px Georgia, serif";
     x.fillText(profile?.restaurant || "", W / 2, 196);
 
     let y = 268;
     const note = days[td] && days[td].note;
-    if (note) { x.fillStyle = "#D2A85A"; x.font = "italic 28px Georgia, serif";
+    if (note) { x.fillStyle = C.head; x.font = "italic 28px Georgia, serif";
       x.fillText("✎ " + note, W / 2, y); y += 52; }
     const dm = String(td).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
     const bd = staff.filter(q => (q.bday || "") === dm);
-    if (bd.length) { x.fillStyle = "#D2A85A"; x.font = "28px Georgia, serif";
+    if (bd.length) { x.fillStyle = C.head; x.font = "28px Georgia, serif";
       x.fillText("✦ День рождения: " + bd.map(q => q.name).join(", "), W / 2, y); y += 52; }
 
     const circle = (cx, cy, r) => { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); };
@@ -1836,14 +1849,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
     hours.forEach((h, hi) => {
       const list = byHour[h].slice();
-      const cc = colorOf(list[0].k) || { fg: "#D2A85A", bd: "rgba(210,168,90,.5)" };
+      const cc = colorOf(list[0].k) || { fg: C.head, bd: C.ring };
       x.textAlign = "left";
-      x.fillStyle = cc.fg; x.font = "600 24px ui-monospace, Menlo, monospace";
+      x.fillStyle = print ? C.head : cc.fg; x.font = "600 26px ui-monospace, Menlo, monospace";
       x.fillText("С " + h + ":00", GX + 10, y);
       x.textAlign = "right";
-      x.fillStyle = "#8F7B57"; x.font = "22px ui-monospace, Menlo, monospace";
+      x.fillStyle = C.sub; x.font = "23px ui-monospace, Menlo, monospace";
       x.fillText(list.length + " чел", W - GX - 10, y);
-      x.strokeStyle = "rgba(145,108,40,.28)"; x.lineWidth = 1;
+      x.strokeStyle = C.line; x.lineWidth = 1;
       x.beginPath(); x.moveTo(GX + 10, y + 26); x.lineTo(W - GX - 10, y + 26); x.stroke();
       y += HEAD;
 
@@ -1853,53 +1866,67 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         const col = i % COLS, row = Math.floor(i / COLS);
         const cx = GX + col * CW + CW / 2, cy = y + row * ROW;
         if (c.kind === "gap") {
-          x.setLineDash([9, 7]); x.strokeStyle = "#D96A5E"; x.lineWidth = 2;
+          x.setLineDash([9, 7]); x.strokeStyle = C.warn; x.lineWidth = 2;
           circle(cx, cy, AV / 2); x.stroke(); x.setLineDash([]);
-          x.textAlign = "center"; x.fillStyle = "#D96A5E"; x.font = "46px Georgia, serif";
+          x.textAlign = "center"; x.fillStyle = C.warn; x.font = "48px Georgia, serif";
           x.fillText("+", cx, cy + 2);
-          x.font = "25px Georgia, serif";
-          x.fillText("нужен", cx, cy + AV / 2 + 34);
-          x.fillStyle = "#B5726F"; x.font = "22px Georgia, serif";
-          x.fillText(String(c.pos).toLowerCase(), cx, cy + AV / 2 + 66);
+          x.font = "28px Georgia, serif";
+          x.fillText("нужен", cx, cy + AV / 2 + 38);
+          x.fillStyle = C.warnSoft; x.font = "24px Georgia, serif";
+          x.fillText(String(c.pos).toLowerCase(), cx, cy + AV / 2 + 74);
           return;
         }
         const lead = leadOn(td) === c.who.name;
         const kc = colorOf(c.k) || cc;
         circle(cx, cy, AV / 2);
-        x.fillStyle = lead ? "rgba(214,178,102,.22)" : "rgba(255,250,238,.05)"; x.fill();
-        x.strokeStyle = lead ? "#D6B266" : "rgba(145,108,40,.5)"; x.lineWidth = lead ? 3 : 2; x.stroke();
-        if (lead) { circle(cx, cy, AV / 2 + 7); x.strokeStyle = "rgba(214,178,102,.2)"; x.lineWidth = 3; x.stroke(); }
-        x.textAlign = "center"; x.fillStyle = "#EFE4C8"; x.font = "38px Georgia, serif";
+        x.fillStyle = lead ? C.fillLead : C.fill; x.fill();
+        x.strokeStyle = lead ? C.ringLead : C.ring; x.lineWidth = lead ? 3 : 2; x.stroke();
+        if (lead) { circle(cx, cy, AV / 2 + 7); x.strokeStyle = C.ringLead; x.globalAlpha = .35; x.lineWidth = 3; x.stroke(); x.globalAlpha = 1; }
+        x.textAlign = "center"; x.fillStyle = C.name; x.font = "40px Georgia, serif";
         x.fillText(initialsOf(c.who.name), cx, cy + 2);
         // Значок смены в углу кружка
         const bx = cx + AV / 2 - 12, by = cy + AV / 2 - 10;
-        x.fillStyle = "#241A0C"; x.fillRect(bx - 17, by - 17, 34, 34);
+        x.fillStyle = C.chipBg; x.fillRect(bx - 17, by - 17, 34, 34);
         x.strokeStyle = kc.bd; x.lineWidth = 2; x.strokeRect(bx - 17, by - 17, 34, 34);
-        x.fillStyle = kc.fg; x.font = "600 20px ui-monospace, Menlo, monospace";
+        x.fillStyle = print ? C.head : kc.fg; x.font = "600 21px ui-monospace, Menlo, monospace";
         x.fillText(c.k, bx, by + 1);
         // Полная фамилия и часы — в чате читают, а не узнают по инициалам
-        x.fillStyle = "#EFE4C8"; x.font = "25px Georgia, serif";
-        x.fillText(fit(c.who.name.split(" ")[0], 25, CW - 24), cx, cy + AV / 2 + 34);
-        x.fillStyle = lead ? "#C8A96E" : "#8F7B57";
-        x.font = (lead ? "600 " : "") + "21px ui-monospace, Menlo, monospace";
-        x.fillText(lead ? "СТАРШИЙ" : (c.sh.from + "–" + (c.sh.to > 24 ? c.sh.to - 24 : c.sh.to)), cx, cy + AV / 2 + 66);
+        // Три подписи вместо двух: фамилия, должность, часы. Узнать человека по
+        // двум буквам в кружке нельзя — читают именно подписи.
+        x.fillStyle = C.name; x.font = "28px Georgia, serif";
+        x.fillText(fit(c.who.name.split(" ")[0], 28, CW - 20), cx, cy + AV / 2 + 38);
+        x.fillStyle = C.sub; x.font = "23px Georgia, serif";
+        x.fillText(fit(String(c.pos).toLowerCase(), 23, CW - 20), cx, cy + AV / 2 + 72);
+        x.fillStyle = lead ? C.head : C.sub;
+        x.font = (lead ? "600 " : "") + "22px ui-monospace, Menlo, monospace";
+        x.fillText(lead ? "СТАРШИЙ" : (c.sh.from + "–" + (c.sh.to > 24 ? c.sh.to - 24 : c.sh.to) + ":00"), cx, cy + AV / 2 + 104);
       });
       y += Math.ceil(cells.length / COLS) * ROW;
     });
 
     if (holes.length) {
-      x.textAlign = "center"; x.fillStyle = "#D96A5E"; x.font = "28px Georgia, serif";
+      x.textAlign = "center"; x.fillStyle = C.warn; x.font = "30px Georgia, serif";
       x.fillText("Не хватает: " + Array.from(new Set(holes)).join(", ").toLowerCase(), W / 2, H - 56);
     }
     return cv;
   };
 
-  const exportToday = async () => {
-    setShotBusy(true);
+  // Перерисовать ОТКРЫТУЮ картинку в другом формате. Раньше кнопки
+  // «Для чата / Лист A4» всегда звали exportImage — то есть таблицу месяца.
+  // Открыв карточку смены и нажав «Лист A4», человек получал вместо неё
+  // месячный график: подмена без предупреждения.
+  const redrawShot = (mode) => {
+    if (shot && shot.kind === "today") { setShotMode(mode); exportToday(mode); return; }
+    exportImage(mode);
+  };
+
+  const exportToday = async (mode = shotMode) => {
+    setShotBusy(true); setShotMode(mode);
     try {
-      const cv = drawTodayCard();
+      const cv = drawTodayCard(mode === "a4");
       const blob = await new Promise(res => cv.toBlob(res, "image/png"));
-      setShot({ url: URL.createObjectURL(blob), blob, name: "Сегодня_в_смене.png" });
+      setShot({ url: URL.createObjectURL(blob), blob, kind: "today",
+        name: mode === "a4" ? "Смена_печать.png" : "Сегодня_в_смене.png" });
       vibrate("success");
     } catch (e) { setMsg("Не собралась карточка"); setTimeout(() => setMsg(""), 2500); }
     setShotBusy(false);
@@ -3657,12 +3684,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     ) : null}
     {shot ? (
       <div style={{ ...card }}>
-        <div style={eyebrow}><span>График картинкой</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
+        <div style={eyebrow}><span>{shot.kind === "today" ? "Смена картинкой" : "График картинкой"}</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
         <img src={shot.url} alt="График" style={{ width:"100%", borderRadius:12, display:"block",
           border:`1px solid ${a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.32)"}` }} />
         <div style={{ display:"flex", gap:6, marginTop:10 }}>
           {[["chat","Для чата"],["a4","Лист A4"]].map(([k, t]) => (
-            <button key={k} className="sa-btn" onClick={() => { URL.revokeObjectURL(shot.url); exportImage(k); }}
+            <button key={k} className="sa-btn" onClick={() => { URL.revokeObjectURL(shot.url); redrawShot(k); }}
               style={{ flex:1, padding:"8px 4px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:12,
                 color: shotMode === k ? INK_DEEP : P.sub,
                 background: shotMode === k ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
@@ -3676,9 +3703,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             onClick={() => { URL.revokeObjectURL(shot.url); setShot(null); }}>Закрыть</button>
         </div>
         <div style={{ fontSize:11.5, color:P.sub, marginTop:10, lineHeight:1.55 }}>
-          {shotMode === "a4"
-            ? "Лист A4 в альбомной, 300 точек на дюйм, свёрстан под чёрно-белую печать: недобор помечен восклицательным знаком, праздники точкой. «Отправить» → «Напечатать»."
-            : "«Отправить» откроет системное меню — оттуда картинка уходит в рабочую группу одним касанием. Для печати переключись на «Лист A4»."}
+          {shot.kind === "today"
+            ? (shotMode === "a4"
+              ? "Печатный вид: светлый фон, крупные подписи — фамилия, должность и часы под каждым. Такую можно повесить на кухне. «Отправить» → «Напечатать»."
+              : "Тёмный вид под чат — совпадает с приложением. Для печати переключись на «Лист A4».")
+            : (shotMode === "a4"
+              ? "Лист A4 в альбомной, 300 точек на дюйм, свёрстан под чёрно-белую печать: недобор помечен восклицательным знаком, праздники точкой. «Отправить» → «Напечатать»."
+              : "«Отправить» откроет системное меню — оттуда картинка уходит в рабочую группу одним касанием. Для печати переключись на «Лист A4».")}
         </div>
       </div>
     ) : null}
@@ -3850,8 +3881,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           const dot = (extra) => ({ width:26, height:26, borderRadius:"50%", flexShrink:0,
             display:"grid", placeItems:"center", fontFamily:serif, fontSize:10,
             color:P.text, boxSizing:"border-box", ...extra });
+          const openIt = () => { setTodayOpen(true); vibrate("light"); };
           return (
-            <div style={{ marginTop:6 }}>
+            // Раскрывалось только крошечной стрелкой в шапке — целиться в неё
+            // неудобно, и непонятно, что карточка вообще раскрывается.
+            <div onClick={openIt} {...onActivate(openIt)} style={{ marginTop:6, cursor:"pointer" }}>
               {hours.map((h, hi) => {
                 const list = byHour[h];
                 const c = colorOf(list[0].sh.k);

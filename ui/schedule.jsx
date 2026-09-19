@@ -1799,7 +1799,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     staff.forEach(q => {
       const k = plan[q.id]?.[td], sh = k && shiftOf(k);
       if (!sh) return;
-      (byHour[sh.from] = byHour[sh.from] || []).push({ who: q, sh, k });
+      // Должность кладём здесь же: без неё под именем рисовалось
+      // String(undefined) → «undefined». В приложении она бралась из обхода
+      // по POS, а в печати обход идёт по часам, и поле забыли перенести.
+      (byHour[sh.from] = byHour[sh.from] || []).push({ who: q, sh, k, pos: posName(q.pos) });
     });
     const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
     const holes = [];
@@ -3851,9 +3854,26 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
     {today ? (
       <div style={card}>
-        <div style={{ ...eyebrow, cursor:"pointer" }} onClick={() => { setTodayOpen(o => !o); setCallWho(null); vibrate("light"); }}>
-          <span>Сегодня · {today} {MONTHS_R[M]}</span>
-          <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""} <span style={{ color:P.sub, marginLeft:6 }}>{todayOpen ? "▴" : "▾"}</span></span>
+        {/* Шапка. Стрелка сидела в конце строки «старший: ФАМИЛИЯ ИМЯ», строка
+            переносилась, и стрелка уезжала под текст отдельным огрызком —
+            целиться в неё было нечем. Теперь она в кружке фиксированного
+            размера справа и не переносится никогда. Имя старшего в раскрытом
+            виде убрано: оно уже подписано под его лицом. */}
+        <div style={{ ...eyebrow, cursor:"pointer", alignItems:"center", gap:8 }}
+          onClick={() => { setTodayOpen(o => !o); setCallWho(null); vibrate("light"); }}
+          {...onActivate(() => { setTodayOpen(o => !o); setCallWho(null); })}>
+          <span style={{ flex:1, minWidth:0 }}>Сегодня · {today} {MONTHS_R[M]}</span>
+          {!todayOpen && leadOn(today) ? (
+            <span style={{ color:P.acc, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              старший: {leadOn(today)}
+            </span>
+          ) : null}
+          <span style={{ flexShrink:0, width:26, height:26, borderRadius:"50%", display:"grid", placeItems:"center",
+            fontSize:11, color:P.acc,
+            border:`1px solid ${a11y ? "rgba(150,112,40,0.35)" : "rgba(145,108,40,0.4)"}`,
+            background: a11y ? "rgba(250,242,222,0.7)" : "rgba(255,250,238,0.04)" }}>
+            {todayOpen ? "▴" : "▾"}
+          </span>
         </div>
         {!todayOpen ? (() => {
           // Свёрнутая сводка — миниатюра раскрытой карточки: те же лица, только
@@ -4079,8 +4099,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
           );
         })()}
+        <div onClick={() => { setTodayOpen(false); setCallWho(null); vibrate("light"); }}
+          {...onActivate(() => { setTodayOpen(false); setCallWho(null); })}
+          style={{ marginTop:12, paddingTop:9, textAlign:"center", cursor:"pointer", fontSize:12, color:P.sub,
+            borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.1)"}` }}>
+          свернуть ▴
+        </div>
         <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12, marginTop:10 }}
-          className="sa-btn" disabled={shotBusy} onClick={exportToday}>
+          className="sa-btn" disabled={shotBusy} onClick={() => exportToday()}>
           {shotBusy ? "Собираю…" : "Сегодня — картинкой в чат"}
         </button>
         </> : null}

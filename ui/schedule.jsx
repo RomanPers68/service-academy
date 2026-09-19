@@ -1770,6 +1770,41 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     return cv;
   };
   // Карточка «Сегодня» для чата: состав смены по позициям одной картинкой
+  // Куда поставить кружок «нужен». Раньше все дырки валились в первую группу
+  // по времени — если бармена не хватает в вечер, кружок всё равно стоял
+  // в 11:00 и показывал неправду. Теперь недобор разносится по сменам так же,
+  // как его считает генератор: сначала по разбивке (сколько людей какой смены
+  // ждали в этот день), остаток — на основную смену.
+  const holesByHour = (d) => {
+    const out = {};
+    const autoSh = (cfg?.shifts || []).filter(z => !z.extra);
+    if (!autoSh.length) return out;
+    const baseSh = (cfg?.dayShift && autoSh.find(z => z.k === cfg.dayShift)) || autoSh[0];
+    const splitOf = (pos) => {
+      const sp = (cfg?.split || {})[pos];
+      if (!sp) return null;
+      const byLvl = Object.keys(sp).some(k => /^[0-9]+$/.test(k));
+      return byLvl ? (sp[String(lvlOf(d))] || null) : sp;
+    };
+    const put = (sh, title) => { (out[sh.from] = out[sh.from] || []).push(title); };
+    POS.forEach(({ id: pos, t: pt }) => {
+      const nd = (needOf(d) || {})[pos] || 0; if (!nd) return;
+      const onPos = staff.filter(q => {
+        const sh = q.pos === pos && shiftOf(plan[q.id]?.[d]); return sh && !sh.extra;
+      });
+      let miss = nd - onPos.length; if (miss <= 0) return;
+      const map = splitOf(pos) || {};
+      autoSh.forEach(z => {
+        if (miss <= 0) return;
+        const want = map[z.k] || 0; if (!want) return;
+        const have = onPos.filter(q => plan[q.id][d] === z.k).length;
+        for (let i = have; i < want && miss > 0; i++) { put(z, pt); miss--; }
+      });
+      while (miss-- > 0) put(baseSh, pt);       // остаток — в основную смену
+    });
+    return out;
+  };
+
   const drawTodayCard = (print = false) => {
     // Два вида одной карточки. Тёмный — для чата, совпадает с приложением.
     // Печатный — светлый: на бумаге тёмная заливка съедает тонер и делает
@@ -1804,21 +1839,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       // по POS, а в печати обход идёт по часам, и поле забыли перенести.
       (byHour[sh.from] = byHour[sh.from] || []).push({ who: q, sh, k, pos: posName(q.pos) });
     });
+    const gaps = holesByHour(td);
+    Object.keys(gaps).forEach(h => { if (!byHour[h]) byHour[h] = []; });
     const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
-    const holes = [];
-    POS.forEach(({ id: pos, t: pt }) => {
-      const nd = (needOf(td) || {})[pos] || 0; if (!nd) return;
-      const have = staff.filter(q => { const sh = q.pos === pos && shiftOf(plan[q.id]?.[td]); return sh && !sh.extra; }).length;
-      for (let i = have; i < nd; i++) holes.push(pt);
-    });
+    const holes = Object.values(gaps).flat();
 
     // Высоту считаем заранее: сколько рядов выйдет в каждой группе
     const ROW = 232, HEAD = 112;
+    // Колонок столько, сколько людей в группе, но не больше четырёх: смена
+    // из двух человек занимала половину ряда и выглядела обрезанной.
+    const colsFor = (n) => Math.max(1, Math.min(COLS, n));
+    const cntOf = (h) => byHour[h].length + (gaps[h] || []).length;
     let body = 0;
-    hours.forEach((h, hi) => {
-      const n = byHour[h].length + (hi === 0 ? holes.length : 0);
-      body += HEAD + Math.ceil(n / COLS) * ROW;
-    });
+    hours.forEach(h => { body += HEAD + Math.ceil(cntOf(h) / colsFor(cntOf(h))) * ROW; });
     const H = Math.max(900, 300 + body + 90);
     cv.width = W; cv.height = H; const x = cv.getContext("2d");
 
@@ -1850,9 +1883,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       return out.length < String(str || "").length ? out.slice(0, -1) + "…" : out;
     };
 
-    hours.forEach((h, hi) => {
+    hours.forEach((h) => {
       const list = byHour[h].slice();
-      const cc = colorOf(list[0].k) || { fg: C.head, bd: C.ring };
+      const cells0 = list.length + (gaps[h] || []).length;
+      const cols = colsFor(cells0), gx = (W - cols * CW) / 2;
+      const cc = (list[0] && colorOf(list[0].k)) || { fg: C.head, bd: C.ring };
       x.textAlign = "left";
       x.fillStyle = print ? C.head : cc.fg; x.font = "600 26px ui-monospace, Menlo, monospace";
       x.fillText("С " + h + ":00", GX + 10, y);
@@ -1864,10 +1899,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       y += HEAD;
 
       const cells = list.map(o => ({ kind: "who", ...o }));
-      if (hi === 0) holes.forEach(pt => cells.push({ kind: "gap", pos: pt }));
+      (gaps[h] || []).forEach(pt => cells.push({ kind: "gap", pos: pt }));
       cells.forEach((c, i) => {
-        const col = i % COLS, row = Math.floor(i / COLS);
-        const cx = GX + col * CW + CW / 2, cy = y + row * ROW;
+        const col = i % cols, row = Math.floor(i / cols);
+        const cx = gx + col * CW + CW / 2, cy = y + row * ROW;
         if (c.kind === "gap") {
           x.setLineDash([9, 7]); x.strokeStyle = C.warn; x.lineWidth = 2;
           circle(cx, cy, AV / 2); x.stroke(); x.setLineDash([]);
@@ -1904,7 +1939,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         x.font = (lead ? "600 " : "") + "22px ui-monospace, Menlo, monospace";
         x.fillText(lead ? "СТАРШИЙ" : (c.sh.from + "–" + (c.sh.to > 24 ? c.sh.to - 24 : c.sh.to) + ":00"), cx, cy + AV / 2 + 104);
       });
-      y += Math.ceil(cells.length / COLS) * ROW;
+      y += Math.ceil(cells.length / cols) * ROW;
     });
 
     if (holes.length) {
@@ -3883,12 +3918,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           // счёт по должностям не показывал вовсе: в 11:00 людей пятеро,
           // а в 17:00 всего двое.
           const onAll = staff.filter(x => shiftOf(plan[x.id]?.[today]));
-          const holes = [];
-          POS.forEach(({ id: pos, t }) => {
-            const n = needOf(today)[pos] || 0; if (!n) return;
-            const have = staff.filter(x => { const sh = x.pos === pos && shiftOf(plan[x.id]?.[today]); return sh && !sh.extra; }).length;
-            for (let i = have; i < n; i++) holes.push(t);
-          });
+          const gaps = holesByHour(today);                   // дырка — в свою группу по времени
+          const holes = Object.values(gaps).flat();
           if (!onAll.length && !holes.length) return null;
           // Группы по часу начала: у смен разное время, и порядок должен идти
           // по нему, а не по алфавиту смен.
@@ -3897,6 +3928,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             const sh = shiftOf(plan[x.id][today]);
             (byHour[sh.from] = byHour[sh.from] || []).push({ who: x, sh });
           });
+          Object.keys(gaps).forEach(h => { if (!byHour[h]) byHour[h] = []; });
           const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
           const dot = (extra) => ({ width:26, height:26, borderRadius:"50%", flexShrink:0,
             display:"grid", placeItems:"center", fontFamily:serif, fontSize:10,
@@ -3906,10 +3938,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             // Раскрывалось только крошечной стрелкой в шапке — целиться в неё
             // неудобно, и непонятно, что карточка вообще раскрывается.
             <div onClick={openIt} {...onActivate(openIt)} style={{ marginTop:6, cursor:"pointer" }}>
-              {hours.map((h, hi) => {
+              {hours.map((h) => {
                 const list = byHour[h];
-                const c = colorOf(list[0].sh.k);
-                const mine = hi === 0 ? holes : [];          // дырки — к первой группе
+                const c = list[0] && colorOf(list[0].sh.k);
+                const mine = gaps[h] || [];
                 return (
                   <div key={h} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:7 }}>
                     <span style={{ flex:"0 0 38px", fontFamily:mono, fontSize:9.5,
@@ -3936,7 +3968,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         </span>
                       ) : null}
                       {mine.map((t, mi) => (
-                        <span key={"h" + mi} title={"не хватает: " + t} style={dot({ marginLeft:-8,
+                        <span key={"h" + mi} title={"не хватает: " + t} style={dot({ marginLeft: (list.length || mi) ? -8 : 0,
                           fontSize:13, color:P.warn, background: a11y ? "rgba(255,245,245,0.9)" : "#1a1006",
                           border:`1px dashed ${P.warn}99` })}>+</span>
                       ))}

@@ -55,6 +55,13 @@ const mergeCfg = (saved) => {
 // имя переносится на вторую строку и удваивает высоту ряда. На девятнадцати
 // людях это лишний экран прокрутки. Полное имя остаётся в подсказке и во
 // всех остальных местах — сокращаем только сетку.
+// Инициалы для кружка: «Старченко Анна» → «СА». Одна буква, если слово одно.
+const initialsOf = (full) => {
+  const p = String(full || "").trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return "?";
+  return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase();
+};
+
 const shortName = (full) => {
   const p = String(full || "").trim().split(/\s+/).filter(Boolean);
   if (p.length < 2) return p[0] || "";
@@ -286,7 +293,7 @@ function NumUp({ v }) {
   return <>{k.toLocaleString("ru-RU")}</>;
 }
 const telHref = ph => "tel:" + String(ph).replace(/[^+\d]/g, "");
-function CallName({ who, label, color }) {
+function CallName({ who, label, color, badge }) {
   // Контакт-капсула: имя с трубкой (без служебного пунктира — замечание
   // владельца), тап раскрывает ЗОЛОТУЮ кнопку с номером. Тап по номеру —
   // сразу звонилка: и якорь tel:, и принудительный переход location.href
@@ -294,7 +301,16 @@ function CallName({ who, label, color }) {
   // заодно тихо ложится в буфер на случай, если WebView глушит всё.
   const [shown, setShown] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
-  if (!(who && who.phone)) return <>{label}</>;
+  if (!(who && who.phone)) {
+    if (!badge) return <>{label}</>;
+    return (
+      <span style={{ display:"inline-flex", alignItems:"center", gap:6, verticalAlign:"middle",
+        padding:"2px 9px", borderRadius:999, color,
+        border:`1px solid ${color}22`, background:"rgba(200,169,110,0.04)" }}>
+        {label}{badge}
+      </span>
+    );
+  }
   const url = telHref(who.phone);
   const tap = (e) => { e.stopPropagation(); setShown(v => !v); };
   const dial = (e) => {
@@ -321,7 +337,7 @@ function CallName({ who, label, color }) {
         padding:"2px 9px", borderRadius:999, border:`1px solid ${color}44`,
         background:"rgba(200,169,110,0.08)", WebkitTapHighlightColor:"transparent" }}>
         <IcoPhone size={10} color={color} />
-        {label}
+        {label}{badge}
       </span>
       {shown ? (
         <a href={url} onClick={dial}
@@ -424,6 +440,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const flushRef = React.useRef(() => {});                 // дописать несохранённые настройки
   const [legend, setLegend] = React.useState(false);       // легенда смен раскрыта
   const [openSplit, setOpenSplit] = React.useState("");    // какая должность раскрыта в разбивке по сменам
+  const [callWho, setCallWho] = React.useState(null);      // чей телефон раскрыт в карточке «Сегодня»
   // Факт часов: сотрудник ушёл раньше (нет столов) или задержался —
   // менеджер отмечает отработанное по факту, и ВСЯ математика (часы,
   // зарплата, фонд, экспорт) считает честно. { staffId: { day: часы } }
@@ -1754,9 +1771,41 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   };
   // Карточка «Сегодня» для чата: состав смены по позициям одной картинкой
   const drawTodayCard = () => {
+    // Печать «кто на смене». Был список: должность, под ней строки со значком
+    // смены, именем и часами. Стало то же, что в приложении, — лица, сгруппи-
+    // рованные по времени прихода. Под кружком полная фамилия и часы в две
+    // строки: в чате картинку читают, а не узнают по инициалам, и тапнуть по
+    // ней нельзя — вся нужная подпись должна быть нарисована.
     const t = new Date(); const td = t.getDate();
-    const W = 1080, H = 1350, cv = document.createElement("canvas");
+    const W = 1080, cv = document.createElement("canvas");
+    const COLS = 4, CW = 250, AV = 104;            // колонки, ширина ячейки, диаметр кружка
+    const GX = (W - COLS * CW) / 2;
+
+    // Группы по часу начала — порядок по времени, а не по алфавиту смен
+    const byHour = {};
+    staff.forEach(q => {
+      const k = plan[q.id]?.[td], sh = k && shiftOf(k);
+      if (!sh) return;
+      (byHour[sh.from] = byHour[sh.from] || []).push({ who: q, sh, k });
+    });
+    const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+    const holes = [];
+    POS.forEach(({ id: pos, t: pt }) => {
+      const nd = (needOf(td) || {})[pos] || 0; if (!nd) return;
+      const have = staff.filter(q => { const sh = q.pos === pos && shiftOf(plan[q.id]?.[td]); return sh && !sh.extra; }).length;
+      for (let i = have; i < nd; i++) holes.push(pt);
+    });
+
+    // Высоту считаем заранее: сколько рядов выйдет в каждой группе
+    const ROW = 196, HEAD = 108;
+    let body = 0;
+    hours.forEach((h, hi) => {
+      const n = byHour[h].length + (hi === 0 ? holes.length : 0);
+      body += HEAD + Math.ceil(n / COLS) * ROW;
+    });
+    const H = Math.max(900, 300 + body + 90);
     cv.width = W; cv.height = H; const x = cv.getContext("2d");
+
     const g = x.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, "#1B1409"); g.addColorStop(1, "#2A1F0E");
     x.fillStyle = g; x.fillRect(0, 0, W, H);
@@ -1765,50 +1814,86 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     x.fillText("S E R V I C E   A C A D E M Y", W / 2, 76);
     x.fillStyle = "#EFE4C8"; x.font = "50px Georgia, serif";
     x.fillText("Сегодня · " + td + " " + MONTHS_R[M].toLowerCase(), W / 2, 148);
-    let y = 208;
+    x.fillStyle = "#9C8760"; x.font = "26px Georgia, serif";
+    x.fillText(profile?.restaurant || "", W / 2, 196);
+
+    let y = 268;
     const note = days[td] && days[td].note;
-    if (note) { x.fillStyle = "#D2A85A"; x.font = "italic 30px Georgia, serif";
+    if (note) { x.fillStyle = "#D2A85A"; x.font = "italic 28px Georgia, serif";
       x.fillText("✎ " + note, W / 2, y); y += 52; }
     const dm = String(td).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
     const bd = staff.filter(q => (q.bday || "") === dm);
-    if (bd.length) { x.fillStyle = "#D2A85A"; x.font = "30px Georgia, serif";
+    if (bd.length) { x.fillStyle = "#D2A85A"; x.font = "28px Georgia, serif";
       x.fillText("✦ День рождения: " + bd.map(q => q.name).join(", "), W / 2, y); y += 52; }
-    y += 8;
-    x.textAlign = "left";
-    POS.forEach(({ id: pos, t: pt }) => {
-      const inShift = staff.filter(q => q.pos === pos && shiftOf(plan[q.id]?.[td]));
-      const nd = (needOf(td) || {})[pos] || 0;
-      if (!inShift.length && !nd) return;
-      x.fillStyle = "#8F7B57"; x.font = "600 22px ui-monospace, Menlo, monospace";
-      x.fillText(pt.toUpperCase(), 90, y); 
-      if (nd > inShift.length) {
-        x.fillStyle = "#D96A5E"; x.font = "22px ui-monospace, Menlo, monospace"; x.textAlign = "right";
-        x.fillText(inShift.length + " из " + nd, W - 90, y); x.textAlign = "left";
-      }
-      y += 44;
-      inShift.forEach(q => {
-        const k = plan[q.id][td]; const sh = shiftOf(k);
-        const ci = (cfg.shifts || []).findIndex(z => z.k === k);
-        const cc = SHIFT_COLORS[(ci < 0 ? 0 : ci) % SHIFT_COLORS.length];
-        x.fillStyle = cc.bg; x.fillRect(90, y - 19, 40, 38);
-        x.strokeStyle = cc.bd; x.lineWidth = 2; x.strokeRect(90, y - 19, 40, 38);
-        x.fillStyle = cc.fg; x.font = "600 23px ui-monospace, Menlo, monospace"; x.textAlign = "center";
-        x.fillText(k, 110, y + 1); x.textAlign = "left";
-        x.fillStyle = "#EFE4C8"; x.font = "31px Georgia, serif";
-        x.fillText(q.name, 152, y);
-        x.fillStyle = "#9C8760"; x.font = "22px ui-monospace, Menlo, monospace"; x.textAlign = "right";
-        x.fillText(sh.from + ":00–" + (sh.to === 24 ? "24" : sh.to) + ":00", W - 90, y); x.textAlign = "left";
-        y += 46;
+
+    const circle = (cx, cy, r) => { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); };
+    const fit = (str, px, max) => {            // ужать подпись под ширину ячейки
+      x.font = px + "px Georgia, serif";
+      let out = String(str || "");
+      while (out.length > 3 && x.measureText(out).width > max) out = out.slice(0, -1);
+      return out.length < String(str || "").length ? out.slice(0, -1) + "…" : out;
+    };
+
+    hours.forEach((h, hi) => {
+      const list = byHour[h].slice();
+      const cc = colorOf(list[0].k) || { fg: "#D2A85A", bd: "rgba(210,168,90,.5)" };
+      x.textAlign = "left";
+      x.fillStyle = cc.fg; x.font = "600 24px ui-monospace, Menlo, monospace";
+      x.fillText("С " + h + ":00", GX + 10, y);
+      x.textAlign = "right";
+      x.fillStyle = "#8F7B57"; x.font = "22px ui-monospace, Menlo, monospace";
+      x.fillText(list.length + " чел", W - GX - 10, y);
+      x.strokeStyle = "rgba(145,108,40,.28)"; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(GX + 10, y + 26); x.lineTo(W - GX - 10, y + 26); x.stroke();
+      y += HEAD;
+
+      const cells = list.map(o => ({ kind: "who", ...o }));
+      if (hi === 0) holes.forEach(pt => cells.push({ kind: "gap", pos: pt }));
+      cells.forEach((c, i) => {
+        const col = i % COLS, row = Math.floor(i / COLS);
+        const cx = GX + col * CW + CW / 2, cy = y + row * ROW;
+        if (c.kind === "gap") {
+          x.setLineDash([9, 7]); x.strokeStyle = "#D96A5E"; x.lineWidth = 2;
+          circle(cx, cy, AV / 2); x.stroke(); x.setLineDash([]);
+          x.textAlign = "center"; x.fillStyle = "#D96A5E"; x.font = "46px Georgia, serif";
+          x.fillText("+", cx, cy + 2);
+          x.font = "25px Georgia, serif";
+          x.fillText("нужен", cx, cy + AV / 2 + 34);
+          x.fillStyle = "#B5726F"; x.font = "22px Georgia, serif";
+          x.fillText(String(c.pos).toLowerCase(), cx, cy + AV / 2 + 66);
+          return;
+        }
+        const lead = leadOn(td) === c.who.name;
+        const kc = colorOf(c.k) || cc;
+        circle(cx, cy, AV / 2);
+        x.fillStyle = lead ? "rgba(214,178,102,.22)" : "rgba(255,250,238,.05)"; x.fill();
+        x.strokeStyle = lead ? "#D6B266" : "rgba(145,108,40,.5)"; x.lineWidth = lead ? 3 : 2; x.stroke();
+        if (lead) { circle(cx, cy, AV / 2 + 7); x.strokeStyle = "rgba(214,178,102,.2)"; x.lineWidth = 3; x.stroke(); }
+        x.textAlign = "center"; x.fillStyle = "#EFE4C8"; x.font = "38px Georgia, serif";
+        x.fillText(initialsOf(c.who.name), cx, cy + 2);
+        // Значок смены в углу кружка
+        const bx = cx + AV / 2 - 12, by = cy + AV / 2 - 10;
+        x.fillStyle = "#241A0C"; x.fillRect(bx - 17, by - 17, 34, 34);
+        x.strokeStyle = kc.bd; x.lineWidth = 2; x.strokeRect(bx - 17, by - 17, 34, 34);
+        x.fillStyle = kc.fg; x.font = "600 20px ui-monospace, Menlo, monospace";
+        x.fillText(c.k, bx, by + 1);
+        // Полная фамилия и часы — в чате читают, а не узнают по инициалам
+        x.fillStyle = "#EFE4C8"; x.font = "25px Georgia, serif";
+        x.fillText(fit(c.who.name.split(" ")[0], 25, CW - 24), cx, cy + AV / 2 + 34);
+        x.fillStyle = lead ? "#C8A96E" : "#8F7B57";
+        x.font = (lead ? "600 " : "") + "21px ui-monospace, Menlo, monospace";
+        x.fillText(lead ? "СТАРШИЙ" : (c.sh.from + "–" + (c.sh.to > 24 ? c.sh.to - 24 : c.sh.to)), cx, cy + AV / 2 + 66);
       });
-      y += 18;
+      y += Math.ceil(cells.length / COLS) * ROW;
     });
-    const ld = leadOn(td);
-    if (ld) { x.fillStyle = "#C8A96E"; x.font = "26px Georgia, serif"; x.textAlign = "center";
-      x.fillText("Старший: " + ld, W / 2, Math.min(y + 8, H - 110)); }
-    x.textAlign = "center"; x.fillStyle = "#6E5C3E"; x.font = "22px ui-monospace, Menlo, monospace";
-    x.fillText("составлено в Service Academy", W / 2, H - 56);
+
+    if (holes.length) {
+      x.textAlign = "center"; x.fillStyle = "#D96A5E"; x.font = "28px Georgia, serif";
+      x.fillText("Не хватает: " + Array.from(new Set(holes)).join(", ").toLowerCase(), W / 2, H - 56);
+    }
     return cv;
   };
+
   const exportToday = async () => {
     setShotBusy(true);
     try {
@@ -3740,18 +3825,77 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""} <span style={{ color:P.sub, marginLeft:6 }}>{todayOpen ? "▴" : "▾"}</span></span>
         </div>
         {!todayOpen ? (() => {
-          // Доп. 150: свёрнутая сводка — позиции с числами, недоборы выделены
-          const parts = POS.map(({ id: pos, t }) => {
-            const n = needOf(today)[pos] || 0;
-            const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
-            if (!n && !onDuty.length) return null;
-            const main = onDuty.filter(x => !shiftOf(plan[x.id][today]).extra).length;
-            return { t, main, n, short: main < n };
-          }).filter(Boolean);
+          // Свёрнутая сводка — миниатюра раскрытой карточки: те же лица, только
+          // мельче и внахлёст, сгруппированные по времени прихода. Было сплошной
+          // строкой «Менеджер 1/1 Хостес 1/1 Бар 1/2! …», где недобор приходилось
+          // выискивать в потоке текста. Группировка по часу показывает то, чего
+          // счёт по должностям не показывал вовсе: в 11:00 людей пятеро,
+          // а в 17:00 всего двое.
+          const onAll = staff.filter(x => shiftOf(plan[x.id]?.[today]));
+          const holes = [];
+          POS.forEach(({ id: pos, t }) => {
+            const n = needOf(today)[pos] || 0; if (!n) return;
+            const have = staff.filter(x => { const sh = x.pos === pos && shiftOf(plan[x.id]?.[today]); return sh && !sh.extra; }).length;
+            for (let i = have; i < n; i++) holes.push(t);
+          });
+          if (!onAll.length && !holes.length) return null;
+          // Группы по часу начала: у смен разное время, и порядок должен идти
+          // по нему, а не по алфавиту смен.
+          const byHour = {};
+          onAll.forEach(x => {
+            const sh = shiftOf(plan[x.id][today]);
+            (byHour[sh.from] = byHour[sh.from] || []).push({ who: x, sh });
+          });
+          const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+          const dot = (extra) => ({ width:26, height:26, borderRadius:"50%", flexShrink:0,
+            display:"grid", placeItems:"center", fontFamily:serif, fontSize:10,
+            color:P.text, boxSizing:"border-box", ...extra });
           return (
-            <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 10px", fontSize:12.5, lineHeight:1.6, marginTop:2 }}>
-              {parts.map((x, i) => <span key={i} style={{ color: x.short ? P.warn : P.sub, fontWeight: x.short ? "bold" : "normal" }}>{x.t} {x.main}{x.n ? "/" + x.n : ""}{x.short ? "!" : ""}</span>)}
-              <span style={{ color:P.sub, fontStyle:"italic" }}>тап — кто в смене</span>
+            <div style={{ marginTop:6 }}>
+              {hours.map((h, hi) => {
+                const list = byHour[h];
+                const c = colorOf(list[0].sh.k);
+                const mine = hi === 0 ? holes : [];          // дырки — к первой группе
+                return (
+                  <div key={h} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:7 }}>
+                    <span style={{ flex:"0 0 38px", fontFamily:mono, fontSize:9.5,
+                      color: c ? (a11y ? c.fgL : c.fg) : P.sub }}>{h}:00</span>
+                    <div style={{ flex:1, display:"flex", minWidth:0 }}>
+                      {list.slice(0, 6).map((o, oi) => {
+                        const lead = leadOn(today) === o.who.name;
+                        return (
+                          <span key={o.who.id} title={o.who.name} style={dot({ marginLeft: oi ? -8 : 0,
+                            background: lead
+                              ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
+                              : (a11y ? "rgba(250,242,222,0.85)" : "#241a0c"),
+                            border:`1px solid ${lead ? GOLD : (a11y ? "rgba(150,112,40,0.4)" : "rgba(145,108,40,0.5)")}`,
+                            boxShadow:"inset 0 1px 0 rgba(255,255,255,0.12)" })}>
+                            {initialsOf(o.who.name)}
+                          </span>
+                        );
+                      })}
+                      {list.length > 6 ? (
+                        <span style={dot({ marginLeft:-8, fontFamily:mono, fontSize:9.5, color:P.sub,
+                          background: a11y ? "rgba(250,242,222,0.85)" : "#241a0c",
+                          border:`1px solid ${a11y ? "rgba(150,112,40,0.4)" : "rgba(145,108,40,0.5)"}` })}>
+                          +{list.length - 6}
+                        </span>
+                      ) : null}
+                      {mine.map((t, mi) => (
+                        <span key={"h" + mi} title={"не хватает: " + t} style={dot({ marginLeft:-8,
+                          fontSize:13, color:P.warn, background: a11y ? "rgba(255,245,245,0.9)" : "#1a1006",
+                          border:`1px dashed ${P.warn}99` })}>+</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              {holes.length ? (
+                <div style={{ fontSize:11.5, color:P.warn, marginTop:2 }}>
+                  не хватает: {Array.from(new Set(holes)).join(", ").toLowerCase()}
+                </div>
+              ) : null}
+              <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginTop:5 }}>тап — кто в смене</div>
             </div>
           );
         })() : null}
@@ -3775,7 +3919,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   менеджер ищет именно в этой карточке. */}
               <div style={{ marginBottom:3 }}>
                 <span style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.4, color:P.acc }}>МЕСЯЦ ЗАКРЫТ НА</span>{" "}
-                <b style={{ color: covShown >= 95 ? (a11y ? "#4A6B4A" : "#7FA05A") : P.warn, fontSize:14 }}>
+                <b style={{ fontSize:14,
+                  color: covShown >= 95 ? (a11y ? "#4A6B4A" : "#7FA05A")
+                       : covShown >= 75 ? P.acc
+                       : P.warn }}>
                   {need ? `${covShown}%` : "—"}</b>
               </div>
               <span style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.4, color:P.acc }}>НА ЭТОЙ НЕДЕЛЕ</span>{" "}
@@ -3796,28 +3943,74 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✦ День рождения: {bd.map(x => x.name).join(", ")}</div>
           ) : null;
         })()}
-        {POS.map(({ id: pos, t }) => {
-          const n = needOf(today)[pos] || 0;
-          const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
-          if (!n && !onDuty.length) return null;
-          const main = onDuty.filter(x => !shiftOf(plan[x.id][today]).extra).length;
-          const short = main < n;
+        {/* Раскрыто — лица. Список «должность: капсула, капсула» отвечал на
+            вопрос «сколько», но не на «кто»: фамилии сливались в поток. Кружок
+            с инициалами узнаётся быстрее строки, буква смены стоит значком в
+            углу, должность подписана под именем — это заодно разводит
+            совпадающие инициалы. Дырка — пунктирный кружок в том же ряду:
+            раньше она существовала только цифрой 1/2 слева, и ряд людей
+            выглядел законченным. */}
+        {(() => {
+          const cards = [];
+          POS.forEach(({ id: pos, t }) => {
+            const n = needOf(today)[pos] || 0;
+            const onDuty = staff.filter(x => x.pos === pos && shiftOf(plan[x.id]?.[today]));
+            if (!n && !onDuty.length) return;
+            onDuty.forEach(x => cards.push({ kind:"who", who:x, pos:t, k:plan[x.id][today] }));
+            const have = onDuty.filter(x => !shiftOf(plan[x.id][today]).extra).length;
+            for (let i = have; i < n; i++) cards.push({ kind:"gap", pos:t });
+          });
+          if (!cards.length) return null;
           return (
-            <div key={pos} style={{ display:"flex", gap:8, fontSize:12.5, lineHeight:1.8 }}>
-              <span style={{ flex:"0 0 104px", color: short ? P.warn : P.sub, fontWeight: short ? "bold" : "normal" }}>
-                {t}{n ? ` ${main}/${n}` : ""}{short ? "!" : ""}
-              </span>
-              <span style={{ flex:1, minWidth:0, color:P.text }}>
-                {onDuty.length ? onDuty.map((x, xi) => (
-                  <span key={x.id}>{xi ? ", " : ""}
-                    <CallName who={x} label={x.name.split(" ")[0]} color={P.text} />
-                    {" (" + plan[x.id][today] + ")"}
-                  </span>
-                )) : "—"}
-              </span>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"14px 8px", marginTop:4 }}>
+              {cards.map((c, ci) => {
+                if (c.kind === "gap") return (
+                  <div key={"g" + ci} style={{ width:60, textAlign:"center" }}>
+                    <div style={{ width:44, height:44, borderRadius:"50%", margin:"0 auto 5px",
+                      display:"grid", placeItems:"center", fontSize:19, color:P.warn,
+                      border:`1px dashed ${P.warn}8C`, background: a11y ? "rgba(255,245,245,0.75)" : "rgba(224,120,120,0.05)" }}>+</div>
+                    <div style={{ fontSize:10.5, color:P.warn, lineHeight:1.3 }}>нужен</div>
+                    <div style={{ fontSize:9, color:P.warn, opacity:.8 }}>{c.pos.toLowerCase()}</div>
+                  </div>
+                );
+                const col = colorOf(c.k), lead = leadOn(today) === c.who.name;
+                return (
+                  <div key={c.who.id} style={{ width:60, textAlign:"center" }}>
+                    <div style={{ position:"relative", width:44, margin:"0 auto 5px" }}>
+                      <div onClick={() => { setCallWho(callWho === c.who.id ? null : c.who.id); vibrate("light"); }}
+                        style={{ width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
+                          fontFamily:serif, fontSize:15, color:P.text, cursor: c.who.phone ? "pointer" : "default",
+                          background: lead
+                            ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
+                            : (a11y ? "rgba(250,242,222,0.8)" : "linear-gradient(180deg,rgba(255,250,238,0.09),rgba(255,250,238,0.03))"),
+                          border:`1px solid ${lead ? GOLD : (a11y ? "rgba(150,112,40,0.42)" : "rgba(145,108,40,0.42)")}`,
+                          boxShadow: lead
+                            ? "inset 0 0 14px rgba(255,240,205,0.14), inset 0 1px 0 rgba(255,255,255,0.22), 0 0 0 3px rgba(214,178,102,0.16)"
+                            : (a11y ? "inset 0 0 14px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 14px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12)") }}>
+                        {initialsOf(c.who.name)}
+                      </div>
+                      {col ? (
+                        <span style={{ position:"absolute", right:-3, bottom:-2, width:17, height:17, borderRadius:6,
+                          display:"grid", placeItems:"center", fontFamily:mono, fontSize:9.5,
+                          color: a11y ? col.fgL : col.fg, background: a11y ? col.bgL : "#241a0c",
+                          border:`1px solid ${a11y ? col.bdL : col.bd}` }}>{c.k}</span>
+                      ) : null}
+                    </div>
+                    <div style={{ fontSize:10.5, color:P.text, lineHeight:1.3 }}>{c.who.name.split(" ")[0]}</div>
+                    <div style={{ fontSize:9, color:P.sub }}>{lead ? "старший" : c.pos.toLowerCase()}</div>
+                    {callWho === c.who.id && c.who.phone ? (
+                      <a href={telHref(c.who.phone)} style={{ display:"inline-block", marginTop:4, fontFamily:mono,
+                        fontSize:10, fontWeight:700, color:INK_DEEP, textDecoration:"none",
+                        background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"3px 8px", borderRadius:999 }}>
+                        {c.who.phone}
+                      </a>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           );
-        })}
+        })()}
         <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12, marginTop:10 }}
           className="sa-btn" disabled={shotBusy} onClick={exportToday}>
           {shotBusy ? "Собираю…" : "Сегодня — картинкой в чат"}

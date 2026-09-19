@@ -3820,7 +3820,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
     {today ? (
       <div style={card}>
-        <div style={{ ...eyebrow, cursor:"pointer" }} onClick={() => { setTodayOpen(o => !o); vibrate("light"); }}>
+        <div style={{ ...eyebrow, cursor:"pointer" }} onClick={() => { setTodayOpen(o => !o); setCallWho(null); vibrate("light"); }}>
           <span>Сегодня · {today} {MONTHS_R[M]}</span>
           <span style={{ color:P.acc }}>{leadOn(today) ? "старший: " + leadOn(today) : ""} <span style={{ color:P.sub, marginLeft:6 }}>{todayOpen ? "▴" : "▾"}</span></span>
         </div>
@@ -3913,22 +3913,33 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           const worst = gaps.slice().sort((a, b) => b.m - a.m)[0];
           const goTo = () => { const i = weeks.findIndex(w => w.includes(today)); if (i >= 0) { setWeekIdx(i); vibrate("light"); } };
           return (
-            <div onClick={goTo} {...onActivate(goTo)} style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${GOLD}22`, fontSize:12.5, lineHeight:1.55, color:P.sub, cursor:"pointer" }}>
-              {/* Покрытие месяца переехало сюда из шапки таблицы: дыры
-                  показывались четырьмя способами сразу, а ответ «что горит»
-                  менеджер ищет именно в этой карточке. */}
-              <div style={{ marginBottom:3 }}>
-                <span style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.4, color:P.acc }}>МЕСЯЦ ЗАКРЫТ НА</span>{" "}
-                <b style={{ fontSize:14,
+            // Было два ряда капсом моноширинным: «МЕСЯЦ ЗАКРЫТ НА 81%» и
+            // «НА ЭТОЙ НЕДЕЛЕ не хватает 14 смен…». Плотный блок кричащих
+            // заголовков спорил с лицами над ним и читался тяжелее всего
+            // в карточке. Стало: тонкая полоса покрытия вместо заголовка —
+            // проценты видно, не читая, — и одна спокойная строка про неделю.
+            <div onClick={goTo} {...onActivate(goTo)} style={{ marginTop:10, paddingTop:9,
+              borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.1)"}`, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:7 }}>
+                <span style={{ fontSize:11.5, color:P.sub, flexShrink:0 }}>месяц</span>
+                <span style={{ flex:1, height:5, borderRadius:999, overflow:"hidden",
+                  background: a11y ? "rgba(120,90,30,0.14)" : "rgba(255,255,255,0.07)" }}>
+                  <i style={{ display:"block", height:"100%", borderRadius:999,
+                    width: (need ? Math.min(100, covShown) : 0) + "%",
+                    background: covShown >= 95 ? (a11y ? "#4A6B4A" : "#7FA05A")
+                              : covShown >= 75 ? GOLD : P.warn }} />
+                </span>
+                <b style={{ fontFamily:mono, fontSize:12, flexShrink:0,
                   color: covShown >= 95 ? (a11y ? "#4A6B4A" : "#7FA05A")
-                       : covShown >= 75 ? P.acc
-                       : P.warn }}>
+                       : covShown >= 75 ? P.acc : P.warn }}>
                   {need ? `${covShown}%` : "—"}</b>
               </div>
-              <span style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.4, color:P.acc }}>НА ЭТОЙ НЕДЕЛЕ</span>{" "}
-              {total === 0
-                ? <span style={{ color: a11y ? "#4A6B4A" : "#7FA05A" }}>всё закрыто ✓</span>
-                : <>не хватает <b style={{ color:P.warn }}>{total}</b> {total === 1 ? "смены" : total < 5 ? "смен" : "смен"}{worst && worst.m ? <>, тяжелее всего <b style={{ color:P.text }}>{DOWL[dow(worst.d)]} {worst.d}</b> (−{worst.m})</> : null} · <span style={{ color:P.acc }}>показать неделю ›</span></>}
+              <div style={{ fontSize:11.5, lineHeight:1.5, color:P.sub }}>
+                {total === 0
+                  ? <span style={{ color: a11y ? "#4A6B4A" : "#7FA05A" }}>неделя закрыта полностью</span>
+                  : <>на неделе не хватает <b style={{ color:P.warn }}>{total}</b> смен{worst && worst.m ? <>, тяжелее всего <b style={{ color:P.text }}>{DOWL[dow(worst.d)]} {worst.d}</b></> : null}
+                    {" · "}<span style={{ color:P.acc }}>показать ›</span></>}
+              </div>
             </div>
           );
         })()}
@@ -3974,12 +3985,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   </div>
                 );
                 const col = colorOf(c.k), lead = leadOn(today) === c.who.name;
+                const on = callWho === c.who.id;
                 return (
-                  <div key={c.who.id} style={{ width:60, textAlign:"center" }}>
+                  // Нажимается вся карточка, а не только кружок: раньше было
+                  // непонятно, куда целиться, и тап по имени ничего не давал.
+                  <div key={c.who.id}
+                    onClick={c.who.phone ? () => { setCallWho(on ? null : c.who.id); vibrate("light"); } : undefined}
+                    {...(c.who.phone ? onActivate(() => setCallWho(on ? null : c.who.id)) : {})}
+                    style={{ width:60, textAlign:"center", cursor: c.who.phone ? "pointer" : "default",
+                      borderRadius:12, padding:"3px 0",
+                      background: on ? (a11y ? "rgba(214,178,102,0.16)" : "rgba(214,178,102,0.10)") : "transparent" }}>
                     <div style={{ position:"relative", width:44, margin:"0 auto 5px" }}>
-                      <div onClick={() => { setCallWho(callWho === c.who.id ? null : c.who.id); vibrate("light"); }}
-                        style={{ width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
-                          fontFamily:serif, fontSize:15, color:P.text, cursor: c.who.phone ? "pointer" : "default",
+                      <div style={{ width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
+                          fontFamily:serif, fontSize:15, color:P.text,
                           background: lead
                             ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
                             : (a11y ? "rgba(250,242,222,0.8)" : "linear-gradient(180deg,rgba(255,250,238,0.09),rgba(255,250,238,0.03))"),
@@ -3997,17 +4015,33 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       ) : null}
                     </div>
                     <div style={{ fontSize:10.5, color:P.text, lineHeight:1.3 }}>{c.who.name.split(" ")[0]}</div>
-                    <div style={{ fontSize:9, color:P.sub }}>{lead ? "старший" : c.pos.toLowerCase()}</div>
-                    {callWho === c.who.id && c.who.phone ? (
-                      <a href={telHref(c.who.phone)} style={{ display:"inline-block", marginTop:4, fontFamily:mono,
-                        fontSize:10, fontWeight:700, color:INK_DEEP, textDecoration:"none",
-                        background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"3px 8px", borderRadius:999 }}>
-                        {c.who.phone}
-                      </a>
-                    ) : null}
+                    <div style={{ fontSize:9, color: on ? P.acc : P.sub }}>{lead ? "старший" : c.pos.toLowerCase()}</div>
                   </div>
                 );
               })}
+            </div>
+          );
+        })()}
+        {/* Номер во всю ширину под сеткой. Раньше ссылка стояла внутри колонки
+            шириной 60 px и разваливалась на четыре строки внутри кружка. */}
+        {(() => {
+          if (!callWho) return null;
+          const w = staff.find(q => String(q.id) === String(callWho));
+          if (!w || !w.phone) return null;
+          return (
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, padding:"9px 12px",
+              borderRadius:13,
+              background: a11y ? "rgba(250,242,222,0.7)" : "rgba(255,250,238,0.04)",
+              border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.3)"}`,
+              boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(255,248,230,0.05)" }}>
+              <span style={{ flex:1, minWidth:0, fontSize:12.5, color:P.text, whiteSpace:"nowrap",
+                overflow:"hidden", textOverflow:"ellipsis" }}>{w.name}</span>
+              <a href={telHref(w.phone)} onClick={e => e.stopPropagation()}
+                style={{ display:"inline-flex", alignItems:"center", gap:6, flexShrink:0, textDecoration:"none",
+                  fontFamily:mono, fontSize:12.5, fontWeight:700, color:INK_DEEP, whiteSpace:"nowrap",
+                  background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"6px 13px", borderRadius:999 }}>
+                <IcoPhone size={12} color={INK_DEEP} sw={2.1} />{w.phone}
+              </a>
             </div>
           );
         })()}

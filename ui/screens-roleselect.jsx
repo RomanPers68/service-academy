@@ -40,6 +40,13 @@ const EmptySealSlot = ({ a11y }) => (
 // Оправы (проба золота): full — герой, mid — рабочие элементы
 // «Морозный лёд»: оправа — светящаяся золотисто-белая кромка,
 // уровень full — ярче (парадные витрины), mid — деликатнее (жетоны)
+// Уважение к «спокойному режиму» системы: кому движение мешает, тому
+// подписи показываются без анимации. Та же проверка, что в графике.
+const calmMotion = () => {
+  try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  catch (e) { return false; }
+};
+
 const saFrame = (a11y, level = "mid") => {
   // Демо-кромка .ice: ровная, один цвет для всех кнопок главной
   const k = level === "full" ? 1 : 0.85;
@@ -69,6 +76,15 @@ export const TRACK_GROUPS = [
 export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
+  // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
+  // он открывает инструмент, а не раскрывает подпись: иначе каждое обращение
+  // к справочнику стоило бы двух касаний. Поэтому подпись ездит сама.
+  const [toolSpot, setToolSpot] = React.useState(0);
+  React.useEffect(() => {
+    if (calmMotion()) return;                 // без движения — подписи статичны
+    const t = setInterval(() => setToolSpot(v => v + 1), 4000);
+    return () => clearInterval(t);
+  }, []);
   const initials = profile ? `${profile.name[0]}${(profile.surname||"")[0]||""}`.toUpperCase() : "?";
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const position = profile?.position || "waiter";
@@ -449,30 +465,39 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                   {/* Прокрутка вбок: высота ряда не растёт, сколько бы инструментов
                       ни добавилось. Квадраты не сжимаются и подписи не режутся —
                       при пяти и больше лишние уезжают вбок, а не ломают вёрстку. */}
-                  <div className="sa-hscroll" style={{ flex:1, minWidth:0, display:"flex", gap:12,
-                    overflowX:"auto", WebkitOverflowScrolling:"touch",
-                    scrollSnapType:"x proximity", overscrollBehaviorX:"contain" }}>
-                    {tools.map(t => {
+                  {/* Капсула в капсуле: кружок с иконкой сидит внутри плашки,
+                      которая раздвигается и впускает слово. Подпись едет по
+                      очереди раз в четыре секунды — движение видно боковым
+                      зрением, и за полминуты человек узнаёт все инструменты,
+                      ничего не нажимая. В «спокойном режиме» ротация стоит. */}
+                  <div style={{ flex:1, minWidth:0, display:"flex", alignItems:"center", gap:4 }}>
+                    {tools.map((t, i) => {
                       const c = tint(t.key);
+                      const on = tools.length ? (toolSpot % tools.length) === i : false;
                       const badge = t.key === "menu" && menuNew > 0;
                       const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
                       return (
                         <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)}
-                          style={{ flex:"0 0 62px", display:"flex", flexDirection:"column", alignItems:"center",
-                            gap:7, cursor:"pointer", scrollSnapAlign:"start",
-                            WebkitTapHighlightColor:"transparent" }}>
-                          <span style={{ position:"relative", width:40, height:40, borderRadius:12,
-                            display:"grid", placeItems:"center",
-                            background:`${c}29`, border:`1px solid ${c}66` }}>
+                          title={t.label}
+                          style={{ display:"flex", alignItems:"center", flexShrink:0, cursor:"pointer",
+                            padding:3, borderRadius:999, WebkitTapHighlightColor:"transparent",
+                            background: on ? `${c}1F` : "transparent",
+                            transition:"background .45s ease" }}>
+                          <span style={{ position:"relative", width:40, height:40, borderRadius:"50%",
+                            display:"grid", placeItems:"center", flexShrink:0,
+                            background:`${c}${on ? "33" : "24"}`, transition:"background .45s ease" }}>
                             {React.cloneElement(t.icon, { width:20, height:20 })}
                             {(badge || dot) ? (
-                              <span style={{ position:"absolute", top:-3, right:-3, width:8, height:8,
+                              <span style={{ position:"absolute", top:-1, right:-1, width:8, height:8,
                                 borderRadius:4, background:GOLD_SOFT,
-                                border:`1.5px solid ${a11y ? "#F7F0E0" : "#14110A"}` }} />
+                                border:`1.5px solid ${a11y ? "#F7F0E0" : "#1A1409"}` }} />
                             ) : null}
                           </span>
-                          <span style={{ fontSize:10, color:Cc.text, maxWidth:"100%", textAlign:"center",
-                            whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{t.label}</span>
+                          <span style={{ display:"inline-block", overflow:"hidden", whiteSpace:"nowrap",
+                            fontSize:10.5, color:Cc.text,
+                            maxWidth: on ? 96 : 0, opacity: on ? 1 : 0,
+                            marginLeft: on ? 8 : 0, marginRight: on ? 8 : 0,
+                            transition:"max-width .45s ease, opacity .35s ease, margin .45s ease" }}>{t.label}</span>
                         </div>
                       );
                     })}

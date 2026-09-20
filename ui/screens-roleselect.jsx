@@ -139,19 +139,53 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
           const prog = total ? Math.round((done / total) * 100) : 0;
           const RC = roleObj?.color || (a11y ? "#4E7A58" : "#8FB890"); // цвет роли
           const GRN = RC, GRN2 = RC;
-          let title, sub, cta, go, gold = false;
+          let title, sub, cta, go, gold = false, kind = null;
+          // Что за шаг: тест, практика или урок. Человек заранее знает, на что
+          // подписывается — тест на восемь вопросов это другое обязательство,
+          // чем чтение. Приставка из названия убирается: её говорит значок.
+          const kindOf = (l) => !l ? null
+            : l.type === "quiz" ? "ТЕСТ"
+            : (l.situations && l.situations.length) ? "ПРАКТИКА"
+            : "УРОК";
+          const clean = (t) => String(t || "").replace(/^(Тест|Практика|Урок)\s*[:·—-]\s*/i, "")
+            .replace(/^./, c => c.toUpperCase());
           if (next && done === 0) {
             // ═══ Первый заход: «Начни здесь» + честная карта времени всего пути ═══
             const totalMins = mods.reduce((a, m) => a + (m.lessons || []).filter(l => l.type !== "result").reduce((s, l) => s + _estMins(l), 0), 0);
-            title = "Начни здесь";
-            sub = `«${next.lesson.title}» · весь путь ≈ ${_fmtMins(totalMins)}`;
+            title = clean(next.lesson.title);
+            kind = kindOf(next.lesson);
+            sub = `начни здесь · весь путь ≈ ${_fmtMins(totalMins)}`;
             cta = "НАЧАТЬ"; go = () => onContinueLesson(next.lesson, next.mod);
           }
-          else if (next) { title = `Твой трек · ${roleObj?.label || ""}`; sub = `Следующий: «${next.lesson.title}» · ≈ ${_estMins(next.lesson)} мин`; cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod); }
+          else if (next) {
+            title = clean(next.lesson.title);
+            kind = kindOf(next.lesson);
+            const qn = (next.lesson.questions || []).length;
+            sub = [qn ? `${qn} ${qn === 1 ? "вопрос" : qn < 5 ? "вопроса" : "вопросов"}` : null,
+                   `≈ ${_estMins(next.lesson)} мин`,
+                   `пройдено ${prog}%`].filter(Boolean).join(" · ");
+            cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod);
+          }
           else if (dueM > 0 && onMistakes) { const _d10 = dueM % 10, _d100 = dueM % 100; const _q = (_d10 === 1 && _d100 !== 11) ? "вопрос вернулся" : (_d10 >= 2 && _d10 <= 4 && (_d100 < 12 || _d100 > 14)) ? "вопроса вернулись" : "вопросов вернулись"; title = "Трек пройден · закрепи"; sub = `${dueM} ${_q} на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           return (
             <div style={{ padding:"0 14px 9px" }}>
+              {/* Роль чипом. После перестройки она пряталась только в заголовке
+                  карточки, и на экране её было не видно. */}
+              {roleObj ? (
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, minWidth:0 }}>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:6, flexShrink:0,
+                    padding:"4px 11px", borderRadius:999,
+                    background:`${RC}22`, border:`1px solid ${RC}66` }}>
+                    {ROLE_SVG[role] ? ROLE_SVG[role](RC, 12) : null}
+                    <span style={{ fontSize:12, color:RC, fontWeight:"bold" }}>{roleObj.label}</span>
+                  </span>
+                  {roleObj.sublabel ? (
+                    <span style={{ fontSize:11, color:T.modSub.color, minWidth:0, overflow:"hidden",
+                      textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{roleObj.sublabel}</span>
+                  ) : null}
+                </div>
+              ) : null}
               <div onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
                 // Тот же «морозный лёд», но ярче остальных карточек: это
                 // единственное действие, ради которого экран открывают.
@@ -163,36 +197,45 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 boxShadow: a11y
                   ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(120,85,25,0.14)"
                   : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13), 0 5px 16px rgba(0,0,0,0.45)" }}>
-                <div style={{ borderRadius:14.5, padding:"12px 13px", background: "transparent" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? (a11y ? "rgba(160,120,40,0.16)" : "rgba(200,169,110,0.13)") : `${RC}26`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <div style={{ borderRadius:14.5, padding:"12px 13px", background:"transparent",
+                  display:"flex", alignItems:"center", gap:12 }}>
+                  {/* Иконка роли с кольцом прогресса вокруг и значком типа шага.
+                      Раньше это были три отдельные штуки: кружок с иконкой слева,
+                      кольцо с процентом справа и полоска снизу — три способа
+                      сказать одно и то же. Слились в один смысловой узел 48×48. */}
+                  <div style={{ position:"relative", width:48, height:48, flexShrink:0,
+                    display:"grid", placeItems:"center" }}>
+                    {next && total > 0 ? (
+                      <svg width="48" height="48" viewBox="0 0 48 48" style={{ position:"absolute", inset:0 }}>
+                        <circle cx="24" cy="24" r="22" fill="none" strokeWidth="2.5"
+                          stroke={a11y ? "rgba(120,90,30,0.2)" : "rgba(200,169,110,0.2)"} />
+                        <circle cx="24" cy="24" r="22" fill="none" stroke={gold ? GOLD : RC} strokeWidth="2.5" strokeLinecap="round"
+                          strokeDasharray={(2 * Math.PI * 22 * prog / 100) + " " + (2 * Math.PI * 22)}
+                          transform="rotate(-90 24 24)" />
+                      </svg>
+                    ) : null}
+                    <span style={{ position:"relative", display:"inline-flex" }}>
                       {gold
-                        ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>
-                        : (ROLE_SVG[role] ? ROLE_SVG[role](RC, 20) : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={RC} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>)}
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ color: gold ? GOLD : GRN, fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1.25 }}>{title}</div>
-                      <div style={{ color: T.modSub.color, fontSize:12, marginTop:3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", lineHeight:1.4 }}>{sub}</div>
-                    </div>
-                {total > 0 && done > 0 && next ? (
-                  <svg width="26" height="26" viewBox="0 0 26 26" style={{ flexShrink:0, marginRight:2 }}>
-                    <circle cx="13" cy="13" r="10.5" fill="none" stroke={a11y ? "rgba(120,90,30,0.22)" : "rgba(200,169,110,0.22)"} strokeWidth="2.6" />
-                    <circle cx="13" cy="13" r="10.5" fill="none" stroke={GOLD} strokeWidth="2.6" strokeLinecap="round"
-                      strokeDasharray={(2 * Math.PI * 10.5 * prog / 100) + " " + (2 * Math.PI * 10.5)}
-                      transform="rotate(-90 13 13)" />
-                    <text x="13" y="14.5" textAnchor="middle" fontSize="6.5" fill={GOLD} fontFamily="ui-monospace, Menlo, monospace">{prog}%</text>
-                  </svg>
-                ) : null}
+                        ? <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>
+                        : (ROLE_SVG[role] ? ROLE_SVG[role](RC, 21) : <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={RC} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>)}
+                    </span>
+                    {kind ? (
+                      <span style={{ position:"absolute", bottom:-4, left:"50%", transform:"translateX(-50%)",
+                        fontFamily:"monospace", fontSize:8, letterSpacing:1.1, whiteSpace:"nowrap",
+                        color:RC, padding:"1px 6px", borderRadius:999,
+                        background: a11y ? "#F7F0E0" : "#1A1409",
+                        border:`1px solid ${RC}66` }}>{kind}</span>
+                    ) : null}
                   </div>
-                  {next && (
-                    <div style={{ height:3.5, borderRadius:3, background: a11y ? "rgba(120,90,40,0.15)" : "rgba(255,255,255,0.07)", marginTop:10 }}>
-                      <div style={{ width:`${prog}%`, height:"100%", borderRadius:3, background:`linear-gradient(90deg, ${GRN}, ${GRN2})` }} />
-                    </div>
-                  )}
-                  {/* Кнопка во всю ширину. Была плашка в 9 px в углу — по весу
-                      неотличимая от стрелки «›» у соседних карточек. */}
-                  <div style={{ marginTop:12, textAlign:"center", padding:"10px", borderRadius:999,
-                    fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", color:"#1A1008",
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ color: gold ? GOLD : T.modTitle.color, fontSize:16, fontFamily:"Georgia, serif",
+                      lineHeight:1.25, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{title}</div>
+                    <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:3, lineHeight:1.4 }}>{sub}</div>
+                  </div>
+                  {/* Кнопка по размеру задачи: не во всю ширину (так карточка
+                      раздувалась), но и не плашка в 9 px, неотличимая от стрелки. */}
+                  <div style={{ flexShrink:0, padding:"9px 15px", borderRadius:999,
+                    fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold", color:"#1A1008",
                     background: gold ? `linear-gradient(180deg, ${GOLD_SOFT}, #8B6A30)` : `linear-gradient(180deg,#E4C88C,${GOLD})` }}>
                     {cta.charAt(0) + cta.slice(1).toLowerCase()}
                   </div>
@@ -376,30 +419,65 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             <>
             <div style={{ fontFamily:"monospace", fontSize:9, letterSpacing:2.4, textTransform:"uppercase",
               color: T.modSub.color, padding:"0 20px 7px" }}>под рукой</div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, padding:"0 16px 12px" }}>
-              {visibleTiles.map(t => {
-                const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
-                // Доп. 215: пять на сегодня ещё не закрыты — тихая золотая точка на «Меню» (сам режим дня живёт в Меню)
-                const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
-                return (
-                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ minWidth:0,
-                    boxSizing:"border-box", position:"relative", borderRadius:12, cursor:"pointer",
-                    WebkitTapHighlightColor:"transparent",
-                    background: t.red ? (a11y ? "rgba(255,240,240,0.7)" : "rgba(224,120,120,0.07)") : saInner(a11y),
-                    border: t.red ? `1px solid ${sosR}66` : t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`,
-                    boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
-                    <div style={{ position:"relative", borderRadius:12.5, padding:"11px 12px", display:"flex",
-                      alignItems:"center", gap:9, overflow:"hidden", background:"transparent" }}>
-                      <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.20)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
-                      <div style={{ position:"relative", display:"inline-flex", flexShrink:0 }}>{React.cloneElement(t.icon, { width:18, height:18 })}</div>
-                      <span style={{ position:"relative", fontSize:12, color: t.red ? sosR : Cc.text, fontWeight: t.red ? "bold" : "normal", lineHeight:1.2, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing: t.red ? 0.6 : 0 }}>{t.label}</span>
+            {/* Полка инструментов. Набор ДИНАМИЧЕСКИЙ: новичок видит три плитки,
+                остальные четыре, а завтра добавятся «Новички» и «Наставничество».
+                Поэтому ширина чипа — по его слову, а полка переносит строки:
+                три помещаются в ряд, шесть уходят во второй, и ничего не
+                режется и не уезжает за край. SOS вынесен из полки отдельным
+                кружком — он не «где посмотреть», а «что делать прямо сейчас»,
+                и в общем ряду читался таким же справочником, как глоссарий. */}
+            {(() => {
+              const tools = visibleTiles.filter(t => !t.red);
+              const sos = visibleTiles.find(t => t.red);
+              const menuNewN = menuNew;
+              return (
+                <div style={{ display:"flex", alignItems:"center", gap:8, padding:"0 16px 12px" }}>
+                  {tools.length ? (
+                    <div style={{ flex:1, minWidth:0, display:"flex", flexWrap:"wrap", gap:6,
+                      padding:"8px 9px", borderRadius:18,
+                      background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
+                      boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45)" : "inset 0 0 18px rgba(255,248,230,0.05)" }}>
+                      {tools.map(t => {
+                        const badge = t.key === "menu" && menuNewN > 0 ? String(menuNewN) : null;
+                        const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
+                        return (
+                          <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)}
+                            style={{ display:"inline-flex", alignItems:"center", gap:6, minWidth:0,
+                              padding:"8px 12px", borderRadius:999, cursor:"pointer",
+                              WebkitTapHighlightColor:"transparent",
+                              // Своя кромка, мягче полки: saFrame уровня «soft» не знает
+                              // и вернул бы тот же цвет — получилась бы рамка в рамке.
+                              border:`1px solid ${t.accent ? Cc.gold : (a11y ? "rgba(139,106,48,0.22)" : "rgba(255,255,255,0.09)")}`,
+                              background: t.accent ? (a11y ? "rgba(236,214,166,0.4)" : "rgba(214,178,102,0.10)") : "transparent" }}>
+                            <span style={{ display:"inline-flex", flexShrink:0 }}>{React.cloneElement(t.icon, { width:15, height:15 })}</span>
+                            <span style={{ fontSize:11.5, color:Cc.text, whiteSpace:"nowrap" }}>{t.label}</span>
+                            {/* Счётчик ВНУТРИ чипа: снаружи он наполовину висел за краем плитки */}
+                            {badge ? (
+                              <span style={{ fontFamily:"monospace", fontSize:9, color:"#1A1008", flexShrink:0,
+                                background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, borderRadius:999, padding:"1px 6px" }}>{badge}</span>
+                            ) : dot ? (
+                              <span style={{ width:5, height:5, borderRadius:3, flexShrink:0, background:GOLD_SOFT }} />
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
-                    {dot && <div style={{ position:"absolute", top:6, right:8, zIndex:3, width:7, height:7, borderRadius:3, background:GOLD_SOFT, boxShadow:`0 0 8px ${GOLD_SOFT}` }} />}
-                    {badge && <div style={{ position:"absolute", top:-5, right:-3, zIndex:3, background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, color:"#1A1008", fontSize:9, fontWeight:"bold", fontFamily:"monospace", borderRadius:9, padding:"2px 6px", boxShadow:"0 2px 6px rgba(0,0,0,0.4)" }}>{badge}</div>}
-                  </div>
-                );
-              })}
-            </div>
+                  ) : null}
+                  {sos ? (
+                    <div onClick={sos.onClick} {...onActivate(sos.onClick)}
+                      style={{ flexShrink:0, width:52, height:52, borderRadius:"50%", cursor:"pointer",
+                        display:"grid", placeItems:"center", gap:1,
+                        WebkitTapHighlightColor:"transparent",
+                        border:`1px solid ${sosR}73`,
+                        background: a11y ? "rgba(255,240,240,0.7)" : "rgba(224,120,120,0.08)",
+                        boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(224,120,120,0.05)" }}>
+                      <span style={{ display:"inline-flex" }}>{React.cloneElement(sos.icon, { width:16, height:16 })}</span>
+                      <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:0.8, fontWeight:"bold", color:sosR }}>SOS</span>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()}
             {newbie && (
               <div style={{ textAlign:"center", padding:"0 24px 12px", marginTop:-4 }}>
                 <span style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic" }}>✨ Остальные инструменты откроются после первого урока</span>

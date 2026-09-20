@@ -1414,7 +1414,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       onBlurCapture={() => { try { window.scrollTo(0, 0); } catch (_) {} }}
       style={{
       position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column",
-      background: a11y ? "#E8DEC8" : "linear-gradient(160deg,#1A1008 0%,#1A1008 50%,#1A1008 100%)",
+      // Тот же фон, что у всего приложения (ui/styles.js → app): тёплый
+      // градиент с золотым свечением сверху. График рисовал собственный
+      // плоский #1A1008, и на переходе с главной подмена была заметна —
+      // экран выглядел из другого приложения.
+      background: a11y
+        ? "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #F2EAD8 0%, #EDE3CE 50%, #E8DEC8 100%)"
+        : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #14110A 0%, #1C1509 50%, #14110A 100%)",
       overflowY:"auto", WebkitOverflowScrolling:"touch", overscrollBehavior:"contain",
     }}>
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"44px 18px 4px" }}>

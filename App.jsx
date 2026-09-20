@@ -784,6 +784,27 @@ function ServiceAcademy() {
     else if (cur !== to) commitStack([...navRef.current, cur].slice(-24));  // push, без дублей при повторе
     screenRef.current = to; setScreen(to); setLessonDone(null);
   }, [commitStack]);
+  // Новый экран и новый урок открываются СВЕРХУ. Прокручиваемых контейнеров
+  // два — корень приложения и тело урока, — и оба сохраняли позицию при смене
+  // содержимого. Из-за этого, дочитав длинный урок до конца и нажав «Дальше»,
+  // человек попадал на следующий сразу в его конец. Горизонтальные ленты
+  // не трогаем: там позиция осмысленна и её сбрасывать не нужно.
+  useEffect(() => {
+    const top = (el) => {
+      if (!el) return;
+      try { el.scrollTop = 0; } catch (e) {}
+    };
+    top(document.getElementById("root"));
+    top(document.scrollingElement);
+    // Внутренние вертикальные скроллеры экранов (тело урока, справочника и пр.)
+    try {
+      document.querySelectorAll("div").forEach(el => {
+        if (el.scrollTop > 0 && el.scrollHeight > el.clientHeight
+            && el.scrollWidth <= el.clientWidth + 1) top(el);
+      });
+    } catch (e) {}
+  }, [screen, activeLesson?.id]);
+
   const goBack = useCallback((fallback = "roleSelect") => {
     const st = navRef.current.slice();
     let to = st.pop();

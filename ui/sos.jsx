@@ -5,6 +5,8 @@ import { ACCENT_SERIF } from "./styles";
 // Контент лежит в бандле → работает без сети. Обе темы: тёмная и «Для чтения».
 
 import React from "react";
+import { hintsFor } from "../data/hints";
+import { useHintOnce, HintBubble } from "./widgets";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD, GREEN, RED } from "./tokens";
 import { UI_SVG, MARKER_RE } from "./icons";
@@ -139,6 +141,9 @@ const SOS_CARDS = [
 ];
 
 export function SOSScreen({ T, a11y, onBack }) {
+  // Один шаг: сюда заходят в панике, читать инструкцию некогда.
+  const [sHint, sHintDone] = useHintOnce("sos");
+  const sSteps = hintsFor("sos");
   const red = sosRed(a11y);
   const gold = a11y ? "#8B6A30" : GOLD;
   const text = a11y ? "#2e211a" : "#F5EFE2";
@@ -151,6 +156,10 @@ export function SOSScreen({ T, a11y, onBack }) {
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "18px 18px 26px" }}>
         <button style={T.backBtn} onClick={onBack} {...onActivate(onBack)}>‹ Назад</button>
+        {sHint && sSteps.length ? (
+          <HintBubble a11y={a11y} text={sSteps[0]} arrow="up" step={1} total={1}
+            onClose={sHintDone} style={{ margin:"10px 0 0" }} />
+        ) : null}
 
         {/* ── Шапка: красная печать SOS ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>

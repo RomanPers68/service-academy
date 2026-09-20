@@ -7,6 +7,8 @@
 // экран честно объясняет, что настроить (supabase/AI-SETUP.md).
 // ─────────────────────────────────────────────────────────────────────
 import React from "react";
+import { hintsFor } from "../data/hints";
+import { useHintOnce, HintBubble } from "./widgets";
 import { createPortal } from "react-dom";
 import { GOLD, RED, RADIUS } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
@@ -120,6 +122,9 @@ const ERRORS = {
 };
 
 export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner }) {
+  const [aHint, aHintDone] = useHintOnce("mentor");
+  const [aStep, setAStep] = React.useState(0);
+  const aSteps = hintsFor("mentor");
   const uid = String(profile?.id || "anon");
   const [store, setStore] = React.useState(() => loadStore(uid));
   const active = store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
@@ -482,6 +487,12 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
         style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", padding: "14px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
 
         {msgs.length === 0 && !confirmClear && (
+          {aHint && aSteps.length ? (
+            <HintBubble a11y={a11y} text={aSteps[aStep]} arrow="down"
+              step={aStep + 1} total={aSteps.length}
+              onNext={aStep >= aSteps.length - 1 ? null : () => setAStep(v => v + 1)}
+              onClose={aHintDone} style={{ margin:"0 0 10px" }} />
+          ) : null}
           <div className="sa-pagein" style={{ ...glass, padding: "20px 18px" }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
               <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>

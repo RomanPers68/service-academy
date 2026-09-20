@@ -20,6 +20,7 @@ import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
+import { hintsFor, hintKey } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor } from "./tokens";
@@ -83,7 +84,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
   // Подсказка по главному экрану. Ключ свой на роль: руководителю нужно
   // рассказать про график и команду, сотруднику — про трек и инструменты.
   const isBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
-  const [homeHint, homeHintDone] = useHintOnce(isBoss ? "home_admin" : "home_staff", !!role);
+  const [homeHint, homeHintDone] = useHintOnce(hintKey("home", isBoss), !!role);
   const [homeStep, setHomeStep] = React.useState(0);
   React.useEffect(() => {
     if (calmMotion()) return;                 // без движения — подписи статичны
@@ -448,15 +449,8 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             {/* Подсказка по главному экрану. Второй шаг — про ленту инструментов:
                 именно её владелец опасался, что будут пропускать. */}
             {homeHint ? (() => {
-              const steps = isBoss ? [
-                "Карточка сверху — твой следующий шаг в обучении. Ниже «График смен»: там сборка месяца, дыры и зарплата.",
-                "Эта лента всегда под рукой: справочник, меню, глоссарий. Подписи меняются по очереди — так видно, что внутри. Красный круг справа — SOS, когда всё горит.",
-                "Внизу четыре вкладки. «Команда» — рейтинг, новички и аналитика по смене.",
-              ] : [
-                "Карточка сверху — твой следующий шаг. Кнопка справа ведёт прямо в него, искать ничего не нужно.",
-                "Эта лента всегда под рукой: справочник, меню, глоссарий. Подписи меняются по очереди — так видно, что внутри. Красный круг справа — SOS, если растерялся в смене.",
-                "Внизу четыре вкладки: «Учусь» — программа, «Смена» — рабочий день, «Команда» и «Я».",
-              ];
+              const steps = hintsFor(hintKey("home", isBoss));
+
               const last = homeStep >= steps.length - 1;
               return (
                 <HintBubble a11y={a11y} text={steps[homeStep]}

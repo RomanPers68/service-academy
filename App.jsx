@@ -343,6 +343,7 @@ import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./ui/mood-cards";
 import { BG_DARK, CREAM, GOLD, GOLD_LOGO, SAND, toolColor } from "./ui/tokens";
+import { hintsFor, hintKey } from "./data/hints";
 import {
   AchievementPopup,
   RoleCompleteScreen,
@@ -1407,7 +1408,9 @@ function ServiceAcademy() {
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
-        {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня" hero={<ShiftHero a11y={a11y} onOpen={() => navigate("schedule")} />} items={[
+        {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня"
+          hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
+          hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<ShiftHero a11y={a11y} onOpen={() => navigate("schedule")} />} items={[
           { key:"sch", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
           { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
           { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
@@ -1417,7 +1420,8 @@ function ServiceAcademy() {
         {screen === "teamHub" && profile && (() => {
           const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
           const dueM = (mistakeBank || []).filter(m => !m.due || m.due <= Date.now()).length;
-          return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />} items={[
+          return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" hintKey={hintKey("team", staff)}
+            hintSteps={hintsFor(hintKey("team", staff))} subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />} items={[
             { key:"lb", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
             { key:"mt", icon:"mentor", label:"Наставничество", sub:"Допуски и подтверждение навыков", onClick:() => navigate("mentor") },
             role !== "seasonal" && { key:"ob", icon:"onboarding", label:"Новички", sub:"План первой недели и прогресс новых сотрудников", onClick:() => navigate("onboarding") },
@@ -1435,7 +1439,10 @@ function ServiceAcademy() {
           else if (dest === "guestbook") { setBookFocus(null); navigate("guestbook"); }
           else navigate(dest);
         }} /></Suspense>}
-        {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title={profile.name} subtitle={profile.restaurant || "Service Academy"}
+        {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y}
+          hintKey="me"
+          hintSteps={hintsFor("me")}
+          title={profile.name} subtitle={profile.restaurant || "Service Academy"}
           hero={<MeHero a11y={a11y} streak={streak} roleLabel={ROLES.find(r => r.id === role)?.label} total={totalLessons}
             done={modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}
             onOpen={() => navigate("stats")} />} items={[

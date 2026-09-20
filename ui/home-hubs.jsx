@@ -1,5 +1,5 @@
 import React from "react";
-import { EmptyState } from "./widgets";
+import { EmptyState, useHintOnce, HintBubble } from "./widgets";
 import { LOGO_SRC_DARK } from "../assets/logo";
 import { onActivate, vibrate } from "../lib/utils";
 
@@ -29,7 +29,12 @@ const ICON = {
   mistakes: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>,
 };
 
-export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero }) {
+export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps }) {
+  // Подсказка вкладки. Ключ и тексты приходят снаружи: HubScreen общий для
+  // «Смены» и «Команды», а объяснять им надо разное — и по-разному для
+  // сотрудника и руководителя.
+  const [hint, hintDone] = useHintOnce(hintKey || "hub", !!hintKey && !!(hintSteps || []).length);
+  const [hstep, setHstep] = React.useState(0);
   const gold = a11y ? "#8B6A30" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
   const sub = T.modSub?.color || (a11y ? "#6B5B40" : "#9C8760");
@@ -52,6 +57,15 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero }
       </div>
       <div style={{ padding: "6px 16px 100px", display: "flex", flexDirection: "column", gap: 10 }}>
         {hero}
+        {hint && (hintSteps || []).length ? (() => {
+          const last = hstep >= hintSteps.length - 1;
+          return (
+            <HintBubble a11y={a11y} text={hintSteps[hstep]} arrow="up"
+              step={hstep + 1} total={hintSteps.length}
+              onNext={last ? null : () => setHstep(v => v + 1)}
+              onClose={hintDone} style={{ margin:"4px 0 8px" }} />
+          );
+        })() : null}
         {items.filter(Boolean).map((it, idx) => {
           const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };

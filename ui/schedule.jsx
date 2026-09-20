@@ -11,6 +11,7 @@
 
 import React from "react";
 import { useHintOnce, HintBubble } from "./widgets";
+import { hintsFor } from "../data/hints";
 import { rpc, saToken } from "../api/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { vibrate, onActivate } from "../lib/utils";
@@ -3096,10 +3097,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               написать менеджеру — и все так и делали, а менеджер вбивал
               руками. Здесь весь месяц на одном экране, период — двумя тапами. */}
           {hint ? (() => {
-            const steps = [
-              "Ближайшая смена — сразу под именем. Ниже весь месяц: тап по дню раскроет, кто с тобой в смене.",
-              "Выходные и отпуск отмечай в «Моих пожеланиях»: тап по дню — просьба или «не смогу». Отпуск — кнопкой «Отметить период», двумя касаниями.",
-            ];
+            const steps = hintsFor("sched_staff");
             const last = hintStep >= steps.length - 1;
             return (
               <HintBubble a11y={a11y} text={steps[hintStep]} arrow="down"
@@ -3702,11 +3700,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     {/* Подсказка руководителя: три шага по тем кнопкам, которые он и нажмёт.
         Ключ отдельный от сотрудника — задачи у них разные. */}
     {hint ? (() => {
-      const steps = [
-        "«Заполнить черновик» закроет дыры, не трогая расставленное. Выбери должность чипом над таблицей — заполнится только она.",
-        "Тап по клетке открывает выбор смены. Поставленная вручную закрепляется — генератор её не тронет. Оттуда же «Кто вместо?» и «Факт часов».",
-        "Ошиблись — «↩» рядом с «Сохранить» вернёт как было. На сервер уходит только по «Сохранить», до этого всё черновик.",
-      ];
+      const steps = hintsFor("sched_admin");
+
       const last = hintStep >= steps.length - 1;
       return (
         <HintBubble a11y={a11y} text={steps[hintStep]} arrow="down"

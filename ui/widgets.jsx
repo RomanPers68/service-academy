@@ -65,36 +65,61 @@ export function useHintOnce(key, ready = true) {
   return [on, close];
 }
 
-/** Шаг подсказки: текст, стрелка к кнопке и «понятно». */
-export function HintBubble({ a11y, text, arrow = "up", step, total, onNext, onClose, style }) {
-  const bg   = a11y ? "rgba(255,252,244,0.99)" : "rgba(38,29,15,0.985)";
-  const text_= a11y ? "#2A2113" : "#EFE4C8";
-  const sub  = a11y ? "#6E5C3C" : "#9C8760";
+/** Шаг подсказки: одна строка — иконка, текст с полосками шагов, кнопка.
+ *  Крестик вместо слова «скрыть»: жест закрытия привычен и не требует слов.
+ *  Стрелка — ромб БЕЗ собственных граней: со своими на стыке с пузырём
+ *  проступала лишняя линия, и он выглядел наклейкой, а не продолжением стекла. */
+export function HintBubble({ a11y, text, arrow = "up", step = 1, total = 1, onNext, onClose, style }) {
+  const txt  = a11y ? "#2A2113" : "#EFE4C8";
+  const sub  = a11y ? "#6E5C3C" : "#8F7B57";
   const gold = a11y ? "#8B6A30" : GOLD;
-  const tip  = { display:"block", width:0, height:0, margin:"0 auto",
-    borderLeft:"8px solid transparent", borderRight:"8px solid transparent" };
+  const fill = a11y ? "rgba(236,214,166,0.55)" : "rgba(226,186,116,0.13)";
+  const edge = a11y ? "rgba(150,112,40,0.28)" : "rgba(255,255,255,0.12)";
+  const nub = (
+    <span style={{ display:"block", width:12, height:12, margin:"0 auto",
+      marginBottom: arrow === "up" ? -7 : 0, marginTop: arrow === "down" ? -7 : 0,
+      transform:"rotate(45deg)", background:fill, position:"relative",
+      zIndex: arrow === "up" ? 1 : 0 }} />
+  );
   return (
     <div className="sa-hintin" style={{ margin:"8px 14px", ...style }}>
-      {arrow === "up" ? (
-        <i style={{ ...tip, borderBottom:`9px solid ${a11y ? "rgba(150,112,40,0.5)" : "rgba(214,178,102,0.5)"}` }} />
-      ) : null}
-      <div style={{ padding:"12px 14px", borderRadius:16,
-        background:bg, border:`1px solid ${gold}59`,
-        boxShadow: a11y ? "0 6px 20px rgba(90,66,20,0.16)" : "0 6px 22px rgba(0,0,0,0.5)" }}>
-        <div style={{ fontSize:13, lineHeight:1.5, color:text_ }}>{text}</div>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:11 }}>
+      {arrow === "up" ? nub : null}
+      <div style={{ position:"relative", display:"flex", alignItems:"center", gap:11,
+        padding:"13px 14px", borderRadius:18, background:fill,
+        border:`1px solid ${edge}`,
+        boxShadow: a11y
+          ? "inset 0 0 24px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 26px rgba(90,66,20,0.14)"
+          : "inset 0 0 24px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 26px rgba(0,0,0,0.45)" }}>
+        <span style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, display:"grid",
+          placeItems:"center", background:`${gold}2E`, border:`1px solid ${gold}66` }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold}
+            strokeWidth="1.8" strokeLinecap="round"><path d="M12 17v.01"/>
+            <path d="M12 14c0-2 3-2.5 3-5a3 3 0 0 0-6 0"/></svg>
+        </span>
+        <span style={{ flex:1, minWidth:0 }}>
+          <span style={{ display:"block", fontFamily:"Georgia, serif", fontSize:13.5,
+            lineHeight:1.5, color:txt }}>{text}</span>
           {total > 1 ? (
-            <span style={{ fontFamily:"monospace", fontSize:10, color:sub, flex:1 }}>{step} из {total}</span>
-          ) : <span style={{ flex:1 }} />}
-          <span onClick={onClose} style={{ fontSize:12, color:sub, cursor:"pointer" }}>больше не показывать</span>
-          <span onClick={onNext || onClose} style={{ fontSize:12.5, fontWeight:"bold", color:"#1A1008",
-            background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"6px 14px",
-            borderRadius:999, cursor:"pointer" }}>{onNext ? "Дальше" : "Понятно"}</span>
-        </div>
+            <span style={{ display:"flex", gap:5, marginTop:8 }}>
+              {Array.from({ length: total }, (_, i) => (
+                <i key={i} style={{ display:"block", height:3, borderRadius:2,
+                  width: i === step - 1 ? 16 : 6,
+                  background: i === step - 1 ? gold : `${gold}47`,
+                  transition:"width .3s ease" }} />
+              ))}
+            </span>
+          ) : null}
+        </span>
+        <span onClick={onNext || onClose} style={{ flexShrink:0, fontFamily:"Georgia, serif",
+          fontSize:12.5, fontWeight:"bold", color:"#1A1008", cursor:"pointer",
+          background:`linear-gradient(180deg,#E4C88C,${GOLD})`,
+          padding:"7px 16px", borderRadius:999 }}>{onNext ? "Дальше" : "Понятно"}</span>
+        <span onClick={onClose} title="Больше не показывать"
+          style={{ position:"absolute", top:6, right:7, width:20, height:20, borderRadius:"50%",
+            display:"grid", placeItems:"center", fontSize:11, color:sub, cursor:"pointer",
+            border:`1px solid ${edge}` }}>✕</span>
       </div>
-      {arrow === "down" ? (
-        <i style={{ ...tip, borderTop:`9px solid ${a11y ? "rgba(150,112,40,0.5)" : "rgba(214,178,102,0.5)"}` }} />
-      ) : null}
+      {arrow === "down" ? nub : null}
     </div>
   );
 }

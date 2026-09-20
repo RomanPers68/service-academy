@@ -456,8 +456,8 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 // всё вокруг — карточки с полями; к тому же сразу под блоком
                 // уже стоит разделитель приложения, и полос выходило три подряд.
                 // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
-                <div style={{ display:"flex", alignItems:"flex-start", gap:8,
-                  margin:"0 14px 9px", padding:"12px 13px", borderRadius:18,
+                <div style={{ display:"flex", alignItems:"center", gap:8,
+                  margin:"0 14px 9px", padding:"10px 12px", borderRadius:999,
                   background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
                   boxShadow: a11y
                     ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
@@ -503,21 +503,23 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                     })}
                   </div>
                   {sos ? (<>
-                    {/* SOS вне прокрутки: в панике он обязан быть на одном месте,
-                        а не уезжать вместе с лентой. Круг вместо квадрата —
-                        чтобы палец находил его, не читая подпись. */}
-                    <span style={{ width:1, alignSelf:"stretch", flexShrink:0,
-                      background: saFrame(a11y, "mid"), margin:"0 2px" }} />
-                    <div onClick={sos.onClick} {...onActivate(sos.onClick)}
-                      style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center",
-                        gap:7, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
-                      <span style={{ width:48, height:48, borderRadius:"50%", display:"grid", placeItems:"center",
+                    {/* Слово внутри круга, а не под ним. Раньше подпись стояла
+                        снизу, колонка SOS оказывалась выше ряда инструментов,
+                        и капсула тянулась по ней — под иконками оставался
+                        пустой подбородок. Теперь обе стороны одной высоты.
+                        Надпись в круге работает как знак на огнетушителе:
+                        не нужно догадываться по иконке щита. */}
+                    <span style={{ width:1, height:34, flexShrink:0, alignSelf:"center",
+                      background: saFrame(a11y, "mid"), margin:"0 4px" }} />
+                    <div onClick={sos.onClick} {...onActivate(sos.onClick)} title="Срочная помощь"
+                      style={{ flexShrink:0, width:46, height:46, borderRadius:"50%", cursor:"pointer",
+                        display:"grid", placeItems:"center", alignSelf:"center",
+                        WebkitTapHighlightColor:"transparent",
                         background: a11y ? "rgba(255,240,240,0.8)" : "rgba(224,120,120,0.14)",
                         border:`1.5px solid ${sosR}99`,
                         boxShadow:`0 0 0 4px ${sosR}12` }}>
-                        {React.cloneElement(sos.icon, { width:23, height:23 })}
-                      </span>
-                      <span style={{ fontSize:10, fontWeight:"bold", color:sosR }}>SOS</span>
+                      <span style={{ fontFamily:"monospace", fontSize:11.5, fontWeight:"bold",
+                        letterSpacing:0.5, color:sosR }}>SOS</span>
                     </div>
                   </>) : null}
                 </div>

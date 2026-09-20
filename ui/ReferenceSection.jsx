@@ -4,6 +4,8 @@
 import { RefArt } from "./reference-art";
 import { COCKTAILS } from "../data/cocktails";
 import React from "react";
+import { hintsFor } from "../data/hints";
+import { useHintOnce, HintBubble } from "./widgets";
 import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 import { SearchScreen } from "./search";
@@ -155,6 +157,12 @@ function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
   return (<div style={T.screen}>
     <Head T={T} title={lesson.title} onBack={onBack} />
     <div ref={bodyRef} style={{ ...T.lessBody, padding: "14px 14px 40px" }}>
+      {rHint && rSteps.length ? (
+        <HintBubble a11y={a11y} text={rSteps[rStep]} arrow="up"
+          step={rStep + 1} total={rSteps.length}
+          onNext={rStep >= rSteps.length - 1 ? null : () => setRStep(v => v + 1)}
+          onClose={rHintDone} style={{ margin:"0 0 10px" }} />
+      ) : null}
       {lesson.images && lesson.images.map((k, i) => <Figure key={i} T={T}>{renderIll(k, gold, dark)}</Figure>)}
       <div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 22, boxShadow: T.lessGlass.shadow, padding: "20px 18px", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur }}>
         <Content text={lesson.content} T={T} gold={gold} dark={dark} />
@@ -209,6 +217,9 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent }) {
   // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
   const gold = accent || (a11y ? "#8B6A30" : GOLD);
+  const [rHint, rHintDone] = useHintOnce("reference");
+  const [rStep, setRStep] = React.useState(0);
+  const rSteps = hintsFor("reference");
   const dark = !a11y;
   // Глава «Инструменты руководителя» видна только менеджерам — фильтруем
   // прямо в карте курсов: вся навигация ниже работает с уже отсеянным списком.

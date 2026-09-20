@@ -21,6 +21,8 @@ import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
+import { useHintOnce, HintBubble } from "./widgets";
+import { hintsFor } from "../data/hints";
 import { frostOf } from "./home-hubs";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 import { LiveDialogue } from "./screens-dialogue";
@@ -1069,6 +1071,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
 
 export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {}, onToggleFav = () => {}, onSetNote = () => {} }) {
   const [search, setSearch] = React.useState("");
+  // Подсказка одна на всех: содержание глоссария от роли не зависит.
+  const [gHint, gHintDone] = useHintOnce("glossary");
+  const [gStep, setGStep] = React.useState(0);
+  const gSteps = hintsFor("glossary");
   const [favOnly, setFavOnly] = React.useState(false);
   const [cat, setCat] = React.useState("Все"); // фильтр по разделу глоссария
   const [editingNote, setEditingNote] = React.useState(null); // ключ термина, чья заметка сейчас редактируется
@@ -1084,6 +1090,12 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.book(color || GOLD, 18)}<span>Глоссарий</span></div>
+      {gHint && gSteps.length ? (
+        <HintBubble a11y={a11y} text={gSteps[gStep]} arrow="up"
+          step={gStep + 1} total={gSteps.length}
+          onNext={gStep >= gSteps.length - 1 ? null : () => setGStep(v => v + 1)}
+          onClose={gHintDone} />
+      ) : null}
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 40px" }}>
         <input

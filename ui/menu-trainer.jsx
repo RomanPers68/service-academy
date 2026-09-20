@@ -6,6 +6,8 @@
 // Плюс редактор блюд для менеджеров (localStorage: sa_menu_custom).
 
 import React from "react";
+import { hintsFor, hintKey } from "../data/hints";
+import { useHintOnce, HintBubble } from "./widgets";
 import { rememberSharedMenu } from "../lib/reference-context";
 import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
 import { buildMenuQuiz } from "../lib/menu-quiz";
@@ -70,6 +72,12 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // Цвет приходит от кнопки, которой сюда вошли, — как у SOS. Без него
   // остаётся прежний золотой, чтобы прочие входы не поменяли вид.
   const gold = accent || (a11y ? "#8B6A30" : "#C8A96E");
+  // Роль берётся из профиля: редактор меню доступен только руководству,
+  // и подсказка про публикацию сотруднику не нужна.
+  const mBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
+  const [mHint, mHintDone] = useHintOnce(hintKey("menu", mBoss));
+  const [mStep, setMStep] = React.useState(0);
+  const mSteps = hintsFor(hintKey("menu", mBoss));
   const green = "#5DBB8A";
   const red = "#E07878";
   const textColor = a11y ? "#2e211a" : "#F5EFE2";
@@ -213,6 +221,12 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   return (
     <div style={T.screen} className="sa-screen">
       {Head(restaurant)}
+      {mHint && mSteps.length ? (
+        <HintBubble a11y={a11y} text={mSteps[mStep]} arrow="up"
+          step={mStep + 1} total={mSteps.length}
+          onNext={mStep >= mSteps.length - 1 ? null : () => setMStep(v => v + 1)}
+          onClose={mHintDone} />
+      ) : null}
       {/* Быстрая смена ресторана — «линза» скользит по чипсам */}
       <div style={{ padding: "10px 14px 0" }}>
         <LiquidSegment a11y={a11y} equal={false} scroll accent={gold} muted={T.modSub.color}

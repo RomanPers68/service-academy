@@ -206,8 +206,9 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab }) {
-  const gold = a11y ? "#8B6A30" : GOLD;
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent }) {
+  // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
+  const gold = accent || (a11y ? "#8B6A30" : GOLD);
   const dark = !a11y;
   // Глава «Инструменты руководителя» видна только менеджерам — фильтруем
   // прямо в карте курсов: вся навигация ниже работает с уже отсеянным списком.

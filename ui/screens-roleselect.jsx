@@ -22,7 +22,7 @@ import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
 
 const _WAX_BLOB = "M12 1.9c2.3-.3 4.5.7 6.1 2.2 1.6 1.5 2.9 3.5 3.5 5.6.6 2.2.2 4.6-1 6.5-1.1 1.9-3 3.5-5.1 4.4-2.1.9-4.6 1-6.7.1-2.1-.8-3.9-2.5-5-4.5-1.1-2-1.5-4.4-.9-6.6C3.5 7.4 5 5.4 6.9 4 8.4 2.9 10.2 2.1 12 1.9Z";
@@ -446,9 +446,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
               // Свой цвет каждому инструменту: однородный серый ряд глаз
               // пропускает, а цветной узор замечает боковым зрением.
               // Оттенки взяты те же, что у треков обучения.
-              const tint = (k) => k === "menu" ? (a11y ? "#4E7A58" : "#8FB890")
-                : k === "gl" ? (a11y ? "#5F5490" : "#9B8FC4")
-                : (a11y ? "#8B6A30" : GOLD);
+              const tint = (k) => toolColor(k, a11y);   // один источник — ui/tokens.js
               return (
                 // Капсула, как у «Графика смен» и «Книги отзывов» — та же
                 // рецептура стекла, та же рамка, тот же отступ от края. Сначала

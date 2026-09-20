@@ -65,9 +65,11 @@ const DishPhoto = ({ src, h = 170 }) => src ? (
 // Сжатие фото с телефона перед сохранением (localStorage не резиновый)
 // readPhoto — общий, в lib/utils (Доп. 242)
 
-export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role }) {
+export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role, accent }) {
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
-  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  // Цвет приходит от кнопки, которой сюда вошли, — как у SOS. Без него
+  // остаётся прежний золотой, чтобы прочие входы не поменяли вид.
+  const gold = accent || (a11y ? "#8B6A30" : "#C8A96E");
   const green = "#5DBB8A";
   const red = "#E07878";
   const textColor = a11y ? "#2e211a" : "#F5EFE2";

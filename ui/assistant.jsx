@@ -487,13 +487,16 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
         style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", padding: "14px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
 
         {msgs.length === 0 && !confirmClear && (
-          {aHint && aSteps.length ? (
-            <HintBubble a11y={a11y} text={aSteps[aStep]} arrow="down"
-              step={aStep + 1} total={aSteps.length}
-              onNext={aStep >= aSteps.length - 1 ? null : () => setAStep(v => v + 1)}
-              onClose={aHintDone} style={{ margin:"0 0 10px" }} />
-          ) : null}
           <div className="sa-pagein" style={{ ...glass, padding: "20px 18px" }}>
+            {/* Подсказка первым ребёнком карточки: снаружи, сразу после «&& (»,
+                ожидается JSX-элемент, а не выражение в фигурных скобках —
+                сборка падала с «Expected } but found &&». */}
+            {aHint && aSteps.length ? (
+              <HintBubble a11y={a11y} text={aSteps[aStep]} arrow="down"
+                step={aStep + 1} total={aSteps.length}
+                onNext={aStep >= aSteps.length - 1 ? null : () => setAStep(v => v + 1)}
+                onClose={aHintDone} style={{ margin:"0 0 12px" }} />
+            ) : null}
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
               <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
                 {UI_SVG.sparkle(gold, 26)}

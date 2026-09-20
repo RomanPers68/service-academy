@@ -134,13 +134,10 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
         </div>
       </div>
       {/* ── Точка входа ──────────────────────────────────────────────────
-          Раньше между человеком и уроком стояли три карточки одного веса:
-          прогресс, серия дней и настроение. У новичка все три пустые — 2 %,
-          ноль дней, настроение не отмечено, — и самым крупным пятном экрана
-          были семь пустых кружков серии. Урок при этом начинался за сгибом.
-          Теперь сверху одно яркое действие: раздел, на котором остановились.
-          Стекло с изморозью — та же рецептура, что у карточек графика,
-          разведённая по обеим темам. */}
+          Тот же вид, что у карточки трека на экране роли, — чтобы два главных
+          экрана говорили на одном языке. Первая версия была с кнопкой во всю
+          ширину: карточка раздувалась и съедала воздух. Здесь иконка с кольцом
+          прогресса, значок типа шага и кнопка сбоку по размеру задачи. */}
       {(() => {
         const all = [...modules, ...customModules];
         const nx = all.find(m => {
@@ -149,32 +146,63 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
           return tot > 0 && dn < tot;
         });
         if (!nx) return null;
-        const mins = _fmtMins((nx.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0));
-        const started = nx.lessons.some(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id]));
+        const lessons = (nx.lessons || []).filter(l => l.type !== "result");
+        const step = lessons.find(l => !(l.type === "quiz" ? quizDone[l.id] : completed[l.id])) || lessons[0];
+        const dn = lessons.filter(l => (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length;
+        const pct = lessons.length ? Math.round(dn / lessons.length * 100) : 0;
+        const started = dn > 0;
+        // Что за шаг: тест, практика или урок. Приставку из названия убираем —
+        // её говорит значок, и в одной строке они спорили.
+        const kind = !step ? null : step.type === "quiz" ? "ТЕСТ"
+          : (step.situations && step.situations.length) ? "ПРАКТИКА" : "УРОК";
+        const title = String(step?.title || nx.title).replace(/^(Тест|Практика|Урок)\s*[:·—-]\s*/i, "")
+          .replace(/^./, c => c.toUpperCase());
+        const qn = (step?.questions || []).length;
+        const meta = [qn ? `${qn} ${qn === 1 ? "вопрос" : qn < 5 ? "вопроса" : "вопросов"}` : null,
+          step ? `≈ ${_estMins(step)} мин` : null,
+          started ? `пройдено ${pct}%` : null].filter(Boolean).join(" · ");
+        const RC = nx.color || role.color;
         const go = () => onModule(nx);
         return (
           <div onClick={go} {...onActivate(go)} className="sa-card"
-            style={{ margin:"6px 14px 10px", padding:"16px 15px", borderRadius:18, cursor:"pointer",
+            style={{ margin:"6px 14px 10px", padding:"12px 13px", borderRadius:18, cursor:"pointer",
+              display:"flex", alignItems:"center", gap:12,
               background: a11y
-                ? "linear-gradient(180deg,rgba(236,214,166,0.55),rgba(250,242,222,0.72))"
-                : "linear-gradient(180deg,rgba(214,178,102,0.20),rgba(214,178,102,0.06))",
-              border:`1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`,
-              borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.6)" : "rgba(226,190,120,0.5)"}`,
+                ? "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))"
+                : "linear-gradient(180deg,rgba(214,178,102,0.17),rgba(214,178,102,0.05))",
+              border:`1px solid ${a11y ? "rgba(150,112,40,0.42)" : "rgba(214,178,102,0.4)"}`,
+              borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.58)" : "rgba(226,190,120,0.46)"}`,
               boxShadow: a11y
                 ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95)"
-                : "inset 0 0 20px rgba(255,240,205,0.09), inset 0 1px 0 rgba(255,255,255,0.14)" }}>
-            <div style={{ fontFamily:"monospace", fontSize:9, letterSpacing:2.4, textTransform:"uppercase",
-              color: a11y ? "#8B6A30" : GOLD, marginBottom:6 }}>
-              {started ? "продолжить" : "начать"} · {nx.tag} · ≈ {mins}
+                : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13)" }}>
+            <div style={{ position:"relative", width:48, height:48, flexShrink:0, display:"grid", placeItems:"center" }}>
+              <svg width="48" height="48" viewBox="0 0 48 48" style={{ position:"absolute", inset:0 }}>
+                <circle cx="24" cy="24" r="22" fill="none" strokeWidth="2.5"
+                  stroke={a11y ? "rgba(120,90,30,0.2)" : "rgba(200,169,110,0.2)"} />
+                <circle cx="24" cy="24" r="22" fill="none" stroke={RC} strokeWidth="2.5" strokeLinecap="round"
+                  strokeDasharray={(2 * Math.PI * 22 * pct / 100) + " " + (2 * Math.PI * 22)}
+                  transform="rotate(-90 24 24)" />
+              </svg>
+              <span style={{ position:"relative", display:"inline-flex" }}>
+                {MOD_SVG[nx.icon] ? MOD_SVG[nx.icon](RC, 21) : null}
+              </span>
+              {kind ? (
+                <span style={{ position:"absolute", bottom:-4, left:"50%", transform:"translateX(-50%)",
+                  fontFamily:"monospace", fontSize:8, letterSpacing:1.1, whiteSpace:"nowrap",
+                  color:RC, padding:"1px 6px", borderRadius:999,
+                  background: a11y ? "#F7F0E0" : "#1A1409", border:`1px solid ${RC}66` }}>{kind}</span>
+              ) : null}
             </div>
-            <div style={{ fontFamily:"Georgia, serif", fontSize:21, lineHeight:1.25, color: a11y ? "#2A2113" : "#EFE4C8" }}>{nx.title}</div>
-            {nx.subtitle ? (
-              <div style={{ fontSize:12.5, color: a11y ? "#6E5C3C" : "#9C8760", marginTop:4 }}>{nx.subtitle}</div>
-            ) : null}
-            <div style={{ marginTop:12, textAlign:"center", padding:"10px", borderRadius:999,
-              fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", color:"#2A1F0E",
-              background:"linear-gradient(180deg,#E4C88C,#C8A96E)" }}>
-              {started ? "Продолжить" : "Начать"}
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:"Georgia, serif", fontSize:16, lineHeight:1.25,
+                color: a11y ? "#2A2113" : "#EFE4C8", overflow:"hidden",
+                display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{title}</div>
+              <div style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#9C8760", marginTop:3, lineHeight:1.4 }}>{meta}</div>
+            </div>
+            <div style={{ flexShrink:0, padding:"9px 15px", borderRadius:999,
+              fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold", color:"#1A1008",
+              background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>
+              {started ? "Дальше" : "Начать"}
             </div>
           </div>
         );

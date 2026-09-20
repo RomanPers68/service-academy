@@ -417,8 +417,6 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
             <>
-            <div style={{ fontFamily:"monospace", fontSize:9, letterSpacing:2.4, textTransform:"uppercase",
-              color: T.modSub.color, padding:"0 20px 7px" }}>под рукой</div>
             {/* Полка инструментов. Набор ДИНАМИЧЕСКИЙ: новичок видит три плитки,
                 остальные четыре, а завтра добавятся «Новички» и «Наставничество».
                 Поэтому ширина чипа — по его слову, а полка переносит строки:
@@ -429,52 +427,65 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             {(() => {
               const tools = visibleTiles.filter(t => !t.red);
               const sos = visibleTiles.find(t => t.red);
-              const menuNewN = menuNew;
+              // Свой цвет каждому инструменту: однородный серый ряд глаз
+              // пропускает, а цветной узор замечает боковым зрением.
+              // Оттенки взяты те же, что у треков обучения.
+              const tint = (k) => k === "menu" ? (a11y ? "#4E7A58" : "#8FB890")
+                : k === "gl" ? (a11y ? "#5F5490" : "#9B8FC4")
+                : (a11y ? "#8B6A30" : GOLD);
               return (
-                <div style={{ display:"flex", alignItems:"center", gap:8, padding:"0 16px 12px" }}>
-                  {tools.length ? (
-                    <div style={{ flex:1, minWidth:0, display:"flex", flexWrap:"wrap", gap:6,
-                      padding:"8px 9px", borderRadius:18,
-                      background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
-                      boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45)" : "inset 0 0 18px rgba(255,248,230,0.05)" }}>
-                      {tools.map(t => {
-                        const badge = t.key === "menu" && menuNewN > 0 ? String(menuNewN) : null;
-                        const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
-                        return (
-                          <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)}
-                            style={{ display:"inline-flex", alignItems:"center", gap:6, minWidth:0,
-                              padding:"8px 12px", borderRadius:999, cursor:"pointer",
-                              WebkitTapHighlightColor:"transparent",
-                              // Своя кромка, мягче полки: saFrame уровня «soft» не знает
-                              // и вернул бы тот же цвет — получилась бы рамка в рамке.
-                              border:`1px solid ${t.accent ? Cc.gold : (a11y ? "rgba(139,106,48,0.22)" : "rgba(255,255,255,0.09)")}`,
-                              background: t.accent ? (a11y ? "rgba(236,214,166,0.4)" : "rgba(214,178,102,0.10)") : "transparent" }}>
-                            <span style={{ display:"inline-flex", flexShrink:0 }}>{React.cloneElement(t.icon, { width:15, height:15 })}</span>
-                            <span style={{ fontSize:11.5, color:Cc.text, whiteSpace:"nowrap" }}>{t.label}</span>
-                            {/* Счётчик ВНУТРИ чипа: снаружи он наполовину висел за краем плитки */}
-                            {badge ? (
-                              <span style={{ fontFamily:"monospace", fontSize:9, color:"#1A1008", flexShrink:0,
-                                background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, borderRadius:999, padding:"1px 6px" }}>{badge}</span>
-                            ) : dot ? (
-                              <span style={{ width:5, height:5, borderRadius:3, flexShrink:0, background:GOLD_SOFT }} />
+                <div style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"11px 16px 12px",
+                  borderTop:`1px solid ${saFrame(a11y, "mid")}`, borderBottom:`1px solid ${saFrame(a11y, "mid")}`,
+                  margin:"0 0 12px" }}>
+                  {/* Прокрутка вбок: высота ряда не растёт, сколько бы инструментов
+                      ни добавилось. Квадраты не сжимаются и подписи не режутся —
+                      при пяти и больше лишние уезжают вбок, а не ломают вёрстку. */}
+                  <div className="sa-hscroll" style={{ flex:1, minWidth:0, display:"flex", gap:12,
+                    overflowX:"auto", WebkitOverflowScrolling:"touch",
+                    scrollSnapType:"x proximity", overscrollBehaviorX:"contain" }}>
+                    {tools.map(t => {
+                      const c = tint(t.key);
+                      const badge = t.key === "menu" && menuNew > 0;
+                      const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
+                      return (
+                        <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)}
+                          style={{ flex:"0 0 62px", display:"flex", flexDirection:"column", alignItems:"center",
+                            gap:7, cursor:"pointer", scrollSnapAlign:"start",
+                            WebkitTapHighlightColor:"transparent" }}>
+                          <span style={{ position:"relative", width:40, height:40, borderRadius:12,
+                            display:"grid", placeItems:"center",
+                            background:`${c}29`, border:`1px solid ${c}66` }}>
+                            {React.cloneElement(t.icon, { width:20, height:20 })}
+                            {(badge || dot) ? (
+                              <span style={{ position:"absolute", top:-3, right:-3, width:8, height:8,
+                                borderRadius:4, background:GOLD_SOFT,
+                                border:`1.5px solid ${a11y ? "#F7F0E0" : "#14110A"}` }} />
                             ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  {sos ? (
+                          </span>
+                          <span style={{ fontSize:10, color:Cc.text, maxWidth:"100%", textAlign:"center",
+                            whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{t.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {sos ? (<>
+                    {/* SOS вне прокрутки: в панике он обязан быть на одном месте,
+                        а не уезжать вместе с лентой. Круг вместо квадрата —
+                        чтобы палец находил его, не читая подпись. */}
+                    <span style={{ width:1, alignSelf:"stretch", flexShrink:0,
+                      background: saFrame(a11y, "mid"), margin:"0 2px" }} />
                     <div onClick={sos.onClick} {...onActivate(sos.onClick)}
-                      style={{ flexShrink:0, width:52, height:52, borderRadius:"50%", cursor:"pointer",
-                        display:"grid", placeItems:"center", gap:1,
-                        WebkitTapHighlightColor:"transparent",
-                        border:`1px solid ${sosR}73`,
-                        background: a11y ? "rgba(255,240,240,0.7)" : "rgba(224,120,120,0.08)",
-                        boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(224,120,120,0.05)" }}>
-                      <span style={{ display:"inline-flex" }}>{React.cloneElement(sos.icon, { width:16, height:16 })}</span>
-                      <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:0.8, fontWeight:"bold", color:sosR }}>SOS</span>
+                      style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center",
+                        gap:7, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+                      <span style={{ width:48, height:48, borderRadius:"50%", display:"grid", placeItems:"center",
+                        background: a11y ? "rgba(255,240,240,0.8)" : "rgba(224,120,120,0.14)",
+                        border:`1.5px solid ${sosR}99`,
+                        boxShadow:`0 0 0 4px ${sosR}12` }}>
+                        {React.cloneElement(sos.icon, { width:23, height:23 })}
+                      </span>
+                      <span style={{ fontSize:10, fontWeight:"bold", color:sosR }}>SOS</span>
                     </div>
-                  ) : null}
+                  </>) : null}
                 </div>
               );
             })()}

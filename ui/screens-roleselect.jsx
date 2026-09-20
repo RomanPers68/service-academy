@@ -434,9 +434,18 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 : k === "gl" ? (a11y ? "#5F5490" : "#9B8FC4")
                 : (a11y ? "#8B6A30" : GOLD);
               return (
-                <div style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"11px 16px 12px",
-                  borderTop:`1px solid ${saFrame(a11y, "mid")}`, borderBottom:`1px solid ${saFrame(a11y, "mid")}`,
-                  margin:"0 0 12px" }}>
+                // Капсула, как у «Графика смен» и «Книги отзывов» — та же
+                // рецептура стекла, та же рамка, тот же отступ от края. Сначала
+                // я обвёл ряд своими линиями, и они пошли от края до края, хотя
+                // всё вокруг — карточки с полями; к тому же сразу под блоком
+                // уже стоит разделитель приложения, и полос выходило три подряд.
+                // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
+                <div style={{ display:"flex", alignItems:"flex-start", gap:8,
+                  margin:"0 14px 9px", padding:"12px 13px", borderRadius:18,
+                  background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
+                  boxShadow: a11y
+                    ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
+                    : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)" }}>
                   {/* Прокрутка вбок: высота ряда не растёт, сколько бы инструментов
                       ни добавилось. Квадраты не сжимаются и подписи не режутся —
                       при пяти и больше лишние уезжают вбок, а не ломают вёрстку. */}

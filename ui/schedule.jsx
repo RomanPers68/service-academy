@@ -10,6 +10,7 @@
 // Всё, что менеджер поправил руками, закрепляется и генератором не трогается.
 
 import React from "react";
+import { useHintOnce, HintBubble } from "./widgets";
 import { rpc, saToken } from "../api/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { vibrate, onActivate } from "../lib/utils";
@@ -432,6 +433,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [swapSel, setSwapSel] = React.useState(null);  // первая выбранная клетка обмена
   const [pick, setPick] = React.useState(null);        // { id, d } — палитра смен для клетки
   const [mix, setMix] = React.useState(0);             // «Перемешать»: сдвиг посева генератора
+  // Контекстная подсказка при первом входе. Ключ разный для сотрудника и
+  // руководителя: экраны и задачи у них разные, и одна отметка «видел» на
+  // двоих означала бы, что менеджеру свою подсказку уже не показать.
+  const [hint, hintDone] = useHintOnce(isAdmin ? "sched_admin" : "sched_staff", state === "ok");
+  const [hintStep, setHintStep] = React.useState(0);
   const [wishOpen, setWishOpen] = React.useState(false);   // экран пожеланий сотрудника развёрнут
   const [wishRange, setWishRange] = React.useState(null);  // null | {from} | {from,to} — режим периода
   const [wishAsk, setWishAsk] = React.useState(null);      // {from,to} — лист выбора отметки
@@ -3089,6 +3095,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               с 10 по 20, человек делал двадцать два касания. Проще было
               написать менеджеру — и все так и делали, а менеджер вбивал
               руками. Здесь весь месяц на одном экране, период — двумя тапами. */}
+          {hint ? (() => {
+            const steps = [
+              "Ближайшая смена — сразу под именем. Ниже весь месяц: тап по дню раскроет, кто с тобой в смене.",
+              "Выходные и отпуск отмечай в «Моих пожеланиях»: тап по дню — просьба или «не смогу». Отпуск — кнопкой «Отметить период», двумя касаниями.",
+            ];
+            const last = hintStep >= steps.length - 1;
+            return (
+              <HintBubble a11y={a11y} text={steps[hintStep]} arrow="down"
+                step={hintStep + 1} total={steps.length}
+                onNext={last ? null : () => setHintStep(v => v + 1)}
+                onClose={hintDone} style={{ margin:"4px 0 6px" }} />
+            );
+          })() : null}
           {wishes !== false ? (() => {
             const dl = (cfg?.rules || {}).wishDeadline || 0;
             const isCur = now.getFullYear() === Y && now.getMonth() === M;
@@ -3121,7 +3140,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               setWishAsk({ from: d, to: d });
             };
             return (
-              <div style={{ ...card, marginTop: 12, padding: 14 }}>
+              <div className={hint && hintStep === 1 ? "sa-pulse" : undefined}
+                style={{ ...card, marginTop: 12, padding: 14 }}>
                 <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:8 }}>
                   <div style={{ ...eyebrow, color:P.sub }}>мои пожелания · {MONTHS_R[M]}</div>
                   <button className="sa-btn" onClick={() => { setWishOpen(o => !o); setWishRange(null); vibrate("light"); }}
@@ -3679,8 +3699,24 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       );
     })()}
     {/* Доп. 262: меньше рядов — отмена рядом с кнопками, редкое ушло в «Ещё» */}
+    {/* Подсказка руководителя: три шага по тем кнопкам, которые он и нажмёт.
+        Ключ отдельный от сотрудника — задачи у них разные. */}
+    {hint ? (() => {
+      const steps = [
+        "«Заполнить черновик» закроет дыры, не трогая расставленное. Выбери должность чипом над таблицей — заполнится только она.",
+        "Тап по клетке открывает выбор смены. Поставленная вручную закрепляется — генератор её не тронет. Оттуда же «Кто вместо?» и «Факт часов».",
+        "Ошиблись — «↩» рядом с «Сохранить» вернёт как было. На сервер уходит только по «Сохранить», до этого всё черновик.",
+      ];
+      const last = hintStep >= steps.length - 1;
+      return (
+        <HintBubble a11y={a11y} text={steps[hintStep]} arrow="down"
+          step={hintStep + 1} total={steps.length}
+          onNext={last ? null : () => setHintStep(v => v + 1)}
+          onClose={hintDone} />
+      );
+    })() : null}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
-      <button style={btn} className="sa-btn" onClick={() => generate(posFilter || null)}>
+      <button style={btn} className={"sa-btn" + (hint && hintStep === 0 ? " sa-pulse" : "")} onClick={() => generate(posFilter || null)}>
         {posFilter ? `Заполнить: ${posName(posFilter)}` : "Заполнить черновик"}
       </button>
       <button style={ghost} className="sa-btn" onClick={save} disabled={!dirty}>

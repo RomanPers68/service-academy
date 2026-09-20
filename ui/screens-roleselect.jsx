@@ -19,7 +19,7 @@ import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
-import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
+import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor } from "./tokens";
@@ -80,6 +80,11 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
   // он открывает инструмент, а не раскрывает подпись: иначе каждое обращение
   // к справочнику стоило бы двух касаний. Поэтому подпись ездит сама.
   const [toolSpot, setToolSpot] = React.useState(0);
+  // Подсказка по главному экрану. Ключ свой на роль: руководителю нужно
+  // рассказать про график и команду, сотруднику — про трек и инструменты.
+  const isBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
+  const [homeHint, homeHintDone] = useHintOnce(isBoss ? "home_admin" : "home_staff", !!role);
+  const [homeStep, setHomeStep] = React.useState(0);
   React.useEffect(() => {
     if (calmMotion()) return;                 // без движения — подписи статичны
     const t = setInterval(() => setToolSpot(v => v + 1), 4000);
@@ -440,6 +445,27 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 режется и не уезжает за край. SOS вынесен из полки отдельным
                 кружком — он не «где посмотреть», а «что делать прямо сейчас»,
                 и в общем ряду читался таким же справочником, как глоссарий. */}
+            {/* Подсказка по главному экрану. Второй шаг — про ленту инструментов:
+                именно её владелец опасался, что будут пропускать. */}
+            {homeHint ? (() => {
+              const steps = isBoss ? [
+                "Карточка сверху — твой следующий шаг в обучении. Ниже «График смен»: там сборка месяца, дыры и зарплата.",
+                "Эта лента всегда под рукой: справочник, меню, глоссарий. Подписи меняются по очереди — так видно, что внутри. Красный круг справа — SOS, когда всё горит.",
+                "Внизу четыре вкладки. «Команда» — рейтинг, новички и аналитика по смене.",
+              ] : [
+                "Карточка сверху — твой следующий шаг. Кнопка справа ведёт прямо в него, искать ничего не нужно.",
+                "Эта лента всегда под рукой: справочник, меню, глоссарий. Подписи меняются по очереди — так видно, что внутри. Красный круг справа — SOS, если растерялся в смене.",
+                "Внизу четыре вкладки: «Учусь» — программа, «Смена» — рабочий день, «Команда» и «Я».",
+              ];
+              const last = homeStep >= steps.length - 1;
+              return (
+                <HintBubble a11y={a11y} text={steps[homeStep]}
+                  arrow={homeStep === 0 ? "up" : "down"}
+                  step={homeStep + 1} total={steps.length}
+                  onNext={last ? null : () => setHomeStep(v => v + 1)}
+                  onClose={homeHintDone} />
+              );
+            })() : null}
             {(() => {
               const tools = visibleTiles.filter(t => !t.red);
               const sos = visibleTiles.find(t => t.red);
@@ -454,7 +480,8 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 // всё вокруг — карточки с полями; к тому же сразу под блоком
                 // уже стоит разделитель приложения, и полос выходило три подряд.
                 // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
-                <div style={{ display:"flex", alignItems:"center", gap:8,
+                <div className={homeHint && homeStep === 1 ? "sa-pulse" : undefined}
+                  style={{ display:"flex", alignItems:"center", gap:8,
                   margin:"0 14px 9px", padding:"10px 12px", borderRadius:999,
                   background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
                   boxShadow: a11y

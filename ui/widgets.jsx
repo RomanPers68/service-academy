@@ -38,6 +38,67 @@ export function EmptyState({ a11y, icon, title, hint, action, onAction }) {
   );
 }
 
+/** Контекстная подсказка: появляется при первом входе в раздел, подсвечивает
+ *  кнопку пульсацией и показывает стрелку в её сторону.
+ *
+ *  Почему так, а не карточками при первом запуске: обучать двадцати разделам
+ *  до того, как человек увидел хоть один экран, бессмысленно — он не запомнит.
+ *  Подсказка приходит в момент, когда вопрос уже возник.
+ *
+ *  Роли разведены флагами (`sa_hint_sched_staff` против `…_admin`): сотрудник
+ *  и руководитель решают в графике разные задачи, и менеджер, начинавший
+ *  стажёром, иначе не увидел бы своей подсказки вовсе.
+ *
+ *  Пульсация — класс `.sa-pulse`, тот же, что в уроках; он уже погашен
+ *  в системном «спокойном режиме», так что ничего добавлять не нужно.
+ */
+export function useHintOnce(key, ready = true) {
+  const [on, setOn] = React.useState(false);
+  React.useEffect(() => {
+    if (!ready) return;
+    try { if (localStorage.getItem("sa_hint_" + key) !== "1") setOn(true); } catch (e) {}
+  }, [key, ready]);
+  const close = React.useCallback(() => {
+    setOn(false);
+    try { localStorage.setItem("sa_hint_" + key, "1"); } catch (e) {}
+  }, [key]);
+  return [on, close];
+}
+
+/** Шаг подсказки: текст, стрелка к кнопке и «понятно». */
+export function HintBubble({ a11y, text, arrow = "up", step, total, onNext, onClose, style }) {
+  const bg   = a11y ? "rgba(255,252,244,0.99)" : "rgba(38,29,15,0.985)";
+  const text_= a11y ? "#2A2113" : "#EFE4C8";
+  const sub  = a11y ? "#6E5C3C" : "#9C8760";
+  const gold = a11y ? "#8B6A30" : GOLD;
+  const tip  = { display:"block", width:0, height:0, margin:"0 auto",
+    borderLeft:"8px solid transparent", borderRight:"8px solid transparent" };
+  return (
+    <div className="sa-hintin" style={{ margin:"8px 14px", ...style }}>
+      {arrow === "up" ? (
+        <i style={{ ...tip, borderBottom:`9px solid ${a11y ? "rgba(150,112,40,0.5)" : "rgba(214,178,102,0.5)"}` }} />
+      ) : null}
+      <div style={{ padding:"12px 14px", borderRadius:16,
+        background:bg, border:`1px solid ${gold}59`,
+        boxShadow: a11y ? "0 6px 20px rgba(90,66,20,0.16)" : "0 6px 22px rgba(0,0,0,0.5)" }}>
+        <div style={{ fontSize:13, lineHeight:1.5, color:text_ }}>{text}</div>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:11 }}>
+          {total > 1 ? (
+            <span style={{ fontFamily:"monospace", fontSize:10, color:sub, flex:1 }}>{step} из {total}</span>
+          ) : <span style={{ flex:1 }} />}
+          <span onClick={onClose} style={{ fontSize:12, color:sub, cursor:"pointer" }}>больше не показывать</span>
+          <span onClick={onNext || onClose} style={{ fontSize:12.5, fontWeight:"bold", color:"#1A1008",
+            background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"6px 14px",
+            borderRadius:999, cursor:"pointer" }}>{onNext ? "Дальше" : "Понятно"}</span>
+        </div>
+      </div>
+      {arrow === "down" ? (
+        <i style={{ ...tip, borderTop:`9px solid ${a11y ? "rgba(150,112,40,0.5)" : "rgba(214,178,102,0.5)"}` }} />
+      ) : null}
+    </div>
+  );
+}
+
 export function Confetti() {
   const canvasRef = React.useRef(null);
   React.useEffect(() => {

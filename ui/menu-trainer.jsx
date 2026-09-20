@@ -207,41 +207,41 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
     { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Главные ингредиенты и аллергены — без подвохов" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
   ];
-  const iconBox = { width: 38, height: 38, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
+  const iconBox = { width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
   return (
     <div style={T.screen} className="sa-screen">
       {Head(restaurant)}
       {/* Быстрая смена ресторана — «линза» скользит по чипсам */}
       <div style={{ padding: "10px 14px 0" }}>
         <LiquidSegment a11y={a11y} equal={false} scroll accent={gold} muted={T.modSub.color}
-          itemStyle={{ fontSize: 12, padding: "7px 12px" }}
+          itemStyle={{ fontSize: 12.5, padding: "7px 12px" }}
           items={RESTAURANTS.map(r => ({ id: r, label: r }))}
           activeId={restaurant}
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
-      <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 13, lineHeight: 1.5 }}>
+      <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
         В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v25</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
           const have = dishes.length - miss.length;
           return (
-            <div style={{ marginTop: 5 }}>
+            <div style={{ marginTop: 4 }}>
               <span style={{ fontSize: 12.5 }}>Пищевая ценность: <b style={{ color: miss.length ? gold : green }}>{have}</b> из {dishes.length}</span>
               {miss.length > 0 && canEdit && <span onClick={() => setShowNoNut(v => !v)} {...onActivate(() => setShowNoNut(v => !v))} style={{ color: gold, cursor: "pointer", fontSize: 12.5, marginLeft: 8 }}>{showNoNut ? "скрыть" : `у ${miss.length} нет — дописать`}</span>}
               {showNoNut && miss.length > 0 && (
                 <div className="sa-fadein" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {miss.map(d => (
                     <span key={d.id} onClick={() => { setEditStart(d.id); setMode("edit"); vibrate("light"); }} {...onActivate(() => { setEditStart(d.id); setMode("edit"); })}
-                      style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${gold}55`, color: textColor }}>{d.name} ›</span>
+                      style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${gold}55`, color: textColor }}>{d.name} ›</span>
                   ))}
                 </div>
               )}
             </div>
           );
         })()}
-        {shareErr && <div style={{ color: red, fontSize: 12, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
-        {shareStale && <div style={{ color: T.modSub.color, fontSize: 12, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
+        {shareErr && <div style={{ color: red, fontSize: 12.5, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
+        {shareStale && <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
 
       <div style={{ ...T.secTitle }}>Тренировка</div>
@@ -252,7 +252,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={{ ...T.modBar, background: learned ? green : gold }} />
             <div style={{ ...iconBox, background: learned ? "rgba(93,187,138,0.14)" : iconBox.background }}>{learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>Новые позиции{!learned && <span style={{ fontSize: 9.5, letterSpacing: 1.5, fontFamily: "monospace", color: "#1c1206", background: gold, borderRadius: 6, padding: "2px 6px" }}>NEW</span>}</div>
+              <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>Новые позиции{!learned && <span style={{ fontSize: 9, letterSpacing: 1.5, fontFamily: "monospace", color: "#1A1008", background: gold, borderRadius: 6, padding: "2px 6px" }}>NEW</span>}</div>
               <div style={{ ...T.modSub, whiteSpace: "normal" }}>{learned ? `Выучено ✓ · ${newDishes.length} блюд — повтори при желании` : `${newDishes.length} блюд · выучи к смене`}</div>
             </div>
             <div style={T.modArrow}>›</div>
@@ -267,9 +267,9 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={T.modTitle}>{m.title}</div>
               <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Режим дня — попробуй «Наоборот» внутри: " : md.key === "know-menu" ? "Режим дня — «Знаю?»: " : "") + m.sub : m.sub}</div>
-              {isDay && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
-                <span style={{ display: "inline-flex", gap: 3 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 6, height: 6, borderRadius: 3, background: k < dayCount ? (dayDone ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${dayDone ? "#5DBB8A" : gold + "88"}` }} />)}</span>
-                <span style={{ fontSize: 9.5, letterSpacing: 1.4, fontFamily: "monospace", color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "ПЯТЬ ЕСТЬ ✓" : "РЕЖИМ ДНЯ"}{dayStreak > 1 ? ` · СЕРИЯ ${dayStreak}` : ""}</span>
+              {isDay && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                <span style={{ display: "inline-flex", gap: 2 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 6, height: 6, borderRadius: 3, background: k < dayCount ? (dayDone ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${dayDone ? "#5DBB8A" : gold + "88"}` }} />)}</span>
+                <span style={{ fontSize: 9, letterSpacing: 1.4, fontFamily: "monospace", color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "ПЯТЬ ЕСТЬ ✓" : "РЕЖИМ ДНЯ"}{dayStreak > 1 ? ` · СЕРИЯ ${dayStreak}` : ""}</span>
               </div>}
             </div>
             <div style={T.modArrow}>›</div>
@@ -310,7 +310,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={T.modArrow}>›</div>
           </div>
         )}
-        {!dishes.length && <div style={{ textAlign: "center", padding: "20px", color: T.modSub.color, fontSize: 13 }}>Меню пустое — попроси менеджера добавить блюда в редакторе.</div>}
+        {!dishes.length && <div style={{ textAlign: "center", padding: "20px", color: T.modSub.color, fontSize: 12.5 }}>Меню пустое — попроси менеджера добавить блюда в редакторе.</div>}
       </div>
     </div>
   );
@@ -333,7 +333,7 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
       {Head("Кто выучил новинки")}
       {err && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
-          <div style={{ fontSize: 38, marginBottom: 12 }}>🔌</div>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>🔌</div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase/supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. docs/UPGRADE_NOTES.md) — и здесь появится картина по каждому сотруднику.</div>
         </div>
       )}
@@ -368,7 +368,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
   const groups = React.useMemo(() => groupByCat(filtered), [filtered]);
   const allGroups = React.useMemo(() => groupByCat(dishes.filter(d => dishMatches(d, q))), [dishes, q]);
   const sub = T.modSub.color, text = T.modTitle.color;
-  const pill = (on) => ({ padding: "5px 11px", borderRadius: 999, fontSize: 12, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+  const pill = (on) => ({ padding: "5px 11px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
     border: `1px solid ${on ? gold : gold + "55"}`, background: on ? `linear-gradient(180deg,#E4C88C,${gold})` : "transparent",
     color: on ? "#1a160f" : sub, fontWeight: on ? "bold" : "normal" });
 
@@ -381,17 +381,17 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
         <div style={{ padding: "8px 16px 100px" }}>
           <div className="sa-card sa-cardpage-r" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
             <DishPhoto src={open.img} h={190} />
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.2 }}>{open.name}</div>
-            {String(open.short || "").trim() && <div style={{ fontSize: 15, color: T.para?.color || text, lineHeight: 1.5, margin: "8px 0 4px", fontStyle: "italic" }}>«{open.short.trim()}»</div>}
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{open.name}</div>
+            {String(open.short || "").trim() && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.5, margin: "8px 0 4px", fontStyle: "italic" }}>«{open.short.trim()}»</div>}
             <div style={{ marginTop: 10 }}><DishBack d={open} T={T} gold={gold} /></div>
           </div>
           {/* Доп. 180: низ как в колодах — капсулы, счётчик одной строкой между ними */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-            <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 13 }}>‹ назад</button>
-            <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: sub, letterSpacing: 1, whiteSpace: "nowrap" }}>{i + 1} / {flat.length}</span>
-            <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 13 }}>дальше ›</button>
+            <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
+            <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9, color: sub, letterSpacing: 1, whiteSpace: "nowrap" }}>{i + 1} / {flat.length}</span>
+            <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
           </div>
-          <button className="sa-btn" onClick={() => setOpen(null)} style={{ ...pill(false), width: "100%", marginTop: 10, padding: "11px", textAlign: "center", fontSize: 13, color: sub }}>К списку</button>
+          <button className="sa-btn" onClick={() => setOpen(null)} style={{ ...pill(false), width: "100%", marginTop: 10, padding: "11px", textAlign: "center", fontSize: 12.5, color: sub }}>К списку</button>
         </div>
       </div>
     );
@@ -409,10 +409,10 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
         </div>
       </div>
       <div style={{ padding: "4px 16px 100px" }}>
-        {!groups.length && <div style={{ color: sub, fontSize: 13, padding: "20px 4px", textAlign: "center" }}>Ничего не нашлось — попробуй другое слово</div>}
+        {!groups.length && <div style={{ color: sub, fontSize: 12.5, padding: "20px 4px", textAlign: "center" }}>Ничего не нашлось — попробуй другое слово</div>}
         {groups.map(g => (
-          <div key={g.cat} style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "0 2px 8px" }}>{g.cat.toUpperCase()} · {g.items.length}</div>
+          <div key={g.cat} style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "0 2px 8px" }}>{g.cat.toUpperCase()} · {g.items.length}</div>
             {g.items.map(d => (
               <div key={d.id} className="sa-card" onClick={() => { setOpen(d); vibrate("light"); }} {...onActivate(() => setOpen(d))}
                 style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
@@ -420,9 +420,9 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
                   ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
                   : <div style={{ width: 54, height: 54, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 18 }}>🍽</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 10.5, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
-                  <div style={{ fontSize: 12, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
-                  {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{allergenLabel(a)}</span>)}</div>}
+                  <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
+                  <div style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
+                  {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{allergenLabel(a)}</span>)}</div>}
                 </div>
                 <span style={{ color: gold, opacity: 0.7 }}>›</span>
               </div>
@@ -438,7 +438,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
 function DishBack({ d, T, gold }) {
   const Row = ({ label, children }) => (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 9, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 14, lineHeight: 1.5, color: T.para?.color }}>{children}</div>
     </div>
   );
@@ -451,17 +451,17 @@ function DishBack({ d, T, gold }) {
         const g = (v) => (Math.round(v * 10) / 10).toString().replace(".", ",").replace(",0", "");
         const cell = (label, v) => (
           <div style={{ flex: 1, textAlign: "center" }}>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.para?.color, lineHeight: 1.1 }}>{g(v)}<span style={{ fontSize: 10.5, opacity: 0.6 }}> г</span></div>
-            <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>{label}</div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.para?.color, lineHeight: 1.1 }}>{g(v)}<span style={{ fontSize: 11, opacity: 0.6 }}> г</span></div>
+            <div style={{ fontSize: 9, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>{label}</div>
           </div>
         );
         return (
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 5 }}>ПИЩЕВАЯ ЦЕННОСТЬ</div>
+            <div style={{ fontSize: 9, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 4 }}>ПИЩЕВАЯ ЦЕННОСТЬ</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${gold}33` }}>
               <div style={{ textAlign: "center", minWidth: 76 }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 24, color: gold, lineHeight: 1 }}>{n.kcal}</div>
-                <div style={{ fontSize: 9.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 3 }}>ККАЛ · {n.out ? `ПОРЦИЯ ${n.out} Г` : (n.unit || "ПОРЦИЯ").toUpperCase()}</div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: gold, lineHeight: 1 }}>{n.kcal}</div>
+                <div style={{ fontSize: 9, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>ККАЛ · {n.out ? `ПОРЦИЯ ${n.out} Г` : (n.unit || "ПОРЦИЯ").toUpperCase()}</div>
               </div>
               <div style={{ width: 1, alignSelf: "stretch", background: `${gold}26` }} />
               {cell("БЕЛКИ", n.p)}{cell("ЖИРЫ", n.f)}{cell("УГЛЕВОДЫ", n.c)}
@@ -471,7 +471,7 @@ function DishBack({ d, T, gold }) {
         );
       })()}
       <Row label="АЛЛЕРГЕНЫ">{(d.allergens || []).length ? (d.allergens || []).map(a => (
-        <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 8, border: "1px solid #E0787866", color: "#E07878", fontSize: 12, margin: "0 5px 5px 0" }}>{allergenLabel(a)}</span>
+        <span key={a} style={{ display: "inline-block", padding: "2px 8px", borderRadius: 9, border: "1px solid #E0787866", color: "#E07878", fontSize: 12.5, margin: "0 5px 5px 0" }}>{allergenLabel(a)}</span>
       )) : <span style={{ color: "#5DBB8A" }}>нет из «большой восьмёрки»</span>}</Row>
       {String(d.desc || "").trim() && <Row label="КАК ОПИСАТЬ ГОСТЮ">{d.desc}</Row>}
       {String(d.pairing || "").trim() && <Row label="СОЧЕТАНИЕ">{d.pairing}</Row>}
@@ -492,7 +492,7 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
     <div style={T.screen} className="sa-screen">
       {Head("Флеш-карточки")}
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
           <div style={{ width: 76, height: 76, borderRadius: "50%", background: `${gold}1F`, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>{UI_SVG.trophy(gold, 38)}</div>
         </div>
         <div style={{ ...T.bold, marginBottom: 8 }}>Колода пройдена!</div>
@@ -516,12 +516,12 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
   return (
     <div style={T.screen} className="sa-screen">
       {Head("Флеш-карточки")}
-      <div style={{ padding: "6px 18px", color: T.modSub.color, fontSize: 12 }}>Осталось в колоде: {deck.length} · {restaurant}</div>
+      <div style={{ padding: "6px 18px", color: T.modSub.color, fontSize: 12.5 }}>Осталось в колоде: {deck.length} · {restaurant}</div>
       <div style={{ padding: "8px 16px" }}>
         <div key={`${deck.length}_${d.name || ""}`} className="sa-card sa-cardpage-r" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default", overflow: "hidden" }}>
           <DishPhoto src={d.img} h={flipped ? 120 : 175} />
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{d.cat || "БЛЮДО"}</div>
-          <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 14, color: T.bold?.color }}>{d.name}</div>
+          <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{d.name}</div>
           {!flipped ? (
             <div style={{ color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>
               Вспомни: состав, аллергены, как описать гостю и с чем сочетать. Потом переверни и сверься.
@@ -613,12 +613,12 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
       <div style={T.screen} className="sa-screen">
         {Head("Викторина")}
         <div style={{ textAlign: "center", padding: "60px 24px" }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
             <div style={{ width: 76, height: 76, borderRadius: "50%", background: `${pct >= 80 ? gold : pct >= 50 ? green : red}1F`, border: `1px solid ${pct >= 80 ? gold : pct >= 50 ? green : red}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {pct >= 80 ? UI_SVG.trophy(gold, 38) : pct >= 50 ? UI_SVG.target(green, 36) : UI_SVG.book(red, 36)}
             </div>
           </div>
-          <div style={{ ...T.bold, fontSize: 20, marginBottom: 8 }}>{score} из {questions.length}</div>
+          <div style={{ ...T.bold, fontSize: 21, marginBottom: 8 }}>{score} из {questions.length}</div>
           <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>{pct >= 80 ? "Отлично знаешь меню!" : pct >= 50 ? "Неплохо, но повтори флеш-карточки." : "Пройди флеш-карточки — и возвращайся."}</div>
           <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "13px 30px" }} onClick={() => { setQuestions(buildQuiz(dishes)); setStep(0); setScore(0); setPick(null); }}>Ещё раз</button>
         </div>
@@ -644,7 +644,7 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
           return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
         })}
         {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
-        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 14 }} onClick={() => { setPick(null); setStep(s => s + 1); }}>Дальше →</button>}
+        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={() => { setPick(null); setStep(s => s + 1); }}>Дальше →</button>}
       </div>
     </div>
   );
@@ -669,7 +669,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
         <div key={dish.name} className="sa-cardpage-r" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
           <DishPhoto src={dish.img} h={165} />
           <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{dish.cat || "БЛЮДО"} · {restaurant}</div>
-          <div style={{ fontSize: 22, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{dish.name}</div>
+          <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{dish.name}</div>
 
           {phase === "ready" && (
             <div style={{ color: T.para?.color, fontSize: 14, lineHeight: 1.65 }}>
@@ -689,10 +689,10 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 
           {phase === "compare" && (
             <div>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, color: green, fontFamily: "monospace", marginBottom: 4 }}>ЭТАЛОННОЕ ОПИСАНИЕ</div>
-              <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14, fontStyle: "italic", color: T.para?.color }}>{dish.desc || "Эталон не задан — добавь описание в редакторе меню."}</div>
+              <div style={{ fontSize: 9, letterSpacing: 1.5, color: green, fontFamily: "monospace", marginBottom: 4 }}>ЭТАЛОННОЕ ОПИСАНИЕ</div>
+              <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 12, fontStyle: "italic", color: T.para?.color }}>{dish.desc || "Эталон не задан — добавь описание в редакторе меню."}</div>
               <DishBack d={{ ...dish, desc: "" }} T={T} gold={gold} />
-              <div style={{ color: T.modSub.color, fontSize: 13, lineHeight: 1.55, marginTop: 4 }}>
+              <div style={{ color: T.modSub.color, fontSize: 12.5, lineHeight: 1.55, marginTop: 4 }}>
                 Сравни: упомянул(а) вкус? текстуру? сочетание? Чего не хватило — то и запомни.
               </div>
             </div>
@@ -717,9 +717,9 @@ function EditorField({ value, onChange, placeholder, rows = 1, style, inputSt, t
   return (
     <div style={{ position: "relative", marginBottom: 10 }}>
       <textarea ref={ref} className="sa-field" rows={rows} value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{ ...inputSt, marginBottom: 0, paddingRight: value ? 38 : 13, resize: "none", overflow: "hidden", lineHeight: 1.45, fontFamily: "inherit", ...style }} />
+        style={{ ...inputSt, marginBottom: 2, paddingRight: value ? 38 : 13, resize: "none", overflow: "hidden", lineHeight: 1.45, fontFamily: "inherit", ...style }} />
       {value ? <span onClick={() => { onChange(""); vibrate("light"); ref.current && ref.current.focus(); }} {...onActivate(() => onChange(""))} aria-label="Очистить"
-        style={{ position: "absolute", right: 10, top: 9, width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: textColor, background: a11y ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)", cursor: "pointer" }}>✕</span> : null}
+        style={{ position: "absolute", right: 10, top: 9, width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, color: textColor, background: a11y ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)", cursor: "pointer" }}>✕</span> : null}
     </div>
   );
 }
@@ -730,17 +730,17 @@ function PreviewCard({ d, T, gold, red, glass }) {
   const text = T.modTitle.color;
   return (
     <div className="sa-card" onClick={() => setBack(b => !b)} style={{ ...glass(T), padding: "18px 18px 16px", minHeight: 300, cursor: "pointer", position: "relative", overflow: "hidden" }}>
-      {d.stop && <div style={{ position: "absolute", top: 14, right: -34, transform: "rotate(35deg)", background: red, color: "#fff", fontSize: 10, letterSpacing: 1.5, padding: "4px 40px" }}>СЕГОДНЯ НЕТ</div>}
+      {d.stop && <div style={{ position: "absolute", top: 14, right: -34, transform: "rotate(35deg)", background: red, color: "#fff", fontSize: 9, letterSpacing: 1.5, padding: "4px 40px" }}>СЕГОДНЯ НЕТ</div>}
       {!back ? (<>
         <DishPhoto src={d.img} h={190} />
         <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.2 }}>{d.name || "Без названия"}</div>
-        <div style={{ marginTop: 14, fontSize: 11.5, color: gold, fontStyle: "italic", textAlign: "center" }}>тапни — состав ✦</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{d.name || "Без названия"}</div>
+        <div style={{ marginTop: 12, fontSize: 11, color: gold, fontStyle: "italic", textAlign: "center" }}>тапни — состав ✦</div>
       </>) : (<>
         <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 4 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, marginBottom: 8 }}>{d.name || "Без названия"}</div>
-        {String(d.short || "").trim() ? <div style={{ fontSize: 14.5, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div> : null}
-        {!String(d.desc || "").trim() && <div style={{ fontSize: 13, color: T.modSub.color, fontStyle: "italic", marginBottom: 8 }}>Описания для гостя пока нет — официанту придётся импровизировать.</div>}
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginBottom: 8 }}>{d.name || "Без названия"}</div>
+        {String(d.short || "").trim() ? <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div> : null}
+        {!String(d.desc || "").trim() && <div style={{ fontSize: 12.5, color: T.modSub.color, fontStyle: "italic", marginBottom: 8 }}>Описания для гостя пока нет — официанту придётся импровизировать.</div>}
         <DishBack d={d} T={T} gold={gold} />
       </>)}
     </div>
@@ -777,7 +777,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   const editForeign = (d) => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") });
   const deleteServer = (id) => { const d = orphanShared.find(x => x.id === id); if (!d) return; setCustom({ ...custom, [restaurant]: [{ ...d, archived: true, archivedAt: Date.now(), stop: null }, ...(custom[restaurant] || [])] }); vibrate("light"); };
   const hideSample = (id) => { setHiddenIds({ ...hiddenIds, [restaurant]: [...(hiddenIds[restaurant] || []), id] }); vibrate("light"); };
-  const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15, outline: "none", marginBottom: 10 };
+  const inputSt = { width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 14, outline: "none", marginBottom: 10 };
 
   // ── Этап 4: AI-импорт из PDF (серверная функция /api/menu-import + ключ в Vercel) ──
   const [importing, setImporting] = React.useState(false);
@@ -1012,13 +1012,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       });
     };
     // Доп. 163: рабочая форма — разделы, состав чипами, подсказки аллергенов, липкие кнопки
-    const secLabel = (t) => <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "14px 2px 8px" }}>{t}</div>;
+    const secLabel = (t) => <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "14px 2px 8px" }}>{t}</div>;
     const ingList = String(form.ingredients || "").split(",").map(x => x.trim()).filter(Boolean);
     const setIng = (arr) => setForm(f => ({ ...f, ingredients: arr.join(", ") }));
     const addIng = (raw) => { const parts = String(raw || "").split(",").map(x => x.trim()).filter(Boolean); if (parts.length) setIng([...ingList, ...parts.filter(x => !ingList.includes(x))]); };
     const hints = suggestAllergens(ingList, form.allergens);
     const cats = [...CAT_ORDER, ...[...new Set([...list, ...(shared || []), ...(RESTAURANT_MENUS[restaurant] || [])].map(d => normCat(d.cat)).filter(Boolean))].filter(c => !CAT_ORDER.some(x => x.toLowerCase() === c.toLowerCase()))];
-    const chip = (on, danger) => ({ padding: "6px 11px", borderRadius: 10, fontSize: 12.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+    const chip = (on, danger) => ({ padding: "6px 11px", borderRadius: 9, fontSize: 12.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
       border: `1px solid ${on ? (danger ? red : gold) : gold + "55"}`, background: on ? (danger ? "rgba(224,120,120,0.15)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? (danger ? red : textColor) : T.modSub.color });
     const canSave = !!String(form.name || "").trim();
     const isEdit = !!form.id && list.some(d => d.id === form.id);
@@ -1031,7 +1031,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             ? <div style={{ position: "relative", marginBottom: 4 }}>
                 <img src={form.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 14, display: "block", border: `1px solid ${gold}44` }} />
                 <div onClick={() => setForm(f => ({ ...f, img: "" }))} {...onActivate(() => setForm(f => ({ ...f, img: "" })))} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>✕</div>
-                {photoState && <div style={{ position: "absolute", left: 8, bottom: 8, fontSize: 10.5, padding: "3px 8px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: photoState === "local" ? "#F0B37A" : "#EFE4C8" }}>
+                {photoState && <div style={{ position: "absolute", left: 8, bottom: 8, fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: photoState === "local" ? "#F0B37A" : "#EFE4C8" }}>
                   {photoState === "uploading" ? "Отправляю в облако…" : photoState === "cloud" ? "В облаке — увидят все" : "Только на этом телефоне"}
                 </div>}
                 <label style={{ position: "absolute", right: 8, bottom: 8, fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: "#EFE4C8", cursor: "pointer" }}>Заменить<input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} /></label>
@@ -1042,18 +1042,18 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               </label>}
 
           {secLabel("ОСНОВНОЕ")}
-          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Название блюда *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} style={{ fontSize: 17, fontFamily: "Georgia, serif" }} />
-          <div className="sa-hscroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "2px 0 8px", WebkitOverflowScrolling: "touch" }}>
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Название блюда *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} style={{ fontSize: 16, fontFamily: "Georgia, serif" }} />
+          <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "2px 0 8px", WebkitOverflowScrolling: "touch" }}>
             {cats.map(c => <span key={c} style={chip(normCat(form.cat).toLowerCase() === c.toLowerCase())} onClick={() => setForm(f => ({ ...f, cat: normCat(f.cat).toLowerCase() === c.toLowerCase() ? "" : c }))}>{c}</span>)}
             <span style={chip(!!form.cat && !cats.some(c => c.toLowerCase() === normCat(form.cat).toLowerCase()))} onClick={() => { const v = window.prompt("Название раздела", form.cat || ""); if (v != null) setForm(f => ({ ...f, cat: v.trim() })); }}>＋ свой раздел</span>
           </div>
-          {form.cat && !cats.some(c => c.toLowerCase() === normCat(form.cat).toLowerCase()) && <div style={{ fontSize: 12, color: T.modSub.color, margin: "-4px 2px 8px" }}>Раздел: <b style={{ color: textColor }}>{form.cat}</b></div>}
+          {form.cat && !cats.some(c => c.toLowerCase() === normCat(form.cat).toLowerCase()) && <div style={{ fontSize: 12.5, color: T.modSub.color, margin: "-4px 2px 8px" }}>Раздел: <b style={{ color: textColor }}>{form.cat}</b></div>}
 
           {secLabel("СОСТАВ И АЛЛЕРГЕНЫ")}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
             {ingList.map((x, i) => (
               <span key={i} style={{ ...chip(true), display: "inline-flex", alignItems: "center", gap: 6, paddingRight: 8 }}>
-                {x}<span onClick={() => setIng(ingList.filter((_, k) => k !== i))} style={{ opacity: 0.7, fontSize: 12 }}>✕</span>
+                {x}<span onClick={() => setIng(ingList.filter((_, k) => k !== i))} style={{ opacity: 0.7, fontSize: 12.5 }}>✕</span>
               </span>
             ))}
           </div>
@@ -1061,7 +1061,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
             onBlur={e => { if (e.currentTarget.value.trim()) { addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
             onChange={e => { if (e.target.value.includes(",")) { addIng(e.target.value); e.target.value = ""; } }} />
-          <div style={{ fontSize: 11.5, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую — разложится на чипы.</div>
+          <div style={{ fontSize: 11, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую — разложится на чипы.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
             {ALLERGENS_LIST.map(al => <span key={al} style={chip((form.allergens || []).includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{allergenLabel(al)}</span>)}
           </div>
@@ -1069,7 +1069,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 4, borderColor: red + "66" }}>
               <div style={{ fontSize: 11, letterSpacing: 1.2, color: red, fontFamily: "monospace", marginBottom: 6 }}>ПРОВЕРЬ АЛЛЕРГЕНЫ</div>
               {hints.map(h => (
-                <div key={h.allergen} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: T.para?.color, marginBottom: 6 }}>
+                <div key={h.allergen} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: T.para?.color, marginBottom: 6 }}>
                   <span style={{ flex: 1 }}>В составе «{h.because}…» — похоже на <b style={{ color: red }}>{h.allergen}</b></span>
                   <span style={{ ...chip(false), padding: "4px 10px", color: red, borderColor: red + "88" }} onClick={() => toggleAl(h.allergen)}>Добавить</span>
                 </div>
@@ -1082,15 +1082,15 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={v => setForm(f => ({ ...f, desc: v }))} rows={3} />
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "-4px 0 10px" }}>
             <span onClick={aiDescribe} {...onActivate(aiDescribe)} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: canSave ? "pointer" : "default", border: `1px solid ${gold}88`, color: gold, opacity: canSave && !aiBusy ? 1 : 0.5 }}>{aiBusy ? "Наставник пишет…" : aiVariants.length ? "✦ Ещё три варианта" : "✦ Три варианта описания"}</span>
-            {aiErr && <span style={{ fontSize: 12, color: red }}>{aiErr}</span>}
+            {aiErr && <span style={{ fontSize: 12.5, color: red }}>{aiErr}</span>}
           </div>
           {aiVariants.length > 0 && (
             <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 12 }}>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.4, color: gold, fontFamily: "monospace", marginBottom: 8 }}>ВЫБЕРИ — ПОТОМ МОЖНО ПРАВИТЬ</div>
+              <div style={{ fontSize: 11, letterSpacing: 1.4, color: gold, fontFamily: "monospace", marginBottom: 8 }}>ВЫБЕРИ — ПОТОМ МОЖНО ПРАВИТЬ</div>
               {aiVariants.map((v, i) => (
-                <div key={i} style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, fontSize: 13.5, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${form.desc === v || form.short === v ? gold : gold + "33"}`, background: form.desc === v || form.short === v ? "rgba(214,178,102,0.12)" : "transparent" }}>
+                <div key={i} style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, fontSize: 14, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${form.desc === v || form.short === v ? gold : gold + "33"}`, background: form.desc === v || form.short === v ? "rgba(214,178,102,0.12)" : "transparent" }}>
                   <div onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} {...onActivate(() => setForm(f => ({ ...f, desc: v })))} style={{ cursor: "pointer" }}><span style={{ color: gold, marginRight: 6 }}>{i + 1}.</span>{v}</div>
-                  <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12 }}>
+                  <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12.5 }}>
                     <span onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ в описание</span>
                     <span onClick={() => { setForm(f => ({ ...f, short: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ одной фразой</span>
                   </div>
@@ -1104,18 +1104,18 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             const table = nutritionOf(form.name);
             const cell = (key, ph, w) => (
               <input inputMode="decimal" placeholder={ph} value={form[key] ?? ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                style={{ ...inputSt, width: w, flex: "none", textAlign: "center", padding: "9px 4px", marginTop: 0 }} />
+                style={{ ...inputSt, width: w, flex: "none", textAlign: "center", padding: "9px 4px", marginTop: 2 }} />
             );
             const fill = () => { if (!table) return; setForm(f => ({ ...f, out: table.out, kcal: table.kcal, prot: table.p, fat: table.f, carb: table.c })); vibrate("success"); };
             const clear = () => { setForm(f => ({ ...f, out: "", kcal: "", prot: "", fat: "", carb: "" })); vibrate("light"); };
             const own = String(form.kcal ?? "").trim() !== "";
             return (
               <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 10, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КБЖУ НА ПОРЦИЮ</div>
+                <div style={{ fontSize: 9, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КБЖУ НА ПОРЦИЮ</div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {cell("out", "г", 58)}{cell("kcal", "ккал", 66)}{cell("prot", "Б", 52)}{cell("fat", "Ж", 52)}{cell("carb", "У", 52)}
                 </div>
-                <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12.5, flexWrap: "wrap", alignItems: "center" }}>
                   {table && !own && <span onClick={fill} {...onActivate(fill)} style={{ color: gold, cursor: "pointer" }}>Подставить из ведомости: {nutritionLine(table)}</span>}
                   {table && own && <span onClick={fill} {...onActivate(fill)} style={{ color: gold, cursor: "pointer" }}>Вернуть как в ведомости</span>}
                   {own && <span onClick={clear} {...onActivate(clear)} style={{ color: red, cursor: "pointer" }}>Очистить</span>}
@@ -1142,7 +1142,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           return (
             <div onClick={() => setPreview2(false)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
               <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width: "100%", maxWidth: 420 }}>
-                <div style={{ textAlign: "center", fontSize: 10.5, letterSpacing: 1.6, color: "#EFE4C8", fontFamily: "monospace", marginBottom: 8 }}>ТАК УВИДИТ ОФИЦИАНТ · ТАП — ПЕРЕВЕРНУТЬ</div>
+                <div style={{ textAlign: "center", fontSize: 11, letterSpacing: 1.6, color: "#EFE4C8", fontFamily: "monospace", marginBottom: 8 }}>ТАК УВИДИТ ОФИЦИАНТ · ТАП — ПЕРЕВЕРНУТЬ</div>
                 <PreviewCard d={d} T={T} gold={gold} red={red} glass={glass} />
                 <button className="sa-btn" onClick={() => setPreview2(false)} style={{ ...T.doneBtn, width: "100%", marginTop: 12, background: gold }}>Вернуться к правке</button>
               </div>
@@ -1178,13 +1178,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                   </div>
                   <div style={{ ...T.modSub, whiteSpace: "normal", marginTop: 2 }}>{ings.slice(0, 6).join(", ") || "состав не распознан"}</div>
                   <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 0 2px" }}>
-                    {catsAll.map(c => <span key={c} onClick={() => upd(i, { cat: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "" : c })} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${normCat(d.cat).toLowerCase() === c.toLowerCase() ? gold : gold + "44"}`, background: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "rgba(214,178,102,0.16)" : "transparent", color: normCat(d.cat).toLowerCase() === c.toLowerCase() ? textColor : T.modSub.color }}>{c}</span>)}
+                    {catsAll.map(c => <span key={c} onClick={() => upd(i, { cat: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "" : c })} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${normCat(d.cat).toLowerCase() === c.toLowerCase() ? gold : gold + "44"}`, background: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "rgba(214,178,102,0.16)" : "transparent", color: normCat(d.cat).toLowerCase() === c.toLowerCase() ? textColor : T.modSub.color }}>{c}</span>)}
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                     {ALLERGENS_LIST.map(al => { const on = als.includes(al); return <span key={al} onClick={() => upd(i, { allergens: on ? als.filter(x => x !== al) : [...als, al] })} style={{ padding: "4px 9px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${on ? red : gold + "44"}`, background: on ? "rgba(224,120,120,0.15)" : "transparent", color: on ? red : T.modSub.color }}>{allergenLabel(al)}</span>; })}
                   </div>
-                  {hints.length > 0 && <div style={{ fontSize: 12, color: red, marginTop: 6 }}>Проверь: в составе «{hints[0].because}…» — похоже на {hints.map(h => h.allergen).join(", ")}</div>}
-                  {noAl && !hints.length && <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 6 }}>Аллергенов не найдено — если так и есть, всё в порядке.</div>}
+                  {hints.length > 0 && <div style={{ fontSize: 12.5, color: red, marginTop: 6 }}>Проверь: в составе «{hints[0].because}…» — похоже на {hints.map(h => h.allergen).join(", ")}</div>}
+                  {noAl && !hints.length && <div style={{ fontSize: 12.5, color: T.modSub.color, marginTop: 6 }}>Аллергенов не найдено — если так и есть, всё в порядке.</div>}
                 </div>
               );
             });
@@ -1204,8 +1204,8 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           const ago = pubAt ? (() => { const m = Math.round((Date.now() - pubAt) / 60000); return m < 1 ? "только что" : m < 60 ? `${m} мин назад` : m < 1440 ? `${Math.round(m / 60)} ч назад` : `${Math.round(m / 1440)} дн назад`; })() : null;
           return (
             <div style={{ ...glass(T), padding: "14px 15px", marginBottom: 10 }}>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МЕНЮ КОМАНДЫ · {restaurant}</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 20, color: textColor, lineHeight: 1.2 }}>{teamCount} {teamCount % 10 === 1 && teamCount % 100 !== 11 ? "блюдо" : teamCount % 10 >= 2 && teamCount % 10 <= 4 && (teamCount % 100 < 12 || teamCount % 100 > 14) ? "блюда" : "блюд"}{stopped ? <span style={{ color: red, fontSize: 14 }}> · в стопе {stopped}</span> : null}</div>
+              <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МЕНЮ КОМАНДЫ · {restaurant}</div>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: textColor, lineHeight: 1.2 }}>{teamCount} {teamCount % 10 === 1 && teamCount % 100 !== 11 ? "блюдо" : teamCount % 10 >= 2 && teamCount % 10 <= 4 && (teamCount % 100 < 12 || teamCount % 100 > 14) ? "блюда" : "блюд"}{stopped ? <span style={{ color: red, fontSize: 14 }}> · в стопе {stopped}</span> : null}</div>
               <div style={{ fontSize: 12.5, color: unpublished ? gold : T.modSub.color, marginTop: 4 }}>
                 {unpublished ? `${unpublished} ${unpublished === 1 ? "изменение ждёт" : unpublished < 5 ? "изменения ждут" : "изменений ждут"} публикации — команда видит старую версию` : ago ? `Опубликовано ${ago} — команда видит актуальное` : "Ещё не публиковалось — команда видит примеры"}
               </div>
@@ -1231,8 +1231,8 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         })()}
         {(storageFull || localPhotos.length > 0 || lostPhotos.length > 0 || recoverable.length > 0) && (
           <div className="sa-fadein" style={{ ...glass(T), padding: "11px 13px", marginBottom: 10, borderColor: storageFull || lostPhotos.length ? red + "77" : gold + "66" }}>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.4, color: storageFull || lostPhotos.length ? red : gold, fontFamily: "monospace", marginBottom: 6 }}>{storageFull ? "ПАМЯТЬ ПРИЛОЖЕНИЯ ЗАПОЛНЕНА" : lostPhotos.length ? "ФОТО НЕ СОХРАНИЛИСЬ" : "ФОТО ТОЛЬКО НА ТЕЛЕФОНЕ"}</div>
-            <div style={{ fontSize: 13, color: T.para?.color, lineHeight: 1.55 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.4, color: storageFull || lostPhotos.length ? red : gold, fontFamily: "monospace", marginBottom: 6 }}>{storageFull ? "ПАМЯТЬ ПРИЛОЖЕНИЯ ЗАПОЛНЕНА" : lostPhotos.length ? "ФОТО НЕ СОХРАНИЛИСЬ" : "ФОТО ТОЛЬКО НА ТЕЛЕФОНЕ"}</div>
+            <div style={{ fontSize: 12.5, color: T.para?.color, lineHeight: 1.55 }}>
               {storageFull ? "Это не память телефона: браузер даёт приложению ~5 МБ на всё, и фото-текст их забил. Блюда сохранены; фото, не ушедшие в облако, на диск не влезли. " : ""}
               {lostPhotos.length ? `${lostPhotos.length} ${lostPhotos.length === 1 ? "фото потерялось" : "фото потерялись"} при переполнении. ` : ""}
               {recoverable.length ? `${recoverable.length} из них есть в серверной копии — можно вернуть в облако одним тапом. ` : lostPhotos.length ? "В серверной копии их нет — переснять из редактора; новые фото уходят в облако сразу. " : ""}
@@ -1241,7 +1241,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             {localPhotos.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
                 <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "9px 14px", opacity: reupBusy ? 0.55 : 1 }} disabled={reupBusy} onClick={reuploadAll}>{reupBusy ? "Отправляю…" : `Отправить в облако (${localPhotos.length})`}</button>
-                {reupMsg && <span style={{ fontSize: 12, color: /✓/.test(reupMsg) ? green : red, lineHeight: 1.4 }}>{reupMsg}</span>}
+                {reupMsg && <span style={{ fontSize: 12.5, color: /✓/.test(reupMsg) ? green : red, lineHeight: 1.4 }}>{reupMsg}</span>}
               </div>
             )}
             {recoverable.length > 0 && (
@@ -1249,14 +1249,14 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                 <button className="sa-btn" style={{ ...T.doneBtn, background: green, color: "#fff", padding: "9px 14px", opacity: recBusy ? 0.55 : 1 }} disabled={recBusy} onClick={recoverFromServer}>{recBusy ? "Восстанавливаю…" : `Восстановить с сервера (${recoverable.length})`}</button>
               </div>
             )}
-            {recMsg && <div style={{ fontSize: 12, color: /✓/.test(recMsg) ? green : red, marginTop: 6, lineHeight: 1.4 }}>{recMsg}</div>}
-            {!localPhotos.length && reupMsg && <div style={{ fontSize: 12, color: green, marginTop: 6 }}>{reupMsg}</div>}
+            {recMsg && <div style={{ fontSize: 12.5, color: /✓/.test(recMsg) ? green : red, marginTop: 6, lineHeight: 1.4 }}>{recMsg}</div>}
+            {!localPhotos.length && reupMsg && <div style={{ fontSize: 12.5, color: green, marginTop: 6 }}>{reupMsg}</div>}
           </div>
         )}
         {pubMsg && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: pubMsg.ok ? green : red }}>{pubMsg.text}</div>}
         {!pubMsg && unpublished > 0 && <div style={{ marginTop: 8, fontSize: 12.5, color: T.modSub.color }}>Команда пока видит старую версию — {unpublished} {unpublished === 1 ? "изменение" : unpublished < 5 ? "изменения" : "изменений"} ждут публикации.</div>}
         {undo && (
-          <div className="sa-fadein" style={{ ...glass(T), marginTop: 10, padding: "10px 13px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: T.para?.color }}>
+          <div className="sa-fadein" style={{ ...glass(T), marginTop: 10, padding: "10px 13px", display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: T.para?.color }}>
             <span style={{ flex: 1 }}>«{undo.name}» удалено</span>
             <span style={{ color: gold, fontWeight: "bold", cursor: "pointer" }} onClick={restoreRemoved} {...onActivate(restoreRemoved)}>Вернуть</span>
           </div>
@@ -1266,14 +1266,14 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             <input className="sa-field" value={eq} onChange={e => setEq(e.target.value)} placeholder="Найти блюдо в редакторе…" style={{ ...inputSt, marginBottom: 8, padding: "9px 12px", fontSize: 14 }} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
               {[{ cat: "", n: list.length + orphanShared.length + sampleList.length }, ...groupByCat([...list, ...orphanShared, ...sampleList]).map(g => ({ cat: g.cat, n: g.items.length }))].map(g => (
-                <span key={g.cat || "_all"} onClick={() => setEcat(g.cat === ecat ? "" : g.cat)} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${ecat === g.cat ? gold : gold + "55"}`, background: ecat === g.cat ? "rgba(214,178,102,0.16)" : "transparent", color: ecat === g.cat ? textColor : T.modSub.color }}>{g.cat || "Все"} · {g.n}</span>
+                <span key={g.cat || "_all"} onClick={() => setEcat(g.cat === ecat ? "" : g.cat)} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${ecat === g.cat ? gold : gold + "55"}`, background: ecat === g.cat ? "rgba(214,178,102,0.16)" : "transparent", color: ecat === g.cat ? textColor : T.modSub.color }}>{g.cat || "Все"} · {g.n}</span>
               ))}
             </div>
           </div>
         )}
         {importErr && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: red }}>{importErr}</div>}
         {orphanShared.length > 0 && (
-          <div style={{ ...glass(T), padding: "13px 14px", marginTop: 12, fontSize: 13, color: T.para?.color, lineHeight: 1.55 }}>
+          <div style={{ ...glass(T), padding: "13px 14px", marginTop: 12, fontSize: 12.5, color: T.para?.color, lineHeight: 1.55 }}>
             На сервере команды опубликовано <b style={{ color: gold }}>{orphanShared.length}</b> блюд, которых нет в твоём редакторе — их нельзя изменить или удалить, пока не заберёшь сюда.
             <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", border: `1px solid ${gold}88`, color: T.para?.color }}
               onClick={() => { setCustom({ ...custom, [restaurant]: [...list, ...orphanShared] }); vibrate("light"); }}
@@ -1284,35 +1284,35 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         )}
         <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown }))}
           className="sa-card"
-          style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 13.5, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <span>Примеры-заготовки в тренажёре{hs === undefined && (shared || []).length ? <span style={{ color: T.modSub.color, fontSize: 12 }}> · скрыты сами: есть меню команды</span> : null}</span>
+          style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 14, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span>Примеры-заготовки в тренажёре{hs === undefined && (shared || []).length ? <span style={{ color: T.modSub.color, fontSize: 12.5 }}> · скрыты сами: есть меню команды</span> : null}</span>
           <b style={{ color: samplesShown ? "#5DBB8A" : red, flexShrink: 0 }}>{samplesShown ? "видны" : "скрыты"}</b>
         </div>
       </div>
       <div style={{ ...T.secTitle }}>Свои блюда ({vis(list).length}{eq || ecat ? ` из ${list.length}` : ""})</div>
       <div style={{ padding: "0 14px 14px" }}>
-        {!list.length && <div style={{ color: T.modSub.color, fontSize: 13, padding: "6px 4px" }}>Пока пусто. Добавь реальные блюда — и команда будет тренироваться на них.</div>}
+        {!list.length && <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "6px 4px" }}>Пока пусто. Добавь реальные блюда — и команда будет тренироваться на них.</div>}
         {groupByCat(vis(list)).map(g => (
           <div key={g.cat}>
-            {list.length > 6 && <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "6px 2px 8px" }}>{g.cat.toUpperCase()} · {g.items.length}</div>}
+            {list.length > 6 && <div style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", margin: "6px 2px 8px" }}>{g.cat.toUpperCase()} · {g.items.length}</div>}
             {g.items.map(d => {
               const changed = !sameAsServer(d);
               return (
                 <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", flexWrap: "wrap", opacity: d.stop ? 0.85 : 1 }}>
                   <div style={{ ...T.modBar, background: d.stop ? red : changed ? gold : green }} />
-                  {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0, filter: d.stop ? "grayscale(1)" : "none" }} />}
+                  {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0, filter: d.stop ? "grayscale(1)" : "none" }} />}
                   <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") }))}>
                     <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                     <div style={T.modSub}>{(d.ingredients || []).length} ингр. · {(d.allergens || []).length ? (d.allergens || []).length + " аллерг." : "аллергенов нет"}{changed ? " · не опубликовано" : ""}{isDataImg(d.img) ? " · фото на телефоне" : d.imgLostLocal && !d.img ? " · фото потеряно" : ""}</div>
                   </div>
-                  <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => remove(d.id)} {...onActivate(() => remove(d.id))}>✕</div>
+                  <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 16 }} onClick={() => remove(d.id)} {...onActivate(() => remove(d.id))}>✕</div>
                   {/* Доп. 166: стоп · дубликат · порядок */}
                   <div style={{ flexBasis: "100%", display: "flex", gap: 6, paddingTop: 8, marginTop: 2, borderTop: `1px solid ${gold}22` }}>
-                    <span onClick={() => toggleStop(d)} {...onActivate(() => toggleStop(d))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${d.stop ? red : gold + "55"}`, color: d.stop ? red : T.modSub.color, background: d.stop ? "rgba(224,120,120,0.12)" : "transparent" }}>{d.stop ? "Вернуть в меню" : "В стоп"}</span>
-                    <span onClick={() => duplicate(d)} {...onActivate(() => duplicate(d))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${gold}55`, color: T.modSub.color }}>⧉ Дубликат</span>
+                    <span onClick={() => toggleStop(d)} {...onActivate(() => toggleStop(d))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${d.stop ? red : gold + "55"}`, color: d.stop ? red : T.modSub.color, background: d.stop ? "rgba(224,120,120,0.12)" : "transparent" }}>{d.stop ? "Вернуть в меню" : "В стоп"}</span>
+                    <span onClick={() => duplicate(d)} {...onActivate(() => duplicate(d))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${gold}55`, color: T.modSub.color }}>⧉ Дубликат</span>
                     <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-                      <span onClick={() => moveIn(d, -1)} {...onActivate(() => moveIn(d, -1))} style={{ width: 30, height: 26, borderRadius: 8, border: `1px solid ${gold}55`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13 }}>↑</span>
-                      <span onClick={() => moveIn(d, 1)} {...onActivate(() => moveIn(d, 1))} style={{ width: 30, height: 26, borderRadius: 8, border: `1px solid ${gold}55`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13 }}>↓</span>
+                      <span onClick={() => moveIn(d, -1)} {...onActivate(() => moveIn(d, -1))} style={{ width: 30, height: 26, borderRadius: 9, border: `1px solid ${gold}55`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12.5 }}>↑</span>
+                      <span onClick={() => moveIn(d, 1)} {...onActivate(() => moveIn(d, 1))} style={{ width: 30, height: 26, borderRadius: 9, border: `1px solid ${gold}55`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12.5 }}>↓</span>
                     </span>
                   </div>
                 </div>
@@ -1329,13 +1329,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           {vis(orphanShared).map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
               <div style={{ ...T.modBar, background: "#5DBB8A" }} />
-              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
                 <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                 <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
               </div>
               <span onClick={() => toggleStop(d)} {...onActivate(() => toggleStop(d))} style={{ padding: "5px 9px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, border: `1px solid ${d.stop ? red : gold + "55"}`, color: d.stop ? red : T.modSub.color }}>{d.stop ? "Вернуть" : "В стоп"}</span>
-              <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => deleteServer(d.id)} {...onActivate(() => deleteServer(d.id))}>✕</div>
+              <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 16 }} onClick={() => deleteServer(d.id)} {...onActivate(() => deleteServer(d.id))}>✕</div>
             </div>
           ))}
         </div>
@@ -1353,13 +1353,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           {archived.map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 8px", opacity: 0.8 }}>
               <div style={{ ...T.modBar, background: T.modSub.color }} />
-              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 10, flexShrink: 0, filter: "grayscale(1)" }} />}
+              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 9, flexShrink: 0, filter: "grayscale(1)" }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={T.modTitle}>{d.name}</div>
                 <div style={T.modSub}>{d.cat || "без раздела"}{d.archivedAt ? " · убрано " + new Date(d.archivedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : ""}</div>
               </div>
-              <span onClick={() => unarchive(d.id)} {...onActivate(() => unarchive(d.id))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", border: `1px solid ${green}88`, color: green, flexShrink: 0 }}>Вернуть</span>
-              <span onClick={() => { if (window.confirm(`Удалить «${d.name}» навсегда?`)) destroy(d.id); }} {...onActivate(() => destroy(d.id))} style={{ padding: "5px 8px", fontSize: 11.5, cursor: "pointer", color: red, flexShrink: 0 }}>Навсегда</span>
+              <span onClick={() => unarchive(d.id)} {...onActivate(() => unarchive(d.id))} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${green}88`, color: green, flexShrink: 0 }}>Вернуть</span>
+              <span onClick={() => { if (window.confirm(`Удалить «${d.name}» навсегда?`)) destroy(d.id); }} {...onActivate(() => destroy(d.id))} style={{ padding: "5px 8px", fontSize: 11, cursor: "pointer", color: red, flexShrink: 0 }}>Навсегда</span>
             </div>
           ))}
         </div>
@@ -1371,12 +1371,12 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           {vis(sampleList).map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: 0.85 }}>
               <div style={{ ...T.modBar, background: `${gold}66` }} />
-              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+              {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
                 <div style={T.modTitle}>{d.name}</div>
                 <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
               </div>
-              <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 17 }} onClick={() => hideSample(d.id)} {...onActivate(() => hideSample(d.id))}>✕</div>
+              <div style={{ padding: "6px 10px", cursor: "pointer", color: red, fontSize: 16 }} onClick={() => hideSample(d.id)} {...onActivate(() => hideSample(d.id))}>✕</div>
             </div>
           ))}
         </div>

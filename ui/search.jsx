@@ -53,7 +53,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
   }, [q]);
   const [openKey, setOpenKey] = React.useState(null);
   const gold = a11y ? "#8B6A30" : "#C8A96E";
-  const red = a11y ? "#A03828" : "#E07878";
+  const red = a11y ? "#A33A2A" : "#E07878";
   const textColor = a11y ? "#2e211a" : "#F5EFE2";
   const query = norm(q.trim());
 
@@ -122,7 +122,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
           <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:8 }}>
             {recent.map(t => (
               <span key={t} onClick={() => setQ(t)}
-                style={{ fontSize:11.5, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
+                style={{ fontSize:11, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
                   background:"rgba(200,169,110,0.08)", border:"1px solid rgba(200,169,110,0.3)",
                   WebkitTapHighlightColor:"transparent" }}>{t}</span>
             ))}
@@ -132,14 +132,14 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
 
       {query.length < 2 && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🔎</div>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>🔎</div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>{scopeText || "Введи минимум 2 буквы — найду по урокам твоей роли, глоссарию, меню ресторана и справочнику."}</div>
         </div>
       )}
 
       {nothing && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>🤔</div>
           <div style={{ fontSize: 14, color: T.para?.color }}>Ничего не нашлось. Попробуй другое слово или его часть.</div>
         </div>
       )}
@@ -164,21 +164,21 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
               </div>
               {open && (
                 <div style={{ marginTop: 8, paddingLeft: 10, borderLeft: `2px solid ${byAllergen ? red : gold}` }}>
-                  {d.desc && <div style={{ fontSize: 13, color: T.para?.color, lineHeight: 1.55, marginBottom: 8, whiteSpace: "normal" }}>{d.desc}</div>}
+                  {d.desc && <div style={{ fontSize: 12.5, color: T.para?.color, lineHeight: 1.55, marginBottom: 8, whiteSpace: "normal" }}>{d.desc}</div>}
                   {(d.ingredients || []).length > 0 && (
                     <div style={{ fontSize: 12.5, color: T.para?.color, lineHeight: 1.5, marginBottom: 8, whiteSpace: "normal" }}>
                       <span style={{ color: gold, fontWeight: "bold" }}>Состав: </span>{d.ingredients.join(", ")}
                     </div>
                   )}
                   {(d.allergens || []).length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
                       {(d.allergens || []).map(a => (
-                        <span key={a} style={{ fontSize: 10.5, fontWeight: "bold", color: red, border: `1px solid ${red}66`, background: a11y ? "rgba(160,56,40,0.06)" : "rgba(224,120,120,0.08)", borderRadius: 9, padding: "3px 8px" }}>{a}</span>
+                        <span key={a} style={{ fontSize: 11, fontWeight: "bold", color: red, border: `1px solid ${red}66`, background: a11y ? "rgba(160,56,40,0.06)" : "rgba(224,120,120,0.08)", borderRadius: 9, padding: "3px 8px" }}>{a}</span>
                       ))}
                     </div>
                   )}
-                  {d.note && <div style={{ fontSize: 12, color: T.modSub.color, fontStyle: "italic", lineHeight: 1.5, whiteSpace: "normal" }}>{d.note}</div>}
-                  <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 8, whiteSpace: "normal", display: "flex", gap: 7, alignItems: "flex-start" }}><span style={{ flexShrink: 0, marginTop: 1, display: "inline-flex" }}>{UI_SVG.pin(gold, 12)}</span><span style={{ flex: 1 }}>Сомневаешься в аллергенах — подтверди у шефа. База — подсказка, не замена протоколу.</span></div>
+                  {d.note && <div style={{ fontSize: 12.5, color: T.modSub.color, fontStyle: "italic", lineHeight: 1.5, whiteSpace: "normal" }}>{d.note}</div>}
+                  <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 8, whiteSpace: "normal", display: "flex", gap: 6, alignItems: "flex-start" }}><span style={{ flexShrink: 0, marginTop: 2, display: "inline-flex" }}>{UI_SVG.pin(gold, 12)}</span><span style={{ flex: 1 }}>Сомневаешься в аллергенах — подтверди у шефа. База — подсказка, не замена протоколу.</span></div>
                 </div>
               )}
             </div>
@@ -200,7 +200,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
                 <div style={T.modArrow}>{openKey === key ? "˅" : "›"}</div>
               </div>
               {openKey === key && (
-                <div style={{ fontSize: 13.5, color: T.para?.color, whiteSpace: "normal", lineHeight: 1.55, marginTop: 8, paddingLeft: 10, borderLeft: `2px solid ${gold}` }}>{g.def}</div>
+                <div style={{ fontSize: 14, color: T.para?.color, whiteSpace: "normal", lineHeight: 1.55, marginTop: 8, paddingLeft: 10, borderLeft: `2px solid ${gold}` }}>{g.def}</div>
               )}
             </div>
           );

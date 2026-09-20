@@ -6,6 +6,38 @@ import { MOD_SVG } from "./icons";
 import { CREAM, GOLD, GOLD_SOFT, GREEN, RED } from "./tokens";
 import { vibrate } from "../lib/utils";
 
+/** Пустое состояние — один язык на всё приложение.
+ *  Было вразнобой: где-то голый текст «Смена не найдена» (читается как
+ *  поломка), где-то бумажная карточка с печатью (читается как обещание).
+ *  Один и тот же тип экрана вызывал противоположное чувство.
+ *  Пунктирная рамка здесь не украшение: она говорит «пока пусто», тогда как
+ *  сплошная выглядит законченным блоком, в котором чего-то не хватает.
+ *  Формулировка тоже часть приёма — «сегодня смен нет» вместо «не найдена». */
+export function EmptyState({ a11y, icon, title, hint, action, onAction }) {
+  const text = a11y ? "#2A2113" : "#EFE4C8";
+  const sub  = a11y ? "#6E5C3C" : "#8F7B57";
+  const gold = a11y ? "#8B6A30" : GOLD;
+  return (
+    <div style={{ textAlign:"center", padding:"18px 14px", borderRadius:14,
+      border:`1px dashed ${a11y ? "rgba(150,112,40,0.38)" : "rgba(145,108,40,0.38)"}`,
+      boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45)" : "inset 0 0 18px rgba(255,248,230,0.03)" }}>
+      {icon ? (
+        <div style={{ width:38, height:38, borderRadius:"50%", margin:"0 auto 10px",
+          display:"grid", placeItems:"center",
+          border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(200,169,110,0.32)"}` }}>{icon}</div>
+      ) : null}
+      <div style={{ fontFamily:"Georgia, serif", fontSize:16, color:text, lineHeight:1.3 }}>{title}</div>
+      {hint ? <div style={{ fontSize:12, color:sub, marginTop:6, lineHeight:1.45 }}>{hint}</div> : null}
+      {action && onAction ? (
+        <div onClick={(e) => { e.stopPropagation(); onAction(); }}
+          style={{ display:"inline-block", marginTop:12, padding:"8px 18px", borderRadius:999,
+            cursor:"pointer", fontFamily:"Georgia, serif", fontSize:12.5, color:gold,
+            border:`1px solid ${gold}73` }}>{action}</div>
+      ) : null}
+    </div>
+  );
+}
+
 export function Confetti() {
   const canvasRef = React.useRef(null);
   React.useEffect(() => {
@@ -63,11 +95,11 @@ export function TimerBar({ duration, color, onExpire }) {
   return (
     <div style={{ marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-        <span style={{ color:barColor, fontSize:11, fontFamily:"monospace", fontWeight:"bold", display:"inline-flex", alignItems:"center", gap:5 }}>{MOD_SVG["⚡"](barColor, 12)}БЫСТРЫЙ ВЫБОР</span>
-        <span style={{ color:barColor, fontSize:13, fontWeight:"bold" }}>{timeLeft}с</span>
+        <span style={{ color:barColor, fontSize:11, fontFamily:"monospace", fontWeight:"bold", display:"inline-flex", alignItems:"center", gap:4 }}>{MOD_SVG["⚡"](barColor, 12)}БЫСТРЫЙ ВЫБОР</span>
+        <span style={{ color:barColor, fontSize:12.5, fontWeight:"bold" }}>{timeLeft}с</span>
       </div>
-      <div style={{ height:4, background:"rgba(255,255,255,0.1)", borderRadius:2, overflow:"hidden" }}>
-        <div style={{ height:"100%", width:`${pct}%`, background:barColor, borderRadius:2, transition:"width 1s linear, background 0.3s" }} />
+      <div style={{ height:4, background:"rgba(255,255,255,0.1)", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${pct}%`, background:barColor, borderRadius:3, transition:"width 1s linear, background 0.3s" }} />
       </div>
     </div>
   );
@@ -78,21 +110,21 @@ export function SayAloud({ phrase, T, color }) {
   const gold = GOLD;
   return (
     <div style={{ background:"rgba(200,169,110,0.1)", border:"1.5px solid rgba(200,169,110,0.4)", borderRadius:14, padding:"13px 14px", marginBottom:10 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:8 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
         <span style={{ fontSize:16 }}>🗣</span>
-        <span style={{ color:gold, fontSize:10.5, letterSpacing:1.5, fontFamily:"monospace", fontWeight:"bold" }}>А ТЕПЕРЬ — ВСЛУХ</span>
+        <span style={{ color:gold, fontSize:11, letterSpacing:1.5, fontFamily:"monospace", fontWeight:"bold" }}>А ТЕПЕРЬ — ВСЛУХ</span>
       </div>
       <div style={{ color:T.para.color, fontSize:14, lineHeight:1.6, fontStyle:"italic", marginBottom:done===null?12:10 }}>«{phrase}»</div>
       {done===null ? (
         <>
-          <div style={{ color:T.modSub.color, fontSize:12, marginBottom:10, lineHeight:1.5 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
+          <div style={{ color:T.modSub.color, fontSize:12.5, marginBottom:10, lineHeight:1.5 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>setDone("ok")} style={{ flex:1, padding:"9px", borderRadius:11, border:"none", background:gold, color:"#241a0a", fontSize:13, fontWeight:"bold", cursor:"pointer" }}>Получилось</button>
-            <button onClick={()=>setDone("again")} style={{ flex:1, padding:"9px", borderRadius:11, border:`1.5px solid ${gold}`, background:"transparent", color:gold, fontSize:13, fontWeight:"bold", cursor:"pointer" }}>Ещё разок</button>
+            <button onClick={()=>setDone("ok")} style={{ flex:1, padding:"9px", borderRadius:12, border:"none", background:gold, color:"#2A1F0E", fontSize:12.5, fontWeight:"bold", cursor:"pointer" }}>Получилось</button>
+            <button onClick={()=>setDone("again")} style={{ flex:1, padding:"9px", borderRadius:12, border:`1.5px solid ${gold}`, background:"transparent", color:gold, fontSize:12.5, fontWeight:"bold", cursor:"pointer" }}>Ещё разок</button>
           </div>
         </>
       ) : (
-        <div style={{ color:done==="ok"?GREEN:gold, fontSize:13, fontWeight:"bold", lineHeight:1.5 }}>
+        <div style={{ color:done==="ok"?GREEN:gold, fontSize:12.5, fontWeight:"bold", lineHeight:1.5 }}>
           {done==="ok" ? "🔥 Отлично! Звучит уверенно." : "💪 Ещё пара повторов — и пойдёт на автомате."}
         </div>
       )}
@@ -184,7 +216,7 @@ export function LiquidSegment({
       onPointerUp={canDrag ? onUp : undefined}
       onPointerCancel={canDrag ? onCancel : undefined}
       style={{
-        position:"relative", display:"flex", gap:4, padding:4, borderRadius:16,
+        position:"relative", display:"flex", gap:4, padding:4, borderRadius:14,
         background: a11y ? "rgba(140,105,40,0.12)" : "rgba(160,120,60,0.14)",
         overflowX: scroll ? "auto" : "visible",
         WebkitOverflowScrolling:"touch", scrollbarWidth:"none",
@@ -235,7 +267,7 @@ export function LiquidSegment({
               position:"relative", zIndex:1, border:"none", background:"transparent", cursor:"pointer",
               flex: equal ? 1 : "0 0 auto", whiteSpace: equal ? undefined : "nowrap",
               padding:"8px 12px", borderRadius:999,
-              fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold",
+              fontFamily:"Georgia, serif", fontSize:12.5, fontWeight:"bold",
               color: active ? acc : dim,
               opacity: active ? 1 : 0.75,
               transform: active ? "scale(1.05)" : "scale(1)",

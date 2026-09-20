@@ -10,7 +10,7 @@ import { BROWN, GOLD, GREEN, GREEN_DARK, INK } from "./tokens";
 export function moodPalette(a11y) {
   return a11y
     ? { cardBg:"rgba(250,242,222,0.55)", border:"rgba(139,106,48,0.30)", top:"rgba(255,252,240,0.9)", shadow:"inset 0 0 20px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9), 0 3px 12px rgba(120,90,30,0.10)", text:INK, muted:BROWN, dim:"#9A8060", gold:"#8B6A30", green:GREEN_DARK, barTop:GOLD, barBot:"#8B6A30" }
-    : { cardBg:"rgba(255,250,238,0.05)", border:"rgba(255,255,255,0.13)", top:"rgba(255,255,255,0.20)", shadow:"inset 0 0 20px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 5px 16px rgba(0,0,0,0.32)", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354", gold:GOLD, green:GREEN, barTop:"#E8C87A", barBot:GOLD };
+    : { cardBg:"rgba(255,250,238,0.05)", border:"rgba(255,255,255,0.13)", top:"rgba(255,255,255,0.20)", shadow:"inset 0 0 20px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 5px 16px rgba(0,0,0,0.32)", text:"#EFE4C8", muted:"#9A8C74", dim:"#6E6354", gold:GOLD, green:GREEN, barTop:"#E8C87A", barBot:GOLD };
 }
 
 export const MOOD_FACES = [{lvl:1,l:"Тяжело"},{lvl:2,l:"Так себе"},{lvl:3,l:"Норм"},{lvl:4,l:"Хорошо"},{lvl:5,l:"Отлично"}];
@@ -27,7 +27,7 @@ export function StreakCard({ streak, a11y }) {
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(216,160,60,0.22), rgba(180,130,40,0.05) 70%)",
         done:"radial-gradient(circle at 35% 30%, #E8C173, #C2912F 72%)", check:"#3a2c10",
         miss:"rgba(140,105,40,0.28)", future:"rgba(140,105,40,0.2)", div:"rgba(140,105,40,0.25)" }
-    : { gold:GOLD, num:"#EBCF8E", text:"#E9DEC9", muted:"#9A8C74", dim:"#6E6354",
+    : { gold:GOLD, num:"#EBCF8E", text:"#EFE4C8", muted:"#9A8C74", dim:"#6E6354",
         cardBg:"rgba(255,250,238,0.05)", border:"rgba(255,255,255,0.13)", top:"rgba(255,255,255,0.20)", shadow:"inset 0 0 20px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.10), 0 5px 16px rgba(0,0,0,0.32)",
         glow:"radial-gradient(circle, rgba(200,169,110,0.16) 0%, transparent 70%)",
         flameGlow:"radial-gradient(circle at 40% 35%, rgba(235,207,142,0.28), rgba(200,169,110,0.06) 70%)",
@@ -68,23 +68,23 @@ export function StreakCard({ streak, a11y }) {
         </div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-            <span style={{ fontFamily:serif, fontSize:26, fontWeight:"bold", color:C.num, lineHeight:1 }}>{count}</span>
-            <span style={{ color:C.muted, fontSize:13 }}>дней подряд</span>
+            <span style={{ fontFamily:serif, fontSize:25, fontWeight:"bold", color:C.num, lineHeight:1 }}>{count}</span>
+            <span style={{ color:C.muted, fontSize:12.5 }}>дней подряд</span>
           </div>
-          <div style={{ color:C.muted, fontSize:11.5, marginTop:3, lineHeight:1.35 }}>{sub}</div>
+          <div style={{ color:C.muted, fontSize:11, marginTop:2, lineHeight:1.35 }}>{sub}</div>
         </div>
         {(streak.best || 0) > 0 && (
           <div style={{ flexShrink:0, textAlign:"center", paddingLeft:10 }}>
             <div style={{ display:"flex", justifyContent:"center" }}>{trophyIcon(C.gold, 18)}</div>
-            <div style={{ color:C.gold, fontSize:13, fontWeight:"bold", fontFamily:serif }}>{streak.best}</div>
+            <div style={{ color:C.gold, fontSize:12.5, fontWeight:"bold", fontFamily:serif }}>{streak.best}</div>
           </div>
         )}
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginTop:11 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginTop:10 }}>
         {week.map((d, i) => (
           <div key={i} style={{ textAlign:"center" }}>
             <div style={dot(d.st)}>{d.st === "done" ? "✓" : d.st === "today" ? "•" : ""}</div>
-            <div style={{ marginTop:4, fontSize:10, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
+            <div style={{ marginTop:4, fontSize:9, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
           </div>
         ))}
       </div>
@@ -108,11 +108,11 @@ export function MoodCheckCard({ a11y }) {
     const f = MOOD_FACES[(parseInt(picked,10)||3)-1] || MOOD_FACES[2];
     return (
       <div style={_moodBase(C, a11y)}>
-        <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           {faceIcon(f.lvl, C.gold, 28)}
           <div>
-            <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>Настрой записан</div>
-            <div style={{ color:C.muted, fontSize:12, marginTop:1 }}>Спасибо! Ответ анонимный — можно поменять завтра.</div>
+            <div style={{ color:C.text, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>Настрой записан</div>
+            <div style={{ color:C.muted, fontSize:12.5, marginTop:2 }}>Спасибо! Ответ анонимный — можно поменять завтра.</div>
           </div>
         </div>
       </div>
@@ -121,12 +121,12 @@ export function MoodCheckCard({ a11y }) {
   return (
     <div style={_moodBase(C, a11y)}>
       <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold", textAlign:"center" }}>Как настрой сегодня?</div>
-      <div style={{ color:C.muted, fontSize:11.5, textAlign:"center", marginTop:3, marginBottom:14 }}>один тап · анонимно для команды</div>
+      <div style={{ color:C.muted, fontSize:11, textAlign:"center", marginTop:2, marginBottom:12 }}>один тап · анонимно для команды</div>
       <div style={{ display:"flex", justifyContent:"space-between" }}>
         {MOOD_FACES.map((m, i) => (
           <div key={i} onClick={() => choose(i+1)} style={{ flex:1, textAlign:"center", cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
             <div style={{ display:"flex", justifyContent:"center" }}>{faceIcon(m.lvl, C.gold, 31)}</div>
-            <div style={{ marginTop:6, fontSize:10, color:C.dim }}>{m.l}</div>
+            <div style={{ marginTop:6, fontSize:9, color:C.dim }}>{m.l}</div>
           </div>
         ))}
       </div>
@@ -163,23 +163,23 @@ export function TeamMoodCard({ a11y }) {
   };
   return (
     <div style={_moodBase(C, a11y)}>
-      <div style={{ color:C.gold, fontSize:10.5, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10 }}>📊 ПУЛЬС КОМАНДЫ · СЕГОДНЯ</div>
+      <div style={{ color:C.gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10 }}>📊 ПУЛЬС КОМАНДЫ · СЕГОДНЯ</div>
       {total === 0 ? (
-        <div style={{ color:C.muted, fontSize:13, lineHeight:1.5 }}>Сегодня ещё нет ответов. Команда отметит настрой в течение дня.</div>
+        <div style={{ color:C.muted, fontSize:12.5, lineHeight:1.5 }}>Сегодня ещё нет ответов. Команда отметит настрой в течение дня.</div>
       ) : (
         <>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             {faceIcon(avgFace.lvl, C.gold, 34)}
             <div>
               <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>В целом {avgFace.l.toLowerCase()}</div>
-              <div style={{ color:C.muted, fontSize:12 }}>ответили {total}</div>
+              <div style={{ color:C.muted, fontSize:12.5 }}>ответили {total}</div>
             </div>
           </div>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:6, marginTop:14, height:64 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:6, marginTop:12, height:64 }}>
             {MOOD_FACES.map((m, i) => { const c = dist[String(i+1)] || 0; return (
               <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", height:"100%" }}>
-                <div style={{ color:C.muted, fontSize:10.5, fontWeight:"bold", marginBottom:3 }}>{c}</div>
-                <div style={{ width:"64%", maxWidth:22, height:`${Math.max(5,(c/maxD)*42)}px`, borderRadius:4, background:`linear-gradient(180deg,${C.barTop},${C.barBot})`, opacity:c===0?0.25:1 }} />
+                <div style={{ color:C.muted, fontSize:11, fontWeight:"bold", marginBottom:2 }}>{c}</div>
+                <div style={{ width:"64%", maxWidth:22, height:`${Math.max(5,(c/maxD)*42)}px`, borderRadius:3, background:`linear-gradient(180deg,${C.barTop},${C.barBot})`, opacity:c===0?0.25:1 }} />
                 <div style={{ marginTop:4, display:"flex", justifyContent:"center" }}>{faceIcon(m.lvl, C.muted, 18)}</div>
               </div>
             ); })}

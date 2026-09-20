@@ -10,7 +10,7 @@ import { GOLD, GREEN, RED } from "./tokens";
 import { UI_SVG, MARKER_RE } from "./icons";
 
 // Красный акцент SOS: в тёмной теме мягкий, в светлой — глубже (читаемость на крем-фоне)
-const sosRed = (a11y) => (a11y ? "#A03828" : "#E07878");
+const sosRed = (a11y) => (a11y ? "#A33A2A" : "#E07878");
 
 // Стеклянная плашка — те же токены, что у карточек уроков (обе темы), красная оправа
 const glass = (T, a11y, open) => ({
@@ -142,7 +142,7 @@ export function SOSScreen({ T, a11y, onBack }) {
   const red = sosRed(a11y);
   const gold = a11y ? "#8B6A30" : GOLD;
   const text = a11y ? "#2e211a" : "#F5EFE2";
-  const sub = T.modSub?.color || "#948872";
+  const sub = T.modSub?.color || "#9A8C74";
   const [open, setOpen] = React.useState(null);
 
   const toggle = (id) => { vibrate("light"); setOpen(open === id ? null : id); };
@@ -161,18 +161,18 @@ export function SOSScreen({ T, a11y, onBack }) {
             border: `1.5px solid ${a11y ? "rgba(160,56,40,0.45)" : "rgba(224,120,120,0.5)"}`,
             boxShadow: a11y ? "0 2px 8px rgba(160,56,40,0.18)" : "0 2px 10px rgba(224,120,120,0.22)",
           }}>
-            <span style={{ color: red, fontSize: 12, fontWeight: "bold", fontFamily: "monospace", letterSpacing: 1 }}>SOS</span>
+            <span style={{ color: red, fontSize: 12.5, fontWeight: "bold", fontFamily: "monospace", letterSpacing: 1 }}>SOS</span>
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: text, fontSize: 21, fontWeight: "bold", fontFamily: ACCENT_SERIF, lineHeight: 1.15 }}>SOS в смене</div>
-            <div style={{ color: sub, fontSize: 12, marginTop: 2 }}>Только действия. Открой нужное — и действуй.</div>
+            <div style={{ color: sub, fontSize: 12.5, marginTop: 2 }}>Только действия. Открой нужное — и действуй.</div>
           </div>
         </div>
 
         {/* ── Номера — всегда на виду ── */}
         <div style={{
           display: "flex", alignItems: "center", gap: 10, margin: "12px 0 16px",
-          padding: "9px 13px", borderRadius: 13,
+          padding: "9px 13px", borderRadius: 12,
           background: a11y ? "rgba(160,56,40,0.07)" : "rgba(224,120,120,0.08)",
           border: `1px solid ${a11y ? "rgba(160,56,40,0.28)" : "rgba(224,120,120,0.28)"}`,
         }}>
@@ -199,7 +199,7 @@ export function SOSScreen({ T, a11y, onBack }) {
                     {I[c.icon](red, 18)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: text, fontSize: 14.5, fontWeight: "bold", lineHeight: 1.2 }}>{c.title}</div>
+                    <div style={{ color: text, fontSize: 14, fontWeight: "bold", lineHeight: 1.2 }}>{c.title}</div>
                     <div style={{ color: sub, fontSize: 11, marginTop: 2 }}>{c.sub}</div>
                   </div>
                   <div style={{ color: isOpen ? red : gold, fontSize: 18, fontWeight: "bold", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .18s ease" }}>›</div>
@@ -213,12 +213,12 @@ export function SOSScreen({ T, a11y, onBack }) {
                         : line.startsWith("🚫") ? UI_SVG.ban(red, 14)
                         : line.startsWith("📌") ? UI_SVG.pin(gold, 14)
                         : keycap ? (
-                            <span style={{ width: 19, height: 19, borderRadius: 10, border: `1.5px solid ${red}`, color: red, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: "bold", fontFamily: "Georgia, serif" }}>{keycap[1]}</span>
+                            <span style={{ width: 19, height: 19, borderRadius: 9, border: `1.5px solid ${red}`, color: red, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold", fontFamily: "Georgia, serif" }}>{keycap[1]}</span>
                           )
                         : null;
                       return (
-                        <div key={i} style={{ color: text, fontSize: 13.5, lineHeight: 1.55, marginBottom: 7, display: "flex", gap: 9, alignItems: "flex-start", opacity: line.startsWith("🚫") ? 0.92 : 1 }}>
-                          {icon && <span style={{ flexShrink: 0, marginTop: 3, display: "inline-flex" }}>{icon}</span>}
+                        <div key={i} style={{ color: text, fontSize: 14, lineHeight: 1.55, marginBottom: 6, display: "flex", gap: 8, alignItems: "flex-start", opacity: line.startsWith("🚫") ? 0.92 : 1 }}>
+                          {icon && <span style={{ flexShrink: 0, marginTop: 2, display: "inline-flex" }}>{icon}</span>}
                           <span style={{ flex: 1 }}>{line.replace(MARKER_RE, "")}</span>
                         </div>
                       );
@@ -232,7 +232,7 @@ export function SOSScreen({ T, a11y, onBack }) {
 
         {/* ── Подпись-принцип, как везде в приложении ── */}
         <div style={{ margin: "18px 2px 0", padding: "8px 14px", borderLeft: `2px solid ${a11y ? "rgba(160,56,40,0.35)" : "rgba(224,120,120,0.35)"}` }}>
-          <span style={{ color: sub, fontSize: 12, fontStyle: "italic", lineHeight: 1.6 }}>
+          <span style={{ color: sub, fontSize: 12.5, fontStyle: "italic", lineHeight: 1.6 }}>
             «Ты не врач. Заметить, вызвать помощь и не навредить — этого достаточно, чтобы спасти.»
           </span>
         </div>

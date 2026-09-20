@@ -173,8 +173,8 @@ function QTimer({ seconds, onExpire }) {
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
         <span style={{ color, fontSize: 11, fontFamily: "monospace", fontWeight: "bold" }}>{left} сек</span>
       </div>
-      <div style={{ height: 4, borderRadius: 2, background: "rgba(160,120,60,0.18)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: pct + "%", background: color, borderRadius: 2, transition: "width 1s linear, background 0.3s ease" }} />
+      <div style={{ height: 4, borderRadius: 3, background: "rgba(160,120,60,0.18)", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: pct + "%", background: color, borderRadius: 3, transition: "width 1s linear, background 0.3s ease" }} />
       </div>
     </div>
   );
@@ -274,7 +274,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif",
   };
   const inputStyle = {
-    width:"100%", padding:"13px 14px", borderRadius: RADIUS.sm, fontSize:15,
+    width:"100%", padding:"13px 14px", borderRadius: RADIUS.sm, fontSize:14,
     fontFamily:"Georgia, serif",
     background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
     color: a11y ? "#3A2E1C" : "#F0E8D8",
@@ -521,9 +521,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
       <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "14px 16px 44px" }}>
 
         {confirmLeave && (
-          <div style={{ ...glass, marginBottom: 14, borderColor: RED }}>
+          <div style={{ ...glass, marginBottom: 12, borderColor: RED }}>
             <div style={{ ...T.bold, marginBottom: 6 }}>Прервать собеседование?</div>
-            <div style={{ color: sub, fontSize: 13, lineHeight: 1.5, marginBottom: 12 }}>Ответы кандидата не сохранятся.</div>
+            <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.5, marginBottom: 12 }}>Ответы кандидата не сохранятся.</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="sa-btn" style={{ ...ghostBtn, flex: 1 }} onClick={() => setConfirmLeave(false)}>Продолжить</button>
               <button className="sa-btn" style={{ ...ghostBtn, flex: 1, color: RED, borderColor: RED }}
@@ -537,7 +537,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           <>
             <div style={{ ...glass, marginBottom: 16 }}>
               <div style={{ marginBottom: 8, display: "flex" }}>{MOD_SVG["🤝"](gold, 26)}</div>
-              <div style={{ ...T.bold, marginTop: 0, marginBottom: 6 }}>Собеседование в приложении</div>
+              <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Собеседование в приложении</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
                 Короткая анкета опыта — и тест подстраивается под кандидата: новичка проверяем на здравый смысл
                 и характер, опытного — на профессию. Внутри — рабочие ситуации, вопросы-приоритеты, которые
@@ -561,19 +561,19 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{ width: 40, textAlign: "center", color: v.color, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 16 }}>{r.pct}%</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ ...T.bold, marginTop: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
-                          <div style={{ color: sub, fontSize: 11.5 }}>{r.roleLabel} · {r.expLabel || "?"} · {dateFmt(r.date)}</div>
+                          <div style={{ ...T.bold, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
+                          <div style={{ color: sub, fontSize: 11 }}>{r.roleLabel} · {r.expLabel || "?"} · {dateFmt(r.date)}</div>
                         </div>
-                        <div style={{ color: v.color, fontSize: 11.5, fontWeight: "bold", textAlign: "right", maxWidth: 110 }}>{v.label}</div>
+                        <div style={{ color: v.color, fontSize: 11, fontWeight: "bold", textAlign: "right", maxWidth: 110 }}>{v.label}</div>
                       </div>
                       {open && (
                         <div style={{ marginTop: 12, borderTop: "1px solid rgba(200,160,80,0.2)", paddingTop: 10 }}>
-                          <div style={{ color: sub, fontSize: 12, marginBottom: 8 }}>
+                          <div style={{ color: sub, fontSize: 12.5, marginBottom: 8 }}>
                             {r.score} из {r.total} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}{r.by ? ` · провёл(а): ${r.by}` : ""}{r.srvId ? " · ☁" : ""}
                             {cal ? <> · самооценка: <b style={{ color: cal.color }}>{cal.label}</b></> : null}
                           </div>
                       {r.aiVerdict && (
-                        <div style={{ ...T.modSub, color: sub, fontSize: 12, lineHeight: 1.55, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${gold}22` }}>
+                        <div style={{ ...T.modSub, color: sub, fontSize: 12.5, lineHeight: 1.55, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${gold}22` }}>
                           <b style={{ color: gold }}>ИИ:</b> {r.aiVerdict}
                         </div>
                       )}
@@ -611,8 +611,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 {role.id === rl.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <span style={{ display: "flex", flexShrink: 0 }}>{ROLE_ICO[rl.id](role.id === rl.id ? gold : sub)}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ ...T.bold, marginTop: 0, marginBottom: 2 }}>{rl.label}</div>
-                  <div style={{ color: sub, fontSize: 12 }}>{rl.desc}</div>
+                  <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>{rl.label}</div>
+                  <div style={{ color: sub, fontSize: 12.5 }}>{rl.desc}</div>
                 </div>
                 <span style={{ display: "flex", flexShrink: 0, width: 20, justifyContent: "center" }}>
                   {role.id === rl.id ? UI_SVG.checkCircle(gold, 20) : null}
@@ -626,10 +626,10 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                     border: `1px solid ${gold}${useCustom ? "" : "55"}`,
                     background: useCustom ? gold : "transparent",
                     color: useCustom ? "#1A1008" : sub,
-                    fontSize: 13, fontFamily: "Georgia, serif", fontWeight: "bold", transition: "all 0.15s" }}>
+                    fontSize: 12.5, fontFamily: "Georgia, serif", fontWeight: "bold", transition: "all 0.15s" }}>
                   {useCustom ? "★" : "☆"} Вопросы твоего ресторана
                 </button>
-                <div style={{ color: sub, fontSize: 11.5, lineHeight: 1.45, margin: "6px 2px 0" }}>
+                <div style={{ color: sub, fontSize: 11, lineHeight: 1.45, margin: "6px 2px 0" }}>
                   Доступно {customQs.length}, в тест войдёт до {MAX_CUSTOM_Q}. Включай для кандидатов из твоей сети, которые должны знать регламент.
                 </div>
               </div>
@@ -644,7 +644,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {/* ── АНКЕТА ОПЫТА ── */}
         {phase === "profile" && (
           <>
-            <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 14 }}>
+            <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
               Пара вопросов о кандидате — от этого зависит, какой тест он получит. Можно заполнить вместе с ним.
             </div>
             <div style={secLabel}>Опыт в гостеприимстве и гастрономии</div>
@@ -655,8 +655,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E" } : {}) }}>
                 {exp?.id === x.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <div style={{ flex: 1 }}>
-                  <div style={{ ...T.bold, marginTop: 0, marginBottom: 2 }}>{x.label}</div>
-                  <div style={{ color: sub, fontSize: 11.5 }}>{x.note}</div>
+                  <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>{x.label}</div>
+                  <div style={{ color: sub, fontSize: 11 }}>{x.note}</div>
                 </div>
                 <span style={{ display: "flex", flexShrink: 0, width: 20, justifyContent: "center" }}>
                   {exp?.id === x.id ? UI_SVG.checkCircle(gold, 20) : null}
@@ -679,7 +679,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               items={[{ id: "__none", label: "—" }, ...AGES.map(a => ({ id: a, label: a }))]}
               activeId={age || "__none"}
               onSelect={(id) => { vibrate("light"); setAge(id === "__none" ? null : id); }} />
-            <button className="sa-btn" style={{ ...goldBtn, marginTop: 18, opacity: exp ? 1 : 0.5 }}
+            <button className="sa-btn" style={{ ...goldBtn, marginTop: 16, opacity: exp ? 1 : 0.5 }}
               onClick={() => { if (exp) { vibrate("light"); setPhase("handoff"); } }}>
               Дальше
             </button>
@@ -691,7 +691,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           <>
             <div style={{ ...glass, textAlign: "center", padding: "30px 20px", marginBottom: 16 }}>
               <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>{MOD_SVG["🤲"](gold, 30)}</div>
-              <div style={{ ...T.bold, marginTop: 0, marginBottom: 8 }}>Передайте телефон кандидату</div>
+              <div style={{ ...T.bold, marginTop: 2, marginBottom: 8 }}>Передайте телефон кандидату</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.65 }}>
                 <b style={{ color: gold }}>{name.trim()}</b>, вам {level === "none" ? 12 : 15} рабочих ситуаций — роль «{role.label}».
                 В каждой всё описано полностью: читайте спокойно, специальных знаний не нужно.
@@ -706,7 +706,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 border: `1px solid ${gold}66`, boxShadow: "none" }}>
               AI-интервью · бета
             </button>
-            <div style={{ ...T.modSub, color: sub, fontSize: 11.5, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+            <div style={{ ...T.modSub, color: sub, fontSize: 11, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
               В AI-режиме кандидат отвечает своими словами, а ИИ задаёт уточняющие вопросы
               и оценивает по тем же компетенциям.
               <br /><span style={{ opacity: 0.75 }}>ИИ-помощник — окончательное решение принимает менеджер.</span>
@@ -727,25 +727,25 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 display: "flex", flexDirection: "column", gap: 8 }}>
               {aiMsgs.map((m, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-                  <div style={{ maxWidth: "88%", padding: "9px 12px", fontSize: 13.5, lineHeight: 1.55, fontFamily: "Georgia, serif",
+                  <div style={{ maxWidth: "88%", padding: "9px 12px", fontSize: 14, lineHeight: 1.55, fontFamily: "Georgia, serif",
                     ...(m.role === "user"
                       ? (a11y
                         ? { background: "rgba(139,106,48,0.09)", border: "1px solid rgba(139,106,48,0.42)",
                             boxShadow: "inset 0 0 22px rgba(255,255,255,0.40), inset 0 1px 0 rgba(255,255,255,0.70)", color: "#3A2E1C" }
                         : { background: "rgba(200,169,110,0.10)", border: "1px solid rgba(214,178,102,0.35)",
-                            boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#F5E9CE" })
+                            boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#EFE4C8" })
                       : (a11y
                         ? { background: "rgba(250,242,222,0.55)", border: "1px solid rgba(139,106,48,0.30)",
                             boxShadow: "inset 0 0 22px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)", color: "#3A2E1C" }
                         : { background: "rgba(255,250,238,0.05)", border: "1px solid rgba(255,255,255,0.13)",
-                            boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#EFE6D2" })),
+                            boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#F0E8D8" })),
                     borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px" }}>
                     {m.content}
                   </div>
                 </div>
               ))}
               {aiBusy && (
-                <div style={{ display: "flex", gap: 5, padding: "8px 4px" }}>
+                <div style={{ display: "flex", gap: 4, padding: "8px 4px" }}>
                   {[0, 1, 2].map(i => <span key={i} className="sa-pulse" style={{ width: 6, height: 6, borderRadius: 3, background: gold, animationDelay: (i * 0.18) + "s" }} />)}
                 </div>
               )}
@@ -754,9 +754,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   {aiErr}
                   <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
                     <button className="sa-btn" onClick={() => aiTurn(aiMsgs)}
-                      style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12, fontWeight: "bold" }}>↻ Повторить</button>
+                      style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>↻ Повторить</button>
                     <button className="sa-btn" onClick={() => { setPhase("handoff"); }}
-                      style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: "none", background: "transparent", color: sub, fontFamily: "Georgia, serif", fontSize: 12 }}>Назад</button>
+                      style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: "none", background: "transparent", color: sub, fontFamily: "Georgia, serif", fontSize: 12.5 }}>Назад</button>
                   </div>
                 </div>
               )}
@@ -774,7 +774,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 }}
                 placeholder="Ответ кандидата…"
                 maxLength={800}
-                style={{ ...inputStyle, flex: 1, minWidth: 0, marginBottom: 0,
+                style={{ ...inputStyle, flex: 1, minWidth: 0, marginBottom: 2,
                   lineHeight: 1.45, resize: "none", maxHeight: 110, overflowY: "auto" }}
               />
               <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
@@ -791,7 +791,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             {aiAnswered >= 4 && !aiBusy && (
               <button className="sa-btn" style={goldBtn} onClick={finishAi}>Завершить интервью → оценка</button>
             )}
-            <div style={{ ...T.modSub, color: sub, fontSize: 10.5, textAlign: "center", marginTop: 8, opacity: 0.75, fontFamily: "monospace", letterSpacing: 1 }}>
+            <div style={{ ...T.modSub, color: sub, fontSize: 11, textAlign: "center", marginTop: 8, opacity: 0.75, fontFamily: "monospace", letterSpacing: 1 }}>
               ИИ МОЖЕТ ОШИБАТЬСЯ · РЕШЕНИЕ ВСЕГДА ЗА МЕНЕДЖЕРОМ
             </div>
           </>
@@ -801,8 +801,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {phase === "test" && q && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ ...T.quizProgress, marginBottom: 0 }}>ВОПРОС {qIdx + 1} / {test.length}</span>
-              <span style={{ color: sub, fontSize: 12 }}>{name.trim()}</span>
+              <span style={{ ...T.quizProgress, marginBottom: 2 }}>ВОПРОС {qIdx + 1} / {test.length}</span>
+              <span style={{ color: sub, fontSize: 12.5 }}>{name.trim()}</span>
             </div>
             <QTimer key={qIdx} seconds={SECONDS_PER_Q} onExpire={onExpire} />
             {q.scene && (
@@ -810,7 +810,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 {q.scene}
               </div>
             )}
-            <div style={{ ...T.quizQ, marginTop: 0 }}>{q.text}</div>
+            <div style={{ ...T.quizQ, marginTop: 2 }}>{q.text}</div>
 
             {q.type === "order" ? (
               <>
@@ -820,8 +820,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                     <button key={i} className="sa-btn sa-opt" onClick={() => tapOrder(i)}
                       style={{ ...T.quizOpt, display: "flex", alignItems: "center", gap: 12, width: "100%",
                         textAlign: "left", fontFamily: "Georgia, serif", ...(pos >= 0 ? optSel : {}) }}>
-                      <span style={{ width: 26, height: 26, borderRadius: 13, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13,
+                      <span style={{ width: 26, height: 26, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                        fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 12.5,
                         border: `1.5px solid ${pos >= 0 ? gold : "rgba(200,160,80,0.4)"}`,
                         background: pos >= 0 ? gold : "transparent", color: pos >= 0 ? "#fff" : sub }}>
                         {pos >= 0 ? pos + 1 : ""}
@@ -851,9 +851,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {/* ── САМООЦЕНКА ── */}
         {phase === "selfcheck" && (
           <>
-            <div style={{ ...glass, marginBottom: 14 }}>
+            <div style={{ ...glass, marginBottom: 12 }}>
               <div style={{ marginBottom: 8, display: "flex" }}>{UI_SVG.target(gold, 24)}</div>
-              <div style={{ ...T.bold, marginTop: 0, marginBottom: 6 }}>Последний вопрос — о себе</div>
+              <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Последний вопрос — о себе</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
                 {name.trim()}, как вам кажется, на какую часть вопросов вы ответили верно? Здесь нет правильного ответа — отвечайте честно.
               </div>
@@ -873,7 +873,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           <>
             <div style={{ ...glass, textAlign: "center", padding: "36px 20px", marginBottom: 16 }}>
               <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>{MOD_SVG["🤝"](gold, 30)}</div>
-              <div style={{ ...T.bold, marginTop: 0, marginBottom: 8 }}>Готово — спасибо!</div>
+              <div style={{ ...T.bold, marginTop: 2, marginBottom: 8 }}>Готово — спасибо!</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
                 {name.trim()}, верните телефон менеджеру, пожалуйста.
               </div>
@@ -888,11 +888,11 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           const cal = calibrationOf(selfBand, pct);
           return (
             <>
-              <div style={{ ...glass, marginBottom: 14, padding: "22px 16px 16px" }}>
+              <div style={{ ...glass, marginBottom: 12, padding: "22px 16px 16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <div style={{ ...T.resultCircle, borderColor: v.color }}>
                     <span style={{ ...T.resultScore, color: v.color }}>{pct}%</span>
-                    <span style={{ color: "#a09080", fontSize: 12 }}>верно</span>
+                    <span style={{ color: "#a09080", fontSize: 12.5 }}>верно</span>
                   </div>
                   <div style={{ ...T.resultTxt, fontWeight: "bold", color: v.color }}>{v.label}</div>
                 </div>
@@ -903,10 +903,10 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               </div>
 
               {cal && (
-                <div style={{ ...glass, marginBottom: 14, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ ...glass, marginBottom: 12, display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <span style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.target(gold, 20)}</span>
                   <div>
-                    <div style={{ ...T.bold, marginTop: 0, marginBottom: 3 }}>
+                    <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>
                       Самооценка: <span style={{ color: cal.color }}>{cal.label}</span>
                     </div>
                     <div style={{ ...T.modSub, color: sub, lineHeight: 1.55 }}>{cal.note}</div>
@@ -915,8 +915,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               )}
 
               {aiVerdict && (
-                <div style={{ ...glass, marginBottom: 14 }}>
-                  <div style={{ ...T.bold, marginTop: 0, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ ...glass, marginBottom: 12 }}>
+                  <div style={{ ...T.bold, marginTop: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
                     Вердикт ИИ
                     <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span>
                   </div>
@@ -940,21 +940,21 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               )}
 
               {topics.length > 0 && (
-                <div style={{ ...glass, marginBottom: 14 }}>
-                  <div style={{ ...T.bold, marginTop: 0, marginBottom: 10 }}>По компетенциям — от слабых к сильным</div>
+                <div style={{ ...glass, marginBottom: 12 }}>
+                  <div style={{ ...T.bold, marginTop: 2, marginBottom: 10 }}>По компетенциям — от слабых к сильным</div>
                   {topics.map((t, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
-                      <span style={{ flex: 1, minWidth: 0, color: T.modTitle.color, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.topic}</span>
+                      <span style={{ flex: 1, minWidth: 0, color: T.modTitle.color, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.topic}</span>
                       <div style={{ width: 70, height: 5, borderRadius: 3, background: "rgba(160,120,60,0.18)", overflow: "hidden", flexShrink: 0 }}>
                         <div style={{ height: "100%", width: Math.min(100, (t.ok / t.n) * 100) + "%", background: topicColor(t) }} />
                       </div>
-                      <span style={{ color: sub, fontFamily: "monospace", fontSize: 12, width: 34, textAlign: "right", flexShrink: 0 }}>{t.ok}/{t.n}</span>
+                      <span style={{ color: sub, fontFamily: "monospace", fontSize: 12.5, width: 34, textAlign: "right", flexShrink: 0 }}>{t.ok}/{t.n}</span>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 14 }}>
+              <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
                 Результат сохранён на этом устройстве. Помни: тест меряет мышление, а человека — только разговор.
               </div>
               <button className="sa-btn" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>

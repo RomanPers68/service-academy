@@ -19,7 +19,7 @@ import {
   moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
 } from "../data/reviews";
 
-const GOLD_SOFT = "#D4A85A", PAPER = "#FBF5E8", PAPER_DIM = "#EFE6D2",
+const GOLD_SOFT = "#D2A85A", PAPER = "#F5EFE2", PAPER_DIM = "#F0E8D8",
   INK = "#2A1F0E", BROWN = "#7A6548", WAX = "#8B3020";
 const MONO = { fontFamily: "ui-monospace, Menlo, monospace" };
 const SCRIPT = { fontFamily: "'Marck Script', 'Caveat', 'Segoe Script', cursive" };
@@ -198,14 +198,14 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
               {stats.next ? ` · до «${stats.next.label}» — ${stats.next.min - stats.score}` : " · высшее звание"}
             </div>
           </div>
-          <div style={{ ...MONO, color: GOLD, fontSize: 10, letterSpacing: 1, flexShrink: 0 }}>{stats.pages}/{stats.total}</div>
+          <div style={{ ...MONO, color: GOLD, fontSize: 9, letterSpacing: 1, flexShrink: 0 }}>{stats.pages}/{stats.total}</div>
         </div>
       </div>
 
       {/* Разделы книги */}
       <div style={{ padding: "12px 16px 2px" }}>
         <LiquidSegment a11y={a11y} equal={false} scroll accent={GOLD} muted={T.modSub.color}
-          itemStyle={{ ...MONO, fontSize: 10, letterSpacing: .5, padding: "7px 12px" }}
+          itemStyle={{ ...MONO, fontSize: 9, letterSpacing: .5, padding: "7px 12px" }}
           items={chips.map(c => ({ id: c.id, render: () => (<>
             {c.label}
             {unreadByTab[c.id] && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: GOLD, marginLeft: 5, boxShadow: `0 0 5px ${GOLD}`, verticalAlign: "middle" }} />}
@@ -218,7 +218,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 16px 6px" }}>
         <div style={{ position: "relative" }} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
           {/* стопка страниц позади */}
-          <div style={{ position: "absolute", inset: "8px -5px -7px -5px", borderRadius: 14, background: "#E8DCC2", transform: "rotate(-1.1deg)", opacity: .45 }} />
+          <div style={{ position: "absolute", inset: "8px -5px -7px -5px", borderRadius: 14, background: "#E8DEC8", transform: "rotate(-1.1deg)", opacity: .45 }} />
           <div style={{ position: "absolute", inset: "5px -3px -4px -3px", borderRadius: 14, background: "#F2E8D0", transform: "rotate(.7deg)", opacity: .65 }} />
 
           <div key={tab + ":" + idx} className={dir === "r" ? "gb-page-r" : "gb-page-l"}
@@ -228,20 +228,20 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
             <div style={{ position: "absolute", left: 8, top: 12, bottom: 12, width: 1, borderLeft: "1px dashed rgba(122,101,72,.35)", pointerEvents: "none" }} />
 
             {page.kind === "challenge" ? (
-              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 11 }}>
+              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 10 }}>
                 <div style={{ ...MONO, color: BROWN, fontSize: 9, letterSpacing: 3 }}>НОВОЕ ИСПЫТАНИЕ КАЖДУЮ НЕДЕЛЮ</div>
                 <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.3" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6" /><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z" /><path d="M6.5 14v7M17.5 14v7M7 17.5h10" /></svg>
                 <div style={{ ...SCRIPT, color: INK, fontSize: 25, lineHeight: 1.2 }}>Гость недели уже за столиком…</div>
-                <div style={{ color: BROWN, fontSize: 13.5, lineHeight: 1.65, maxWidth: 258 }}>Сложный живой диалог. Проведи его достойно — и получи страницу с печатью. Не получится — гость уйдёт без отзыва, но вернётся: попробуешь снова.</div>
-                <button onClick={onWeekly} {...onActivate(onWeekly)} style={{ ...MONO, marginTop: 4, fontSize: 11, letterSpacing: 2, color: PAPER, background: `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, border: "none", borderRadius: 16, padding: "10px 22px", boxShadow: "0 4px 14px rgba(139,106,48,.4)", cursor: "pointer" }}>ПРИНЯТЬ СТОЛ ›</button>
+                <div style={{ color: BROWN, fontSize: 14, lineHeight: 1.65, maxWidth: 258 }}>Сложный живой диалог. Проведи его достойно — и получи страницу с печатью. Не получится — гость уйдёт без отзыва, но вернётся: попробуешь снова.</div>
+                <button onClick={onWeekly} {...onActivate(onWeekly)} style={{ ...MONO, marginTop: 4, fontSize: 11, letterSpacing: 2, color: PAPER, background: `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, border: "none", borderRadius: 14, padding: "10px 22px", boxShadow: "0 4px 14px rgba(139,106,48,.4)", cursor: "pointer" }}>ПРИНЯТЬ СТОЛ ›</button>
               </div>
             ) : page.kind === "builds" ? (
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>РОЛЬ «БАР» · ЛУЧШИЕ ПРОГОНЫ</div>
+                  <div style={{ ...MONO, color: "#9A8060", fontSize: 9, letterSpacing: 2 }}>РОЛЬ «БАР» · ЛУЧШИЕ ПРОГОНЫ</div>
                   <span style={{ display:"inline-flex", verticalAlign:"-3px" }}>{ROLE_SVG.bar("#C8A96E", 16)}</span>
                 </div>
-                <div style={{ ...SCRIPT, color: INK, fontSize: 24, marginTop: 10 }}>Витрина сборки</div>
+                <div style={{ ...SCRIPT, color: INK, fontSize: 25, marginTop: 10 }}>Витрина сборки</div>
                 <div style={{ marginTop: 6, flex: 1 }}>
                   {buildLessons.map(l => {
                     const st = myBuildStars[l.id] || 0;
@@ -256,10 +256,10 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                           {st ? "✦" : "·"}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ color: INK, fontSize: 13, fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <div style={{ color: INK, fontSize: 12.5, fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {(l.title || "").replace(/^Сборка:\s*/i, "")}
                           </div>
-                          <div style={{ ...MONO, color: col, fontSize: 8.5, letterSpacing: 1.5, marginTop: 2, textTransform: "uppercase" }}>{verdict}</div>
+                          <div style={{ ...MONO, color: col, fontSize: 9, letterSpacing: 1.5, marginTop: 2, textTransform: "uppercase" }}>{verdict}</div>
                         </div>
                         <div style={{ color: GOLD_SOFT, fontSize: 11, letterSpacing: 1, flexShrink: 0 }}>
                           {"★".repeat(st)}<span style={{ opacity: .22 }}>{"★".repeat(3 - st)}</span>
@@ -275,46 +275,46 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                   const masters = stamped.filter(c => m[c.id].level >= 3).length;
                   return (
                     <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed rgba(122,101,72,.3)" }}>
-                      <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>СБОРКА РУКАМИ · ПО ПАМЯТИ</div>
+                      <div style={{ ...MONO, color: "#9A8060", fontSize: 9, letterSpacing: 2 }}>СБОРКА РУКАМИ · ПО ПАМЯТИ</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-                        <div style={{ ...SCRIPT, color: INK, fontSize: 22 }}>{stamped.length}<span style={{ fontSize: 12, color: "#9A855C", marginLeft: 6 }}>из {COCKTAILS.length}{masters ? ` · мастер ${masters}` : ""}</span></div>
-                        <div style={{ display: "flex", gap: 3, flexWrap: "wrap", flex: 1, justifyContent: "flex-end" }}>
-                          {stamped.slice(0, 12).map(c => <span key={c.id} title={c.name} style={{ width: 14, height: 14, borderRadius: 7, background: m[c.id].level >= 3 ? `radial-gradient(circle at 34% 30%, ${GOLD_SOFT}, #A98A4E 60%, rgba(0,0,0,.3))` : `radial-gradient(circle at 34% 30%, ${WAX}, #8A3A2A 60%, rgba(0,0,0,.3))`, boxShadow: "0 1px 3px rgba(0,0,0,.3)" }} />)}
-                          {stamped.length > 12 && <span style={{ ...MONO, fontSize: 9, color: "#9A855C" }}>+{stamped.length - 12}</span>}
+                        <div style={{ ...SCRIPT, color: INK, fontSize: 21 }}>{stamped.length}<span style={{ fontSize: 12.5, color: "#9A8060", marginLeft: 6 }}>из {COCKTAILS.length}{masters ? ` · мастер ${masters}` : ""}</span></div>
+                        <div style={{ display: "flex", gap: 2, flexWrap: "wrap", flex: 1, justifyContent: "flex-end" }}>
+                          {stamped.slice(0, 12).map(c => <span key={c.id} title={c.name} style={{ width: 14, height: 14, borderRadius: 6, background: m[c.id].level >= 3 ? `radial-gradient(circle at 34% 30%, ${GOLD_SOFT}, #A98A4E 60%, rgba(0,0,0,.3))` : `radial-gradient(circle at 34% 30%, ${WAX}, #8A3A2A 60%, rgba(0,0,0,.3))`, boxShadow: "0 1px 3px rgba(0,0,0,.3)" }} />)}
+                          {stamped.length > 12 && <span style={{ ...MONO, fontSize: 9, color: "#9A8060" }}>+{stamped.length - 12}</span>}
                         </div>
                       </div>
-                      {!stamped.length && <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, marginTop: 4 }}>СОБЕРИ КОКТЕЙЛЬ ПО ПАМЯТИ — ПЕРВАЯ ПЕЧАТЬ ЛЯЖЕТ СЮДА</div>}
+                      {!stamped.length && <div style={{ ...MONO, color: "#9A8060", fontSize: 9, letterSpacing: 1.5, marginTop: 4 }}>СОБЕРИ КОКТЕЙЛЬ ПО ПАМЯТИ — ПЕРВАЯ ПЕЧАТЬ ЛЯЖЕТ СЮДА</div>}
                     </div>
                   );
                 })()}
-                <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, marginTop: 10 }}>
+                <div style={{ ...MONO, color: "#9A8060", fontSize: 9, letterSpacing: 1.5, marginTop: 10 }}>
                   ЛУЧШИЙ ПРОГОН КАЖДОЙ СБОРКИ · ОБНОВЛЯЕТСЯ САМ
                 </div>
               </div>
             ) : page.kind === "locked" ? (
-              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 11, opacity: .88 }}>
+              <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 10, opacity: .88 }}>
                 {page.legend
-                  ? <div style={{ width: 52, height: 52, borderRadius: "50%", border: `1.5px dashed ${BROWN}`, display: "flex", alignItems: "center", justifyContent: "center", color: BROWN, fontSize: 20 }}>✦</div>
+                  ? <div style={{ width: 52, height: 52, borderRadius: "50%", border: `1.5px dashed ${BROWN}`, display: "flex", alignItems: "center", justifyContent: "center", color: BROWN, fontSize: 21 }}>✦</div>
                   : <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>}
-                <div style={{ ...SCRIPT, color: BROWN, fontSize: 24 }}>Здесь появится отзыв</div>
-                <div style={{ color: BROWN, fontSize: 13.5, lineHeight: 1.65, maxWidth: 250 }}>{page.hint}</div>
-                <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2, border: "1px solid rgba(122,101,72,.3)", borderRadius: 10, padding: "5px 12px" }}>{page.source}</div>
+                <div style={{ ...SCRIPT, color: BROWN, fontSize: 25 }}>Здесь появится отзыв</div>
+                <div style={{ color: BROWN, fontSize: 14, lineHeight: 1.65, maxWidth: 250 }}>{page.hint}</div>
+                <div style={{ ...MONO, color: "#9A8060", fontSize: 9, letterSpacing: 2, border: "1px solid rgba(122,101,72,.3)", borderRadius: 9, padding: "5px 12px" }}>{page.source}</div>
               </div>
             ) : (
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ ...MONO, color: "#9A855C", fontSize: 9, letterSpacing: 2 }}>{(page.date ? page.date + " · " : "") + page.table.toUpperCase()}</div>
-                  <div style={{ color: GOLD_SOFT, fontSize: 13, letterSpacing: 2 }}>★★★★★</div>
+                  <div style={{ ...MONO, color: "#9A8060", fontSize: 9, letterSpacing: 2 }}>{(page.date ? page.date + " · " : "") + page.table.toUpperCase()}</div>
+                  <div style={{ color: GOLD_SOFT, fontSize: 12.5, letterSpacing: 2 }}>★★★★★</div>
                 </div>
-                <div style={{ ...SCRIPT, color: INK, fontSize: 20.5, lineHeight: "28px", marginTop: 14, flex: 1 }}>{page.text}</div>
-                <div style={{ ...SCRIPT, color: BROWN, fontSize: 20, textAlign: "right", marginTop: 6 }}>— {page.guest}</div>
+                <div style={{ ...SCRIPT, color: INK, fontSize: 21, lineHeight: "28px", marginTop: 12, flex: 1 }}>{page.text}</div>
+                <div style={{ ...SCRIPT, color: BROWN, fontSize: 21, textAlign: "right", marginTop: 6 }}>— {page.guest}</div>
                 <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                  <div style={{ ...MONO, color: "#9A855C", fontSize: 8.5, letterSpacing: 1.5, border: "1px solid rgba(122,101,72,.35)", borderRadius: 8, padding: "5px 10px", transform: "rotate(-2deg)" }}>✓ {page.source}</div>
+                  <div style={{ ...MONO, color: "#9A8060", fontSize: 9, letterSpacing: 1.5, border: "1px solid rgba(122,101,72,.35)", borderRadius: 9, padding: "5px 10px", transform: "rotate(-2deg)" }}>✓ {page.source}</div>
                   {page.kind === "legend" && (
                     <div className="gb-seal" style={{ width: 58, height: 58, borderRadius: "50%", flexShrink: 0, background: `radial-gradient(circle at 34% 30%, #B0492F, ${WAX} 62%, #5E1F12)`, boxShadow: "0 4px 10px rgba(94,31,18,.45), inset 0 2px 4px rgba(255,255,255,.22), inset 0 -3px 6px rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <div style={{ width: 43, height: 43, borderRadius: "50%", border: "1px solid rgba(255,220,190,.4)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
-                        <span style={{ fontSize: 12 }}>✦</span>
-                        <span style={{ ...MONO, color: "#F5DFC8", fontSize: 5.5, letterSpacing: 1 }}>{page.seal}</span>
+                      <div style={{ width: 43, height: 43, borderRadius: "50%", border: "1px solid rgba(255,220,190,.4)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+                        <span style={{ fontSize: 12.5 }}>✦</span>
+                        <span style={{ ...MONO, color: "#EFE4C8", fontSize: 9, letterSpacing: 1 }}>{page.seal}</span>
                       </div>
                     </div>
                   )}
@@ -326,18 +326,18 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
         {/* Листание */}
         {pages.length > 1 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, padding: "0 4px" }}>
-            <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
-            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", maxWidth: 220 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, padding: "0 4px" }}>
+            <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 18, padding: "6px 15px", fontSize: 14, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", maxWidth: 220 }}>
               {pages.map((p, i) => {
                 const isUnread = (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key);
                 return (
                 <div key={p.key} onClick={() => { if (i !== idx) vibrate("light"); setDir(i > idx ? "r" : "l"); setIdx(i); }}
-                  style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all .25s ease", background: i === idx ? GOLD : p.kind === "locked" ? (a11y ? "rgba(120,100,60,.3)" : "#3A2E1E") : p.kind === "legend" ? WAX : "rgba(200,169,110,.45)", boxShadow: isUnread ? `0 0 7px ${GOLD}` : undefined }} />
+                  style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all .25s ease", background: i === idx ? GOLD : p.kind === "locked" ? (a11y ? "rgba(120,100,60,.3)" : "#3A2E1C") : p.kind === "legend" ? WAX : "rgba(200,169,110,.45)", boxShadow: isUnread ? `0 0 7px ${GOLD}` : undefined }} />
                 );
               })}
             </div>
-            <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 20, padding: "6px 15px", fontSize: 15, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
+            <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 18, padding: "6px 15px", fontSize: 14, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
           </div>
         )}
         <div style={{ ...MONO, color: T.modSub.color, fontSize: 9, letterSpacing: 1, textAlign: "center", marginTop: 10, opacity: .8 }}>

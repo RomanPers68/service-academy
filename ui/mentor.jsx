@@ -100,24 +100,24 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
         <div style={T.lessHeadTitle}>Допуск наставника</div>
       </div>
 
-      <div style={{ padding: "8px 18px 0", color: T.para?.color, fontSize: 13.5, lineHeight: 1.55 }}>
+      <div style={{ padding: "8px 18px 0", color: T.para?.color, fontSize: 14, lineHeight: 1.55 }}>
         Тесты показывают <b style={{ color: gold }}>знание</b>. Здесь наставник подтверждает <b style={{ color: gold }}>умение</b> — то, что он видел своими глазами в зале.
       </div>
 
       <div style={{ ...glass(T), margin: "14px 16px 4px", padding: "16px", ...(allDone ? { border: `1px solid ${green}77`, borderTop: `1px solid ${green}99` } : {}) }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: T.para?.color }}>{roleObj?.label || ""} · допуск</span>
-          <b style={{ color: allDone ? green : gold, fontSize: 15 }}>{doneCount} / {skills.length}</b>
+          <span style={{ fontSize: 12.5, color: T.para?.color }}>{roleObj?.label || ""} · допуск</span>
+          <b style={{ color: allDone ? green : gold, fontSize: 14 }}>{doneCount} / {skills.length}</b>
         </div>
-        <div style={{ height: 7, borderRadius: 4, background: "rgba(128,128,128,0.22)", overflow: "hidden" }}>
+        <div style={{ height: 7, borderRadius: 3, background: "rgba(128,128,128,0.22)", overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${pct}%`, background: allDone ? green : gold, transition: "width .4s" }} />
         </div>
-        {allDone && <div style={{ marginTop: 10, color: green, fontWeight: "bold", fontSize: 14.5 }}>🎓 Допущен(а) к самостоятельной работе</div>}
+        {allDone && <div style={{ marginTop: 10, color: green, fontWeight: "bold", fontSize: 14 }}>🎓 Допущен(а) к самостоятельной работе</div>}
       </div>
 
       <div style={{ ...T.secTitle }}>Навыки</div>
       <div style={{ padding: "0 14px 24px" }}>
-        {!skills.length && <div style={{ color: T.modSub.color, fontSize: 13, padding: "6px 4px" }}>Для этой роли навыки допуска пока не заданы (data/skills.js).</div>}
+        {!skills.length && <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "6px 4px" }}>Для этой роли навыки допуска пока не заданы (data/skills.js).</div>}
         {skills.map((s, i) => {
           const rec = confirmed[s.id];
           return (
@@ -128,7 +128,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
               <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <div style={{ ...T.modTitle, color: rec ? green : T.modTitle.color }}>{s.label}</div>
                 <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.45 }}>{s.hint}</div>
-                {rec && <div style={{ fontSize: 11.5, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ marginLeft: 6, fontSize: 8.5, letterSpacing: 1, color: green, border: `1px solid ${green}66`, borderRadius: 7, padding: "1px 6px", fontFamily: "monospace", verticalAlign: "1px" }}>PIN ✓</span>}</div>}
+                {rec && <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ marginLeft: 6, fontSize: 9, letterSpacing: 1, color: green, border: `1px solid ${green}66`, borderRadius: 6, padding: "1px 6px", fontFamily: "monospace", verticalAlign: "1px" }}>PIN ✓</span>}</div>}
               </div>
               {rec && canRevoke
                 ? <div style={{ padding: "4px 8px", color: "#E07878", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); revoke(s.id); }} {...onActivate(() => revoke(s.id))}>✕</div>
@@ -143,7 +143,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto", background: a11y ? "rgba(250,246,236,0.96)" : "rgba(30,22,10,0.96)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px", paddingBottom: "max(30px, env(safe-area-inset-bottom))", color: textColor }}>
             <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ПОДТВЕРЖДЕНИЕ НАВЫКА</div>
             <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6, color: T.bold?.color }}>{modal.label}</div>
-            <div style={{ fontSize: 13.5, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
+            <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
               📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
             </div>
             {!byName ? (
@@ -154,10 +154,10 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
                   onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
                   inputMode="numeric" pattern="[0-9]*" type="password" autoComplete="one-time-code"
                   placeholder="PIN наставника (4–6 цифр)"
-                  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${pinErr ? "#E07878" : gold + "88"}`, borderTop: `1px solid ${pinErr ? "#E07878" : gold + "55"}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 17, letterSpacing: 6, textAlign: "center", fontFamily: "monospace", outline: "none", marginBottom: pinErr ? 6 : 12 }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${pinErr ? "#E07878" : gold + "88"}`, borderTop: `1px solid ${pinErr ? "#E07878" : gold + "55"}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, letterSpacing: 6, textAlign: "center", fontFamily: "monospace", outline: "none", marginBottom: pinErr ? 6 : 12 }}
                 />
-                {pinErr && <div style={{ color: "#E07878", fontSize: 12, marginBottom: 10, textAlign: "center" }}>{pinErr}</div>}
-                <div onClick={() => { setByName(true); setPinErr(""); }} {...onActivate(() => { setByName(true); setPinErr(""); })} style={{ fontSize: 12, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                {pinErr && <div style={{ color: "#E07878", fontSize: 12.5, marginBottom: 10, textAlign: "center" }}>{pinErr}</div>}
+                <div onClick={() => { setByName(true); setPinErr(""); }} {...onActivate(() => { setByName(true); setPinErr(""); })} style={{ fontSize: 12.5, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                   У наставника нет PIN — подтвердить по фамилии
                 </div>
               </>
@@ -168,20 +168,20 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
                   onChange={e => setMentorName(e.target.value)}
                   onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
                   placeholder="Фамилия и имя наставника"
-                  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 15.5, outline: "none", marginBottom: 8 }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, outline: "none", marginBottom: 8 }}
                 />
-                <div onClick={() => setByName(false)} {...onActivate(() => setByName(false))} style={{ fontSize: 12, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                <div onClick={() => setByName(false)} {...onActivate(() => setByName(false))} style={{ fontSize: 12.5, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                   ‹ Вернуться к подтверждению по PIN
                 </div>
               </>
             )}
             <div onClick={() => setAgree(a => !a)} {...onActivate(() => setAgree(a => !a))} style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", marginBottom: 16 }}>
               <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${agree ? green : gold}`, background: agree ? green : "transparent", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{agree ? "✓" : ""}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.45, color: T.para?.color }}>Подтверждаю: наблюдал(а) выполнение этого навыка сотрудником в реальной работе.</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.45, color: T.para?.color }}>Подтверждаю: наблюдал(а) выполнение этого навыка сотрудником в реальной работе.</div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={closeModal}>Отмена</button>
-              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? green : gold + "55", color: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? "#fff" : (a11y ? "#7a6a4a" : "#e8dcc0"), transition: "background .25s" }} onClick={byName ? confirm : confirmByPin}>{busy ? "Проверяю…" : "Подтвердить ✓"}</button>
+              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? green : gold + "55", color: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? "#fff" : (a11y ? "#7A6548" : "#e8dcc0"), transition: "background .25s" }} onClick={byName ? confirm : confirmByPin}>{busy ? "Проверяю…" : "Подтвердить ✓"}</button>
             </div>
           </div>
         </div>,

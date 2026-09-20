@@ -91,7 +91,7 @@ function GlassView({ glass, fill, colors, ice, garnish, shake, a11y, spilled, la
         {lh > 0 && <rect x={x} y={y + h - lh} width={w} height={lh} fill={liq} opacity="0.7" clipPath={`url(#gl-${glass})`} />}
         <path d={path.split(" M")[0]} fill="url(#sa-glassbody)" stroke={line} strokeWidth="1.2" opacity="0.6" />
       </g></g>}
-      {served && <><ellipse cx="60" cy="114" rx="34" ry="5" fill="rgba(0,0,0,0.45)" /><ellipse cx="60" cy="112" rx="30" ry="4" fill="#3a2a12" stroke={line} strokeWidth="1" /><rect x="0" y="0" width="120" height="120" fill="url(#sa-spot)" /></>}
+      {served && <><ellipse cx="60" cy="114" rx="34" ry="5" fill="rgba(0,0,0,0.45)" /><ellipse cx="60" cy="112" rx="30" ry="4" fill="#3A2C10" stroke={line} strokeWidth="1" /><rect x="0" y="0" width="120" height="120" fill="url(#sa-spot)" /></>}
       <path d={path.split(" M")[0]} fill="url(#sa-glassbody)" />
       <g clipPath={`url(#gl-${glass})`}>
         {!spilled && layers && layers.length > 0 ? layers.map((l, i) => { const lhh = (l.ml / total) * lh; const yy = y + h - (acc + l.ml) / total * lh; acc += l.ml; return <rect key={i} x={x} y={yy} width={w} height={lhh} fill={l.color} opacity="0.9" style={{ transition: "y .4s ease, height .4s ease" }} />; })
@@ -171,11 +171,11 @@ function Bottle({ color, label, on, dim, ghost, gold, a11y, onClick, delay = 0, 
           {!ghost && <rect x={sh.liq[0]} y={sh.liq[1]} width={sh.liq[2]} height={sh.liq[3]} fill={color} opacity="0.9" clipPath={`url(#bt-${kind})`} />}
           {kind === "soda" && [0, 1, 2, 3].map(i => <circle key={i} cx={19 + (i * 5) % 8} cy={50 - i * 9} r="1.3" fill="rgba(255,255,255,0.7)" clipPath={`url(#bt-${kind})`} />)}
           {kind === "fresh" && <path d="M14 30c4-6 12-6 16 0" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" />}
-          <rect x={sh.label[0] + 1} y={sh.label[1]} width={sh.label[2] - 2} height={sh.label[3]} rx="1.5" fill={on ? "#E8CC8A" : (a11y ? "rgba(255,252,240,0.95)" : "rgba(238,228,200,0.92)")} stroke={on ? gold : "none"} strokeWidth="0.8" />
+          <rect x={sh.label[0] + 1} y={sh.label[1]} width={sh.label[2] - 2} height={sh.label[3]} rx="1.5" fill={on ? "#E4C88C" : (a11y ? "rgba(255,252,240,0.95)" : "rgba(238,228,200,0.92)")} stroke={on ? gold : "none"} strokeWidth="0.8" />
           <text x="22" y={sh.label[1] + sh.label[3] * 0.72} textAnchor="middle" fontSize={Math.min(5.2, (sh.label[2] - 3) / Math.max(4, short.length) * 1.9)} fontFamily="Georgia, serif" fill="#2A1F0E">{short.length > 14 ? short.slice(0, 13) + "…" : short}</text>
           <path d={`M${sh.liq[0] + 2} ${sh.liq[1] + 4} v${sh.liq[3] - 8}`} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinecap="round" />
         </svg>
-        {dim && <div style={{ position: "absolute", right: -2, top: -2, width: 16, height: 16, borderRadius: 8, background: "#5DBB8A", color: "#fff", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
+        {dim && <div style={{ position: "absolute", right: -2, top: -2, width: 16, height: 16, borderRadius: 9, background: "#5DBB8A", color: "#fff", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
       </div>
       <div style={{ fontSize: 11, lineHeight: 1.2, color: on ? gold : text, height: 27, overflow: "hidden" }}>{label}</div>
     </div>
@@ -185,15 +185,15 @@ function Item({ icon, label, on, gold, a11y, onClick, delay = 0, wide }) {
   const text = a11y ? "#2A1F0E" : "#EFE4C8";
   return (
     <div className="sa-lab-in sa-lab-bottle" onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: `${delay}ms`, minWidth: wide ? 88 : 64, flexShrink: 0, cursor: "pointer", textAlign: "center", transition: "transform .12s" }}>
-      <div style={{ width: 54, height: 54, margin: "0 auto 5px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? gold : (a11y ? "#8B6A3055" : "rgba(255,255,255,0.14)")}`, background: on ? "radial-gradient(circle at 50% 60%, rgba(214,178,102,0.34), rgba(214,178,102,0.08) 70%)" : (a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)"), boxShadow: on ? `inset 0 0 0 1.5px ${gold}, inset 0 0 12px rgba(214,178,102,.5)` : "none", animation: on ? "saLabPulse 1.6s ease-in-out infinite" : "none" }}>{icon}</div>
-      <div style={{ fontSize: 10.5, lineHeight: 1.2, color: on ? gold : text, height: 26, overflow: "hidden" }}>{label}</div>
+      <div style={{ width: 54, height: 54, margin: "0 auto 5px", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? gold : (a11y ? "#8B6A3055" : "rgba(255,255,255,0.14)")}`, background: on ? "radial-gradient(circle at 50% 60%, rgba(214,178,102,0.34), rgba(214,178,102,0.08) 70%)" : (a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)"), boxShadow: on ? `inset 0 0 0 1.5px ${gold}, inset 0 0 12px rgba(214,178,102,.5)` : "none", animation: on ? "saLabPulse 1.6s ease-in-out infinite" : "none" }}>{icon}</div>
+      <div style={{ fontSize: 11, lineHeight: 1.2, color: on ? gold : text, height: 26, overflow: "hidden" }}>{label}</div>
     </div>
   );
 }
 const GlassIcon = ({ glass, a11y }) => <div style={{ width: 34, height: 34 }}><GlassView glass={glass} fill={0} colors={[]} a11y={a11y} /></div>;
-const ToolIcon = ({ id, gold }) => <span style={{ fontSize: 22, color: gold, lineHeight: 1 }}>{TOOL_ICON[id] || "•"}</span>;
-const GarnishIcon = ({ id }) => <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-block", background: id === "cherry" ? "#C4483A" : id === "olive" || id === "mint" ? "#7FA05A" : id === "cream" ? "#EFE4C8" : id === "salt" ? "#F2F2F2" : id === "onion" ? "#E8E4D0" : "#E2A63A", border: "1px solid rgba(255,255,255,0.35)" }} />;
-const IceIcon = ({ id, gold }) => <span style={{ fontSize: 20, color: gold }}>{id === "cube" ? "▢" : id === "crushed" ? "∴" : "∅"}</span>;
+const ToolIcon = ({ id, gold }) => <span style={{ fontSize: 21, color: gold, lineHeight: 1 }}>{TOOL_ICON[id] || "•"}</span>;
+const GarnishIcon = ({ id }) => <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-block", background: id === "cherry" ? "#C4483A" : id === "olive" || id === "mint" ? "#7FA05A" : id === "cream" ? "#EFE4C8" : id === "salt" ? "#F2F3F7" : id === "onion" ? "#E8E4D0" : "#E2A63A", border: "1px solid rgba(255,255,255,0.35)" }} />;
+const IceIcon = ({ id, gold }) => <span style={{ fontSize: 21, color: gold }}>{id === "cube" ? "▢" : id === "crushed" ? "∴" : "∅"}</span>;
 
 // Доп. 219: сосуд на сцене — в него льётся, в нём лёд, он дрожит; при стрейне переливается в бокал
 function VesselView({ kind, fill, colors, ice, a11y, shake, tilt }) {
@@ -271,10 +271,10 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
 
   const Head = (title, backTo) => (
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
-      <button className="sa-btn" onClick={backTo || onBack} {...onActivate(backTo || onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 22, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+      <button className="sa-btn" onClick={backTo || onBack} {...onActivate(backTo || onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold }}>СБОРКА · БАР</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
+        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>СБОРКА · БАР</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
       </div>
     </div>
   );
@@ -289,42 +289,42 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         {Head("Сборка руками")}
         <div style={{ padding: "4px 16px 100px" }}>
           {card({ onClick: () => { setCurrent(dailyC); setView("pick"); vibrate("light"); } }, <>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КОКТЕЙЛЬ ДНЯ</div>
+            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КОКТЕЙЛЬ ДНЯ</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 56, height: 56, flexShrink: 0 }}><GlassView glass={dailyC.glass} fill={0.7} colors={dailyC.ing.map(i => ING_COLOR(i[0]))} ice={dailyC.ice === "crushed" ? "crushed" : dailyC.ice ? "cube" : null} garnish={dailyC.garnish} a11y={a11y} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text }}>{dailyC.name}</div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text }}>{dailyC.name}</div>
                 <div style={{ fontSize: 12.5, color: sub }}>{dailyC.method} · {GLASS_RU[dailyC.glass]} · {MASTERY_LABEL[mastery[dailyC.id]?.level || 0]}</div>
               </div>
               <span style={{ color: gold, fontSize: 18 }}>›</span>
             </div>
           </>)}
           {card({}, <>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МАСТЕРСТВО · {stamps} ИЗ {cardTotal()} ПЕЧАТЕЙ{card ? " · СВОЯ КАРТА" : ""}</div>
+            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МАСТЕРСТВО · {stamps} ИЗ {cardTotal()} ПЕЧАТЕЙ{card ? " · СВОЯ КАРТА" : ""}</div>
             {[1, 2, 3].map(t => { const total = cardTotal(t); const n = ALL.filter(c => tierOf(c) === t && inCard(c) && (mastery[c.id]?.level || 0) >= 2).length; return (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                 <div style={{ width: 84, fontSize: 12.5, color: text }}>{TIER_LABEL[t]}</div>
                 <div style={{ flex: 1, height: 6, borderRadius: 3, background: a11y ? "rgba(139,106,48,0.18)" : "rgba(214,178,102,0.16)" }}><div style={{ width: `${total ? (n / total) * 100 : 0}%`, height: "100%", borderRadius: 3, background: gold, transition: "width .6s" }} /></div>
-                <div style={{ width: 44, textAlign: "right", fontSize: 12, color: sub, fontFamily: "monospace" }}>{n}/{total}</div>
+                <div style={{ width: 44, textAlign: "right", fontSize: 12.5, color: sub, fontFamily: "monospace" }}>{n}/{total}</div>
               </div>); })}
-            <div style={{ fontSize: 12, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
+            <div style={{ fontSize: 12.5, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
           </>)}
           {card({ onClick: () => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
+            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text }}>Три заказа на время</div>
-                <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>{rushBest ? `Твой рекорд ${rushBest} с` : "По памяти · ошибка +10 с · рекорд в Рейтинг команды"}</div>
+                <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{rushBest ? `Твой рекорд ${rushBest} с` : "По памяти · ошибка +10 с · рекорд в Рейтинг команды"}</div>
               </div>
               <span style={{ color: gold, fontSize: 18 }}>›</span>
             </div>
           </>)}
           {onOpenDeck && card({ onClick: () => onOpenDeck(null) }, <>
-            <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ВЫБРАТЬ КОКТЕЙЛЬ</div>
+            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ВЫБРАТЬ КОКТЕЙЛЬ</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text }}>Колода бармена</div>
-                <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>Любая карточка · на обороте «Собрать руками» · печати видны в указателе</div>
+                <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>Любая карточка · на обороте «Собрать руками» · печати видны в указателе</div>
               </div>
               <span style={{ color: gold, fontSize: 18 }}>›</span>
             </div>
@@ -341,7 +341,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
       <div style={T.screen} className="sa-screen">
         {Head(current.name, () => setView("hub"))}
         <div style={{ padding: "4px 16px 100px" }}>
-          <div style={{ ...frost, borderRadius: 18, padding: 16, display: "flex", gap: 14, alignItems: "center", marginBottom: 12 }}>
+          <div style={{ ...frost, borderRadius: 18, padding: 16, display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
             <div style={{ width: 96, height: 96, flexShrink: 0 }}><GlassView glass={current.glass} fill={0.75} colors={current.ing.map(i => ING_COLOR(i[0]))} ice={current.ice === "crushed" ? "crushed" : current.ice ? "cube" : null} garnish={current.garnish} a11y={a11y} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12.5, color: sub }}>{current.method} · {GLASS_RU[current.glass]} · {current.ing.length} ингр.</div>
@@ -350,12 +350,12 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             </div>
           </div>
           <div className="sa-card" onClick={() => startPlay(current, "hint")} {...onActivate(() => startPlay(current, "hint"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: text }}>С подсказкой</div>
-            <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.5 }}>Следующий шаг подсвечен, ошибка объясняется словами урока. Учишься телом, не текстом.</div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>С подсказкой</div>
+            <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Следующий шаг подсвечен, ошибка объясняется словами урока. Учишься телом, не текстом.</div>
           </div>
           <div className="sa-card" onClick={() => startPlay(current, "memory")} {...onActivate(() => startPlay(current, "memory"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", cursor: "pointer", borderColor: gold + "88" }}>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: text }}>По памяти ✦</div>
-            <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.5 }}>Как за стойкой: подсказок нет, ошибка — «вылил», заново. Собрал чисто — печать на карточке.</div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>По памяти ✦</div>
+            <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Как за стойкой: подсказок нет, ошибка — «вылил», заново. Собрал чисто — печать на карточке.</div>
           </div>
         </div>
       </div>
@@ -371,10 +371,10 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
     <div style={T.screen} className="sa-screen">
       {Head("Час пик", () => { setRush(null); setView("hub"); })}
       <div style={{ padding: "20px 16px 100px", textAlign: "center" }}>
-        <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>{rush.total <= rushBest ? "НОВЫЙ РЕКОРД ✦" : "СМЕНА ОТРАБОТАНА"}</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 46, color: text, margin: "6px 0" }}>{rush.total} с</div>
-        <div style={{ fontSize: 13, color: sub }}>{rush.orders.map(o => o.name).join(" · ")}{rush.penalties ? ` · штрафы +${rush.penalties} с` : " · без ошибок"}</div>
-        <button className="sa-btn" onClick={() => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 22, width: "100%" }}>Ещё смену ›</button>
+        <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>{rush.total <= rushBest ? "НОВЫЙ РЕКОРД ✦" : "СМЕНА ОТРАБОТАНА"}</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 44, color: text, margin: "6px 0" }}>{rush.total} с</div>
+        <div style={{ fontSize: 12.5, color: sub }}>{rush.orders.map(o => o.name).join(" · ")}{rush.penalties ? ` · штрафы +${rush.penalties} с` : " · без ошибок"}</div>
+        <button className="sa-btn" onClick={() => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 20, width: "100%" }}>Ещё смену ›</button>
       </div>
     </div>
   );
@@ -491,8 +491,8 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         {rush && (
           <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 10, overflow: "hidden", height: 54 }}>
             {rush.orders.map((o, i) => { const cur = i === rush.i, past = i < rush.i; return (
-              <div key={o.id + i} className={cur ? "sa-lab-in" : ""} style={{ flexShrink: 0, width: cur ? 150 : 96, padding: cur ? "8px 10px" : "6px 8px", background: past ? "#cfc6ad" : "#F2ECD8", color: "#2A1F0E", fontFamily: "ui-monospace, Menlo, monospace", fontSize: cur ? 12 : 10, lineHeight: 1.25, borderRadius: "2px 2px 6px 6px", boxShadow: "0 4px 10px rgba(0,0,0,.35)", opacity: past ? 0.5 : cur ? 1 : 0.75, transform: cur ? "rotate(-1.5deg)" : "translateY(10px) rotate(1deg)", animation: cur ? "saLabTicket .45s cubic-bezier(.2,1.2,.3,1)" : "none", borderTop: "2px dashed rgba(0,0,0,.25)" }}>
-                <div style={{ fontSize: 8.5, letterSpacing: 1.2, opacity: 0.6 }}>ЗАКАЗ №{i + 1}{past ? " · ГОТОВ" : cur ? " · В РАБОТЕ" : ""}</div>
+              <div key={o.id + i} className={cur ? "sa-lab-in" : ""} style={{ flexShrink: 0, width: cur ? 150 : 96, padding: cur ? "8px 10px" : "6px 8px", background: past ? "#cfc6ad" : "#F0E8D8", color: "#2A1F0E", fontFamily: "ui-monospace, Menlo, monospace", fontSize: cur ? 12 : 10, lineHeight: 1.25, borderRadius: "2px 2px 6px 6px", boxShadow: "0 4px 10px rgba(0,0,0,.35)", opacity: past ? 0.5 : cur ? 1 : 0.75, transform: cur ? "rotate(-1.5deg)" : "translateY(10px) rotate(1deg)", animation: cur ? "saLabTicket .45s cubic-bezier(.2,1.2,.3,1)" : "none", borderTop: "2px dashed rgba(0,0,0,.25)" }}>
+                <div style={{ fontSize: 9, letterSpacing: 1.2, opacity: 0.6 }}>ЗАКАЗ №{i + 1}{past ? " · ГОТОВ" : cur ? " · В РАБОТЕ" : ""}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: cur ? 14 : 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.name}</div>
               </div>); })}
           </div>
@@ -501,11 +501,11 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         {/* Доп. 233: сцена прилипает к верху — полки прокручиваются под ней, анимация всегда в кадре */}
         <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px", padding: "6px 16px 10px", background: a11y ? "linear-gradient(180deg, rgba(250,242,222,0.98) 85%, rgba(250,242,222,0))" : "linear-gradient(180deg, rgba(24,19,9,0.98) 85%, rgba(24,19,9,0))" }}>
         {/* Доп. 225: цепочка шагов — значки в порядке сборки; по памяти — только счёт, без подсказки видов */}
-        <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 10, flexWrap: "wrap" }}>
           {sc.steps.map((s, i) => { const isDone = done.includes(i); const cur = !finished && expected && expected.i === i; const dim = a11y ? "rgba(139,106,48,0.35)" : "rgba(214,178,102,0.28)";
             const glyph = mode === "memory" && !isDone ? "·" : s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? (TOOL_ICON[s.id] || "•") : s.kind === "garnish" ? "✿" : "●";
             const col = isDone ? gold : cur ? gold : dim;
-            return <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+            return <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
               <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: s.kind === "ing" ? 9 : 11, color: s.kind === "ing" && (isDone || (cur && mode === "hint")) ? ING_COLOR(s.name) : col, border: `1px solid ${isDone ? gold : cur ? gold : dim}`, background: isDone ? "rgba(214,178,102,0.16)" : "transparent", animation: cur && mode === "hint" ? "saLabPulse 1.2s ease-in-out infinite" : "none" }}>{glyph}</span>
               {i < sc.steps.length - 1 && <span style={{ width: 6, height: 1, background: isDone ? gold : dim }} />}
             </span>; })}
@@ -513,7 +513,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         <div style={{ ...frost, borderRadius: 22, padding: narrow ? "8px 10px 10px" : "16px 12px 18px", display: "flex", flexDirection: narrow ? "column" : "row", gap: narrow ? 6 : 12, alignItems: "center", minHeight: narrow ? 0 : 210, position: "relative", overflow: "hidden",
           borderBottom: "none", boxShadow: (frost.boxShadow || "") + (a11y ? ", inset 0 -30px 36px -22px rgba(120,85,25,.28)" : ", inset 0 -34px 40px -20px rgba(30,18,6,.9)"), // Доп. 238: столешница — тёплая в светлой теме
           background: a11y ? frost.background : "radial-gradient(ellipse 70% 80% at 28% 45%, rgba(214,178,102,0.16), rgba(0,0,0,0) 60%), rgba(255,250,238,0.04)" }}>
-          <div style={{ width: vesselKind && !strained ? (narrow ? 200 : 232) : (narrow ? 140 : 168), height: narrow ? 150 : 208, flexShrink: 0, position: "relative", borderRadius: 24, display: "flex", alignItems: "flex-end", gap: 6, transform: narrow ? "scale(.8)" : "none", transformOrigin: "50% 100%", animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
+          <div style={{ width: vesselKind && !strained ? (narrow ? 200 : 232) : (narrow ? 140 : 168), height: narrow ? 150 : 208, flexShrink: 0, position: "relative", borderRadius: 22, display: "flex", alignItems: "flex-end", gap: 6, transform: narrow ? "scale(.8)" : "none", transformOrigin: "50% 100%", animation: fx?.kind === "win" ? "saLabGlow 1.4s ease-out" : "none", transition: "width .3s" }}>
             {vesselKind && !strained && (
               <div style={{ width: 108, height: 140, position: "relative", display: "flex", alignItems: "flex-end", animation: fx?.kind === "spill" ? "saLabSpill 1.2s ease-in forwards" : "none" }}>
                 <VesselArt kind={vesselKind} w={108} light={a11y} fill={Math.min(0.78, (vesselMl / totalMl) * 0.78)} liquid={inVessel.map(s => ING_COLOR(s.name))} ice={iceInVessel ? iceInVessel.id : null} shake={fx?.kind === "shake"} tilt={fx?.kind === "strain"} frost={frostOn} />
@@ -532,43 +532,43 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
             {jig && <Jigger key={jig.key} amount={jig.amount} color={jig.color} gold={gold} />}
             {fx?.kind === "pour" && (() => { const W = vesselActive ? 232 : 168, tx = vesselActive ? 54 : 84; return <Stream key={fx.key} w={W} h={208} color={fx.color || "#D6B266"} from={[tx - 8, -4]} to={[tx, vesselActive ? 110 : 96]} curved />; })()}
             {fx?.kind === "strain" && <Stream key={fx.key} w={232} h={208} color={fx.color || "#D6B266"} from={[92, 76]} to={[174, 104]} curved />}
-            {fx?.kind === "drop" && [0, 1, 2].map(i => <div key={fx.key + i} style={{ position: "absolute", left: (vesselActive ? 18 : 46) + i * 16, top: 34, width: 14, height: 14, borderRadius: 4, background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.8)", animation: `saLabDrop .55s ${i * 70}ms cubic-bezier(.3,.8,.4,1.4) forwards` }} />)}
-            {fx?.kind === "stir" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 14, width: 4, height: 74, marginLeft: -2, borderRadius: 2, background: gold, transformOrigin: "50% 85%", animation: "saLabStir .9s linear", opacity: 0.8 }} />}
-            {fx?.kind === "spill" && [0, 1, 2, 3, 4].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 30, top: 70, width: 8, height: 8, borderRadius: 4, background: fx.color || "#D6B266", "--dx": `${-30 - i * 12}px`, "--dy": `${20 + (i % 3) * 14}px`, animation: `saLabSplash .8s ${i * 40}ms ease-out forwards` }} />)}
+            {fx?.kind === "drop" && [0, 1, 2].map(i => <div key={fx.key + i} style={{ position: "absolute", left: (vesselActive ? 18 : 46) + i * 16, top: 34, width: 14, height: 14, borderRadius: 3, background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.8)", animation: `saLabDrop .55s ${i * 70}ms cubic-bezier(.3,.8,.4,1.4) forwards` }} />)}
+            {fx?.kind === "stir" && <div key={fx.key} style={{ position: "absolute", left: "50%", top: 14, width: 4, height: 74, marginLeft: -2, borderRadius: 3, background: gold, transformOrigin: "50% 85%", animation: "saLabStir .9s linear", opacity: 0.8 }} />}
+            {fx?.kind === "spill" && [0, 1, 2, 3, 4].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 30, top: 70, width: 8, height: 8, borderRadius: 3, background: fx.color || "#D6B266", "--dx": `${-30 - i * 12}px`, "--dy": `${20 + (i % 3) * 14}px`, animation: `saLabSplash .8s ${i * 40}ms ease-out forwards` }} />)}
             {fx?.kind === "win" && [0, 1, 2, 3, 4, 5, 6, 7].map(i => <div key={fx.key + i} style={{ position: "absolute", left: 60, top: 60, width: 6, height: 6, borderRadius: 3, background: gold, "--dx": `${Math.round(Math.cos(i / 8 * Math.PI * 2) * 58)}px`, "--dy": `${Math.round(Math.sin(i / 8 * Math.PI * 2) * 58)}px`, animation: `saLabSpark .9s ${i * 30}ms ease-out forwards` }} />)}
-            {finished && finished.clean && mode === "memory" && <div style={{ position: "absolute", right: -6, bottom: -4, width: 54, height: 54, borderRadius: 27, border: `3px solid ${gold}`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 11, letterSpacing: 1, textAlign: "center", lineHeight: 1.1, background: a11y ? "rgba(250,242,222,0.9)" : "rgba(28,22,12,0.9)", animation: "saLabStamp .7s cubic-bezier(.2,1.2,.3,1) forwards", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}>ПЕ<br/>ЧАТЬ</div>}
+            {finished && finished.clean && mode === "memory" && <div style={{ position: "absolute", right: -6, bottom: -4, width: 54, height: 54, borderRadius: 28, border: `3px solid ${gold}`, color: gold, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 11, letterSpacing: 1, textAlign: "center", lineHeight: 1.1, background: a11y ? "rgba(250,242,222,0.9)" : "rgba(28,22,12,0.9)", animation: "saLabStamp .7s cubic-bezier(.2,1.2,.3,1) forwards", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}>ПЕ<br/>ЧАТЬ</div>}
           </div>
           <div style={{ flex: 1, minWidth: 0, width: narrow ? "100%" : undefined }}>
             {finished ? (
               <div className="sa-fadein">
-                <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{finished.clean ? "✦ ПОДАНО · ЧИСТО" : "✦ ПОДАНО"}</div>
+                <div style={{ fontSize: 11, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{finished.clean ? "✦ ПОДАНО · ЧИСТО" : "✦ ПОДАНО"}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginTop: 4 }}>{c.name}</div>
                 <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.5 }}>{mode === "memory" && finished.clean ? "Печать на карточке твоя." : mistakes ? `Ошибок: ${mistakes}. По памяти и без ошибок — будет печать.` : "Теперь — по памяти."}</div>
-                {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 13.5 }}>Готово ›</button>}
+                {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>}
               </div>
             ) : msg ? (
-              <div className="sa-fadein" style={{ padding: narrow ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2a1f1f,#1d1515)", border: narrow ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
-                <div style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,180,170,.7)", fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "memory" ? "вылил" : "не то"}</div>
+              <div className="sa-fadein" style={{ padding: narrow ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2E211A,#1A160F)", border: narrow ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
+                <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(255,180,170,.7)", fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "memory" ? "вылил" : "не то"}</div>
                 <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", cursive', fontSize: narrow ? 14 : 15, color: "rgba(255,200,190,.95)", lineHeight: 1.35, marginTop: 2 }}>{msg.text}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "hint" ? "продолжай — нужное подсвечено" : "заново, с пустого бокала"}</div>
               </div>
             ) : pending ? (
               <div className="sa-fadein">
-                <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ДЖИГГЕР · {pending.toUpperCase()}</div>
-                <div className="sa-hscroll" style={{ display: "flex", flexWrap: narrow ? "nowrap" : "wrap", overflowX: narrow ? "auto" : "visible", gap: 5, paddingBottom: narrow ? 4 : 0 }}>
-                  {jiggerFor(c).map(a => { const st = sc.steps.find(s => s.kind === "ing" && s.name === pending); return <span key={a} style={chip(hint(st) && Number(st.amount) === a, { padding: "6px 9px", fontSize: 12 })} onClick={() => { const n = pending; setPending(null); act({ kind: "ing", name: n, amount: a }); }}>{a}</span>; })}
-                  <span style={chip(false, { padding: "6px 9px", fontSize: 12, color: sub })} onClick={() => setPending(null)}>✕</span>
+                <div style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ДЖИГГЕР · {pending.toUpperCase()}</div>
+                <div className="sa-hscroll" style={{ display: "flex", flexWrap: narrow ? "nowrap" : "wrap", overflowX: narrow ? "auto" : "visible", gap: 4, paddingBottom: narrow ? 4 : 0 }}>
+                  {jiggerFor(c).map(a => { const st = sc.steps.find(s => s.kind === "ing" && s.name === pending); return <span key={a} style={chip(hint(st) && Number(st.amount) === a, { padding: "6px 9px", fontSize: 12.5 })} onClick={() => { const n = pending; setPending(null); act({ kind: "ing", name: n, amount: a }); }}>{a}</span>; })}
+                  <span style={chip(false, { padding: "6px 9px", fontSize: 12.5, color: sub })} onClick={() => setPending(null)}>✕</span>
                 </div>
-                <div style={{ fontSize: 10.5, color: sub, marginTop: 6 }}>мл</div>
+                <div style={{ fontSize: 11, color: sub, marginTop: 6 }}>мл</div>
               </div>
             ) : mode === "hint" && expected ? (
               <div style={{ padding: narrow ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: narrow ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: "none", display: narrow ? "flex" : "block", alignItems: "baseline", gap: 10 }}>
-                <div style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', flexShrink: 0 }}>теперь</div>
+                <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', flexShrink: 0 }}>теперь</div>
                 <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: narrow ? 15 : 16, color: "rgba(255,255,255,.92)", marginTop: narrow ? 0 : 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)", minWidth: 0 }}>{expected.s.label}</div>
-                {c.tip && !narrow && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
+                {c.tip && !narrow && <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
               </div>
             ) : (
-              <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.5 }}>{pending ? `Сколько ${pending.toLowerCase()}?` : "Тапай по станции: стекло → лёд или ингредиенты → инструмент → гарниш."}</div>
+              <div style={{ fontSize: 14, color: sub, lineHeight: 1.5 }}>{pending ? `Сколько ${pending.toLowerCase()}?` : "Тапай по станции: стекло → лёд или ингредиенты → инструмент → гарниш."}</div>
             )}
           </div>
         </div>
@@ -586,9 +586,9 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           const shelf = (nodes) => (
             <div style={{ position: "relative", borderRadius: 14, background: a11y ? "linear-gradient(180deg, rgba(255,250,235,0.55), rgba(240,228,200,0.35))" : "linear-gradient(180deg, rgba(255,248,230,0.02), rgba(255,236,190,0.06) 70%, rgba(214,178,102,0.10))", boxShadow: a11y ? "none" : "inset 0 -14px 20px -14px rgba(214,178,102,0.55)" }}>
               <div className="sa-hscroll" style={rowStyle}>{nodes}</div>
-              <div style={{ height: 5, borderRadius: "0 0 14px 14px", background: a11y ? "linear-gradient(180deg,#B08A4E,#8B6A30)" : "linear-gradient(180deg,#6B4A22,#3B2711)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
+              <div style={{ height: 5, borderRadius: "0 0 14px 14px", background: a11y ? "linear-gradient(180deg,#B08A4E,#8B6A30)" : "linear-gradient(180deg,#6B4A22,#3A2C10)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
             </div>);
-          const doneLine = (text, more = true) => <div className="sa-fadein" style={{ padding: "10px 14px", borderRadius: 14, border: `1px solid ${gold}33`, color: sub, fontSize: 13 }}>✓ {text}{more && !finished ? <span style={{ display: "block", marginTop: 4, fontSize: 11.5, color: gold, opacity: 0.85 }}>{mode === "hint" ? "полка переключится сама" : "дальше — на вкладках выше"}</span> : null}</div>;
+          const doneLine = (text, more = true) => <div className="sa-fadein" style={{ padding: "10px 14px", borderRadius: 14, border: `1px solid ${gold}33`, color: sub, fontSize: 12.5 }}>✓ {text}{more && !finished ? <span style={{ display: "block", marginTop: 4, fontSize: 11, color: gold, opacity: 0.85 }}>{mode === "hint" ? "полка переключится сама" : "дальше — на вкладках выше"}</span> : null}</div>;
           const content = tab === "glass"
             ? (glassDone ? doneLine(`Бокал — ${GLASS_SHORT[c.glass] || GLASS_RU[c.glass]}`) : shelf(sc.station.glasses.map((g, k) => <Item key={"g" + g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_SHORT[g] || GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />)))
             : tab === "ice"
@@ -647,27 +647,27 @@ function StationPrep({ T, a11y, gold, frost, Head, onExit, uk }) {
       <div style={{ padding: "0 16px 100px" }}>
         <div style={{ ...frost, borderRadius: 18, padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            {PREP.map((p, i) => <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 9.5, letterSpacing: 1, fontFamily: "monospace", color: donePhases.has(i) && PREP[i].items.every(it => placed.includes(it.id)) ? "#5DBB8A" : i === curPhase ? gold : sub, borderBottom: `2px solid ${i === curPhase ? gold : "transparent"}`, paddingBottom: 4 }}>{p.phase.toUpperCase()}</div>)}
+            {PREP.map((p, i) => <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: donePhases.has(i) && PREP[i].items.every(it => placed.includes(it.id)) ? "#5DBB8A" : i === curPhase ? gold : sub, borderBottom: `2px solid ${i === curPhase ? gold : "transparent"}`, paddingBottom: 4 }}>{p.phase.toUpperCase()}</div>)}
           </div>
           {finished ? (
             <div className="sa-fadein">
-              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{took <= best ? "СТАНЦИЯ СОБРАНА · РЕКОРД ✦" : "СТАНЦИЯ СОБРАНА"}</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 24, color: text, marginTop: 4 }}>{took} с{mistakes ? ` · ошибок ${mistakes}` : " · без ошибок"}</div>
+              <div style={{ fontSize: 11, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{took <= best ? "СТАНЦИЯ СОБРАНА · РЕКОРД ✦" : "СТАНЦИЯ СОБРАНА"}</div>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, marginTop: 4 }}>{took} с{mistakes ? ` · ошибок ${mistakes}` : " · без ошибок"}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>Дальше смена идёт на автомате — ты не ищешь, ты берёшь.</div>
-              <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 12, padding: "10px 14px", fontSize: 13.5 }}>Готово ›</button>
+              <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 12, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>
             </div>
           ) : msg ? (
-            <div className="sa-fadein" style={{ fontSize: 13.5, lineHeight: 1.5, color: msg.ok ? text : "#E07878" }}>{msg.text}</div>
+            <div className="sa-fadein" style={{ fontSize: 14, lineHeight: 1.5, color: msg.ok ? text : "#E07878" }}>{msg.text}</div>
           ) : (
-            <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.5 }}>Смена через полчаса. Тапай действия в правильном порядке: что раньше — то и первым.</div>
+            <div style={{ fontSize: 14, color: sub, lineHeight: 1.5 }}>Смена через полчаса. Тапай действия в правильном порядке: что раньше — то и первым.</div>
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {order.map(it => { const on = placed.includes(it.id); return (
             <div key={it.id} className="sa-card" onClick={() => tap(it)} {...onActivate(() => tap(it))} style={{ ...frost, borderRadius: 14, padding: "11px 14px", cursor: on ? "default" : "pointer", opacity: on ? 0.45 : 1, display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ width: 22, color: on ? "#5DBB8A" : gold, fontSize: 15 }}>{on ? "✓" : "○"}</span>
+              <span style={{ width: 22, color: on ? "#5DBB8A" : gold, fontSize: 14 }}>{on ? "✓" : "○"}</span>
               <span style={{ flex: 1, fontSize: 14, color: text }}>{it.t}</span>
-              {on && <span style={{ fontSize: 10.5, color: sub, fontFamily: "monospace" }}>{it.phase.toUpperCase()}</span>}
+              {on && <span style={{ fontSize: 11, color: sub, fontFamily: "monospace" }}>{it.phase.toUpperCase()}</span>}
             </div>); })}
         </div>
       </div>

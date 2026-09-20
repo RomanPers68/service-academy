@@ -53,7 +53,7 @@ function Snifter({ c, dark, size = 64 }) {
 }
 function Rocks({ c, dark, size = 56 }) {
   const liq = dark ? "rgba(205,130,45,0.46)" : "rgba(170,100,38,0.42)";
-  const ice = dark ? "#EAE0CC" : "#7A5F37";
+  const ice = dark ? "#EFE4C8" : "#7A5F37";
   // Виски-рокс: низкий широкий тумблер с толстым дном и кубиками льда
   return (<svg width={size} height={size * 0.875} viewBox="0 0 96 84" fill="none">
     <path d="M18 30 Q48 38 78 30 L80 68 Q48 77 16 68 Z" fill={liq} />
@@ -125,7 +125,7 @@ function SceneFull({ c }) {
     <div style={P({ right: "16%", top: 76 })}><Util kind="spoon" c={c} size={17} /></div>
     <div style={P({ left: "50%", top: 56, transform: "translateX(-50%) rotate(-90deg)" })}><Util kind="spoon" c={c} size={13} /></div>
     <div style={P({ left: "7%", top: 18 })}><Plate kind="bread" c={c} size={58} /></div>
-    <div style={P({ right: "6%", top: 16, display: "flex", alignItems: "flex-end", gap: 1 })}><MiniGlass type="water" c={c} size={22} /><MiniGlass type="red" c={c} size={24} /><MiniGlass type="white" c={c} size={20} /><MiniGlass type="flute" c={c} size={18} /></div>
+    <div style={P({ right: "6%", top: 16, display: "flex", alignItems: "flex-end", gap: 2 })}><MiniGlass type="water" c={c} size={22} /><MiniGlass type="red" c={c} size={24} /><MiniGlass type="white" c={c} size={20} /><MiniGlass type="flute" c={c} size={18} /></div>
   </div>);
 }
 function Cover({ c, left }) {
@@ -156,7 +156,7 @@ function SceneOyster({ c }) {
   </div>);
 }
 
-function Row({ children }) { return <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 14, padding: "6px 0" }}>{children}</div>; }
+function Row({ children }) { return <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 12, padding: "6px 0" }}>{children}</div>; }
 
 // ── Кофе: чашки, питчер, пропорции (линии в стиле бокалов) ──
 function CoffeeCup({ c, dark, size = 64, foam = 0, coffee = 0.5, label }) {

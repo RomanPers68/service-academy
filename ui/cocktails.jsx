@@ -161,11 +161,11 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
     else setWrap("none", "transform .38s cubic-bezier(.16,1.1,.3,1), opacity .25s ease-out", 1); // не дотянул — пружиной назад
   };
 
-  const glass = a11y ? { bg:"rgba(250,242,222,0.7)", bd:"rgba(150,112,40,0.35)", tx:"#3A2E1C", sub:"#6B5A3A" }
+  const glass = a11y ? { bg:"rgba(250,242,222,0.7)", bd:"rgba(150,112,40,0.35)", tx:"#3A2E1C", sub:"#6B5B40" }
                      : { bg:"rgba(255,250,238,0.035)", bd:"rgba(145,108,40,0.3)", tx:"#EFE4C8", sub:"#9C8760" };
-  const card = { borderRadius:20, background:glass.bg, border:`1px solid ${glass.bd}`, borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.45)" : "rgba(210,168,65,0.35)"}`,
+  const card = { borderRadius:18, background:glass.bg, border:`1px solid ${glass.bd}`, borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.45)" : "rgba(210,168,65,0.35)"}`,
     boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5)" : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.1), 0 14px 40px rgba(0,0,0,0.45)" };
-  const pill = (on) => ({ padding:"6px 13px", borderRadius:999, fontSize:12, cursor:"pointer", fontFamily:"Georgia, serif",
+  const pill = (on) => ({ padding:"6px 13px", borderRadius:999, fontSize:12.5, cursor:"pointer", fontFamily:"Georgia, serif",
     color: on ? INK_DEEP : glass.sub, background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
     border: `1px solid ${on ? "transparent" : glass.bd}` });
 
@@ -174,14 +174,14 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
       {/* Доп. 149: шапка в два ряда. Поиск, база и список — за иконками, раскрываются по тапу. */}
       {(() => {
         const open = filters || !!q || !!base;
-        const iconBtn = (on) => ({ width:34, height:34, borderRadius:17, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0,
+        const iconBtn = (on) => ({ width:34, height:34, borderRadius:18, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0,
           border:`1px solid ${on ? GOLD + "AA" : glass.bd}`, background: on ? "rgba(214,178,102,0.16)" : glass.bg });
         const ic = (d) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
         return (<>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-            <span onClick={onBack} {...onActivate(onBack)} style={{ color:GOLD, fontSize:22, cursor:"pointer", padding:"0 4px" }}>‹</span>
-            <div style={{ fontFamily:"Georgia, serif", fontSize:19, color:glass.tx, flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Колода бармена</div>
-            <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10, color:glass.sub, marginRight:2, whiteSpace:"nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
+            <span onClick={onBack} {...onActivate(onBack)} style={{ color:GOLD, fontSize:21, cursor:"pointer", padding:"0 4px" }}>‹</span>
+            <div style={{ fontFamily:"Georgia, serif", fontSize:18, color:glass.tx, flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Колода бармена</div>
+            <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:glass.sub, marginRight:2, whiteSpace:"nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
             <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и фильтр">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
             <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
           </div>
@@ -191,13 +191,13 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
             </div>
             <span style={{ marginLeft:"auto", display:"flex", gap:10, whiteSpace:"nowrap" }}>
-              {onEdit && canEdit ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
-              {onLab ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onLab()} {...onActivate(() => onLab())}>Сборка ›</span> : null}
-              {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:13, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+              {onEdit && canEdit ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
+              {onLab ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onLab()} {...onActivate(() => onLab())}>Сборка ›</span> : null}
+              {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
             </span>
           </div>
           {(barcard || house.length > 0) && (
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11.5, color:glass.sub }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11, color:glass.sub }}>
               {barcard && <span style={{ ...pill(onlyCard), padding:"4px 10px", fontSize:11 }} onClick={() => setOnlyCard(v => !v)}>{onlyCard ? `Своя карта · ${pool.length}` : "Все коктейли"}</span>}
               {canEdit && onPrint && <span style={{ ...pill(false), padding:"4px 10px", fontSize:11 }} onClick={() => onPrint()}>Печать карты ›</span>}
               {house.length > 0 && <span>{house.length} своих из меню</span>}
@@ -208,7 +208,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
             <div className="sa-fadein" style={{ marginBottom:12 }}>
               <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…" autoFocus={filters && !q}
                 style={{ width:"100%", padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
-                  fontFamily:"Georgia, serif", fontSize:13, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
+                  fontFamily:"Georgia, serif", fontSize:12.5, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
               <div className="sa-hscroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2, WebkitOverflowScrolling:"touch" }}>
                 <span style={{ ...pill(reverse), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
                 <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase("")}>Все · {ALL.filter(c => matches(c, q)).length}</span>
@@ -228,9 +228,9 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
           {pool.map((x, i) => (
             <div key={x.id} onClick={() => { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); }}
               style={{ ...card, padding:"10px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ width:14, height:14, borderRadius:7, flexShrink:0, background:`linear-gradient(180deg,${x.color[0]},${x.color[1]})`, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.25)" }} />
+              <span style={{ width:14, height:14, borderRadius:6, flexShrink:0, background:`linear-gradient(180deg,${x.color[0]},${x.color[1]})`, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.25)" }} />
               <span style={{ minWidth:0 }}>
-                <div style={{ fontFamily:"Georgia, serif", fontSize:13, color:glass.tx, lineHeight:1.2 }}>{x.name}</div>
+                <div style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:glass.tx, lineHeight:1.2 }}>{x.name}</div>
                 <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color: (mast[x.id]?.level || 0) >= 2 ? GOLD : glass.sub, letterSpacing:0.8 }}>{(mast[x.id]?.level || 0) >= 3 ? "✦ МАСТЕР" : (mast[x.id]?.level || 0) >= 2 ? "✦ ПЕЧАТЬ" : GLASS_RU[x.glass]}</div>
               </span>
             </div>
@@ -254,39 +254,39 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
             <div style={{ textAlign:"center" }}>
               {reverse
                 ? <>
-                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginTop:4 }}>ЧТО ЭТО? · {GLASS_RU[c.glass].toUpperCase()} · {c.method.toUpperCase()}</div>
-                    <div style={{ fontFamily:"Georgia, serif", fontSize:17, color:glass.tx, lineHeight:1.35, marginTop:8 }}>{c.ing.map(i => `${i[0]}${i[1] ? " " + i[1] : ""}${i[2] && !/мл/.test(i[2]) ? " " + i[2] : ""}`).join(" · ")}</div>
+                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:GOLD, letterSpacing:1.5, marginTop:4 }}>ЧТО ЭТО? · {GLASS_RU[c.glass].toUpperCase()} · {c.method.toUpperCase()}</div>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:16, color:glass.tx, lineHeight:1.35, marginTop:8 }}>{c.ing.map(i => `${i[0]}${i[1] ? " " + i[1] : ""}${i[2] && !/мл/.test(i[2]) ? " " + i[2] : ""}`).join(" · ")}</div>
                   </>
                 : <>
-                    <div style={{ fontFamily:"Georgia, serif", fontSize:24, color:glass.tx, letterSpacing:1.5, textTransform:"uppercase", lineHeight:1.2, marginTop:4 }}>{c.name}</div>
-                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:glass.sub, letterSpacing:1.5, marginTop:6 }}>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:25, color:glass.tx, letterSpacing:1.5, textTransform:"uppercase", lineHeight:1.2, marginTop:4 }}>{c.name}</div>
+                    <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:glass.sub, letterSpacing:1.5, marginTop:6 }}>
                       {mode === "quiz" ? "ВСПОМНИ СПЕК · ТАПНИ, ЧТОБЫ ПРОВЕРИТЬ" : c.ing.map(i => i[0]).join(" · ").toUpperCase()}
                     </div>
                   </>}
               <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:6, flexWrap:"wrap" }}>
-                {c.house && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:"#5DBB8A", border:"1px solid #5DBB8A66", borderRadius:999, padding:"3px 9px" }}>СВОЙ · ИЗ МЕНЮ</span>}
-                {c.stop && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:"#E07878", border:"1px solid #E0787866", borderRadius:999, padding:"3px 9px" }}>В СТОПЕ</span>}
-                {!c.house && canEdit && restaurant && <span onClick={(e) => { e.stopPropagation(); toggleCard(c.id); }} style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, cursor:"pointer", color: inCard(c) ? GOLD : glass.sub, border:`1px solid ${inCard(c) ? GOLD : glass.bd}`, borderRadius:999, padding:"3px 9px" }}>{inCard(c) ? "✓ В КАРТЕ БАРА" : "+ В КАРТУ БАРА"}</span>}
-                {!c.house && !canEdit && barcard && !inCard(c) && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:glass.sub, border:`1px solid ${glass.bd}`, borderRadius:999, padding:"3px 9px" }}>НЕ В КАРТЕ · ЭРУДИЦИЯ</span>}
+                {c.house && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, letterSpacing:1.2, color:"#5DBB8A", border:"1px solid #5DBB8A66", borderRadius:999, padding:"3px 9px" }}>СВОЙ · ИЗ МЕНЮ</span>}
+                {c.stop && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, letterSpacing:1.2, color:"#E07878", border:"1px solid #E0787866", borderRadius:999, padding:"3px 9px" }}>В СТОПЕ</span>}
+                {!c.house && canEdit && restaurant && <span onClick={(e) => { e.stopPropagation(); toggleCard(c.id); }} style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, letterSpacing:1.2, cursor:"pointer", color: inCard(c) ? GOLD : glass.sub, border:`1px solid ${inCard(c) ? GOLD : glass.bd}`, borderRadius:999, padding:"3px 9px" }}>{inCard(c) ? "✓ В КАРТЕ БАРА" : "+ В КАРТУ БАРА"}</span>}
+                {!c.house && !canEdit && barcard && !inCard(c) && <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, letterSpacing:1.2, color:glass.sub, border:`1px solid ${glass.bd}`, borderRadius:999, padding:"3px 9px" }}>НЕ В КАРТЕ · ЭРУДИЦИЯ</span>}
               </div>
               {/* Доп. 242: у своего коктейля с фото — фото на лице, витраж в углу (он живёт в Сборке и указателе) */}
               {c.img ? (
-                <div style={{ position:"relative", margin:"6px 0 2px", borderRadius:16, overflow:"hidden", height:230, background:`url(${c.img}) center/cover` }}>
+                <div style={{ position:"relative", margin:"6px 0 2px", borderRadius:14, overflow:"hidden", height:230, background:`url(${c.img}) center/cover` }}>
                   <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.45))" }} />
                   <div style={{ position:"absolute", right:8, bottom:6, width:64, filter:"drop-shadow(0 2px 6px rgba(0,0,0,.6))" }}><CocktailArt c={c} w={64} light={a11y} /></div>
                 </div>
               ) : <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 2px" }}><CocktailArt c={c} w={200} light={a11y} live /></div>}
               <div style={{ display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap" }}>
-                <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:GOLD }}>КРЕПОСТЬ {dots(c.strength)}</span>
-                <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, letterSpacing:1.2, color:GOLD }}>СЛАДОСТЬ {dots(c.sweet)}</span>
+                <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, letterSpacing:1.2, color:GOLD }}>КРЕПОСТЬ {dots(c.strength)}</span>
+                <span style={{ ...pill(false), fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, letterSpacing:1.2, color:GOLD }}>СЛАДОСТЬ {dots(c.sweet)}</span>
               </div>
-              <div style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:12, color:glass.sub, marginTop:10 }}>тапни — рецепт ✦</div>
+              <div style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:12.5, color:glass.sub, marginTop:10 }}>тапни — рецепт ✦</div>
             </div>
             </div>
             <div className="sa-ck-face sa-ck-back" style={{ ...card, padding:16 }}>
             <div style={{ fontFamily:"Georgia, serif", color:glass.tx, fontSize:14, lineHeight:1.55 }}>
-              <div style={{ fontSize:20, letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>{c.name}</div>
-              <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:10 }}>{GLASS_RU[c.glass]} · {c.method.toUpperCase()}</div>
+              <div style={{ fontSize:21, letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>{c.name}</div>
+              <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:GOLD, letterSpacing:1.5, marginBottom:10 }}>{GLASS_RU[c.glass]} · {c.method.toUpperCase()}</div>
               {c.ing.map((i, k) => (
                 <div key={k} style={{ display:"flex", justifyContent:"space-between", borderBottom:`1px dashed ${glass.bd}`, padding:"3px 0" }}>
                   <span>{i[0]}</span><span style={{ fontFamily:"ui-monospace, Menlo, monospace", color:GOLD }}>{i[1] === "" || i[1] == null ? "" : `${i[1]} ${i[2] || "мл"}`}</span>
@@ -295,15 +295,15 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               {/* Доп. 230: порядок сборки — тот же, что проверяет «Сборка руками» (один источник, без расхождений) */}
               {!c.house ? (() => { const seq = buildScenario(c, COCKTAILS).steps; const glyph = (s) => s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? "▸" : s.kind === "garnish" ? "✿" : "●"; return (
                 <div style={{ margin:"10px 0 8px" }}>
-                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>СБОРКА · {seq.length} ШАГОВ · КАК В ТРЕНАЖЁРЕ</div>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>СБОРКА · {seq.length} ШАГОВ · КАК В ТРЕНАЖЁРЕ</div>
                   <ol style={{ margin:0, paddingLeft:20, color:glass.tx }}>{seq.map((s, k) => <li key={k} style={{ paddingLeft:2 }}><span style={{ color:GOLD, marginRight:6, fontSize:11 }}>{glyph(s)}</span>{s.label}</li>)}</ol>
                 </div>); })() : <ol style={{ margin:"10px 0 8px", paddingLeft:20, color:glass.tx }}>{c.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>}
               <div style={{ color:glass.sub, fontStyle:"italic", fontSize:12.5 }}>{c.tip}</div>
               <div style={{ color:glass.sub, fontSize:12.5, marginTop:6 }}>К столу: {c.pair}</div>
-              {c.note ? <div style={{ marginTop:8, padding:"7px 10px", borderRadius:10, border:`1px dashed ${GOLD}66`, color:glass.sub, fontSize:12, lineHeight:1.5 }}>✦ {c.note}</div> : null}
+              {c.note ? <div style={{ marginTop:8, padding:"7px 10px", borderRadius:9, border:`1px dashed ${GOLD}66`, color:glass.sub, fontSize:12.5, lineHeight:1.5 }}>✦ {c.note}</div> : null}
               {/* Доп. 210: гость спрашивает — реплика пузырём, ответ по тапу */}
               <div style={{ marginTop:10 }}>
-                <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ГОСТЬ СПРАШИВАЕТ</div>
+                <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ГОСТЬ СПРАШИВАЕТ</div>
                 {cocktailFaqSmart(c, ALL, inCard).map((f, k) => (
                   <div key={k} onClick={(e) => { e.stopPropagation(); setFaqOpen(faqOpen === c.id + k ? null : c.id + k); vibrate("light"); }} style={{ marginBottom:6, cursor:"pointer" }}>
                     <div style={{ display:"inline-block", padding:"6px 11px", borderRadius:"14px 14px 14px 4px", background: a11y ? "rgba(139,106,48,0.12)" : "rgba(255,248,230,0.08)", border:`1px solid ${glass.bd}`, fontSize:12.5, color:glass.tx }}>«{f.q}»</div>
@@ -315,24 +315,24 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               {c.house && canEdit && onEdit && <div onClick={(e) => { e.stopPropagation(); onEdit(c.full ? c.id : null); }} style={{ marginTop:8, fontSize:12.5, color:GOLD, cursor:"pointer" }}>{c.full ? "Править в редакторе ›" : "Дописать спек в редакторе ›"}</div>}
               {(() => { const fam = familyOf(c, ALL); return fam ? (
                 <div style={{ marginTop:10 }}>
-                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>{fam.title.toUpperCase()}</div>
-                  <div style={{ fontSize:12, color:glass.sub, lineHeight:1.45, marginBottom:6 }}>{fam.note}</div>
-                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); jumpTo(x.id); }} style={{ ...pill(false), fontSize:11.5, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:5, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>{fam.title.toUpperCase()}</div>
+                  <div style={{ fontSize:12.5, color:glass.sub, lineHeight:1.45, marginBottom:6 }}>{fam.note}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); jumpTo(x.id); }} style={{ ...pill(false), fontSize:11, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:6, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
                 </div>) : null; })()}
               {(() => { const links = dishLinks(c.pair, shared); return links.length && onOpenDish ? (
                 <div style={{ marginTop:8 }}>
-                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ИЗ ВАШЕГО МЕНЮ</div>
-                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenDish(l.id); }} style={{ ...pill(false), fontSize:11.5, color:glass.tx }}>{l.name} ›</span>)}</div>
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:GOLD, letterSpacing:1.5, marginBottom:6 }}>ИЗ ВАШЕГО МЕНЮ</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenDish(l.id); }} style={{ ...pill(false), fontSize:11, color:glass.tx }}>{l.name} ›</span>)}</div>
                 </div>) : null; })()}
               {onBuild && (!c.house || c.full) && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
                 return <div onClick={(e) => { e.stopPropagation(); onBuild(c.id); }} {...onActivate(() => onBuild(c.id))} style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:12, border:`1px solid ${GOLD}66`, background:"rgba(214,178,102,0.10)", cursor:"pointer" }}>
-                  <span style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:glass.tx }}>{lv >= 3 ? "✦ Мастер · собрать ещё" : lv === 2 ? "✦ Печать · собрать ещё" : "Собрать руками"}</span>
+                  <span style={{ fontFamily:"Georgia, serif", fontSize:14, color:glass.tx }}>{lv >= 3 ? "✦ Мастер · собрать ещё" : lv === 2 ? "✦ Печать · собрать ещё" : "Собрать руками"}</span>
                   <span style={{ color:GOLD, fontSize:16 }}>›</span>
                 </div>; })()}
               {(() => { const st = COCKTAIL_STORIES[c.id] || (c.house && (c.story || c.short) ? { story: c.story, guest: c.short } : null); return st ? (
                 <div style={{ marginTop:12, paddingTop:10, borderTop:`1px solid ${glass.bd}` }}>
-                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>ИСТОРИЯ</div>
-                  {st.story ? <div style={{ fontSize:13, lineHeight:1.55 }}>{st.story}</div> : null}
+                  <div style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:GOLD, letterSpacing:1.5, marginBottom:4 }}>ИСТОРИЯ</div>
+                  {st.story ? <div style={{ fontSize:12.5, lineHeight:1.55 }}>{st.story}</div> : null}
                   {st.guest ? <div style={{ marginTop:8, fontStyle:"italic", color:glass.sub, fontSize:12.5 }}>Гостю: «{st.guest}»</div> : null}
                 </div>
               ) : null; })()}
@@ -352,7 +352,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
       ) : c ? (
         <div style={{ display:"flex", justifyContent:"space-between", marginTop:12 }}>
           <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding:"10px 18px" }}>‹ назад</button>
-          <span style={{ alignSelf:"center", fontFamily:"ui-monospace, Menlo, monospace", fontSize:9.5, color:glass.sub, letterSpacing:1.5 }}>СВАЙП · ЛИСТАТЬ</span>
+          <span style={{ alignSelf:"center", fontFamily:"ui-monospace, Menlo, monospace", fontSize:9, color:glass.sub, letterSpacing:1.5 }}>СВАЙП · ЛИСТАТЬ</span>
           <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding:"10px 18px" }}>дальше ›</button>
         </div>
       ) : null}

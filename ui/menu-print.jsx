@@ -106,32 +106,32 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
-        <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 22, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+        <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold }}>МЕНЮ · ЭКСПОРТ</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.15 }}>Меню для печати</div>
+          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>МЕНЮ · ЭКСПОРТ</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15 }}>Меню для печати</div>
         </div>
       </div>
       <div style={{ padding: "4px 16px 10px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button className="sa-btn" onClick={draw} disabled={busy || !list.length} style={{ ...T.doneBtn, flex: 1.4, marginTop: 0, background: gold, opacity: busy || !list.length ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
+        <button className="sa-btn" onClick={draw} disabled={busy || !list.length} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold, opacity: busy || !list.length ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
         <span onClick={() => setWithPhoto(v => !v)} {...onActivate(() => setWithPhoto(v => !v))} style={{ padding: "8px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${withPhoto ? gold : gold + "44"}`, background: withPhoto ? "rgba(214,178,102,0.16)" : "transparent", color: withPhoto ? text : sub }}>{withPhoto ? "С фото ✓" : "Без фото"}</span>
       </div>
       {hint && <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: gold }}>{hint}</div>}
-      <div style={{ padding: "0 16px 8px", fontSize: 12, color: sub, lineHeight: 1.5 }}>{list.length} блюд, по {PER_PAGE} на страницу. Сохраняется в галерею и уходит в любой мессенджер — коды входа не нужны.</div>
+      <div style={{ padding: "0 16px 8px", fontSize: 12.5, color: sub, lineHeight: 1.5 }}>{list.length} блюд, по {PER_PAGE} на страницу. Сохраняется в галерею и уходит в любой мессенджер — коды входа не нужны.</div>
       {shot && shot.length > 0 && (
-        <div className="sa-fadein" style={{ margin: "0 16px 14px", padding: 12, borderRadius: 16, border: `1px solid ${gold}55` }}>
+        <div className="sa-fadein" style={{ margin: "0 16px 14px", padding: 12, borderRadius: 14, border: `1px solid ${gold}55` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", flex: 1 }}>СТРАНИЦА {page + 1} ИЗ {shot.length}</span>
+            <span style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", flex: 1 }}>СТРАНИЦА {page + 1} ИЗ {shot.length}</span>
             {shot.length > 1 && <>
-              <span onClick={() => setPage(p => Math.max(0, p - 1))} style={{ color: page ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 17 }}>‹</span>
-              <span onClick={() => setPage(p => Math.min(shot.length - 1, p + 1))} style={{ color: page < shot.length - 1 ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 17 }}>›</span>
+              <span onClick={() => setPage(p => Math.max(0, p - 1))} style={{ color: page ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 16 }}>‹</span>
+              <span onClick={() => setPage(p => Math.min(shot.length - 1, p + 1))} style={{ color: page < shot.length - 1 ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 16 }}>›</span>
             </>}
           </div>
           <img src={shot[page].url} alt={`Меню · страница ${page + 1}`} style={{ width: "100%", borderRadius: 12, display: "block", border: `1px solid ${gold}33` }} />
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <button className="sa-btn" onClick={() => share(false)} style={{ ...T.doneBtn, flex: 1.4, marginTop: 0, background: gold }}>Отправить страницу</button>
-            {shot.length > 1 && <button className="sa-btn" onClick={() => share(true)} style={{ ...T.doneBtn, flex: 1.2, marginTop: 0, background: "transparent", border: `1px solid ${gold}88`, color: text }}>Все {shot.length}</button>}
-            <button className="sa-btn" onClick={() => { shot.forEach(sh => URL.revokeObjectURL(sh.url)); setShot(null); }} style={{ ...T.doneBtn, flex: 1, marginTop: 0, background: "transparent", border: `1px solid ${gold}66`, color: sub }}>Закрыть</button>
+            <button className="sa-btn" onClick={() => share(false)} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold }}>Отправить страницу</button>
+            {shot.length > 1 && <button className="sa-btn" onClick={() => share(true)} style={{ ...T.doneBtn, flex: 1.2, marginTop: 2, background: "transparent", border: `1px solid ${gold}88`, color: text }}>Все {shot.length}</button>}
+            <button className="sa-btn" onClick={() => { shot.forEach(sh => URL.revokeObjectURL(sh.url)); setShot(null); }} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}66`, color: sub }}>Закрыть</button>
           </div>
         </div>
       )}

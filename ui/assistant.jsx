@@ -294,9 +294,9 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
           boxShadow: "inset 0 0 22px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)", color: "#3A2E1C" })
     : (mine
       ? { background: "rgba(200,169,110,0.10)", border: "1px solid rgba(214,178,102,0.35)",
-          boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#F5E9CE" }
+          boxShadow: "inset 0 0 22px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.15)", color: "#EFE4C8" }
       : { background: "rgba(255,250,238,0.05)", border: "1px solid rgba(255,255,255,0.13)",
-          boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#EFE6D2" });
+          boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#F0E8D8" });
 
   // Уровень 2: [[go:ключ|Подпись]] в конце ответа → кнопка-переход
   const NAV_LABELS = {
@@ -323,7 +323,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
     }
     return { clean: clean.replace(/\n{3,}/g, "\n\n").trim(), cards: cards.slice(0, 2) };
   };
-  const cardBox = { marginTop: 10, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 16, cursor: "pointer",
+  const cardBox = { marginTop: 10, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 14, cursor: "pointer",
     border: `1px solid ${gold}55`, background: a11y ? "rgba(139,106,48,0.07)" : "rgba(200,169,110,0.07)",
     boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.08)"}` };
   const VisualCard = ({ card }) => {
@@ -333,10 +333,10 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
         <div style={cardBox} onClick={() => { vibrate("light"); onNavigate && onNavigate({ cocktail: c.id }); }} {...onActivate(() => onNavigate && onNavigate({ cocktail: c.id }))} aria-label={c.name}>
           <div style={{ width: 92, flexShrink: 0, display: "flex", justifyContent: "center" }}><CocktailArt c={c} w={92} light={a11y} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, letterSpacing: 0.6, textTransform: "uppercase", lineHeight: 1.25 }}>{c.name}</div>
-            <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{c.method}{c.glass ? " · " : ""}{({ rocks: "рокс", highball: "хайбол", martini: "коктейльная рюмка", flute: "флюте", hurricane: "харрикейн", margarita: "маргарита", sour: "сауэр", shot: "шот", irish: "айриш", red: "винный" })[c.glass] || ""}</div>
-            <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(c.ing || []).map(i => i[1] ? `${i[0]} ${i[1]}` : i[0]).join(" · ")}</div>
-            <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть в колоде ›</div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, letterSpacing: 0.6, textTransform: "uppercase", lineHeight: 1.25 }}>{c.name}</div>
+            <div style={{ fontSize: 12.5, color: gold, marginTop: 2 }}>{c.method}{c.glass ? " · " : ""}{({ rocks: "рокс", highball: "хайбол", martini: "коктейльная рюмка", flute: "флюте", hurricane: "харрикейн", margarita: "маргарита", sour: "сауэр", shot: "шот", irish: "айриш", red: "винный" })[c.glass] || ""}</div>
+            <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(c.ing || []).map(i => i[1] ? `${i[0]} ${i[1]}` : i[0]).join(" · ")}</div>
+            <div style={{ fontSize: 11, color: gold, marginTop: 4 }}>Открыть в колоде ›</div>
           </div>
         </div>
       );
@@ -348,11 +348,11 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
           ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12, flexShrink: 0, border: `1px solid ${gold}44` }} />
           : <div style={{ width: 92, height: 92, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}66`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 11, textAlign: "center", padding: 6 }}>фото добавит менеджер</div>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, lineHeight: 1.25 }}>{d.name}</div>
-          {d.cat && <div style={{ fontSize: 12, color: gold, marginTop: 3 }}>{d.cat}</div>}
-          <div style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(d.ingredients || []).slice(0, 6).join(", ")}</div>
-          {(d.allergens || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>{(d.allergens || []).map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, border: `1px solid ${RED}88`, color: RED }}>{a}</span>)}</div>}
-          <div style={{ fontSize: 11.5, color: gold, marginTop: 5 }}>Открыть карточку ›</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, lineHeight: 1.25 }}>{d.name}</div>
+          {d.cat && <div style={{ fontSize: 12.5, color: gold, marginTop: 2 }}>{d.cat}</div>}
+          <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginTop: 4 }}>{(d.ingredients || []).slice(0, 6).join(", ")}</div>
+          {(d.allergens || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>{(d.allergens || []).map((a, i) => <span key={i} style={{ fontSize: 11, padding: "2px 7px", borderRadius: 999, border: `1px solid ${RED}88`, color: RED }}>{a}</span>)}</div>}
+          <div style={{ fontSize: 11, color: gold, marginTop: 4 }}>Открыть карточку ›</div>
         </div>
       </div>
     );
@@ -376,7 +376,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
   };
 
   const miniBtn = {
-    width: 34, height: 34, borderRadius: 17, flexShrink: 0, cursor: "pointer", padding: 0,
+    width: 34, height: 34, borderRadius: 18, flexShrink: 0, cursor: "pointer", padding: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
     background: a11y ? "rgba(139,106,48,0.10)" : "rgba(250,240,215,0.08)",
     border: `1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(200,160,80,0.35)"}`,
@@ -393,7 +393,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
         transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
         background: a11y
           ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
-          : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)" }}>
+          : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #1A1008 0%, #1A1008 50%, #1A1008 100%)" }}>
       {/* ── Шапка ── */}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
@@ -435,13 +435,13 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
       {confirmClear && (
         <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
             ...panel, padding: 14, borderColor: RED }}>
-          <div style={{ ...T.bold, marginTop: 0, marginBottom: 6 }}>Очистить переписку?</div>
+          <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Очистить переписку?</div>
           <div style={{ color: sub, fontSize: 12.5, marginBottom: 12 }}>История хранится только на этом устройстве и восстановлению не подлежит.</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="sa-btn" onClick={() => setConfirmClear(false)}
-              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Оставить</button>
+              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>Оставить</button>
             <button className="sa-btn" onClick={clearChat}
-              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${RED}66`, background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold" }}>Очистить</button>
+              style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${RED}66`, background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>Очистить</button>
           </div>
         </div>
       )}
@@ -455,13 +455,13 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
                 border: s.id === store.activeId ? `1px solid ${gold}66` : "1px solid transparent",
                 background: s.id === store.activeId ? (a11y ? "rgba(139,106,48,0.08)" : "rgba(200,169,110,0.07)") : "transparent" }}>
               <div onClick={() => switchChat(s.id)} {...onActivate(() => switchChat(s.id))} style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: T.modTitle.color, fontSize: 13, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
-                <div style={{ color: sub, fontSize: 10.5, marginTop: 2, fontFamily: "monospace" }}>{fmtWhen(s.updatedAt)}{s.msgs.length ? ` · ${s.msgs.length}` : " · пусто"}</div>
+                <div style={{ color: T.modTitle.color, fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                <div style={{ color: sub, fontSize: 11, marginTop: 2, fontFamily: "monospace" }}>{fmtWhen(s.updatedAt)}{s.msgs.length ? ` · ${s.msgs.length}` : " · пусто"}</div>
               </div>
               {delArm === s.id ? (
                 <button className="sa-btn" onClick={() => deleteChat(s.id)}
                   style={{ flexShrink: 0, padding: "7px 10px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${RED}66`,
-                    background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 11.5, fontWeight: "bold" }}>Удалить?</button>
+                    background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 11, fontWeight: "bold" }}>Удалить?</button>
               ) : (
                 <button className="sa-btn" onClick={() => { vibrate("light"); setDelArm(s.id); }} aria-label="Удалить чат"
                   style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 14, cursor: "pointer", border: "none",
@@ -484,7 +484,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
         {msgs.length === 0 && !confirmClear && (
           <div className="sa-pagein" style={{ ...glass, padding: "20px 18px" }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-              <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 27, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
+              <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
                 {UI_SVG.sparkle(gold, 26)}
               </div>
             </div>
@@ -526,10 +526,10 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
                   {cards.map((card, k) => <VisualCard key={k} card={card} />)}
                   {nav && onNavigate && (
                     <button className="sa-btn" onClick={() => { vibrate("light"); onNavigate(nav.lesson ? { lesson: nav.lesson } : nav.key); }}
-                      style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px",
+                      style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px",
                         borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}66`,
                         background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.12)",
-                        color: gold, fontFamily: "Georgia, serif", fontSize: 13.5, fontWeight: "bold",
+                        color: gold, fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold",
                         boxShadow: `inset 0 0 14px ${a11y ? "rgba(255,255,255,0.4)" : "rgba(255,230,170,0.10)"}` }}>
                       {nav.label}
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -543,7 +543,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
 
         {sending && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ ...frost(false), padding: "12px 16px", borderRadius: RADIUS.lg, display: "flex", gap: 5 }}>
+            <div style={{ ...frost(false), padding: "12px 16px", borderRadius: RADIUS.lg, display: "flex", gap: 4 }}>
               {[0, 1, 2].map(i => (
                 <span key={i} className="sa-pulse" style={{ width: 6, height: 6, borderRadius: 3, background: gold, animationDelay: (i * 0.18) + "s" }} />
               ))}
@@ -564,7 +564,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
         )}
 
         {remaining >= 0 && remaining <= 5 && !sending && (
-          <div style={{ color: remaining <= 2 ? "#D98880" : gold, fontSize: 12, textAlign: "center", fontFamily: "Georgia, serif", padding: "5px 0", fontStyle: "italic", fontWeight: remaining <= 2 ? "bold" : "normal" }}>
+          <div style={{ color: remaining <= 2 ? "#D98A80" : gold, fontSize: 12.5, textAlign: "center", fontFamily: "Georgia, serif", padding: "5px 0", fontStyle: "italic", fontWeight: remaining <= 2 ? "bold" : "normal" }}>
             {remaining === 0
               ? (() => {
                   try {
@@ -578,7 +578,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
           </div>
         )}
         {msgs.length > 0 && !sending && (
-          <div style={{ color: sub, fontSize: 10, textAlign: "center", opacity: 0.7, fontFamily: "monospace", letterSpacing: 1, padding: "4px 0" }}>
+          <div style={{ color: sub, fontSize: 9, textAlign: "center", opacity: 0.7, fontFamily: "monospace", letterSpacing: 1, padding: "4px 0" }}>
             ИИ МОЖЕТ ОШИБАТЬСЯ · СТАНДАРТЫ РЕСТОРАНА ГЛАВНЕЕ
           </div>
         )}
@@ -598,14 +598,14 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", padding:"0 2px 8px" }}>
                 {qs.slice(0, 3).map(t => (
                   <span key={t} onClick={() => setInput(t)}
-                    style={{ fontSize:11.5, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
+                    style={{ fontSize:11, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
                       background:"rgba(200,169,110,0.08)", border:"1px solid rgba(200,169,110,0.3)",
                       WebkitTapHighlightColor:"transparent" }}>{t}</span>
                 ))}
               </div>
             );
           })()}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 29,
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 28,
             background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
             backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
             border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",
@@ -624,7 +624,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
             }}
             placeholder="Спроси наставника…"
             maxLength={600}
-            style={{ flex: 1, minWidth: 0, padding: "11px 0", fontSize: 15, fontFamily: "Georgia, serif",
+            style={{ flex: 1, minWidth: 0, padding: "11px 0", fontSize: 14, fontFamily: "Georgia, serif",
               lineHeight: 1.45, resize: "none", height: 44, minHeight: 44, maxHeight: 122, overflowY: "auto", boxSizing: "border-box",
               caretColor: a11y ? "#8B6A30" : "#C8A96E",
               background: "transparent", border: "none", outline: "none",

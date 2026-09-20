@@ -21,7 +21,7 @@ import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
-import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
+import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
 
@@ -36,11 +36,6 @@ const WaxSealMini = ({ size = 15, rot = 0 }) => (
 );
 const EmptySealSlot = ({ a11y }) => (
   <div style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0, background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.28)", boxShadow: "inset 0 1.5px 3px rgba(0,0,0,0.35)" }} />
-);
-const TokenEyelet = () => (
-  <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", width: 9, height: 9, borderRadius: "50%", zIndex: 2, background: "radial-gradient(circle at 35% 30%, #E8C87A, #8B6A30 70%)", boxShadow: "0 1px 2px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-    <div style={{ width: 4.5, height: 4.5, borderRadius: "50%", background: "rgba(20,14,6,0.8)", boxShadow: "inset 0 1px 1.5px rgba(0,0,0,0.8)" }} />
-  </div>
 );
 // Оправы (проба золота): full — герой, mid — рабочие элементы
 // «Морозный лёд»: оправа — светящаяся золотисто-белая кромка,
@@ -115,7 +110,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
           const hello = h < 6 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
           return (
             <div style={{ padding:"2px 20px 12px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
-              <div style={{ color: T.modTitle.color, fontSize:19, fontFamily:ACCENT_SERIF, minWidth:0 }}>
+              <div style={{ color: T.modTitle.color, fontSize:18, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: GOLD }}>{profile.name}</span>
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
                 {(() => { try {
@@ -123,7 +118,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                   const t = new Date();
                   const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
                   if (r && r.date === key && r.label && r.label !== "выходной") {
-                    return <span style={{ display:"block", fontSize:11.5, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic" }}>Хорошей смены ✦</span>;
+                    return <span style={{ display:"block", fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic" }}>Хорошей смены ✦</span>;
                   }
                 } catch (e) {} return null; })()}
               </div>
@@ -132,33 +127,11 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
           );
         })()}
 
-        {/* Пульс недели: владельцу — командная сводка одним взглядом */}
-        {profile?.is_admin && scores.length > 0 && (() => {
-          const d = new Date(); const dw = (d.getDay() + 6) % 7;
-          d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dw);
-          const ws = d.getTime();
-          const wk = scores.filter(q => q.updated_at && new Date(q.updated_at).getTime() >= ws);
-          if (!wk.length) return null;
-          const by = {};
-          wk.forEach(q => { const k = q.name + " " + (q.surname || ""); by[k] = (by[k] || 0) + (q.score || 0); });
-          const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
-          const ppl = Object.keys(by).length;
-          return (
-            <div style={{ margin:"0 14px 10px", padding:"9px 13px", borderRadius:13, fontSize:11.5,
-              color: T.modSub.color, background:"rgba(200,169,110,0.06)",
-              border:"1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
-              <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:"#C8A96E" }}>пульс недели</span>
-              {" "}· {wk.length} {wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов"} · {ppl} чел в игре
-              {top ? <> · лидер: <span style={{ color:"#C8A96E" }}>{top[0].trim()}</span></> : null}
-            </div>
-          );
-        })()}
-
         {/* ═══ Карточка «Твой трек»: урок → ошибки → гость недели ═══ */}
         {role && onContinueLesson && (() => {
           const roleObj = ROLES.find(r => r.id === role);
           const mods = MODULES[role] || [];
-          if (!mods.length) return <div style={{ padding:"0 14px 9px" }}><SkeletonCard a11y={a11y} h={92} style={{ borderRadius:16 }} /></div>; // Доп. 132/146: уроки едут — мерцающий силуэт
+          if (!mods.length) return <div style={{ padding:"0 14px 9px" }}><SkeletonCard a11y={a11y} h={92} style={{ borderRadius:14 }} /></div>; // Доп. 132/146: уроки едут — мерцающий силуэт
           const next = nextLessonOf(mods, completed, quizDone);
           const dueM = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
           const done = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0);
@@ -179,36 +152,74 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           return (
             <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={go} {...onActivate(go)} style={{ borderRadius:16, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)", cursor:"pointer" }}>
+              <div onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
+                // Тот же «морозный лёд», но ярче остальных карточек: это
+                // единственное действие, ради которого экран открывают.
+                background: a11y
+                  ? "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))"
+                  : "linear-gradient(180deg,rgba(214,178,102,0.17),rgba(214,178,102,0.05))",
+                border:`1px solid ${a11y ? "rgba(150,112,40,0.42)" : "rgba(214,178,102,0.4)"}`,
+                borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.58)" : "rgba(226,190,120,0.46)"}`,
+                boxShadow: a11y
+                  ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(120,85,25,0.14)"
+                  : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13), 0 5px 16px rgba(0,0,0,0.45)" }}>
                 <div style={{ borderRadius:14.5, padding:"12px 13px", background: "transparent" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:11 }}>
-                    <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? "rgba(200,169,110,0.13)" : `${RC}26`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ width:40, height:40, borderRadius:"50%", background: gold ? (a11y ? "rgba(160,120,40,0.16)" : "rgba(200,169,110,0.13)") : `${RC}26`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       {gold
                         ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>
                         : (ROLE_SVG[role] ? ROLE_SVG[role](RC, 20) : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={RC} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>)}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ color: gold ? GOLD : GRN, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{title}</div>
-                      <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:1, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", lineHeight:1.35 }}>{sub}</div>
+                      <div style={{ color: gold ? GOLD : GRN, fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1.25 }}>{title}</div>
+                      <div style={{ color: T.modSub.color, fontSize:12, marginTop:3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", lineHeight:1.4 }}>{sub}</div>
                     </div>
                 {total > 0 && done > 0 && next ? (
                   <svg width="26" height="26" viewBox="0 0 26 26" style={{ flexShrink:0, marginRight:2 }}>
-                    <circle cx="13" cy="13" r="10.5" fill="none" stroke="rgba(200,169,110,0.22)" strokeWidth="2.6" />
+                    <circle cx="13" cy="13" r="10.5" fill="none" stroke={a11y ? "rgba(120,90,30,0.22)" : "rgba(200,169,110,0.22)"} strokeWidth="2.6" />
                     <circle cx="13" cy="13" r="10.5" fill="none" stroke={GOLD} strokeWidth="2.6" strokeLinecap="round"
                       strokeDasharray={(2 * Math.PI * 10.5 * prog / 100) + " " + (2 * Math.PI * 10.5)}
                       transform="rotate(-90 13 13)" />
                     <text x="13" y="14.5" textAnchor="middle" fontSize="6.5" fill={GOLD} fontFamily="ui-monospace, Menlo, monospace">{prog}%</text>
                   </svg>
                 ) : null}
-                    <div style={{ fontFamily:"monospace", flexShrink:0, fontSize:9, letterSpacing:1, color: "#14100A", background: gold ? `linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)` : RC, borderRadius:12, padding:"6px 11px" }}>{cta} ›</div>
                   </div>
                   {next && (
-                    <div style={{ height:3.5, borderRadius:2, background: a11y ? "rgba(120,90,40,0.15)" : "rgba(255,255,255,0.07)", marginTop:9 }}>
-                      <div style={{ width:`${prog}%`, height:"100%", borderRadius:2, background:`linear-gradient(90deg, ${GRN}, ${GRN2})` }} />
+                    <div style={{ height:3.5, borderRadius:3, background: a11y ? "rgba(120,90,40,0.15)" : "rgba(255,255,255,0.07)", marginTop:10 }}>
+                      <div style={{ width:`${prog}%`, height:"100%", borderRadius:3, background:`linear-gradient(90deg, ${GRN}, ${GRN2})` }} />
                     </div>
                   )}
+                  {/* Кнопка во всю ширину. Была плашка в 9 px в углу — по весу
+                      неотличимая от стрелки «›» у соседних карточек. */}
+                  <div style={{ marginTop:12, textAlign:"center", padding:"10px", borderRadius:999,
+                    fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", color:"#1A1008",
+                    background: gold ? `linear-gradient(180deg, ${GOLD_SOFT}, #8B6A30)` : `linear-gradient(180deg,#E4C88C,${GOLD})` }}>
+                    {cta.charAt(0) + cta.slice(1).toLowerCase()}
+                  </div>
                 </div>
               </div>
+            </div>
+          );
+        })()}
+
+        {/* Пульс недели: владельцу — командная сводка одним взглядом */}
+        {profile?.is_admin && scores.length > 0 && (() => {
+          const d = new Date(); const dw = (d.getDay() + 6) % 7;
+          d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dw);
+          const ws = d.getTime();
+          const wk = scores.filter(q => q.updated_at && new Date(q.updated_at).getTime() >= ws);
+          if (!wk.length) return null;
+          const by = {};
+          wk.forEach(q => { const k = q.name + " " + (q.surname || ""); by[k] = (by[k] || 0) + (q.score || 0); });
+          const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
+          const ppl = Object.keys(by).length;
+          return (
+            <div style={{ margin:"0 14px 10px", padding:"9px 13px", borderRadius:12, fontSize:11,
+              color: T.modSub.color, background:"rgba(200,169,110,0.06)",
+              border:"1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
+              <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:"#C8A96E" }}>пульс недели</span>
+              {" "}· {wk.length} {wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов"} · {ppl} чел в игре
+              {top ? <> · лидер: <span style={{ color:"#C8A96E" }}>{top[0].trim()}</span></> : null}
             </div>
           );
         })()}
@@ -221,22 +232,22 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             <div className="sa-card sa-glass" onClick={() => onSchedule && onSchedule()}
               {...onActivate(() => onSchedule && onSchedule())}
               style={{
-                borderRadius: 16, padding: "12px 13px", cursor: "pointer",
+                borderRadius: 14, padding: "12px 13px", cursor: "pointer",
                 background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`,
                 boxShadow: a11y
                   ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
                   : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)",
               }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
                   background: "rgba(200,169,110,0.13)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {UI_SVG.calendar ? UI_SVG.calendar(GOLD, 20) : <span style={{ fontSize: 17 }}>🗓</span>}
+                  {UI_SVG.calendar ? UI_SVG.calendar(GOLD, 20) : <span style={{ fontSize: 16 }}>🗓</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, color: a11y ? "#2A1F0E" : CREAM }}>
+                  <div style={{ fontSize: 14, color: a11y ? "#2A1F0E" : CREAM }}>
                     {mgr ? "График смен" : "Мой график"}
                   </div>
-                  <div style={{ fontSize: 11.5, color: a11y ? "#6B5B40" : "#A2907A", marginTop: 1 }}>
+                  <div style={{ fontSize: 11, color: a11y ? "#6B5B40" : "#A09080", marginTop: 2 }}>
                     {(() => {
                       // Живая подпись из офлайн-сводки: смена сегодня
                       try {
@@ -252,7 +263,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                   </div>
                 </div>
                 <div style={{ fontFamily: "monospace", flexShrink: 0, fontSize: 9, letterSpacing: 1.4,
-                  color: "#14100A", background: GOLD, borderRadius: 12, padding: "6px 11px" }}>ОТКРЫТЬ ›</div>
+                  color: "#1A1008", background: GOLD, borderRadius: 12, padding: "6px 11px" }}>ОТКРЫТЬ ›</div>
               </div>
             </div>
             </div>
@@ -266,28 +277,28 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
           const unread = countUnreadPages(completed, quizDone, examResults);
           return (
             <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ position:"relative", borderRadius:15, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "full")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 14px rgba(120,85,25,0.2)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 6px 18px rgba(0,0,0,0.45)", cursor:"pointer" }}>
+              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ position:"relative", borderRadius:14, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "full")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 14px rgba(120,85,25,0.2)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 6px 18px rgba(0,0,0,0.45)", cursor:"pointer" }}>
                 {unread > 0 && (
                   <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
                     display:"flex", alignItems:"center", justifyContent:"center",
                     background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #8B6A30 100%)",
-                    color:"#14100A", fontSize:10, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
-                    border: a11y ? "1.5px solid #FBF5E8" : "1.5px solid #14100A",
+                    color:"#1A1008", fontSize:9, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
+                    border: a11y ? "1.5px solid #F5EFE2" : "1.5px solid #1A1008",
                     boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
                 )}
-                <div style={{ overflow:"hidden", position:"relative", background: "transparent", borderRadius:13.5 }}>
+                <div style={{ overflow:"hidden", position:"relative", background: "transparent", borderRadius:12.5 }}>
                   {/* ляссе */}
                   <div style={{ position:"absolute", right:16, top:0, width:7, height:20, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />
                   <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px 8px" }}>
                     <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, border:`1.2px solid ${GOLD}88`, background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)", display:"flex", alignItems:"center", justifyContent:"center", color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif" }}>{(profile.name || "?")[0]}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
+                      <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
                         <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
-                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:8 }}>{bs.pages}/{bs.total}</span>
+                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9 }}>{bs.pages}/{bs.total}</span>
                       </div>
-                      <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:7.5, letterSpacing:2, marginTop:1, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>ЛИЧНАЯ · {profile.name} · {bs.rank.label}</div>
+                      <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:2, marginTop:2, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>ЛИЧНАЯ · {profile.name} · {bs.rank.label}</div>
                     </div>
-                    <div style={{ display:"flex", gap:3.5, alignItems:"center", paddingRight:10, flexShrink:0 }}>
+                    <div style={{ display:"flex", gap:2.5, alignItems:"center", paddingRight:10, flexShrink:0 }}>
                       {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
                     </div>
                   </div>
@@ -302,7 +313,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
 
         {(() => {
           const Cc = moodPalette(a11y);
-          const sosR = a11y ? "#A03828" : "#E07878";
+          const sosR = a11y ? "#A33A2A" : "#E07878";
           const tiles = [];
           // Плитки «Ассистент» больше нет: плавающая AI-кнопка и так на каждом
           // экране — два одинаковых входа на главной путали (замечание владельца)
@@ -363,38 +374,44 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
             <>
-            <div className="sa-hscroll sa-tilesrow" style={{ display:"flex", gap:7, padding:"0 16px 12px", overflowX: visibleTiles.length <= 4 ? "hidden" : "auto", /* Доп. 143: ≤4 жетонов — во всю ширину поровну */
-                WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity", scrollPaddingLeft:16, scrollPaddingRight:16, overscrollBehaviorX:"contain" }}>
+            <div style={{ fontFamily:"monospace", fontSize:9, letterSpacing:2.4, textTransform:"uppercase",
+              color: T.modSub.color, padding:"0 20px 7px" }}>под рукой</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, padding:"0 16px 12px" }}>
               {visibleTiles.map(t => {
                 const badge = t.key === "menu" && menuNew > 0 ? String(menuNew) : null;
                 // Доп. 215: пять на сегодня ещё не закрыты — тихая золотая точка на «Меню» (сам режим дня живёт в Меню)
                 const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
                 return (
-                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ flex: visibleTiles.length <= 4 ? "1 1 0" : "0 0 auto", width: visibleTiles.length <= 4 ? "auto" : 88, minWidth:0, scrollSnapAlign:"start", boxSizing:"border-box", position:"relative", borderRadius:13, cursor:"pointer", WebkitTapHighlightColor:"transparent", background: saInner(a11y), border: t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`, boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
-                    <div style={{ position:"relative", borderRadius:11.5, padding:"10px 2px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, overflow:"hidden", background: "transparent" }}>
+                  <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)} style={{ minWidth:0,
+                    boxSizing:"border-box", position:"relative", borderRadius:12, cursor:"pointer",
+                    WebkitTapHighlightColor:"transparent",
+                    background: t.red ? (a11y ? "rgba(255,240,240,0.7)" : "rgba(224,120,120,0.07)") : saInner(a11y),
+                    border: t.red ? `1px solid ${sosR}66` : t.accent ? `1.4px solid ${Cc.gold}` : `1px solid ${saFrame(a11y, "mid")}`,
+                    boxShadow: a11y ? "inset 0 0 18px rgba(255,255,255,0.45), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 18px rgba(255,248,230,0.06), 0 5px 16px rgba(0,0,0,0.45)" }}>
+                    <div style={{ position:"relative", borderRadius:12.5, padding:"11px 12px", display:"flex",
+                      alignItems:"center", gap:9, overflow:"hidden", background:"transparent" }}>
                       <div style={{ position:"absolute", inset:0, background:`linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.20)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)`, pointerEvents:"none" }} />
-                      <TokenEyelet />
-                      <div style={{ marginTop:4, position:"relative", display:"inline-flex" }}>{React.cloneElement(t.icon, { width:16, height:16 })}</div>
-                      <span style={{ position:"relative", fontSize:8.5, color: t.red ? sosR : Cc.text, fontWeight:"bold", textAlign:"center", lineHeight:1.1, maxWidth:"100%", overflowWrap:"break-word", letterSpacing: t.red ? 1 : 0 }}>{t.label}</span>
+                      <div style={{ position:"relative", display:"inline-flex", flexShrink:0 }}>{React.cloneElement(t.icon, { width:18, height:18 })}</div>
+                      <span style={{ position:"relative", fontSize:12, color: t.red ? sosR : Cc.text, fontWeight: t.red ? "bold" : "normal", lineHeight:1.2, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing: t.red ? 0.6 : 0 }}>{t.label}</span>
                     </div>
-                    {dot && <div style={{ position:"absolute", top:6, right:8, zIndex:3, width:7, height:7, borderRadius:4, background:GOLD_SOFT, boxShadow:`0 0 8px ${GOLD_SOFT}` }} />}
-                    {badge && <div style={{ position:"absolute", top:-5, right:-3, zIndex:3, background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, color:"#1C1204", fontSize:8, fontWeight:"bold", fontFamily:"monospace", borderRadius:9, padding:"2px 6px", boxShadow:"0 2px 6px rgba(0,0,0,0.4)" }}>{badge}</div>}
+                    {dot && <div style={{ position:"absolute", top:6, right:8, zIndex:3, width:7, height:7, borderRadius:3, background:GOLD_SOFT, boxShadow:`0 0 8px ${GOLD_SOFT}` }} />}
+                    {badge && <div style={{ position:"absolute", top:-5, right:-3, zIndex:3, background:`linear-gradient(135deg, ${GOLD_SOFT}, #8B6A30)`, color:"#1A1008", fontSize:9, fontWeight:"bold", fontFamily:"monospace", borderRadius:9, padding:"2px 6px", boxShadow:"0 2px 6px rgba(0,0,0,0.4)" }}>{badge}</div>}
                   </div>
                 );
               })}
             </div>
             {newbie && (
               <div style={{ textAlign:"center", padding:"0 24px 12px", marginTop:-4 }}>
-                <span style={{ color: T.modSub.color, fontSize:10.5, fontStyle:"italic" }}>✨ Остальные инструменты откроются после первого урока</span>
+                <span style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic" }}>✨ Остальные инструменты откроются после первого урока</span>
               </div>
             )}
             </>
           );
         })()}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 20px 10px" }}>
-          <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D4A85A55, transparent)" }} />
+          <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D2A85A55, transparent)" }} />
           <span style={{ color:GOLD_SOFT, fontSize:14 }}>✦</span>
-          <div style={{ flex:1, height:"1px", background:"linear-gradient(to left, transparent, #D4A85A55, transparent)" }} />
+          <div style={{ flex:1, height:"1px", background:"linear-gradient(to left, transparent, #D2A85A55, transparent)" }} />
         </div>
 
 
@@ -464,9 +481,9 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                   {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 30) : r.icon) : ROLE_SVG.lock("#8A8070", 25)}
                 </div>
                 <div style={T.roleInfo}>
-                  <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                     <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
-                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? r.color : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? r.color : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
                   </div>
                   <div style={T.roleSublabel}>{r.sublabel}</div>
                   {isUnlocked
@@ -477,7 +494,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                   }
                 </div>
                 {isUnlocked
-                  ? <div style={{ fontSize:20, color: r.color+"99", fontWeight:"bold" }}>›</div>
+                  ? <div style={{ fontSize:21, color: r.color+"99", fontWeight:"bold" }}>›</div>
                   : <div style={{ display:"flex", alignItems:"center" }}>{ROLE_SVG.lock("rgba(255,255,255,0.28)", 17)}</div>
                 }
               </div>
@@ -505,13 +522,13 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                   {ico(anyUnlocked ? g.color : "#8A8070", 30)}
                 </div>
                 <div style={T.roleInfo}>
-                  <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                     <div style={{ ...T.roleLabel, color: anyUnlocked ? g.color : T.modSub.color }}>{g.label}</div>
                   </div>
                   <div style={T.roleSublabel}>{g.sublabel} · {members.length} ступени</div>
                   <div style={T.roleDesc}>{g.desc}</div>
                 </div>
-                <div style={{ fontSize:20, color: (anyUnlocked ? g.color : "#8A8070")+"99", fontWeight:"bold",
+                <div style={{ fontSize:21, color: (anyUnlocked ? g.color : "#8A8070")+"99", fontWeight:"bold",
                   transition:"transform 0.62s cubic-bezier(0.25,0.8,0.25,1)", transform: open ? "rotate(90deg)" : "none" }}>›</div>
               </div>
             );
@@ -543,7 +560,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
       {/* ═══ На подходе — анонсы новых треков и функций, стиль заблокированных ролей ═══ */}
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 14px 8px" }}>
         <div style={{ ...T.roleSubtitle }}>На подходе</div>
-        <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, #D4A85A33, transparent)" }} />
+        <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, #D2A85A33, transparent)" }} />
       </div>
       <div style={{ padding:"0 16px", display:"flex", flexDirection:"column", gap:8 }}>
         {[
@@ -564,29 +581,29 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
             {...(active ? onActivate(() => onSelect(s.key)) : {})}
             style={{
             display:"flex", alignItems:"center", gap:12, padding:"11px 13px",
-            borderRadius:15, opacity: active ? 1 : 0.5, position:"relative", overflow:"hidden",
+            borderRadius:14, opacity: active ? 1 : 0.5, position:"relative", overflow:"hidden",
             cursor: active ? "pointer" : "default",
             background: T.roleCard?.background, border: active ? "1px solid rgba(212,168,90,0.35)" : "1px solid rgba(255,255,255,0.06)",
           }}>
             <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter: active ? "none" : "grayscale(0.6)" }}>
-              {s.icon(active ? (a11y ? "#8B6A30" : "#D4A85A") : (a11y ? "#8B6A30" : "#8A8070"))}
+              {s.icon(active ? (a11y ? "#8B6A30" : "#D2A85A") : (a11y ? "#8B6A30" : "#8A8070"))}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ color: T.modSub.color, fontSize:13.5, fontWeight:"bold" }}>{s.label}</div>
-              <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:1, opacity:0.85 }}>{s.sub}</div>
+              <div style={{ color: T.modSub.color, fontSize:14, fontWeight:"bold" }}>{s.label}</div>
+              <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:2, opacity:0.85 }}>{s.sub}</div>
             </div>
             {active ? (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : "#D4A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:8, padding:"3px 8px" }}>НОВОЕ</div>
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#8B6A30" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"3px 8px" }}>НОВОЕ</div>
             ) : (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:8, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:8, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
             )}
           </div>
           );
         })}
       </div>
 
-      <div style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D4A85A44" }}>
-        <span style={{ color:"#7A6C58", fontSize:12, fontStyle:"italic", lineHeight:1.6 }}>
+      <div style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D2A85A44" }}>
+        <span style={{ color:"#7A6C58", fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
           «Сервис — это не обслуживание, а забота»
         </span>
       </div>

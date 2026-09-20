@@ -61,7 +61,7 @@ export function MicButton({ onText, onError, a11y, sttUrl, headers, size = 44 })
         <div aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: Math.max(2, Math.round(size * 0.07)), height: size * 0.5 }}>
           {bars.map((h, i) => (
             <span key={i} style={{ display: "block", width: Math.max(2, Math.round(size * 0.07)), height: busy ? 4 : h,
-              borderRadius: 2, background: gold, transition: "height .08s linear" }} />
+              borderRadius: 3, background: gold, transition: "height .08s linear" }} />
           ))}
         </div>
       ) : (

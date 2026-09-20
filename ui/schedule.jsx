@@ -110,7 +110,7 @@ const firstDow = (y, m) => (new Date(y, m, 1).getDay() + 6) % 7;
 // Цвет закреплён за порядком смены, а не за буквой: переименование не ломает раскраску
 const SHIFT_COLORS = [
   { bg:"rgba(126,180,220,.20)", bd:"rgba(126,180,220,.5)",  fg:"#BDE0F5", bgL:"rgba(126,180,220,.34)", bdL:"rgba(60,120,165,.6)",  fgL:"#1E4E70" },
-  { bg:"rgba(200,169,110,.20)", bd:"rgba(200,169,110,.55)", fg:"#EBD6A8", bgL:"rgba(200,169,110,.38)", bdL:"rgba(139,106,48,.65)", fgL:"#6B4E14" },
+  { bg:"rgba(200,169,110,.20)", bd:"rgba(200,169,110,.55)", fg:"#EBD6A8", bgL:"rgba(200,169,110,.38)", bdL:"rgba(139,106,48,.65)", fgL:"#6B4E1A" },
   { bg:"rgba(196,120,200,.18)", bd:"rgba(196,120,200,.5)",  fg:"#EBC4EF", bgL:"rgba(196,120,200,.30)", bdL:"rgba(130,60,140,.6)",  fgL:"#6A2A72" },
   { bg:"rgba(93,187,138,.18)",  bd:"rgba(93,187,138,.5)",   fg:"#BFE6D0", bgL:"rgba(93,187,138,.32)",  bdL:"rgba(40,120,80,.6)",   fgL:"#1E5236" },
   { bg:"rgba(224,150,110,.18)", bd:"rgba(224,150,110,.5)",  fg:"#F2CDB4", bgL:"rgba(224,150,110,.32)", bdL:"rgba(160,80,40,.6)",   fgL:"#7A3A18" },
@@ -190,7 +190,7 @@ const ROW = (a11y) => ({ display:"flex", alignItems:"center", gap:8, padding:"7p
 function Field({ label, P, children }) {
   return (
     <div style={{ flex:"1 1 0", minWidth:0, maxWidth:"100%" }}>
-      <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+      <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
         color:P.sub, paddingBottom:4 }}>{label}</div>
       {children}
     </div>
@@ -239,7 +239,7 @@ function Hint({ children, P, label = "как это работает?" }) {
         {open ? "скрыть пояснение ▴" : label + " ▾"}
       </span>
       {open ? (
-        <div style={{ fontSize:11.5, color:P.sub, fontStyle:"italic", lineHeight:1.6, marginTop:5 }}>{children}</div>
+        <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", lineHeight:1.6, marginTop:4 }}>{children}</div>
       ) : null}
     </div>
   );
@@ -248,7 +248,7 @@ function Hint({ children, P, label = "как это работает?" }) {
 function Pill({ on, children, onClick, a11y, P, style }) {
   return (
     <button onClick={onClick} className="sa-btn" style={{
-      padding:"6px 10px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:11.5,
+      padding:"6px 10px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:11,
       color: on ? GOLD : P.sub, background: on ? "rgba(200,169,110,0.13)" : "transparent",
       boxShadow: on ? "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 12px rgba(255,230,170,0.09), inset 0 1px 0 rgba(255,255,255,0.14)" : "none",
       border:`1px solid ${on ? GOLD + "99" : (a11y ? "rgba(175,140,65,0.3)" : "rgba(145,108,40,0.3)")}`,
@@ -333,7 +333,7 @@ function CallName({ who, label, color, badge }) {
   };
   return (
     <span style={{ display:"inline-flex", alignItems:"center", gap:6, flexWrap:"wrap", verticalAlign:"middle" }}>
-      <span onClick={tap} style={{ display:"inline-flex", alignItems:"center", gap:5, color, cursor:"pointer",
+      <span onClick={tap} style={{ display:"inline-flex", alignItems:"center", gap:4, color, cursor:"pointer",
         padding:"2px 9px", borderRadius:999, border:`1px solid ${color}44`,
         background:"rgba(200,169,110,0.08)", WebkitTapHighlightColor:"transparent" }}>
         <IcoPhone size={10} color={color} />
@@ -364,7 +364,7 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
         style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 13px", cursor:"pointer" }}>
         <div className="sa-schedno">{no}</div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:14.5, color:P.text }}>{title}</div>
+          <div style={{ fontSize:14, color:P.text }}>{title}</div>
           <div style={{ fontSize:11, color:P.sub }}>{hint}</div>
         </div>
         <div style={{ color:P.sub, fontSize:16, transform: open ? "rotate(90deg)" : "none",
@@ -1391,9 +1391,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
   const P = a11y
     ? { text:"#2A1F0E", sub:"#6B5B40", acc:"#7A5A22", warn:"#A33A2A",
-        danger:"#8B3020", dangerBg:"#A33A2A", dangerFg:"#FFF4F1" }
+        danger:"#8B3020", dangerBg:"#A33A2A", dangerFg:"#FBF7EE" }
     : { text:CREAM, sub:MUTED_2, acc:GOLD_SOFT, warn:"#E09090",
-        danger:"#E09090", dangerBg:"#C04A4A", dangerFg:"#FFF1F1" };
+        danger:"#E09090", dangerBg:"#C04A4A", dangerFg:"#FBF7EE" };
 
   // ── Оформление ────────────────────────────────────────────────────
   const card = {
@@ -1404,7 +1404,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     boxShadow: T.lessGlass?.shadow || "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.38)",
   };
   const btn = { flex:1, padding:12, border:"none", borderRadius:RADIUS.md, cursor:"pointer",
-    fontFamily:serif, fontSize:13.5, fontWeight:"bold", background:GOLD, color:INK_DEEP };
+    fontFamily:serif, fontSize:14, fontWeight:"bold", background:GOLD, color:INK_DEEP };
   const ghost = { ...btn, background:"transparent", border:`1px solid ${GOLD}66`, color:GOLD, fontWeight:"normal" };
   const eyebrow = { fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase",
     color:P.sub, display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:10 };
@@ -1414,12 +1414,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       onBlurCapture={() => { try { window.scrollTo(0, 0); } catch (_) {} }}
       style={{
       position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column",
-      background: a11y ? "#E8DEC8" : "linear-gradient(160deg,#14110A 0%,#1C1509 50%,#14110A 100%)",
+      background: a11y ? "#E8DEC8" : "linear-gradient(160deg,#1A1008 0%,#1A1008 50%,#1A1008 100%)",
       overflowY:"auto", WebkitOverflowScrolling:"touch", overscrollBehavior:"contain",
     }}>
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"44px 18px 4px" }}>
         <button className="sa-btn" style={{ background:"transparent", border:"none", color:GOLD,
-          fontSize:26, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
+          fontSize:25, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
           onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase", color:P.sub }}>График</div>
@@ -1427,7 +1427,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
       </div>
       {offlineAt ? (
-        <div style={{ margin:"0 14px 10px", padding:"8px 12px", borderRadius:12, fontSize:11.5,
+        <div style={{ margin:"0 14px 10px", padding:"8px 12px", borderRadius:12, fontSize:11,
           color:"#D2A85A", background:"rgba(210,168,90,0.09)", border:"1px solid rgba(210,168,90,0.3)" }}>
           Офлайн-копия от {new Date(offlineAt).toLocaleString("ru-RU", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} — свежесть проверь при связи
         </div>
@@ -1446,13 +1446,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   if (state === "load") return shell(<div style={{ ...card, textAlign:"center", color:P.sub }}>Загружаю график…</div>);
   if (state === "error") return shell(
     <div style={{ ...card }}>
-      <div style={{ color:P.warn, marginBottom:6, fontSize:15 }}>{msg}</div>
-      <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>
+      <div style={{ color:P.warn, marginBottom:6, fontSize:14 }}>{msg}</div>
+      <div style={{ fontSize:11, color:P.sub, lineHeight:1.55, marginBottom:12 }}>
         Ресторан в профиле: «{profile?.restaurant || "не задан"}» · месяц {mkey}
       </div>
       {dbg ? (
-        <div style={{ fontFamily:mono, fontSize:10, lineHeight:1.5, color:P.sub, wordBreak:"break-all",
-          padding:"9px 11px", borderRadius:10, marginBottom:12,
+        <div style={{ fontFamily:mono, fontSize:9, lineHeight:1.5, color:P.sub, wordBreak:"break-all",
+          padding:"9px 11px", borderRadius:9, marginBottom:12,
           background: a11y ? "rgba(120,90,30,0.07)" : "rgba(0,0,0,0.28)",
           border:`1px solid ${a11y ? "rgba(175,140,65,0.22)" : "rgba(145,108,40,0.28)"}` }}>{dbg}</div>
       ) : null}
@@ -1462,13 +1462,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
   const monthNav = (
     <div style={{ display:"flex", alignItems:"center", gap:8, margin:"12px 14px 0" }}>
-      <button className="sa-btn" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:17 }}
+      <button className="sa-btn" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
         onClick={() => { const m = M - 1; if (m < 0) { setM(11); setY(Y - 1); } else setM(m); }}>‹</button>
       <div style={{ flex:1, textAlign:"center" }}>
         <div style={{ fontSize:16, color:P.text }}>{MONTHS_N[M]} {Y}</div>
         <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.sub }}>{DAYS} дней</div>
       </div>
-      <button className="sa-btn" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:17 }}
+      <button className="sa-btn" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
         onClick={() => { const m = M + 1; if (m > 11) { setM(0); setY(Y + 1); } else setM(m); }}>›</button>
     </div>
   );
@@ -1483,12 +1483,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const drawExport = (forPrint = false) => {
     const C = forPrint ? {
       bg:"#FFFFFF", text:"#111111", dim:"#444444", faint:"#8A8A8A",
-      grpBg:"#E6E6E6", weBg:"#F1F1F1", line:"#B8B8B8", lineHard:"#6E6E6E",
-      bad:"#000000", good:"#444444", hol:"#000000", empty:"#BDBDBD",
+      grpBg:"#E6E6E6", weBg:"#F2F3F7", line:"#B8B8B8", lineHard:"#6E6E6E",
+      bad:"#000000", good:"#444444", hol:"#000000", empty:"#B8B8B8",
     } : {
       bg:"#FBF7EE", text:"#2A1F0E", dim:"#6B5B40", faint:"#8A7A5C",
-      grpBg:"#EFE4CB", weBg:"#FAF5E9", line:"#DED3BC", lineHard:"#CDBF9F",
-      bad:"#A33A2A", good:"#4A6B4A", hol:"#A33A2A", empty:"#CFC5AE",
+      grpBg:"#EFE4C8", weBg:"#FBF7EE", line:"#DED3BC", lineHard:"#CDBF9F",
+      bad:"#A33A2A", good:"#4A6B4A", hol:"#A33A2A", empty:"#CFC6AD",
     };
     const S = 2;                                     // множитель под ретину
     const NAME = 150, CELL = 34, ROW = 30, HEAD = 96, FOOT = 64;
@@ -1545,7 +1545,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     // Чипы под редкими буквами (только чат-версия): «Д» — спокойный текст,
     // остальные буквы глаз выхватывает по цвету, не вглядываясь
     const CHIP = forPrint ? null : {
-      "В": { bg: "rgba(138,101,32,0.16)", fg: "#6E4F14" },
+      "В": { bg: "rgba(138,101,32,0.16)", fg: "#6B4E1A" },
       "У": { bg: "rgba(74,107,74,0.16)",  fg: "#3E5C3E" },
       "К": { bg: "rgba(90,74,110,0.16)",  fg: "#55446B" },
       "О": { bg: "rgba(163,58,42,0.11)",  fg: C.hol },
@@ -1657,7 +1657,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // Заметки попадают в картинку — чаевые и пометки останутся под рукой.
   const drawMyExport = (me) => {
     const C = { bg:"#FBF7EE", text:"#2A1F0E", dim:"#6B5B40", faint:"#8A7A5C",
-      line:"#DED3BC", we:"#F3EDDD", hol:"#A33A2A", acc:"#7A5A22" };
+      line:"#DED3BC", we:"#F0E8D8", hol:"#A33A2A", acc:"#7A5A22" };
     const S = 2, W = 430, ROWH = 30, HEAD = 92, FOOT = 34;
     const H = HEAD + DAYS * ROWH + FOOT;
     const cv = document.createElement("canvas");
@@ -1708,7 +1708,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     const W = 1080, H = 1920, cv = document.createElement("canvas");
     cv.width = W; cv.height = H; const x = cv.getContext("2d");
     const g = x.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#1B1409"); g.addColorStop(1, "#2A1F0E");
+    g.addColorStop(0, "#1A1008"); g.addColorStop(1, "#2A1F0E");
     x.fillStyle = g; x.fillRect(0, 0, W, H);
     x.textBaseline = "middle";
     x.fillStyle = "#C8A96E"; x.font = "600 26px ui-monospace, Menlo, monospace"; x.textAlign = "center";
@@ -1717,7 +1717,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     x.fillText(me.name, W / 2, 172);
     const dn = ["вс","пн","вт","ср","чт","пт","сб"];
     const p1 = days[0], p2 = days[days.length - 1];
-    x.fillStyle = "#8F7B57"; x.font = "30px ui-monospace, Menlo, monospace";
+    x.fillStyle = "#8A7A5C"; x.font = "30px ui-monospace, Menlo, monospace";
     x.fillText(p1 + "–" + p2 + " " + MONTHS_R[M].toLowerCase() + " · моя неделя", W / 2, 232);
     x.strokeStyle = "rgba(200,169,110,0.4)"; x.lineWidth = 2;
     x.beginPath(); x.moveTo(140, 278); x.lineTo(W - 140, 278); x.stroke();
@@ -1738,7 +1738,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       x.strokeStyle = "rgba(255,255,255,0.10)"; x.lineWidth = 2;
       x.beginPath(); x.moveTo(108, ry + 2); x.lineTo(W - 108, ry + 2); x.stroke();
       x.textAlign = "left";
-      x.fillStyle = [0, 6].includes(wd) ? "#D2A85A" : "#8F7B57";
+      x.fillStyle = [0, 6].includes(wd) ? "#D2A85A" : "#8A7A5C";
       x.font = "600 28px ui-monospace, Menlo, monospace";
       x.fillText(dn[wd], 130, yc - 30);
       x.fillStyle = "#EFE4C8"; x.font = "64px Georgia, serif";
@@ -1759,13 +1759,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         x.fillStyle = "#D98A80"; x.font = "42px Georgia, serif";
         x.fillText("Отпуск", 300, yc);
       } else {
-        x.fillStyle = "#8F7B57"; x.font = "italic 40px Georgia, serif";
+        x.fillStyle = "#8A7A5C"; x.font = "italic 40px Georgia, serif";
         x.fillText("Отдыхай ✦", 300, yc);
       }
     });
     x.textAlign = "center"; x.fillStyle = "#C8A96E"; x.font = "34px ui-monospace, Menlo, monospace";
     x.fillText("часов за неделю: " + wh, W / 2, top + days.length * rowH + 64);
-    x.fillStyle = "#6E5C3E"; x.font = "24px ui-monospace, Menlo, monospace";
+    x.fillStyle = "#6B5B40"; x.font = "24px ui-monospace, Menlo, monospace";
     x.fillText("составлено в Service Academy", W / 2, H - 64);
     return cv;
   };
@@ -1811,14 +1811,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     // подписи нечитаемыми, а такую картинку вешают на стену, а не смотрят
     // с экрана. Отсюда же крупнее шрифты и три подписи под кружком.
     const C = print
-      ? { bg1:"#FFFDF7", bg2:"#F6EFDF", head:"#8A6A20", title:"#2A2113", sub:"#6E5C3C",
-          name:"#2A2113", ring:"rgba(138,106,32,.55)", ringLead:"#A8801E",
+      ? { bg1:"#FFFDF7", bg2:"#F5EFE2", head:"#8A6520", title:"#2A1F0E", sub:"#6B5B40",
+          name:"#2A1F0E", ring:"rgba(138,106,32,.55)", ringLead:"#A8801E",
           fill:"rgba(214,178,102,.18)", fillLead:"rgba(214,178,102,.42)",
-          warn:"#A8362A", warnSoft:"#B4685E", line:"rgba(138,106,32,.3)", chipBg:"#FFFDF7" }
-      : { bg1:"#1B1409", bg2:"#2A1F0E", head:"#C8A96E", title:"#EFE4C8", sub:"#8F7B57",
+          warn:"#A33A2A", warnSoft:"#B4685E", line:"rgba(138,106,32,.3)", chipBg:"#FFFDF7" }
+      : { bg1:"#1A1008", bg2:"#2A1F0E", head:"#C8A96E", title:"#EFE4C8", sub:"#8A7A5C",
           name:"#EFE4C8", ring:"rgba(145,108,40,.5)", ringLead:"#D6B266",
           fill:"rgba(255,250,238,.05)", fillLead:"rgba(214,178,102,.22)",
-          warn:"#D96A5E", warnSoft:"#B5726F", line:"rgba(145,108,40,.28)", chipBg:"#241A0C" };
+          warn:"#D96A5E", warnSoft:"#B5726F", line:"rgba(145,108,40,.28)", chipBg:"#2A1F0E" };
     // Печать «кто на смене». Был список: должность, под ней строки со значком
     // смены, именем и часами. Стало то же, что в приложении, — лица, сгруппи-
     // рованные по времени прихода. Под кружком полная фамилия и часы в две
@@ -2015,7 +2015,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   if (wiz && cfg) {
     const W = wiz; const set = (o) => setWiz({ ...W, ...o });
     const mainPos = [{ id: "waiter", t: "Официанты" }, { id: "bar", t: "Бар" }, { id: "host", t: "Хостес" }, { id: "manager", t: "Менеджеры" }];
-    const nextBtn = (label, on, dis) => <button className="sa-btn" disabled={dis} onClick={on} style={{ ...T.doneBtn, width:"100%", marginTop:18, background:P.acc, opacity: dis ? 0.5 : 1 }}>{label}</button>;
+    const nextBtn = (label, on, dis) => <button className="sa-btn" disabled={dis} onClick={on} style={{ ...T.doneBtn, width:"100%", marginTop:16, background:P.acc, opacity: dis ? 0.5 : 1 }}>{label}</button>;
     const step = W.step;
     const finish = () => {
       const pr = W.preset;
@@ -2037,22 +2037,22 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     };
     return shell(
       <div style={{ ...card }}>
-        <div style={{ display:"flex", gap:4, marginBottom:12 }}>{[1,2,3,4].map(i => <span key={i} style={{ flex:1, height:3, borderRadius:2, background: i <= step ? P.acc : `${P.acc}33` }} />)}</div>
-        <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>ШАГ {step} ИЗ 4</div>
+        <div style={{ display:"flex", gap:4, marginBottom:12 }}>{[1,2,3,4].map(i => <span key={i} style={{ flex:1, height:3, borderRadius:3, background: i <= step ? P.acc : `${P.acc}33` }} />)}</div>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>ШАГ {step} ИЗ 4</div>
         {step === 1 && <>
-          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>На что похоже заведение?</div>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:21, color:P.text, margin:"6px 0 4px" }}>На что похоже заведение?</div>
           <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Выставлю часы работы и смены — потом их можно поправить.</div>
           {VENUE_PRESETS.map(pr => (
             <div key={pr.id} className="sa-card" onClick={() => set({ preset: pr })} {...onActivate(() => set({ preset: pr }))}
               style={{ padding:"11px 13px", marginBottom:8, borderRadius:14, cursor:"pointer", border:`1px solid ${W.preset?.id === pr.id ? P.acc : P.acc + "33"}`, background: W.preset?.id === pr.id ? "rgba(214,178,102,0.10)" : "transparent" }}>
-              <div style={{ fontFamily:"Georgia, serif", fontSize:15, color:P.text }}>{pr.t}</div>
-              <div style={{ fontSize:12, color:P.sub, marginTop:2 }}>{pr.s}</div>
+              <div style={{ fontFamily:"Georgia, serif", fontSize:14, color:P.text }}>{pr.t}</div>
+              <div style={{ fontSize:12.5, color:P.sub, marginTop:2 }}>{pr.s}</div>
             </div>
           ))}
           {nextBtn("Дальше ›", () => set({ step: 2 }), !W.preset)}
         </>}
         {step === 2 && <>
-          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>Сколько человек в обычный день?</div>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:21, color:P.text, margin:"6px 0 4px" }}>Сколько человек в обычный день?</div>
           <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Сколько должно быть в смене одновременно. Ноль — такой позиции нет.</div>
           {mainPos.map(({ id, t }) => (
             <div key={id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
@@ -2063,7 +2063,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           {nextBtn("Дальше ›", () => set({ step: 3, peak: { ...W.need, ...W.peak } }))}
         </>}
         {step === 3 && <>
-          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>А в пятницу и субботу?</div>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:21, color:P.text, margin:"6px 0 4px" }}>А в пятницу и субботу?</div>
           <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>В пиковые дни обычно нужно больше. Если так же — оставь как есть.</div>
           {mainPos.map(({ id, t }) => (
             <div key={id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
@@ -2074,7 +2074,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           {nextBtn("Дальше ›", () => set({ step: 4 }))}
         </>}
         {step === 4 && <>
-          <div style={{ fontFamily:"Georgia, serif", fontSize:20, color:P.text, margin:"6px 0 4px" }}>Кто работает?</div>
+          <div style={{ fontFamily:"Georgia, serif", fontSize:21, color:P.text, margin:"6px 0 4px" }}>Кто работает?</div>
           <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Имя и позиция. Часы, отпуска и пожелания добавишь потом в «Сотрудниках».</div>
           {(W.rows || []).map((r, k) => (
             <div key={k} style={{ display:"flex", gap:6, marginBottom:6 }}>
@@ -2082,14 +2082,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <select style={{ ...inp, width:118 }} value={r.pos} onChange={e => set({ rows: W.rows.map((x, i) => i === k ? { ...x, pos: e.target.value } : x) })}>
                 {POS.map(pp => <option key={pp.id} value={pp.id}>{pp.t}</option>)}
               </select>
-              <span onClick={() => set({ rows: W.rows.filter((_, i) => i !== k) })} style={{ color:P.warn, cursor:"pointer", padding:"0 4px", fontSize:17 }}>✕</span>
+              <span onClick={() => set({ rows: W.rows.filter((_, i) => i !== k) })} style={{ color:P.warn, cursor:"pointer", padding:"0 4px", fontSize:16 }}>✕</span>
             </div>
           ))}
           <button className="sa-btn" style={{ ...ghost, marginTop:6, padding:"9px 12px", fontSize:12.5 }} onClick={() => set({ rows: [...(W.rows || []), { name:"", pos:"waiter" }] })}>+ ещё человек</button>
           {nextBtn("Готово — настроить", finish, !(W.rows || []).some(r => String(r.name).trim()))}
         </>}
         <div onClick={() => { markWizDone(); setWiz(null); }} {...onActivate(() => { markWizDone(); setWiz(null); })}
-          style={{ textAlign:"center", fontSize:12.5, color:P.sub, marginTop:14, cursor:"pointer" }}>Пропустить — настрою вручную</div>
+          style={{ textAlign:"center", fontSize:12.5, color:P.sub, marginTop:12, cursor:"pointer" }}>Пропустить — настрою вручную</div>
       </div>
     );
   }
@@ -2112,16 +2112,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
 
       {/* Паспорт заведения: контекст до того, как открыл хоть одну секцию */}
       <div style={{ ...card, marginBottom:10, padding:"12px 14px" }}>
-        <div style={{ fontFamily:serif, fontSize:15, color:P.text, marginBottom:6 }}>
+        <div style={{ fontFamily:serif, fontSize:14, color:P.text, marginBottom:6 }}>
           {profile?.restaurant || "Заведение"}
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", fontSize:11, color:P.sub }}>
-          <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}><IcoUsers size={12} color={P.sub} /> {staff.length} {staff.length % 10 === 1 && staff.length % 100 !== 11 ? "сотрудник" : [2,3,4].includes(staff.length % 10) && ![12,13,14].includes(staff.length % 100) ? "сотрудника" : "сотрудников"}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", fontSize:11, color:P.sub }}>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}><IcoUsers size={12} color={P.sub} /> {staff.length} {staff.length % 10 === 1 && staff.length % 100 !== 11 ? "сотрудник" : [2,3,4].includes(staff.length % 10) && ![12,13,14].includes(staff.length % 100) ? "сотрудника" : "сотрудников"}</span>
           <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
             {(cfg.shifts || []).map((sh2, i2) => {
               const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
-              return <span key={sh2.k} style={{ width:15, height:15, borderRadius:4, display:"grid", placeItems:"center",
-                fontSize:8.5, color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
+              return <span key={sh2.k} style={{ width:15, height:15, borderRadius:3, display:"grid", placeItems:"center",
+                fontSize:9, color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
                 border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{sh2.k}</span>;
             })}
           </span>
@@ -2154,15 +2154,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <Sec no={<IcoBulb size={13} />} title="Настроить за один тап" hint="типовые заведения — часы, смены и правила разом" P={P} open={openSec===9} onToggle={() => setOpenSec(openSec===9?0:9)}>
             <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:10 }}>Выбери, на что похоже заведение — часы работы, смены и правила выставятся сами. Останется вписать людей в разделе «Сотрудники» и нажать «Заполнить».</div>
             <button className="sa-btn" onClick={() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] })}
-              style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:13, marginBottom:12 }}>✦ Мастер: четыре вопроса — и график готов</button>
+              style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:12.5, marginBottom:12 }}>✦ Мастер: четыре вопроса — и график готов</button>
             {PRESETS.map(pr => (
               <div key={pr.id} className="sa-card" onClick={() => apply(pr)} {...onActivate(() => apply(pr))}
                 style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 13px", marginBottom:8, borderRadius:14, border:`1px solid ${P.acc}44`, cursor:"pointer" }}>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"Georgia, serif", fontSize:15, color:P.text }}>{pr.t}</div>
-                  <div style={{ fontSize:12, color:P.sub, marginTop:2 }}>{pr.s}</div>
+                  <div style={{ fontFamily:"Georgia, serif", fontSize:14, color:P.text }}>{pr.t}</div>
+                  <div style={{ fontSize:12.5, color:P.sub, marginTop:2 }}>{pr.s}</div>
                 </div>
-                <span style={{ color:P.acc, fontSize:17 }}>›</span>
+                <span style={{ color:P.acc, fontSize:16 }}>›</span>
               </div>
             ))}
           </Sec>
@@ -2192,8 +2192,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               const lack = r.need - r.cap;
               return (
                 <div key={r.pos} style={{ display:"flex", alignItems:"baseline", gap:8, padding:"7px 0", borderBottom:`1px solid ${GOLD}22` }}>
-                  <span style={{ flex:1, fontSize:13.5, color:P.text }}>{r.t}<span style={{ color:P.sub, fontSize:11.5 }}> · {r.n} чел</span></span>
-                  <span style={{ fontFamily:mono, fontSize:12, color: lack > 0 ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{r.cap} из {r.need} смен</span>
+                  <span style={{ flex:1, fontSize:14, color:P.text }}>{r.t}<span style={{ color:P.sub, fontSize:11 }}> · {r.n} чел</span></span>
+                  <span style={{ fontFamily:mono, fontSize:12.5, color: lack > 0 ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{r.cap} из {r.need} смен</span>
                 </div>);
             })}
             {bad.length ? (
@@ -2207,7 +2207,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       })()}
       {/* Две карточки выше — быстрые помощники, ниже — шесть шагов по порядку.
           Без этой подписи список выглядел так, будто нумерация начинается с третьего пункта. */}
-      <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.6, textTransform:"uppercase",
+      <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.6, textTransform:"uppercase",
         color:P.sub, margin:"16px 4px 6px" }}>шесть шагов настройки</div>
       <Sec no={1} title="Часы работы" hint={openSec===1 ? "Когда открываемся и закрываемся в каждый день недели" : sum1} P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
         {DOWL.map((dl, i) => (
@@ -2241,11 +2241,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <button className="sa-btn" title="Удалить смену" onClick={() => patch(c => { c.shifts.splice(i, 1); })}
               style={{ flex:"0 0 32px", width:32, height:32, minWidth:32, boxSizing:"border-box",
                 background:"transparent", border:`1px solid ${P.danger}66`, color:P.danger,
-                borderRadius:9, fontSize:12, cursor:"pointer", fontFamily:serif, lineHeight:1,
+                borderRadius:9, fontSize:12.5, cursor:"pointer", fontFamily:serif, lineHeight:1,
                 padding:0, display:"grid", placeItems:"center" }}>✕</button>
           </div>
         ))}
-        <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"8px 12px", fontSize:12 }}
+        <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"8px 12px", fontSize:12.5 }}
           onClick={() => patch(c => { c.shifts.push({ k:"С" + (c.shifts.length+1), name:"Новая смена", from:12, to:20 }); })}>
           + добавить смену
         </button>
@@ -2253,7 +2253,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       </Sec>
 
       <Sec no={3} title="Сколько людей нужно" hint={openSec===3 ? "Разное количество в будни, выходные и праздники" : sum3} P={P} open={openSec===3} onToggle={() => setOpenSec(openSec===3?0:3)}>
-        <div style={{ display:"flex", gap:8, fontFamily:mono, fontSize:8.5, letterSpacing:1.2,
+        <div style={{ display:"flex", gap:8, fontFamily:mono, fontSize:9, letterSpacing:1.2,
           textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>
           <span style={{ flex:1 }}>позиция</span>
           {LVLS.map(([, nm]) => <span key={nm} style={{ flex:"0 0 56px", textAlign:"center" }}>{nm}</span>)}
@@ -2304,29 +2304,29 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       <Sec no={4} title="Правила смен" hint={openSec===4 ? "Загрузка по дням недели, выходные и отдых" : sum4} P={P} open={openSec===4} onToggle={() => setOpenSec(openSec===4?0:4)}>
         {/* Срок приёма пожеланий: сотрудник видит его на своём экране и знает,
             до какого числа отмечаться. 0 — без срока, принимаем всегда. */}
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пожелания принимаем до числа</div>
-        <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:4 }}>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пожелания принимаем до числа</div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
           <Num inp={inp} v={Number(cfg.rules.wishDeadline || 0)} min={0} max={28}
             set={v => patch(c => { c.rules.wishDeadline = v; })} />
-          <span style={{ fontSize:11.5, color:P.sub, flex:1, lineHeight:1.45 }}>
+          <span style={{ fontSize:11, color:P.sub, flex:1, lineHeight:1.45 }}>
             {cfg.rules.wishDeadline
               ? `Сотрудники отмечают выходные до ${cfg.rules.wishDeadline} числа — после этого экран пожеланий закрывается`
               : "0 — без срока: пожелания принимаются в любой день месяца"}
           </span>
         </div>
-        <div style={{ display:"flex", alignItems:"flex-start", gap:9, margin:"10px 0 2px" }}>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:8, margin:"10px 0 2px" }}>
           <Pill a11y={a11y} P={P} on={!!cfg.rules.autoFill} style={{ flexShrink:0, padding:"7px 12px" }}
             onClick={() => patch(c => { c.rules.autoFill = !c.rules.autoFill; })}>
             {cfg.rules.autoFill ? "Собирать сам" : "Собирать вручную"}
           </Pill>
-          <span style={{ fontSize:11.5, color:P.sub, flex:1, lineHeight:1.45 }}>
+          <span style={{ fontSize:11, color:P.sub, flex:1, lineHeight:1.45 }}>
             {cfg.rules.autoFill
               ? "Пустой месяц заполняется черновиком сам — после закрытия приёма пожеланий. Сохранение всё равно за тобой."
               : "Черновик собирается только по кнопке «Заполнить черновик»"}
           </span>
         </div>
         <div style={{ height:1, background: a11y ? "rgba(120,90,30,0.15)" : "rgba(255,255,255,0.08)", margin:"10px 0" }} />
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пиковые дни недели</div>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пиковые дни недели</div>
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
             <Pill a11y={a11y} P={P} key={wi} on={cfg.rules.peakDows.includes(wi)} style={{ flex:1, padding:"6px 0" }}
@@ -2338,7 +2338,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           ))}
         </div>
         {levels === 3 ? (<>
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>высокие дни</div>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>высокие дни</div>
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
             <Pill a11y={a11y} P={P} key={wi} on={cfg.rules.highDows.includes(wi)} style={{ flex:1, padding:"6px 0",
@@ -2354,7 +2354,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             «Высокий» и «пик» оба значат «людей нужно больше обычного», и два
             названия для одного смысла путают при настройке. Кому нужна разница
             между «четверг чуть плотнее» и «суббота забита» — включает третий. */}
-        <div style={{ display:"flex", alignItems:"flex-start", gap:9, margin:"4px 0 8px" }}>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:8, margin:"4px 0 8px" }}>
           <Pill a11y={a11y} P={P} on={levels === 3} style={{ flexShrink:0, padding:"7px 12px" }}
             onClick={() => patch(c => {
               const to = levels === 3 ? 2 : 3;
@@ -2366,7 +2366,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             })}>
             {levels === 3 ? "три уровня" : "два уровня"}
           </Pill>
-          <span style={{ fontSize:11.5, color:P.sub, flex:1, lineHeight:1.45 }}>
+          <span style={{ fontSize:11, color:P.sub, flex:1, lineHeight:1.45 }}>
             {levels === 3
               ? "Обычный, высокий и пиковый. Высокий — для дней между буднями и полной загрузкой."
               : "Обычный и пиковый. Достаточно почти всем: либо день как обычно, либо людей нужно больше."}
@@ -2383,7 +2383,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           </Pill>
         </div>
 
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
           color:P.sub, padding:"14px 0 5px" }}>что означает норма часов</div>
         <div style={{ display:"flex", gap:6 }}>
           {[["floor","обязательный минимум"],["cap","потолок"]].map(([v, t]) => (
@@ -2398,7 +2398,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           {" "}Эти правила генератор не нарушает: он скорее оставит смену незакрытой, чем поставит человека сверх предела.
         </Hint>
 
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
           color:P.sub, padding:"14px 0 5px" }}>как выходит каждая позиция</div>
         {POS.map(({ id, t }) => {
           const pat = (cfg.posRules?.[id]?.pattern) || "even";
@@ -2418,9 +2418,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         <div style={hintStyle}>«2 / 2» — жёсткий цикл: два дня работает, два отдыхает, смещение у каждого своё.
           «Поровну» — генератор делит смены по недобору часов и старается склеивать выходные по два подряд.</div>
 
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
           color:P.sub, padding:"14px 0 5px" }}>основная смена</div>
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+        <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
           {(cfg.shifts || []).filter(x => !x.extra).map(sh => (
             <Pill key={sh.k} a11y={a11y} P={P} on={(cfg.dayShift || "Д") === sh.k} style={{ flex:"1 1 auto", padding:"7px 10px" }}
               onClick={() => patch(c => { c.dayShift = sh.k; })}>{sh.k} · {sh.name}</Pill>
@@ -2428,7 +2428,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
         <div style={hintStyle}>Её получают все позиции по умолчанию.</div>
 
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
           color:P.sub, padding:"14px 0 5px" }}>разбивка по сменам</div>
         {POS.map(({ id, t }) => {
           const spRaw = (cfg.split || {})[id];
@@ -2452,7 +2452,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             if (Object.keys(cur).length) c.split[id] = cur; else delete c.split[id];
           });
           const steppers = (spCur, write) => letters.map(sh => (
-            <div key={sh.k} style={{ display:"flex", alignItems:"center", gap:5 }}>
+            <div key={sh.k} style={{ display:"flex", alignItems:"center", gap:4 }}>
               <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{sh.k}</span>
               <Num inp={inp} v={(spCur && spCur[sh.k]) || 0} min={0} max={20} set={v => write(sh.k, v)} />
             </div>
@@ -2480,16 +2480,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <span onClick={() => { setOpenSplit(open2 ? "" : id); vibrate("light"); }}
                   style={{ flex:1, cursor:"pointer", color: open2 ? P.text : P.sub }}>
                   {t}
-                  <span style={{ fontSize:10.5, color:P.sub, marginLeft:7 }}>
+                  <span style={{ fontSize:11, color:P.sub, marginLeft:7 }}>
                     {summary}{open2 ? " ▴" : " ▾"}
                   </span>
                 </span>
-                <Pill a11y={a11y} P={P} on={!byLvl} style={{ padding:"5px 9px", fontSize:10.5 }}
+                <Pill a11y={a11y} P={P} on={!byLvl} style={{ padding:"5px 9px", fontSize:11 }}
                   onClick={() => { if (!byLvl) return; patch(c => {
                     const base = (c.split?.[id]?.["1"]) || (c.split?.[id]?.["3"]) || {};
                     if (Object.keys(base).length) c.split[id] = { ...base }; else if (c.split) delete c.split[id];
                   }); }}>одинаковая</Pill>
-                <Pill a11y={a11y} P={P} on={byLvl} style={{ padding:"5px 9px", fontSize:10.5 }}
+                <Pill a11y={a11y} P={P} on={byLvl} style={{ padding:"5px 9px", fontSize:11 }}
                   onClick={() => { if (byLvl) return; patch(c => {
                     if (!c.split) c.split = {};
                     c.split[id] = { "1": { ...(c.split[id] || {}) } };
@@ -2504,13 +2504,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 const spL = spRaw[lv]; const needL = cfg.need[+lv]?.[id] || 0;
                 const put = sumOf(spL);
                 return (
-                  <div key={lv} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:5 }}>
-                    <span style={{ fontFamily:mono, fontSize:10, color:P.sub, width:92 }}>{nm} · {needL} чел</span>
+                  <div key={lv} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:4 }}>
+                    <span style={{ fontFamily:mono, fontSize:9, color:P.sub, width:92 }}>{nm} · {needL} чел</span>
                     {steppers(spL, (k, v) => writeLvl(lv, k, v))}
                     {/* Раньше сходимость с потребностью нужно было считать в уме:
                         подписано «5 чел», а сумма по буквам — 4, и что будет с
                         пятым, подсказывал только абзац справки внизу. */}
-                    <span style={{ flex:"1 1 100%", fontSize:10, marginTop:1,
+                    <span style={{ flex:"1 1 100%", fontSize:9, marginTop:2,
                       color: put > needL ? P.warn : put ? P.sub : P.sub }}>
                       {put > needL ? `расписано ${put} — больше потребности!`
                         : put === 0 ? "весь день в основную смену"
@@ -2552,26 +2552,26 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         {staffAll.map((sf, i) => { const openE = openEmp === sf.id;
           if (empFilter && !((sf.name + " " + sf.pos).toLowerCase().includes(empFilter.toLowerCase()))) return null;
           return (
-          <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:7 }}>
+          <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:6 }}>
             {/* Свёрнутая строка: обзор без простыни из десяти полей на человека */}
             <div onClick={() => { vibrate("light"); setOpenEmp(openE ? 0 : sf.id); }}
               {...onActivate(() => setOpenEmp(openE ? 0 : sf.id))}
               style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", minWidth:0 }}>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13.5, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sf.name}</div>
-                <div style={{ fontSize:10.5, color:P.sub }}>
+                <div style={{ fontSize:14, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sf.name}</div>
+                <div style={{ fontSize:11, color:P.sub }}>
                   {posName(sf.pos)} · {sf.norm} ч
                   {sf.phone ? <> · <IcoPhone size={10} color={P.sub} dy={-1} /></> : ""}
                   {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { delete c.staff[i].till; }); }}
-                    style={{ marginLeft:6, fontSize:9.5, color:P.warn, border:`1px solid ${P.warn}55`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}>не работает · вернуть</span> : null}
+                    style={{ marginLeft:6, fontSize:9, color:P.warn, border:`1px solid ${P.warn}55`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}>не работает · вернуть</span> : null}
                   {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { c.staff.splice(i, 1); }); }}
-                    style={{ marginLeft:5, fontSize:9.5, color:P.danger, border:`1px solid ${P.danger}66`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}
+                    style={{ marginLeft:5, fontSize:9, color:P.danger, border:`1px solid ${P.danger}66`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}
                     title="Стереть из всех месяцев">✕ насовсем</span> : null}
                   {vacOn(sf) ? " · отпуск" : ""}
                   {((sf.off || []).length || offDays(sf).length) ? " · есть выходные" : ""}
                 </div>
               </div>
-              <div style={{ color:P.sub, fontSize:15, transform: openE ? "rotate(90deg)" : "none",
+              <div style={{ color:P.sub, fontSize:14, transform: openE ? "rotate(90deg)" : "none",
                 transition:"transform .25s" }}>›</div>
             </div>
             {openE ? (<>
@@ -2589,7 +2589,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 })}
                 style={{ flex:"0 0 34px", width:34, height:34, minWidth:34, boxSizing:"border-box",
                   background:"transparent", border:`1px solid ${P.danger}66`, color:P.danger,
-                  borderRadius:9, fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1,
+                  borderRadius:9, fontSize:12.5, cursor:"pointer", fontFamily:serif, lineHeight:1,
                   padding:0, display:"grid", placeItems:"center" }}>✕</button>
             </div>
             <div style={{ ...rowStyle, borderTop:"none" }}>
@@ -2639,7 +2639,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 vacs[mkey]; старое поле vac переносится сюда при первом
                 изменении, чтобы данные не раздваивались. */}
             <div style={{ padding:"8px 0 2px" }}>
-              <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:5 }}>
+              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:5 }}>
                 отпуск · {MONTHS_R[M]}
               </div>
               {(() => {
@@ -2679,13 +2679,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           })}
                           style={{ flex:"0 0 34px", width:34, height:34, minWidth:34, boxSizing:"border-box",
                             background:"transparent", border:`1px solid ${P.danger}55`, color:P.danger,
-                            borderRadius:9, fontSize:13, cursor:"pointer", fontFamily:serif, lineHeight:1,
+                            borderRadius:9, fontSize:12.5, cursor:"pointer", fontFamily:serif, lineHeight:1,
                             padding:0, display:"grid", placeItems:"center" }}>✕</button>
                       </div>
                     ))}
                     <button className="sa-btn" onClick={() => patch(c => {
                       const list = vacsOf(sf).map(x => [x[0], x[1]]); list.push([1, 1]); writeVacs(c, list);
-                    })} style={{ ...ghost, fontSize:12, padding:"7px 11px" }}>
+                    })} style={{ ...ghost, fontSize:12.5, padding:"7px 11px" }}>
                       {rs.length ? "+ ещё период" : "+ добавить отпуск"}
                     </button>
                     {rs.length ? (
@@ -2710,7 +2710,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
 
             {/* Постоянные выходные: учёба, вторая работа, транспорт */}
-            <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
               color:P.sub, padding:"8px 0 4px" }}>не работает в эти дни недели</div>
             <div style={{ display:"flex", gap:4 }}>
               {DOWL.map((dl, wi) => (
@@ -2722,12 +2722,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               ))}
             </div>
             {/* Выходные по конкретным датам — поверх недельного шаблона */}
-            <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.2, textTransform:"uppercase",
+            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
               color:P.sub, padding:"10px 0 5px" }}>
               <span>выходные по датам · {MONTHS_R[M]}
                 {offDays(sf).length ? <span style={{ color:P.acc }}> · выбрано {offDays(sf).length}</span> : null}</span>
               <button className="sa-btn" onClick={() => { setOffRange(!offRange); setOffAnchor(null); vibrate("light"); }}
-                style={{ float:"right", padding:"3px 9px", borderRadius:8, cursor:"pointer", fontFamily:mono, fontSize:9,
+                style={{ float:"right", padding:"3px 9px", borderRadius:9, cursor:"pointer", fontFamily:mono, fontSize:9,
                   letterSpacing:1, textTransform:"uppercase",
                   color: offRange ? INK_DEEP : P.sub,
                   background: offRange ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
@@ -2736,7 +2736,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               </button>
             </div>
             {offRange ? (
-              <div style={{ fontSize:10.5, color:P.acc, fontStyle:"italic", marginBottom:6 }}>
+              <div style={{ fontSize:11, color:P.acc, fontStyle:"italic", marginBottom:6 }}>
                 {offAnchor && offAnchor.i === i
                   ? `Начало: ${offAnchor.d} ${MONTHS_R[M]} — теперь тапни последний день`
                   : "Тапни первый и последний день — заполню всё между ними"}
@@ -2777,7 +2777,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         if (!st.offDays[mkey].length) delete st.offDays[mkey];
                       });
                     }}
-                    style={{ padding:"7px 0", borderRadius:8, cursor: weekly ? "default" : "pointer",
+                    style={{ padding:"7px 0", borderRadius:9, cursor: weekly ? "default" : "pointer",
                       fontFamily:mono, fontSize:11, opacity: weekly ? .35 : 1,
                       color: on ? INK_DEEP : (holOf(d) ? P.warn : P.sub),
                       background: on ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
@@ -2821,12 +2821,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       <Sec no={6} title="Страховка настроек" hint="копия текстом — на чёрный день"
         open={openSec === 6} onToggle={() => setOpenSec(openSec === 6 ? 0 : 6)} P={P}>
         <textarea value={backupText} onChange={e => setBackupText(e.target.value)}
-          style={{ ...inp, width:"100%", minHeight:120, fontFamily:mono, fontSize:10.5, boxSizing:"border-box" }} />
+          style={{ ...inp, width:"100%", minHeight:120, fontFamily:mono, fontSize:11, boxSizing:"border-box" }} />
         <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
-          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
             onClick={() => { setBackupText(JSON.stringify(cfg)); setMsg("Настройки в поле — выдели всё и скопируй в заметки"); setTimeout(() => setMsg(""), 3000); }}>
             Выгрузить в поле</button>
-          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
             onClick={() => { try {
               const o = JSON.parse(backupText);
               if (!o || !Array.isArray(o.shifts) || !Array.isArray(o.staff)) throw new Error("bad");
@@ -2879,17 +2879,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             return (
               <div style={{ margin:"4px 0 12px", paddingBottom:10,
                 borderBottom:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
-                <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub }}>ближайшая смена</div>
+                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub }}>ближайшая смена</div>
                 {sh ? (
-                  <div style={{ fontFamily:serif, fontSize:19, color:P.text, marginTop:3, lineHeight:1.3 }}>
+                  <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2, lineHeight:1.3 }}>
                     <b style={{ color:P.acc }}>{when}</b> · {sh.name}
-                    <div style={{ fontFamily:mono, fontSize:12, color:P.sub, marginTop:1 }}>
+                    <div style={{ fontFamily:mono, fontSize:12.5, color:P.sub, marginTop:2 }}>
                       {sh.from}:00–{sh.to > 24 ? sh.to - 24 : sh.to}:00 · {len(sh)} ч
                       {leadObj(nd) ? <> · старший: <CallName who={leadObj(nd)} label={leadOn(nd)} color={P.acc} /></> : null}
                     </div>
                   </div>
                 ) : (
-                  <div style={{ fontSize:14, color:P.sub, marginTop:3 }}>в этом месяце смен больше нет</div>
+                  <div style={{ fontSize:14, color:P.sub, marginTop:2 }}>в этом месяце смен больше нет</div>
                 )}
               </div>
             );
@@ -2904,7 +2904,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div style={{ fontSize:11, color:P.sub, margin:"-4px 0 8px" }}>Прошлый месяц: ≈ {Math.round(prevPay[me.id]).toLocaleString("ru-RU")} ₽</div>
           ) : null}
           {planDiff.length ? (
-            <div style={{ fontSize:11.5, color:P.acc, margin:"0 0 8px" }}>✎ С прошлого визита изменились твои дни: {planDiff.join(", ")}</div>
+            <div style={{ fontSize:11, color:P.acc, margin:"0 0 8px" }}>✎ С прошлого визита изменились твои дни: {planDiff.join(", ")}</div>
           ) : null}
           {/* Мост «зарплата → мотивация»: сколько принесут ещё две смены */}
           {(() => {
@@ -2914,7 +2914,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             const per = (me.rateMode === "shift") ? me.rate : (n > 0 ? Math.round(hoursOf(me) / n) * me.rate : 0);
             if (!(per > 0)) return null;
             return (
-              <div style={{ fontSize:11.5, color:P.sub, margin:"-4px 0 8px" }}>
+              <div style={{ fontSize:11, color:P.sub, margin:"-4px 0 8px" }}>
                 Возьмёшь ещё 2 смены — будет примерно <b style={{ color:P.acc }}>+{(per * 2).toLocaleString("ru-RU")} ₽</b>
               </div>
             );
@@ -2969,9 +2969,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
                 border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}`,
                 boxShadow: a11y ? "none" : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
-                <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:7 }}>обмен сменами</div>
+                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>обмен сменами</div>
                 {myAct ? (
-                  <div style={{ fontSize:12, color:P.text, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                  <div style={{ fontSize:12.5, color:P.text, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                     Ты отдаёшь {myAct.day}-е ({myAct.k}){myAct.status === "taken" ? <> — берёт <b style={{ color:P.acc }}>{myAct.to_name}</b>, ждём менеджера</> : " — ждём желающих"}
                     <span onClick={() => act("swap_cancel", { p_id: myAct.id, p_staff: String(me.id) }, "Заявка отозвана")}
                       style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>отозвать</span>
@@ -2979,17 +2979,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 ) : myDays.length ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                     <select value={swapDay || myDays[0]} onChange={e => setSwapDay(+e.target.value)}
-                      style={{ ...inp, padding:"6px 8px", fontSize:12 }}>
+                      style={{ ...inp, padding:"6px 8px", fontSize:12.5 }}>
                       {myDays.map(d => <option key={d} value={d}>{d}-е · {shiftOf(plan[me.id][d]).name}</option>)}
                     </select>
                     <span onClick={() => { const d = swapDay || myDays[0];
                       act("swap_create", { p_venue: venueKey, p_month: mkey, p_day: d, p_k: plan[me.id][d], p_staff: String(me.id), p_name: me.name }, "Предложение отправлено"); }}
-                      style={{ padding:"5px 12px", borderRadius:999, cursor:"pointer", fontSize:11.5, fontWeight:"bold",
+                      style={{ padding:"5px 12px", borderRadius:999, cursor:"pointer", fontSize:11, fontWeight:"bold",
                         color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>Предложить обмен</span>
                   </div>
                 ) : null}
                 {offers.map(w => (
-                  <div key={w.id} style={{ fontSize:12, color:P.text, marginTop:7, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                  <div key={w.id} style={{ fontSize:12.5, color:P.text, marginTop:6, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                     <b style={{ color:P.acc }}>{w.from_name}</b> отдаёт {w.day}-е ({w.k})
                     <span onClick={() => act("swap_take", { p_id: w.id, p_staff: String(me.id), p_name: me.name }, "Ты взял смену — ждём менеджера")}
                       style={{ padding:"4px 11px", borderRadius:999, cursor:"pointer", fontSize:11, fontWeight:"bold",
@@ -2997,7 +2997,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   </div>
                 ))}
                 {mine.map(w => (
-                  <div key={w.id} style={{ fontSize:12, color:P.text, marginTop:7 }}>
+                  <div key={w.id} style={{ fontSize:12.5, color:P.text, marginTop:6 }}>
                     Ты берёшь {w.day}-е у {w.from_name} — ждём менеджера{" "}
                     <span onClick={() => act("swap_cancel", { p_id: w.id, p_staff: String(me.id) }, "Отклик снят")}
                       style={{ fontSize:11, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>передумал</span>
@@ -3014,8 +3014,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             const kT = shiftOf(plan[me.id]?.[td]);
             const kN = td < DAYS ? shiftOf(plan[me.id]?.[td + 1]) : null;
             if (!kT && !kN) return null;
-            const pill = { display:"inline-flex", alignItems:"center", gap:5, padding:"5px 11px", borderRadius:999,
-              cursor:"pointer", fontSize:11.5, fontFamily:serif, color:INK_DEEP, fontWeight:"bold",
+            const pill = { display:"inline-flex", alignItems:"center", gap:4, padding:"5px 11px", borderRadius:999,
+              cursor:"pointer", fontSize:11, fontFamily:serif, color:INK_DEEP, fontWeight:"bold",
               background:`linear-gradient(180deg,#E4C88C,${GOLD})`, WebkitTapHighlightColor:"transparent" };
             return (
               <div style={{ display:"flex", flexDirection:"column", gap:8, margin:"0 0 12px",
@@ -3029,7 +3029,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
                 {dueCount > 0 && onMistakes ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                    <span style={{ fontSize:12, color:P.text }}>
+                    <span style={{ fontSize:12.5, color:P.text }}>
                       {kT ? "Сегодня смена" : "Завтра смена"} · <b style={{ color:P.acc }}>{dueCount}</b> {dueCount === 1 ? "вопрос ждёт" : dueCount < 5 ? "вопроса ждут" : "вопросов ждут"} повтора
                     </span>
                     <span onClick={onMistakes} {...onActivate(onMistakes)} style={pill}>Повторить перед сменой</span>
@@ -3037,7 +3037,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 ) : null}
                 {kT && onChecklist ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:12, color:P.sub }}>Смена {kT.name.toLowerCase()} · {kT.from}:00–{kT.to === 24 ? "24" : kT.to}:00</span>
+                    <span style={{ fontSize:12.5, color:P.sub }}>Смена {kT.name.toLowerCase()} · {kT.from}:00–{kT.to === 24 ? "24" : kT.to}:00</span>
                     <span onClick={onChecklist} {...onActivate(onChecklist)} style={{ ...pill, background:"transparent",
                       color:P.acc, border:`1px solid ${GOLD}66`, fontWeight:"normal" }}>Чек-лист смены</span>
                   </div>
@@ -3057,16 +3057,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 borderBottom:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
                 <span onClick={() => setContactsOpen(o => !o)} {...onActivate(() => setContactsOpen(o => !o))}
                   style={{ display:"inline-flex", alignItems:"center", gap:6, cursor:"pointer",
-                    padding:"4px 11px", borderRadius:999, fontSize:11.5, color:P.acc,
+                    padding:"4px 11px", borderRadius:999, fontSize:11, color:P.acc,
                     background: a11y ? "rgba(250,242,222,0.6)" : "rgba(200,169,110,0.08)",
                     border:`1px solid ${GOLD}44`, WebkitTapHighlightColor:"transparent" }}>
                   <IcoPhone size={11} color={P.acc} />
                   на связи · {bosses.length}
-                  <span style={{ fontSize:13, transform: contactsOpen ? "rotate(90deg)" : "none",
+                  <span style={{ fontSize:12.5, transform: contactsOpen ? "rotate(90deg)" : "none",
                     transition:"transform .25s", display:"inline-block" }}>›</span>
                 </span>
                 {contactsOpen ? (
-                <div style={{ display:"flex", alignItems:"baseline", gap:7, flexWrap:"wrap", marginTop:8 }}>
+                <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap", marginTop:8 }}>
                 {bosses.map(b => (
                   <span key={b.id} style={{ fontSize:12.5 }}>
                     <CallName who={b} label={b.name} color={P.acc} />
@@ -3119,11 +3119,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:8 }}>
                   <div style={{ ...eyebrow, color:P.sub }}>мои пожелания · {MONTHS_R[M]}</div>
                   <button className="sa-btn" onClick={() => { setWishOpen(o => !o); setWishRange(null); vibrate("light"); }}
-                    style={{ background:"transparent", border:"none", color:P.acc, fontSize:12, cursor:"pointer", padding:0 }}>
+                    style={{ background:"transparent", border:"none", color:P.acc, fontSize:12.5, cursor:"pointer", padding:0 }}>
                     {wishOpen ? "свернуть" : "открыть"}
                   </button>
                 </div>
-                <div style={{ fontSize:13, color:P.text, marginTop:4 }}>
+                <div style={{ fontSize:12.5, color:P.text, marginTop:4 }}>
                   {nWish || nHard ? (
                     <>Отмечено: {nWish ? <b style={{ color:P.acc }}>{nWish} просьб{nWish === 1 ? "а" : nWish < 5 ? "ы" : ""} о выходном</b> : null}
                       {nWish && nHard ? " · " : null}
@@ -3131,17 +3131,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   ) : <span style={{ color:P.sub }}>Пока ничего не отмечено</span>}
                 </div>
                 {dl ? (
-                  <div style={{ fontSize:11, color: late ? P.warn : P.sub, marginTop:3 }}>
+                  <div style={{ fontSize:11, color: late ? P.warn : P.sub, marginTop:2 }}>
                     {late ? `Приём на этот месяц закрыт — принимали до ${dl} числа`
                           : `Принимаем до ${dl} числа — после график собирается`}
                   </div>
                 ) : null}
                 {wishOpen ? (
                   <>
-                    <div style={{ display:"flex", gap:7, margin:"11px 0 9px" }}>
+                    <div style={{ display:"flex", gap:6, margin:"11px 0 9px" }}>
                       <button className="sa-btn" disabled={late}
                         onClick={() => { setWishRange(wishRange ? null : { from: 0, to: null }); vibrate("light"); }}
-                        style={{ ...ghost, flex:1, fontSize:12, padding:"8px 10px", opacity: late ? .5 : 1,
+                        style={{ ...ghost, flex:1, fontSize:12.5, padding:"8px 10px", opacity: late ? .5 : 1,
                           background: wishRange ? "rgba(214,178,102,0.16)" : "transparent" }}>
                         {wishRange ? "Отмена периода" : "Отметить период"}
                       </button>
@@ -3180,14 +3180,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                                 : "none",
                               color: tone.fg, fontSize:12.5, fontFamily:serif }}>
                             {d}
-                            {st === "wish" ? <span style={{ position:"absolute", bottom:2, fontSize:7, lineHeight:1, color:P.acc }}>●</span> : null}
-                            {st === "hard" ? <span style={{ position:"absolute", bottom:2, fontSize:7, lineHeight:1, color:P.warn }}>✕</span> : null}
-                            {st === "shift" ? <span style={{ position:"absolute", bottom:2, fontSize:7, lineHeight:1, color:P.sub }}>·</span> : null}
+                            {st === "wish" ? <span style={{ position:"absolute", bottom:2, fontSize:9, lineHeight:1, color:P.acc }}>●</span> : null}
+                            {st === "hard" ? <span style={{ position:"absolute", bottom:2, fontSize:9, lineHeight:1, color:P.warn }}>✕</span> : null}
+                            {st === "shift" ? <span style={{ position:"absolute", bottom:2, fontSize:9, lineHeight:1, color:P.sub }}>·</span> : null}
                           </button>
                         );
                       })}
                     </div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginTop:10, fontSize:10, color:P.sub }}>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginTop:10, fontSize:9, color:P.sub }}>
                       <span><span style={{ color:P.acc }}>●</span> прошу выходной</span>
                       <span><span style={{ color:P.warn }}>✕</span> не смогу</span>
                       <span><span style={{ color:P.sub }}>·</span> уже смена</span>
@@ -3198,7 +3198,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             );
           })() : null}
           {msg ? (
-            <div style={{ textAlign:"center", fontSize:12, color:P.acc, margin:"10px 0 0", lineHeight:1.5 }}>{msg}</div>
+            <div style={{ textAlign:"center", fontSize:12.5, color:P.acc, margin:"10px 0 0", lineHeight:1.5 }}>{msg}</div>
           ) : null}
           {wishAsk ? (() => {
             const { from, to } = wishAsk, lo = Math.min(from, to), hi = Math.max(from, to);
@@ -3206,7 +3206,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             const title = one ? `${lo} ${MONTHS_R[M]}` : `${lo}–${hi} ${MONTHS_R[M]} · ${hi - lo + 1} дн.`;
             const curWish = one && wishOf(me.id, lo), curHard = one && hardOf(me.id, lo);
             const row = (on, warn) => ({ display:"flex", alignItems:"center", gap:10, width:"100%", boxSizing:"border-box",
-              padding:"11px 12px", borderRadius:13, cursor:"pointer", textAlign:"left", marginTop:7,
+              padding:"11px 12px", borderRadius:12, cursor:"pointer", textAlign:"left", marginTop:6,
               background: on ? (warn ? "rgba(224,120,120,0.14)" : "rgba(214,178,102,0.16)")
                             : (a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)"),
               border:`1px solid ${on ? (warn ? "rgba(224,120,120,0.55)" : GOLD) : (a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)")}`,
@@ -3217,7 +3217,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             return (
               <div onClick={() => setWishAsk(null)} style={{ position:"fixed", inset:0, zIndex:60, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
                 <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width:"calc(100% - 24px)", maxWidth:440,
-                  margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))", borderRadius:20, padding:16,
+                  margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))", borderRadius:18, padding:16,
                   background: a11y
                     ? "linear-gradient(180deg,rgba(255,252,244,0.99),rgba(248,240,220,0.99))"
                     : "linear-gradient(180deg,rgba(38,29,15,0.985),rgba(22,17,8,0.99))",
@@ -3226,14 +3226,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   boxShadow: a11y
                     ? "inset 0 0 26px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 -6px 26px rgba(90,66,20,0.16)"
                     : "inset 0 0 22px rgba(255,248,230,0.055), inset 0 1px 0 rgba(255,255,255,0.10), 0 -6px 26px rgba(0,0,0,0.5)" }}>
-                  <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>что отметить</div>
-                  <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:3 }}>{title}</div>
+                  <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>что отметить</div>
+                  <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2 }}>{title}</div>
                   <button className="sa-btn" style={row(curWish, false)} onClick={() => go("off", !curWish)}>
                     <IcoSun size={16} />
                     <span style={{ flex:1, minWidth:0 }}>
                       <span style={{ display:"block", fontFamily:serif, fontSize:14, color:P.text }}>
                         {curWish ? "Отозвать просьбу о выходном" : "Прошу выходной"}</span>
-                      <span style={{ display:"block", fontSize:10.5, color:P.sub }}>мягкая просьба — учтут, если получится</span>
+                      <span style={{ display:"block", fontSize:11, color:P.sub }}>мягкая просьба — учтут, если получится</span>
                     </span>
                   </button>
                   {wishesV2 ? (
@@ -3242,16 +3242,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       <span style={{ flex:1, minWidth:0 }}>
                         <span style={{ display:"block", fontFamily:serif, fontSize:14, color:P.text }}>
                           {curHard ? "Снять «не смогу выйти»" : "Не смогу выйти"}</span>
-                        <span style={{ display:"block", fontSize:10.5, color:P.sub }}>
+                        <span style={{ display:"block", fontSize:11, color:P.sub }}>
                           жёстко — смену не поставят{one ? (() => { const c = hardCapacity(lo, me); return c.maxHard ? ` · мест на день: ${c.left}` : " · мест на этот день нет"; })() : ", но места на день ограничены"}</span>
                       </span>
                     </button>
                   ) : null}
                   {(curWish || curHard) && one ? (
-                    <button className="sa-btn" style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:9, fontSize:12.5, padding:"9px 10px" }}
+                    <button className="sa-btn" style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:8, fontSize:12.5, padding:"9px 10px" }}
                       onClick={() => go(curHard ? "hard" : "off", false)}>Убрать отметку</button>
                   ) : null}
-                  <div style={{ fontSize:10.5, color:P.sub, marginTop:11, fontStyle:"italic", lineHeight:1.5 }}>
+                  <div style={{ fontSize:11, color:P.sub, marginTop:10, fontStyle:"italic", lineHeight:1.5 }}>
                     Дни, где уже стоит смена, отпуск или постоянный выходной, пропускаются — их менять не нужно.
                   </div>
                 </div>
@@ -3270,7 +3270,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             return (
               <div key={d} onClick={() => { vibrate("light"); setOpenDay(open ? 0 : d); }}
                 className={"sa-schedrow" + (sh ? "" : " off")} style={{
-                display:"flex", alignItems:"center", gap:11, borderRadius:13,
+                display:"flex", alignItems:"center", gap:10, borderRadius:12,
                 padding: idle ? "4px 11px" : "9px 11px", marginTop: idle ? 3 : 6,
                 opacity: idle ? 0.75 : 1,
                 cursor:"pointer", flexWrap:"wrap",
@@ -3280,14 +3280,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               }}>
                 <div style={{ flex:"0 0 44px", textAlign:"center" }}>
                   <div style={{ fontSize: idle ? 14 : 17, color: holOf(d) ? P.warn : P.text }}>{d}</div>
-                  <div style={{ fontFamily:mono, fontSize:8.5, color:P.sub }}>{DOWL[dow(d)]}</div>
+                  <div style={{ fontFamily:mono, fontSize:9, color:P.sub }}>{DOWL[dow(d)]}</div>
                   {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
-                  {days[d]?.note ? <div style={{ width:4, height:4, borderRadius:2, background:GOLD, margin:"1px auto 0" }} /> : null}
+                  {days[d]?.note ? <div style={{ width:4, height:4, borderRadius:3, background:GOLD, margin:"1px auto 0" }} /> : null}
                   {wishOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoSun size={10} /></div> : null}
                   {hardOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoBan size={10} color={P.warn} /></div> : null}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  {days[d]?.note ? <div style={{ fontSize:10.5, color:P.acc, marginBottom:1 }}>✎ {days[d].note}</div> : null}
+                  {days[d]?.note ? <div style={{ fontSize:11, color:P.acc, marginBottom:2 }}>✎ {days[d].note}</div> : null}
                   {/* Одно состояние — одно слово. Три разных подписи выходного
                       по остатку от деления сбивали при чтении списка. */}
                   <div style={{ fontSize: idle ? 12.5 : 14, color: idle ? P.sub : P.text }}>{vac && !sh ? <>Отпуск <IcoWave size={13} color={P.acc} dy={-2} /></> : sh ? sh.name
@@ -3295,7 +3295,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   {/* Пустая строка на выходном занимала высоту зря — рисуем
                       её только когда есть что показать */}
                   {sh || holName(d) ? (
-                    <div style={{ fontSize:11.5, color:P.sub }}>
+                    <div style={{ fontSize:11, color:P.sub }}>
                       {sh ? `${sh.from}:00 – ${sh.to > 24 ? sh.to - 24 : sh.to}:00` : holName(d)}
                       {sh && leadObj(d) ? <span style={{ color:P.acc }}> · старший:{" "}
                         <CallName who={leadObj(d)} label={leadOn(d)} color={P.acc} /></span> : null}
@@ -3306,19 +3306,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 {open ? (() => {
                   const mates = sh ? staff.filter(x => x.id !== me.id && shiftOf(plan[x.id]?.[d])) : [];
                   return (
-                    <div style={{ flex:"1 1 100%", paddingTop:8, marginTop:7,
+                    <div style={{ flex:"1 1 100%", paddingTop:8, marginTop:6,
                       borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}
                       onClick={e => e.stopPropagation()}>
                       {sh ? (<>
-                        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
-                          color:P.sub, marginBottom:5 }}>в смене с тобой</div>
+                        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase",
+                          color:P.sub, marginBottom:4 }}>в смене с тобой</div>
                         {!mates.length ? (
-                          <div style={{ fontSize:12, color:P.sub }}>Больше никого — держишь оборону в одиночку</div>
+                          <div style={{ fontSize:12.5, color:P.sub }}>Больше никого — держишь оборону в одиночку</div>
                         ) : POS.map(({ id: pos, t }) => {
                           const list = mates.filter(x => x.pos === pos);
                           if (!list.length) return null;
                           return (
-                            <div key={pos} style={{ display:"flex", gap:8, fontSize:12, lineHeight:1.7 }}>
+                            <div key={pos} style={{ display:"flex", gap:8, fontSize:12.5, lineHeight:1.7 }}>
                               <span style={{ flex:"0 0 84px", color:P.sub }}>{t}</span>
                               <span style={{ flex:1, color:P.text }}>
                                 {list.map((x, xi) => {
@@ -3343,14 +3343,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         const order = [me.pos, ...POS.map(q => q.id).filter(q => q !== me.pos)];
                         return (
                           <>
-                            <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
+                            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase",
                               color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>отдыхают · можно попросить подменить</div>
                             {order.map(pos => {
                               const list = rest.filter(x => x.pos === pos);
                               if (!list.length) return null;
                               const t = (POS.find(q => q.id === pos) || {}).t || pos;
                               return (
-                                <div key={pos} style={{ display:"flex", gap:8, fontSize:12, lineHeight:1.7, opacity: pos === me.pos ? 1 : 0.75 }}>
+                                <div key={pos} style={{ display:"flex", gap:8, fontSize:12.5, lineHeight:1.7, opacity: pos === me.pos ? 1 : 0.75 }}>
                                   <span style={{ flex:"0 0 84px", color:P.sub }}>{t}</span>
                                   <span style={{ flex:1, color:P.text }}>
                                     {list.map((x, xi) => (
@@ -3364,28 +3364,28 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         );
                       })()}
                       {/* Личная заметка дня: чаевые, важные события, напоминания */}
-                      <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase",
+                      <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase",
                         color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>заметка</div>
                       <textarea key={"nt" + mkey + "-" + d} defaultValue={notes[d] || ""} rows={2} maxLength={200}
                         placeholder="Чаевые, важный день, напоминание…"
                         onFocus={focusScroll} onBlur={e => saveNote(d, e.target.value)}
-                        style={{ ...INP(a11y, P), width:"100%", resize:"none", fontFamily:serif, fontSize:13, lineHeight:1.5 }} />
+                        style={{ ...INP(a11y, P), width:"100%", resize:"none", fontFamily:serif, fontSize:12.5, lineHeight:1.5 }} />
                       {typeof facts[me.id]?.[d] === "number" && sh ? (
-                        <div style={{ fontSize:12, color:P.text, margin:"6px 0 2px" }}>
+                        <div style={{ fontSize:12.5, color:P.text, margin:"6px 0 2px" }}>
                           Учтено по факту: <b style={{ color:P.acc }}>{facts[me.id][d]} ч</b>
                           <span style={{ color:P.sub }}> · план {len(sh)} ч</span>
                         </div>
                       ) : null}
-                      <div style={{ fontSize:10.5, color:P.sub, marginTop:4, fontStyle:"italic" }}>
+                      <div style={{ fontSize:11, color:P.sub, marginTop:4, fontStyle:"italic" }}>
                         Заметки видишь только ты — они живут на этом устройстве
                       </div>
                       {/* Пожелание выходного: видит менеджер, уважает генератор */}
                       {wishes === false ? (
-                        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+                        <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
                           Просьбы о выходных пока не включены — менеджеру нужно применить SQL-файл schedule-wishes.sql в Supabase
                         </div>
                       ) : !sh ? (
-                        <div style={{ marginTop:9 }}>
+                        <div style={{ marginTop:8 }}>
                           <button className="sa-btn" disabled={wishes === null}
                             onClick={() => setWish(me.id, d, !wishOf(me.id, d))}
                             style={{ ...ghost, width:"100%", boxSizing:"border-box",
@@ -3398,7 +3398,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           {wishesV2 ? (
                             <button className="sa-btn" disabled={wishes === null}
                               onClick={() => setWish(me.id, d, !hardOf(me.id, d), "hard")}
-                              style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:7,
+                              style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:6,
                                 padding:"9px 10px", fontSize:12.5,
                                 borderColor: hardOf(me.id, d) ? P.warn : GOLD + "66", color: hardOf(me.id, d) ? P.warn : GOLD }}>
                               {wishes === null ? "…" : hardOf(me.id, d)
@@ -3406,18 +3406,18 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                                 : <><IcoBan size={13} color={P.warn} dy={-2} /> Не смогу выйти в этот день{(() => { const c = hardCapacity(d, me); return c.maxHard ? ` (мест: ${c.left})` : ""; })()}</>}
                             </button>
                           ) : (
-                            <div style={{ fontSize:10.5, color:P.sub, marginTop:7, fontStyle:"italic" }}>
+                            <div style={{ fontSize:11, color:P.sub, marginTop:6, fontStyle:"italic" }}>
                               «Не смогу выйти» появится после обновления сервера (schedule-wishes-v2.sql)
                             </div>
                           )}
                           {wishNote && wishNote.d === d ? (
-                            <div style={{ fontSize:11.5, color:P.warn, marginTop:7, lineHeight:1.5 }}>
+                            <div style={{ fontSize:11, color:P.warn, marginTop:6, lineHeight:1.5 }}>
                               {wishNote.text}
                             </div>
                           ) : null}
                         </div>
                       ) : (
-                        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+                        <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
                           На этот день уже стоит смена — о замене договорись с менеджером
                         </div>
                       )}
@@ -3448,7 +3448,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <button style={ghost} className="sa-btn"
                 onClick={() => { URL.revokeObjectURL(shot.url); setShot(null); }}>Закрыть</button>
             </div>
-            <div style={{ fontSize:11.5, color:P.sub, marginTop:10, lineHeight:1.55 }}>
+            <div style={{ fontSize:11, color:P.sub, marginTop:10, lineHeight:1.55 }}>
               Картинка с твоими сменами и заметками — можно отправить себе или сохранить в галерею.
             </div>
           </div>
@@ -3536,7 +3536,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)"}`, borderRadius:999 }}>
       {[["plan","График"],["setup","Настройки"]].map(([k, t]) => (
         <button key={k} className="sa-btn" onClick={() => setTab(k)} style={{
-          flex:1, border:"none", cursor:"pointer", padding:"9px 4px", borderRadius:999, fontFamily:serif, fontSize:13,
+          flex:1, border:"none", cursor:"pointer", padding:"9px 4px", borderRadius:999, fontFamily:serif, fontSize:12.5,
           background: tab === k ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
           color: tab === k ? INK_DEEP : P.sub, fontWeight: tab === k ? "bold" : "normal",
         }}>{t}</button>
@@ -3555,7 +3555,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       // «Морозный лёд»: стекло, изморозь-свечение изнутри и блик по верхней
       // кромке — та же рецептура, что у карточек графика, в обеих темах.
       const row = (on) => ({ display:"flex", alignItems:"center", gap:10, width:"100%", boxSizing:"border-box",
-        padding:"10px 12px", borderRadius:13, cursor:"pointer", textAlign:"left",
+        padding:"10px 12px", borderRadius:12, cursor:"pointer", textAlign:"left",
         background: on
           ? (a11y ? "rgba(236,214,166,0.55)" : "rgba(214,178,102,0.14)")
           : (a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)"),
@@ -3567,7 +3567,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       return (
         <div onClick={() => setPick(null)} style={{ position:"fixed", inset:0, zIndex:60, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width:"calc(100% - 24px)", maxWidth:440, margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))",
-            borderRadius:20, padding:16, maxHeight:"78vh", overflowY:"auto",
+            borderRadius:18, padding:16, maxHeight:"78vh", overflowY:"auto",
             background: a11y
               ? "linear-gradient(180deg,rgba(255,252,244,0.99),rgba(248,240,220,0.99))"
               : "linear-gradient(180deg,rgba(38,29,15,0.985),rgba(22,17,8,0.99))",
@@ -3576,46 +3576,46 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             boxShadow: a11y
               ? "inset 0 0 26px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 -6px 26px rgba(90,66,20,0.16)"
               : "inset 0 0 22px rgba(255,248,230,0.055), inset 0 1px 0 rgba(255,255,255,0.10), 0 -6px 26px rgba(0,0,0,0.5)" }}>
-            <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>
+            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>
               {DOWL[dow(d)].toUpperCase()} · {d} {MONTHS_R[M].toUpperCase()}
             </div>
-            <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:3 }}>{who.name}</div>
-            <div style={{ fontSize:12, color:P.sub, marginTop:2, marginBottom:12 }}>{posName(who.pos)}</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+            <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2 }}>{who.name}</div>
+            <div style={{ fontSize:12.5, color:P.sub, marginTop:2, marginBottom:12 }}>{posName(who.pos)}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {(cfg.shifts || []).map((sh2, i2) => {
                 const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
                 const on = cur === sh2.k;
                 return (
                   <button key={sh2.k} className="sa-btn" style={row(on)} onClick={() => setCell(who.id, d, sh2.k)}>
-                    <span style={{ width:26, height:26, borderRadius:8, display:"grid", placeItems:"center", fontSize:12, flexShrink:0,
+                    <span style={{ width:26, height:26, borderRadius:9, display:"grid", placeItems:"center", fontSize:12.5, flexShrink:0,
                       color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
                       border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{sh2.k}</span>
                     <span style={{ flex:1, minWidth:0 }}>
                       <span style={{ display:"block", fontFamily:serif, fontSize:14, color:P.text }}>{sh2.name}</span>
-                      <span style={{ display:"block", fontFamily:mono, fontSize:10.5, color:P.sub }}>
+                      <span style={{ display:"block", fontFamily:mono, fontSize:11, color:P.sub }}>
                         {sh2.from}:00–{sh2.to > 24 ? sh2.to - 24 : sh2.to}:00 · {len(sh2)} ч
                       </span>
                     </span>
-                    {on ? <span style={{ color:P.acc, fontSize:13 }}>✓</span> : null}
+                    {on ? <span style={{ color:P.acc, fontSize:12.5 }}>✓</span> : null}
                   </button>
                 );
               })}
               <button className="sa-btn" style={row(!cur)} onClick={() => setCell(who.id, d, "")}>
-                <span style={{ width:26, height:26, borderRadius:8, display:"grid", placeItems:"center", fontSize:13, flexShrink:0,
+                <span style={{ width:26, height:26, borderRadius:9, display:"grid", placeItems:"center", fontSize:12.5, flexShrink:0,
                   color:P.sub, border:`1px dashed ${a11y ? "rgba(175,140,65,.4)" : "rgba(145,108,40,.45)"}` }}>·</span>
                 <span style={{ flex:1, fontFamily:serif, fontSize:14, color:P.text }}>Выходной</span>
-                {!cur ? <span style={{ color:P.acc, fontSize:13 }}>✓</span> : null}
+                {!cur ? <span style={{ color:P.acc, fontSize:12.5 }}>✓</span> : null}
               </button>
             </div>
             {cur ? (
-              <div style={{ display:"flex", gap:7, marginTop:11, flexWrap:"wrap" }}>
-                <button className="sa-btn" style={{ ...ghost, flex:"1 1 46%", fontSize:12, padding:"9px 8px" }}
+              <div style={{ display:"flex", gap:6, marginTop:10, flexWrap:"wrap" }}>
+                <button className="sa-btn" style={{ ...ghost, flex:"1 1 46%", fontSize:12.5, padding:"9px 8px" }}
                   onClick={() => { setPick(null); setReplAsk({ id: who.id, d }); }}>Кто вместо?</button>
-                <button className="sa-btn" style={{ ...ghost, flex:"1 1 46%", fontSize:12, padding:"9px 8px" }}
+                <button className="sa-btn" style={{ ...ghost, flex:"1 1 46%", fontSize:12.5, padding:"9px 8px" }}
                   onClick={() => { setPick(null); setFactEdit({ id: who.id, d }); }}>Факт часов</button>
               </div>
             ) : null}
-            <div style={{ fontSize:10.5, color:P.sub, marginTop:11, fontStyle:"italic", lineHeight:1.5 }}>
+            <div style={{ fontSize:11, color:P.sub, marginTop:10, fontStyle:"italic", lineHeight:1.5 }}>
               Выбранная вручную смена закрепляется — генератор её не тронет.
               Передумал — «↩» рядом с «Сохранить» вернёт как было.
             </div>
@@ -3644,23 +3644,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       return (
         <div onClick={() => setReplAsk(null)} style={{ position:"fixed", inset:0, zIndex:60, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width:"calc(100% - 24px)", maxWidth:440, margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))",
-            borderRadius:20, padding:16, maxHeight:"76vh", overflowY:"auto",
+            borderRadius:18, padding:16, maxHeight:"76vh", overflowY:"auto",
             background: a11y ? "rgba(250,242,222,0.98)" : "rgba(26,20,10,0.98)", border:`1px solid ${GOLD}55` }}>
-            <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.acc }}>КТО ВМЕСТО · {d} {MONTHS_R[M].toUpperCase()}</div>
-            <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:3 }}>{who.name} · {sh.name} {sh.from}:00–{sh.to}:00</div>
-            <div style={{ fontSize:12, color:P.sub, marginTop:2, marginBottom:10 }}>{posName(who.pos)}</div>
+            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>КТО ВМЕСТО · {d} {MONTHS_R[M].toUpperCase()}</div>
+            <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2 }}>{who.name} · {sh.name} {sh.from}:00–{sh.to}:00</div>
+            <div style={{ fontSize:12.5, color:P.sub, marginTop:2, marginBottom:10 }}>{posName(who.pos)}</div>
             {free.length ? <>
-              <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>МОГУТ ВЫЙТИ · {free.length}</div>
+              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>МОГУТ ВЫЙТИ · {free.length}</div>
               {free.map(({ x }) => (
                 <div key={x.id} onClick={() => put(x)} {...onActivate(() => put(x))} className="sa-card"
                   style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", marginBottom:6, borderRadius:12, cursor:"pointer", border:`1px solid ${GOLD}44` }}>
                   <span style={{ flex:1, fontSize:14, color:P.text }}>{x.name}</span>
-                  <span style={{ fontSize:11.5, color:P.sub }}>{breakdownOf(x).hours} ч</span>
+                  <span style={{ fontSize:11, color:P.sub }}>{breakdownOf(x).hours} ч</span>
                   <span style={{ color:P.acc, fontSize:16 }}>›</span>
                 </div>))}
-            </> : <div style={{ fontSize:13, color:P.warn, marginBottom:8 }}>Свободных нет — ниже видно, что мешает каждому.</div>}
+            </> : <div style={{ fontSize:12.5, color:P.warn, marginBottom:8 }}>Свободных нет — ниже видно, что мешает каждому.</div>}
             {busy.length ? <>
-              <div style={{ fontFamily:mono, fontSize:9.5, letterSpacing:1.5, color:P.sub, margin:"10px 0 6px" }}>НЕ МОГУТ · {busy.length}</div>
+              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.sub, margin:"10px 0 6px" }}>НЕ МОГУТ · {busy.length}</div>
               {busy.map(({ x, r }) => (
                 <div key={x.id} style={{ display:"flex", gap:8, padding:"6px 2px", fontSize:12.5, color:P.sub }}>
                   <span style={{ flex:"0 0 40%", color:P.text }}>{x.name}</span>
@@ -3681,7 +3681,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         {dirty ? "Сохранить" : "Сохранено"}
       </button>
       {undoRef.current ? (
-        <button style={{ ...ghost, fontSize:13, padding:"9px 12px", flexShrink:0 }} className="sa-btn" onClick={undo} data-tick={undoTick} aria-label="Отменить">↩</button>
+        <button style={{ ...ghost, fontSize:12.5, padding:"9px 12px", flexShrink:0 }} className="sa-btn" onClick={undo} data-tick={undoTick} aria-label="Отменить">↩</button>
       ) : null}
     </div>
     {/* Ряд из четырёх режимов убран. «Кто вместо?» и «Факт часов» живут в листе
@@ -3689,7 +3689,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         занимала экран и порождала вечный вопрос «в каком я режиме». */}
     <div style={{ display:"flex", gap:8, margin:"8px 14px 0", alignItems:"center", justifyContent: swap ? "space-between" : "flex-end" }}>
       {swap ? (
-        <span style={{ fontSize:12, color:GOLD, flex:1 }}>
+        <span style={{ fontSize:12.5, color:GOLD, flex:1 }}>
           Обмен: {swapSel ? "тапни вторую клетку" : "тапни первую клетку"} ·{" "}
           <span onClick={() => { setSwap(false); setSwapSel(null); vibrate("light"); }}
             style={{ color:P.sub, cursor:"pointer", textDecoration:"underline" }}>выйти</span>
@@ -3728,7 +3728,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         <div style={{ display:"flex", gap:6, marginTop:10 }}>
           {[["chat","Для чата"],["a4","Лист A4"]].map(([k, t]) => (
             <button key={k} className="sa-btn" onClick={() => { URL.revokeObjectURL(shot.url); redrawShot(k); }}
-              style={{ flex:1, padding:"8px 4px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:12,
+              style={{ flex:1, padding:"8px 4px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:12.5,
                 color: shotMode === k ? INK_DEEP : P.sub,
                 background: shotMode === k ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
                 border:`1px solid ${shotMode === k ? GOLD : (a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.3)")}`,
@@ -3740,7 +3740,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <button style={ghost} className="sa-btn"
             onClick={() => { URL.revokeObjectURL(shot.url); setShot(null); }}>Закрыть</button>
         </div>
-        <div style={{ fontSize:11.5, color:P.sub, marginTop:10, lineHeight:1.55 }}>
+        <div style={{ fontSize:11, color:P.sub, marginTop:10, lineHeight:1.55 }}>
           {shot.kind === "today"
             ? (shotMode === "a4"
               ? "Печатный вид: светлый фон, крупные подписи — фамилия, должность и часы под каждым. Такую можно повесить на кухне. «Отправить» → «Напечатать»."
@@ -3771,7 +3771,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       };
       return (
         <div style={{ ...card, marginTop:10 }}>
-          <div style={{ fontSize:13.5, color:P.text, marginBottom:8 }}>
+          <div style={{ fontSize:14, color:P.text, marginBottom:8 }}>
             <b>{fs.name}</b> · {factEdit.d} {MONTHS_R[M]} · смена {sh.name} ({planH} ч по плану)
           </div>
           <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap" }}>
@@ -3779,13 +3779,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <Num inp={inp} v={val} min={0} max={24} set={setFact} />
             </Field>
             {typeof cur === "number" ? (
-              <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+              <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
                 onClick={() => { setFact(null); vibrate("light"); }}>Вернуть по плану</button>
             ) : null}
-            <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn"
+            <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
               onClick={() => setFactEdit(null)}>Готово</button>
           </div>
-          <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+          <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
             Часы и зарплата пересчитаются сразу. Не забудь «Сохранить», чтобы факт увидели все.
           </div>
         </div>
@@ -3817,22 +3817,22 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     ) : null}
     {dayEdit ? (
       <div style={{ ...card, marginTop:10 }}>
-        <div style={{ fontSize:13.5, color:P.text, marginBottom:8 }}>
+        <div style={{ fontSize:14, color:P.text, marginBottom:8 }}>
           Заметка ко дню <b>{dayEdit} {MONTHS_R[M]}</b> — увидит вся команда
         </div>
         <Text inp={inp} v={days[dayEdit]?.note || ""} maxLength={80} style={{ width:"100%" }}
           set={val => { setDays(dd => ({ ...dd, [dayEdit]: { ...(dd[dayEdit] || {}), note: val || undefined } })); setDirty(true); }} />
         <div style={{ display:"flex", gap:8, marginTop:8 }}>
-          <button style={{ ...ghost, padding:"9px 11px", fontSize:12 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
+          <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
         </div>
-        <div style={{ fontSize:10.5, color:P.sub, marginTop:8, fontStyle:"italic" }}>
+        <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
           Банкет, инвентаризация, проверка — короткая строка у даты. Не забудь «Сохранить».
         </div>
       </div>
     ) : null}
     {confirmClear ? (
       <div style={{ ...card, marginTop:10 }}>
-        <div style={{ fontSize:13.5, lineHeight:1.6, color:P.text, marginBottom:10 }}>
+        <div style={{ fontSize:14, lineHeight:1.6, color:P.text, marginBottom:10 }}>
           Что стереть за {MONTHS_R[M]} {Y}? Расстановка и закрепления сотрутся
           <b> только в черновике</b> — на сервере всё останется, пока не нажмёшь «Сохранить».
           Передумал — «↩ Отменить» вернёт как было.
@@ -3840,16 +3840,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
         <button style={{ ...btn, background:P.dangerBg, color:P.dangerFg, width:"100%", boxSizing:"border-box", marginBottom:10 }}
           className="sa-btn" onClick={() => clearScope({})}>Стереть весь месяц</button>
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
           или только одну должность
         </div>
         <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
           {POS.filter(pp => staff.some(x => x.pos === pp.id)).map(pp => (
-            <button key={pp.id} style={{ ...ghost, padding:"7px 11px", fontSize:12 }} className="sa-btn"
+            <button key={pp.id} style={{ ...ghost, padding:"7px 11px", fontSize:12.5 }} className="sa-btn"
               onClick={() => clearScope({ pos: pp.id })}>{pp.t}</button>
           ))}
         </div>
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
           или одного сотрудника
         </div>
         <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
@@ -3857,10 +3857,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <option value="">Выбрать сотрудника…</option>
           {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
           новенький пришёл — дать ему смены
         </div>
-        <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
+        <div style={{ fontSize:11, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
           Сначала добавь человека в настройках. Он получит только свободные
           дыры будущих дней — чужие смены не изменятся.
         </div>
@@ -3869,10 +3869,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <option value="">Выбрать новенького…</option>
           {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
-        <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
           сотрудник уходит — раздать его смены другим
         </div>
-        <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
+        <div style={{ fontSize:11, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
           Чужие смены останутся как есть: генератор заполнит только освободившиеся
           дни, соблюдая отдых, «подряд» и нормы.
         </div>
@@ -3885,7 +3885,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           onClick={() => setConfirmClear(false)}>Отмена</button>
       </div>
     ) : null}
-    {msg ? <div style={{ textAlign:"center", fontSize:12, color:P.sub, marginTop:8 }}>{msg}</div> : null}
+    {msg ? <div style={{ textAlign:"center", fontSize:12.5, color:P.sub, marginTop:8 }}>{msg}</div> : null}
 
     {today ? (
       <div style={card}>
@@ -3931,7 +3931,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           Object.keys(gaps).forEach(h => { if (!byHour[h]) byHour[h] = []; });
           const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
           const dot = (extra) => ({ width:26, height:26, borderRadius:"50%", flexShrink:0,
-            display:"grid", placeItems:"center", fontFamily:serif, fontSize:10,
+            display:"grid", placeItems:"center", fontFamily:serif, fontSize:9,
             color:P.text, boxSizing:"border-box", ...extra });
           const openIt = () => { setTodayOpen(true); vibrate("light"); };
           return (
@@ -3943,8 +3943,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 const c = list[0] && colorOf(list[0].sh.k);
                 const mine = gaps[h] || [];
                 return (
-                  <div key={h} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:7 }}>
-                    <span style={{ flex:"0 0 38px", fontFamily:mono, fontSize:9.5,
+                  <div key={h} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <span style={{ flex:"0 0 38px", fontFamily:mono, fontSize:9,
                       color: c ? (a11y ? c.fgL : c.fg) : P.sub }}>{h}:00</span>
                     <div style={{ flex:1, display:"flex", minWidth:0 }}>
                       {list.slice(0, 6).map((o, oi) => {
@@ -3953,7 +3953,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           <span key={o.who.id} title={o.who.name} style={dot({ marginLeft: oi ? -8 : 0,
                             background: lead
                               ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
-                              : (a11y ? "rgba(250,242,222,0.85)" : "#241a0c"),
+                              : (a11y ? "rgba(250,242,222,0.85)" : "#2A1F0E"),
                             border:`1px solid ${lead ? GOLD : (a11y ? "rgba(150,112,40,0.4)" : "rgba(145,108,40,0.5)")}`,
                             boxShadow:"inset 0 1px 0 rgba(255,255,255,0.12)" })}>
                             {initialsOf(o.who.name)}
@@ -3961,15 +3961,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         );
                       })}
                       {list.length > 6 ? (
-                        <span style={dot({ marginLeft:-8, fontFamily:mono, fontSize:9.5, color:P.sub,
-                          background: a11y ? "rgba(250,242,222,0.85)" : "#241a0c",
+                        <span style={dot({ marginLeft:-8, fontFamily:mono, fontSize:9, color:P.sub,
+                          background: a11y ? "rgba(250,242,222,0.85)" : "#2A1F0E",
                           border:`1px solid ${a11y ? "rgba(150,112,40,0.4)" : "rgba(145,108,40,0.5)"}` })}>
                           +{list.length - 6}
                         </span>
                       ) : null}
                       {mine.map((t, mi) => (
                         <span key={"h" + mi} title={"не хватает: " + t} style={dot({ marginLeft: (list.length || mi) ? -8 : 0,
-                          fontSize:13, color:P.warn, background: a11y ? "rgba(255,245,245,0.9)" : "#1a1006",
+                          fontSize:12.5, color:P.warn, background: a11y ? "rgba(255,245,245,0.9)" : "#1A1008",
                           border:`1px dashed ${P.warn}99` })}>+</span>
                       ))}
                     </div>
@@ -3977,11 +3977,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 );
               })}
               {holes.length ? (
-                <div style={{ fontSize:11.5, color:P.warn, marginTop:2 }}>
+                <div style={{ fontSize:11, color:P.warn, marginTop:2 }}>
                   не хватает: {Array.from(new Set(holes)).join(", ").toLowerCase()}
                 </div>
               ) : null}
-              <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginTop:5 }}>тап — кто в смене</div>
+              <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginTop:4 }}>тап — кто в смене</div>
             </div>
           );
         })() : null}
@@ -4006,8 +4006,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             // проценты видно, не читая, — и одна спокойная строка про неделю.
             <div onClick={goTo} {...onActivate(goTo)} style={{ marginTop:10, paddingTop:9,
               borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.1)"}`, cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:7 }}>
-                <span style={{ fontSize:11.5, color:P.sub, flexShrink:0 }}>месяц</span>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                <span style={{ fontSize:11, color:P.sub, flexShrink:0 }}>месяц</span>
                 <span style={{ flex:1, height:5, borderRadius:999, overflow:"hidden",
                   background: a11y ? "rgba(120,90,30,0.14)" : "rgba(255,255,255,0.07)" }}>
                   <i style={{ display:"block", height:"100%", borderRadius:999,
@@ -4015,12 +4015,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     background: covShown >= 95 ? (a11y ? "#4A6B4A" : "#7FA05A")
                               : covShown >= 75 ? GOLD : P.warn }} />
                 </span>
-                <b style={{ fontFamily:mono, fontSize:12, flexShrink:0,
+                <b style={{ fontFamily:mono, fontSize:12.5, flexShrink:0,
                   color: covShown >= 95 ? (a11y ? "#4A6B4A" : "#7FA05A")
                        : covShown >= 75 ? P.acc : P.warn }}>
                   {need ? `${covShown}%` : "—"}</b>
               </div>
-              <div style={{ fontSize:11.5, lineHeight:1.5, color:P.sub }}>
+              <div style={{ fontSize:11, lineHeight:1.5, color:P.sub }}>
                 {total === 0
                   ? <span style={{ color: a11y ? "#4A6B4A" : "#7FA05A" }}>неделя закрыта полностью</span>
                   : <>на неделе не хватает <b style={{ color:P.warn }}>{total}</b> смен{worst && worst.m ? <>, тяжелее всего <b style={{ color:P.text }}>{DOWL[dow(worst.d)]} {worst.d}</b></> : null}
@@ -4064,9 +4064,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 if (c.kind === "gap") return (
                   <div key={"g" + ci} style={{ width:60, textAlign:"center" }}>
                     <div style={{ width:44, height:44, borderRadius:"50%", margin:"0 auto 5px",
-                      display:"grid", placeItems:"center", fontSize:19, color:P.warn,
+                      display:"grid", placeItems:"center", fontSize:18, color:P.warn,
                       border:`1px dashed ${P.warn}8C`, background: a11y ? "rgba(255,245,245,0.75)" : "rgba(224,120,120,0.05)" }}>+</div>
-                    <div style={{ fontSize:10.5, color:P.warn, lineHeight:1.3 }}>нужен</div>
+                    <div style={{ fontSize:11, color:P.warn, lineHeight:1.3 }}>нужен</div>
                     <div style={{ fontSize:9, color:P.warn, opacity:.8 }}>{c.pos.toLowerCase()}</div>
                   </div>
                 );
@@ -4083,7 +4083,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       background: on ? (a11y ? "rgba(214,178,102,0.16)" : "rgba(214,178,102,0.10)") : "transparent" }}>
                     <div style={{ position:"relative", width:44, margin:"0 auto 5px" }}>
                       <div style={{ width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
-                          fontFamily:serif, fontSize:15, color:P.text,
+                          fontFamily:serif, fontSize:14, color:P.text,
                           background: lead
                             ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
                             : (a11y ? "rgba(250,242,222,0.8)" : "linear-gradient(180deg,rgba(255,250,238,0.09),rgba(255,250,238,0.03))"),
@@ -4095,12 +4095,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       </div>
                       {col ? (
                         <span style={{ position:"absolute", right:-3, bottom:-2, width:17, height:17, borderRadius:6,
-                          display:"grid", placeItems:"center", fontFamily:mono, fontSize:9.5,
-                          color: a11y ? col.fgL : col.fg, background: a11y ? col.bgL : "#241a0c",
+                          display:"grid", placeItems:"center", fontFamily:mono, fontSize:9,
+                          color: a11y ? col.fgL : col.fg, background: a11y ? col.bgL : "#2A1F0E",
                           border:`1px solid ${a11y ? col.bdL : col.bd}` }}>{c.k}</span>
                       ) : null}
                     </div>
-                    <div style={{ fontSize:10.5, color:P.text, lineHeight:1.3 }}>{c.who.name.split(" ")[0]}</div>
+                    <div style={{ fontSize:11, color:P.text, lineHeight:1.3 }}>{c.who.name.split(" ")[0]}</div>
                     <div style={{ fontSize:9, color: on ? P.acc : P.sub }}>{lead ? "старший" : c.pos.toLowerCase()}</div>
                   </div>
                 );
@@ -4116,7 +4116,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           if (!w || !w.phone) return null;
           return (
             <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, padding:"9px 12px",
-              borderRadius:13,
+              borderRadius:12,
               background: a11y ? "rgba(250,242,222,0.7)" : "rgba(255,250,238,0.04)",
               border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.3)"}`,
               boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(255,248,230,0.05)" }}>
@@ -4133,11 +4133,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         })()}
         <div onClick={() => { setTodayOpen(false); setCallWho(null); vibrate("light"); }}
           {...onActivate(() => { setTodayOpen(false); setCallWho(null); })}
-          style={{ marginTop:12, paddingTop:9, textAlign:"center", cursor:"pointer", fontSize:12, color:P.sub,
+          style={{ marginTop:12, paddingTop:9, textAlign:"center", cursor:"pointer", fontSize:12.5, color:P.sub,
             borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.1)"}` }}>
           свернуть ▴
         </div>
-        <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12, marginTop:10 }}
+        <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12.5, marginTop:10 }}
           className="sa-btn" disabled={shotBusy} onClick={() => exportToday()}>
           {shotBusy ? "Собираю…" : "Сегодня — картинкой в чат"}
         </button>
@@ -4151,17 +4151,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       </div>
 
       {!staff.length ? (
-        <div style={{ color:P.sub, fontSize:13, lineHeight:1.6 }}>
+        <div style={{ color:P.sub, fontSize:12.5, lineHeight:1.6 }}>
           В заведении пока нет сотрудников. Их список задаётся в настройках графика —
           добавь людей, и появится таблица.
         </div>
       ) : (
         <>
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:9 }}>
+        <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
           {weeks.map((w, i) => (
             <button key={i} className="sa-btn" onClick={() => setWeekIdx(weekIdx === i ? null : i)}
               style={{ flex:"1 1 auto", padding:"7px 4px", borderRadius:999, cursor:"pointer",
-                fontFamily:serif, fontSize:11.5, minWidth:52,
+                fontFamily:serif, fontSize:11, minWidth:52,
                 color: weekIdx === i ? INK_DEEP : P.sub,
                 background: weekIdx === i ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
                 border:`1px solid ${weekIdx === i ? GOLD : (a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.3)")}`,
@@ -4171,13 +4171,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           ))}
           <button className="sa-btn" onClick={() => setWeekIdx(null)}
             style={{ flex:"1 1 auto", padding:"7px 8px", borderRadius:999, cursor:"pointer",
-              fontFamily:serif, fontSize:11.5, minWidth:74,
+              fontFamily:serif, fontSize:11, minWidth:74,
               color: weekIdx == null ? INK_DEEP : P.sub,
               background: weekIdx == null ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
               border:`1px solid ${weekIdx == null ? GOLD : (a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.3)")}`,
               fontWeight: weekIdx == null ? "bold" : "normal" }}>весь месяц</button>
         </div>
-        <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginBottom:7 }}>
+        <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginBottom:6 }}>
           {swap
             ? (swapSel ? "Теперь тапни вторую клетку — смены поменяются местами" : "Обмен: тапни первую клетку")
             : weekIdx == null
@@ -4192,28 +4192,28 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             {legend ? "скрыть обозначения ▴" : "что означают буквы? ▾"}
           </span>
         </div>
-        <div style={{ display: legend ? "flex" : "none", alignItems:"center", gap:9, flexWrap:"wrap", margin:"2px 0 9px" }}>
+        <div style={{ display: legend ? "flex" : "none", alignItems:"center", gap:8, flexWrap:"wrap", margin:"2px 0 9px" }}>
           {(cfg.shifts || []).map((sh2, i2) => {
             const c2 = SHIFT_COLORS[i2 % SHIFT_COLORS.length];
             return (
-              <span key={sh2.k} style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
-                <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:9,
+              <span key={sh2.k} style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:P.sub }}>
+                <span style={{ width:16, height:16, borderRadius:6, display:"grid", placeItems:"center", fontSize:9,
                   color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : c2.bg,
                   border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{sh2.k}</span>
-                {sh2.name} <span style={{ fontFamily:mono, fontSize:9.5, opacity:.75 }}>
+                {sh2.name} <span style={{ fontFamily:mono, fontSize:9, opacity:.75 }}>
                   {sh2.from}:00–{sh2.to > 24 ? sh2.to - 24 : sh2.to}:00</span>
               </span>
             );
           })}
-          <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
-            <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:9,
+          <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:P.sub }}>
+            <span style={{ width:16, height:16, borderRadius:6, display:"grid", placeItems:"center", fontSize:9,
               color: a11y ? "#8B3020" : "#E0A0A0", background: a11y ? "rgba(224,120,120,.14)" : "rgba(224,120,120,.10)",
               border:"1px solid rgba(224,120,120,.35)" }}>О</span>
             отпуск
           </span>
-          <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:10.5, color:P.sub }}>
-            <span style={{ width:16, height:16, borderRadius:5, display:"grid", placeItems:"center", fontSize:12,
-              fontWeight:600, color: a11y ? "#6B5B40" : "#9A8A72" }}>✕</span>
+          <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:P.sub }}>
+            <span style={{ width:16, height:16, borderRadius:6, display:"grid", placeItems:"center", fontSize:12.5,
+              fontWeight:600, color: a11y ? "#6B5B40" : "#9A8C74" }}>✕</span>
             пост. выходной
           </span>
         </div>
@@ -4221,7 +4221,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         {(() => {
           const groups = POS.map(pp => ({ ...pp, n: staff.filter(x => x.pos === pp.id).length })).filter(g => g.n);
           if (groups.length < 2 || staff.length < 8) return null;   // Доп. 262: на маленькой команде фильтр — лишний шум
-          const chip = (on) => ({ padding:"5px 11px", borderRadius:999, fontSize:11.5, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0,
+          const chip = (on) => ({ padding:"5px 11px", borderRadius:999, fontSize:11, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0,
             border:`1px solid ${on ? GOLD : (a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)")}`,
             background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? P.text : P.sub });
           return (
@@ -4240,11 +4240,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   <th key={d} style={{ width:26, minWidth:26, fontSize:9, color:P.sub, padding:"3px 0", lineHeight:1.2,
                     ...(d === today ? todayCol("head") : null),
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
-                    <b onClick={() => setDayEdit(d)} style={{ display:"block", fontSize:10.5, cursor:"pointer",
+                    <b onClick={() => setDayEdit(d)} style={{ display:"block", fontSize:11, cursor:"pointer",
                       fontWeight: d === today ? "bold" : "normal",
                       color: d === today ? GOLD : holOf(d) ? P.warn : dow(d) >= 5 ? P.acc : SAND }}>{d}</b>
                     {DOWL[dow(d)]}
-                    {days[d]?.note ? <span style={{ display:"block", width:4, height:4, borderRadius:2, background:GOLD, margin:"1px auto 0" }} /> : null}
+                    {days[d]?.note ? <span style={{ display:"block", width:4, height:4, borderRadius:3, background:GOLD, margin:"1px auto 0" }} /> : null}
                   </th>
                 ))}
               </tr>
@@ -4271,7 +4271,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         }).length;
                         const short = n > 0 && have < n;
                         return (
-                          <td key={d} className="sa-schedgrp" style={{ fontSize:8.5, minWidth:26, height:22, textAlign:"center",
+                          <td key={d} className="sa-schedgrp" style={{ fontSize:9, minWidth:26, height:22, textAlign:"center",
                             color: short ? P.warn : P.sub, fontWeight: short ? "bold" : "normal",
                             ...(d === today ? todayCol("group") : null),
                             borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
@@ -4289,12 +4289,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           <td className="sa-schednm" title={s.name} style={{ fontFamily:serif, fontSize:12.5, padding:"0 8px",
                             textAlign:"left", color:P.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                             {shortName(s.name)}
-                            <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2 }}>
                               <span className="sa-schedbar">
-                                <span style={{ display:"block", height:"100%", width:pct + "%", borderRadius:2,
-                                  background: h > en ? "linear-gradient(90deg,#E07878,#C04A4A)" : "linear-gradient(90deg,#D4A85A,#C8A96E)" }} />
+                                <span style={{ display:"block", height:"100%", width:pct + "%", borderRadius:3,
+                                  background: h > en ? "linear-gradient(90deg,#E07878,#C04A4A)" : "linear-gradient(90deg,#D2A85A,#C8A96E)" }} />
                               </span>
-                              <span style={{ fontFamily:mono, fontSize:8, color:P.sub }}>{h}/{en}{en !== s.norm ? "*" : ""}</span>
+                              <span style={{ fontFamily:mono, fontSize:9, color:P.sub }}>{h}/{en}{en !== s.norm ? "*" : ""}</span>
                             </div>
                           </td>
                           {visibleDays.map((d, di) => {
@@ -4316,8 +4316,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                                   position:"relative",
                                   color: col ? (a11y ? col.fgL : col.fg)
                                     : vac ? (a11y ? "#8B3020" : "#E0A0A0")
-                                    : fixedOff ? (a11y ? "#6B5B40" : "#9A8A72")
-                                    : (a11y ? "#B9AE97" : "#4A4136"),
+                                    : fixedOff ? (a11y ? "#6B5B40" : "#9A8C74")
+                                    : (a11y ? "#BDB09A" : "#4A4136"),
                                   background: col ? (a11y ? col.bgL : col.bg)
                                     : vac ? (a11y ? "rgba(224,120,120,.14)" : "rgba(224,120,120,.10)")
                                     : "transparent",
@@ -4343,7 +4343,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                                   ) : null}
                                   {typeof facts[s.id]?.[d] === "number" && k ? (
                                     <span style={{ position:"absolute", bottom:-2, right:-2, width:6, height:6,
-                                      borderRadius:3, background:"#D4A85A", boxShadow:"0 0 4px rgba(212,168,90,0.7)" }} />
+                                      borderRadius:3, background:"#D2A85A", boxShadow:"0 0 4px rgba(212,168,90,0.7)" }} />
                                   ) : null}
                                 </div>
                               </td>
@@ -4370,13 +4370,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           if (!shifts) return null;
           const fund = staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0);
           return (
-            <div style={{ fontFamily:mono, fontSize:10, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
+            <div style={{ fontFamily:mono, fontSize:9, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
               итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
               {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}><NumUp v={fund} /> ₽</span></> : null}
               {prevStats ? (() => {
                 const ar = (d) => d > 0 ? "↑" + d.toLocaleString("ru-RU") : d < 0 ? "↓" + Math.abs(d).toLocaleString("ru-RU") : "=";
                 return (
-                  <span style={{ display:"block", marginTop:3, opacity:.85 }}>
+                  <span style={{ display:"block", marginTop:2, opacity:.85 }}>
                     к прошлому месяцу: смены {ar(shifts - prevStats.shifts)} · часы {ar(hours - prevStats.hours)}
                     {fund > 0 && prevStats.fund > 0 ? <> · фонд {ar(fund - prevStats.fund)} ₽</> : null}
                   </span>
@@ -4407,7 +4407,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 const b = breakdownOf(s);
                 const diff = b.hours - (s.norm || 0);
                 return (
-                  <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:13 }}>
+                  <div key={s.id} className="sa-schedrow" style={{ padding:"9px 11px", marginTop:6, borderRadius:12 }}>
                     <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
                       <div style={{ flex:1, minWidth:0, fontSize:14, color:P.text }}>
                         {/* Контакты команды для руководителя: у кого телефон
@@ -4416,15 +4416,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         <CallName who={s} label={s.name} color={P.text} />
                       </div>
                       <div style={{ fontFamily:mono, fontSize:14, color: diff > 0 ? P.warn : P.acc }}>{b.hours} ч</div>
-                      <div style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>из {s.norm}</div>
+                      <div style={{ fontFamily:mono, fontSize:11, color:P.sub }}>из {s.norm}</div>
                     </div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:6 }}>
-                      <span style={{ fontFamily:mono, fontSize:10.5, color:P.sub }}>{b.shifts} смен</span>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:6 }}>
+                      <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{b.shifts} смен</span>
                       {Object.entries(b.by).map(([k, v]) => {
                         const c = colorOf(k);
                         return (
                           <span key={k} style={{ display:"flex", alignItems:"center", gap:4,
-                            fontFamily:mono, fontSize:10.5, color:P.sub }}>
+                            fontFamily:mono, fontSize:11, color:P.sub }}>
                             <i style={{ width:11, height:11, borderRadius:3, display:"inline-block",
                               background: c ? (a11y ? c.bgL : c.bg) : "transparent",
                               border:`1px solid ${c ? (a11y ? c.bdL : c.bd) : "transparent"}` }} />
@@ -4432,7 +4432,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           </span>
                         );
                       })}
-                      <span style={{ fontFamily:mono, fontSize:10.5, marginLeft:"auto",
+                      <span style={{ fontFamily:mono, fontSize:11, marginLeft:"auto",
                         color: diff > 0 ? P.warn : diff < 0 ? P.sub : P.acc }}>
                         {diff > 0 ? `+${diff} ч сверх нормы` : diff < 0 ? `${-diff} ч недобор` : "норма закрыта"}
                       </span>
@@ -4467,8 +4467,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   ? "inset 0 0 14px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)"
                   : "inset 0 0 14px rgba(255,248,230,0.05), inset 0 1px 0 rgba(255,255,255,0.10)" }}>
                 <div style={{ fontSize:21, color:P.acc, lineHeight:1.1 }}>{v}</div>
-                <div style={{ fontFamily:mono, fontSize:8, letterSpacing:1.4, textTransform:"uppercase",
-                  color:P.sub, marginTop:5 }}>{t}</div>
+                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.4, textTransform:"uppercase",
+                  color:P.sub, marginTop:4 }}>{t}</div>
               </div>
             ))}
           </div>
@@ -4486,7 +4486,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     {!staff.length ? (
       <div style={card}>
         <div style={eyebrow}><span>С чего начать</span></div>
-        <div style={{ fontSize:13, lineHeight:1.6, color:P.sub }}>
+        <div style={{ fontSize:12.5, lineHeight:1.6, color:P.sub }}>
           Открой «Настройки» вверху и заведи людей — по одному, с должностью и нормой часов.
           Там же задаются часы работы, смены и правила. После этого «Заполнить черновик»
           расставит смены сам, а проверка покажет, где не сходится.
@@ -4511,11 +4511,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       )}
       {staff.some(x => x.rate > 0) ? (
         <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
-          <div style={{ fontFamily:mono, fontSize:8.5, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
+          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
             зарплата · по ставкам и сменам черновика
           </div>
           {staff.filter(x => payOf(x)).map(x => (
-            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:P.text, padding:"2px 0" }}>
+            <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"2px 0" }}>
               <span>{x.name}</span>
               <span style={{ fontFamily:mono }}>{payOf(x).note} = <b style={{ color:P.acc }}>{payOf(x).sum.toLocaleString("ru-RU")} ₽</b></span>
             </div>
@@ -4525,7 +4525,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <b>Итого фонд</b>
             <b style={{ color:P.acc, fontFamily:mono }}>{staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0).toLocaleString("ru-RU")} ₽</b>
           </div>
-          <div style={{ fontSize:10.5, color:P.sub, marginTop:6, fontStyle:"italic" }}>
+          <div style={{ fontSize:11, color:P.sub, marginTop:6, fontStyle:"italic" }}>
             Почасовые и посменные — по сменам текущего черновика; оклады — фиксированно. У кого оплата не задана — в фонд не входит.
           </div>
         </div>

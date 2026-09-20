@@ -35,7 +35,7 @@ function Content({ text, T, gold, dark }) {
     if (t.startsWith("**") && t.endsWith("**")) {
       const { flag, rest } = splitLeadingFlag(t.replace(/\*\*/g, ""));
       return flag
-        ? <div key={i} style={{ ...T.bold, display: "flex", alignItems: "center", gap: 9 }}>{flag}<span>{rest}</span></div>
+        ? <div key={i} style={{ ...T.bold, display: "flex", alignItems: "center", gap: 8 }}>{flag}<span>{rest}</span></div>
         : <div key={i} style={T.bold}>{rest}</div>;
     }
     const mk = t.match(MARK_RE);
@@ -45,8 +45,8 @@ function Content({ text, T, gold, dark }) {
         : m === "❌" ? Ico.x(RED, 15)
         : Ico.pin(gold, 15);
       const st = m === "✅" ? T.good : m === "❌" ? T.bad : T.note;
-      return (<div key={i} style={{ ...(st || T.para), display: "flex", gap: 9, alignItems: "flex-start" }}>
-        <span style={{ flexShrink: 0, marginTop: 3, display: "inline-flex" }}>{icon}</span>
+      return (<div key={i} style={{ ...(st || T.para), display: "flex", gap: 8, alignItems: "flex-start" }}>
+        <span style={{ flexShrink: 0, marginTop: 2, display: "inline-flex" }}>{icon}</span>
         <span style={{ flex: 1 }}>{inlineBold(t.replace(MARK_RE, ""), T)}</span>
       </div>);
     }
@@ -85,7 +85,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
       <span style={{ ...T.modTag, color: gold }}>РАЗДЕЛ</span>
     </div>
     <div style={{ padding: "6px 18px 8px" }}>
-      <div style={{ fontFamily: SERIF, fontSize: 27, fontWeight: "bold", color: T.modTitle.color }}>Справочник</div>
+      <div style={{ fontFamily: SERIF, fontSize: 25, fontWeight: "bold", color: T.modTitle.color }}>Справочник</div>
       <div style={{ color: T.modSub.color, fontSize: 14, marginTop: 6, lineHeight: 1.5 }}>Познавательные курсы для всей команды. Пополняется со временем.</div>
     </div>
     {/* Строка поиска: справочник растёт, листать 26+ глав дольше, чем спросить */}
@@ -109,7 +109,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
           <div style={{ flex: 1 }}>
             <div style={{ ...T.modTag, color: gold }}>{c.tag || (c.deck ? "КОЛОДА" : c.on ? "КУРС" : "СКОРО")}</div>
             <div style={T.modTitle}>{c.t}</div>
-            <div style={{ ...T.modSub, display: "flex", alignItems: "center", gap: 5 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
+            <div style={{ ...T.modSub, display: "flex", alignItems: "center", gap: 4 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
           </div>
           <div style={T.modArrow}>{c.on ? "›" : ""}</div>
         </div>
@@ -123,8 +123,8 @@ function Course({ T, gold, course, openLesson, onBack }) {
   return (<div style={T.screen}>
     <Head T={T} title="Справочник" onBack={onBack} />
     <div style={{ padding: "14px 18px 4px" }}>
-      <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: "bold", color: T.modTitle.color }}>{course.title}</div>
-      <div style={{ color: T.modSub.color, fontSize: 13, marginTop: 5, lineHeight: 1.5 }}>{course.subtitle}</div>
+      <div style={{ fontFamily: SERIF, fontSize: 25, fontWeight: "bold", color: T.modTitle.color }}>{course.title}</div>
+      <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>{course.subtitle}</div>
     </div>
     <div style={T.secTitle}>ПРОГРАММА</div>
     <div style={T.lessList}>
@@ -135,8 +135,8 @@ function Course({ T, gold, course, openLesson, onBack }) {
             {isQuiz ? Ico.cam(gold, 15) : i + 1}
           </div>
           <div style={{ ...T.lessInfo, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-            <div style={{ ...T.lessTitle, marginBottom: 0, color: isQuiz ? gold : T.lessTitle.color }}>{l.title}</div>
-            <div style={{ fontSize: 10, letterSpacing: 1, fontFamily: "monospace", color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
+            <div style={{ ...T.lessTitle, marginBottom: 2, color: isQuiz ? gold : T.lessTitle.color }}>{l.title}</div>
+            <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
           </div>
           <div style={T.lessArrow}>›</div>
         </div>);
@@ -200,7 +200,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
         return (<div key={i} onClick={choose} {...onActivate(pick === null ? choose : undefined)} aria-label={opt} style={{ ...st, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: pick === null ? "pointer" : "default" }}><span>{opt}</span>{ic && <span style={{ flexShrink: 0 }}>{ic}</span>}</div>);
       })}
       {pick !== null && <div style={{ ...T.explain, borderLeftColor: gold }}>{q.explanation}</div>}
-      {pick !== null && <button style={{ ...T.doneBtn, background: gold, marginTop: 14 }} onClick={() => { if (last) setDone(true); else { setStep(s => s + 1); setPick(null); } }}>{last ? "Завершить" : "Дальше →"}</button>}
+      {pick !== null && <button style={{ ...T.doneBtn, background: gold, marginTop: 12 }} onClick={() => { if (last) setDone(true); else { setStep(s => s + 1); setPick(null); } }}>{last ? "Завершить" : "Дальше →"}</button>}
     </div>
   </div>);
 }

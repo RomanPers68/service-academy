@@ -229,7 +229,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   };
 
   const inputStyle = {
-    width:"100%", padding:"13px 14px", borderRadius:12, fontSize:15,
+    width:"100%", padding:"13px 14px", borderRadius:12, fontSize:14,
     fontFamily:"Georgia, serif",
     background: a11y ? "rgba(255,255,255,0.7)" : "rgba(20,14,6,0.5)",
     color: a11y ? "#3A2E1C" : CREAM,
@@ -237,7 +237,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     outline:"none", boxSizing:"border-box"
   };
   const chip = (active) => ({
-    padding:"8px 13px", borderRadius:20, fontSize:12.5, fontFamily:"Georgia, serif", cursor:"pointer",
+    padding:"8px 13px", borderRadius:18, fontSize:12.5, fontFamily:"Georgia, serif", cursor:"pointer",
     border: active ? (a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E") : (a11y ? "1px solid rgba(160,120,60,0.4)" : "1px solid rgba(200,160,80,0.3)"),
     background: active ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.12)") : "transparent",
     boxShadow: active ? (a11y
@@ -288,21 +288,21 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     return (
       <div style={T.screen} className="sa-screen">
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"30px 24px 100px" }}>
-          <div style={{ marginBottom:14 }}>{UI_SVG.checkCircle(GREEN, 40)}</div>
+          <div style={{ marginBottom:12 }}>{UI_SVG.checkCircle(GREEN, 40)}</div>
           <div style={{ color:T.modTitle.color, fontSize:18, fontWeight:"bold", fontFamily:ACCENT_SERIF, textAlign:"center" }}>
             {issued.emp.name} {issued.emp.surname}
           </div>
           <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:4, marginBottom:24 }}>{issued.emp.restaurant}</div>
 
-          <div style={{ color:"#9A8C74", fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:10 }}>КОД ДОСТУПА</div>
+          <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:10 }}>КОД ДОСТУПА</div>
           <div onClick={() => copyCode(issued.code)} {...onActivate(() => copyCode(issued.code))} style={{
-            fontSize:34, fontWeight:"bold", fontFamily:"Georgia, serif", letterSpacing:5, color: a11y ? "#4A3A20" : CREAM,
+            fontSize:36, fontWeight:"bold", fontFamily:"Georgia, serif", letterSpacing:5, color: a11y ? "#4A3525" : CREAM,
             padding:"18px 28px", borderRadius:18, cursor:"pointer",
             background:"rgba(200,169,110,0.12)", border:"1.5px solid rgba(200,160,80,0.5)",
             boxShadow:"0 6px 24px rgba(200,160,80,0.18)" }}>
             {issued.code}
           </div>
-          <div style={{ color: copied ? GREEN : MUTED_2, fontSize:11.5, marginTop:10, transition:"color 0.3s" }}>
+          <div style={{ color: copied ? GREEN : MUTED_2, fontSize:11, marginTop:10, transition:"color 0.3s" }}>
             {copied ? "✓ Скопировано" : "Нажми на код, чтобы скопировать"}
           </div>
 
@@ -340,7 +340,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               onChange={e => setForm({ ...form, surname:e.target.value })} />
           </div>
 
-          <div style={{ color:"#9A8C74", fontSize:10.5, letterSpacing:2, fontFamily:"monospace", margin:"20px 0 10px" }}>РЕСТОРАН</div>
+          <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", margin:"20px 0 10px" }}>РЕСТОРАН</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
             {RESTAURANTS.map(r => (
               <div key={r} className={"sa-btn" + (form.restaurant === r ? " sa-chip-on" : "")}
@@ -349,7 +349,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             ))}
           </div>
 
-          <div style={{ color:"#9A8C74", fontSize:10.5, letterSpacing:2, fontFamily:"monospace", margin:"20px 0 10px" }}>ДОЛЖНОСТЬ</div>
+          <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", margin:"20px 0 10px" }}>ДОЛЖНОСТЬ</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
             {Object.entries(POS_LABELS).map(([id, label]) => (
               <div key={id} className={"sa-btn" + (form.position === id ? " sa-chip-on" : "")}
@@ -358,7 +358,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             ))}
           </div>
 
-          {actionError && <div className="sa-fast" style={{ color:RED, fontSize:13, marginTop:16 }}>{actionError}</div>}
+          {actionError && <div className="sa-fast" style={{ color:RED, fontSize:12.5, marginTop:16 }}>{actionError}</div>}
 
           <button className="sa-btn" style={{ ...goldBtn, marginTop:24, opacity: form.name.trim().length < 2 ? 0.5 : 1 }}
             disabled={busy} onClick={submitAdd}>
@@ -380,7 +380,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           <div style={T.lessHeadTitle}>Сотрудник</div>
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
-          <div style={{ ...T.modCard, gap:14, marginBottom:14 }}>
+          <div style={{ ...T.modCard, gap:12, marginBottom:12 }}>
             <div style={{ width:50, height:50, borderRadius:"50%", flexShrink:0,
               background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
               display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -389,39 +389,39 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               </span>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ color:T.modTitle.color, fontSize:16.5, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
+              <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
                 {selected.name} {selected.surname}
-                {isSelf && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
+                {isSelf && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
               </div>
-              <div style={{ color:"#C8A870", fontSize:12.5, marginTop:3 }}>{selected.restaurant} · {POS_LABELS[selected.position] || selected.position}</div>
+              <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:2 }}>{selected.restaurant} · {POS_LABELS[selected.position] || selected.position}</div>
             </div>
           </div>
 
           <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:10, marginBottom:20 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ color:T.modSub.color, fontSize:13 }}>Статус</span>
-              <span style={{ display:"inline-flex", alignItems:"center", gap:7, color:st.color, fontSize:13.5, fontWeight:"bold" }}>
-                <span style={{ width:8, height:8, borderRadius:4, background:st.color, boxShadow:`0 0 8px ${st.color}66` }} />{st.label}
+              <span style={{ color:T.modSub.color, fontSize:12.5 }}>Статус</span>
+              <span style={{ display:"inline-flex", alignItems:"center", gap:6, color:st.color, fontSize:14, fontWeight:"bold" }}>
+                <span style={{ width:8, height:8, borderRadius:3, background:st.color, boxShadow:`0 0 8px ${st.color}66` }} />{st.label}
               </span>
             </div>
             <div style={{ display:"flex", justifyContent:"space-between" }}>
-              <span style={{ color:T.modSub.color, fontSize:13 }}>Был в приложении</span>
-              <span style={{ color:T.para.color, fontSize:13.5 }}>{ago(selected.last_seen_at)}</span>
+              <span style={{ color:T.modSub.color, fontSize:12.5 }}>Был в приложении</span>
+              <span style={{ color:T.para.color, fontSize:14 }}>{ago(selected.last_seen_at)}</span>
             </div>
             {selected.has_pending_code && (
-              <div style={{ color:"#D9C75B", fontSize:12, lineHeight:1.6 }}>
+              <div style={{ color:"#D9C75B", fontSize:12.5, lineHeight:1.6 }}>
                 Выдан код, ещё не активирован.
               </div>
             )}
           </div>
 
-          {actionError && <div className="sa-fast" style={{ color:RED, fontSize:13, marginBottom:14 }}>{actionError}</div>}
+          {actionError && <div className="sa-fast" style={{ color:RED, fontSize:12.5, marginBottom:12 }}>{actionError}</div>}
 
           {isSelf ? (
             <div>
               <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:8, marginBottom:12 }}>
-                <div style={{ color:GOLD, fontSize:10.5, letterSpacing:1.5, fontFamily:"monospace" }}>ПОСТОЯННЫЙ КОД ВХОДА</div>
-                <div style={{ color:T.para.color, fontSize:13, lineHeight:1.6 }}>Не сгорает при входе: Telegram, Safari на экране «Домой», новый телефон — один и тот же код. Показывается один раз.</div>
+                <div style={{ color:GOLD, fontSize:11, letterSpacing:1.5, fontFamily:"monospace" }}>ПОСТОЯННЫЙ КОД ВХОДА</div>
+                <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.6 }}>Не сгорает при входе: Telegram, Safari на экране «Домой», новый телефон — один и тот же код. Показывается один раз.</div>
                 <button className="sa-btn" style={{ ...goldBtn, marginTop:4 }} disabled={busy} onClick={doPermanent}>{busy ? "Выдаю…" : "Выдать себе постоянный код"}</button>
               </div>
               <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", padding:"0 10px" }}>
@@ -430,7 +430,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             </div>
           ) : confirm === "reset" ? (
             <div className="sa-fast">
-              <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+              <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
                 Старый код и все входы на устройствах перестанут работать. Выдать новый код?
               </div>
               <div style={{ display:"flex", gap:10 }}>
@@ -440,7 +440,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             </div>
           ) : confirm === "toggle" ? (
             <div className="sa-fast">
-              <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+              <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
                 {selected.status === "disabled"
                   ? "Вернуть доступ? Для входа понадобится выдать новый код."
                   : "Закрыть доступ? Человек выйдет из приложения, но вся его история сохранится."}
@@ -456,7 +456,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             </div>
           ) : confirm === "edit" ? (
             <div className="sa-fast">
-              <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+              <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
                 Как правильно зовут сотрудника? Имя показывается в приветствии, рейтинге и книге отзывов.
               </div>
               <div style={{ display:"flex", gap:10, marginBottom:12 }}>
@@ -473,7 +473,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             </div>
           ) : confirm === "delete" ? (
             <div className="sa-fast">
-              <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+              <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
                 Удалить <b>{selected.name} {selected.surname}</b> из команды? Профиль, прогресс, результаты и код входа будут стёрты безвозвратно.
               </div>
               <div style={{ display:"flex", gap:10 }}>
@@ -513,12 +513,12 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding:"18px 18px 110px" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
           <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
             {NAV_ICONS.team(GOLD)}<span>Команда</span>
           </div>
           <button className="sa-btn" onClick={() => { setActionError(null); setView("add"); }}
-            style={{ padding:"9px 16px", borderRadius:20, border:"none", fontSize:13.5, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
+            style={{ padding:"9px 16px", borderRadius:18, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
               color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", boxShadow:"0 3px 12px rgba(200,160,80,0.3)" }}>
             + Добавить
           </button>
@@ -526,18 +526,18 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
         {onCandidate && (
           <button className="sa-btn" onClick={() => { vibrate("light"); onCandidate(); }}
-            style={{ width:"100%", marginBottom:14, padding:"13px 16px", borderRadius:14, cursor:"pointer",
+            style={{ width:"100%", marginBottom:12, padding:"13px 16px", borderRadius:14, cursor:"pointer",
               border:"1px solid rgba(200,160,80,0.35)", background:"rgba(200,169,110,0.08)",
               fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", textAlign:"left", color:GOLD,
               display:"flex", alignItems:"center", gap:10 }}>
             <span style={{ display:"flex", flexShrink:0 }}>{UI_SVG.dialog(GOLD, 17)}</span>
             <span style={{ flex:1 }}>Собеседование кандидата</span>
-            <span style={{ color:"#9A8C74", fontWeight:"normal", fontSize:11.5 }}>тест до разговора</span>
+            <span style={{ color:"#9A8C74", fontWeight:"normal", fontSize:11 }}>тест до разговора</span>
           </button>
         )}
 
         {summary && (
-          <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
             {[
               { n: summary.act,   label:"активных", c:GREEN },
               { n: summary.wait,  label:"ждут код", c:"#D9C75B" },
@@ -545,8 +545,8 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             ].map((s, i) => (
               <div key={i} style={{ flex:1, minWidth:88, textAlign:"center", padding:"10px 6px", borderRadius:14,
                 background:"rgba(200,169,110,0.07)", border:"1px solid rgba(200,160,80,0.2)" }}>
-                <div style={{ color:s.c, fontSize:20, fontWeight:"bold", fontFamily:ACCENT_SERIF }}>{s.n}</div>
-                <div style={{ color:T.modSub.color, fontSize:10.5, marginTop:2 }}>{s.label}</div>
+                <div style={{ color:s.c, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF }}>{s.n}</div>
+                <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -555,24 +555,24 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         <input style={{ ...inputStyle, marginBottom:16 }} placeholder="Поиск по имени или ресторану..."
           value={search} onChange={e => setSearch(e.target.value)} />
 
-        {list === null && <div style={{ color:T.modSub.color, fontSize:13, textAlign:"center", padding:"30px 0" }}>Загружаем команду...</div>}
+        {list === null && <div style={{ color:T.modSub.color, fontSize:12.5, textAlign:"center", padding:"30px 0" }}>Загружаем команду...</div>}
 
         {loadError && (
           <div style={{ textAlign:"center", padding:"20px 0" }}>
-            <div style={{ color:RED, fontSize:13, marginBottom:12 }}>Не получилось загрузить список.</div>
+            <div style={{ color:RED, fontSize:12.5, marginBottom:12 }}>Не получилось загрузить список.</div>
             <button className="sa-btn" style={{ ...ghostBtn, width:"auto", padding:"10px 24px" }} onClick={() => { setList(null); loadList(); }}>Повторить</button>
           </div>
         )}
 
         {list !== null && !loadError && groups.length === 0 && (
-          <div style={{ color:T.modSub.color, fontSize:13, textAlign:"center", padding:"30px 10px", lineHeight:1.7 }}>
+          <div style={{ color:T.modSub.color, fontSize:12.5, textAlign:"center", padding:"30px 10px", lineHeight:1.7 }}>
             {search ? "Никого не нашлось по такому запросу." : "Пока только ты. Нажми «+ Добавить» — и выдай первый код. 🚀"}
           </div>
         )}
 
         {groups.map(([rest, emps]) => (
-          <div key={rest} style={{ marginBottom:18 }}>
-            <div style={{ color:"#9A8C74", fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
+          <div key={rest} style={{ marginBottom:16 }}>
+            <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
               {UI_SVG.building("#9A8C74", 11)}<span>{rest.toUpperCase()}</span>
               <span style={{ opacity:0.6 }}>· {emps.length}</span>
             </div>
@@ -582,17 +582,17 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 return (
                   <div key={e.id} className="sa-btn" onClick={() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); }} {...onActivate(() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); })}
                     style={{ ...T.modCard, gap:12, cursor:"pointer", padding:"13px 14px" }}>
-                    <span style={{ width:9, height:9, borderRadius:5, flexShrink:0, background:st.color, boxShadow:`0 0 8px ${st.color}55` }} />
+                    <span style={{ width:9, height:9, borderRadius:6, flexShrink:0, background:st.color, boxShadow:`0 0 8px ${st.color}55` }} />
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ color:T.modTitle.color, fontSize:14.5, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                      <div style={{ color:T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {e.name} {e.surname}
-                        {e.is_admin && <span style={{ marginLeft:6, fontSize:8, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+                        {e.is_admin && <span style={{ marginLeft:6, fontSize:9, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
                       </div>
-                      <div style={{ color:T.modSub.color, fontSize:11.5, marginTop:2 }}>
+                      <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>
                         {POS_LABELS[e.position] || e.position} · {ago(e.last_seen_at)}
                       </div>
                     </div>
-                    <span style={{ color:st.color, fontSize:10.5, fontFamily:"monospace", flexShrink:0 }}>{st.label}</span>
+                    <span style={{ color:st.color, fontSize:11, fontFamily:"monospace", flexShrink:0 }}>{st.label}</span>
                   </div>
                 );
               })}
@@ -660,12 +660,12 @@ export function CodeLoginScreen({ T, onSuccess }) {
 
   return (
     <div style={{ ...T.screen, justifyContent:"center", alignItems:"center", padding:"32px 24px",
-      background:"linear-gradient(160deg, #241A0C 0%, #14100A 55%, #1C1509 100%)", minHeight:"100vh" }} className="sa-screen">
+      background:"linear-gradient(160deg, #2A1F0E 0%, #1A1008 55%, #1A1008 100%)", minHeight:"100vh" }} className="sa-screen">
       <img src={LOGO_SRC_DARK} alt="Service Academy" style={{ width:180, marginBottom:8, filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
       <div style={{ color:CREAM, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF, marginBottom:8, textAlign:"center" }}>
         Вход по приглашению
       </div>
-      <div style={{ color:"#9A8C74", fontSize:13, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:26 }}>
+      <div style={{ color:"#9A8C74", fontSize:12.5, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:24 }}>
         Введи код доступа — его выдаёт администратор. Дальше вход автоматический — код больше не понадобится.
       </div>
       <input
@@ -677,26 +677,26 @@ export function CodeLoginScreen({ T, onSuccess }) {
         autoCorrect="off"
         spellCheck={false}
         inputMode="text"
-        style={{ width:"100%", maxWidth:280, padding:"16px 18px", borderRadius:16, textAlign:"center",
-          fontSize:22, letterSpacing:4, fontFamily:"Georgia, serif", fontWeight:"bold",
+        style={{ width:"100%", maxWidth:280, padding:"16px 18px", borderRadius:14, textAlign:"center",
+          fontSize:21, letterSpacing:4, fontFamily:"Georgia, serif", fontWeight:"bold",
           background:"rgba(20,14,6,0.6)", color:CREAM, outline:"none",
           border: error ? "1.5px solid #E07878" : "1.5px solid rgba(200,160,80,0.45)",
           boxShadow:"0 4px 18px rgba(0,0,0,0.35) inset" }}
       />
       {error && (
-        <div className="sa-fast" style={{ color:RED, fontSize:13, lineHeight:1.6, textAlign:"center", maxWidth:300, marginTop:12 }}>
+        <div className="sa-fast" style={{ color:RED, fontSize:12.5, lineHeight:1.6, textAlign:"center", maxWidth:300, marginTop:12 }}>
           {error}
         </div>
       )}
       <button className="sa-btn sa-btn-pulse" onClick={submit}
         disabled={busy}
-        style={{ marginTop:20, width:"100%", maxWidth:280, padding:"15px", borderRadius:16, border:"none",
-          fontSize:17, fontFamily:"Georgia, serif", fontWeight:"bold", cursor: busy ? "default" : "pointer",
+        style={{ marginTop:20, width:"100%", maxWidth:280, padding:"15px", borderRadius:14, border:"none",
+          fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor: busy ? "default" : "pointer",
           color:"#fff", background: busy ? "rgba(200,169,110,0.4)" : "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
           boxShadow:"0 4px 18px rgba(200,160,80,0.3)" }}>
         {busy ? "Проверяем..." : "Войти"}
       </button>
-      <div style={{ color:MUTED_2, fontSize:11, marginTop:22, textAlign:"center", lineHeight:1.7 }}>
+      <div style={{ color:MUTED_2, fontSize:11, marginTop:20, textAlign:"center", lineHeight:1.7 }}>
         Нет кода? Спроси у администратора —<br/>он создаст тебя в системе за минуту.
       </div>
     </div>
@@ -727,7 +727,7 @@ function MentorPinBlock({ T, gold }) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v2.5"/></svg>
         <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold" }}>PIN наставника</span>
       </div>
-      <div style={{ color: T.modSub.color, fontSize:12, lineHeight:1.55 }}>
+      <div style={{ color: T.modSub.color, fontSize:12.5, lineHeight:1.55 }}>
         Этим PIN ты заверяешь допуски сотрудников — вводи его только сам(а) и никому не сообщай. 4–6 цифр.
       </div>
       <div style={{ display:"flex", gap:8 }}>
@@ -736,12 +736,12 @@ function MentorPinBlock({ T, gold }) {
           inputMode="numeric" pattern="[0-9]*" type="password" autoComplete="new-password" placeholder="••••"
           style={{ flex:1, minWidth:0, boxSizing:"border-box", padding:"11px 13px", borderRadius:12, border:`1px solid ${gold}66`, background:"rgba(0,0,0,0.12)", color: T.modTitle.color, fontSize:16, letterSpacing:5, textAlign:"center", fontFamily:"monospace", outline:"none" }} />
         <button className="sa-btn" onClick={savePin} {...onActivate(savePin)}
-          style={{ flexShrink:0, padding:"11px 16px", borderRadius:12, border:"none", background: canSave ? gold : gold+"44", color:"#1A1008", fontWeight:"bold", fontSize:13, cursor: canSave ? "pointer" : "default" }}>
+          style={{ flexShrink:0, padding:"11px 16px", borderRadius:12, border:"none", background: canSave ? gold : gold+"44", color:"#1A1008", fontWeight:"bold", fontSize:12.5, cursor: canSave ? "pointer" : "default" }}>
           {state === "saving" ? "…" : "Сохранить"}
         </button>
       </div>
-      {state === "ok" && <div style={{ color:"#5DBB8A", fontSize:12 }}>✓ PIN сохранён. Старый PIN больше не действует.</div>}
-      {typeof state === "string" && state.startsWith("err:") && <div style={{ color:"#E07878", fontSize:12 }}>{state.slice(4)}</div>}
+      {state === "ok" && <div style={{ color:"#5DBB8A", fontSize:12.5 }}>✓ PIN сохранён. Старый PIN больше не действует.</div>}
+      {typeof state === "string" && state.startsWith("err:") && <div style={{ color:"#E07878", fontSize:12.5 }}>{state.slice(4)}</div>}
     </div>
   );
 }
@@ -756,25 +756,25 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
         <div style={T.lessHeadTitle}>Аккаунт</div>
       </div>
       <div style={{ flex:1, padding:"20px 18px 40px" }}>
-        <div style={{ ...T.modCard, gap:14, marginBottom:14 }}>
+        <div style={{ ...T.modCard, gap:12, marginBottom:12 }}>
           <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
             <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown("#fff", 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
             </span>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ color:T.modTitle.color, fontSize:17, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
+            <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
               {profile?.name} {profile?.surname}
-              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:8, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
             </div>
-            <div style={{ color:"#C8A870", fontSize:13, marginTop:4, display:"flex", alignItems:"center", gap:5 }}>
-              {UI_SVG.building("#C8A870", 12)}<span>{profile?.restaurant}</span>
+            <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:4, display:"flex", alignItems:"center", gap:4 }}>
+              {UI_SVG.building("#C8A96E", 12)}<span>{profile?.restaurant}</span>
             </div>
-            <div style={{ color:T.modSub.color, fontSize:12, marginTop:2 }}>{posLabel}</div>
+            <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:2 }}>{posLabel}</div>
           </div>
         </div>
 
-        <div style={{ color:T.modSub.color, fontSize:12, lineHeight:1.7, padding:"0 4px", marginBottom:20 }}>
+        <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, padding:"0 4px", marginBottom:20 }}>
           Данные профиля привязаны к твоему коду доступа. Если что-то указано неверно — обратись к администратору.
         </div>
 
@@ -802,12 +802,12 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
 
         {!confirmOut ? (
           <button className="sa-btn" onClick={() => setConfirmOut(true)}
-            style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:RED, fontSize:15, fontFamily:"Georgia, serif", cursor:"pointer" }}>
+            style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:RED, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
             Выйти с этого устройства
           </button>
         ) : (
           <div className="sa-fast">
-            <div style={{ color:T.para.color, fontSize:13, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+            <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
               Для повторного входа понадобится код доступа. Точно выйти?
             </div>
             <div style={{ display:"flex", gap:10 }}>

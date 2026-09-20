@@ -24,10 +24,10 @@ const Garnish = ({ kind, x, y }) => {
       return (<g transform={`translate(${x} ${y}) rotate(-25)`}>
         <path d="M-17 0 A17 17 0 0 1 17 0 Z" fill={col[0]} /><path d="M-17 0 A17 17 0 0 1 17 0" stroke={col[1]} strokeWidth="2" fill="none" />
         <path d="M-14 -1 A14 14 0 0 1 14 -1 Z" fill="#FFF" fillOpacity="0.16" />
-        <g stroke="#FFF7DA" strokeOpacity="0.8" strokeWidth="1"><path d="M0 0 L-14 -1" /><path d="M0 0 L-9 -12" /><path d="M0 0 L0 -15" /><path d="M0 0 L9 -12" /><path d="M0 0 L14 -1" /></g>
+        <g stroke="#FFF6D8" strokeOpacity="0.8" strokeWidth="1"><path d="M0 0 L-14 -1" /><path d="M0 0 L-9 -12" /><path d="M0 0 L0 -15" /><path d="M0 0 L9 -12" /><path d="M0 0 L14 -1" /></g>
         <path d="M-15 -3 A17 17 0 0 1 -4 -16" stroke="#FFF" strokeOpacity="0.6" strokeWidth="1.4" fill="none" strokeLinecap="round" />
       </g>); }
-    case "cherry": return (<g><circle cx={x} cy={y} r="7" fill="#B8203A" /><circle cx={x - 2} cy={y - 2} r="2" fill="#FFF" fillOpacity="0.5" /><path d={`M${x} ${y - 7} q4 -12 12 -14`} stroke="#5E8A3A" strokeWidth="1.6" fill="none" /></g>);
+    case "cherry": return (<g><circle cx={x} cy={y} r="7" fill="#B22234" /><circle cx={x - 2} cy={y - 2} r="2" fill="#FFF" fillOpacity="0.5" /><path d={`M${x} ${y - 7} q4 -12 12 -14`} stroke="#5E8A3A" strokeWidth="1.6" fill="none" /></g>);
     case "olive": return (<g><circle cx={x} cy={y} r="6" fill="#6E8A3A" /><circle cx={x} cy={y} r="2" fill="#C8382E" /><path d={`M${x - 26} ${y - 22} L${x + 10} ${y + 6}`} stroke="#EFE4C8" strokeWidth="1.4" /></g>);
     case "onion": return (<g><circle cx={x} cy={y} r="5" fill="#F0E8D8" /><circle cx={x + 9} cy={y} r="5" fill="#F0E8D8" /><path d={`M${x - 26} ${y - 22} L${x + 14} ${y + 4}`} stroke="#EFE4C8" strokeWidth="1.4" /></g>);
     case "mint": return (<g transform={`translate(${x} ${y})`} fill="#5EA85A"><path d="M0 0 q-14 -6 -12 -22 q14 4 12 22z" /><path d="M0 0 q14 -8 10 -24 q-14 6 -10 24z" /><path d="M0 0 q2 -14 12 -18" stroke="#3F7A3A" strokeWidth="1" fill="none" /></g>);
@@ -43,7 +43,7 @@ const Garnish = ({ kind, x, y }) => {
         <path d={rib} stroke={col[2]} strokeOpacity="0.55" strokeWidth="2.2" fill="none" strokeLinecap="round" transform="translate(-2.4 -1.6)" />
         <path d={rib} stroke="#FFF" strokeOpacity="0.5" strokeWidth="1" fill="none" strokeLinecap="round" transform="translate(-3 -2.4)" strokeDasharray="14 10" />
       </g>); }
-    case "cream": return (<ellipse cx={x} cy={y} rx="32" ry="7" fill="#FFF8EA" fillOpacity="0.9" />);
+    case "cream": return (<ellipse cx={x} cy={y} rx="32" ry="7" fill="#FBF7EE" fillOpacity="0.9" />);
     case "salt": return (<g stroke="#FFF" strokeOpacity="0.85" strokeWidth="2.4" strokeDasharray="1.5 3"><path d={`M${x - 56} ${y + 2} Q${x} ${y + 14} ${x + 56} ${y + 2}`} fill="none" /></g>);
     default: return null;
   }
@@ -149,7 +149,7 @@ export function CocktailArt({ c, w = 200, light = false, fill = 1, showIce = tru
       {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-l)"} />}
       {showIce && <Ice c={c} g={g} uid={uid} />}
       {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-l)"} opacity="0.34" />}
-      {c.foam && lvl >= 0.99 ? <g clipPath={"url(#" + uid + "-c)"}><rect x="0" y="0" width="200" height={ry + 34} fill="#F6EEDC" fillOpacity="0.85" /></g> : null}
+      {c.foam && lvl >= 0.99 ? <g clipPath={"url(#" + uid + "-c)"}><rect x="0" y="0" width="200" height={ry + 34} fill="#F0E8D8" fillOpacity="0.85" /></g> : null}
       {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-lum)"} />}
       {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-shade)"} />}
       {lvl > 0 && <path d={g.liq} fill={"url(#" + uid + "-top)"} />}
@@ -232,7 +232,7 @@ export function VesselArt({ kind = "shaker", w = 120, light = false, fill = 0, l
   return (
     <svg viewBox="0 0 200 260" width={w} height={w * 1.3} style={{ display: "block", overflow: "visible", transformOrigin: "50% 92%", transform: tilt ? "rotate(-42deg) translate(16px,-10px)" : "none", transition: "transform .45s cubic-bezier(.3,1.2,.4,1)", animation: shake ? "saLabShake .8s ease-in-out" : "none" }}>
       <defs>
-        <linearGradient id={uid + "-m"} x1="0" x2="1"><stop offset="0" stopColor="#F2F3F7" stopOpacity="0.55" /><stop offset="0.18" stopColor="#8A8E99" stopOpacity="0.45" /><stop offset="0.42" stopColor="#F6F7FA" stopOpacity="0.6" /><stop offset="0.62" stopColor="#A9ADB8" stopOpacity="0.4" /><stop offset="0.85" stopColor="#5C606B" stopOpacity="0.55" /><stop offset="1" stopColor="#D9DCE3" stopOpacity="0.4" /></linearGradient>
+        <linearGradient id={uid + "-m"} x1="0" x2="1"><stop offset="0" stopColor="#F2F3F7" stopOpacity="0.55" /><stop offset="0.18" stopColor="#8A8E99" stopOpacity="0.45" /><stop offset="0.42" stopColor="#F2F3F7" stopOpacity="0.6" /><stop offset="0.62" stopColor="#A9ADB8" stopOpacity="0.4" /><stop offset="0.85" stopColor="#5C606B" stopOpacity="0.55" /><stop offset="1" stopColor="#D9DCE3" stopOpacity="0.4" /></linearGradient>
         <linearGradient id={uid + "-g"} x1="0" x2="1"><stop offset="0" stopColor={edge} stopOpacity="0.2" /><stop offset="0.12" stopColor={edge} stopOpacity="0.05" /><stop offset="0.5" stopColor={edge} stopOpacity="0.01" /><stop offset="0.86" stopColor={edge} stopOpacity="0.04" /><stop offset="1" stopColor={edge} stopOpacity="0.18" /></linearGradient>
         <linearGradient id={uid + "-e"} x1="0" x2="1"><stop offset="0" stopColor={edge} stopOpacity="0.9" /><stop offset="0.14" stopColor={edge} stopOpacity="0.06" /><stop offset="0.84" stopColor={edge} stopOpacity="0.04" /><stop offset="1" stopColor={edge} stopOpacity="0.55" /></linearGradient>
         <linearGradient id={uid + "-l"} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={mixed} stopOpacity="0.95" /><stop offset="1" stopColor={mixed} /></linearGradient>

@@ -69,23 +69,23 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
         <div style={T.lessHeadTitle}>Карта обучения</div>
       </div>
 
-      <div style={{ padding: "6px 16px 4px", color: T.modSub?.color, fontSize: 12, lineHeight: 1.55 }}>
+      <div style={{ padding: "6px 16px 4px", color: T.modSub?.color, fontSize: 12.5, lineHeight: 1.55 }}>
         Документ для личного дела. «Распечатать» откроет системный диалог — там же сохраняется в PDF.
       </div>
 
       {/* ── Лист-документ: всегда светлая «бумага» ── */}
       <div id="sa-print-card" style={{
         margin: "12px 14px 14px", padding: "22px 20px", borderRadius: 6,
-        background: "linear-gradient(170deg, #FBF5E8 0%, #F2E8D2 100%)",
+        background: "linear-gradient(170deg, #F5EFE2 0%, #F0E8D8 100%)",
         border: "1px solid rgba(139,106,48,0.45)",
         boxShadow: a11y ? "0 4px 16px rgba(120,85,25,0.22)" : "0 8px 26px rgba(0,0,0,0.5)",
         color: ink, fontFamily: "Georgia, 'Times New Roman', serif",
       }}>
         {/* Шапка документа */}
-        <div style={{ textAlign: "center", borderBottom: `2px solid ${gold}`, paddingBottom: 12, marginBottom: 14 }}>
+        <div style={{ textAlign: "center", borderBottom: `2px solid ${gold}`, paddingBottom: 12, marginBottom: 12 }}>
           <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 3, color: gold }}>✦ SERVICE ACADEMY ✦</div>
-          <div style={{ fontSize: 19, fontWeight: "bold", marginTop: 5 }}>Карта обучения сотрудника</div>
-          <div style={{ fontSize: 11, color: "#7A6548", marginTop: 3 }}>сформирована {today}</div>
+          <div style={{ fontSize: 18, fontWeight: "bold", marginTop: 4 }}>Карта обучения сотрудника</div>
+          <div style={{ fontSize: 11, color: "#7A6548", marginTop: 2 }}>сформирована {today}</div>
         </div>
 
         {/* Сотрудник */}
@@ -115,13 +115,13 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
         {/* Экзамены */}
         <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2.5, color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>ЭКЗАМЕНЫ И СЕРТИФИКАТЫ</div>
         {exams.length === 0
-          ? <div style={{ fontSize: 12, color: "#7A6548", marginBottom: 16 }}>Экзамены пока не сданы.</div>
+          ? <div style={{ fontSize: 12.5, color: "#7A6548", marginBottom: 16 }}>Экзамены пока не сданы.</div>
           : <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse", marginBottom: 16 }}><tbody>
               {exams.map(({ r, res, until, expired }) => (
                 <tr key={r.id} style={{ borderBottom: "1px solid rgba(139,106,48,0.15)" }}>
                   <td style={{ padding: "6px 0" }}>{r.label}</td>
                   <td style={{ padding: "6px 0", textAlign: "right", fontWeight: "bold", whiteSpace: "nowrap" }}>{res.score}%</td>
-                  <td style={{ padding: "6px 0 6px 12px", textAlign: "right", color: expired ? "#8B3020" : "#7A6548", fontSize: 11.5, whiteSpace: "nowrap" }}>
+                  <td style={{ padding: "6px 0 6px 12px", textAlign: "right", color: expired ? "#8B3020" : "#7A6548", fontSize: 11, whiteSpace: "nowrap" }}>
                     {fmtDate(res.date)}{until ? (expired ? " · срок истёк" : ` · до ${fmtDate(until)}`) : ""}
                   </td>
                 </tr>
@@ -131,8 +131,8 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
         {/* Допуски наставника */}
         <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2.5, color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>ДОПУСКИ НАСТАВНИКА</div>
         {confirmed.length === 0
-          ? <div style={{ fontSize: 12, color: "#7A6548", marginBottom: 16 }}>Подтверждённых навыков пока нет.</div>
-          : <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse", marginBottom: 16 }}><tbody>
+          ? <div style={{ fontSize: 12.5, color: "#7A6548", marginBottom: 16 }}>Подтверждённых навыков пока нет.</div>
+          : <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse", marginBottom: 16 }}><tbody>
               {confirmed.map(s => (
                 <tr key={s.id} style={{ borderBottom: "1px solid rgba(139,106,48,0.15)" }}>
                   <td style={{ padding: "5px 0", lineHeight: 1.35 }}>{s.label}</td>
@@ -145,17 +145,17 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
 
         {/* Подвал документа */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderTop: `2px solid ${gold}`, paddingTop: 10, marginTop: 4 }}>
-          <div style={{ fontSize: 10, color: "#7A6548", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 9, color: "#7A6548", lineHeight: 1.5 }}>
             Данные из приложения Service Academy.<br />Допуски с отметкой «PIN ✓» заверены наставником через сервер.
           </div>
-          <div style={{ fontFamily: "monospace", fontSize: 8.5, letterSpacing: 1.5, color: gold, border: `1px solid rgba(139,106,48,0.5)`, borderRadius: 8, padding: "4px 9px", transform: "rotate(-4deg)", flexShrink: 0 }}>SA · {today}</div>
+          <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.5, color: gold, border: `1px solid rgba(139,106,48,0.5)`, borderRadius: 9, padding: "4px 9px", transform: "rotate(-4deg)", flexShrink: 0 }}>SA · {today}</div>
         </div>
       </div>
 
       {/* Кнопка печати — на экране, но не на бумаге */}
       <div style={{ padding: "0 16px 26px" }} className="sa-no-print">
         <button className="sa-btn" onClick={doPrint} {...onActivate(doPrint)}
-          style={{ width: "100%", padding: "13px", borderRadius: 13, border: "none", background: `linear-gradient(135deg, ${GOLD}, #8B6A30)`, color: "#1A1008", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 15, cursor: "pointer" }}>
+          style={{ width: "100%", padding: "13px", borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${GOLD}, #8B6A30)`, color: "#1A1008", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 14, cursor: "pointer" }}>
           <span style={{ display: "inline-flex", verticalAlign: "-3px", marginRight: 8 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1A1008" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h10v6H7z"/><path d="M5 9h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/><path d="M7 15h10"/></svg>
           </span>Распечатать · сохранить в PDF

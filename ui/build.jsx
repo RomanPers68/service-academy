@@ -216,7 +216,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
             {(BUILD_SVG[garn.garnish] || BUILD_SVG.mint)(garn.garnish === "twist" ? (a11y ? "#A85A18" : "#E09A50") : (a11y ? "#4E7A32" : "#8FC471"), 26)}
           </div>
         )}
-        <div style={{ textAlign: "center", fontFamily: mono, fontSize: 8, letterSpacing: 1.6, color: P.sub, marginTop: 7, textTransform: "uppercase" }}>
+        <div style={{ textAlign: "center", fontFamily: mono, fontSize: 9, letterSpacing: 1.6, color: P.sub, marginTop: 6, textTransform: "uppercase" }}>
           {/* До первого решения имя бокала скрыто: первый вопрос коктейлей —
               «в чём подаёшь?», и подпись выдавала бы ответ. После ответа
               имя появляется как подтверждение выбора. */}
@@ -309,7 +309,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
     const ready = marks.has("ready") && !spoiled;
     return (
       <div className={"sa-bld-station" + (marks.has("clean") ? " clean" : "") + (spoiled ? " spoiled" : "")}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontFamily: mono, fontSize: 7, letterSpacing: 1.3, color: P.sub, marginBottom: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontFamily: mono, fontSize: 9, letterSpacing: 1.3, color: P.sub, marginBottom: 6 }}>
           <span>СТАНЦИЯ</span>
           <span style={{ color: ready ? GREEN : RED }}>{ready ? "ГОТОВА ✓" : "НЕ ГОТОВА"}</span>
         </div>
@@ -322,10 +322,10 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
         {["Рабочая", "Ближняя", "Дальняя"].map((nm, z) => (
           <div key={z} className={"sa-bld-zone" + (zones[z] ? " on" : "")}>
             <div className="sa-bld-zname">{nm}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
               {zones[z]
                 ? zones[z].map((c, i) => <span key={i} className="sa-bld-zchip">{c}</span>)
-                : <span style={{ fontSize: 8.5, color: "#5C5244", fontStyle: "italic" }}>пусто</span>}
+                : <span style={{ fontSize: 9, color: "#5C5244", fontStyle: "italic" }}>пусто</span>}
             </div>
           </div>
         ))}
@@ -460,10 +460,10 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
         const r = results[i];
         const c = r === true ? P.stepDone : r === false ? RED : (i === step && !done) ? (a11y ? "#8B6A30" : GOLD) : P.sub;
         return (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "5px 0", fontSize: 13, color: c }}>
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 12.5, color: c }}>
             <span style={{
               flex: "0 0 18px", height: 18, borderRadius: 6, display: "grid", placeItems: "center",
-              fontSize: 10, fontFamily: mono,
+              fontSize: 9, fontFamily: mono,
               background: r === true ? GREEN : r === false ? RED : "transparent",
               color: r == null ? CLAY : r ? "#0d2318" : "#2a0d0d",
               border: `1px solid ${r == null ? "rgba(200,169,110,0.3)" : "transparent"}`,
@@ -526,7 +526,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
   };
   const btn = {
     width: "100%", marginTop: 10, padding: 14, border: "none", borderRadius: RADIUS.md,
-    background: accent, color: INK_DEEP, fontFamily: serif, fontWeight: "bold", fontSize: 15, cursor: "pointer",
+    background: accent, color: INK_DEEP, fontFamily: serif, fontWeight: "bold", fontSize: 14, cursor: "pointer",
   };
   const ghost = { ...btn, background: "transparent", border: `1px solid ${accent}66`, color: accent, fontWeight: "normal" };
 
@@ -550,13 +550,13 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
               <span className="sa-bld-sealtop">{right} / {total}</span>
               <span className="sa-bld-sealtext">{verdict.label}</span>
             </div>
-            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 12 }}>шагов без ошибки</div>
-            <div style={{ fontSize: 17, letterSpacing: 4, marginTop: 10 }}>
+            <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 12 }}>шагов без ошибки</div>
+            <div style={{ fontSize: 16, letterSpacing: 4, marginTop: 10 }}>
               {[1, 2, 3].map(s => (
                 <span key={s} style={{ opacity: s <= stars ? 1 : 0.22, filter: s <= stars ? "none" : "grayscale(1)" }}>⭐</span>
               ))}
             </div>
-            <div style={{ fontFamily: mono, fontSize: 8.5, letterSpacing: 2, textTransform: "uppercase", color: P.faint, marginTop: 5 }}>
+            <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: P.faint, marginTop: 4 }}>
               лучший результат идёт в общий зачёт
             </div>
           </div>
@@ -569,8 +569,8 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
                 Что из этого получит гость
               </div>
               {missed.map((st, i) => (
-                <div key={i} style={{ display: "flex", gap: 9, padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: 13 }}>
-                  <span style={{ flex: "0 0 86px", color: GOLD_SOFT, fontSize: 11.5, paddingTop: 1 }}>{st.label}</span>
+                <div key={i} style={{ display: "flex", gap: 8, padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: 12.5 }}>
+                  <span style={{ flex: "0 0 86px", color: GOLD_SOFT, fontSize: 11, paddingTop: 1 }}>{st.label}</span>
                   <span style={{ color: P.costText, lineHeight: 1.45 }}>{st.cost}</span>
                 </div>
               ))}
@@ -616,7 +616,7 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
           <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: picked.ok ? GREEN : RED }}>
             {(picked.ok ? "🎯 " : "💡 ") + picked.fb}
             {!picked.ok && cur.cost && (
-              <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: a11y ? "#8B3020" : "#E8B5B5" }}>
+              <div style={{ marginTop: 8, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: a11y ? "#8B3020" : "#E8B5B5" }}>
                 Дойдёт до гостя так: {cur.cost}
               </div>
             )}
@@ -659,12 +659,12 @@ function Shell({ title, onClose, accent, T, children }) {
   return (
     <div className="sa-bld-buildwrap" style={{
       position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column",
-      background: T.a11y ? "#E8DEC8" : "linear-gradient(160deg,#14110A 0%,#1C1509 50%,#14110A 100%)",
+      background: T.a11y ? "#E8DEC8" : "linear-gradient(160deg,#1A1008 0%,#1A1008 50%,#1A1008 100%)",
       overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "44px 18px 4px" }}>
         <button className="sa-btn" style={{
-          background: "transparent", border: "none", color: accent, fontSize: 26,
+          background: "transparent", border: "none", color: accent, fontSize: 25,
           cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: serif,
         }} onClick={onClose} aria-label="Закрыть">‹</button>
         <div style={{ flex: 1 }}>
@@ -682,7 +682,7 @@ function Shell({ title, onClose, accent, T, children }) {
 function Eyebrow({ left, right, a11y }) {
   return (
     <div style={{
-      fontFamily: mono, fontSize: 9.5, letterSpacing: 3.5, textTransform: "uppercase",
+      fontFamily: mono, fontSize: 9, letterSpacing: 3.5, textTransform: "uppercase",
       color: a11y ? "#6B5B40" : MUTED_2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
     }}>
       <span>{left}</span>

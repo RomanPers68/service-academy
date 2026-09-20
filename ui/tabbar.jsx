@@ -106,7 +106,7 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
                   opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
                   {NAV_ICONS[tab.icon](lit ? accent : dim)}
                 </div>
-                <div style={{ fontSize:9.5, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
+                <div style={{ fontSize:9, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
                   whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
                   color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
                   transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>

@@ -20,7 +20,7 @@ import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
-import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
+import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { frostOf } from "./home-hubs";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 import { LiveDialogue } from "./screens-dialogue";
@@ -52,7 +52,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
       <div style={T.screen}>
         {Head}
         <div style={{ textAlign: "center", padding: "60px 24px", color: T.modSub.color }}>
-          <div style={{ fontSize: 44, marginBottom: 14 }}>🎉</div>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>
           <div style={{ ...T.bold, marginBottom: 6 }}>{waiting > 0 ? "Всё повторено по расписанию" : "Ошибок нет"}</div>
           <div style={{ fontSize: 14, lineHeight: 1.6 }}>
             {waiting > 0
@@ -79,7 +79,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
         <div style={{ ...T.secTitle, padding: "0 0 8px" }}>СЛАБЫЕ ТЕМЫ</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
           {weak.slice(0, 6).map(([name, n]) => (
-            <div key={name} style={{ ...T.modSub, fontSize: 12, padding: "5px 10px", borderRadius: 10, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", gap: 6 }}>
+            <div key={name} style={{ ...T.modSub, fontSize: 12.5, padding: "5px 10px", borderRadius: 9, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", gap: 6 }}>
               <span>{name}</span><b style={{ color: gold }}>{n}</b>
             </div>
           ))}
@@ -99,7 +99,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
           return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
         })}
         {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
-        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 14 }} onClick={next}>{pick === q.correct ? "Верно — убрать ✓" : "Дальше →"}</button>}
+        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={next}>{pick === q.correct ? "Верно — убрать ✓" : "Дальше →"}</button>}
       </div>
     </div>
   );
@@ -120,7 +120,7 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
     <div style={T.screen} className="sa-screen">
       <div style={T.homeHead}>
         <div style={T.homeTopRow}>
-          <div style={T.logoRow}><span style={{ color:role.color, fontSize:20 }}>✦</span><span style={T.logoText}>SERVICE ACADEMY</span></div>
+          <div style={T.logoRow}><span style={{ color:role.color, fontSize:21 }}>✦</span><span style={T.logoText}>SERVICE ACADEMY</span></div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center" }} onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
             <button style={T.changeRoleBtn} onClick={onChangeRole}>Сменить</button>
@@ -128,17 +128,81 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
         </div>
         <div style={{ ...T.homeRoleBadge, background:role.color+"22", borderColor:role.color+"66" }}>
           <span style={{ display:"inline-flex", alignItems:"center" }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
-          <span style={{ color:role.color, fontSize:15, fontWeight:"bold" }}>{role.label}</span>
-          <span style={{ color:"#c8b898", fontSize:12 }}>{role.sublabel}</span>
-          {role.beta && <span style={{ fontFamily:"monospace", fontSize:8.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+          <span style={{ color:role.color, fontSize:14, fontWeight:"bold" }}>{role.label}</span>
+          <span style={{ color:"#c8b898", fontSize:12.5 }}>{role.sublabel}</span>
+          {role.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
         </div>
       </div>
-      <div style={T.progCard}>
-        <div style={T.progTop}><span style={T.progLabel}>Прогресс</span><span style={{ ...T.progPct, color:role.color }}>{progress}%</span></div>
-        <div style={T.progBar}><div style={{ ...T.progFill, width:`${progress}%`, background:role.color }} /></div>
-        <div style={T.progSub}>{doneCount} из {totalLessons} разделов завершено{leftMins > 0 ? ` · осталось ≈ ${_fmtMins(leftMins)}` : " · программа пройдена 🎓"}</div>
+      {/* ── Точка входа ──────────────────────────────────────────────────
+          Раньше между человеком и уроком стояли три карточки одного веса:
+          прогресс, серия дней и настроение. У новичка все три пустые — 2 %,
+          ноль дней, настроение не отмечено, — и самым крупным пятном экрана
+          были семь пустых кружков серии. Урок при этом начинался за сгибом.
+          Теперь сверху одно яркое действие: раздел, на котором остановились.
+          Стекло с изморозью — та же рецептура, что у карточек графика,
+          разведённая по обеим темам. */}
+      {(() => {
+        const all = [...modules, ...customModules];
+        const nx = all.find(m => {
+          const tot = m.lessons.filter(l => l.type !== "result").length;
+          const dn = m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length;
+          return tot > 0 && dn < tot;
+        });
+        if (!nx) return null;
+        const mins = _fmtMins((nx.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0));
+        const started = nx.lessons.some(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id]));
+        const go = () => onModule(nx);
+        return (
+          <div onClick={go} {...onActivate(go)} className="sa-card"
+            style={{ margin:"6px 14px 10px", padding:"16px 15px", borderRadius:18, cursor:"pointer",
+              background: a11y
+                ? "linear-gradient(180deg,rgba(236,214,166,0.55),rgba(250,242,222,0.72))"
+                : "linear-gradient(180deg,rgba(214,178,102,0.20),rgba(214,178,102,0.06))",
+              border:`1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`,
+              borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.6)" : "rgba(226,190,120,0.5)"}`,
+              boxShadow: a11y
+                ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95)"
+                : "inset 0 0 20px rgba(255,240,205,0.09), inset 0 1px 0 rgba(255,255,255,0.14)" }}>
+            <div style={{ fontFamily:"monospace", fontSize:9, letterSpacing:2.4, textTransform:"uppercase",
+              color: a11y ? "#8B6A30" : GOLD, marginBottom:6 }}>
+              {started ? "продолжить" : "начать"} · {nx.tag} · ≈ {mins}
+            </div>
+            <div style={{ fontFamily:"Georgia, serif", fontSize:21, lineHeight:1.25, color: a11y ? "#2A2113" : "#EFE4C8" }}>{nx.title}</div>
+            {nx.subtitle ? (
+              <div style={{ fontSize:12.5, color: a11y ? "#6E5C3C" : "#9C8760", marginTop:4 }}>{nx.subtitle}</div>
+            ) : null}
+            <div style={{ marginTop:12, textAlign:"center", padding:"10px", borderRadius:999,
+              fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", color:"#2A1F0E",
+              background:"linear-gradient(180deg,#E4C88C,#C8A96E)" }}>
+              {started ? "Продолжить" : "Начать"}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Статус — одной строкой. Прогресс и серия это справка, а не действие:
+          двух карточек они не стоят, а полоска на 2 % в отдельной карточке
+          выглядела сломанной. */}
+      <div style={{ margin:"0 14px 12px", display:"flex", alignItems:"center", gap:10,
+        padding:"9px 13px", borderRadius:999,
+        border:`1px solid ${a11y ? "rgba(150,112,40,0.25)" : "rgba(145,108,40,0.28)"}`,
+        background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
+        boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(255,248,230,0.05)" }}>
+        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#8F7B57", flexShrink:0 }}>
+          {doneCount} из {totalLessons}
+        </span>
+        <span style={{ flex:1, height:4, borderRadius:999, overflow:"hidden",
+          background: a11y ? "rgba(120,90,30,0.14)" : "rgba(255,255,255,0.07)" }}>
+          <i style={{ display:"block", height:"100%", borderRadius:999,
+            width:`${Math.max(progress, progress > 0 ? 2 : 0)}%`, background:role.color }} />
+        </span>
+        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#8F7B57", flexShrink:0 }}>
+          {leftMins > 0 ? `≈ ${_fmtMins(leftMins)}` : "пройдено 🎓"}
+        </span>
+        {streak && streak.count > 0 ? (
+          <span style={{ fontSize:11.5, color: a11y ? "#8B6A30" : GOLD, flexShrink:0 }}>серия {streak.count}</span>
+        ) : null}
       </div>
-      <StreakCard streak={streak} a11y={a11y} />
       {mistakeBank.filter(m => !m.due || m.due <= Date.now()).length > 0 && onMistakes && (() => {
         const _g = a11y ? "#8B6A30" : GOLD;
         const _n = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
@@ -155,8 +219,6 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
           </div>
         );
       })()}
-      <MoodCheckCard a11y={a11y} />
-      {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && <TeamMoodCard a11y={a11y} />}
       <div style={T.secTitle}>Программа обучения</div>
       <div style={T.modList} className="sa-stagger">
         {[...modules, ...customModules].map((m) => {
@@ -175,13 +237,17 @@ export function HomeScreen({ role, modules, completed, quizDone = {}, progress, 
                 <div style={T.modSub}>{m.subtitle}</div>
               </div>
               <div style={T.modRight}>
-                <div style={{ color:pct===100?"#4CAF50":m.color, fontSize:13, fontWeight:"bold" }}>{pct===100?"✓":`${pct}%`}</div>
+                <div style={{ color:pct===100?"#4CAF50":m.color, fontSize:12.5, fontWeight:"bold" }}>{pct===100?"✓":`${pct}%`}</div>
                 <div style={T.modArrow}>›</div>
               </div>
             </div>
           );
         })}
       </div>
+      {/* Настроение и пульс команды — под списком. Штука приятная, но не то,
+          ради чего открывают приложение: наверху она отодвигала урок за сгиб. */}
+      <MoodCheckCard a11y={a11y} />
+      {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && <TeamMoodCard a11y={a11y} />}
     </div>
   );
 }
@@ -195,7 +261,7 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
         <button style={T.backBtn} onClick={onBack}>‹ Назад</button>
         <div style={{ marginBottom:10, display:"flex" }}>{MOD_SVG[mod.icon] ? MOD_SVG[mod.icon](mod.color, 38) : mod.icon}</div>
         <div style={{ fontSize:11, letterSpacing:3, color:"rgba(255,255,255,0.6)", marginBottom:4, fontFamily:"monospace" }}>{mod.tag}</div>
-        <div style={{ fontSize:23, fontWeight:"bold", color:"#fff", marginBottom:4 }}>{mod.title}</div>
+        <div style={{ fontSize:21, fontWeight:"bold", color:"#fff", marginBottom:4 }}>{mod.title}</div>
         <div style={{ fontSize:14, color:"rgba(255,255,255,0.6)" }}>{mod.subtitle}</div>
       </div>
       <div style={T.lessList} className="sa-stagger">
@@ -209,10 +275,10 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
                 {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz(GOLD, 15) : l.type==="dialogue" ? UI_SVG.dialog("#7FB0A0", 15) : l.type==="build" ? UI_SVG.shaker("#C89A6E", 15) : i+1}
               </div>
               <div style={{ ...T.lessInfo, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ ...T.lessTitle, marginBottom:0, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : l.type==="build" ? "#C89A6E" : T.lessTitle.color }}>
+                <div style={{ ...T.lessTitle, marginBottom:2, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : l.type==="build" ? "#C89A6E" : T.lessTitle.color }}>
                   {l.title}
                 </div>
-                {l.type === "lesson" && <div style={{ fontSize:10, letterSpacing:1, fontFamily:"monospace", color:typeColor[l.type], marginTop:2 }}>{typeMap[l.type]}</div>}
+                {l.type === "lesson" && <div style={{ fontSize:9, letterSpacing:1, fontFamily:"monospace", color:typeColor[l.type], marginTop:2 }}>{typeMap[l.type]}</div>}
               </div>
               <div style={T.lessArrow}>{l.type==="quiz" && quizDone[l.id] ? UI_SVG.trophy(GOLD, 16) : l.type==="quiz" && completed[l.id] ? "✓" : "›"}</div>
             </div>
@@ -227,14 +293,14 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
           const go = () => f.onGo && f.onGo();
           return (
             <div className="sa-card" style={{ ...frost, margin: "10px 16px 96px", padding: "14px 16px", borderRadius: 18 }}>
-              <div style={{ fontSize: 10.5, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 5 }}>{(f.eyebrow || "ПРОГРАММА РОЛИ ПРОЙДЕНА ✦").toUpperCase()}</div>
+              <div style={{ fontSize: 11, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 4 }}>{(f.eyebrow || "ПРОГРАММА РОЛИ ПРОЙДЕНА ✦").toUpperCase()}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: T.modTitle.color, lineHeight: 1.25 }}>{f.title || "Все уроки пройдены"}</div>
-                  {f.sub && <div style={{ fontSize: 12, color: T.modSub.color, marginTop: 3, lineHeight: 1.45 }}>{f.sub}</div>}
+                  <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: T.modTitle.color, lineHeight: 1.25 }}>{f.title || "Все уроки пройдены"}</div>
+                  {f.sub && <div style={{ fontSize: 12.5, color: T.modSub.color, marginTop: 2, lineHeight: 1.45 }}>{f.sub}</div>}
                 </div>
               </div>
-              {f.cta && <button className="sa-btn" onClick={go} style={{ marginTop: 12, width: "100%", border: "none", cursor: "pointer", padding: "12px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 14.5, fontWeight: "bold", boxShadow: "0 6px 18px rgba(214,178,102,0.32)" }}>{f.cta}</button>}
+              {f.cta && <button className="sa-btn" onClick={go} style={{ marginTop: 12, width: "100%", border: "none", cursor: "pointer", padding: "12px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", boxShadow: "0 6px 18px rgba(214,178,102,0.32)" }}>{f.cta}</button>}
               {f.secondary && <div onClick={(e) => { e.stopPropagation(); f.secondary.onGo && f.secondary.onGo(); }} style={{ marginTop: 10, fontSize: 12.5, color: goldA, cursor: "pointer" }}>{f.secondary.label} ›</div>}
             </div>
           );
@@ -249,13 +315,13 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
         // Доп. 203: компактно — одна строка: номер · название с подписью · капсула
         return (
           <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "10px 16px 96px", padding: "10px 12px 10px 12px", borderRadius: 18, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
+            <div style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9.5, letterSpacing: 1.5, color: goldA, fontFamily: "monospace", marginBottom: 2 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `ДАЛЬШЕ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: T.modTitle.color, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.lesson.title}</div>
-              <div style={{ fontSize: 11.5, color: T.modSub.color, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length}` : ""}</div>
+              <div style={{ fontSize: 9, letterSpacing: 1.5, color: goldA, fontFamily: "monospace", marginBottom: 2 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `ДАЛЬШЕ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.lesson.title}</div>
+              <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length}` : ""}</div>
             </div>
-            <span style={{ padding: "9px 14px", borderRadius: 999, flexShrink: 0, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.32)" }}>Перейти ›</span>
+            <span style={{ padding: "9px 14px", borderRadius: 999, flexShrink: 0, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.32)" }}>Перейти ›</span>
           </div>
         );
       })()}
@@ -319,10 +385,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         {next ? (
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px" }} onClick={onNext}>
             <span style={{ textAlign: "left", minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 10.5, letterSpacing: 1.4, opacity: 0.85, fontFamily: "monospace" }}>ПРОЙДЕНО ✓ · {next.other ? `ДАЛЬШЕ · ${next.mod.title}`.toUpperCase() : "ДАЛЕЕ"}</span>
+              <span style={{ display: "block", fontSize: 11, letterSpacing: 1.4, opacity: 0.85, fontFamily: "monospace" }}>ПРОЙДЕНО ✓ · {next.other ? `ДАЛЬШЕ · ${next.mod.title}`.toUpperCase() : "ДАЛЕЕ"}</span>
               <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70vw" }}>{next.lesson.title}{next.done ? " ✓" : ""}</span>
             </span>
-            <span style={{ fontSize: 20, flexShrink: 0 }}>›</span>
+            <span style={{ fontSize: 21, flexShrink: 0 }}>›</span>
           </button>
         ) : (
           <button className="sa-btn" style={{ ...T.doneBtn, background: color, width: "100%" }} onClick={onNext}>{next === null ? "Дальше ›" : "К модулю ›"}</button>
@@ -330,10 +396,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
         {skipped && (
           <div onClick={onSkipped} {...onActivate(onSkipped)} style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${color}44`, background: `${color}12`, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ color, flexShrink: 0, fontSize: 15 }}>⚑</span>
+            <span style={{ color, flexShrink: 0, fontSize: 14 }}>⚑</span>
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 10.5, letterSpacing: 1.4, color, fontFamily: "monospace" }}>{skipped.count > 1 ? `ПОЗАДИ ${skipped.count} НЕПРОЙДЕННЫХ` : "ПОЗАДИ ОСТАЛСЯ"}</span>
-              <span style={{ display: "block", fontSize: 13.5, color: T.modTitle.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{skipped.lesson.title}</span>
+              <span style={{ display: "block", fontSize: 11, letterSpacing: 1.4, color, fontFamily: "monospace" }}>{skipped.count > 1 ? `ПОЗАДИ ${skipped.count} НЕПРОЙДЕННЫХ` : "ПОЗАДИ ОСТАЛСЯ"}</span>
+              <span style={{ display: "block", fontSize: 14, color: T.modTitle.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{skipped.lesson.title}</span>
             </span>
             <span style={{ padding: "7px 12px", borderRadius: 999, border: `1px solid ${color}88`, color, fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", flexShrink: 0 }}>Пройти ›</span>
           </div>
@@ -477,13 +543,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div><button onClick={() => { dismissModeHint(); setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center", borderRadius: 12, animation: modeHint ? "pulse 2s infinite" : "none" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
           ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
           : GAME_SVG.cards(color, 17)}</button></div>
-        <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${cardMode ? Math.round(((cardIdx + 1) / cards.length) * 100) : scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:2 }} /></div>
+        <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${cardMode ? Math.round(((cardIdx + 1) / cards.length) * 100) : scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:3 }} /></div>
         {modeHint && (
           <div onClick={dismissModeHint} style={{ position: "absolute", top: 92, right: 10, zIndex: 30, maxWidth: 230, cursor: "pointer" }}>
             <div style={{ position: "absolute", top: -5, right: 16, width: 10, height: 10, transform: "rotate(45deg)", background: "rgba(46,34,14,0.97)", borderLeft: `1px solid ${GOLD}66`, borderTop: `1px solid ${GOLD}66` }} />
             <div style={{ background: "rgba(46,34,14,0.97)", border: `1px solid ${GOLD}66`, borderRadius: 12, padding: "9px 12px", boxShadow: "0 8px 22px rgba(0,0,0,0.5)" }}>
-              <div style={{ color: GOLD, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>Карточки ↔ лента</div>
-              <div style={{ color: "#BDB09A", fontSize: 11.5, lineHeight: 1.5, marginTop: 2 }}>Эта кнопка меняет вид урока. Твой выбор запомнится.</div>
+              <div style={{ color: GOLD, fontSize: 12.5, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>Карточки ↔ лента</div>
+              <div style={{ color: "#BDB09A", fontSize: 11, lineHeight: 1.5, marginTop: 2 }}>Эта кнопка меняет вид урока. Твой выбор запомнится.</div>
             </div>
           </div>
         )}
@@ -510,9 +576,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div style={{ position:"relative", zIndex:1 }}>
           {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
-            <div style={{ background: T.modCard?.background || "rgba(255,250,238,0.05)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:18, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>
+            <div style={{ background: T.modCard?.background || "rgba(255,250,238,0.05)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:16, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
-                <div style={{ fontSize:28 }}>💬</div>
+                <div style={{ fontSize:30 }}>💬</div>
                 <div style={{ flex:1 }}>
                   <div style={{ color: color || GOLD, fontSize: T.para?.fontSize || 15, fontWeight:"bold", fontFamily:"Georgia, serif" }}>В этом уроке есть живой диалог</div>
                 </div>
@@ -535,7 +601,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               return (
                 <div key={i} style={{ display:"flex", alignItems:"center", gap:12, margin:"14px 0 6px" }}>
                   <div style={{ flex:1, height:1, background:`linear-gradient(to right, transparent, ${color}55)` }} />
-                  <span style={{ fontSize:24, lineHeight:1 }}>{one}</span>
+                  <span style={{ fontSize:25, lineHeight:1 }}>{one}</span>
                   <div style={{ flex:1, height:1, background:`linear-gradient(to left, transparent, ${color}55)` }} />
                 </div>
               );
@@ -551,8 +617,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             };
             if (line.startsWith("•")) return <div key={i} style={T.bullet}>{inline(line, T.bullet)}</div>;
             const markerRow = (style, iconEl) => (
-              <div key={i} style={{ ...style, display:"flex", gap:9, alignItems:"flex-start" }}>
-                <span style={{ flexShrink:0, marginTop:3, display:"inline-flex" }}>{iconEl}</span>
+              <div key={i} style={{ ...style, display:"flex", gap:8, alignItems:"flex-start" }}>
+                <span style={{ flexShrink:0, marginTop:2, display:"inline-flex" }}>{iconEl}</span>
                 <span style={{ flex:1 }}>{highlightTerms(line.replace(MARKER_RE, "").replace(/\*\*/g, ""))}</span>
               </div>
             );
@@ -563,14 +629,14 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             if (line.startsWith("📌")) return markerRow(T.note, UI_SVG.pin(color, 14));
             const keycap = line.match(/^([1-9])️⃣/);
             if (keycap) return markerRow(T.principle,
-              <span style={{ width:19, height:19, borderRadius:10, border:`1.5px solid ${color}`, color, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10.5, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{keycap[1]}</span>);
+              <span style={{ width:19, height:19, borderRadius:9, border:`1.5px solid ${color}`, color, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{keycap[1]}</span>);
             const dotColor = { "🔵":"#5B8DD9", "🟢":GREEN, "🟡":"#D9C75B", "🟠":"#E0975B", "🔴":RED }[[...line][0]];
             if (dotColor) return markerRow(T.principle,
-              <span style={{ width:9, height:9, borderRadius:5, background:dotColor, marginTop:3, boxShadow:`0 0 8px ${dotColor}55`, display:"inline-block" }} />);
+              <span style={{ width:9, height:9, borderRadius:6, background:dotColor, marginTop:2, boxShadow:`0 0 8px ${dotColor}55`, display:"inline-block" }} />);
             if (line.startsWith("🌟")) return markerRow(T.principle,
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={GOLD} stroke={GOLD} strokeWidth="1" strokeLinejoin="round" style={{ marginTop:1 }}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 21.4l1.4-6.8L2.2 9.9l6.9-.8z"/></svg>);
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={GOLD} stroke={GOLD} strokeWidth="1" strokeLinejoin="round" style={{ marginTop:2 }}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 21.4l1.4-6.8L2.2 9.9l6.9-.8z"/></svg>);
             if (line.startsWith("🔹")) return markerRow(T.principle,
-              <span style={{ width:8, height:8, background:"#5B8DD9", transform:"rotate(45deg)", borderRadius:1, marginTop:4, boxShadow:"0 0 6px #5B8DD955", display:"inline-block" }} />);
+              <span style={{ width:8, height:8, background:"#5B8DD9", transform:"rotate(45deg)", borderRadius:3, marginTop:4, boxShadow:"0 0 6px #5B8DD955", display:"inline-block" }} />);
             if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
             return <div key={i} style={T.para}>{inline(line, T.para)}</div>;
           })}
@@ -579,16 +645,16 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {cardMode ? (
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0 0 6px", userSelect: "none" }}>
-                <span onClick={() => goCard(-1)} {...onActivate(() => goCard(-1))} style={{ color, opacity: cardIdx === 0 ? 0.22 : 0.8, fontSize: 24, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>‹</span>
+                <span onClick={() => goCard(-1)} {...onActivate(() => goCard(-1))} style={{ color, opacity: cardIdx === 0 ? 0.22 : 0.8, fontSize: 25, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>‹</span>
                 {cards.length <= 10
                   ? <div style={{ display: "flex", gap: 6, alignItems: "center" }}>{cards.map((_, i) => (
                       <span key={i} style={{ width: i === cardIdx ? 18 : 6, height: 6, borderRadius: 3, background: i === cardIdx ? color : color + "44", transition: "all .25s" }} />
                     ))}</div>
                   : <span style={{ color, fontSize: 12.5, fontFamily: "monospace", letterSpacing: 1 }}>{cardIdx + 1} / {cards.length}</span>}
-                <span onClick={() => goCard(1)} {...onActivate(() => goCard(1))} style={{ color, opacity: cardIdx === cards.length - 1 ? 0.22 : 0.8, fontSize: 24, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>›</span>
+                <span onClick={() => goCard(1)} {...onActivate(() => goCard(1))} style={{ color, opacity: cardIdx === cards.length - 1 ? 0.22 : 0.8, fontSize: 25, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>›</span>
               </div>
               {cardIdx === 0 && cards.length > 1 && (
-                <div style={{ textAlign: "center", color: T.modSub.color, fontSize: 12, fontStyle: "italic", opacity: 0.75, marginBottom: 8 }}>листай свайпом ← →</div>
+                <div style={{ textAlign: "center", color: T.modSub.color, fontSize: 12.5, fontStyle: "italic", opacity: 0.75, marginBottom: 8 }}>листай свайпом ← →</div>
               )}
               {cardIdx === cards.length - 1 && (done
                 ? <DoneNext />
@@ -611,25 +677,25 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             style={{ position:"fixed", inset:0, background:"transparent", zIndex:999 }}>
             <TapAnchored x={termPopup.x} y={termPopup.y} T={T}>
             <div onClick={e => e.stopPropagation()}
-              style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:20, padding:"20px 20px 24px", width:"100%", boxSizing:"border-box",
+              style={{ background: T.termPopupBg || "rgba(20,14,6,0.45)", borderRadius:18, padding:"20px 20px 24px", width:"100%", boxSizing:"border-box",
                 border:`1px solid ${color}55`, borderTop:`1px solid ${color}77`,
                 backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
                 boxShadow:`inset 0 0 20px ${T.a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.07)"}, inset 0 1px 0 ${T.a11y ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.12)"}, 0 8px 32px rgba(0,0,0,0.4)` }}>
-              <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:17, marginBottom:10 }}>
+              <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:16, marginBottom:10 }}>
                 <span style={{ display:"inline-flex", verticalAlign:"-2px", marginRight:7 }}>{UI_SVG.book(color, 16)}</span>{termPopup.term}
               </div>
-              <div style={{ color: T.a11y ? "#3A2E1C" : "#E8DCC4", fontSize:15, lineHeight:1.7, fontFamily:"Georgia, serif" }}>
+              <div style={{ color: T.a11y ? "#3A2E1C" : "#E8DEC8", fontSize:14, lineHeight:1.7, fontFamily:"Georgia, serif" }}>
                 {termPopup.def}
               </div>
               {DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()) && (
                 <div onClick={() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); }} {...onActivate(() => { setDialogueScreen(DIALOGUES_DATA.find(d => d.termKey === termPopup.term.toLowerCase()).id); setTermPopup(null); })}
-                  style={{ marginTop:14, padding:"11px 16px", borderRadius:12, background:color, cursor:"pointer",
+                  style={{ marginTop:12, padding:"11px 16px", borderRadius:12, background:color, cursor:"pointer",
                     textAlign:"center", color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold" }}>
                   Отработать на практике →
                 </div>
               )}
               <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
-                style={{ marginTop:10, textAlign:"center", color, fontSize:13, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
+                style={{ marginTop:10, textAlign:"center", color, fontSize:12.5, opacity:0.6, cursor:"pointer", fontFamily:"Georgia, serif" }}>
                 Закрыть ✕
               </div>
             </div>
@@ -681,12 +747,12 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           </div>
           <div style={{ flex:1, padding:"20px 18px 40px", overflowY:"auto" }}>
             <div style={{ textAlign:"center", marginBottom:20 }} className="sa-pop">
-              <div style={{ fontSize:56, marginBottom:6, letterSpacing:6 }}>
+              <div style={{ fontSize:54, marginBottom:6, letterSpacing:6 }}>
                 {[1,2,3].map(s => <span key={s} style={{ opacity:s<=stars?1:0.2, filter:s<=stars?"none":"grayscale(1)", transition:"opacity 0.3s, filter 0.3s" }}>⭐</span>)}
               </div>
-              <div style={{ color:color, fontSize:40, fontWeight:"bold", marginBottom:4 }}>{practiceState.score}</div>
-              <div style={{ color:T.modSub.color, fontSize:13, marginBottom:4 }}>очков</div>
-              <div style={{ color:T.para.color, fontSize:15, display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+              <div style={{ color:color, fontSize:36, fontWeight:"bold", marginBottom:4 }}>{practiceState.score}</div>
+              <div style={{ color:T.modSub.color, fontSize:12.5, marginBottom:4 }}>очков</div>
+              <div style={{ color:T.para.color, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 {stars===3 ? UI_SVG.trophy(GOLD, 16) : stars===2 ? ROLE_SVG.core(GOLD, 16) : UI_SVG.book(GOLD, 16)}
                 <span>{stars===3?"Мастер сервиса!":stars===2?"Хороший результат!":"Тренируйся ещё!"}</span>
               </div>
@@ -695,25 +761,25 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               {[{l:"Правильно",v:`${correct}/${total}`,c:GREEN},{l:"Жизни",v:`${practiceState.lives}❤️`,c:RED},{l:"Очков",v:practiceState.score,c:color}].map((s,i)=>(
                 <div key={i} style={{ flex:1, background:T.simOpt.background, borderRadius:14, padding:"10px 6px", textAlign:"center", border:`2px solid ${T.simOpt.border}` }}>
                   <div style={{ color:s.c, fontSize:18, fontWeight:"bold" }}>{s.v}</div>
-                  <div style={{ color:T.modSub.color, fontSize:10, marginTop:2 }}>{s.l}</div>
+                  <div style={{ color:T.modSub.color, fontSize:9, marginTop:2 }}>{s.l}</div>
                 </div>
               ))}
             </div>
-            <div style={{ marginBottom:14 }}>
+            <div style={{ marginBottom:12 }}>
               {situations.map((s,i) => practiceState.results[i]!==undefined && (
                 <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"8px 12px", background:practiceState.results[i]?"rgba(93,187,138,0.1)":"rgba(224,120,120,0.1)", borderRadius:12, marginBottom:6, border:`1px solid ${practiceState.results[i]?"#5DBB8A44":"#E0787844"}` }}>
-                  <div style={{ flexShrink:0, display:"flex", marginTop:1 }}>{practiceState.results[i] ? UI_SVG.checkCircle(GREEN, 16) : UI_SVG.xCircle(RED, 16)}</div>
+                  <div style={{ flexShrink:0, display:"flex", marginTop:2 }}>{practiceState.results[i] ? UI_SVG.checkCircle(GREEN, 16) : UI_SVG.xCircle(RED, 16)}</div>
                   <div style={{ flex:1 }}>
-                    <div style={{ color:T.modTitle.color, fontSize:12 }}>{s.emoji} {((t)=>t.length>45?t.slice(0,45)+"…":t)(s.scene||s.statement||"")}</div>
-                    <div style={{ color:practiceState.results[i]?GREEN:RED, fontSize:11, marginTop:1 }}>{((t)=>t.length>55?t.slice(0,55)+"…":t)((practiceState.results[i]?s.win:s.fail)||"")}</div>
+                    <div style={{ color:T.modTitle.color, fontSize:12.5 }}>{s.emoji} {((t)=>t.length>45?t.slice(0,45)+"…":t)(s.scene||s.statement||"")}</div>
+                    <div style={{ color:practiceState.results[i]?GREEN:RED, fontSize:11, marginTop:2 }}>{((t)=>t.length>55?t.slice(0,55)+"…":t)((practiceState.results[i]?s.win:s.fail)||"")}</div>
                   </div>
                 </div>
               ))}
             </div>
-            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:"rgba(255,255,255,0.12)", border:"1px solid rgba(255,255,255,0.2)", color:T.para.color, marginTop:0, marginBottom:10 }} onClick={restartGame}>
+            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:"rgba(255,255,255,0.12)", border:"1px solid rgba(255,255,255,0.2)", color:T.para.color, marginTop:2, marginBottom:10 }} onClick={restartGame}>
               🔄 Сыграть ещё раз
             </button>
-            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:0 }} onClick={onComplete}>
+            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:2 }} onClick={onComplete}>
               Продолжить →
             </button>
           </div>
@@ -747,16 +813,16 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div style={{ padding:"44px 18px 10px", background:"transparent" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
             <button style={T.backBtn2} onClick={onBack}>‹</button>
-            <div style={{ display:"flex", gap:3 }}>
+            <div style={{ display:"flex", gap:2 }}>
               {[1,2,3].map(h=><span key={h} style={{ fontSize:16, opacity:h<=practiceState.lives?1:0.2, transition:"opacity 0.3s" }}>❤️</span>)}
             </div>
-            <div style={{ background:"rgba(212,168,90,0.2)", borderRadius:20, padding:"4px 12px", border:"1px solid rgba(212,168,90,0.4)" }}>
-              <span style={{ color:GOLD_SOFT, fontSize:13, fontWeight:"bold" }}>⭐ {practiceState.score}</span>
+            <div style={{ background:"rgba(212,168,90,0.2)", borderRadius:18, padding:"4px 12px", border:"1px solid rgba(212,168,90,0.4)" }}>
+              <span style={{ color:GOLD_SOFT, fontSize:12.5, fontWeight:"bold" }}>⭐ {practiceState.score}</span>
             </div>
           </div>
-          <div style={{ display:"flex", gap:3 }}>
+          <div style={{ display:"flex", gap:2 }}>
             {situations.map((_,i)=>(
-              <div key={i} style={{ flex:1, height:3, borderRadius:2, background:i<practiceState.step?GREEN:i===practiceState.step?color:"rgba(200,169,110,0.18)", transition:"background 0.3s" }} />
+              <div key={i} style={{ flex:1, height:3, borderRadius:3, background:i<practiceState.step?GREEN:i===practiceState.step?color:"rgba(200,169,110,0.18)", transition:"background 0.3s" }} />
             ))}
           </div>
         </div>
@@ -765,7 +831,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {/* Комбо */}
           {practiceState.combo>=2 && (
             <div style={{ textAlign:"center", marginBottom:8 }} className="sa-fast">
-              <span style={{ background:`linear-gradient(135deg,#D4A85A,#E8C070)`, borderRadius:20, padding:"3px 14px", fontSize:11, fontWeight:"bold", color:"#fff" }}>
+              <span style={{ background:`linear-gradient(135deg,#D2A85A,#E8C56A)`, borderRadius:18, padding:"3px 14px", fontSize:11, fontWeight:"bold", color:"#fff" }}>
                 🔥 КОМБО x{practiceState.combo}! +20
               </span>
             </div>
@@ -773,21 +839,21 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
 
           {/* Жанр-бейдж */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <span style={{ background:`${gm.color}22`, borderRadius:20, padding:"3px 12px", fontSize:10, fontFamily:"monospace", letterSpacing:1, color:gm.color, border:`1px solid ${gm.color}44`, display:"inline-flex", alignItems:"center", gap:5 }}>
+            <span style={{ background:`${gm.color}22`, borderRadius:18, padding:"3px 12px", fontSize:9, fontFamily:"monospace", letterSpacing:1, color:gm.color, border:`1px solid ${gm.color}44`, display:"inline-flex", alignItems:"center", gap:4 }}>
               {gm.gicon === "bolt" ? MOD_SVG["⚡"](gm.color, 11) : gm.gicon === "link" ? MOD_SVG["🔗"](gm.color, 11) : GAME_SVG[gm.gicon] ? GAME_SVG[gm.gicon](gm.color, 11) : null}{gm.label}
             </span>
             <span style={{ color:T.modSub.color, fontSize:11, fontFamily:"monospace" }}>{practiceState.step+1}/{situations.length}</span>
           </div>
 
           {/* Эмодзи */}
-          <div style={{ fontSize:42, textAlign:"center", marginBottom:10 }} className="sa-pop">{sit.emoji}</div>
+          <div style={{ fontSize:44, textAlign:"center", marginBottom:10 }} className="sa-pop">{sit.emoji}</div>
 
           {/* ── ЖАНР: TRUE/FALSE ── */}
           {genre==="truefalse" && (
             <>
-              <div style={{ background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(255,250,238,0.05)", borderRadius:16, padding:"16px", marginBottom:14, border: T.a11y ? "1px solid rgba(139,106,48,0.3)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
-                <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:6 }}>УТВЕРЖДЕНИЕ</div>
-                <div style={{ color:T.para.color, fontSize:15, lineHeight:1.7, fontStyle:"italic" }}>«{sit.statement}»</div>
+              <div style={{ background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(255,250,238,0.05)", borderRadius:14, padding:"16px", marginBottom:12, border: T.a11y ? "1px solid rgba(139,106,48,0.3)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
+                <div style={{ color:T.modSub.color, fontSize:9, letterSpacing:2, fontFamily:"monospace", marginBottom:6 }}>УТВЕРЖДЕНИЕ</div>
+                <div style={{ color:T.para.color, fontSize:14, lineHeight:1.7, fontStyle:"italic" }}>«{sit.statement}»</div>
               </div>
               <div style={{ display:"flex", gap:10, marginBottom:10 }}>
                 {[{label:"Верно",gicon:"check",val:true,bg:"rgba(93,187,138,0.15)",bc:GREEN},{label:"Неверно",gicon:"x",val:false,bg:"rgba(224,120,120,0.15)",bc:RED}].map((btn,i)=>{
@@ -798,8 +864,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                   let bc = answered?(chosen&&i===sit.correct?GREEN:chosen&&i!==sit.correct?RED:!chosen&&i===sit.correct&&userWrong?GREEN:neutralBC):neutralBC;
                   return (
                     <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))}
-                      style={{ flex:1, background:bg, border:`2px solid ${bc}`, borderRadius:16, padding:"16px 10px", textAlign:"center", color:T.para.color, fontSize:16, fontWeight:"bold", cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>
-                      <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:7 }}>{btn.gicon === "check" ? UI_SVG.checkCircle(btn.bc, 16) : UI_SVG.xCircle(btn.bc, 16)}{btn.label}</span>
+                      style={{ flex:1, background:bg, border:`2px solid ${bc}`, borderRadius:14, padding:"16px 10px", textAlign:"center", color:T.para.color, fontSize:16, fontWeight:"bold", cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>
+                      <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6 }}>{btn.gicon === "check" ? UI_SVG.checkCircle(btn.bc, 16) : UI_SVG.xCircle(btn.bc, 16)}{btn.label}</span>
                     </div>
                   );
                 })}
@@ -810,9 +876,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {/* ── ЖАНР: COMPLETE (собери правило) ── */}
           {genre==="complete" && (
             <>
-              <div style={{ ...T.simScen, borderRadius:16, padding:"14px", marginBottom:14 }}>
-                <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:6 }}>НАЧАЛО ПРАВИЛА</div>
-                <div style={{ color:T.para.color, fontSize:15, lineHeight:1.7 }}>{sit.start} <span style={{ color:gm.color }}>___?</span></div>
+              <div style={{ ...T.simScen, borderRadius:14, padding:"14px", marginBottom:12 }}>
+                <div style={{ color:T.modSub.color, fontSize:9, letterSpacing:2, fontFamily:"monospace", marginBottom:6 }}>НАЧАЛО ПРАВИЛА</div>
+                <div style={{ color:T.para.color, fontSize:14, lineHeight:1.7 }}>{sit.start} <span style={{ color:gm.color }}>___?</span></div>
               </div>
               <div style={{ color:T.bold.color, fontSize:14, fontWeight:"bold", marginBottom:10 }}>Выбери правильное продолжение:</div>
               {sit.options.map((opt,i)=>{
@@ -822,7 +888,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 let bc = neutralBC;
                 let tc = T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -830,13 +896,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {/* ── ЖАНР: EMPATHY (роль гостя) ── */}
           {genre==="empathy" && (
             <>
-              <div className="sa-fast" style={{ ...T.simScen, background:"rgba(200,169,110,0.12)", borderRadius:16, padding:"14px", marginBottom:6, border:"1px solid rgba(200,169,110,0.25)" }}>
-                <div style={{ color:GOLD_SOFT, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{GAME_SVG.thought(GOLD_SOFT, 13)}<span>МЫСЛИ ГОСТЯ</span></div>
+              <div className="sa-fast" style={{ ...T.simScen, background:"rgba(200,169,110,0.12)", borderRadius:14, padding:"14px", marginBottom:6, border:"1px solid rgba(200,169,110,0.25)" }}>
+                <div style={{ color:GOLD_SOFT, fontSize:9, letterSpacing:2, fontFamily:"monospace", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{GAME_SVG.thought(GOLD_SOFT, 13)}<span>МЫСЛИ ГОСТЯ</span></div>
                 <div style={{ color:T.para.color, fontSize:14, lineHeight:1.7, fontStyle:"italic" }}>«{sit.guestThought}»</div>
               </div>
-              <div className="sa-fast" style={{ ...T.simScen, borderRadius:14, padding:"12px", marginBottom:14, animationDelay:"0.08s" }}>
-                <div style={{ color:T.modSub.color, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:4 }}>СИТУАЦИЯ</div>
-                <div style={{ color:T.para.color, fontSize:13, lineHeight:1.65 }}>{sit.scene}</div>
+              <div className="sa-fast" style={{ ...T.simScen, borderRadius:14, padding:"12px", marginBottom:12, animationDelay:"0.08s" }}>
+                <div style={{ color:T.modSub.color, fontSize:9, letterSpacing:2, fontFamily:"monospace", marginBottom:4 }}>СИТУАЦИЯ</div>
+                <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.65 }}>{sit.scene}</div>
               </div>
               <div className="sa-fast" style={{ color:T.bold.color, fontSize:14, fontWeight:"bold", marginBottom:10, animationDelay:"0.14s" }}>{sit.question}</div>
               {sit.options.map((opt,i)=>{
@@ -844,7 +910,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -852,19 +918,19 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {/* ── ЖАНРЫ: ACTION / FIND / TIMER ── */}
           {(genre==="action"||genre==="find"||genre==="timer") && (
             <>
-              <div className="sa-fast" style={{ ...T.simScen, borderRadius:16, padding:"14px", marginBottom:12 }}>
+              <div className="sa-fast" style={{ ...T.simScen, borderRadius:14, padding:"14px", marginBottom:12 }}>
                 {genre==="timer" && !answered && (
                   <TimerBar key={`timer-${practiceState.step}`} duration={12} color={color} onExpire={()=>wrappedPracticeChoice(-1)} />
                 )}
                 <div style={{ color:T.para.color, fontSize:14, lineHeight:1.75 }}>{sit.scene}</div>
               </div>
-              <div className="sa-fast" style={{ color:T.bold.color, fontSize:15, fontWeight:"bold", marginBottom:12, animationDelay:"0.1s" }}>{sit.question}</div>
+              <div className="sa-fast" style={{ color:T.bold.color, fontSize:14, fontWeight:"bold", marginBottom:12, animationDelay:"0.1s" }}>{sit.question}</div>
               {sit.options.map((opt,i)=>{
                 const chosen = practiceState.choice===i;
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color,prefix="";
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";prefix="❌ ";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:13, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
               })}
             </>
           )}
@@ -877,13 +943,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 <div style={{ fontSize:18, marginBottom:4 }}>
                   {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock(RED, 15)}Время вышло!</span> : isCorrectAnswer ? `🎉 +${practiceState.combo>=2?20:10} очков!` : `😬 −1 ❤️ (осталось ${practiceState.lives})`}
                 </div>
-                <div style={{ color:isCorrectAnswer?GREEN:RED, fontSize:13, lineHeight:1.6 }}>
+                <div style={{ color:isCorrectAnswer?GREEN:RED, fontSize:12.5, lineHeight:1.6 }}>
                   {isCorrectAnswer ? sit.win : sit.fail||"Попробуй ещё раз в следующем раунде!"}
                 </div>
               </div>
               {sayPhrase && <SayAloud phrase={sayPhrase} T={T} color={color} />}
-              <button ref={nextBtnRef} className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:0 }} onClick={onPracticeNext}>
-                {practiceState.step+1<situations.length?"Дальше →":<span style={{ display:"inline-flex", alignItems:"center", gap:7 }}>Финиш {GAME_SVG.flag("currentColor", 14)}</span>}
+              <button ref={nextBtnRef} className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:2 }} onClick={onPracticeNext}>
+                {practiceState.step+1<situations.length?"Дальше →":<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>Финиш {GAME_SVG.flag("currentColor", 14)}</span>}
               </button>
             </div>
           )}
@@ -905,7 +971,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div style={T.resultWrap}>
               <div className="sa-pop" style={{ ...T.resultCircle, borderColor:color }}>
                 <span style={{ ...T.resultScore, color }}>{score}/{lesson.questions.length}</span>
-                <span style={{ color:"#a09080", fontSize:12 }}>правильно</span>
+                <span style={{ color:"#a09080", fontSize:12.5 }}>правильно</span>
               </div>
               <div style={T.resultTxt}>
                 {quizState.blocked?"Тест завершён — много ошибок. Перечитай уроки и попробуй снова!":
@@ -919,7 +985,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 {wrongAnswers.map((a,i) => (
                   <div key={i} style={{ background:T.progCard.background, borderRadius:14, padding:"14px 16px", marginBottom:12, border:`1px solid ${color}44` }}>
                     <div style={{ ...T.para, fontWeight:"bold", marginBottom:8 }}>{a.question.q}</div>
-                    {a.question.img && <img src={a.question.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:150, objectFit:"cover", borderRadius:10, display:"block", marginBottom:8 }} />}
+                    {a.question.img && <img src={a.question.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:150, objectFit:"cover", borderRadius:9, display:"block", marginBottom:8 }} />}
                     <div style={{ ...T.bad, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}><Mm id="thumbs_down" size={36}/> Твой ответ: {a.question.options[a.idx]}</div>
                     <div style={{ ...T.good, marginBottom:8, display:"flex", alignItems:"center", gap:8 }}><Mm id="thumbs_up" size={36}/> Правильно: {a.question.options[a.question.correct]}</div>
                     <div style={{ ...T.note, fontStyle:"normal", borderLeft:`2px solid ${color}`, paddingLeft:10 }}>{a.question.explanation}</div>
@@ -998,23 +1064,23 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           placeholder="Поиск термина..."
           style={{ width:"100%", padding:"10px 14px", borderRadius:12, border:`1px solid ${color}44`,
             background: T.modCard?.background || "rgba(255,255,255,0.05)",
-            color: T.para?.color || CREAM, fontSize:15, fontFamily:"Georgia, serif",
+            color: T.para?.color || CREAM, fontSize:14, fontFamily:"Georgia, serif",
             outline:"none", boxSizing:"border-box", marginBottom:12 }}
         />
         <div style={{ marginBottom:10 }}>
           <LiquidSegment a11y={a11y} equal={false} scroll accent={color}
-            itemStyle={{ fontSize:12, padding:"7px 12px" }}
+            itemStyle={{ fontSize:12.5, padding:"7px 12px" }}
             items={cats.map(c => ({ id:c, label:c }))}
             activeId={cat}
             onSelect={setCat} />
         </div>
         <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
           <button onClick={() => setFavOnly(v => !v)} aria-pressed={favOnly}
-            style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:20, cursor:"pointer",
+            style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:18, cursor:"pointer",
               border:`1px solid ${color}${favOnly ? "" : "55"}`,
               background: favOnly ? color : "transparent",
               color: favOnly ? "#1A1008" : (T.para?.color || "#C8B898"),
-              fontSize:13, fontFamily:"Georgia, serif", fontWeight:"bold", transition:"all 0.15s" }}>
+              fontSize:12.5, fontFamily:"Georgia, serif", fontWeight:"bold", transition:"all 0.15s" }}>
             {favOnly ? "★" : "☆"} Только избранное
           </button>
         </div>
@@ -1025,7 +1091,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           // Заголовок раздела — перед первым термином каждой категории
           const showCat = g.cat && (i === 0 || filtered[i - 1].cat !== g.cat);
           const catHeader = showCat && (
-            <div key={"cat_" + g.cat} style={{ fontFamily:"monospace", color: color || GOLD, fontSize:10, letterSpacing:2.5, textTransform:"uppercase", margin: i === 0 ? "2px 2px 10px" : "22px 2px 10px", opacity:0.85, display:"flex", alignItems:"center", gap:8 }}>
+            <div key={"cat_" + g.cat} style={{ fontFamily:"monospace", color: color || GOLD, fontSize:9, letterSpacing:2.5, textTransform:"uppercase", margin: i === 0 ? "2px 2px 10px" : "22px 2px 10px", opacity:0.85, display:"flex", alignItems:"center", gap:8 }}>
               <span>{g.cat}</span>
               <span style={{ flex:1, height:1, background:`${color || GOLD}33` }} />
             </div>
@@ -1039,38 +1105,38 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           {catHeader}
           <div style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, width:"100%" }}>
-              <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15, flex:1 }}>{g.term}</div>
+              <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, flex:1 }}>{g.term}</div>
               <button onClick={() => onToggleFav(k)} aria-label={fav ? "Убрать из избранного" : "В избранное"} title={fav ? "Убрать из избранного" : "В избранное"}
-                style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, lineHeight:1, padding:"0 2px", color: fav ? color : (a11y ? "#9A8A6A" : "#6B5E48") }}>
+                style={{ background:"none", border:"none", cursor:"pointer", fontSize:21, lineHeight:1, padding:"0 2px", color: fav ? color : (a11y ? "#9A8A6A" : "#6B5E48") }}>
                 {fav ? "★" : "☆"}
               </button>
             </div>
-            <div style={{ ...T.modSub, color: a11y ? "#3A2A0E" : "#C8B898", fontSize:14, lineHeight:1.6 }}>{g.def}</div>
+            <div style={{ ...T.modSub, color: a11y ? "#3A2C10" : "#C8B898", fontSize:14, lineHeight:1.6 }}>{g.def}</div>
             {/* Заметка: не обязательна — появляется только по кнопке */}
             {editingNote === k ? (
               <div style={{ width:"100%" }}>
                 <textarea autoFocus value={note} onChange={e => onSetNote(k, e.target.value)} placeholder="Моя заметка..." rows={2}
-                  style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px solid ${color}55`,
+                  style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:9, border:`1px solid ${color}55`,
                     background: T.modCard?.background || "rgba(255,255,255,0.04)", color: T.para?.color || "#F0E8D8",
                     fontSize:16, fontFamily:"Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />
-                <div style={{ display:"flex", justifyContent:"flex-end", gap:14, marginTop:6, width:"100%" }}>
+                <div style={{ display:"flex", justifyContent:"flex-end", gap:12, marginTop:6, width:"100%" }}>
                   {note && (
                     <button onClick={() => { onSetNote(k, ""); setEditingNote(null); }}
-                      style={{ background:"none", border:"none", cursor:"pointer", color: a11y ? "#8A5A3A" : "#B07A6A", fontSize:13, fontFamily:"Georgia, serif", padding:"4px 2px" }}>
+                      style={{ background:"none", border:"none", cursor:"pointer", color: a11y ? "#8A5A3A" : "#B07A6A", fontSize:12.5, fontFamily:"Georgia, serif", padding:"4px 2px" }}>
                       Удалить
                     </button>
                   )}
                   <button onClick={() => setEditingNote(null)}
-                    style={{ background:"none", border:"none", cursor:"pointer", color: color || GOLD, fontSize:13, fontFamily:"Georgia, serif", fontWeight:"bold", padding:"4px 2px" }}>
+                    style={{ background:"none", border:"none", cursor:"pointer", color: color || GOLD, fontSize:12.5, fontFamily:"Georgia, serif", fontWeight:"bold", padding:"4px 2px" }}>
                     Готово
                   </button>
                 </div>
               </div>
             ) : note ? (
               <div onClick={() => setEditingNote(k)} {...onActivate(() => setEditingNote(k))}
-                style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:10, border:`1px dashed ${color}44`,
+                style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:9, border:`1px dashed ${color}44`,
                   color: T.para?.color || "#F0E8D8", fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.5, cursor:"pointer", whiteSpace:"pre-wrap", boxSizing:"border-box" }}>
-                <span style={{ display:"block", fontSize:10, letterSpacing:1, opacity:0.55, marginBottom:3 }}>✎ МОЯ ЗАМЕТКА</span>
+                <span style={{ display:"block", fontSize:9, letterSpacing:1, opacity:0.55, marginBottom:2 }}>✎ МОЯ ЗАМЕТКА</span>
                 {note}
               </div>
             ) : (
@@ -1083,7 +1149,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           </React.Fragment>
           );
         })}
-        <div style={{ ...T.para, textAlign:"center", opacity:0.4, fontSize:12, marginTop:8 }}>{GLOSSARY.length} терминов</div>
+        <div style={{ ...T.para, textAlign:"center", opacity:0.4, fontSize:12.5, marginTop:8 }}>{GLOSSARY.length} терминов</div>
       </div>
     </div>
   );

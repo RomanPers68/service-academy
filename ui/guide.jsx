@@ -77,7 +77,7 @@ const GUIDE = [
 export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
   const gold = a11y ? "#8B6A30" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
-  const sub = T.modSub?.color || (a11y ? "#6B5A3E" : "#9C8760");
+  const sub = T.modSub?.color || (a11y ? "#6B5B40" : "#9C8760");
   const staff = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
   const admin = !!profile?.is_admin;
   const [open, setOpen] = React.useState(null);
@@ -92,33 +92,33 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
         <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад"
-          style={{ border: "none", background: "transparent", color: gold, fontSize: 22, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+          style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div>
-          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold }}>ГИД ПО ПРИЛОЖЕНИЮ</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 24, color: text, lineHeight: 1.15 }}>Что где и зачем</div>
+          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>ГИД ПО ПРИЛОЖЕНИЮ</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>Что где и зачем</div>
         </div>
       </div>
       <div style={{ padding: "4px 16px 100px" }}>
-        <div style={{ fontSize: 13, color: sub, lineHeight: 1.5, marginBottom: 14 }}>Тапни пункт — раскроется объяснение и кнопка «Открыть». Список всегда здесь, во вкладке «Я».</div>
+        <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginBottom: 12 }}>Тапни пункт — раскроется объяснение и кнопка «Открыть». Список всегда здесь, во вкладке «Я».</div>
         {GUIDE.map(sec => {
           const items = sec.items.filter(it => (!it.staff || staff) && (!it.admin || admin));
           if (!items.length) return null;
           return (
-            <div key={sec.tab} style={{ marginBottom: 18 }}>
-              <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.6, color: gold, margin: "0 2px 8px" }}>{sec.tab.toUpperCase()}</div>
+            <div key={sec.tab} style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.6, color: gold, margin: "0 2px 8px" }}>{sec.tab.toUpperCase()}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {items.map(it => {
                   const isOpen = open === it.key;
                   const toggle = () => { vibrate("light"); setOpen(isOpen ? null : it.key); };
                   return (
-                    <div key={it.key} style={{ ...frost, borderRadius: 16, overflow: "hidden" }}>
+                    <div key={it.key} style={{ ...frost, borderRadius: 14, overflow: "hidden" }}>
                       <div onClick={toggle} {...onActivate(toggle)} aria-expanded={isOpen} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
                         <div style={{ flex: 1, fontFamily: "Georgia, serif", fontSize: 16, color: text }}>{it.title}</div>
                         <span style={{ color: gold, fontSize: 18, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .3s cubic-bezier(.25,.8,.25,1)" }}>›</span>
                       </div>
                       {isOpen && (
                         <div className="sa-fadein" style={{ padding: "0 14px 12px" }}>
-                          <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.6 }}>{it.text}</div>
+                          <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>{it.text}</div>
                           {it.go && onOpen && (
                             <button className="sa-btn" onClick={() => { vibrate("light"); onOpen(it.go); }}
                               style={{ marginTop: 10, border: `1px solid ${gold}88`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", borderRadius: 12, padding: "8px 14px", cursor: "pointer" }}>

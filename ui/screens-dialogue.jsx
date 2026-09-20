@@ -238,7 +238,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         </div>
         <button className="sa-btn" onClick={onClose}
           style={{ padding:"10px 18px", borderRadius:12, cursor:"pointer", border:"1px solid rgba(200,160,80,0.4)",
-            background:"transparent", color:"#C8A96E", fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold" }}>
+            background:"transparent", color:"#C8A96E", fontFamily:"Georgia, serif", fontSize:12.5, fontWeight:"bold" }}>
           Закрыть
         </button>
       </div>
@@ -248,14 +248,14 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
     <div className="sa-dlg" style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column", justifyContent:"flex-end",
       background: visible ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0)",
       transition:"background 0.8s ease" }}>
-      <div className="sa-dlgpath" style={{ background: T.a11y ? "rgba(250,242,222,0.92)" : "rgba(28,20,8,0.92)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", borderRadius:24, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border: T.a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(255,255,255,0.16)", boxShadow: T.a11y ? "inset 0 0 26px rgba(255,250,235,0.6), inset 0 1px 0 rgba(255,252,240,0.9), 0 8px 32px rgba(70,50,15,0.3)" : "inset 0 0 26px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.14), 0 8px 32px rgba(0,0,0,0.5)", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
+      <div className="sa-dlgpath" style={{ background: T.a11y ? "rgba(250,242,222,0.92)" : "rgba(28,20,8,0.92)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", borderRadius:22, height:"82vh", maxHeight:"82vh", display:"flex", flexDirection:"column", border: T.a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(255,255,255,0.16)", boxShadow: T.a11y ? "inset 0 0 26px rgba(255,250,235,0.6), inset 0 1px 0 rgba(255,252,240,0.9), 0 8px 32px rgba(70,50,15,0.3)" : "inset 0 0 26px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.14), 0 8px 32px rgba(0,0,0,0.5)", margin:"0 16px calc(72px + env(safe-area-inset-bottom, 0px))",
         transform: visible ? "translateY(0)" : "translateY(120%)",
         transition:"transform 1.1s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Header */}
       <div style={{ padding:"12px 14px 10px", background:`linear-gradient(135deg, ${dColor}18, transparent)`, borderBottom:`1px solid ${dColor}22` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-          <button onClick={() => onClose(done && !walkedOut)} style={{ background:"none", border:"none", color:BROWN, fontSize:22, cursor:"pointer", padding:0 }}>✕</button>
-          <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`${dColor}1e`, border:`1px solid ${dColor}55`, display:"flex", alignItems:"center", justifyContent:"center", color:dColor, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{(dialogue.guest.name || "?").trim()[0].toUpperCase()}</div>
+          <button onClick={() => onClose(done && !walkedOut)} style={{ background:"none", border:"none", color:BROWN, fontSize:21, cursor:"pointer", padding:0 }}>✕</button>
+          <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`${dColor}1e`, border:`1px solid ${dColor}55`, display:"flex", alignItems:"center", justifyContent:"center", color:dColor, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14 }}>{(dialogue.guest.name || "?").trim()[0].toUpperCase()}</div>
           <div style={{ flex:1 }}>
             <div style={{ color: T.modTitle?.color || CREAM, fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
             <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
@@ -264,29 +264,29 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         </div>
         {/* Mood bar */}
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ fontSize:15, transition:"all 0.5s" }}>{MOOD_EMOJI_D[moodC-1]}</div>
-          <div style={{ flex:1, height:3, background:"rgba(255,255,255,0.08)", borderRadius:2 }}>
-            <div style={{ height:3, width:`${(moodC/5)*100}%`, background:MOOD_COLORS_D[moodC-1], borderRadius:2, transition:"width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.5s" }} />
+          <div style={{ fontSize:14, transition:"all 0.5s" }}>{MOOD_EMOJI_D[moodC-1]}</div>
+          <div style={{ flex:1, height:3, background:"rgba(255,255,255,0.08)", borderRadius:3 }}>
+            <div style={{ height:3, width:`${(moodC/5)*100}%`, background:MOOD_COLORS_D[moodC-1], borderRadius:3, transition:"width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.5s" }} />
           </div>
           <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 11, color:MOOD_COLORS_D[moodC-1], fontFamily:"monospace" }}>настроение</div>
         </div>
       </div>
 
       {/* Progress */}
-      <div style={{ height:3, margin:"0 14px", borderRadius:2, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
-        <div style={{ height:"100%", width:`${(stepIdx/(dialogue.steps.length-1))*100}%`, background:dColor, opacity:0.55, borderRadius:2, transition:"width 0.4s ease" }} />
+      <div style={{ height:3, margin:"0 14px", borderRadius:3, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${(stepIdx/(dialogue.steps.length-1))*100}%`, background:dColor, opacity:0.55, borderRadius:3, transition:"width 0.4s ease" }} />
       </div>
 
       {/* Messages */}
       {!done && <div ref={scrollRef} className="sa-dlgscroll" style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
         {messages.map((msg, i) => {
           if (msg.type === "action") return (
-            <div key={i} className="dlg-in" style={{ textAlign:"center", color: T.para?.color || "#C8A870", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
+            <div key={i} className="dlg-in" style={{ textAlign:"center", color: T.para?.color || "#C8A96E", fontSize: T.modSub?.fontSize || 13, fontStyle:"italic", padding:"4px 0" }}>— {msg.text} —</div>
           );
           if (msg.type === "guest") return (
             <div key={i} className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
               <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(250,242,222,0.75)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.35)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.20)", color: T.a11y ? "#2E2412" : (T.modTitle?.color || "#C8B898"), fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
+              <div style={{ maxWidth:"78%", padding:"9px 13px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(250,242,222,0.75)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.35)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5), inset 0 1px 0 rgba(255,252,240,0.9)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.20)", color: T.a11y ? "#2A1F0E" : (T.modTitle?.color || "#C8B898"), fontSize: T.para?.fontSize || 14, lineHeight:1.6 }}>{msg.text}</div>
             </div>
           );
           if (msg.type === "waiter") return (
@@ -296,12 +296,12 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
             </div>
           );
           if (msg.type === "feedback") return (
-            <div key={i} className="dlg-in" style={{ padding:"8px 12px", borderRadius:10, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", border:`1px solid ${msg.correct ? "rgba(93,187,138,0.2)" : "rgba(224,120,120,0.2)"}`, color: msg.correct ? "#2DBB6A" : "#E05858", fontSize: T.modSub?.fontSize || 12, fontWeight:"bold", lineHeight:1.6 }}>
+            <div key={i} className="dlg-in" style={{ padding:"8px 12px", borderRadius:9, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", border:`1px solid ${msg.correct ? "rgba(93,187,138,0.2)" : "rgba(224,120,120,0.2)"}`, color: msg.correct ? "#2DBB6A" : "#E05858", fontSize: T.modSub?.fontSize || 12, fontWeight:"bold", lineHeight:1.6 }}>
               {msg.correct ? "✓ " : "✗ "}{msg.text}
             </div>
           );
           if (msg.type === "hint") return (
-            <div key={i} className="dlg-in" style={{ padding:"7px 12px", borderRadius:10, background: dColor+"14", border:"1px solid "+dColor+"33", color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.55 }}>
+            <div key={i} className="dlg-in" style={{ padding:"7px 12px", borderRadius:9, background: dColor+"14", border:"1px solid "+dColor+"33", color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.55 }}>
               💡 Лучше: {msg.text}
             </div>
           );
@@ -311,7 +311,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         {typing && (
           <div className="dlg-in dlg-in-left" style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
             <div style={{ fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 1 : 13, color: T.modSub?.color || "#6A5535", marginBottom:2, paddingLeft:4 }}>{dialogue.guest.name}</div>
-            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(250,242,222,0.75)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.35)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5)" : "inset 0 0 18px rgba(255,248,230,0.06)", display:"flex", gap:5, alignItems:"center" }}>
+            <div style={{ padding:"10px 14px", borderRadius:14, borderBottomLeftRadius:4, background: T.a11y ? "rgba(250,242,222,0.75)" : "rgba(255,250,238,0.05)", border: T.a11y ? "1px solid rgba(139,106,48,0.35)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5)" : "inset 0 0 18px rgba(255,248,230,0.06)", display:"flex", gap:4, alignItems:"center" }}>
               {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:BROWN, animation:`dlgPulse 1s ${i*0.2}s infinite` }} />)}
             </div>
           </div>
@@ -348,14 +348,14 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
         <div className="dlg-fade" style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
           {/* Итог */}
           <div className="dlg-in" style={{ padding:"12px 14px 8px", borderTop:`1px solid ${dColor}22`, textAlign:"center", flexShrink:0 }}>
-            <div style={{ fontSize:32, marginBottom:4 }}>{walkedOut ? "🚪" : MOOD_EMOJI_D[moodC-1]}</div>
-            <div style={{ color: walkedOut ? "#E05858" : MOOD_COLORS_D[moodC-1], fontSize:15, fontWeight:"bold", marginBottom:2 }}>
+            <div style={{ fontSize:30, marginBottom:4 }}>{walkedOut ? "🚪" : MOOD_EMOJI_D[moodC-1]}</div>
+            <div style={{ color: walkedOut ? "#E05858" : MOOD_COLORS_D[moodC-1], fontSize:14, fontWeight:"bold", marginBottom:2 }}>
               {walkedOut ? `${dialogue.guest.name} ушёл` : moodC>=4 ? `${dialogue.guest.name} в восторге` : moodC===3 ? `${dialogue.guest.name} в порядке` : `${dialogue.guest.name} не в духе`}
             </div>
             {pro && (() => { const den = choicesFaced || totalChoices; const stars = walkedOut ? 0 : (score===den && moodC>=4) ? 3 : (score>=Math.ceil(den*0.6) && moodC>=3) ? 2 : (score>0 ? 1 : 0); return (
-              <div style={{ fontSize:17, letterSpacing:3, marginBottom:3 }}><span style={{ color:dColor }}>{"★".repeat(stars)}</span><span style={{ color:"rgba(255,255,255,0.15)" }}>{"★".repeat(3-stars)}</span></div>
+              <div style={{ fontSize:16, letterSpacing:3, marginBottom:2 }}><span style={{ color:dColor }}>{"★".repeat(stars)}</span><span style={{ color:"rgba(255,255,255,0.15)" }}>{"★".repeat(3-stars)}</span></div>
             ); })()}
-            <div style={{ color: T.modSub?.color || BROWN, fontSize:12, marginBottom:6 }}>{score} из {choicesFaced || totalChoices} правильных ответов</div>
+            <div style={{ color: T.modSub?.color || BROWN, fontSize:12.5, marginBottom:6 }}>{score} из {choicesFaced || totalChoices} правильных ответов</div>
             <div style={{ color:dColor, fontSize: T.modSub?.fontSize || 12, lineHeight:1.5, marginBottom:8, fontStyle:"italic" }}>
               ✦ {dialogue.steps.find(s=>s.type==="result")?.tip}
             </div>
@@ -364,11 +364,11 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
           <div ref={recapRef} className="sa-dlgscroll" style={{ flex:1, overflowY:"auto", padding:"8px 14px 8px", display:"flex", flexDirection:"column", gap:6, borderTop:`1px solid ${dColor}11`, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>
             {messages.map((msg, i) => {
               const dl = { animationDelay: `${Math.min(0.1 + i * 0.05, 0.7)}s` };
-              if (msg.type === "action") return <div key={i} className="dlg-in" style={{ ...dl, textAlign:"center", color: T.para?.color || "#C8A870", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
-              if (msg.type === "guest") return <div key={i} className="dlg-in dlg-in-left" style={{ ...dl, alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
-              if (msg.type === "waiter") return <div key={i} className="dlg-in dlg-in-right" style={{ ...dl, alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || CREAM, fontSize:13, lineHeight:1.5 }}>{msg.text}</div>;
-              if (msg.type === "feedback") return <div key={i} className="dlg-in" style={{ ...dl, padding:"5px 10px", borderRadius:8, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
-              if (msg.type === "hint") return <div key={i} className="dlg-in" style={{ ...dl, padding:"5px 10px", borderRadius:8, background: dColor+"12", color:dColor, fontSize:11, lineHeight:1.5 }}>💡 Лучше: {msg.text}</div>;
+              if (msg.type === "action") return <div key={i} className="dlg-in" style={{ ...dl, textAlign:"center", color: T.para?.color || "#C8A96E", fontSize:11, fontStyle:"italic", padding:"2px 0" }}>— {msg.text} —</div>;
+              if (msg.type === "guest") return <div key={i} className="dlg-in dlg-in-left" style={{ ...dl, alignSelf:"flex-start", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomLeftRadius:3, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.08)", color: T.para?.color || "#C8B898", fontSize:12.5, lineHeight:1.5 }}>{msg.text}</div>;
+              if (msg.type === "waiter") return <div key={i} className="dlg-in dlg-in-right" style={{ ...dl, alignSelf:"flex-end", maxWidth:"80%", padding:"7px 11px", borderRadius:12, borderBottomRightRadius:3, background: msg.correct ? `${dColor}25` : "rgba(224,120,120,0.15)", border:`1px solid ${msg.correct ? dColor+"44" : "rgba(224,120,120,0.3)"}`, color: T.para?.color || CREAM, fontSize:12.5, lineHeight:1.5 }}>{msg.text}</div>;
+              if (msg.type === "feedback") return <div key={i} className="dlg-in" style={{ ...dl, padding:"5px 10px", borderRadius:9, background: msg.correct ? "rgba(93,187,138,0.08)" : "rgba(224,120,120,0.08)", color: msg.correct ? "#2DBB6A" : "#E05858", fontSize:11, fontWeight:"bold", lineHeight:1.5 }}>{msg.correct ? "✓ " : "✗ "}{msg.text}</div>;
+              if (msg.type === "hint") return <div key={i} className="dlg-in" style={{ ...dl, padding:"5px 10px", borderRadius:9, background: dColor+"12", color:dColor, fontSize:11, lineHeight:1.5 }}>💡 Лучше: {msg.text}</div>;
               return null;
             })}
           </div>

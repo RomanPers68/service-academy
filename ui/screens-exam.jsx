@@ -100,9 +100,9 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
     const passed = (correctCount / total) >= EXAM_PASS;
     return (
       <div style={T.screen}>
-        <div style={{ ...T.lessBody, padding:"48px 24px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:18 }}>
-          <div style={{ fontSize:64 }}>{passed ? "🎓" : "📚"}</div>
-          <div style={{ color: passed ? color : (a11y ? "#8B3020" : "#E07878"), fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:24 }}>
+        <div style={{ ...T.lessBody, padding:"48px 24px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+          <div style={{ fontSize:54 }}>{passed ? "🎓" : "📚"}</div>
+          <div style={{ color: passed ? color : (a11y ? "#8B3020" : "#E07878"), fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:25 }}>
             {passed ? "Экзамен сдан!" : "Почти получилось"}
           </div>
           <div style={{ ...T.para, fontSize:18 }}>Результат: <b style={{ color }}>{score}%</b> ({correctCount} из {total})</div>
@@ -111,9 +111,9 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:10, width:"100%", maxWidth:320, marginTop:6 }}>
             {passed
-              ? <button onClick={onExit} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>К сертификату</button>
+              ? <button onClick={onExit} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>К сертификату</button>
               : <>
-                  <button onClick={() => { setAttempt(a => a + 1); setStep(0); setPicked(null); setCorrectCount(0); setPhase("quiz"); }} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>Пересдать</button>
+                  <button onClick={() => { setAttempt(a => a + 1); setStep(0); setPicked(null); setCorrectCount(0); setPhase("quiz"); }} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Пересдать</button>
                   <button onClick={onExit} style={{ padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Позже</button>
                 </>
             }
@@ -134,9 +134,9 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
           <div style={{ flex:1, height:6, borderRadius:3, background:"rgba(255,255,255,0.08)", overflow:"hidden" }}>
             <div style={{ width:`${(step/total)*100}%`, height:"100%", background:color, transition:"width 0.3s" }} />
           </div>
-          <div style={{ ...T.para, fontSize:13, opacity:0.7, whiteSpace:"nowrap" }}>{step+1} / {total}</div>
+          <div style={{ ...T.para, fontSize:12.5, opacity:0.7, whiteSpace:"nowrap" }}>{step+1} / {total}</div>
         </div>
-        <div key={step} className="sa-cardpage-r" style={{ ...T.modCard, padding:"16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:14 }}>
+        <div key={step} className="sa-cardpage-r" style={{ ...T.modCard, padding:"16px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:12 }}>
           <div style={{ color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontSize:16, lineHeight:1.5 }}>{cur.q}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8, width:"100%" }}>
             {cur.options.map((opt, i) => {
@@ -157,11 +157,11 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
             })}
           </div>
           {answered && cur.explanation && (
-            <div style={{ ...T.para, fontSize:13, opacity:0.85, lineHeight:1.55, borderLeft:`2px solid ${color}`, paddingLeft:12 }}>{cur.explanation}</div>
+            <div style={{ ...T.para, fontSize:12.5, opacity:0.85, lineHeight:1.55, borderLeft:`2px solid ${color}`, paddingLeft:12 }}>{cur.explanation}</div>
           )}
         </div>
         {answered && (
-          <button onClick={next} className="sa-btn" style={{ width:"100%", marginTop:16, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>
+          <button onClick={next} className="sa-btn" style={{ width:"100%", marginTop:16, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>
             {isLast ? "Завершить" : "Далее"}
           </button>
         )}
@@ -182,24 +182,24 @@ export function CertificateScreen({ T, a11y, profile, roleObj, result, onExit, o
         <div style={{ ...T.lessHeadTitle }}>Сертификат</div>
       </div>
       <div style={{ ...T.lessBody, padding:"24px 20px 40px", display:"flex", flexDirection:"column", alignItems:"center", gap:20 }}>
-        <div style={{ width:"100%", maxWidth:380, borderRadius:20, padding:"28px 22px",
+        <div style={{ width:"100%", maxWidth:380, borderRadius:18, padding:"28px 22px",
           background: a11y ? "rgba(245,238,220,0.7)" : "linear-gradient(160deg, rgba(58,42,16,0.5) 0%, rgba(30,22,10,0.6) 100%)",
           border:`2px solid ${color}`, boxShadow:`0 8px 30px ${color}22, inset 0 1px 0 ${color}33`,
-          display:"flex", flexDirection:"column", alignItems:"center", gap:14, textAlign:"center" }}>
-          <div style={{ fontSize:46 }}>🎓</div>
+          display:"flex", flexDirection:"column", alignItems:"center", gap:12, textAlign:"center" }}>
+          <div style={{ fontSize:44 }}>🎓</div>
           <div style={{ letterSpacing:3, fontSize:11, color, fontFamily:"Georgia, serif", textTransform:"uppercase" }}>Service Academy</div>
-          <div style={{ width:40, height:2, background:color, borderRadius:2 }} />
-          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>Настоящим подтверждается, что</div>
-          <div style={{ fontSize:22, color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontWeight:"bold", lineHeight:1.3 }}>{name}</div>
-          <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>успешно сдал(а) экзамен на роль</div>
+          <div style={{ width:40, height:2, background:color, borderRadius:3 }} />
+          <div style={{ fontSize:12.5, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>Настоящим подтверждается, что</div>
+          <div style={{ fontSize:21, color: T.modTitle?.color || "#F0E8D8", fontFamily:"Georgia, serif", fontWeight:"bold", lineHeight:1.3 }}>{name}</div>
+          <div style={{ fontSize:12.5, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>успешно сдал(а) экзамен на роль</div>
           <div style={{ fontSize:18, color, fontFamily:"Georgia, serif", fontWeight:"bold" }}>{roleObj?.label || ""}</div>
           {typeof result?.score === "number" && (
-            <div style={{ fontSize:13, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif" }}>Результат: {result.score}%</div>
+            <div style={{ fontSize:12.5, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif" }}>Результат: {result.score}%</div>
           )}
-          <div style={{ width:40, height:2, background:`${color}66`, borderRadius:2, marginTop:4 }} />
-          <div style={{ fontSize:12, color: T.para?.color || "#A89878", fontFamily:"Georgia, serif", opacity:0.7 }}>{dateStr}</div>
+          <div style={{ width:40, height:2, background:`${color}66`, borderRadius:3, marginTop:4 }} />
+          <div style={{ fontSize:12.5, color: T.para?.color || "#A89878", fontFamily:"Georgia, serif", opacity:0.7 }}>{dateStr}</div>
         </div>
-        <button onClick={onShare} className="sa-btn" style={{ width:"100%", maxWidth:380, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:15, cursor:"pointer" }}>Поделиться</button>
+        <button onClick={onShare} className="sa-btn" style={{ width:"100%", maxWidth:380, padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Поделиться</button>
         <button onClick={onExit} style={{ width:"100%", maxWidth:380, padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Готово</button>
       </div>
     </div>
@@ -242,7 +242,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
           }
           const untilStr = validUntil ? validUntil.toLocaleDateString("ru-RU") : null;
           const amber = a11y ? "#8B6A30" : "#E0B060";
-          const redC = a11y ? "#A03828" : "#E07878";
+          const redC = a11y ? "#A33A2A" : "#E07878";
           const statusLine = !passed
             ? (eligible ? "Доступен экзамен" : "Сначала пройди роль")
             : expired ? `Сдано · ${res.score}% · срок истёк — пересдай`
@@ -250,12 +250,12 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
             : untilStr ? `Сдано · ${res.score}% · действует до ${untilStr}`
             : `Сдано · ${res.score}%`;
           return (
-            <div key={id} style={{ ...T.modCard, padding:"14px 16px", borderRadius:16, flexDirection:"column", alignItems:"flex-start", gap:10 }}>
+            <div key={id} style={{ ...T.modCard, padding:"14px 16px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, width:"100%" }}>
                 <div style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{passed ? UI_SVG.gradcap(color, 19) : (ROLE_SVG[r.id] ? ROLE_SVG[r.id](color, 19) : r.icon)}</div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:15 }}>{r.label}</div>
-                  <div style={{ ...T.modSub, fontSize:12, color: passed && expired ? redC : passed && expiring ? amber : T.modSub.color }}>{statusLine}</div>
+                  <div style={{ color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14 }}>{r.label}</div>
+                  <div style={{ ...T.modSub, fontSize:12.5, color: passed && expired ? redC : passed && expiring ? amber : T.modSub.color }}>{statusLine}</div>
                 </div>
               </div>
               {passed && expired && hasQuestions
@@ -269,7 +269,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
             </div>
           );
         })}
-        <div style={{ ...T.para, textAlign:"center", opacity:0.5, fontSize:13, marginTop:8 }}>Сдай экзамен на роль, чтобы получить сертификат.</div>
+        <div style={{ ...T.para, textAlign:"center", opacity:0.5, fontSize:12.5, marginTop:8 }}>Сдай экзамен на роль, чтобы получить сертификат.</div>
       </div>
     </div>
   );

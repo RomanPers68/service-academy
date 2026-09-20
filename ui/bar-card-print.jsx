@@ -118,49 +118,49 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
   };
   return (
     <div style={T.screen} className="sa-screen">
-      <style>{`@media print { body * { visibility: hidden !important; } #sa-print, #sa-print * { visibility: visible !important; } #sa-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; color: #1a1408 !important; background: #fff !important; } #sa-print .sa-noprint { display: none !important; } #sa-print .sa-pcard { break-inside: avoid; border-bottom: 1px solid #ccc; } }`}</style>
+      <style>{`@media print { body * { visibility: hidden !important; } #sa-print, #sa-print * { visibility: visible !important; } #sa-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; color: #1A1008 !important; background: #fff !important; } #sa-print .sa-noprint { display: none !important; } #sa-print .sa-pcard { break-inside: avoid; border-bottom: 1px solid #ccc; } }`}</style>
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }} className="sa-noprint">
-        <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 22, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+        <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold }}>КОЛОДА БАРМЕНА · ЭКСПОРТ</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 22, color: text, lineHeight: 1.15 }}>Карта бара для печати</div>
+          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>КОЛОДА БАРМЕНА · ЭКСПОРТ</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15 }}>Карта бара для печати</div>
         </div>
       </div>
       <div style={{ padding: "4px 16px 12px", display: "flex", gap: 8 }} className="sa-noprint">
-        <button className="sa-btn" onClick={drawSheet} disabled={busy} style={{ ...T.doneBtn, flex: 1.4, marginTop: 0, background: gold, opacity: busy ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
-        <button className="sa-btn" onClick={copy} style={{ ...T.doneBtn, flex: 1, marginTop: 0, background: "transparent", border: `1px solid ${gold}88`, color: text }}>{copied ? "Скопировано ✓" : "Текстом"}</button>
-        <button className="sa-btn" onClick={print} style={{ ...T.doneBtn, flex: 1, marginTop: 0, background: "transparent", border: `1px solid ${gold}55`, color: sub }}>{inTelegram ? "В браузере" : "Печать"}</button>
+        <button className="sa-btn" onClick={drawSheet} disabled={busy} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold, opacity: busy ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
+        <button className="sa-btn" onClick={copy} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}88`, color: text }}>{copied ? "Скопировано ✓" : "Текстом"}</button>
+        <button className="sa-btn" onClick={print} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}55`, color: sub }}>{inTelegram ? "В браузере" : "Печать"}</button>
       </div>
       {hint && <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: gold, lineHeight: 1.5 }} className="sa-noprint">{hint}</div>}
-      <div style={{ padding: "0 16px 6px", fontSize: 12, color: sub, lineHeight: 1.5 }} className="sa-noprint">{list.length} коктейлей карты, без стопа. «Картинкой» — лист PNG: сохранить в галерею или отправить в чат, вход не требуется. {inTelegram ? "«В браузере» — если нужен именно PDF (там придётся войти заново)." : "«Печать» — системный диалог печати."}</div>
+      <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: sub, lineHeight: 1.5 }} className="sa-noprint">{list.length} коктейлей карты, без стопа. «Картинкой» — лист PNG: сохранить в галерею или отправить в чат, вход не требуется. {inTelegram ? "«В браузере» — если нужен именно PDF (там придётся войти заново)." : "«Печать» — системный диалог печати."}</div>
       {shot && shot.length > 0 && (
-        <div className="sa-fadein sa-noprint" style={{ margin: "0 16px 14px", padding: 12, borderRadius: 16, border: `1px solid ${gold}55` }}>
+        <div className="sa-fadein sa-noprint" style={{ margin: "0 16px 14px", padding: 12, borderRadius: 14, border: `1px solid ${gold}55` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", flex: 1 }}>СТРАНИЦА {page + 1} ИЗ {shot.length}</span>
+            <span style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", flex: 1 }}>СТРАНИЦА {page + 1} ИЗ {shot.length}</span>
             {shot.length > 1 && <>
-              <span onClick={() => setPage(p => Math.max(0, p - 1))} style={{ color: page ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 17 }}>‹</span>
-              <span onClick={() => setPage(p => Math.min(shot.length - 1, p + 1))} style={{ color: page < shot.length - 1 ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 17 }}>›</span>
+              <span onClick={() => setPage(p => Math.max(0, p - 1))} style={{ color: page ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 16 }}>‹</span>
+              <span onClick={() => setPage(p => Math.min(shot.length - 1, p + 1))} style={{ color: page < shot.length - 1 ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 16 }}>›</span>
             </>}
           </div>
           <img src={shot[page].url} alt={`Карта бара · страница ${page + 1}`} style={{ width: "100%", borderRadius: 12, display: "block", border: `1px solid ${gold}33` }} />
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <button className="sa-btn" onClick={() => shareShot(false)} style={{ ...T.doneBtn, flex: 1.4, marginTop: 0, background: gold }}>Отправить страницу</button>
-            {shot.length > 1 && <button className="sa-btn" onClick={() => shareShot(true)} style={{ ...T.doneBtn, flex: 1.2, marginTop: 0, background: "transparent", border: `1px solid ${gold}88`, color: text }}>Все {shot.length}</button>}
-            <button className="sa-btn" onClick={() => { shot.forEach(sh => URL.revokeObjectURL(sh.url)); setShot(null); }} style={{ ...T.doneBtn, flex: 1, marginTop: 0, background: "transparent", border: `1px solid ${gold}66`, color: sub }}>Закрыть</button>
+            <button className="sa-btn" onClick={() => shareShot(false)} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold }}>Отправить страницу</button>
+            {shot.length > 1 && <button className="sa-btn" onClick={() => shareShot(true)} style={{ ...T.doneBtn, flex: 1.2, marginTop: 2, background: "transparent", border: `1px solid ${gold}88`, color: text }}>Все {shot.length}</button>}
+            <button className="sa-btn" onClick={() => { shot.forEach(sh => URL.revokeObjectURL(sh.url)); setShot(null); }} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}66`, color: sub }}>Закрыть</button>
           </div>
-          <div style={{ fontSize: 11.5, color: sub, marginTop: 10, lineHeight: 1.55 }}>По {PER_PAGE} коктейлей на страницу — удобно печатать и листать. Сохраняется в галерею, уходит в любой мессенджер, коды входа не нужны.</div>
+          <div style={{ fontSize: 11, color: sub, marginTop: 10, lineHeight: 1.55 }}>По {PER_PAGE} коктейлей на страницу — удобно печатать и листать. Сохраняется в галерею, уходит в любой мессенджер, коды входа не нужны.</div>
         </div>
       )}
       <div id="sa-print" style={{ padding: "0 16px 100px" }}>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 20, color: text, margin: "8px 0 4px" }}>{restaurant} · карта бара</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, margin: "8px 0 4px" }}>{restaurant} · карта бара</div>
         <div style={{ fontSize: 11, color: sub, marginBottom: 10 }}>{new Date().toLocaleDateString("ru-RU")} · {list.length} позиций · спеки и порядок сборки как в Колоде</div>
         {list.map(c => { const sc = buildScenario(c, COCKTAILS).steps; return (
           <div key={c.id} className="sa-pcard" style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: `1px solid ${gold}22` }}>
             <div style={{ width: 56, flexShrink: 0 }}><CocktailArt c={c} w={56} light={true} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>{c.name}<span style={{ fontSize: 11, color: sub, marginLeft: 8 }}>{c.method} · {GLASS_RU[c.glass] || c.glass}{c.garnish && c.garnish !== "none" ? ` · ${GARNISH_RU[c.garnish]}` : ""}</span></div>
-              <div style={{ fontSize: 12.5, color: text, marginTop: 3, lineHeight: 1.5 }}>{c.ing.map(i => `${i[0]}${i[1] ? " " + i[1] + " " + (i[2] || "мл") : ""}`).join(" · ")}</div>
-              <div style={{ fontSize: 11.5, color: sub, marginTop: 3, lineHeight: 1.5 }}>{sc.map((s, k) => `${k + 1}. ${s.label}`).join(" → ")}</div>
+              <div style={{ fontSize: 12.5, color: text, marginTop: 2, lineHeight: 1.5 }}>{c.ing.map(i => `${i[0]}${i[1] ? " " + i[1] + " " + (i[2] || "мл") : ""}`).join(" · ")}</div>
+              <div style={{ fontSize: 11, color: sub, marginTop: 2, lineHeight: 1.5 }}>{sc.map((s, k) => `${k + 1}. ${s.label}`).join(" → ")}</div>
             </div>
           </div>); })}
       </div>

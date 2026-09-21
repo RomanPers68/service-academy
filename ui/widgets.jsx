@@ -118,15 +118,17 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
         setBox({ top: r.top, left: r.left, w: r.width, h: r.height });
       } catch (e) {}
     };
+    // Подводим цель в кадр МГНОВЕННО, а не плавно. Плавная прокрутка меняла
+    // координаты каждый кадр, переход подсветки гнался за ними и не успевал —
+    // рамка прыгала, прежде чем встать на место. Мгновенная прокрутка снимает
+    // гонку: измеряем один раз, когда всё уже на местах.
+    try { el.scrollIntoView({ block: "center", behavior: "auto" }); } catch (e) {}
     measure();
-    // Цель могла остаться за экраном — подводим к ней, иначе подсветка
-    // окажется там, куда человек не смотрит.
-    try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {}
-    const t = setTimeout(measure, 380);
+    const t = requestAnimationFrame(measure);   // после перерисовки — контрольный замер
     window.addEventListener("scroll", measure, true);
     window.addEventListener("resize", measure);
     return () => {
-      clearTimeout(t);
+      cancelAnimationFrame(t);
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
     };

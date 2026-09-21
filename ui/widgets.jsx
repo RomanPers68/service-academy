@@ -105,8 +105,19 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   const txt  = a11y ? "#2A2113" : "#EFE4C8";
   const sub  = a11y ? "#6E5C3C" : "#8F7B57";
   const gold = a11y ? "#8B6A30" : GOLD;
-  const fill = a11y ? "rgba(246,238,220,0.99)" : "rgba(40,31,16,0.99)";
-  const edge = a11y ? "rgba(150,112,40,0.4)" : "rgba(214,178,102,0.4)";
+  // У привязанной подсказки контраст создаёт затемнение вокруг цели.
+  // У страничной его нет — и на светлой теме кремовый пузырь лежал на
+  // кремовом фоне почти незаметно. Ей нужен более плотный фон и заметная
+  // кромка; в тёмной теме и так хватало, там оставляем как было.
+  // Именно параметр, а не его содержимое: на первом кадре ref ещё пуст,
+  // и привязанная подсказка на миг получила бы страничный вид.
+  const plain = !anchorRef;
+  const fill = a11y
+    ? (plain ? "rgba(232,210,166,0.99)" : "rgba(246,238,220,0.99)")
+    : "rgba(40,31,16,0.99)";
+  const edge = a11y
+    ? (plain ? "rgba(122,90,24,0.6)" : "rgba(150,112,40,0.4)")
+    : "rgba(214,178,102,0.4)";
 
   const [box, setBox] = React.useState(null);
   // Переход включается ТОЛЬКО после того, как рамка встала на место.
@@ -145,7 +156,8 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
       border:`1px solid ${edge}`,
       boxShadow: a11y
         ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 28px rgba(60,42,10,0.28)"
-        : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.11), 0 10px 28px rgba(0,0,0,0.6)" }}>
+        : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.11), 0 10px 28px rgba(0,0,0,0.6)",
+      ...(a11y && plain ? { boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 6px 20px rgba(90,66,20,0.22)" } : null) }}>
       <span style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid",
         placeItems:"center", background:`${gold}2E`, border:`1px solid ${gold}66` }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold}

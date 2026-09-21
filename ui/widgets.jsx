@@ -85,6 +85,21 @@ export function useHintOnce(key, ready = true) {
  *  целью не помещается — пузырь встаёт над ней. По горизонтали прижимается
  *  к краям экрана, чтобы не уезжать за них на узких телефонах.
  */
+/** Показать все подсказки заново. Нужна и в разработке, и людям: человек
+ *  закрыл подсказку, а через месяц забыл, как устроен раздел. Раньше
+ *  единственным способом было поднять версию и показать их ВСЕМ сразу. */
+export function resetHints() {
+  try {
+    const kill = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith("sa_hint_") || k.startsWith("sa_welcome_seen"))) kill.push(k);
+    }
+    kill.forEach(k => localStorage.removeItem(k));
+    return kill.length;
+  } catch (e) { return 0; }
+}
+
 export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
                              step = 1, total = 1, onNext, onClose, style }) {
   const txt  = a11y ? "#2A2113" : "#EFE4C8";

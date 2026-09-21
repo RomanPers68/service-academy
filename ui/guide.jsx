@@ -1,4 +1,5 @@
 import React from "react";
+import { resetHints } from "./widgets";
 import { onActivate, vibrate } from "../lib/utils";
 
 // ── Дополнение 140: «Гид по приложению» — всегда под рукой во вкладке «Я» ────
@@ -82,6 +83,7 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
   const staff = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
   const admin = !!profile?.is_admin;
   const [open, setOpen] = React.useState(null);
+  const [reset, setReset] = React.useState(null);
   const frost = {
     background: a11y ? "rgba(250,242,222,0.62)" : "rgba(226,186,116,0.09)",
     border: a11y ? "1px solid rgba(139,106,48,0.30)" : "1px solid rgba(255,255,255,0.13)",
@@ -135,6 +137,22 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
             </div>
           );
         })}
+      </div>
+      {/* Человек закрыл подсказку, а через месяц забыл, как устроен раздел.
+          Раньше вернуть их можно было только подняв версию — то есть сразу
+          всем. Здесь каждый решает за себя. */}
+      <div onClick={() => { const n = resetHints(); setReset(n); vibrate("light"); }}
+        {...onActivate(() => { const n = resetHints(); setReset(n); })}
+        style={{ margin:"18px 16px 30px", padding:"12px 14px", borderRadius:14, cursor:"pointer",
+          textAlign:"center", ...frost }}>
+        <div style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:gold }}>
+          {reset === null ? "Показать подсказки заново" : "Готово — подсказки вернутся"}
+        </div>
+        <div style={{ fontSize:11.5, color:sub, marginTop:4, lineHeight:1.45 }}>
+          {reset === null
+            ? "Короткие объяснения снова появятся при входе в разделы"
+            : "Открой любой раздел — подсказка встретит там же, где и в первый раз"}
+        </div>
       </div>
     </div>
   );

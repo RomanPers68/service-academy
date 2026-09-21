@@ -2,6 +2,7 @@
 // Небольшие самостоятельные виджеты, вынесенные из App.jsx (поведение и код без изменений).
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { MOD_SVG } from "./icons";
 import { CREAM, GOLD, GOLD_SOFT, GREEN, RED } from "./tokens";
 import { vibrate } from "../lib/utils";
@@ -70,65 +71,146 @@ export function useHintOnce(key, ready = true) {
  *  Крестик вместо слова «скрыть»: жест закрытия привычен и не требует слов.
  *  Стрелка — ромб БЕЗ собственных граней: со своими на стыке с пузырём
  *  проступала лишняя линия, и он выглядел наклейкой, а не продолжением стекла. */
-export function HintBubble({ a11y, text, arrow = "up", at = "center", step = 1, total = 1, onNext, onClose, style }) {
+/** Подсказка с привязкой к элементу.
+ *
+ *  Раньше пузырь просто стоял сверху раздела и пульсировала кнопка — связь
+ *  приходилось додумывать. Теперь цель обводится светом, всё остальное
+ *  притемняется, и вопрос «что именно мне объясняют» не возникает.
+ *
+ *  `anchorRef` — ссылка на объясняемый элемент. Без неё компонент работает
+ *  по-старому: обычный пузырь в потоке (так сделаны разделы, где объясняется
+ *  экран целиком, а не отдельная кнопка).
+ *
+ *  Положение пересчитывается при прокрутке, повороте и смене шага. Если под
+ *  целью не помещается — пузырь встаёт над ней. По горизонтали прижимается
+ *  к краям экрана, чтобы не уезжать за них на узких телефонах.
+ */
+export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
+                             step = 1, total = 1, onNext, onClose, style }) {
   const txt  = a11y ? "#2A2113" : "#EFE4C8";
   const sub  = a11y ? "#6E5C3C" : "#8F7B57";
   const gold = a11y ? "#8B6A30" : GOLD;
-  const fill = a11y ? "rgba(236,214,166,0.55)" : "rgba(226,186,116,0.13)";
-  const edge = a11y ? "rgba(150,112,40,0.28)" : "rgba(255,255,255,0.12)";
-  // Хвостик сдвигается к тому, что объясняет. Настоящая привязка к элементу
-  // потребовала бы измерять его положение и пересчитывать при прокрутке —
-  // а пузырь и так стоит вплотную к цели, и цель пульсирует. Не хватало
-  // только направления: по центру он указывал в никуда.
-  const nub = (
-    <span style={{ display:"block", width:11, height:11,
-      marginLeft: at === "left" ? 26 : "auto", marginRight: at === "right" ? 26 : "auto",
-      marginBottom: arrow === "up" ? -6 : 0, marginTop: arrow === "down" ? -6 : 0,
-      transform:"rotate(45deg)", background:fill, position:"relative",
-      zIndex: arrow === "up" ? 1 : 0 }} />
-  );
-  return (
-    <div className="sa-hintin" style={{ margin:"7px 14px", ...style }}>
-      {arrow === "up" ? nub : null}
-      <div className="sa-hintglow" style={{ position:"relative", display:"flex", alignItems:"center", gap:10,
-        padding:"10px 12px", borderRadius:16, background:fill,
-        border:`1px solid ${edge}`,
-        boxShadow: a11y
-          ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 20px rgba(90,66,20,0.12)"
-          : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.11), 0 6px 20px rgba(0,0,0,0.4)" }}>
-        <span style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid",
-          placeItems:"center", background:`${gold}2E`, border:`1px solid ${gold}66` }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold}
-            strokeWidth="2" strokeLinecap="round"><path d="M12 17v.01"/>
-            <path d="M12 14c0-2 3-2.5 3-5a3 3 0 0 0-6 0"/></svg>
-        </span>
-        <span style={{ flex:1, minWidth:0 }}>
-          <span style={{ display:"block", fontFamily:"monospace", fontSize:8,
-            letterSpacing:1.8, textTransform:"uppercase", color:gold, marginBottom:3 }}>подсказка</span>
-          <span style={{ display:"block", fontFamily:"Georgia, serif", fontSize:12.5,
-            lineHeight:1.45, color:txt }}>{text}</span>
-          {total > 1 ? (
-            <span style={{ display:"flex", gap:4, marginTop:6 }}>
-              {Array.from({ length: total }, (_, i) => (
-                <i key={i} style={{ display:"block", height:2.5, borderRadius:2,
-                  width: i === step - 1 ? 13 : 5,
-                  background: i === step - 1 ? gold : `${gold}47`,
-                  transition:"width .3s ease" }} />
-              ))}
-            </span>
-          ) : null}
-        </span>
-        <span onClick={onNext || onClose} style={{ flexShrink:0, fontFamily:"Georgia, serif",
-          fontSize:11.5, fontWeight:"bold", color:"#1A1008", cursor:"pointer",
-          background:`linear-gradient(180deg,#E4C88C,${GOLD})`,
-          padding:"6px 13px", borderRadius:999 }}>{onNext ? "Дальше" : "Понятно"}</span>
-        <span onClick={onClose} title="Больше не показывать"
-          style={{ position:"absolute", top:5, right:6, width:18, height:18, borderRadius:"50%",
-            display:"grid", placeItems:"center", fontSize:10, color:sub, cursor:"pointer",
-            border:`1px solid ${edge}` }}>✕</span>
-      </div>
-      {arrow === "down" ? nub : null}
+  const fill = a11y ? "rgba(246,238,220,0.99)" : "rgba(40,31,16,0.99)";
+  const edge = a11y ? "rgba(150,112,40,0.4)" : "rgba(214,178,102,0.4)";
+
+  const [box, setBox] = React.useState(null);
+  React.useLayoutEffect(() => {
+    const el = anchorRef && anchorRef.current;
+    if (!el) { setBox(null); return; }
+    const measure = () => {
+      try {
+        const r = el.getBoundingClientRect();
+        setBox({ top: r.top, left: r.left, w: r.width, h: r.height });
+      } catch (e) {}
+    };
+    measure();
+    // Цель могла остаться за экраном — подводим к ней, иначе подсветка
+    // окажется там, куда человек не смотрит.
+    try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {}
+    const t = setTimeout(measure, 380);
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [anchorRef, step]);
+
+  const body = (
+    <div className="sa-hintglow" style={{ position:"relative", display:"flex", alignItems:"center", gap:10,
+      padding:"10px 12px", borderRadius:16, background:fill,
+      border:`1px solid ${edge}`,
+      boxShadow: a11y
+        ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 28px rgba(60,42,10,0.28)"
+        : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.11), 0 10px 28px rgba(0,0,0,0.6)" }}>
+      <span style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid",
+        placeItems:"center", background:`${gold}2E`, border:`1px solid ${gold}66` }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold}
+          strokeWidth="2" strokeLinecap="round"><path d="M12 17v.01"/>
+          <path d="M12 14c0-2 3-2.5 3-5a3 3 0 0 0-6 0"/></svg>
+      </span>
+      <span style={{ flex:1, minWidth:0 }}>
+        <span style={{ display:"block", fontFamily:"monospace", fontSize:8,
+          letterSpacing:1.8, textTransform:"uppercase", color:gold, marginBottom:3 }}>подсказка</span>
+        <span style={{ display:"block", fontFamily:"Georgia, serif", fontSize:12.5,
+          lineHeight:1.45, color:txt }}>{text}</span>
+        {total > 1 ? (
+          <span style={{ display:"flex", gap:4, marginTop:6 }}>
+            {Array.from({ length: total }, (_, i) => (
+              <i key={i} style={{ display:"block", height:2.5, borderRadius:2,
+                width: i === step - 1 ? 13 : 5,
+                background: i === step - 1 ? gold : `${gold}47`,
+                transition:"width .3s ease" }} />
+            ))}
+          </span>
+        ) : null}
+      </span>
+      <span onClick={onNext || onClose} style={{ flexShrink:0, fontFamily:"Georgia, serif",
+        fontSize:11.5, fontWeight:"bold", color:"#1A1008", cursor:"pointer",
+        background:`linear-gradient(180deg,#E4C88C,${GOLD})`,
+        padding:"6px 13px", borderRadius:999 }}>{onNext ? "Дальше" : "Понятно"}</span>
+      <span onClick={onClose} title="Больше не показывать"
+        style={{ position:"absolute", top:5, right:6, width:18, height:18, borderRadius:"50%",
+          display:"grid", placeItems:"center", fontSize:10, color:sub, cursor:"pointer",
+          border:`1px solid ${edge}` }}>✕</span>
     </div>
+  );
+
+  const nub = (dir, off) => (
+    <span style={{ display:"block", width:11, height:11,
+      marginLeft: off === "left" ? 26 : "auto", marginRight: off === "right" ? 26 : "auto",
+      marginBottom: dir === "up" ? -6 : 0, marginTop: dir === "down" ? -6 : 0,
+      transform:"rotate(45deg)", background:fill,
+      borderLeft: dir === "up" ? `1px solid ${edge}` : "none",
+      borderTop: dir === "up" ? `1px solid ${edge}` : "none",
+      borderRight: dir === "down" ? `1px solid ${edge}` : "none",
+      borderBottom: dir === "down" ? `1px solid ${edge}` : "none",
+      position:"relative", zIndex: dir === "up" ? 1 : 0 }} />
+  );
+
+  // Без привязки — прежнее поведение: пузырь в потоке страницы
+  if (!box) {
+    return (
+      <div className="sa-hintin" style={{ margin:"7px 14px", ...style }}>
+        {arrow === "up" ? nub("up", at) : null}
+        {body}
+        {arrow === "down" ? nub("down", at) : null}
+      </div>
+    );
+  }
+
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const pad = 12, W = Math.min(vw - pad * 2, 380);
+  const below = box.top + box.h + 150 < vh;          // помещается ли под целью
+  const left = Math.max(pad, Math.min(box.left + box.w / 2 - W / 2, vw - W - pad));
+  const cx = box.left + box.w / 2 - left;            // центр цели внутри пузыря
+  const tail = (
+    <span style={{ display:"block", width:12, height:12, transform:"rotate(45deg)",
+      background:fill, position:"absolute", left: Math.max(14, Math.min(cx - 6, W - 26)),
+      [below ? "top" : "bottom"]: -6,
+      borderLeft: below ? `1px solid ${edge}` : "none",
+      borderTop: below ? `1px solid ${edge}` : "none",
+      borderRight: below ? "none" : `1px solid ${edge}`,
+      borderBottom: below ? "none" : `1px solid ${edge}` }} />
+  );
+
+  return createPortal(
+    <div style={{ position:"fixed", inset:0, zIndex:4000 }}>
+      {/* Притемнение всего, кроме цели. Дыра сделана огромной тенью вокруг
+          рамки — так не нужны SVG-маски и это работает везде. */}
+      <div onClick={onClose} style={{ position:"fixed", inset:0 }} />
+      <div style={{ position:"fixed", pointerEvents:"none",
+        top: box.top - 6, left: box.left - 6, width: box.w + 12, height: box.h + 12,
+        borderRadius:16, border:`1.5px solid ${gold}`,
+        boxShadow:`0 0 0 9999px ${a11y ? "rgba(40,30,10,0.42)" : "rgba(0,0,0,0.62)"}, 0 0 22px ${gold}66`,
+        transition:"top .25s ease, left .25s ease, width .25s ease, height .25s ease" }} />
+      <div className="sa-hintin" style={{ position:"fixed", width:W, left,
+        [below ? "top" : "bottom"]: below ? box.top + box.h + 14 : vh - box.top + 14 }}>
+        {tail}{body}
+      </div>
+    </div>,
+    document.body
   );
 }
 

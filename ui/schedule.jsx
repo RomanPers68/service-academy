@@ -439,6 +439,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // двоих означала бы, что менеджеру свою подсказку уже не показать.
   const [hint, hintDone] = useHintOnce(isAdmin ? "sched_admin" : "sched_staff", state === "ok");
   const [hintStep, setHintStep] = React.useState(0);
+  // Ссылки на то, что объясняет каждый шаг: подсказка подсветит именно их.
+  const refFill = React.useRef(null);   // «Заполнить черновик»
+  const refGrid = React.useRef(null);   // таблица смен
+  const refSave = React.useRef(null);   // «Сохранить» и «↩»
   const [wishOpen, setWishOpen] = React.useState(false);   // экран пожеланий сотрудника развёрнут
   const [wishRange, setWishRange] = React.useState(null);  // null | {from} | {from,to} — режим периода
   const [wishAsk, setWishAsk] = React.useState(null);      // {from,to} — лист выбора отметки
@@ -3705,17 +3709,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       const last = hintStep >= steps.length - 1;
       return (
         <HintBubble a11y={a11y} text={steps[hintStep]} arrow="down"
-          at={hintStep === 0 ? "left" : "center"}
+          anchorRef={hintStep === 0 ? refFill : hintStep === 1 ? refGrid : refSave}
           step={hintStep + 1} total={steps.length}
           onNext={last ? null : () => setHintStep(v => v + 1)}
           onClose={hintDone} />
       );
     })() : null}
     <div style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
-      <button style={btn} className={"sa-btn" + (hint && hintStep === 0 ? " sa-pulse" : "")} onClick={() => generate(posFilter || null)}>
+      <button ref={refFill} style={btn} className={"sa-btn" + (hint && hintStep === 0 ? " sa-pulse" : "")} onClick={() => generate(posFilter || null)}>
         {posFilter ? `Заполнить: ${posName(posFilter)}` : "Заполнить черновик"}
       </button>
-      <button style={ghost} className="sa-btn" onClick={save} disabled={!dirty}>
+      <button ref={refSave} style={ghost} className="sa-btn" onClick={save} disabled={!dirty}>
         {dirty ? "Сохранить" : "Сохранено"}
       </button>
       {undoRef.current ? (
@@ -4269,7 +4273,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
           );
         })()}
-        <div className="sa-schedgrid sa-hscroll">
+        <div ref={refGrid} className="sa-schedgrid sa-hscroll">
           <table style={{ borderCollapse:"separate", borderSpacing:0, fontFamily:mono }}>
             <tbody key={"g" + genKey + ":" + weekIdx} className="sa-weekin">
               <tr>

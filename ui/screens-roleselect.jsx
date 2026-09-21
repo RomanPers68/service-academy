@@ -74,7 +74,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode }) {
+export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
@@ -84,7 +84,11 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
   // Подсказка по главному экрану. Ключ свой на роль: руководителю нужно
   // рассказать про график и команду, сотруднику — про трек и инструменты.
   const isBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
-  const [homeHint, homeHintDone] = useHintOnce(hintKey("home", isBoss), !!role);
+  // Подсказка ждёт, пока закроются карточки первого входа (WelcomeIntro в App).
+  // Раньше она вставала поверх них: затемнение перехватывало касания — карточки
+  // не листались, пока не пролистаешь подсказку, — а рамка обводила размытый фон
+  // под карточкой. hintsReady приходит из App: {!welcome}.
+  const [homeHint, homeHintDone] = useHintOnce(hintKey("home", isBoss), !!role && hintsReady);
   const [homeStep, setHomeStep] = React.useState(0);
   // Цели подсказки главного экрана: карточка трека и лента инструментов.
   const refTrack = React.useRef(null);
@@ -451,7 +455,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 и в общем ряду читался таким же справочником, как глоссарий. */}
             {/* Подсказка по главному экрану. Второй шаг — про ленту инструментов:
                 именно её владелец опасался, что будут пропускать. */}
-            {homeHint ? (() => {
+            {homeHint && hintsReady ? (() => {
               const steps = hintsFor(hintKey("home", isBoss));
 
               const last = homeStep >= steps.length - 1;
@@ -479,7 +483,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 // всё вокруг — карточки с полями; к тому же сразу под блоком
                 // уже стоит разделитель приложения, и полос выходило три подряд.
                 // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
-                <div ref={refTools} className={homeHint && homeStep === 1 ? "sa-pulse" : undefined}
+                <div ref={refTools} className={homeHint && hintsReady && homeStep === 1 ? "sa-pulse" : undefined}
                   style={{ display:"flex", alignItems:"center", gap:8,
                   margin:"0 14px 9px", padding:"10px 12px", borderRadius:999,
                   background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,

@@ -214,14 +214,17 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
     <div style={{ position:"fixed", inset:0, zIndex:4000 }}>
       {/* Притемнение всего, кроме цели. Дыра сделана огромной тенью вокруг
           рамки — так не нужны SVG-маски и это работает везде. */}
-      <div onClick={onClose} style={{ position:"fixed", inset:0 }} />
+      <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", inset:0 }} />
       <div style={{ position:"fixed", pointerEvents:"none",
         top: box.top - 6, left: box.left - 6, width: box.w + 12, height: box.h + 12,
         borderRadius:16, border:`1.5px solid ${gold}`,
         boxShadow:`0 0 0 9999px ${a11y ? "rgba(40,30,10,0.42)" : "rgba(0,0,0,0.62)"}, 0 0 22px ${gold}66`,
-        transition:"top .25s ease, left .25s ease, width .25s ease, height .25s ease" }} />
+        // Мягкое торможение в конце: цель «приезжает», а не дёргается.
+        // Та же кривая, что у пузыря, — иначе они движутся вразнобой.
+        transition:"top .5s cubic-bezier(.22,1,.36,1), left .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1), height .5s cubic-bezier(.22,1,.36,1), box-shadow .5s ease" }} />
       <div className="sa-hintin" style={{ position:"fixed", width:W, left,
-        [below ? "top" : "bottom"]: below ? box.top + box.h + 14 : vh - box.top + 14 }}>
+        [below ? "top" : "bottom"]: below ? box.top + box.h + 14 : vh - box.top + 14,
+        transition:"top .5s cubic-bezier(.22,1,.36,1), left .5s cubic-bezier(.22,1,.36,1), bottom .5s cubic-bezier(.22,1,.36,1)" }}>
         {tail}{body}
       </div>
     </div>,

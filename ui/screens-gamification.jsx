@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { KEYS, BADGES, teamRecords, badgesFor, loadLocal } from "../lib/achievements";
 import React from "react";
+import { hintsFor } from "../data/hints";
 import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES } from "../data/modules";
@@ -19,7 +20,7 @@ import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
-import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
+import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble, useHintOnce, HintBubble } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
@@ -229,6 +230,9 @@ export function WeekStar({ weekly, T }) {
 }
 
 export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}, onBack }) {
+  const [lbHint, lbHintDone] = useHintOnce("leaderboard");
+  const [lbStep, setLBStep] = React.useState(0);
+  const lbSteps = hintsFor("leaderboard");
   // Доп. 216: рекорды команды и ачивки — с сервера (achievements_list), свои — с телефона
   const [records, setRecords] = React.useState(null);
   const [recErr, setRecErr] = React.useState(false);
@@ -359,6 +363,12 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
 
   return (
     <div style={T.screen}>
+      {lbHint && lbSteps.length ? (
+        <HintBubble a11y={a11y} text={lbSteps[lbStep]} arrow="up"
+          step={lbStep + 1} total={lbSteps.length}
+          onNext={lbStep >= lbSteps.length - 1 ? null : () => setLBStep(v => v + 1)}
+          onClose={lbHintDone} />
+      ) : null}
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={detailTab ? () => { setDetailTab(false); setSelected(null); } : onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
@@ -523,6 +533,9 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
 }
 
 export function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson, mistakeTopics }) {
+  const [dyHint, dyHintDone] = useHintOnce("daily");
+  const [dyStep, setDYStep] = React.useState(0);
+  const dySteps = hintsFor("daily");
   const today = new Date().toLocaleDateString("ru-RU");
   const seed = today.split(".").reduce((a, v) => a + parseInt(v), 0);
   const refTask = referenceDailyTask(seed, mistakeTopics);
@@ -566,6 +579,12 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
 
   if (!role) return (
     <div style={T.screen}>
+      {dyHint && dySteps.length ? (
+        <HintBubble a11y={a11y} text={dySteps[dyStep]} arrow="up"
+          step={dyStep + 1} total={dySteps.length}
+          onNext={dyStep >= dySteps.length - 1 ? null : () => setDYStep(v => v + 1)}
+          onClose={dyHintDone} />
+      ) : null}
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>

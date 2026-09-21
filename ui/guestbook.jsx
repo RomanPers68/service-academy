@@ -5,9 +5,10 @@
 // оставляет плохих страниц — «гость просто ушёл без отзыва и вернётся».
 
 import React from "react";
+import { hintsFor } from "../data/hints";
 import { GOLD } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
-import { LiquidSegment } from "./widgets";
+import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { ROLE_SVG } from "./icons";
 import { loadMastery } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";
@@ -64,6 +65,9 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates) {
 
 // ── Экран книги ──
 export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, practiceStars = {}, onBack, onWeekly, focusId }) {
+  const [gbHint, gbHintDone] = useHintOnce("guestbook");
+  const [gbStep, setGBStep] = React.useState(0);
+  const gbSteps = hintsFor("guestbook");
   const [tab, setTab] = React.useState(role && MODULES[role] ? role : "seasonal");
   const [idx, setIdx] = React.useState(0);
   const [dir, setDir] = React.useState("r");
@@ -174,6 +178,12 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
   return (
     <div style={T.screen} className="sa-screen">
+      {gbHint && gbSteps.length ? (
+        <HintBubble a11y={a11y} text={gbSteps[gbStep]} arrow="up"
+          step={gbStep + 1} total={gbSteps.length}
+          onNext={gbStep >= gbSteps.length - 1 ? null : () => setGBStep(v => v + 1)}
+          onClose={gbHintDone} />
+      ) : null}
       <style>{BOOK_CSS}</style>
 
       {/* Шапка */}

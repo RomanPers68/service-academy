@@ -67,7 +67,7 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab }) {
+function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
@@ -124,6 +124,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
 function Course({ T, gold, course, openLesson, onBack }) {
   return (<div style={T.screen}>
     <Head T={T} title="Справочник" onBack={onBack} />
+      {hintNode}
     <div style={{ padding: "14px 18px 4px" }}>
       <div style={{ fontFamily: SERIF, fontSize: 25, fontWeight: "bold", color: T.modTitle.color }}>{course.title}</div>
       <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>{course.subtitle}</div>
@@ -157,12 +158,6 @@ function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
   return (<div style={T.screen}>
     <Head T={T} title={lesson.title} onBack={onBack} />
     <div ref={bodyRef} style={{ ...T.lessBody, padding: "14px 14px 40px" }}>
-      {rHint && rSteps.length ? (
-        <HintBubble a11y={a11y} text={rSteps[rStep]} arrow="up"
-          step={rStep + 1} total={rSteps.length}
-          onNext={rStep >= rSteps.length - 1 ? null : () => setRStep(v => v + 1)}
-          onClose={rHintDone} style={{ margin:"0 0 10px" }} />
-      ) : null}
       {lesson.images && lesson.images.map((k, i) => <Figure key={i} T={T}>{renderIll(k, gold, dark)}</Figure>)}
       <div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 22, boxShadow: T.lessGlass.shadow, padding: "20px 18px", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur }}>
         <Content text={lesson.content} T={T} gold={gold} dark={dark} />
@@ -256,7 +251,13 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
   if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
     scopeText="Введи минимум 2 буквы — найду по главам справочника, глоссарию и меню ресторана."
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab}
+    hintNode={rHint && rSteps.length ? (
+      <HintBubble a11y={a11y} text={rSteps[rStep]} arrow="up"
+        step={rStep + 1} total={rSteps.length}
+        onNext={rStep >= rSteps.length - 1 ? null : () => setRStep(v => v + 1)}
+        onClose={rHintDone} />
+    ) : null} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

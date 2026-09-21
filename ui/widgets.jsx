@@ -5,6 +5,7 @@ import React from "react";
 import { MOD_SVG } from "./icons";
 import { CREAM, GOLD, GOLD_SOFT, GREEN, RED } from "./tokens";
 import { vibrate } from "../lib/utils";
+import { HINTS_VERSION } from "../data/hints";
 
 /** Пустое состояние — один язык на всё приложение.
  *  Было вразнобой: где-то голый текст «Смена не найдена» (читается как
@@ -56,11 +57,11 @@ export function useHintOnce(key, ready = true) {
   const [on, setOn] = React.useState(false);
   React.useEffect(() => {
     if (!ready) return;
-    try { if (localStorage.getItem("sa_hint_" + key) !== "1") setOn(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_hint_v" + HINTS_VERSION + "_" + key) !== "1") setOn(true); } catch (e) {}
   }, [key, ready]);
   const close = React.useCallback(() => {
     setOn(false);
-    try { localStorage.setItem("sa_hint_" + key, "1"); } catch (e) {}
+    try { localStorage.setItem("sa_hint_v" + HINTS_VERSION + "_" + key, "1"); } catch (e) {}
   }, [key]);
   return [on, close];
 }

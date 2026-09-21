@@ -29,6 +29,9 @@ import { LiveDialogue } from "./screens-dialogue";
 
 export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack }) {
   const gold = a11y ? "#8B6A30" : GOLD;
+  const [mkHint, mkHintDone] = useHintOnce("mistakes");
+  const [mkStep, setMkStep] = React.useState(0);
+  const mkSteps = hintsFor("mistakes");
   const [idx, setIdx] = React.useState(0);
   const [pick, setPick] = React.useState(null);
   // Интервальное повторение: показываем только вопросы, у которых подошёл срок (due <= сейчас)
@@ -77,6 +80,12 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
   return (
     <div style={T.screen}>
       {Head}
+        {mkHint && mkSteps.length ? (
+          <HintBubble a11y={a11y} text={mkSteps[mkStep]} arrow="up"
+            step={mkStep + 1} total={mkSteps.length}
+            onNext={mkStep >= mkSteps.length - 1 ? null : () => setMkStep(v => v + 1)}
+            onClose={mkHintDone} />
+        ) : null}
       <div style={{ padding: "10px 18px 0" }}>
         <div style={{ ...T.secTitle, padding: "0 0 8px" }}>СЛАБЫЕ ТЕМЫ</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
@@ -1090,13 +1099,16 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.book(color || GOLD, 18)}<span>Глоссарий</span></div>
+      </div>
+      {/* ПОСЛЕ шапки, а не внутри: lessHead — флекс-ряд, и пузырь
+          становился его элементом и сжимался в узкую колонку. */}
       {gHint && gSteps.length ? (
         <HintBubble a11y={a11y} text={gSteps[gStep]} arrow="up"
           step={gStep + 1} total={gSteps.length}
           onNext={gStep >= gSteps.length - 1 ? null : () => setGStep(v => v + 1)}
           onClose={gHintDone} />
       ) : null}
-      </div>
+
       <div style={{ ...T.lessBody, padding:"14px 16px 40px" }}>
         <input
           value={search}

@@ -77,7 +77,8 @@ function ScreenLoader({ T }) {
 }
 
 // ── Первое знакомство: три карточки при самом первом входе в жизни ──
-// Показывается один раз (sa_welcome_seen), листается свайпом и кнопкой.
+// Показывается один раз (sa_welcome_seen_v10), листается свайпом и кнопкой.
+// Номер в ключе — версия: подняли, и карточки показываются заново всем.
 // Задача — снять тревогу «куда я попал», а не обучить: детали человек
 // узнает по контекстным подсказкам в момент, когда они станут нужны.
 // Карточка AI-наставника — для всех, флагманская фича
@@ -1179,10 +1180,10 @@ function ServiceAcademy() {
   useEffect(() => {
     if (!profile || !storageLoaded) return;
     // v3: тур большого обновления — разово покажется и давним пользователям
-    try { if (localStorage.getItem("sa_welcome_seen_v9") !== "1") setWelcome(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_welcome_seen_v10") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen_v9", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v10", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };

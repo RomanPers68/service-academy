@@ -4,6 +4,7 @@ import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
+import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf } from "./ui/home-hubs";
@@ -426,6 +427,11 @@ function ServiceAcademy() {
   const [bookFocus, setBookFocus] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState(null);
   const [profile, setProfile] = useState(null);
+  // Лазейка в тестах (ui/loophole.jsx): ключ сотрудника и запись выхода на сервер.
+  // Объявлены здесь, выше handleQuiz: там loopUk стоит в зависимостях, а они
+  // вычисляются при отрисовке — объявление ниже роняло бы приложение.
+  const loopUk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
+  const logSkip = (lessonId, sk) => { try { rpcSync("log_quiz_skip", { p_token: saToken(), p_lesson: lessonId, ...skipPayload(sk) }); } catch (e) {} };
   const [scores, setScores] = useState([]);
   const [practiceStars, setPracticeStars] = useState({}); // { "name|surname": { "lesson_id": stars } }
   const [allProfiles, setAllProfiles] = useState([]); // все пользователи из таблицы profiles
@@ -875,6 +881,7 @@ function ServiceAcademy() {
   const openLesson = (l) => {
     setLessonDone(null); // Доп. 205: новый урок — кнопка снова «Урок пройден ✓»
     if (l.type === "quiz" && quizDone[l.id]) return;
+    if (l.type === "quiz" && profile) { try { const sk = loopOpen(loopUk, l.id); if (sk) logSkip(l.id, sk); } catch (e) {} }
     if (l.type === "dialogue") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
     if (l.type === "build") { setActiveLesson(l); setGameKey(k => k + 1); navigate("lesson"); return; }
     const originalLesson = (Object.values(MODULES).flat().flatMap(m => m.lessons || []).find(lesson => lesson.id === l.id)) || l;
@@ -1026,6 +1033,7 @@ function ServiceAcademy() {
           try { localStorage.setItem("sa_quiz_done", JSON.stringify(newQuizDone)); } catch(e) {}
           setQuizDone(newQuizDone);
           rpcSync("save_quiz_done", { p_token: saToken(), p_quiz_id: activeLesson.id });
+          try { const rec = loopPassed(loopUk, activeLesson); if (rec) setLoophole(rec); } catch (e) {}
         }
       }
 
@@ -1093,6 +1101,9 @@ function ServiceAcademy() {
     const isCorrect = idx === q.correct;
     // Аналитика вопросов (stage 7): очередь тихо отбросит вызов, если RPC ещё не создан
     try { rpcSync("log_quiz_answer", { p_token: saToken(), p_role: role, p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_correct: isCorrect }); } catch(e) {}
+    // Этап 15: что выбрал и что было верно — для «Аналитика → Люди». Идёт следом в той же
+    // очереди и дописывается к записи выше; без этапа 15 тихо отклоняется, запись выше цела.
+    try { rpcSync("log_quiz_pick", { p_token: saToken(), p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_answer: String((q.options || [])[idx] ?? "").slice(0, 300), p_right: String((q.options || [])[q.correct] ?? "").slice(0, 300) }); } catch(e) {}
     const newMistakes = quizState.mistakes + (isCorrect ? 0 : 1);
     const answers = [...quizState.answers, { idx, isCorrect }];
     const done = quizState.step + 1 >= activeLesson.questions.length;
@@ -1105,12 +1116,19 @@ function ServiceAcademy() {
         return [...prev, _qe].slice(-200);
       });
     }
+    // Лазейка: помним попытку до «Продолжить ✓». Официальный конец — "pass" (70%+)
+    // или "fail" (меньше 70% или три ошибки): провал — честная пересдача, не лазейка.
+    try { if (profile) {
+      const blockedNow = newMistakes >= 3 && !isCorrect;
+      const passNow = !blockedNow && answers.filter(a => a.isCorrect).length >= activeLesson.questions.length * 0.7;
+      loopTrack(loopUk, activeLesson, q, idx, (blockedNow || done) ? (passNow ? "pass" : "fail") : undefined);
+    } } catch (e) {}
     if (newMistakes >= 3 && !isCorrect) {
       setQuizState({ step: quizState.step, answers, done: true, mistakes: newMistakes, blocked: true });
       return;
     }
     setQuizState({ step: done ? quizState.step : quizState.step + 1, answers, done, mistakes: newMistakes, blocked: false });
-  }, [quizState, activeLesson, role]);
+  }, [quizState, activeLesson, role, profile, loopUk]);
   // Верный ответ: вопрос уходит на следующий интервал (1→3→7→30 дней). После 4 верных подряд — закреплён и удаляется.
   const resolveMistake = useCallback((qText) => {
     setMistakeBank(prev => prev.map(m => {
@@ -1179,6 +1197,9 @@ function ServiceAcademy() {
   // интерфейс, когда данные готовы.
   // ── Онбординг: приветствие один раз в жизни + подсказка о повторении ──
   const [welcome, setWelcome] = useState(false);
+  // Секретная ачивка «Находчивая жопка» (ui/loophole.jsx): карточка, пока не просмотрена
+  const [loophole, setLoophole] = useState(null);
+  useEffect(() => { if (profile && storageLoaded) { try { const r = loopUnseen(loopUk); if (r) setLoophole(r); } catch (e) {} } }, [profile, storageLoaded]);
   const [mistakeHint, setMistakeHint] = useState(false);
   useEffect(() => {
     if (!profile || !storageLoaded) return;
@@ -1385,6 +1406,7 @@ function ServiceAcademy() {
               try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
             }
             rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }).catch(() => {});
+           
             // Сразу обнуляем звёзды в state и localStorage
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname||""}`]; return n; });
             try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
@@ -1396,6 +1418,7 @@ function ServiceAcademy() {
             navigate("roleSelect");
           } : null}
           onUnlockQuiz={isAdmin ? (name, surname) => {
+           
             rpc("admin_unlock_quiz", { p_token: saToken(), p_name: name, p_surname: surname || "" }).then(() => {
               if (profile && profile.name === name && profile.surname === surname) {
                 setQuizDone({});
@@ -1573,7 +1596,7 @@ function ServiceAcademy() {
               T={T} color={activeModule?.color} onClose={completeLesson} onResult={recordBuildResult} />
           </Suspense>
         , document.body)}
-        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => navigate("module")} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
+        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => { if (activeLesson?.type === "quiz" && profile) { try { const sk = loopExit(loopUk, activeLesson.id); if (sk) logSkip(activeLesson.id, sk); } catch (e) {} } navigate("module"); }} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
@@ -1582,6 +1605,11 @@ function ServiceAcademy() {
         </div>
 
         {/* Онбординг: приветствие при первом входе */}
+        {loophole && !welcome && (
+          <LoopholeCard rec={loophole} a11y={a11y}
+            onClose={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); }}
+            onMistakes={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); navigate("mistakes"); }} />
+        )}
         {welcome && <WelcomeIntro T={T} a11y={a11y} isAdmin={!!profile?.is_admin} canHire={!!profile?.is_admin || ["manager","senior"].includes(profile?.position)} onClose={closeWelcome} />}
         {/* Контекстная подсказка о повторении — над навбаром, показывается один раз */}
         {mistakeHint && !welcome && (

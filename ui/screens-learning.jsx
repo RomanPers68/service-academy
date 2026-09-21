@@ -471,7 +471,21 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   // Раньше тап молча перекидывал на следующий вопрос — тест был «слепым».
   const [reveal, setReveal] = React.useState(null);
   const revealTimer = React.useRef(null);
-  React.useEffect(() => () => { if (revealTimer.current) clearTimeout(revealTimer.current); }, []);
+  // Ответ, который уже подсвечен, но ещё не засчитан: засчитывается через 0,6 с (верный)
+  // или 1,4 с (неверный — чтобы увидеть правильный). Раньше выход в это окно ответ просто
+  // терял, а верный вариант к тому моменту был уже показан — так и работала лазейка
+  // «ошибся → увидел верный → „‹“»: ни в тест, ни на сервер ошибка не попадала.
+  // Теперь при выходе подсвеченный ответ засчитывается сразу — до onBack.
+  const pendingPick = React.useRef(null);
+  const onQuizRef = React.useRef(onQuiz); onQuizRef.current = onQuiz;
+  const commitPending = () => {
+    if (pendingPick.current === null) return;
+    const i = pendingPick.current; pendingPick.current = null;
+    if (revealTimer.current) { clearTimeout(revealTimer.current); revealTimer.current = null; }
+    try { if (onQuizRef.current) onQuizRef.current(i); } catch (e) {}
+  };
+  // и при любом другом уходе с экрана (вкладка внизу и т. п.)
+  React.useEffect(() => () => { commitPending(); }, []);
   React.useEffect(() => { setReveal(null); }, [lesson.id]);
   const [cardDir, setCardDir] = React.useState("r"); // направление перелистывания для анимации
   const touchRef = React.useRef(null);
@@ -1053,7 +1067,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     const answered = quizState.answers[quizState.step];
     return (
       <div style={T.screen}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
+        <div style={T.lessHead}><button style={T.backBtn2} onClick={() => { commitPending(); onBack(); }}>‹</button><div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="12" height="18" rx="2"/><path d="M8 8h4.5M8 12h3.5"/><path d="M13.2 17.4l6.2-6.2 2.2 2.2-6.2 6.2-2.7.5z"/></svg>
           <span>Тест</span></div></div>
         <div key={quizState.step} className="sa-cardpage-r" style={T.quizWrap}>
@@ -1072,10 +1086,11 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               if (reveal !== null) return;
               const ok = i === q.correct;
               setReveal(i);
+              pendingPick.current = i;
               vibrate(ok ? "light" : "error");
               // Верный — короткая пауза держит темп; неверный — длиннее,
               // чтобы глаз успел увидеть правильный вариант.
-              revealTimer.current = setTimeout(() => { setReveal(null); onQuiz(i); }, ok ? 600 : 1400);
+              revealTimer.current = setTimeout(() => { pendingPick.current = null; revealTimer.current = null; setReveal(null); onQuiz(i); }, ok ? 600 : 1400);
             };
             return <div key={i} className="sa-opt" style={st} onClick={pickIt} {...onActivate(pickIt)}>{opt}</div>;
           })}

@@ -86,6 +86,9 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
   const isBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
   const [homeHint, homeHintDone] = useHintOnce(hintKey("home", isBoss), !!role);
   const [homeStep, setHomeStep] = React.useState(0);
+  // Цели подсказки главного экрана: карточка трека и лента инструментов.
+  const refTrack = React.useRef(null);
+  const refTools = React.useRef(null);
   React.useEffect(() => {
     if (calmMotion()) return;                 // без движения — подписи статичны
     const t = setInterval(() => setToolSpot(v => v + 1), 4000);
@@ -208,7 +211,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                   ) : null}
                 </div>
               ) : null}
-              <div onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
+              <div ref={refTrack} onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
                 // Тот же «морозный лёд», но ярче остальных карточек: это
                 // единственное действие, ради которого экран открывают.
                 background: a11y
@@ -455,7 +458,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
               return (
                 <HintBubble a11y={a11y} text={steps[homeStep]}
                   arrow={homeStep === 0 ? "up" : "down"}
-                  at={homeStep === 1 ? "left" : "center"}
+                  anchorRef={homeStep === 0 ? refTrack : homeStep === 1 ? refTools : null}
                   step={homeStep + 1} total={steps.length}
                   onNext={last ? null : () => setHomeStep(v => v + 1)}
                   onClose={homeHintDone} />
@@ -475,7 +478,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
                 // всё вокруг — карточки с полями; к тому же сразу под блоком
                 // уже стоит разделитель приложения, и полос выходило три подряд.
                 // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
-                <div className={homeHint && homeStep === 1 ? "sa-pulse" : undefined}
+                <div ref={refTools} className={homeHint && homeStep === 1 ? "sa-pulse" : undefined}
                   style={{ display:"flex", alignItems:"center", gap:8,
                   margin:"0 14px 9px", padding:"10px 12px", borderRadius:999,
                   background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,

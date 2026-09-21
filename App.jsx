@@ -222,15 +222,18 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
   // Порядок — путь новичка: учёба → ошибки → тренажёры → знания → наставник
   // → график → признание; менеджерам и руководству — их инструменты в конце.
   // Порядок — по вкладкам: что это → четыре вкладки → Учусь → Смена → Команда → гид
+  // Было 16 карточек у новичка, 19 у менеджера и 20 у владельца — лекция
+  // до того, как человек увидел хоть один экран. Столько никто не запомнит.
+  // Осталось четыре на ориентацию: где я, как устроено приложение, что тут
+  // есть особенного и где искать ответы. Всё остальное рассказывают
+  // контекстные подсказки — в разделе и в тот момент, когда вопрос возник.
+  // Карточки руководителя тоже убраны: редактор графика и меню объясняются
+  // подсказкой при первом входе туда, а не заранее и не всем подряд.
   const cards = [
-    ...WELCOME_CARDS.slice(0, 2),
-    ...WELCOME_TABS_CARDS,
-    WELCOME_BUILD_CARD, WELCOME_REF_CARD, WELCOME_MORE_CARDS[0], WELCOME_AI_CARD,
-    WELCOME_SCHED_CARD, WELCOME_MORE_CARDS[1], WELCOME_MORE_CARDS[2], WELCOME_TRAIN_CARD,
-    ...WELCOME_CARDS.slice(2), WELCOME_PAPER_CARD,
-    ...(canHire ? [WELCOME_SCHEDIT_CARD, WELCOME_MENUEDIT_CARD, WELCOME_HIRE_CARD] : []),
-    ...(isAdmin ? [WELCOME_ADMIN_CARD] : []),
-    WELCOME_MORE_CARDS[3],
+    WELCOME_TABS_CARDS[0],   // четыре вкладки — карта приложения
+    WELCOME_CARDS[0],        // твой трек: учись по шагам
+    WELCOME_AI_CARD,         // наставник — то, чего сам не найдёшь
+    WELCOME_MORE_CARDS[3],   // где искать ответы дальше
   ];
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState("r");      // направление листания — карточка въезжает с нужной стороны
@@ -1180,10 +1183,10 @@ function ServiceAcademy() {
   useEffect(() => {
     if (!profile || !storageLoaded) return;
     // v3: тур большого обновления — разово покажется и давним пользователям
-    try { if (localStorage.getItem("sa_welcome_seen_v10") !== "1") setWelcome(true); } catch (e) {}
+    try { if (localStorage.getItem("sa_welcome_seen_v11") !== "1") setWelcome(true); } catch (e) {}
   }, [profile, storageLoaded]);
   const closeWelcome = () => {
-    try { localStorage.setItem("sa_welcome_seen_v10", "1"); } catch (e) {}
+    try { localStorage.setItem("sa_welcome_seen_v11", "1"); } catch (e) {}
     vibrate("light");
     setWelcome(false);
   };

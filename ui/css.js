@@ -304,7 +304,15 @@ export const injectStyles = () => {
     .sa-pop { animation: saPop .45s cubic-bezier(.16,1,.3,1) backwards; }
     @keyframes saHintIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
     .sa-hintin { animation: saHintIn .38s cubic-bezier(.16,1,.3,1) both; }
-    @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin { animation:none; } }
+    /* Подсказку легко пропустить: она приходит один раз и должна сработать.
+       Мягкое золотое дыхание первые три цикла — глаз ловит движение боковым
+       зрением, но это не мигание и не раздражает. Дальше пузырь замирает. */
+    @keyframes saHintGlow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(212,168,90,0), inset 0 0 24px rgba(255,248,230,.08), inset 0 1px 0 rgba(255,255,255,.12); }
+      50%     { box-shadow: 0 0 0 7px rgba(212,168,90,.14), inset 0 0 26px rgba(255,240,205,.16), inset 0 1px 0 rgba(255,255,255,.2); }
+    }
+    .sa-hintglow { animation: saHintGlow 2.1s ease-in-out 3; }
+    @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin, .sa-hintglow { animation:none; } }
 
     /* ══ График смен ══════════════════════════════════════════════
        Фактура «морозного льда»: тёплый полупрозрачный фон, светлая

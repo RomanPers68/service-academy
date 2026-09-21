@@ -3705,6 +3705,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       const last = hintStep >= steps.length - 1;
       return (
         <HintBubble a11y={a11y} text={steps[hintStep]} arrow="down"
+          at={hintStep === 0 ? "left" : "center"}
           step={hintStep + 1} total={steps.length}
           onNext={last ? null : () => setHintStep(v => v + 1)}
           onClose={hintDone} />

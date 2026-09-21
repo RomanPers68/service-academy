@@ -455,6 +455,7 @@ export function RoleSelect({ learnOnly = false, onSelect, T, a11y, scores = [], 
               return (
                 <HintBubble a11y={a11y} text={steps[homeStep]}
                   arrow={homeStep === 0 ? "up" : "down"}
+                  at={homeStep === 1 ? "left" : "center"}
                   step={homeStep + 1} total={steps.length}
                   onNext={last ? null : () => setHomeStep(v => v + 1)}
                   onClose={homeHintDone} />

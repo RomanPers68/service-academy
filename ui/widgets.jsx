@@ -70,41 +70,48 @@ export function useHintOnce(key, ready = true) {
  *  Крестик вместо слова «скрыть»: жест закрытия привычен и не требует слов.
  *  Стрелка — ромб БЕЗ собственных граней: со своими на стыке с пузырём
  *  проступала лишняя линия, и он выглядел наклейкой, а не продолжением стекла. */
-export function HintBubble({ a11y, text, arrow = "up", step = 1, total = 1, onNext, onClose, style }) {
+export function HintBubble({ a11y, text, arrow = "up", at = "center", step = 1, total = 1, onNext, onClose, style }) {
   const txt  = a11y ? "#2A2113" : "#EFE4C8";
   const sub  = a11y ? "#6E5C3C" : "#8F7B57";
   const gold = a11y ? "#8B6A30" : GOLD;
   const fill = a11y ? "rgba(236,214,166,0.55)" : "rgba(226,186,116,0.13)";
   const edge = a11y ? "rgba(150,112,40,0.28)" : "rgba(255,255,255,0.12)";
+  // Хвостик сдвигается к тому, что объясняет. Настоящая привязка к элементу
+  // потребовала бы измерять его положение и пересчитывать при прокрутке —
+  // а пузырь и так стоит вплотную к цели, и цель пульсирует. Не хватало
+  // только направления: по центру он указывал в никуда.
   const nub = (
-    <span style={{ display:"block", width:12, height:12, margin:"0 auto",
-      marginBottom: arrow === "up" ? -7 : 0, marginTop: arrow === "down" ? -7 : 0,
+    <span style={{ display:"block", width:11, height:11,
+      marginLeft: at === "left" ? 26 : "auto", marginRight: at === "right" ? 26 : "auto",
+      marginBottom: arrow === "up" ? -6 : 0, marginTop: arrow === "down" ? -6 : 0,
       transform:"rotate(45deg)", background:fill, position:"relative",
       zIndex: arrow === "up" ? 1 : 0 }} />
   );
   return (
-    <div className="sa-hintin" style={{ margin:"8px 14px", ...style }}>
+    <div className="sa-hintin" style={{ margin:"7px 14px", ...style }}>
       {arrow === "up" ? nub : null}
-      <div style={{ position:"relative", display:"flex", alignItems:"center", gap:11,
-        padding:"13px 14px", borderRadius:18, background:fill,
+      <div className="sa-hintglow" style={{ position:"relative", display:"flex", alignItems:"center", gap:10,
+        padding:"10px 12px", borderRadius:16, background:fill,
         border:`1px solid ${edge}`,
         boxShadow: a11y
-          ? "inset 0 0 24px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 26px rgba(90,66,20,0.14)"
-          : "inset 0 0 24px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 26px rgba(0,0,0,0.45)" }}>
-        <span style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, display:"grid",
+          ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 20px rgba(90,66,20,0.12)"
+          : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.11), 0 6px 20px rgba(0,0,0,0.4)" }}>
+        <span style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid",
           placeItems:"center", background:`${gold}2E`, border:`1px solid ${gold}66` }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold}
-            strokeWidth="1.8" strokeLinecap="round"><path d="M12 17v.01"/>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold}
+            strokeWidth="2" strokeLinecap="round"><path d="M12 17v.01"/>
             <path d="M12 14c0-2 3-2.5 3-5a3 3 0 0 0-6 0"/></svg>
         </span>
         <span style={{ flex:1, minWidth:0 }}>
-          <span style={{ display:"block", fontFamily:"Georgia, serif", fontSize:13.5,
-            lineHeight:1.5, color:txt }}>{text}</span>
+          <span style={{ display:"block", fontFamily:"monospace", fontSize:8,
+            letterSpacing:1.8, textTransform:"uppercase", color:gold, marginBottom:3 }}>подсказка</span>
+          <span style={{ display:"block", fontFamily:"Georgia, serif", fontSize:12.5,
+            lineHeight:1.45, color:txt }}>{text}</span>
           {total > 1 ? (
-            <span style={{ display:"flex", gap:5, marginTop:8 }}>
+            <span style={{ display:"flex", gap:4, marginTop:6 }}>
               {Array.from({ length: total }, (_, i) => (
-                <i key={i} style={{ display:"block", height:3, borderRadius:2,
-                  width: i === step - 1 ? 16 : 6,
+                <i key={i} style={{ display:"block", height:2.5, borderRadius:2,
+                  width: i === step - 1 ? 13 : 5,
                   background: i === step - 1 ? gold : `${gold}47`,
                   transition:"width .3s ease" }} />
               ))}
@@ -112,12 +119,12 @@ export function HintBubble({ a11y, text, arrow = "up", step = 1, total = 1, onNe
           ) : null}
         </span>
         <span onClick={onNext || onClose} style={{ flexShrink:0, fontFamily:"Georgia, serif",
-          fontSize:12.5, fontWeight:"bold", color:"#1A1008", cursor:"pointer",
+          fontSize:11.5, fontWeight:"bold", color:"#1A1008", cursor:"pointer",
           background:`linear-gradient(180deg,#E4C88C,${GOLD})`,
-          padding:"7px 16px", borderRadius:999 }}>{onNext ? "Дальше" : "Понятно"}</span>
+          padding:"6px 13px", borderRadius:999 }}>{onNext ? "Дальше" : "Понятно"}</span>
         <span onClick={onClose} title="Больше не показывать"
-          style={{ position:"absolute", top:6, right:7, width:20, height:20, borderRadius:"50%",
-            display:"grid", placeItems:"center", fontSize:11, color:sub, cursor:"pointer",
+          style={{ position:"absolute", top:5, right:6, width:18, height:18, borderRadius:"50%",
+            display:"grid", placeItems:"center", fontSize:10, color:sub, cursor:"pointer",
             border:`1px solid ${edge}` }}>✕</span>
       </div>
       {arrow === "down" ? nub : null}

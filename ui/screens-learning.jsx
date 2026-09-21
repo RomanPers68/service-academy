@@ -32,6 +32,13 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
   const [mkHint, mkHintDone] = useHintOnce("mistakes");
   const [mkStep, setMkStep] = React.useState(0);
   const mkSteps = hintsFor("mistakes");
+  // Подсветка: шаг 1 — текст вопроса (вот что сюда попадает), шаг 2 —
+  // строка «этап закрепления N из 5» (вот как работают интервалы). Не вся
+  // карточка: она тянется до низа экрана, подсветка такой цели ничего не
+  // выделяет, а пузырю над ней не хватает места.
+  // Ссылки объявлены здесь, до раннего return, — правило хуков.
+  const mkRefQ = React.useRef(null);
+  const mkRefStage = React.useRef(null);
   const [idx, setIdx] = React.useState(0);
   const [pick, setPick] = React.useState(null);
   // Интервальное повторение: показываем только вопросы, у которых подошёл срок (due <= сейчас)
@@ -82,6 +89,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
       {Head}
         {mkHint && mkSteps.length ? (
           <HintBubble a11y={a11y} text={mkSteps[mkStep]} arrow="up"
+            anchorRef={mkStep === 0 ? mkRefQ : mkRefStage}
             step={mkStep + 1} total={mkSteps.length}
             onNext={mkStep >= mkSteps.length - 1 ? null : () => setMkStep(v => v + 1)}
             onClose={mkHintDone} />
@@ -97,9 +105,9 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
         </div>
       </div>
       <div key={q.q} className="sa-cardpage-r" style={T.quizWrap}>
-        <div style={T.quizProgress}>Сейчас на повторе: {bank.length} · этап закрепления {(q.stage || 0) + 1} из {5}{waiting > 0 ? ` · ${waiting} ждут своего дня` : ""}</div>
+        <div ref={mkRefStage} style={T.quizProgress}>Сейчас на повторе: {bank.length} · этап закрепления {(q.stage || 0) + 1} из {5}{waiting > 0 ? ` · ${waiting} ждут своего дня` : ""}</div>
         {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 210, objectFit: "cover", borderRadius: 14, display: "block", margin: "0 0 14px" }} />}
-        <div style={T.quizQ}>{q.q}</div>
+        <div ref={mkRefQ} style={T.quizQ}>{q.q}</div>
         {q.options.map((opt, i) => {
           let st = { ...T.quizOpt, cursor: pick === null ? "pointer" : "default" };
           if (pick !== null) {

@@ -103,15 +103,26 @@ export function resetHints() {
 export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef, anchorId,
                              step = 1, total = 1, onNext, onClose, style }) {
   const txt  = a11y ? "#2A2113" : "#EFE4C8";
-  const sub  = a11y ? "#6E5C3C" : "#8F7B57";
+  // Крестик: было #6E5C3C / #8F7B57 — 4,4:1 и 3,7:1 (аудит подсказок 21.09).
+  // Тот же цвет в EmptyState выше не трогаем — там он для текста, не для крестика.
+  const sub  = a11y ? "#5E4E30" : "#A8966F";
   const gold = a11y ? "#8B6A30" : GOLD;
   // У привязанной подсказки контраст создаёт затемнение вокруг цели.
   // У страничной его нет — и на светлой теме кремовый пузырь лежал на
   // кремовом фоне почти незаметно. Ей нужен более плотный фон и заметная
   // кромка; в тёмной теме и так хватало, там оставляем как было.
-  // Именно параметр, а не его содержимое: на первом кадре ref ещё пуст,
-  // и привязанная подсказка на миг получила бы страничный вид.
-  const plain = !anchorRef && !anchorId;
+  // Именно параметр, а не его содержимое: пока цель не найдена, привязанная
+  // подсказка не рисуется вовсе (см. ниже), и страничный вид ей нужен, только
+  // если цель так и не появилась.
+  const anchored = !!(anchorRef || anchorId);
+  // Цель может появиться ПОЗЖЕ подсказки: на главном карточка трека ждёт уроки
+  // роли, а они догружаются отдельным файлом — у нового сотрудника, то есть
+  // ровно тогда, когда подсказка показывается, дольше всего. Раньше замер был
+  // один: цели ещё нет — и пузырь навсегда вставал в поток под чужой карточкой,
+  // со стрелкой не туда. Теперь цель ждём до полутора секунд и пока не рисуем
+  // ничего; не дождались — обычный страничный пузырь.
+  const [lost, setLost] = React.useState(false);
+  const plain = !anchored || lost;
   const fill = a11y
     ? (plain ? "rgba(232,210,166,0.99)" : "rgba(246,238,220,0.99)")
     : "rgba(40,31,16,0.99)";
@@ -128,28 +139,73 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   React.useLayoutEffect(() => {
     // Цель — либо по ссылке, либо по идентификатору: навбар и другие общие
     // элементы живут в чужих файлах, ссылку туда не дотянуть.
-    const el = (anchorRef && anchorRef.current)
+    const find = () => (anchorRef && anchorRef.current)
       || (anchorId ? document.getElementById(anchorId) : null);
-    if (!el) { setBox(null); return; }
-    const measure = () => {
-      try {
-        const r = el.getBoundingClientRect();
-        setBox({ top: r.top, left: r.left, w: r.width, h: r.height });
-      } catch (e) {}
+    let dead = false, poll = 0, settle = 0, tries = 0, off = null;
+    const attach = (el) => {
+      const measure = () => {
+        try {
+          const r = el.getBoundingClientRect();
+          setBox({ top: r.top, left: r.left, w: r.width, h: r.height });
+        } catch (e) {}
+      };
+      // Подводим цель в кадр МГНОВЕННО, а не плавно. Плавная прокрутка меняла
+      // координаты каждый кадр, переход подсветки гнался за ними и не успевал —
+      // рамка прыгала, прежде чем встать на место. Мгновенная прокрутка снимает
+      // гонку: измеряем один раз, когда всё уже на местах.
+      try { el.scrollIntoView({ block: "center", behavior: "auto" }); } catch (e) {}
+      measure();
+      settle = requestAnimationFrame(() => { measure(); setReady(true); });
+      window.addEventListener("scroll", measure, true);
+      window.addEventListener("resize", measure);
+      off = () => {
+        window.removeEventListener("scroll", measure, true);
+        window.removeEventListener("resize", measure);
+      };
     };
-    // Подводим цель в кадр МГНОВЕННО, а не плавно. Плавная прокрутка меняла
-    // координаты каждый кадр, переход подсветки гнался за ними и не успевал —
-    // рамка прыгала, прежде чем встать на место. Мгновенная прокрутка снимает
-    // гонку: измеряем один раз, когда всё уже на местах.
-    try { el.scrollIntoView({ block: "center", behavior: "auto" }); } catch (e) {}
-    measure();
-    const t = requestAnimationFrame(() => { measure(); setReady(true); });
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
+    // Цель ещё въезжает: каждый экран появляется с лёгким сдвигом (.sa-pagein),
+    // карточка вопроса выезжает сбоку. Замер в этот момент ставил рамку на
+    // несколько пикселей мимо, и она так и оставалась — поправить было некому.
+    // Ждём конца этих анимаций у цели и её родителей (бесконечные вроде
+    // пульса не в счёт), но не дольше 0,7 с. Нет таких — меряем сразу, как раньше.
+    let cap = 0;
+    const whenStill = (el) => {
+      let moving = [];
+      try {
+        moving = document.getAnimations().filter(a => {
+          const t = a.effect && a.effect.target;
+          return t && t.contains && t.contains(el) && a.playState === "running"
+            && isFinite(a.effect.getComputedTiming().endTime);
+        });
+      } catch (e) {}
+      if (!moving.length) { attach(el); return; }
+      let fired = false;
+      const fire = () => { if (fired || dead) return; fired = true; clearTimeout(cap); attach(el); };
+      cap = setTimeout(fire, 700);
+      Promise.all(moving.map(a => a.finished.catch(() => {}))).then(fire);
+    };
+    setLost(false);
+    const el = find();
+    if (el) whenStill(el);
+    else {
+      setBox(null);
+      if (anchored) {
+        const look = () => {
+          if (dead) return;
+          const found = find();
+          if (found) whenStill(found);
+          else if (++tries < 90) poll = requestAnimationFrame(look);   // ≈ 1,5 с
+          else setLost(true);
+        };
+        poll = requestAnimationFrame(look);
+      }
+    }
     return () => {
-      cancelAnimationFrame(t);
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
+      dead = true;
+      cancelAnimationFrame(poll);
+      cancelAnimationFrame(settle);
+      clearTimeout(cap);
+      if (off) off();
     };
   }, [anchorRef, anchorId, step]);
 
@@ -169,7 +225,9 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
       </span>
       <span style={{ flex:1, minWidth:0 }}>
         <span style={{ display:"block", fontFamily:"monospace", fontSize:8,
-          letterSpacing:1.8, textTransform:"uppercase", color:gold, marginBottom:3 }}>подсказка</span>
+          letterSpacing:1.8, textTransform:"uppercase", marginBottom:3,
+          // 8 px на кремовом фоне золото давало 3,4:1 (страничный) и 4,25:1 (с подсветкой)
+          color: a11y ? "#6B4E14" : gold }}>подсказка</span>
         <span style={{ display:"block", fontFamily:"Georgia, serif", fontSize:12.5,
           lineHeight:1.45, color:txt }}>{text}</span>
         {total > 1 ? (
@@ -206,8 +264,11 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
     </svg>
   );
 
-  // Без привязки — прежнее поведение: пузырь в потоке страницы
+  // Без привязки — прежнее поведение: пузырь в потоке страницы.
+  // С привязкой, пока цель не отрисована, — ничего: пузырь не должен успеть
+  // показаться не на своём месте.
   if (!box) {
+    if (anchored && !lost) return null;
     return (
       <div className="sa-hintin" style={{ margin:"7px 14px", ...style }}>
         {arrow === "up" ? nub("up", at) : null}

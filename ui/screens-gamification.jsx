@@ -363,12 +363,6 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
 
   return (
     <div style={T.screen}>
-      {lbHint && lbSteps.length ? (
-        <HintBubble a11y={a11y} text={lbSteps[lbStep]} arrow="up"
-          step={lbStep + 1} total={lbSteps.length}
-          onNext={lbStep >= lbSteps.length - 1 ? null : () => setLBStep(v => v + 1)}
-          onClose={lbHintDone} />
-      ) : null}
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={detailTab ? () => { setDetailTab(false); setSelected(null); } : onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
@@ -376,6 +370,15 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           <span>Рейтинг сотрудников</span></div>
         <div style={{ width:24 }} />
       </div>
+
+      {/* Подсказка — под шапкой, как в остальных разделах. Раньше стояла над
+          ней и стрелкой указывала на верхнюю строку «SA». */}
+      {lbHint && lbSteps.length ? (
+        <HintBubble a11y={!!T.a11y} text={lbSteps[lbStep]} arrow="up"
+          step={lbStep + 1} total={lbSteps.length}
+          onNext={lbStep >= lbSteps.length - 1 ? null : () => setLBStep(v => v + 1)}
+          onClose={lbHintDone} />
+      ) : null}
 
       {/* Вкладки категорий — жидкое стекло, как в Книге отзывов.
           Раньше здесь были ручные кнопки с цветом должности (зелёная, лососёвая,
@@ -579,12 +582,6 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
 
   if (!role) return (
     <div style={T.screen}>
-      {dyHint && dySteps.length ? (
-        <HintBubble a11y={a11y} text={dySteps[dyStep]} arrow="up"
-          step={dyStep + 1} total={dySteps.length}
-          onNext={dyStep >= dySteps.length - 1 ? null : () => setDYStep(v => v + 1)}
-          onClose={dyHintDone} />
-      ) : null}
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
@@ -605,6 +602,16 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
         <div style={{ width:24 }} />
       </div>
+
+      {/* Подсказка — здесь, в основной ветке. Раньше она стояла только в ветке
+          «Сначала выбери роль» и в обычной работе не показывалась никогда,
+          а там падала: a11y в этом экране нет, есть T.a11y. */}
+      {dyHint && dySteps.length ? (
+        <HintBubble a11y={!!T.a11y} text={dySteps[dyStep]} arrow="up"
+          step={dyStep + 1} total={dySteps.length}
+          onNext={dyStep >= dySteps.length - 1 ? null : () => setDYStep(v => v + 1)}
+          onClose={dyHintDone} />
+      ) : null}
 
       <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
 
@@ -945,6 +952,13 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
   const rolesCompleted = ROLE_ORDER.filter(r => completedRoles.has(r)).length;
 
   const completedLessons = Object.keys(completed || {}).length;
+  // Подсказка: шаг 1 — звание под именем, шаг 2 — плитка «Ролей завершено».
+  // a11y в этом экране нет — только T.a11y (см. правку 106).
+  const [stHint, stHintDone] = useHintOnce("stats");
+  const [stStep, setStStep] = React.useState(0);
+  const stSteps = hintsFor("stats");
+  const stRefRank = React.useRef(null);
+  const stRefRoles = React.useRef(null);
 
   return (
     <div style={T.screen}>
@@ -953,6 +967,13 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.chartLine(GOLD, 18)} Моя статистика</div>
         <div style={{ width:24 }} />
       </div>
+      {stHint && stSteps.length ? (
+        <HintBubble a11y={!!T.a11y} text={stSteps[stStep]} arrow="up"
+          anchorRef={stStep === 0 ? stRefRank : stRefRoles}
+          step={stStep + 1} total={stSteps.length}
+          onNext={stStep >= stSteps.length - 1 ? null : () => setStStep(v => v + 1)}
+          onClose={stHintDone} />
+      ) : null}
 
       <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
 
@@ -966,7 +987,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
             <div style={{ color:T.modSub.color, fontSize:12.5 }}>{profile?.restaurant}</div>
             {/* Звание из Книги отзывов */}
             {(() => { const bs = bookStats(MODULES, completed, quizDone, examResults); return (
-              <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, border:`1px solid ${GOLD}55`, background:"rgba(200,169,110,0.08)", borderRadius:12, padding:"3px 9px" }}>
+              <div ref={stRefRank} style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, border:`1px solid ${GOLD}55`, background:"rgba(200,169,110,0.08)", borderRadius:12, padding:"3px 9px" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="1.6"/></svg>
                 <span style={{ color:GOLD, fontSize:11, fontWeight:"bold" }}>{bs.rank.label}</span>
                 <span style={{ color:T.modSub.color, fontSize:9 }}>· {bs.pages} стр.</span>
@@ -985,7 +1006,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
             { label:"Уроков пройдено", value:completedLessons, icon:"book", color:"#7B8FAB" },
             { label:"Ролей завершено", value:`${rolesCompleted}/4`, icon:"gradcap", color:GOLD },
           ].map((s, i) => (
-            <div key={i} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
+            <div key={i} ref={s.label === "Ролей завершено" ? stRefRoles : undefined} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon](s.color, 22) : s.icon}</div>
               <div style={{ color:s.color, fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 10 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
               <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15 }}>{s.label}</div>

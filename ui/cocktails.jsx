@@ -7,6 +7,8 @@ import { CocktailArt } from "./cocktail-art";
 import { COCKTAIL_STORIES } from "../data/cocktail-stories";
 import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, INK_DEEP } from "./tokens";
+import { useHintOnce, HintBubble } from "./widgets";
+import { hintsFor, hintKey } from "../data/hints";
 
 // Колода бармена: свайп — листать, тап — перевернуть (рецепт), режим
 // «Знаю?» — интервальное повторение (1·3·7·30 дней), как у банка ошибок.
@@ -41,6 +43,16 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
   const restaurant = profile?.restaurant || "";
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   const canEdit = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
+  // Подсказка при первом входе: шаг 1 — переключатель «Колода / Знаю?»,
+  // у руководителя шаг 2 — «Свои ›». Сотруднику редактора нет, поэтому
+  // ключи разные. Ссылки — здесь, вверху: ранних return в компоненте нет,
+  // но хуки всё равно держим до всего остального.
+  const ckKey = hintKey("cocktails", canEdit);
+  const [ckHint, ckHintDone] = useHintOnce(ckKey);
+  const [ckStep, setCkStep] = React.useState(0);
+  const ckSteps = hintsFor(ckKey);
+  const ckRefMode = React.useRef(null);
+  const ckRefOwn = React.useRef(null);
   const [shared, setShared] = React.useState(() => cachedShared(restaurant));
   React.useEffect(() => { if (!restaurant) return; let alive = true; rpc("menu_get", { p_restaurant: restaurant }).then(res => { const arr = typeof res === "string" ? JSON.parse(res) : res; if (alive && Array.isArray(arr)) setShared(arr); }).catch(() => {}); return () => { alive = false; }; }, [restaurant]);
   const barcard = readBarcard(shared); // null — карта не настроена
@@ -186,12 +198,12 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
             <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-            <div style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
+            <div ref={ckRefMode} style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
               <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
               <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
             </div>
             <span style={{ marginLeft:"auto", display:"flex", gap:10, whiteSpace:"nowrap" }}>
-              {onEdit && canEdit ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
+              {onEdit && canEdit ? <span ref={ckRefOwn} style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
               {onLab ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onLab()} {...onActivate(() => onLab())}>Сборка ›</span> : null}
               {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
             </span>
@@ -223,6 +235,15 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
           )}
         </>);
       })()}
+      {/* Подсказка — после шапки, прямым ребёнком корня (он блочный). Внутри
+          шапки нельзя: там флекс-ряды, пузырь сжался бы. */}
+      {ckHint && ckSteps.length ? (
+        <HintBubble a11y={a11y} text={ckSteps[ckStep]} arrow="up"
+          anchorRef={ckStep === 0 ? ckRefMode : ckRefOwn}
+          step={ckStep + 1} total={ckSteps.length}
+          onNext={ckStep >= ckSteps.length - 1 ? null : () => setCkStep(v => v + 1)}
+          onClose={ckHintDone} />
+      ) : null}
       {view === "index" ? (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:8 }}>
           {pool.map((x, i) => (

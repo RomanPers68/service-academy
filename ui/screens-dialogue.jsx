@@ -18,13 +18,14 @@ import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
-import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
+import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
+import { hintsFor } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 
 const dlgLastByTerm = {};
-export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
+export function LiveDialogue({ dialogueId, T, onClose, color, pro, hintKey }) {
   const initial = DIALOGUES_DATA.find(d => d.id === dialogueId);
   // Группа = все сценарии одной темы (один termKey). Позволяет ротацию вариантов.
   const group = React.useMemo(
@@ -86,6 +87,12 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
   const [typing, setTyping] = React.useState(false);
   const [done, setDone] = React.useState(false);
   const [walkedOut, setWalkedOut] = React.useState(false);
+  // Подсказка — только если App передал ключ (сейчас это «Гость недели»):
+  // экран общий для всех диалогов, в обычных она не нужна. Хук вызывается
+  // всегда — правило хуков, — но без ключа не включается.
+  const [dHint, dHintDone] = useHintOnce(hintKey || "dialogue", !!hintKey);
+  const [dStep, setDStep] = React.useState(0);
+  const dSteps = hintKey ? hintsFor(hintKey) : [];
   const bottomRef = React.useRef(null);
   const scrollRef = React.useRef(null);
 
@@ -276,6 +283,16 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro }) {
       <div style={{ height:3, margin:"0 14px", borderRadius:3, background:"rgba(255,255,255,0.06)", overflow:"hidden" }}>
         <div style={{ height:"100%", width:`${(stepIdx/(dialogue.steps.length-1))*100}%`, background:dColor, opacity:0.55, borderRadius:3, transition:"width 0.4s ease" }} />
       </div>
+
+      {/* Подсказка — между полоской прогресса и лентой: панель — флекс-колонка,
+          лента сжимается на высоту пузыря. Страничная, а не с подсветкой:
+          панель въезжает снизу 1,1 с, дольше, чем подсветка ждёт цель. */}
+      {dHint && dSteps.length && !done ? (
+        <HintBubble a11y={!!T.a11y} text={dSteps[dStep]} arrow="up"
+          step={dStep + 1} total={dSteps.length}
+          onNext={dStep >= dSteps.length - 1 ? null : () => setDStep(v => v + 1)}
+          onClose={dHintDone} />
+      ) : null}
 
       {/* Messages */}
       {!done && <div ref={scrollRef} className="sa-dlgscroll" style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch", overscrollBehavior:"contain" }}>

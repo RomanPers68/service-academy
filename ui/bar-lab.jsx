@@ -7,6 +7,8 @@ import { frostOf } from "./home-hubs";
 import { readBarcard, cachedShared, houseCocktails, isFullCocktail } from "../lib/deck-extras";
 import { CocktailArt, VesselArt } from "./cocktail-art";
 import { report as reportAch } from "../lib/achievements";
+import { useHintOnce, HintBubble } from "./widgets";
+import { hintsFor } from "../data/hints";
 
 // ── Дополнение 208: «Сборка руками» — тренажёр, от которого не оторваться ─────
 // Станция внизу: стекло · лёд · ингредиенты · инструмент · гарниш. Тап — действие,
@@ -254,6 +256,15 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   const cardTotal = (t) => ALL.filter(c => (t ? tierOf(c) === t : true) && inCard(c)).length;
   const pill = (on) => ({ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${on ? gold : gold + "55"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : sub });
 
+  // Подсказка — только на главном виде («hub»). В файле несколько компонентов
+  // (Play, GlassView…), состояние живёт здесь, в BarLabScreen, и пузырь рисуется
+  // тоже здесь. Хуки — до первого return по виду.
+  const [blHint, blHintDone] = useHintOnce("barlab");
+  const [blStep, setBlStep] = React.useState(0);
+  const blSteps = hintsFor("barlab");
+  const blRefMastery = React.useRef(null);   // «Мастерство · N из M печатей»
+  const blRefDaily = React.useRef(null);     // «Коктейль дня»
+
   const startPlay = (c, m) => { setCurrent(c); setMode(m); setView("play"); vibrate("light"); };
   const finishPlay = (clean) => {
     save(recordRun(mastery, current.id, mode, clean));
@@ -282,13 +293,23 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   // ─────────────────────────────────────────────── HUB
   if (view === "hub") {
     const stamps = masteredCount();
-    const card = (props, children) => <div className="sa-card" {...props} style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 10, cursor: props.onClick ? "pointer" : "default", ...(props.style || {}) }}>{children}</div>;
+    // Помощник называется tile, а не card: под именем card он перекрывал карту
+    // бара из компонента, и «· СВОЯ КАРТА» горела всегда, а «Час пик» отсюда
+    // брал заказы из всех коктейлей вместо своей карты (функция — не список).
+    const tile = (props, children) => <div className="sa-card" {...props} style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 10, cursor: props.onClick ? "pointer" : "default", ...(props.style || {}) }}>{children}</div>;
     return (
       <div style={T.screen} className="sa-screen">
         <LabStyle />
         {Head("Сборка руками")}
+        {blHint && blSteps.length ? (
+          <HintBubble a11y={a11y} text={blSteps[blStep]} arrow="up"
+            anchorRef={blStep === 0 ? blRefMastery : blRefDaily}
+            step={blStep + 1} total={blSteps.length}
+            onNext={blStep >= blSteps.length - 1 ? null : () => setBlStep(v => v + 1)}
+            onClose={blHintDone} />
+        ) : null}
         <div style={{ padding: "4px 16px 100px" }}>
-          {card({ onClick: () => { setCurrent(dailyC); setView("pick"); vibrate("light"); } }, <>
+          {tile({ ref: blRefDaily, onClick: () => { setCurrent(dailyC); setView("pick"); vibrate("light"); } }, <>
             <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КОКТЕЙЛЬ ДНЯ</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 56, height: 56, flexShrink: 0 }}><GlassView glass={dailyC.glass} fill={0.7} colors={dailyC.ing.map(i => ING_COLOR(i[0]))} ice={dailyC.ice === "crushed" ? "crushed" : dailyC.ice ? "cube" : null} garnish={dailyC.garnish} a11y={a11y} /></div>
@@ -299,7 +320,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
               <span style={{ color: gold, fontSize: 18 }}>›</span>
             </div>
           </>)}
-          {card({}, <>
+          {tile({ ref: blRefMastery }, <>
             <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МАСТЕРСТВО · {stamps} ИЗ {cardTotal()} ПЕЧАТЕЙ{card ? " · СВОЯ КАРТА" : ""}</div>
             {[1, 2, 3].map(t => { const total = cardTotal(t); const n = ALL.filter(c => tierOf(c) === t && inCard(c) && (mastery[c.id]?.level || 0) >= 2).length; return (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
@@ -309,7 +330,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
               </div>); })}
             <div style={{ fontSize: 12.5, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
           </>)}
-          {card({ onClick: () => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
+          {tile({ onClick: () => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
             <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
@@ -319,7 +340,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
               <span style={{ color: gold, fontSize: 18 }}>›</span>
             </div>
           </>)}
-          {onOpenDeck && card({ onClick: () => onOpenDeck(null) }, <>
+          {onOpenDeck && tile({ onClick: () => onOpenDeck(null) }, <>
             <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ВЫБРАТЬ КОКТЕЙЛЬ</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>

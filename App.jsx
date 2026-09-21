@@ -1293,7 +1293,7 @@ function ServiceAcademy() {
         {/* ── Книга отзывов ── */}
         {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} focusId={bookFocus} onBack={() => { setBookFocus(null); goBack(); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}
         {/* «Гость недели»: живой диалог из книги; завершение = страница в книге */}
-        {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyDialogueId()} T={T} color={"#C8A96E"} onClose={(finished) => {
+        {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyDialogueId()} hintKey="weeklyGuest" T={T} color={"#C8A96E"} onClose={(finished) => {
           try {
             const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
             const wid = weeklyLessonId();

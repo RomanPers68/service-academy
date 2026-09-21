@@ -19,7 +19,8 @@ import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
-import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
+import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
+import { hintsFor, hintKey } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
@@ -68,6 +69,15 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
   const [draft, setDraft] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
   const [toast, setToast] = React.useState("");
+  // Подсказка при первом входе. Роли разведены ключами: руководителю важны
+  // фиксация времени и «Править», сотруднику — что отметки живут один день.
+  const clKey = hintKey("checklist", canEdit);
+  const [clHint, clHintDone] = useHintOnce(clKey);
+  const [clStep, setClStep] = React.useState(0);
+  const clSteps = hintsFor(clKey);
+  const clRefTabs = React.useRef(null);   // три списка
+  const clRefBar = React.useRef(null);    // полоска «сделано N из M»
+  const clRefEdit = React.useRef(null);   // «✎ Править»
 
   React.useEffect(() => {
     let live = true;
@@ -118,11 +128,21 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
         <div onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:18, fontWeight:"bold" }}>Чек-листы смены</div>
-        {canEdit && !edit && <div onClick={startEdit} {...onActivate(startEdit)} style={{ cursor:"pointer", color:C.gold, fontSize:12.5, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:18, padding:"5px 12px" }}>✎ Править</div>}
+        {canEdit && !edit && <div ref={clRefEdit} onClick={startEdit} {...onActivate(startEdit)} style={{ cursor:"pointer", color:C.gold, fontSize:12.5, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:18, padding:"5px 12px" }}>✎ Править</div>}
         {edit && <div onClick={()=>setEdit(false)} {...onActivate(()=>setEdit(false))} style={{ cursor:"pointer", color:C.muted, fontSize:12.5, padding:"5px 10px" }}>Отмена</div>}
       </div>
 
-      <div style={{ padding:"0 14px", marginBottom:12 }}>
+      {/* Под шапкой, а не внутри неё: шапка — флекс-ряд, пузырь там сжимается.
+          В режиме правки не показываем — подсвечивать там нечего. */}
+      {clHint && clSteps.length && !edit ? (
+        <HintBubble a11y={a11y} text={clSteps[clStep]} arrow="up"
+          anchorRef={canEdit ? (clStep === 0 ? clRefBar : clRefEdit) : (clStep === 0 ? clRefTabs : clRefBar)}
+          step={clStep + 1} total={clSteps.length}
+          onNext={clStep >= clSteps.length - 1 ? null : () => setClStep(v => v + 1)}
+          onClose={clHintDone} />
+      ) : null}
+
+      <div ref={clRefTabs} style={{ padding:"0 14px", marginBottom:12 }}>
         <LiquidSegment a11y={a11y} equal
           items={CL_KINDS.map(([k,label]) => ({ id:k, label }))}
           activeId={tab}
@@ -148,7 +168,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
           </>
         ) : (
           <>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+            <div ref={clRefBar} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
               <div style={{ flex:1, height:6, borderRadius:3, background:trackBg, overflow:"hidden" }}>
                 <div style={{ width:`${items.length?(doneCount/items.length)*100:0}%`, height:"100%", background:C.green, transition:"width .3s" }} />
               </div>

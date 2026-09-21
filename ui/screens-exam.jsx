@@ -18,7 +18,8 @@ import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
-import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
+import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
+import { hintsFor } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
@@ -213,12 +214,18 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
     const ls = (MODULES[id] || []).flatMap(m => (m && m.lessons) || []).filter(l => l.type !== "result");
     return ls.length > 0 && ls.every(l => (l.type === "quiz" ? quizDone[l.id] : completed[l.id]));
   };
+  // Страничная подсказка: правило про весь экран, а не про одну кнопку
+  const [ceHint, ceHintDone] = useHintOnce("certificates");
+  const ceSteps = hintsFor("certificates");
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onExit}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gradcap(a11y ? "#8B6A30" : GOLD, 19)}<span>Сертификаты</span></div>
       </div>
+      {ceHint && ceSteps.length ? (
+        <HintBubble a11y={a11y} text={ceSteps[0]} arrow="up" step={1} total={1} onClose={ceHintDone} />
+      ) : null}
       <div style={{ ...T.lessBody, padding:"14px 16px 40px", display:"flex", flexDirection:"column", gap:12 }}>
         {_CERT_ROLE_ORDER.map(id => {
           const r = ROLES.find(x => x.id === id);

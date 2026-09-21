@@ -18,7 +18,8 @@ import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
-import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
+import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
+import { hintsFor } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
@@ -748,6 +749,9 @@ function MentorPinBlock({ T, gold }) {
 
 export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) {
   const [confirmOut, setConfirmOut] = React.useState(false);
+  const [acHint, acHintDone] = useHintOnce("profile");
+  const acSteps = hintsFor("profile");
+  const acRefCard = React.useRef(null);   // карточка с именем
   const posLabel = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
   return (
     <div style={T.screen} className="sa-screen">
@@ -755,8 +759,12 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Аккаунт</div>
       </div>
+      {acHint && acSteps.length ? (
+        <HintBubble a11y={!!T.a11y} text={acSteps[0]} arrow="up" anchorRef={acRefCard}
+          step={1} total={1} onClose={acHintDone} />
+      ) : null}
       <div style={{ flex:1, padding:"20px 18px 40px" }}>
-        <div style={{ ...T.modCard, gap:12, marginBottom:12 }}>
+        <div ref={acRefCard} style={{ ...T.modCard, gap:12, marginBottom:12 }}>
           <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
             <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown("#fff", 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}

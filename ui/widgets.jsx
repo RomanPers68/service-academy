@@ -100,7 +100,7 @@ export function resetHints() {
   } catch (e) { return 0; }
 }
 
-export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
+export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef, anchorId,
                              step = 1, total = 1, onNext, onClose, style }) {
   const txt  = a11y ? "#2A2113" : "#EFE4C8";
   const sub  = a11y ? "#6E5C3C" : "#8F7B57";
@@ -111,7 +111,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   // кромка; в тёмной теме и так хватало, там оставляем как было.
   // Именно параметр, а не его содержимое: на первом кадре ref ещё пуст,
   // и привязанная подсказка на миг получила бы страничный вид.
-  const plain = !anchorRef;
+  const plain = !anchorRef && !anchorId;
   const fill = a11y
     ? (plain ? "rgba(232,210,166,0.99)" : "rgba(246,238,220,0.99)")
     : "rgba(40,31,16,0.99)";
@@ -126,7 +126,10 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   // Между шагами замер один, там переход нужен и работает красиво.
   const [ready, setReady] = React.useState(false);
   React.useLayoutEffect(() => {
-    const el = anchorRef && anchorRef.current;
+    // Цель — либо по ссылке, либо по идентификатору: навбар и другие общие
+    // элементы живут в чужих файлах, ссылку туда не дотянуть.
+    const el = (anchorRef && anchorRef.current)
+      || (anchorId ? document.getElementById(anchorId) : null);
     if (!el) { setBox(null); return; }
     const measure = () => {
       try {
@@ -148,7 +151,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
     };
-  }, [anchorRef, step]);
+  }, [anchorRef, anchorId, step]);
 
   const body = (
     <div className="sa-hintglow" style={{ position:"relative", display:"flex", alignItems:"center", gap:10,

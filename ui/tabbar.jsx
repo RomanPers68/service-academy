@@ -75,7 +75,10 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   const onCancel = () => { drag.current = null; setDragX(null); setPressed(false); };
 
   return (
-    <div style={{ position:"fixed", left:10, right:10, zIndex:200,
+    // id нужен подсказке: навбар живёт здесь, а объясняет его экран «Учусь».
+    // Передавать ссылку через три компонента ради одной подсветки — дороже,
+    // чем найти элемент по имени.
+    <div id="sa-tabbar" style={{ position:"fixed", left:10, right:10, zIndex:200,
       bottom:"calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)" }}>
       {/* Разрешаем горизонтальный жест на баре: обходим глобальные touch-action и JS-блокировку свайпов */}
       <style>{`.sa-lensbar.sa-hscroll, .sa-lensbar.sa-hscroll * { touch-action: none !important; }`}</style>

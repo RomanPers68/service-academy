@@ -98,6 +98,22 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
           style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div>
           <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>ГИД ПО ПРИЛОЖЕНИЮ</div>
+      {/* Человек закрыл подсказку, а через месяц забыл, как устроен раздел.
+          Раньше вернуть их можно было только подняв версию — то есть сразу
+          всем. Здесь каждый решает за себя. */}
+      <div onClick={() => { const n = resetHints(); setReset(n); vibrate("light"); }}
+        {...onActivate(() => { const n = resetHints(); setReset(n); })}
+        style={{ margin:"4px 16px 10px", padding:"10px 13px", borderRadius:14, cursor:"pointer",
+          textAlign:"center", ...frost }}>
+        <div style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:gold }}>
+          {reset === null ? "Показать подсказки заново" : "Готово — подсказки вернутся"}
+        </div>
+        <div style={{ fontSize:11.5, color:sub, marginTop:4, lineHeight:1.45 }}>
+          {reset === null
+            ? "Короткие объяснения снова появятся при входе в разделы"
+            : "Открой любой раздел — подсказка встретит там же, где и в первый раз"}
+        </div>
+      </div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>Что где и зачем</div>
         </div>
       </div>
@@ -137,22 +153,6 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
             </div>
           );
         })}
-      </div>
-      {/* Человек закрыл подсказку, а через месяц забыл, как устроен раздел.
-          Раньше вернуть их можно было только подняв версию — то есть сразу
-          всем. Здесь каждый решает за себя. */}
-      <div onClick={() => { const n = resetHints(); setReset(n); vibrate("light"); }}
-        {...onActivate(() => { const n = resetHints(); setReset(n); })}
-        style={{ margin:"18px 16px 30px", padding:"12px 14px", borderRadius:14, cursor:"pointer",
-          textAlign:"center", ...frost }}>
-        <div style={{ fontFamily:"Georgia, serif", fontSize:13.5, color:gold }}>
-          {reset === null ? "Показать подсказки заново" : "Готово — подсказки вернутся"}
-        </div>
-        <div style={{ fontSize:11.5, color:sub, marginTop:4, lineHeight:1.45 }}>
-          {reset === null
-            ? "Короткие объяснения снова появятся при входе в разделы"
-            : "Открой любой раздел — подсказка встретит там же, где и в первый раз"}
-        </div>
       </div>
     </div>
   );

@@ -222,9 +222,12 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
         // Мягкое торможение в конце: цель «приезжает», а не дёргается.
         // Та же кривая, что у пузыря, — иначе они движутся вразнобой.
         transition:"top .5s cubic-bezier(.22,1,.36,1), left .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1), height .5s cubic-bezier(.22,1,.36,1), box-shadow .5s ease" }} />
-      <div className="sa-hintin" style={{ position:"fixed", width:W, left,
-        [below ? "top" : "bottom"]: below ? box.top + box.h + 14 : vh - box.top + 14,
-        transition:"top .5s cubic-bezier(.22,1,.36,1), left .5s cubic-bezier(.22,1,.36,1), bottom .5s cubic-bezier(.22,1,.36,1)" }}>
+      {/* key по шагу: пузырь НЕ летит через экран к новой цели, а гаснет
+          и всплывает уже на месте. Плавный переезд на большом расстоянии
+          читается как полёт постороннего объекта — подсветке скользить
+          уместно, она связывает старую цель с новой, а пузырю нет. */}
+      <div key={step} className="sa-hintin" style={{ position:"fixed", width:W, left,
+        [below ? "top" : "bottom"]: below ? box.top + box.h + 14 : vh - box.top + 14 }}>
         {tail}{body}
       </div>
     </div>,

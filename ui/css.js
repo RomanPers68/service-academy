@@ -303,10 +303,10 @@ export const injectStyles = () => {
     @keyframes saPop { from { opacity:0; transform:scale(0.7); } 60% { transform:scale(1.06); } to { opacity:1; transform:scale(1); } }
     .sa-pop { animation: saPop .45s cubic-bezier(.16,1,.3,1) backwards; }
     @keyframes saHintIn {
-      from { opacity:0; transform:translateY(9px) scale(.985); }
+      from { opacity:0; transform:translateY(7px) scale(.99); }
       to   { opacity:1; transform:none; }
     }
-    .sa-hintin { animation: saHintIn .55s cubic-bezier(.22,1,.36,1) both; }
+    .sa-hintin { animation: saHintIn .34s cubic-bezier(.22,1,.36,1) both; }
     /* Подсказку легко пропустить: она приходит один раз и должна сработать.
        Мягкое золотое дыхание первые три цикла — глаз ловит движение боковым
        зрением, но это не мигание и не раздражает. Дальше пузырь замирает. */

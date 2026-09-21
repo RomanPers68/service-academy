@@ -82,6 +82,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} карточек · состав, метод, история · основы бара`, icon: Ico.cocktail, on: true, deck: true },
   ];
   return (<div style={T.screen}>
+      {hintNode}
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
       <button style={T.backBtn2} onClick={onExit}>‹</button>
       <span style={{ ...T.modTag, color: gold }}>РАЗДЕЛ</span>
@@ -124,7 +125,6 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
 function Course({ T, gold, course, openLesson, onBack }) {
   return (<div style={T.screen}>
     <Head T={T} title="Справочник" onBack={onBack} />
-      {hintNode}
     <div style={{ padding: "14px 18px 4px" }}>
       <div style={{ fontFamily: SERIF, fontSize: 25, fontWeight: "bold", color: T.modTitle.color }}>{course.title}</div>
       <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>{course.subtitle}</div>

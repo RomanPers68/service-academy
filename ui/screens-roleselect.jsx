@@ -423,10 +423,16 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           )});
           // Доп. 133: вкладка «Учусь» — только учебные жетоны; рабочие и командные
           // переехали на вкладки «Смена» и «Команда». Колода и Глоссарий — сюда.
+          const isStaff = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
+          const anyDone = Object.keys(completed || {}).length > 0 || Object.keys(quizDone || {}).length > 0;
+          const newbie = !isStaff && !anyDone;
           if (learnOnly) {
             // Доп. 142: Колода живёт в Справочнике; «Новички» — во вкладке «Команда».
-            // Сезоннику его «Первая неделя» остаётся на главной — это личный план.
-            const learn = new Set(["sp", "sos", "menu", ...(role === "seasonal" ? ["ob"] : [])]);
+            // 21.09, решение владельца: в ленте ровно четыре — Справочник, Меню,
+            // Глоссарий, Чек-листы; с четырьмя подпись по очереди ещё помещается.
+            // «Первая неделя» ушла во вкладку «Смена» — кроме сезонника-новичка
+            // до первого урока: пока это его главный план, он остаётся под рукой.
+            const learn = new Set(["sp", "sos", "menu", "cl", ...(role === "seasonal" && newbie ? ["ob"] : [])]);
             for (let i = tiles.length - 1; i >= 0; i--) if (!learn.has(tiles[i].key)) tiles.splice(i, 1);
             if (onGlossary) tiles.push({ key:"gl", label:"Глоссарий", onClick:onGlossary, icon:(
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h5"/></svg>
@@ -436,9 +442,6 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           // ═══ Прогрессивное раскрытие: новичку без прогресса — только самое нужное.
           //     Остальные жетоны появляются после первого пройденного урока.
           //     Менеджеров, старших и админов это не касается. ═══
-          const isStaff = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
-          const anyDone = Object.keys(completed || {}).length > 0 || Object.keys(quizDone || {}).length > 0;
-          const newbie = !isStaff && !anyDone;
           const visibleTiles = newbie ? tiles.filter(t => ["sos", "ob", "sp"].includes(t.key)) : tiles;
           // Бейджи-события: новинки меню (реальные данные)
           const menuNew = countNewDishes(profile?.restaurant);
@@ -470,7 +473,15 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
               );
             })() : null}
             {(() => {
-              const tools = visibleTiles.filter(t => !t.red);
+              // Порядок — как назвал владелец: Справочник, Меню, Глоссарий, Чек-листы
+              const ORDER = ["sp", "ob", "menu", "gl", "cl"];
+              const tools = visibleTiles.filter(t => !t.red)
+                .sort((a, b) => (ORDER.indexOf(a.key) + 1 || 99) - (ORDER.indexOf(b.key) + 1 || 99));
+              // Четыре инструмента и раскрытая подпись должны помещаться рядом с SOS.
+              // Замер в браузере: при кружках 40 px «Справочник» вылезал на 9 px
+              // (390 px) и на 7 px (360 px). Кружки 38 / 34 px, отступы ужаты.
+              const narrow = typeof window !== "undefined" && window.innerWidth < 380;
+              const ring = narrow ? 34 : 38;
               const sos = visibleTiles.find(t => t.red);
               // Свой цвет каждому инструменту: однородный серый ряд глаз
               // пропускает, а цветной узор замечает боковым зрением.
@@ -484,8 +495,8 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                 // уже стоит разделитель приложения, и полос выходило три подряд.
                 // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
                 <div ref={refTools} className={homeHint && hintsReady && homeStep === 1 ? "sa-pulse" : undefined}
-                  style={{ display:"flex", alignItems:"center", gap:8,
-                  margin:"0 14px 9px", padding:"10px 12px", borderRadius:999,
+                  style={{ display:"flex", alignItems:"center", gap:6,
+                  margin:"0 14px 9px", padding: narrow ? "10px 10px" : "10px 12px", borderRadius:999,
                   background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
                   boxShadow: a11y
                     ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
@@ -498,7 +509,9 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                       очереди раз в четыре секунды — движение видно боковым
                       зрением, и за полминуты человек узнаёт все инструменты,
                       ничего не нажимая. В «спокойном режиме» ротация стоит. */}
-                  <div style={{ flex:1, minWidth:0, display:"flex", alignItems:"center", gap:4 }}>
+                  {/* overflow — страховка: если шрифт на телефоне крупнее, ряд
+                      обрежется по краю, а не заедет под SOS. */}
+                  <div style={{ flex:1, minWidth:0, display:"flex", alignItems:"center", gap:2, overflow:"hidden" }}>
                     {tools.map((t, i) => {
                       const c = tint(t.key);
                       const on = tools.length ? (toolSpot % tools.length) === i : false;
@@ -508,10 +521,10 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                         <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)}
                           title={t.label}
                           style={{ display:"flex", alignItems:"center", flexShrink:0, cursor:"pointer",
-                            padding:3, borderRadius:999, WebkitTapHighlightColor:"transparent",
+                            padding:2, borderRadius:999, WebkitTapHighlightColor:"transparent",
                             background: on ? `${c}1F` : "transparent",
                             transition:"background .45s ease" }}>
-                          <span style={{ position:"relative", width:40, height:40, borderRadius:"50%",
+                          <span style={{ position:"relative", width:ring, height:ring, borderRadius:"50%",
                             display:"grid", placeItems:"center", flexShrink:0,
                             background:`${c}${on ? "33" : "24"}`, transition:"background .45s ease" }}>
                             {React.cloneElement(t.icon, { width:20, height:20 })}
@@ -522,10 +535,15 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                             ) : null}
                           </span>
                           <span style={{ display:"inline-block", overflow:"hidden", whiteSpace:"nowrap",
-                            fontSize:10.5, color:Cc.text,
+                            fontSize: narrow ? 10 : 10.5, color:Cc.text,
                             maxWidth: on ? 96 : 0, opacity: on ? 1 : 0,
-                            marginLeft: on ? 8 : 0, marginRight: on ? 8 : 0,
-                            transition:"max-width .45s ease, opacity .35s ease, margin .45s ease" }}>{t.label}</span>
+                            marginLeft: on ? 5 : 0, marginRight: on ? 5 : 0,
+                            // Смена подписи — по очереди: сначала закрывается старая,
+                            // потом раскрывается новая. Раньше обе шли разом, и на
+                            // долю секунды ряд становился шире места (до 41 px на 360).
+                            transition: on
+                              ? "max-width .45s ease .3s, opacity .35s ease .35s, margin .45s ease .3s"
+                              : "max-width .3s ease, opacity .2s ease, margin .3s ease" }}>{t.label}</span>
                         </div>
                       );
                     })}
@@ -538,9 +556,9 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                         Надпись в круге работает как знак на огнетушителе:
                         не нужно догадываться по иконке щита. */}
                     <span style={{ width:1, height:34, flexShrink:0, alignSelf:"center",
-                      background: saFrame(a11y, "mid"), margin:"0 4px" }} />
+                      background: saFrame(a11y, "mid"), margin:"0 2px" }} />
                     <div onClick={sos.onClick} {...onActivate(sos.onClick)} title="Срочная помощь"
-                      style={{ flexShrink:0, width:46, height:46, borderRadius:"50%", cursor:"pointer",
+                      style={{ flexShrink:0, width: narrow ? 42 : 46, height: narrow ? 42 : 46, borderRadius:"50%", cursor:"pointer",
                         display:"grid", placeItems:"center", alignSelf:"center",
                         WebkitTapHighlightColor:"transparent",
                         background: a11y ? "rgba(255,240,240,0.8)" : "rgba(224,120,120,0.14)",

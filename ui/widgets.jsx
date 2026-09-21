@@ -109,6 +109,11 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   const edge = a11y ? "rgba(150,112,40,0.4)" : "rgba(214,178,102,0.4)";
 
   const [box, setBox] = React.useState(null);
+  // Переход включается ТОЛЬКО после того, как рамка встала на место.
+  // При первом показе замер идёт дважды — сразу и после перерисовки, — и
+  // разницу в пару пикселей переход честно анимировал: получался рывок.
+  // Между шагами замер один, там переход нужен и работает красиво.
+  const [ready, setReady] = React.useState(false);
   React.useLayoutEffect(() => {
     const el = anchorRef && anchorRef.current;
     if (!el) { setBox(null); return; }
@@ -124,7 +129,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
     // гонку: измеряем один раз, когда всё уже на местах.
     try { el.scrollIntoView({ block: "center", behavior: "auto" }); } catch (e) {}
     measure();
-    const t = requestAnimationFrame(measure);   // после перерисовки — контрольный замер
+    const t = requestAnimationFrame(() => { measure(); setReady(true); });
     window.addEventListener("scroll", measure, true);
     window.addEventListener("resize", measure);
     return () => {
@@ -175,15 +180,15 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   );
 
   const nub = (dir, off) => (
-    <span style={{ display:"block", width:11, height:11,
-      marginLeft: off === "left" ? 26 : "auto", marginRight: off === "right" ? 26 : "auto",
-      marginBottom: dir === "up" ? -6 : 0, marginTop: dir === "down" ? -6 : 0,
-      transform:"rotate(45deg)", background:fill,
-      borderLeft: dir === "up" ? `1px solid ${edge}` : "none",
-      borderTop: dir === "up" ? `1px solid ${edge}` : "none",
-      borderRight: dir === "down" ? `1px solid ${edge}` : "none",
-      borderBottom: dir === "down" ? `1px solid ${edge}` : "none",
-      position:"relative", zIndex: dir === "up" ? 1 : 0 }} />
+    <svg width="22" height="11" viewBox="0 0 22 11" style={{ display:"block", overflow:"visible",
+      marginLeft: off === "left" ? 22 : "auto", marginRight: off === "right" ? 22 : "auto",
+      marginBottom: dir === "up" ? -1 : 0, marginTop: dir === "down" ? -1 : 0,
+      transform: dir === "down" ? "rotate(180deg)" : "none",
+      position:"relative", zIndex: dir === "up" ? 1 : 0 }}>
+      <path d="M0 11 L11 1 L22 11 Z" fill={fill} />
+      <path d="M0 11 L11 1 L22 11" fill="none" stroke={edge} strokeWidth="1" strokeLinejoin="round" />
+      <path d="M1 11 L21 11" stroke={fill} strokeWidth="2.5" />
+    </svg>
   );
 
   // Без привязки — прежнее поведение: пузырь в потоке страницы
@@ -203,13 +208,16 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   const left = Math.max(pad, Math.min(box.left + box.w / 2 - W / 2, vw - W - pad));
   const cx = box.left + box.w / 2 - left;            // центр цели внутри пузыря
   const tail = (
-    <span style={{ display:"block", width:12, height:12, transform:"rotate(45deg)",
-      background:fill, position:"absolute", left: Math.max(14, Math.min(cx - 6, W - 26)),
-      [below ? "top" : "bottom"]: -6,
-      borderLeft: below ? `1px solid ${edge}` : "none",
-      borderTop: below ? `1px solid ${edge}` : "none",
-      borderRight: below ? "none" : `1px solid ${edge}`,
-      borderBottom: below ? "none" : `1px solid ${edge}` }} />
+    <svg width="22" height="11" viewBox="0 0 22 11" style={{ position:"absolute",
+      left: Math.max(12, Math.min(cx - 11, W - 34)),
+      [below ? "top" : "bottom"]: -10, overflow:"visible",
+      transform: below ? "none" : "rotate(180deg)" }}>
+      {/* Заливка на пиксель заходит под пузырь, чтобы шва не было видно */}
+      <path d="M0 11 L11 1 L22 11 Z" fill={fill} />
+      <path d="M0 11 L11 1 L22 11" fill="none" stroke={edge} strokeWidth="1"
+        strokeLinejoin="round" />
+      <path d="M1 11 L21 11" stroke={fill} strokeWidth="2.5" />
+    </svg>
   );
 
   return createPortal(
@@ -219,11 +227,13 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
       <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", inset:0 }} />
       <div style={{ position:"fixed", pointerEvents:"none",
         top: box.top - 6, left: box.left - 6, width: box.w + 12, height: box.h + 12,
-        borderRadius:16, border:`1.5px solid ${gold}`,
-        boxShadow:`0 0 0 9999px ${a11y ? "rgba(40,30,10,0.42)" : "rgba(0,0,0,0.62)"}, 0 0 22px ${gold}66`,
+        borderRadius:16, border:`${a11y ? 2 : 1.5}px solid ${a11y ? "#7A5A18" : gold}`,
+        boxShadow:`0 0 0 9999px ${a11y ? "rgba(46,34,12,0.58)" : "rgba(0,0,0,0.62)"}, 0 0 26px ${gold}${a11y ? "AA" : "66"}`,
         // Мягкое торможение в конце: цель «приезжает», а не дёргается.
         // Та же кривая, что у пузыря, — иначе они движутся вразнобой.
-        transition:"top .5s cubic-bezier(.22,1,.36,1), left .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1), height .5s cubic-bezier(.22,1,.36,1), box-shadow .5s ease" }} />
+        transition: ready
+          ? "top .5s cubic-bezier(.22,1,.36,1), left .5s cubic-bezier(.22,1,.36,1), width .5s cubic-bezier(.22,1,.36,1), height .5s cubic-bezier(.22,1,.36,1), box-shadow .5s ease"
+          : "none" }} />
       {/* key по шагу: пузырь НЕ летит через экран к новой цели, а гаснет
           и всплывает уже на месте. Плавный переезд на большом расстоянии
           читается как полёт постороннего объекта — подсветке скользить

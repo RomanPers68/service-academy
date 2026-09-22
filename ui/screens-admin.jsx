@@ -402,7 +402,19 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   const allScope = !!(profile && (profile.is_admin || profile.position === "senior"));
   const scoped = React.useMemo(() => (scores||[]).filter(s => allScope || s.restaurant === profile?.restaurant), [scores, allScope, profile]);
   const contentVerA = useContentVersion(); // Доп. 132
-  const titleById = React.useMemo(() => { const m={}; try { Object.values(MODULES).forEach(mods=>(mods||[]).forEach(md=>((md.lessons||md.items||[])).forEach(l=>{ if(l&&l.id) m[l.id]=l.title||l.name||l.id; }))); } catch(e){} return m; }, [contentVerA]);
+  // Свои уроки из редактора контента: в аналитике — их названия, а не служебные
+  // номера cms-q-12 (правка 157). Уроки — те же, что видят сотрудники заведения.
+  const [cmsTitles, setCmsTitles] = React.useState({});
+  React.useEffect(() => {
+    let live = true;
+    rpc("cms_list_lessons", { p_token: saToken() }).then(ls => {
+      if (!live || !Array.isArray(ls)) return;
+      const m = {}; ls.forEach(c => { if (!c || c.id == null) return; const t = (c.title || "Урок").trim(); m["cms-l-" + c.id] = t; m["cms-q-" + c.id] = "Тест: " + t; });
+      setCmsTitles(m);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  const titleById = React.useMemo(() => { const m={}; try { Object.values(MODULES).forEach(mods=>(mods||[]).forEach(md=>((md.lessons||md.items||[])).forEach(l=>{ if(l&&l.id) m[l.id]=l.title||l.name||l.id; }))); } catch(e){} return { ...m, ...cmsTitles }; }, [contentVerA, cmsTitles]);
 
   // ── «Лазейки» (этап 15): кто вышел из теста до его официального конца ──
   // Выход фиксирует приложение (ui/loophole.jsx) — только оно отличает лазейку от
@@ -417,7 +429,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
       .catch(() => setRetries("off"));
   }, [view, retries]);
   // Названия тестов — из индекса всех ролей: уроки чужой роли у руководителя не загружены
-  const indexTitle = React.useMemo(() => { const m = {}; try { Object.values(MODULES_INDEX).forEach(mods => (mods || []).forEach(md => (md.lessons || []).forEach(l => { if (l && l.id) m[l.id] = l.title; }))); } catch (e) {} return m; }, []);
+  const indexTitle = React.useMemo(() => { const m = {}; try { Object.values(MODULES_INDEX).forEach(mods => (mods || []).forEach(md => (md.lessons || []).forEach(l => { if (l && l.id) m[l.id] = l.title; }))); } catch (e) {} return { ...m, ...cmsTitles }; }, [cmsTitles]);
   const retryPeople = React.useMemo(() => {
     if (!Array.isArray(retries)) return [];
     const best = {};

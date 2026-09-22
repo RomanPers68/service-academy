@@ -405,10 +405,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
   return createPortal(
     <div className="sa-screen sa-dlg"
       style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
-        transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
-        background: a11y
-          ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
-          : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #1A1008 0%, #1A1008 50%, #1A1008 100%)" }}>
+        transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)", }}>
       {/* ── Шапка ── */}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
@@ -610,25 +607,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
 
       {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
       <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
-        {/* Быстрые чипы: пустое поле пугает — готовые вопросы приглашают.
-              Собираются из learner-контекста, живут пока поле пустое */}
-          {!input && msgs.length === 0 && (() => {
-            const qs = [];
-            if (learner && learner.dueMistakes > 0) qs.push("Что мне повторить перед сменой?");
-            if (learner && learner.todayShift && learner.todayShift !== "выходной") qs.push("Подготовь меня к сегодняшней смене");
-            // Без контекста чип не нужен: приветствие уже предлагает вопросы
-            if (!qs.length) return null;
-            return (
-              <div style={{ display:"flex", gap:6, flexWrap:"wrap", padding:"0 2px 8px" }}>
-                {qs.slice(0, 3).map(t => (
-                  <span key={t} onClick={() => setInput(t)}
-                    style={{ fontSize:11, color:"#C8A96E", padding:"5px 11px", borderRadius:999, cursor:"pointer",
-                      background:"rgba(200,169,110,0.08)", border:"1px solid rgba(200,169,110,0.3)",
-                      WebkitTapHighlightColor:"transparent" }}>{t}</span>
-                ))}
-              </div>
-            );
-          })()}
+        {/* Подсказки-чипы над полем ввода убраны по просьбе владельца (правка 157) */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 28,
             background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
             backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",

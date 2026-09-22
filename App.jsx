@@ -4,7 +4,7 @@ import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
-import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard } from "./ui/loophole";
+import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf } from "./ui/home-hubs";
@@ -1033,7 +1033,14 @@ function ServiceAcademy() {
           try { localStorage.setItem("sa_quiz_done", JSON.stringify(newQuizDone)); } catch(e) {}
           setQuizDone(newQuizDone);
           rpcSync("save_quiz_done", { p_token: saToken(), p_quiz_id: activeLesson.id });
-          try { const rec = loopPassed(loopUk, activeLesson); if (rec) setLoophole(rec); } catch (e) {}
+          try { const rec = loopPassed(loopUk, activeLesson); if (rec) {
+            setLoophole(rec); setLoopRank(null); setLoopView("banner");
+            // Ключ тайного зачёта — сразу на сервер; ответ — место в зачёте. Нет связи
+            // или нет этапа 16 — ключ ждёт в очереди, карточка покажется без зачёта.
+            const kp = { p_token: saToken(), p_lesson: rec.lessonId };
+            rpc("log_quiz_key", kp).then(r => { if (r && r.ok) setLoopRank(r); else rpcSync("log_quiz_key", kp); })
+              .catch(() => { try { rpcSync("log_quiz_key", kp); } catch (e) {} });
+          } } catch (e) {}
         }
       }
 
@@ -1199,7 +1206,10 @@ function ServiceAcademy() {
   const [welcome, setWelcome] = useState(false);
   // Секретная ачивка «Находчивая жопка» (ui/loophole.jsx): карточка, пока не просмотрена
   const [loophole, setLoophole] = useState(null);
-  useEffect(() => { if (profile && storageLoaded) { try { const r = loopUnseen(loopUk); if (r) setLoophole(r); } catch (e) {} } }, [profile, storageLoaded]);
+  // Сначала выезжает баннер-загадка, по тапу — карточка (решение владельца)
+  const [loopView, setLoopView] = useState(null);   // "banner" | "card" | null
+  const [loopRank, setLoopRank] = useState(null);   // место в тайном зачёте (этап 16)
+  useEffect(() => { if (profile && storageLoaded) { try { const r = loopUnseen(loopUk); if (r) { setLoophole(r); setLoopView("banner"); } } catch (e) {} } }, [profile, storageLoaded]);
   const [mistakeHint, setMistakeHint] = useState(false);
   useEffect(() => {
     if (!profile || !storageLoaded) return;
@@ -1605,10 +1615,18 @@ function ServiceAcademy() {
         </div>
 
         {/* Онбординг: приветствие при первом входе */}
-        {loophole && !welcome && (
-          <LoopholeCard rec={loophole} a11y={a11y}
-            onClose={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); }}
-            onMistakes={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); navigate("mistakes"); }} />
+        {loophole && !welcome && loopView === "banner" && (
+          <LoopholeBanner a11y={a11y} n={loophole.n || 1}
+            onOpen={() => {
+              setLoopView("card");
+              if (!loopRank) { try { rpc("quiz_key_rank", { p_token: saToken() }).then(r => { if (r && r.ok) setLoopRank(r); }).catch(() => {}); } catch (e) {} }
+            }}
+            onHide={() => setLoopView(null)} />
+        )}
+        {loophole && !welcome && loopView === "card" && (
+          <LoopholeCard rec={loophole} rank={loopRank} a11y={a11y}
+            onClose={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); setLoopView(null); setLoopRank(null); }}
+            onMistakes={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); setLoopView(null); setLoopRank(null); navigate("mistakes"); }} />
         )}
         {welcome && <WelcomeIntro T={T} a11y={a11y} isAdmin={!!profile?.is_admin} canHire={!!profile?.is_admin || ["manager","senior"].includes(profile?.position)} onClose={closeWelcome} />}
         {/* Контекстная подсказка о повторении — над навбаром, показывается один раз */}

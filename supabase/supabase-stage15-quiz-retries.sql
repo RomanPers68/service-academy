@@ -161,6 +161,12 @@ grant execute on function log_quiz_skip(text, text, int, int, json) to anon, aut
 grant execute on function quiz_skips_list(text) to anon, authenticated;
 grant execute on function quiz_people(text) to anon, authenticated;
 
+-- ── Разбудить PostgREST ────────────────────────────────────────────────────
+-- На этом проекте сервер API не всегда сам замечает новые функции (см. этап 9):
+-- функции в базе есть, а приложение получает «такой функции нет». Эта строка
+-- просит его перечитать список. Без неё вкладки «Люди» и «Лазейки» молчали.
+notify pgrst, 'reload schema';
+
 -- ── Проверка: должно быть 5 функций, 1 таблица и 2 новые колонки ──────────
 select
   (select count(*) from pg_proc where proname in ('sa_rank', 'log_quiz_pick', 'log_quiz_skip', 'quiz_skips_list', 'quiz_people')) as functions,

@@ -8,6 +8,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES, MODULES_INDEX } from "../data/modules";
+import { tones, toneOfFail, toneOfScore, glass, Avatar, Chip, Ring, Bar, ExitTrack, MissPlate, SectionLabel, Icon, Spark } from "./analytics-kit";
 import { useContentVersion } from "../lib/use-content";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
@@ -405,7 +406,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
     if (view !== "retries" || retries !== null) return;
     setRetries("loading");
     rpc("quiz_skips_list", { p_token: saToken() })
-      .then(rows => setRetries(Array.isArray(rows) ? rows : "off")) // не массив — функции ещё нет
+      .then(rows => { if (Array.isArray(rows)) setRetries(rows); else { setSrvErr(rows); setRetries("off"); } })
       .catch(() => setRetries("off"));
   }, [view, retries]);
   // Названия тестов — из индекса всех ролей: уроки чужой роли у руководителя не загружены
@@ -421,24 +422,38 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
       if (!by[who]) by[who] = { who, restaurant: r.restaurant, tests: {}, last: 0 };
       const t = r.ts ? new Date(r.ts).getTime() : 0;
       const cur = by[who].tests[r.lesson_id];
-      if (!cur) by[who].tests[r.lesson_id] = { lesson_id: r.lesson_id, skips: 1, first: r, firstT: t };
-      else { cur.skips++; if (t < cur.firstT) { cur.first = r; cur.firstT = t; } }
+      if (!cur) by[who].tests[r.lesson_id] = { lesson_id: r.lesson_id, skips: 1, first: r, firstT: t, all: [r] };
+      else { cur.skips++; cur.all.push(r); if (t < cur.firstT) { cur.first = r; cur.firstT = t; } }
       if (t > by[who].last) by[who].last = t;
     });
     return Object.values(by).map(p => ({ ...p, tests: Object.values(p.tests).map(x => ({
       ...x, title: indexTitle[x.lesson_id] || titleById[x.lesson_id] || "Тест", done: best[`${p.who}|${x.lesson_id}`] || null,
-      answered: x.first.answered, total: x.first.total, first_wrong: x.first.wrong })) })).sort((a, b) => b.last - a.last);
+      answered: x.first.answered, total: x.first.total,
+      // ошибки всех выходов, по времени, без повторов
+      first_wrong: (() => { const seen = new Set(), out = []; x.all.slice().sort((a, b) => new Date(a.ts) - new Date(b.ts))
+        .forEach(r => (Array.isArray(r.wrong) ? r.wrong : []).forEach(w => { if (w && !seen.has(w.q)) { seen.add(w.q); out.push(w); } })); return out; })() })) }))
+      .map(p => ({ ...p, keys: p.tests.filter(t => t.done).length }))   // ключ = тест, сданный после выхода
+      .sort((a, b) => (b.keys - a.keys) || (b.last - a.last));
   }, [retries, scores, indexTitle, titleById]);
   // ── «Люди» (этап 15): кто, где и как ошибается. Кого видно — решает сервер по лестнице:
   // менеджер — линейный персонал своего ресторана, руководящий состав — ещё и менеджеров
   // всех ресторанов, админ — всех.
   const [people, setPeople] = React.useState(null); // null | "loading" | "off" | []
+  // Почему сервер не отдал отчёт. PGRST202 — функция в базе есть, а сервер API её
+  // ещё не видит (не перечитал список): лечится одной строкой в SQL Editor.
+  const [srvErr, setSrvErr] = React.useState(null);
+  const offText = (what) => {
+    const code = srvErr && srvErr.code;
+    if (code === "PGRST202") return "Сервер ещё не видит новые функции. В Supabase → SQL Editor выполни одну строку: notify pgrst, 'reload schema'; — и открой этот экран заново.";
+    if (srvErr && srvErr.message) return `Сервер ответил ошибкой: ${srvErr.message}${code ? ` (${code})` : ""}. Пришли этот текст разработчику.`;
+    return `Серверная часть ещё не включена — примени supabase-stage15-quiz-retries.sql, и здесь появятся ${what}.`;
+  };
   const [openWho, setOpenWho] = React.useState(null);
   React.useEffect(() => {
     if (view !== "people" || people !== null) return;
     setPeople("loading");
     rpc("quiz_people", { p_token: saToken() })
-      .then(rows => setPeople(Array.isArray(rows) ? rows : "off"))
+      .then(rows => { if (Array.isArray(rows)) setPeople(rows); else { setSrvErr(rows); setPeople("off"); } })
       .catch(() => setPeople("off"));
     if (retries === null) {   // ключик «нашёл лазейку» у имени — из того же отчёта, что и вкладка
       setRetries("loading");
@@ -469,6 +484,8 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   const oshibok = (n) => { const d = n % 10, h = n % 100; return (d === 1 && h !== 11) ? "ошибка" : (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "ошибки" : "ошибок"; };
   const vTeste = (n) => (n % 10 === 1 && n % 100 !== 11) ? "тесте" : "тестах";
   const raz = (n) => { const d = n % 10, h = n % 100; return (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "раза" : "раз"; };
+  // Лидер тайного зачёта — свой в каждом заведении (зачёт идёт внутри заведения)
+  const keyLeader = React.useMemo(() => { const m = {}; retryPeople.forEach(p => { if (p.keys > (m[p.restaurant] || 0)) m[p.restaurant] = p.keys; }); return m; }, [retryPeople]);
   const missC = a11y ? "#A4452A" : "#E08A62";   // ошибка: светлый вариант — для контраста на креме
   const keyIcon = (c, s = 20) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -495,15 +512,75 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
   const cardBase = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:14 };
 
+  // ── Отрисовка — «морозный лёд», как у ачивки (кирпичики — ui/analytics-kit.jsx) ──
+  const TN = tones(a11y);
+  const G = (extra) => glass(C, a11y, extra);
+  const muted = a11y ? "#5E4E30" : "#BFAE8A";
+  const note = (t) => <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.5, padding: "6px 2px" }}>{t}</div>;
+  const personTone = (fails) => fails >= 6 ? "bad" : fails >= 3 ? "mid" : "good";
+  // Динамика: средний результат по неделям (6 недель, с понедельника) и рестораны
+  const weeks = React.useMemo(() => {
+    const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow);
+    const out = [];
+    for (let w = 5; w >= 0; w--) {
+      const st = d.getTime() - w * 7 * 864e5, en = st + 7 * 864e5;
+      const xs = scoped.filter(x => x.updated_at && (+new Date(x.updated_at)) >= st && (+new Date(x.updated_at)) < en);
+      const dd = new Date(st);
+      out.push({ v: xs.length ? Math.round(xs.reduce((acc, x) => acc + (x.pct || 0), 0) / xs.length) : null, label: `${dd.getDate()}.${String(dd.getMonth() + 1).padStart(2, "0")}` });
+    }
+    return out;
+  }, [scoped]);
+  const wkv = weeks.filter(w => w.v != null);
+  const delta = weeks[5].v != null && wkv.length >= 2 ? wkv[wkv.length - 1].v - wkv[wkv.length - 2].v : null;
+  const rests = React.useMemo(() => {
+    const by = {}; scoped.forEach(x => { const k = x.restaurant || "—"; (by[k] = by[k] || { name: k, sum: 0, n: 0 }); by[k].sum += x.pct || 0; by[k].n++; });
+    return Object.values(by).map(r => ({ ...r, avg: Math.round(r.sum / r.n) })).sort((x, y) => y.avg - x.avg);
+  }, [scoped]);
+
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
-      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 4px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 2px" }}>
         <div onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
-        <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:18, fontWeight:"bold" }}>Аналитика</div>
+        <div style={{ flex:1 }}>
+          <div style={{ color:C.text, fontFamily:serif, fontSize:20, fontWeight:"bold" }}>Аналитика</div>
+          <div style={{ color:muted, fontSize:12 }}>Охват: {scopeLabel}</div>
+        </div>
       </div>
-      <div style={{ padding:"0 16px 10px", color:C.muted, fontSize:12.5 }}>Охват: {scopeLabel}</div>
 
-      <div style={{ padding:"0 14px", marginBottom:12 }}>
+      {/* Динамика (выбор владельца из трёх вариантов): кольцо недели, изменение к прошлой,
+          график среднего результата за 6 недель — видно на любой вкладке */}
+      <div style={G({ margin:"10px 14px 10px", padding:"14px 14px 8px" })}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <Ring pct={dg.avg} size={64} tone={dg.lessons ? toneOfScore(dg.avg) : "gold"} a11y={a11y} label={dg.lessons ? `${dg.avg}%` : "—"} />
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:9.5, letterSpacing:1.8, fontWeight:"bold" }}>СРЕДНИЙ РЕЗУЛЬТАТ · НЕДЕЛЯ</div>
+            {delta != null ? (
+              // Разница в пунктах, не в процентах: было 68%, стало 77% — это +9
+              <div style={{ fontFamily:serif, fontSize:19, fontWeight:"bold", marginTop:4, color: delta > 0 ? TN.good : delta < 0 ? TN.bad : C.text }}>
+                {delta === 0 ? <>= <span style={{ fontSize:13, fontWeight:"normal", color:muted }}>без изменений к прошлой неделе</span></>
+                  : <>{delta > 0 ? "▲ +" : "▼ −"}{Math.abs(delta)} <span style={{ fontSize:13, fontWeight:"normal", color:muted }}>к прошлой неделе</span></>}
+              </div>
+            ) : <div style={{ color:muted, fontSize:12.5, marginTop:4 }}>{weeks[5].v == null ? "на этой неделе тестов ещё нет" : "сравнение появится через неделю"}</div>}
+            <div style={{ color:muted, fontSize:11.5, marginTop:2 }}>активны <b style={{ color:C.text }}>{dg.active}</b> · тестов <b style={{ color:C.text }}>{dg.lessons}</b> · уснули <b style={{ color: dg.asleep.length ? TN.mid : C.text }}>{dg.asleep.length}</b></div>
+          </div>
+        </div>
+        <div style={{ marginTop:10 }}><Spark points={weeks} a11y={a11y} /></div>
+      </div>
+      {/* Рестораны — тем, кто видит больше одного (админ, руководящий состав) */}
+      {allScope && rests.length > 1 ? (
+        <div style={G({ margin:"0 14px 12px", padding:"12px 14px" })}>
+          <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:9.5, letterSpacing:1.8, fontWeight:"bold", marginBottom:8 }}>РЕСТОРАНЫ · СРЕДНИЙ РЕЗУЛЬТАТ</div>
+          {rests.map((r, i) => (
+            <div key={i} style={{ marginBottom: i < rests.length - 1 ? 9 : 0 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
+                <span style={{ color:C.text, fontFamily:serif, fontSize:13.5, fontWeight: i === 0 ? "bold" : "normal" }}>{i === 0 ? "★ " : ""}{r.name}</span>
+                <span style={{ color:TN[toneOfScore(r.avg)], fontFamily:serif, fontWeight:"bold", fontSize:14 }}>{r.avg}%</span>
+              </div>
+              <div style={{ marginTop:4 }}><Bar pct={r.avg} tone={toneOfScore(r.avg)} a11y={a11y} h={5} /></div>
+            </div>))}
+        </div>) : null}
+
+      <div style={{ padding:"0 14px", marginBottom:4 }}>
         <LiquidSegment a11y={a11y} equal
           items={[["people","Люди"],["questions","Вопросы"],["retries","Лазейки"],["digest","Сводка"]].map(([k,l]) => ({ id:k, label:l }))}
           activeId={view}
@@ -511,165 +588,172 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
       </div>
 
       <div style={{ padding:"0 14px" }}>
-        {view === "people" ? (
-          <>
-            <div style={{ color:C.muted, fontSize:12.5, marginBottom:10, lineHeight:1.5 }}>Кто, где и как ошибается за 90 дней. Нажми на человека — раскроются вопросы: что выбрал и что было верно. Видны: {peopleScope}.</div>
-            {people === "loading" && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px" }}>Загружаю…</div>}
-            {people === "off" && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Серверная часть ещё не включена — примени supabase-stage15-quiz-retries.sql, и здесь появятся сотрудники и их ошибки.</div>}
-            {Array.isArray(people) && peopleList.length === 0 && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Ошибок за 90 дней нет — или команда ещё не проходила тесты.</div>}
-            {peopleList.map((p, i) => {
-              const open = openWho === p.who;
-              const toggle = () => setOpenWho(open ? null : p.who);
-              return (
-                <div key={i} style={{ ...cardBase, padding:"12px 14px", marginBottom:8 }}>
-                  <div onClick={toggle} {...onActivate(toggle)} style={{ cursor:"pointer" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                      {loopWho.has(p.who) ? keyIcon(C.gold, 15) : null}
-                      <span style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold", flex:1, minWidth:0 }}>{p.who}</span>
-                      <span style={{ color:missC, fontFamily:serif, fontSize:15, fontWeight:"bold", flexShrink:0 }}>{p.fails}</span>
-                      <span style={{ color:C.dim, fontSize:14, flexShrink:0, transform: open ? "rotate(90deg)" : "none", transition:"transform .25s ease" }}>›</span>
+        {view === "people" ? (<>
+          <SectionLabel a11y={a11y} right="90 дней">КТО И ГДЕ ОШИБАЕТСЯ</SectionLabel>
+          <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px", lineHeight:1.45 }}>Видны: {peopleScope}. Нажми на человека — раскроются вопросы.</div>
+          {people === "loading" && note("Загружаю…")}
+          {people === "off" && note(offText("сотрудники и их ошибки"))}
+          {Array.isArray(people) && peopleList.length === 0 && note("Ошибок за 90 дней нет — или команда ещё не проходила тесты.")}
+          {peopleList.map((p, i) => {
+            const open = openWho === p.who; const toggle = () => setOpenWho(open ? null : p.who);
+            const tone = personTone(p.fails);
+            return (
+              <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
+                <div onClick={toggle} {...onActivate(toggle)} style={{ cursor:"pointer", display:"flex", gap:11, alignItems:"center" }}>
+                  <Avatar who={p.who} tone={tone} a11y={a11y} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.who}</span>
+                      {loopWho.has(p.who) ? Icon.key(TN.gold, 14) : null}
                     </div>
-                    <div style={{ color:C.muted, fontSize:12, marginTop:2, lineHeight:1.45 }}>
-                      {[POS[p.pos] || null, viewerRank >= 2 ? p.restaurant : null].filter(Boolean).join(" · ")}
-                      {`${POS[p.pos] || (viewerRank >= 2 && p.restaurant) ? " · " : ""}${p.fails} ${oshibok(p.fails)} в ${p.tests.length} ${vTeste(p.tests.length)}`}
-                      {p.tests[0] ? ` · больше всего — «${p.tests[0].title}»` : ""}
+                    <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginTop:4 }}>
+                      {POS[p.pos] ? <Chip a11y={a11y}>{POS[p.pos]}</Chip> : null}
+                      {viewerRank >= 2 && p.restaurant ? <Chip a11y={a11y}>{p.restaurant}</Chip> : null}
                     </div>
                   </div>
-                  {open ? p.tests.map((t, j) => (
-                    <div key={j} style={{ borderTop:`1px solid ${C.border}`, paddingTop:9, marginTop:9 }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", gap:8, alignItems:"baseline" }}>
-                        <span style={{ color:C.text, fontSize:13.5, fontWeight:"bold", lineHeight:1.35 }}>{t.title}</span>
-                        <span style={{ color:C.dim, fontSize:11.5, flexShrink:0 }}>{t.fails} {oshibok(t.fails)}</span>
-                      </div>
-                      {t.qs.slice(0, 5).map((w, k) => (
-                        <div key={k} style={{ display:"flex", gap:7, alignItems:"flex-start", marginTop:6 }}>
-                          <span style={{ color:missC, fontSize:12.5, lineHeight:1.4, flexShrink:0 }}>✕</span>
-                          <div style={{ minWidth:0 }}>
-                            <div style={{ color:C.text, fontSize:12.5, lineHeight:1.4 }}>{w.question}{w.fails > 1 ? <span style={{ color:missC }}>{`  ×${w.fails}`}</span> : null}</div>
-                            {w.last_answer ? <div style={{ color:C.muted, fontSize:11.5, lineHeight:1.4 }}>выбирал: «{w.last_answer}»</div> : null}
-                            {w.right_answer ? <div style={{ color: a11y ? "#2F6B45" : "#7FC49A", fontSize:11.5, lineHeight:1.4 }}>верно: «{w.right_answer}»</div> : null}
-                          </div>
-                        </div>
-                      ))}
-                      {t.qs.length > 5 ? <div style={{ color:C.dim, fontSize:11.5, marginTop:4 }}>и ещё {t.qs.length - 5}</div> : null}
+                  <div style={{ textAlign:"right", flexShrink:0 }}>
+                    <div style={{ color:TN[tone], fontFamily:serif, fontSize:21, fontWeight:"bold", lineHeight:1 }}>{p.fails}</div>
+                    <div style={{ color:muted, fontSize:10.5 }}>{oshibok(p.fails)}</div>
+                  </div>
+                  {Icon.chev(muted, open)}
+                </div>
+                {/* где сосредоточены ошибки: полоса по тестам, самый тяжёлый — цветом */}
+                <div style={{ display:"flex", gap:3, marginTop:10, height:6 }}>
+                  {p.tests.map((t, j) => <span key={j} style={{ flex: t.fails, borderRadius:3,
+                    background: j === 0 ? TN[tone] : (a11y ? "rgba(107,78,20,0.28)" : "rgba(214,178,102,0.32)") }} />)}
+                </div>
+                <div style={{ color:muted, fontSize:11.5, marginTop:5 }}>{p.tests.length} {vTeste(p.tests.length)} · больше всего — «{p.tests[0] ? p.tests[0].title : ""}»</div>
+                {open ? p.tests.map((t, j) => (
+                  <div key={j} style={{ marginTop:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
+                      <span style={{ color:C.text, fontFamily:serif, fontSize:13.5, fontWeight:"bold", minWidth:0 }}>{t.title}</span>
+                      <Chip a11y={a11y} tone={personTone(t.fails)}>{t.fails} {oshibok(t.fails)}</Chip>
                     </div>
-                  )) : null}
-                </div>
-              );
-            })}
-          </>
-        ) : view === "retries" ? (
-          <>
-            {/* Карточка самой ачивки — объясняет вкладку тому, кто открыл её впервые */}
-            <div style={{ ...cardBase, padding:"14px 16px", marginBottom:12, display:"flex", gap:12, alignItems:"flex-start" }}>
-              <span style={{ width:40, height:40, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center",
-                background: a11y ? "rgba(139,106,48,0.12)" : "rgba(214,178,102,0.12)", border:`1px solid ${C.gold}55` }}>{keyIcon(C.gold)}</span>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ color:C.gold, fontSize:10, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace" }}>СЕКРЕТНАЯ АЧИВКА</div>
-                <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold", margin:"3px 0 4px" }}>«Находчивая жопка»</div>
-                <div style={{ color:C.muted, fontSize:12.5, lineHeight:1.5 }}>Вышел из теста до конца, чтобы не засчитали ошибки, и прошёл заново. Не наказываем: сам сотрудник получает ачивку — «Ах ты, хитрая жопка» — с разбором ошибок, коллеги её не видят. Здесь видно, что подтянуть.</div>
-              </div>
+                    {t.qs.slice(0, 5).map((w, k) => <MissPlate key={k} q={w.question} picked={w.last_answer} right={w.right_answer} times={w.fails} a11y={a11y} />)}
+                    {t.qs.length > 5 ? <div style={{ color:muted, fontSize:11.5, marginTop:6 }}>и ещё {t.qs.length - 5}</div> : null}
+                  </div>)) : null}
+              </div>);
+          })}
+        </>) : view === "retries" ? (<>
+          <div style={{ ...G({ padding:"14px 14px", marginTop:8 }), display:"flex", gap:12, alignItems:"center" }}>
+            <span style={{ width:48, height:48, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center",
+              background:"conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #8B6A30, #F4E2AE)", boxShadow: a11y ? "none" : "0 0 18px rgba(214,178,102,0.25)" }}>
+              <span style={{ width:41, height:41, borderRadius:"50%", display:"grid", placeItems:"center",
+                background: a11y ? "radial-gradient(circle at 35% 30%, #FFF8E8, #EADBB8)" : "radial-gradient(circle at 35% 30%, #4A3A20, #1E160A)" }}>{Icon.key(TN.gold, 21)}</span>
+            </span>
+            <div style={{ minWidth:0 }}>
+              <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:9.5, letterSpacing:1.8, fontWeight:"bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
+              <div style={{ color:C.text, fontFamily:serif, fontSize:16.5, fontWeight:"bold" }}>«Находчивая жопка»</div>
+              <div style={{ color:muted, fontSize:12, lineHeight:1.45, marginTop:2 }}>Вышел до конца теста, чтобы стереть ошибки. Сам получает ачивку с разбором, коллеги её не видят.</div>
             </div>
-            {retries === "loading" && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px" }}>Загружаю…</div>}
-            {retries === "off" && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Серверная часть ещё не включена — примени supabase-stage15-quiz-retries.sql, и здесь появятся те, кто нашёл лазейку.</div>}
-            {Array.isArray(retries) && retryPeople.length === 0 && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Пока никто не нашёл лазейку — все сдают тесты с первого захода.</div>}
-            {retryPeople.map((p, i) => (
-              <div key={i} style={{ ...cardBase, padding:"12px 14px", marginBottom:10 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  {keyIcon(C.gold, 16)}
-                  <span style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold", flex:1, minWidth:0 }}>{p.who}</span>
-                  {allScope && p.restaurant ? <span style={{ color:C.dim, fontSize:11, flexShrink:0 }}>{p.restaurant}</span> : null}
+          </div>
+          {retries === "loading" && note("Загружаю…")}
+          {retries === "off" && note(offText("те, кто нашёл лазейку"))}
+          {Array.isArray(retries) && retryPeople.length === 0 && note("Пока никто не нашёл лазейку — все сдают тесты с первого захода.")}
+          {retryPeople.some(p => p.keys) ? (<>
+            <SectionLabel a11y={a11y}>ТАЙНЫЙ ЗАЧЁТ КЛЮЧЕЙ</SectionLabel>
+            {Object.entries(retryPeople.filter(p => p.keys).reduce((m, p) => { (m[p.restaurant] = m[p.restaurant] || []).push(p); return m; }, {})).map(([rest, list], i) => (
+              <div key={i} style={G({ padding:"10px 12px", marginBottom:8 })}>
+                {allScope ? <div style={{ color:muted, fontSize:11, marginBottom:4 }}>{rest}</div> : null}
+                {list.slice(0, 5).map((p, j) => (
+                  <div key={j} style={{ display:"flex", alignItems:"center", gap:10, padding:"5px 0", borderTop: j ? `1px solid ${a11y ? "rgba(107,78,20,0.10)" : "rgba(214,178,102,0.08)"}` : "none" }}>
+                    <span style={{ width:18, textAlign:"center", fontFamily:serif, fontWeight:"bold", fontSize:14, color: j === 0 ? TN.gold : muted }}>{j + 1}</span>
+                    <Avatar who={p.who} size={30} a11y={a11y} />
+                    <span style={{ flex:1, minWidth:0, color:C.text, fontFamily:serif, fontSize:14, fontWeight: j === 0 ? "bold" : "normal" }}>{p.who}</span>
+                    <span style={{ display:"flex", gap:2, alignItems:"center" }}>
+                      {Array.from({ length: Math.min(p.keys, 6) }).map((_, k) => <span key={k}>{Icon.key(TN.gold, 14)}</span>)}
+                      {p.keys > 6 ? <span style={{ color:TN.gold, fontSize:11.5, marginLeft:3 }}>+{p.keys - 6}</span> : null}
+                    </span>
+                  </div>))}
+              </div>))}
+          </>) : null}
+          {retryPeople.length ? <SectionLabel a11y={a11y}>КТО И ЧТО СТЁР</SectionLabel> : null}
+          {retryPeople.map((p, i) => (
+            <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
+              <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+                <Avatar who={p.who} a11y={a11y} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>{p.who}</div>
+                  <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginTop:4 }}>
+                    {p.keys && p.keys === keyLeader[p.restaurant] ? <Chip a11y={a11y} tone="mid" strong>лидер зачёта</Chip> : null}
+                    {allScope && p.restaurant ? <Chip a11y={a11y}>{p.restaurant}</Chip> : null}
+                  </div>
                 </div>
-                {p.tests.map((t, j) => {
-                  const wrong = Array.isArray(t.first_wrong) ? t.first_wrong : [];
-                  const total = t.total || (t.done && t.done.total) || 0;
-                  return (
-                    <div key={j} style={{ borderTop: j ? `1px solid ${C.border}` : "none", paddingTop: j ? 9 : 0, marginTop: j ? 9 : 0 }}>
-                      <div style={{ color:C.text, fontSize:13.5, fontWeight:"bold", lineHeight:1.35 }}>{t.title}</div>
-                      <div style={{ color:C.muted, fontSize:12, margin:"2px 0 7px", lineHeight:1.45 }}>
-                        {t.done ? `Вышел ${t.skips} ${raz(t.skips)}, потом сдал на ${t.done.pct}%` : `Вышел ${t.skips} ${raz(t.skips)}, пока не сдал`}
-                        {` · в первый раз — на ${t.answered}-м вопросе${total ? ` из ${total}` : ""}`}
-                      </div>
-                      {wrong.length ? (
-                        <>
-                          <div style={{ color:C.dim, fontSize:10, letterSpacing:1.4, fontFamily:"monospace", marginBottom:4 }}>ОШИБСЯ В ПЕРВЫЙ РАЗ</div>
-                          {wrong.slice(0, 5).map((w, k) => (
-                            <div key={k} style={{ display:"flex", gap:7, alignItems:"flex-start", marginBottom:5 }}>
-                              <span style={{ color:missC, fontSize:12.5, lineHeight:1.4, flexShrink:0 }}>✕</span>
-                              <div style={{ minWidth:0 }}>
-                                <div style={{ color:C.text, fontSize:12.5, lineHeight:1.4 }}>{w.q}</div>
-                                {w.a ? <div style={{ color:C.muted, fontSize:11.5, lineHeight:1.4 }}>ответил: «{w.a}»</div> : null}
-                                {w.r ? <div style={{ color: a11y ? "#2F6B45" : "#7FC49A", fontSize:11.5, lineHeight:1.4 }}>верно: «{w.r}»</div> : null}
-                              </div>
-                            </div>
-                          ))}
-                          {wrong.length > 5 ? <div style={{ color:C.dim, fontSize:11.5 }}>и ещё {wrong.length - 5}</div> : null}
-                        </>
-                      ) : null}
+                {p.keys ? <div style={{ display:"flex", alignItems:"center", gap:4, color:TN.gold, fontFamily:serif, fontWeight:"bold", fontSize:17 }}>{Icon.key(TN.gold, 16)}{p.keys}</div> : null}
+              </div>
+              {p.tests.map((t, j) => {
+                const wrong = Array.isArray(t.first_wrong) ? t.first_wrong : [];
+                return (
+                  <div key={j} style={{ marginTop:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
+                      <span style={{ color:C.text, fontFamily:serif, fontSize:13.5, fontWeight:"bold", minWidth:0 }}>{t.title}</span>
+                      {t.done ? <Chip a11y={a11y} tone="good">сдал · {t.done.pct}%</Chip> : <Chip a11y={a11y} tone="mid">пока не сдал</Chip>}
                     </div>
-                  );
-                })}
+                    <div style={{ margin:"8px 0 2px" }}><ExitTrack answered={t.answered} total={t.total || (t.done && t.done.total) || 0} a11y={a11y} /></div>
+                    <div style={{ color:muted, fontSize:11 }}>{t.skips > 1 ? `выходил ${t.skips} ${raz(t.skips)} · красным — где впервые` : "красным — где вышел"}</div>
+                    {wrong.slice(0, 5).map((w, k) => <MissPlate key={k} q={w.q} picked={w.a} right={w.r} a11y={a11y} />)}
+                    {wrong.length > 5 ? <div style={{ color:muted, fontSize:11.5, marginTop:6 }}>и ещё {wrong.length - 5}</div> : null}
+                  </div>);
+              })}
+            </div>))}
+        </>) : view === "questions" ? (<>
+          <SectionLabel a11y={a11y} right="30 дней">ЧАЩЕ ВСЕГО МИМО</SectionLabel>
+          <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px" }}>Каждый вопрос — готовая тема для брифинга.</div>
+          {hardQ === "loading" && note("Загружаю…")}
+          {hardQ === "off" && note("Серверная часть ещё не включена — примени supabase-stage7-quiz-analytics.sql, и здесь появятся вопросы с наибольшим процентом ошибок.")}
+          {Array.isArray(hardQ) && hardQ.length === 0 && note("Пока нет трудных вопросов — данных мало (нужно минимум 3 ответа на вопрос) или команда отвечает без ошибок.")}
+          {Array.isArray(hardQ) && hardQ.map((q, i) => { const tone = toneOfFail(q.fail_pct); const tt = indexTitle[q.lesson_id] || titleById[q.lesson_id]; return (
+            <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
+              <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+                <span style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center", fontFamily:serif, fontWeight:"bold", fontSize:12,
+                  color: i < 3 ? "#1F160A" : muted, background: i < 3 ? "linear-gradient(135deg, #F1DFA8, #B8914A)" : "transparent", border: i < 3 ? "none" : `1px solid ${muted}55` }}>{i + 1}</span>
+                <span style={{ flex:1, minWidth:0, color:C.text, fontFamily:serif, fontSize:14, fontWeight:"bold", lineHeight:1.4 }}>{q.question}</span>
+                <span style={{ color:TN[tone], fontFamily:serif, fontSize:18, fontWeight:"bold", flexShrink:0 }}>{q.fail_pct}%</span>
               </div>
-            ))}
-          </>
-        ) : view === "questions" ? (
-          <>
-            <div style={{ color:C.muted, fontSize:12.5, marginBottom:10, lineHeight:1.5 }}>Вопросы, которые команда чаще всего заваливает (за 30 дней). Каждый — готовая тема для брифинга.</div>
-            {hardQ === "loading" && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px" }}>Загружаю…</div>}
-            {hardQ === "off" && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Серверная часть ещё не включена — примени supabase-stage7-quiz-analytics.sql, и здесь появятся вопросы с наибольшим процентом ошибок.</div>}
-            {Array.isArray(hardQ) && hardQ.length === 0 && <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Пока нет трудных вопросов — либо данных мало (нужно минимум 3 ответа на вопрос), либо команда отвечает без ошибок. 🎉</div>}
-            {Array.isArray(hardQ) && hardQ.map((q,i)=>{ const col=q.fail_pct>=50?"#D9764A":q.fail_pct>=25?"#D6A33A":"#4FB07A"; return (
-              <div key={i} style={{ ...cardBase, padding:"12px 14px", marginBottom:8 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
-                  <span style={{ color:C.text, fontSize:14, fontWeight:"bold", flex:1, minWidth:0, lineHeight:1.4 }}>{q.question}</span>
-                  <span style={{ color:col, fontFamily:serif, fontSize:16, fontWeight:"bold", flexShrink:0 }}>{q.fail_pct}%</span>
-                </div>
-                <div style={{ height:6, borderRadius:3, background:trackBg, overflow:"hidden", margin:"8px 0 4px" }}>
-                  <div style={{ width:`${q.fail_pct}%`, height:"100%", background:col }} />
-                </div>
-                <div style={{ color:C.dim, fontSize:11 }}>{q.fails} из {q.total} ответов — мимо{titleById[q.lesson_id] ? ` · ${titleById[q.lesson_id]}` : ""}</div>
+              <div style={{ margin:"9px 0 7px 34px" }}><Bar pct={q.fail_pct} tone={tone} a11y={a11y} /></div>
+              <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginLeft:34 }}>
+                <Chip a11y={a11y}>{q.fails} из {q.total} мимо</Chip>
+                {tt ? <Chip a11y={a11y}>{tt}</Chip> : null}
               </div>
-            );})}
-          </>
-        ) : scoped.length === 0 ? (
-          <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Пока нет данных по тестам{allScope?"":" в вашем ресторане"}. Аналитика появится, когда команда начнёт проходить тесты.</div>
-        ) : (
-          <>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-              {[["Активных за неделю", dg.active],["Пройдено за неделю", dg.lessons],["Средний тест", dg.avg+"%"]].map(([l,v],i)=>(
-                <div key={i} style={{ ...cardBase, padding:"13px 14px" }}>
-                  <div style={{ color:C.dim, fontSize:11 }}>{l}</div>
-                  <div style={{ color:C.text, fontFamily:serif, fontSize:25, fontWeight:"bold", marginTop:2 }}>{v}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ ...cardBase, padding:"14px 16px", marginBottom:10 }}>
-              <div style={{ color:"#D6A33A", fontSize:11, letterSpacing:1.5, fontWeight:"bold", marginBottom:6 }}>СЛАБОЕ МЕСТО</div>
-              {dg.weak ? <div style={{ color:C.text, fontSize:14 }}>{dg.weak.title} — <b style={{color:"#D9764A"}}>{dg.weak.avg}%</b></div> : <div style={{ color:C.muted, fontSize:12.5 }}>Достаточно данных пока нет</div>}
-            </div>
-            <div style={{ ...cardBase, padding:"14px 16px" }}>
-              <div style={{ color:"#D6A33A", fontSize:11, letterSpacing:1.5, fontWeight:"bold", marginBottom:6 }}>УСНУЛИ · 7+ дней без активности</div>
-              {dg.asleep.length===0 ? <div style={{ color:C.green, fontSize:12.5 }}>Все активны 👍</div> : (
-                <div style={{ color:C.text, fontSize:12.5, lineHeight:1.6 }}>{dg.asleep.length} чел.: {dg.asleep.slice(0,5).map(p=>`${p.name} ${(p.surname||"")[0]||""}`.trim()).join(", ")}{dg.asleep.length>5?" и др.":""}</div>
-              )}
-            </div>
-            {/* Бывшая вкладка «Темы»: пять вкладок не помещались на телефоне, а «Слабое место» выше — её краткая версия */}
-            <div style={{ color:C.muted, fontSize:12.5, margin:"14px 0 10px", lineHeight:1.5 }}>Темы с самым низким средним результатом — над ними стоит поработать.</div>
-            {weak.map((q,i)=>{ const col=q.avg<60?"#D9764A":q.avg<75?"#D6A33A":"#4FB07A"; return (
-              <div key={i} style={{ ...cardBase, padding:"12px 14px", marginBottom:8 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
-                  <span style={{ color:C.text, fontSize:14, fontWeight:"bold", flex:1, minWidth:0 }}>{q.title}</span>
-                  <span style={{ color:col, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>{q.avg}%</span>
-                </div>
-                <div style={{ height:6, borderRadius:3, background:trackBg, overflow:"hidden", margin:"8px 0 4px" }}>
-                  <div style={{ width:`${q.avg}%`, height:"100%", background:col }} />
-                </div>
-                <div style={{ color:C.dim, fontSize:11 }}>{q.n} {q.n===1?"ответ":"ответов"}</div>
+            </div>); })}
+        </>) : scoped.length === 0 ? (
+          note(`Пока нет данных по тестам${allScope ? "" : " в вашем ресторане"}. Сводка появится, когда команда начнёт проходить тесты.`)
+        ) : (<>
+          <SectionLabel a11y={a11y}>СЛАБОЕ МЕСТО</SectionLabel>
+          {dg.weak ? (
+            <div style={{ ...G({ padding:"14px 14px" }), display:"flex", alignItems:"center", gap:14 }}>
+              <Ring pct={dg.weak.avg} size={62} tone={toneOfScore(dg.weak.avg)} a11y={a11y} />
+              <div style={{ minWidth:0 }}>
+                <div style={{ color:C.text, fontFamily:serif, fontSize:15.5, fontWeight:"bold", lineHeight:1.3 }}>{dg.weak.title}</div>
+                <div style={{ color:muted, fontSize:12, marginTop:3 }}>самый низкий средний результат · {dg.weak.n} {dg.weak.n === 1 ? "ответ" : "ответов"}</div>
               </div>
-            ); })}
-          </>
-        )}
-        {profile?.is_admin && <BackupCard C={C} cardBase={cardBase} serif={serif} />}
+            </div>) : note("Для слабого места пока мало данных.")}
+          <SectionLabel a11y={a11y} right="7+ дней">УСНУЛИ</SectionLabel>
+          <div style={G({ padding:"12px 12px" })}>
+            {dg.asleep.length === 0 ? (
+              <div style={{ display:"flex", alignItems:"center", gap:8, color:TN.good, fontSize:13 }}>{Icon.check(TN.good, 17)} Все активны</div>
+            ) : (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                {dg.asleep.slice(0, 8).map((p, i) => (
+                  <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px 3px 3px", borderRadius:999, border:`1px solid ${TN.mid}44`, background:`${TN.mid}10` }}>
+                    <Avatar who={`${p.name} ${p.surname || ""}`} size={24} tone="mid" a11y={a11y} />
+                    <span style={{ color:C.text, fontSize:12.5 }}>{p.name} {(p.surname || "")[0] || ""}</span>
+                  </span>))}
+                {dg.asleep.length > 8 ? <span style={{ color:muted, fontSize:12, alignSelf:"center" }}>и ещё {dg.asleep.length - 8}</span> : null}
+              </div>)}
+          </div>
+          <SectionLabel a11y={a11y}>ТЕМЫ С САМЫМ НИЗКИМ РЕЗУЛЬТАТОМ</SectionLabel>
+          {weak.map((q, i) => { const tone = toneOfScore(q.avg); return (
+            <div key={i} style={G({ padding:"11px 12px", marginBottom:7 })}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
+                <span style={{ color:C.text, fontFamily:serif, fontSize:14, fontWeight:"bold", flex:1, minWidth:0 }}>{q.title}</span>
+                <span style={{ color:TN[tone], fontFamily:serif, fontSize:17, fontWeight:"bold" }}>{q.avg}%</span>
+              </div>
+              <div style={{ margin:"8px 0 4px" }}><Bar pct={q.avg} tone={tone} a11y={a11y} /></div>
+              <div style={{ color:muted, fontSize:11 }}>{q.n} {q.n === 1 ? "ответ" : "ответов"}</div>
+            </div>); })}
+        </>)}
+        {profile?.is_admin && <div style={{ marginTop:14 }}><BackupCard C={C} cardBase={cardBase} serif={serif} /></div>}
       </div>
     </div>
   );

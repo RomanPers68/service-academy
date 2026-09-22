@@ -99,13 +99,11 @@ const numBadge = (n, a11y) => n > 1 ? (
 const CSS = `
 @keyframes laStamp { 0% { transform: scale(2.6) rotate(-24deg); opacity: 0 } 55% { transform: scale(.93) rotate(-9deg); opacity: .96 } 100% { transform: scale(1) rotate(-11deg); opacity: .93 } }
 @keyframes laThump { 0%,100% { transform: translateY(0) } 35% { transform: translateY(3px) } 65% { transform: translateY(-1px) } }
-@keyframes laSheen { 0% { transform: translateX(-140%) skewX(-18deg) } 55%,100% { transform: translateX(260%) skewX(-18deg) } }
 @keyframes laTurn { 0%,62%,100% { transform: rotate(0deg) } 70% { transform: rotate(-32deg) } 80% { transform: rotate(14deg) } 88% { transform: rotate(-6deg) } }
 @keyframes laHalo { 0%,100% { box-shadow: 0 0 0 0 rgba(214,178,102,0.0), 0 0 14px rgba(214,178,102,0.25) } 50% { box-shadow: 0 0 0 5px rgba(214,178,102,0.10), 0 0 22px rgba(214,178,102,0.45) } }
 @media (prefers-reduced-motion: reduce) {
   .la-a { animation: none !important }
   .la-stamp { animation: none !important; opacity: .93 !important }   /* без анимации штамп просто стоит */
-  .la-sheen { display: none }   /* отблеск без движения застывал бы светлым пятном */
 }
 `;
 export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
@@ -124,14 +122,15 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
         ink: "#962F21", dim: "rgba(70,50,20,0.22)", foot: "rgba(250,244,230,0.78)",
         // «Морозный лёд» (просьба владельца): полупрозрачное стекло, изморозь, блики по углам.
         // Чернила штампа ярче прежних: на стекле мелкое «СНОВА» давало 4,3–4,5 при норме 4,5.
-        // Изморозь на большой тёмной карточке — тише, чем на баннере: иначе рябит при чтении.
-        bg: "radial-gradient(circle at 12% 22%, rgba(255,255,255,0.55) 0 0.6px, transparent 1.4px), radial-gradient(circle at 78% 30%, rgba(255,255,255,0.45) 0 0.6px, transparent 1.4px), radial-gradient(circle at 42% 78%, rgba(255,255,255,0.4) 0 0.5px, transparent 1.2px), radial-gradient(circle at 90% 82%, rgba(255,255,255,0.45) 0 0.6px, transparent 1.4px), radial-gradient(120% 70% at 0% 0%, rgba(255,255,255,0.65), transparent 55%), radial-gradient(120% 70% at 100% 100%, rgba(255,255,255,0.4), transparent 60%), rgba(255,250,240,0.66)",
+        // Изморозь (крапинки) и пробегающий проблеск убраны по просьбе владельца (правка 152):
+        // остаётся стекло и анимация движения.
+        bg: "radial-gradient(120% 70% at 0% 0%, rgba(255,255,255,0.65), transparent 55%), radial-gradient(120% 70% at 100% 100%, rgba(255,255,255,0.4), transparent 60%), rgba(255,250,240,0.66)",
         edge: "rgba(255,255,255,0.9)", edgeTop: "rgba(255,255,255,1)",
         plate: "rgba(255,255,255,0.55)", plateBd: "rgba(107,78,20,0.20)", title: "linear-gradient(90deg, #7A5716, #A67C3A 45%, #6B4E14)",
         glow: "inset 0 0 30px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,1), 0 14px 38px rgba(90,60,20,0.22)" }
     : { text: "#EFE4C8", muted: "#BFAE8A", gold: GOLD, miss: "#E08A62", hit: "#7FC49A",
         ink: "#E36A52", dim: "rgba(8,6,3,0.44)", foot: "rgba(26,20,10,0.72)",
-        bg: "radial-gradient(circle at 12% 22%, rgba(255,255,255,0.22) 0 0.6px, transparent 1.4px), radial-gradient(circle at 78% 30%, rgba(255,255,255,0.16) 0 0.6px, transparent 1.4px), radial-gradient(circle at 42% 78%, rgba(255,255,255,0.14) 0 0.5px, transparent 1.2px), radial-gradient(circle at 90% 82%, rgba(255,255,255,0.16) 0 0.6px, transparent 1.4px), radial-gradient(120% 70% at 0% 0%, rgba(255,244,215,0.12), transparent 55%), radial-gradient(120% 70% at 100% 100%, rgba(255,244,215,0.07), transparent 60%), rgba(26,20,10,0.60)",
+        bg: "radial-gradient(120% 70% at 0% 0%, rgba(255,244,215,0.12), transparent 55%), radial-gradient(120% 70% at 100% 100%, rgba(255,244,215,0.07), transparent 60%), rgba(26,20,10,0.60)",
         edge: "rgba(255,240,205,0.30)", edgeTop: "rgba(255,244,215,0.60)",
         plate: "rgba(255,236,190,0.045)", plateBd: "rgba(214,178,102,0.18)", title: "linear-gradient(90deg, #F1DFA8, #C8A96E 45%, #F6E8BE)",
         glow: "inset 0 0 40px rgba(255,236,190,0.08), inset 0 1px 0 rgba(255,244,215,0.38), 0 16px 44px rgba(0,0,0,0.5), 0 0 60px rgba(214,178,102,0.10)" };
@@ -160,7 +159,6 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Секретная ачивка «Находчивая жопка»" className="la-a"
         style={{ width: "100%", maxWidth: 460, maxHeight: "86vh", overflowY: "auto", borderRadius: 24,
           padding: "22px 18px 16px", background: C.bg, border: `1px solid ${C.edge}`, borderTop: `1px solid ${C.edgeTop}`,
-          backgroundSize: "46px 38px, 58px 44px, 52px 40px, 64px 48px, auto, auto, auto",
           WebkitBackdropFilter: "blur(22px) saturate(150%)", backdropFilter: "blur(22px) saturate(150%)",
           textShadow: a11y ? "0 1px 1px rgba(255,255,255,0.6)" : "0 1px 2px rgba(0,0,0,0.5)",
           boxShadow: C.glow, transform: shown ? "translateY(0)" : "translateY(40px)", transition: "transform .5s cubic-bezier(.16,1,.3,1)",
@@ -180,8 +178,6 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
                 <circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 19 4M16 7l2.5 2.5M14 9l2 2" />
               </svg>
             </span>
-            <span className="la-a la-sheen" style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "45%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)",
-              animation: "laSheen 3.2s ease-in-out .9s infinite" }} />
           </span>
           {numBadge(n, a11y)}
           </span>
@@ -265,8 +261,6 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
           <button onClick={onMistakes} style={{ position: "relative", overflow: "hidden", flex: 1, padding: "13px 10px", borderRadius: 14, border: "none", cursor: "pointer",
             background: "linear-gradient(135deg, #E2C487, #A67C3A)", color: "#1F160A", fontFamily: serif, fontSize: 14.5, fontWeight: "bold",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 6px 18px rgba(166,124,58,0.35)" }}>
-            <span className="la-a la-sheen" style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "40%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)",
-              animation: "laSheen 3.6s ease-in-out 1.4s infinite" }} />
             <span style={{ position: "relative" }}>Разобрать ошибки</span>
           </button>
           <button onClick={onClose} style={{ padding: "13px 16px", borderRadius: 14, cursor: "pointer", background: "transparent",
@@ -318,10 +312,6 @@ export function LoopholeBanner({ a11y, n = 1, onOpen, onHide }) {
                         : "inset 0 1px 0 rgba(255,244,215,0.35), inset 0 0 22px rgba(255,236,190,0.10), 0 10px 28px rgba(0,0,0,0.35)",
         WebkitBackdropFilter: "blur(18px) saturate(150%)", backdropFilter: "blur(18px) saturate(150%)",
         textShadow: a11y ? "0 1px 1px rgba(255,255,255,0.7)" : "0 1px 2px rgba(0,0,0,0.55)" }}>
-        {/* изморозь: мелкие светлые искры по стеклу */}
-        <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: a11y ? 0.55 : 0.4,
-          backgroundImage: "radial-gradient(circle at 12% 22%, rgba(255,255,255,0.9) 0 0.6px, transparent 1.4px), radial-gradient(circle at 78% 30%, rgba(255,255,255,0.8) 0 0.6px, transparent 1.4px), radial-gradient(circle at 42% 78%, rgba(255,255,255,0.7) 0 0.5px, transparent 1.2px), radial-gradient(circle at 90% 82%, rgba(255,255,255,0.8) 0 0.6px, transparent 1.4px), radial-gradient(circle at 60% 12%, rgba(255,255,255,0.6) 0 0.5px, transparent 1.2px)",
-          backgroundSize: "46px 38px, 58px 44px, 52px 40px, 64px 48px, 40px 34px" }} />
         <span className="la-a" style={{ position: "relative", width: 46, height: 46, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center",
           background: "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #8B6A30, #F4E2AE)", animation: "laHalo 2.8s ease-in-out infinite" }}>
           <span style={{ width: 38, height: 38, borderRadius: "50%", display: "grid", placeItems: "center",
@@ -339,8 +329,6 @@ export function LoopholeBanner({ a11y, n = 1, onOpen, onHide }) {
           <div style={{ color: muted, fontFamily: serif, fontStyle: "italic", fontSize: 12.5, marginTop: 1 }}>{loopWords(n).teaser}</div>
         </div>
         <span style={{ color: gold, fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
-        <span className="la-a la-sheen" style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "35%", pointerEvents: "none",
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)", animation: "laSheen 3.8s ease-in-out 1.6s infinite" }} />
       </div>
     </div>
   );

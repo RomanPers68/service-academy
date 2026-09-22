@@ -789,7 +789,13 @@ function ServiceAcademy() {
       icon: customIcon(name), color: TRACK_COLOR[role] || GOLD, custom: true,
       lessons: list.flatMap(c => {
         const out = [{ id: "cms-l-" + c.id, title: c.title || "Урок", type: "lesson", content: c.content || "" }];
-        if (Array.isArray(c.questions) && c.questions.length) out.push({ id: "cms-q-" + c.id, title: "Тест: " + (c.title || ""), type: "quiz", questions: c.questions });
+        // Ситуации лежат в questions с пометкой kind: "situation" (правка 158) — отдельно
+        // от вопросов теста. Порядок шагов — как у штатных модулей: урок → практика → тест.
+        const all = Array.isArray(c.questions) ? c.questions : [];
+        const sits = all.filter(q => q && q.kind === "situation").map(({ kind, ...x }) => x);
+        const quizQs = all.filter(q => !(q && q.kind === "situation"));
+        if (sits.length) out.push({ id: "cms-p-" + c.id, title: "Практика: " + (c.title || ""), type: "practice", situations: sits });
+        if (quizQs.length) out.push({ id: "cms-q-" + c.id, title: "Тест: " + (c.title || ""), type: "quiz", questions: quizQs });
         return out;
       }),
     }));

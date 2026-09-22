@@ -24,8 +24,20 @@ const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const uid = () => Math.random().toString(36).slice(2, 9);
 const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
-const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], sort: 0 });
-const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length));
+const blankS = (genre = "action") => ({ id: uid(), genre, emoji: "", scene: "", question: genre === "find" ? "В чём ошибка?" : "Что делаешь?", options: ["", ""], correct: 0, win: "", fail: "" });
+const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], sort: 0 });
+const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length));
+// Сервер хранит у урока текст и вопросы; отдельного места для ситуаций нет. Чтобы не
+// трогать серверные функции, ситуации лежат в том же списке questions с пометкой
+// kind: "situation" (правка 158); приложение и редактор разделяют их при чтении.
+const isSit = (q) => !!(q && q.kind === "situation");
+const fromServer = (l) => {
+  const all = Array.isArray(l.questions) ? l.questions : [];
+  return JSON.parse(JSON.stringify({ ...blankLesson(), ...l,
+    questions: all.filter(q => !isSit(q)).map(q => ({ id: uid(), ...q })),
+    situations: all.filter(isSit).map(({ kind, ...x }) => ({ id: uid(), ...x })) }));
+};
+const SIT_EMOJI = ["🔥", "💬", "🍷", "🙋", "⚠️", "🤝", "🍽", "⏱"];
 const readDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { return null; } };
 const writeDraft = (v) => { try { v ? localStorage.setItem(DRAFT_KEY, JSON.stringify(v)) : localStorage.removeItem(DRAFT_KEY); } catch (e) {} };
 const hhmm = (t) => { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
@@ -109,19 +121,20 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     const stored = readDraft();
     const forId = base.id || "new";
     if (stored && stored.forId === forId && hasWork(stored.draft)) {
-      setDraft({ ...base, ...stored.draft, questions: (stored.draft.questions || []).map(q => ({ id: uid(), ...q })) });
+      setDraft({ ...base, ...stored.draft, questions: (stored.draft.questions || []).map(q => ({ id: uid(), ...q })),
+        situations: (stored.draft.situations || []).map(x => ({ id: uid(), ...x })) });
       setDraftNote(`Восстановлен черновик от ${hhmm(stored.at)}`);
     } else { setDraft(base); setDraftNote(null); }
     setErr(null); setSavedAt(null); setNewSection(false); setAi({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
     setView("edit");
   };
   const startNew = () => open(blankLesson());
-  const startEdit = (l) => open(JSON.parse(JSON.stringify({ ...blankLesson(), ...l, questions: Array.isArray(l.questions) ? l.questions.map(q => ({ id: uid(), ...q })) : [] })));
+  const startEdit = (l) => open(fromServer(l));
   // «Начать заново»: черновик стирается, урок — как на сервере (или пустой)
   const discardDraft = () => {
     writeDraft(null); setDraftNote(null);
     setDraft(d => { const orig = d && d.id ? lessons.find(l => l.id === d.id) : null;
-      return orig ? JSON.parse(JSON.stringify({ ...blankLesson(), ...orig, questions: (orig.questions || []).map(q => ({ id: uid(), ...q })) })) : blankLesson(); });
+      return orig ? fromServer(orig) : blankLesson(); });
   };
   const leave = () => { setView("list"); setDraft(null); };                 // ‹ — черновик остаётся
   const cancel = () => { writeDraft(null); setView("list"); setDraft(null); }; // «Отменить» — черновик стирается
@@ -130,6 +143,10 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const setQ = (qid, f) => setDraft(d => ({ ...d, questions: d.questions.map(q => q.id === qid ? { ...q, ...f } : q) }));
   const addQ = () => setDraft(d => ({ ...d, questions: [...d.questions, blankQ()] }));
   const delQ = (qid) => setDraft(d => ({ ...d, questions: d.questions.filter(q => q.id !== qid) }));
+  const setS = (sid, f) => setDraft(d => ({ ...d, situations: d.situations.map(x => x.id === sid ? { ...x, ...f } : x) }));
+  const addS = () => setDraft(d => ({ ...d, situations: [...(d.situations || []), blankS()] }));
+  const delS = (sid) => setDraft(d => ({ ...d, situations: d.situations.filter(x => x.id !== sid) }));
+  const moveS = (i, dir) => setDraft(d => { const j = i + dir; if (j < 0 || j >= d.situations.length) return d; const xs = [...d.situations]; [xs[i], xs[j]] = [xs[j], xs[i]]; return { ...d, situations: xs }; });
   const moveQ = (i, dir) => setDraft(d => { const j = i + dir; if (j < 0 || j >= d.questions.length) return d; const qs = [...d.questions]; [qs[i], qs[j]] = [qs[j], qs[i]]; return { ...d, questions: qs }; });
 
   // ── Кнопки форматирования: работают с выделением в поле текста ──
@@ -159,7 +176,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       const r = await fetch("/api/lesson-assist", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, mode, role: draft.role, title: draft.title, ...payload }) });
       const d = await r.json().catch(() => null);
-      if (d && d.ok) setAi(a => ({ ...a, busy: false, result: d, picked: d.questions ? Object.fromEntries(d.questions.map((_, i) => [i, true])) : {} }));
+      // всё предложенное — сразу отмечено (и вопросы, и ситуации)
+      const list = d && (d.questions || d.situations);
+      if (d && d.ok) setAi(a => ({ ...a, busy: false, result: d, picked: list ? Object.fromEntries(list.map((_, i) => [i, true])) : {} }));
       else setAi(a => ({ ...a, busy: false, err: (d && d.error) || (r.status === 404 ? "Ассистент ещё не развёрнут: залей архив на Vercel (функция /api/lesson-assist)." : "Ассистент не ответил — попробуй ещё раз.") }));
     } catch (e) { setAi(a => ({ ...a, busy: false, err: "Нет связи с ассистентом." })); }
   };
@@ -175,6 +194,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   // ── Сохранение: проверки понятными словами ──
   const problems = () => {
     if (!draft.title.trim()) return "Нужно название урока.";
+    for (let i = 0; i < (draft.situations || []).length; i++) {
+      const x = draft.situations[i]; const opts = x.options.filter(o => (o || "").trim());
+      if (!(x.scene || "").trim()) return `Ситуация ${i + 1}: нужна сцена.`;
+      if (opts.length < 2) return `Ситуация ${i + 1}: нужно хотя бы два варианта.`;
+      if (!(x.options[x.correct] || "").trim()) return `Ситуация ${i + 1}: отметь верный вариант.`;
+    }
     for (let i = 0; i < draft.questions.length; i++) {
       const q = draft.questions[i]; const opts = q.options.filter(o => (o || "").trim());
       if (!(q.q || "").trim()) return `Вопрос ${i + 1}: нужен текст вопроса.`;
@@ -186,12 +211,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const save = async () => {
     const p = problems(); if (p) { setErr(p); return; }
     if (busy) return; setBusy(true); setErr(null);
-    const questions = draft.questions.map(({ id, ...q }) => {
+    const tidy = ({ id, ...q }) => {   // пустые варианты убираются, верный сдвигается вместе с ними
       const keep = q.options.map((o, i) => ({ o: (o || "").trim(), i })).filter(x => x.o);
       return { ...q, options: keep.map(x => x.o), correct: Math.max(0, keep.findIndex(x => x.i === q.correct)) };
-    });
+    };
+    const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) }))];
     try {
-      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: { ...draft, module: draft.module.trim(), title: draft.title.trim(), questions } });
+      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: (({ situations, ...rest }) => ({ ...rest, module: draft.module.trim(), title: draft.title.trim(), questions }))(draft) });
       if (res && res.ok) { writeDraft(null); await load(); setView("list"); setDraft(null); }
       else setErr(res && res.error === "forbidden" ? "Недостаточно прав." : `Не удалось сохранить${res && (res.error || res.message) ? ": " + (res.error || res.message) : "."}`);
     } catch (e) { setErr("Нет связи. Черновик сохранён на телефоне — попробуй ещё раз."); }
@@ -249,13 +275,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                       <span style={{ flex: 1, minWidth: 0, color: txt, fontFamily: SERIF, fontSize: 15, fontWeight: "bold" }}>{name}</span>
                     </div>
                     {ls.map(l => {
-                      const nq = Array.isArray(l.questions) ? l.questions.length : 0;
+                      const allQ = Array.isArray(l.questions) ? l.questions : [];
+                      const nq = allQ.filter(q => !isSit(q)).length, ns = allQ.filter(isSit).length;
                       const asking = confirmDel === l.id;
                       return (
                         <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0 8px 44px", borderTop: `1px solid ${brd}` }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: txt, fontSize: 14, fontFamily: SERIF }}>{l.title || "Без названия"}</div>
-                            <div style={{ color: muted, fontSize: 11.5 }}>{nq ? `тест · ${nq} вопр.` : "без теста"}</div>
+                            <div style={{ color: muted, fontSize: 11.5 }}>{[ns ? `практика · ${ns}` : "", nq ? `тест · ${nq} вопр.` : ""].filter(Boolean).join(" · ") || "только текст"}</div>
                           </div>
                           {asking ? (<>
                             <button onClick={() => remove(l.id)} disabled={busy} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 13 }}>Удалить</button>
@@ -332,6 +359,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button onClick={() => setAi(a => ({ ...a, mode: "lesson", err: null, result: null }))} style={aiBtn}>Урок из текста</button>
             <button onClick={() => callAI("improve", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Улучшить текст</button>
+            <button onClick={() => callAI("situations", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Придумать ситуации</button>
             <button onClick={() => callAI("questions", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Придумать вопросы</button>
           </div>
           {ai.mode === "lesson" && !ai.result ? (
@@ -346,7 +374,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
-          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : "Придумываю вопросы…"}</div> : null}
+          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : ai.mode === "situations" ? "Придумываю ситуации…" : "Придумываю вопросы…"}</div> : null}
           {ai.err ? <div style={{ color: TN.bad, fontSize: 12.5, marginTop: 10, lineHeight: 1.45 }}>{ai.err}</div> : null}
           {ai.result && ai.mode === "lesson" ? (
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
@@ -365,6 +393,24 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={() => { patch({ content: ai.result.content }); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Принять</button>
                 <button onClick={aiClose} style={{ ...aiBtn }}>Оставить как было</button>
+              </div>
+            </div>) : null}
+          {ai.result && ai.mode === "situations" ? (
+            <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 6 }}>
+              {ai.result.situations.map((x, i) => (
+                <div key={i} onClick={() => setAi(a => ({ ...a, picked: { ...a.picked, [i]: !a.picked[i] } }))} style={{ display: "flex", gap: 9, padding: "8px 0", cursor: "pointer", borderBottom: `1px solid ${brd}` }}>
+                  <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1, display: "grid", placeItems: "center",
+                    border: `1.5px solid ${ai.picked[i] ? TN.good : brd}`, background: ai.picked[i] ? TN.good : "transparent" }}>{ai.picked[i] ? ico.check(dark ? "#1A1008" : "#fff") : null}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: gold, fontFamily: "monospace", fontSize: 9, letterSpacing: 1.4, fontWeight: "bold" }}>{x.genre === "find" ? "НАЙДИ ОШИБКУ" : "ЧТО ДЕЛАЕШЬ?"}</div>
+                    <div style={{ color: txt, fontFamily: SERIF, fontSize: 13.5, lineHeight: 1.35 }}>{x.emoji ? x.emoji + " " : ""}{x.scene}</div>
+                    <div style={{ color: TN.good, fontSize: 12, marginTop: 2 }}>верно: {x.options[x.correct]}</div>
+                  </div>
+                </div>))}
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button disabled={!nPicked} onClick={() => { const add = ai.result.situations.filter((_, i) => ai.picked[i]).map(x => ({ id: uid(), ...x })); setDraft(d => ({ ...d, situations: [...(d.situations || []), ...add] })); aiClose(); }}
+                  style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: nPicked ? 1 : 0.5 }}>Добавить выбранные ({nPicked})</button>
+                <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
           {ai.result && ai.mode === "questions" ? (
@@ -386,6 +432,42 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>) : null}
         </div>
 
+        {/* Практика ситуаций — между текстом и тестом, как шаги в программе (правка 158) */}
+        <SectionLabel a11y={a11y} right={(draft.situations || []).length ? `${draft.situations.length}` : "необязательно"}>ПРАКТИКА СИТУАЦИЙ</SectionLabel>
+        {!(draft.situations || []).length ? <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Короткие сцены из смены: выбрать верное действие или найти ошибку. В игре — до 6 случайных, со звёздами, как в штатных уроках.</div> : null}
+        {(draft.situations || []).map((x, si) => (
+          <div key={x.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
+              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }}>СИТУАЦИЯ {si + 1}</span>
+              <button onClick={() => moveS(si, -1)} disabled={si === 0} style={{ ...iconBtn, opacity: si === 0 ? 0.3 : 1 }} aria-label="Ситуацию выше">{ico.up(muted)}</button>
+              <button onClick={() => moveS(si, 1)} disabled={si === draft.situations.length - 1} style={{ ...iconBtn, opacity: si === draft.situations.length - 1 ? 0.3 : 1 }} aria-label="Ситуацию ниже">{ico.down(muted)}</button>
+              <button onClick={() => delS(x.id)} style={iconBtn} aria-label="Удалить ситуацию">{ico.trash(TN.bad, 16)}</button>
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+              {[["action", "Что делаешь?"], ["find", "Найди ошибку"]].map(([g, lab]) => (
+                <button key={g} onClick={() => setS(x.id, { genre: g, question: ["", "Что делаешь?", "В чём ошибка?"].includes(x.question) ? (g === "find" ? "В чём ошибка?" : "Что делаешь?") : x.question })}
+                  style={{ ...pill(x.genre === g, gold), padding: "6px 11px", fontSize: 12.5 }}>{lab}</button>))}
+            </div>
+            <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }} aria-label="Эмодзи сцены">
+              {SIT_EMOJI.map(e => <button key={e} onClick={() => setS(x.id, { emoji: x.emoji === e ? "" : e })}
+                style={{ width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 17, background: x.emoji === e ? `${gold}22` : "transparent", border: `1px solid ${x.emoji === e ? gold : brd}` }}>{e}</button>)}
+            </div>
+            <textarea style={{ ...input, minHeight: 64, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.scene} onChange={e => setS(x.id, { scene: e.target.value })}
+              placeholder={x.genre === "find" ? "Сцена с ошибкой: «Официант ставит бокал слева от тарелки…»" : "Сцена: «Гость пятый раз зовёт тебя, а у тебя в руках горячее…»"} />
+            <input style={{ ...input, marginBottom: 8 }} value={x.question} onChange={e => setS(x.id, { question: e.target.value })} placeholder="Вопрос" />
+            {x.options.map((opt, oi) => { const right = x.correct === oi; return (
+              <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+                <button onClick={() => setS(x.id, { correct: oi })} aria-label="Верный вариант" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${right ? TN.good : brd}`, background: right ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{right ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
+                <input style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setS(x.id, { options: x.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`Действие ${oi + 1}`} />
+                {x.options.length > 2 ? <button onClick={() => setS(x.id, { options: x.options.filter((_, k) => k !== oi), correct: x.correct === oi ? 0 : x.correct > oi ? x.correct - 1 : x.correct })} style={iconBtn} aria-label="Убрать вариант">{ico.trash(muted, 15)}</button> : null}
+              </div>); })}
+            {x.options.length < 4 ? <button onClick={() => setS(x.id, { options: [...x.options, ""] })} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, gap: 4, padding: 2, marginBottom: 6 }}>{ico.plus(gold, 14)} вариант</button> : null}
+            <input style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Если верно — реакция: «🎯 Точно! …»" />
+            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Если мимо — подсказка: «💡 …»" />
+          </div>
+        ))}
+        <button onClick={addS} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
+
         <SectionLabel a11y={a11y} right={draft.questions.length ? `${draft.questions.length}` : "необязательно"}>ВОПРОСЫ ТЕСТА</SectionLabel>
         {draft.questions.map((q, qi) => (
           <div key={q.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
@@ -399,7 +481,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             {q.options.map((opt, oi) => { const right = q.correct === oi; return (
               <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                 <button onClick={() => setQ(q.id, { correct: oi })} aria-label="Верный ответ" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${right ? TN.good : brd}`, background: right ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{right ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
-                <input style={{ ...input, padding: "10px 12px", borderColor: right ? TN.good + "88" : brd }} value={opt} onChange={e => setQ(q.id, { options: q.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`Вариант ${oi + 1}`} />
+                <input style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setQ(q.id, { options: q.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`Вариант ${oi + 1}`} />
                 {q.options.length > 2 ? <button onClick={() => setQ(q.id, { options: q.options.filter((_, k) => k !== oi), correct: q.correct === oi ? 0 : q.correct > oi ? q.correct - 1 : q.correct })} style={iconBtn} aria-label="Убрать вариант">{ico.trash(muted, 15)}</button> : null}
               </div>); })}
             <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0 8px" }}>
@@ -433,6 +515,17 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           {draft.questions.length ? <div style={{ color: muted, fontSize: 12, marginTop: 10 }}>В конце — тест: {draft.questions.length} вопр.</div> : null}
         </div>
 
+        {(draft.situations || []).length ? (() => { const x = draft.situations[0]; return (
+          <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+              <span style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>{x.genre === "find" ? "НАЙДИ ОШИБКУ" : "ЧТО ДЕЛАЕШЬ?"}</span>
+              <span style={{ color: muted, fontSize: 11.5 }}>практика · {draft.situations.length}</span>
+            </div>
+            <div style={{ color: txt, fontFamily: SERIF, fontSize: 14.5, lineHeight: 1.5, marginBottom: 8 }}>{x.emoji ? <span style={{ marginRight: 6 }}>{x.emoji}</span> : null}{x.scene || "Сцена ситуации"}</div>
+            <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14, marginBottom: 8 }}>{x.question}</div>
+            {x.options.filter(o => (o || "").trim()).map((o, k) => <div key={k} style={{ padding: "9px 12px", borderRadius: 12, marginBottom: 6, border: `1px solid ${brd}`, color: txt, fontSize: 13.5, fontFamily: SERIF }}>{o}</div>)}
+            <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре — до 6 случайных ситуаций, варианты перемешаны, 3 жизни и звёзды.</div>
+          </div>); })() : null}
         {err && <div style={{ color: TN.bad, fontSize: 13, marginBottom: 10, textAlign: "center", lineHeight: 1.45 }}>{err}</div>}
         <button onClick={save} disabled={busy} style={{ ...primary, marginBottom: 10, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
         <button onClick={cancel} style={ghost}>Отменить</button>

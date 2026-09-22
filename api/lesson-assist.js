@@ -5,6 +5,8 @@
 //   lesson    — урок из материала: текст регламента/заметок и/или PDF → { title, content }
 //   improve   — улучшить текст урока: яснее, короче, без ошибок, факты те же → { content }
 //   questions — вопросы к тесту по тексту урока → { questions: [{ q, options, correct, explanation }] }
+//   situations — «Практика ситуаций» по тексту урока (правка 158) →
+//                { situations: [{ genre, emoji, scene, question, options, correct, win, fail }] }
 //
 // Ключ — тот же OPENROUTER_API_KEY, что у импорта меню (Vercel → Settings →
 // Environment Variables); отдельный не нужен. Модель по умолчанию —
@@ -58,6 +60,15 @@ const PROMPT = {
     'Ответ — строго JSON без пояснений и без ```: {"questions": [{"q": "…", "options": ["…","…","…","…"], "correct": 0, "explanation": "…"}]}',
     "\nТЕКСТ УРОКА:\n" + text,
   ].join("\n"),
+  situations: (role, text, title) => [
+    `Составь 4 ситуации для «Практики ситуаций» по уроку «${title || "без названия"}» для: ${ROLE_RU[role] || "сотрудники зала"}.`,
+    "Ситуация — короткая сцена из смены, 1–3 предложения, от второго лица («Ты…», «Гость…»), вопрос и 4 варианта действия, ровно один верный.",
+    "Неверные — правдоподобные ошибки новичка, не абсурд. Вид genre: «action» — вопрос «Что делаешь?»; «find» — в сцене сотрудник ошибается, вопрос «В чём ошибка?». Сделай 2–3 action и 1–2 find.",
+    "win — реакция при верном ответе, одна фраза, можно начать с 🎯; fail — подсказка при ошибке, одна фраза, можно начать с 💡; emoji — один эмодзи к сцене.",
+    "Опирайся только на текст урока, ничего не выдумывай.",
+    'Ответ — строго JSON без пояснений и без ```: {"situations": [{"genre": "action", "emoji": "🔥", "scene": "…", "question": "Что делаешь?", "options": ["…","…","…","…"], "correct": 0, "win": "…", "fail": "…"}]}',
+    "\nТЕКСТ УРОКА:\n" + text,
+  ].join("\n"),
 };
 
 // JSON-объект из ответа модели: снимаем ```, а если вокруг есть слова — вырезаем {…}
@@ -81,6 +92,18 @@ export function sanitize(mode, o) {
   if (mode === "improve") {
     const content = cut(o.content, 12000).trim();
     return content ? { content } : null;
+  }
+  if (mode === "situations") {
+    const ss = (Array.isArray(o.situations) ? o.situations : []).slice(0, 8).map(x => {
+      const options = (Array.isArray(x && x.options) ? x.options : []).map(v => cut(v, 200).trim()).filter(Boolean).slice(0, 4);
+      let correct = Number.isInteger(x && x.correct) ? x.correct : parseInt(x && x.correct, 10);
+      if (!(correct >= 0 && correct < options.length)) correct = 0;
+      const genre = x && x.genre === "find" ? "find" : "action";
+      return { genre, emoji: cut(x && x.emoji, 4).trim(), scene: cut(x && x.scene, 400).trim(),
+        question: cut(x && x.question, 160).trim() || (genre === "find" ? "В чём ошибка?" : "Что делаешь?"),
+        options, correct, win: cut(x && x.win, 240).trim(), fail: cut(x && x.fail, 240).trim() };
+    }).filter(x => x.scene && x.options.length >= 2);
+    return ss.length ? { situations: ss } : null;
   }
   const qs = (Array.isArray(o.questions) ? o.questions : []).slice(0, 8).map(q => {
     const options = (Array.isArray(q && q.options) ? q.options : []).map(x => cut(x, 200).trim()).filter(Boolean).slice(0, 4);
@@ -134,7 +157,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
   const { token, mode, role, title, text, pdfBase64 } = req.body || {};
-  if (!["lesson", "improve", "questions"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  if (!["lesson", "improve", "questions", "situations"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
@@ -149,7 +172,8 @@ export default async function handler(req, res) {
   if (mode === "lesson" && !material && !b64) return res.status(400).json({ ok: false, error: "Вставь текст или прикрепи PDF" });
   if (mode !== "lesson" && material.length < 40) return res.status(400).json({ ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" });
 
-  const prompt = mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material) : PROMPT.questions(role, material, cut(title, 120));
+  const prompt = mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
+    : mode === "situations" ? PROMPT.situations(role, material, cut(title, 120)) : PROMPT.questions(role, material, cut(title, 120));
   try {
     const out = await ask(key, prompt, mode === "lesson" ? b64 : "");
     if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });

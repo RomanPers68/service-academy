@@ -304,12 +304,22 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
           boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#F0E8D8" });
 
   // Уровень 2: [[go:ключ|Подпись]] в конце ответа → кнопка-переход
+  // Ключи — в нижнем регистре: разбор ниже приводит ключ к нижнему регистру, и
+  // barLab / weeklyGuest с заглавной никогда не находились (правка 153). Раньше stats
+  // был подписан «Аналитика», а вёл в «Мой прогресс»; теперь stats — прогресс,
+  // analytics — аналитика. Куда ведёт каждый ключ — в App (onNavigate).
   const NAV_LABELS = {
-    sos: "Открыть SOS", glossary: "Глоссарий", leaderboard: "Рейтинг", menu: "Открыть меню",
-    profile: "Мой профиль", daily: "Задания", checklist: "Чек-листы",
-    reference: "Справочник", stats: "Аналитика", candidate: "Собеседование",
-    guestbook: "Книга отзывов", mentor: "Наставничество", cocktails: "Открыть колоду",
+    sos: "Открыть SOS", reference: "Справочник", menu: "Открыть меню", glossary: "Глоссарий",
+    checklist: "Чек-листы", schedule: "Открыть график", daily: "Задания дня", mistakes: "Работа над ошибками",
+    guestbook: "Книга отзывов", weeklyguest: "Гость недели", leaderboard: "Рейтинг", stats: "Мой прогресс",
+    certificates: "Сертификаты", guide: "Гид по приложению", onboarding: "Первая неделя", profile: "Аккаунт",
+    mentor: "Наставничество", shift: "Вкладка «Смена»", team: "Вкладка «Команда»", me: "Вкладка «Я»",
+    cocktails: "Открыть колоду", barlab: "Сборка руками",
+    analytics: "Аналитика", candidate: "Собеседование", staff: "Сотрудники",
   };
+  // Разделы руководителей: сотруднику кнопку не показываем, даже если модель ошиблась
+  const isBoss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
+  const BOSS_ONLY = { analytics: isBoss, candidate: isBoss, staff: !!profile?.is_admin };
   // Дополнение 130: карточки с картинкой в ответе. Модель ставит [[cocktail:ID]] /
   // [[dish:ID]] (id даны ей в контексте); если забыла — ищем в тексте ответа
   // точные названия коктейлей и блюд своего ресторана. Не больше двух карточек.
@@ -376,7 +386,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
     // с подписью «Открыть Справочник». Подпись — честное намерение, ключ —
     // промах; верим подписи и ведём человека в Справочник.
     if (key === "glossary" && /справочник/i.test(m[2] || "")) key = "reference";
-    if (!NAV_LABELS[key]) return { clean: text.replace(m[0], "").trim(), nav: null };
+    if (!NAV_LABELS[key] || BOSS_ONLY[key] === false) return { clean: text.replace(m[0], "").trim(), nav: null };
     return { clean: text.replace(m[0], "").trim(), nav: { key, label: (m[2] || NAV_LABELS[key]).trim() } };
   };
 

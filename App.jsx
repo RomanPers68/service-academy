@@ -1576,8 +1576,19 @@ function ServiceAcademy() {
             return;
           }
           // Переход в раздел: [[go:key]]
-          const ok = ["sos","glossary","leaderboard","profile","daily","checklist","reference","stats","candidate","guestbook","mentor","menu","cocktails","barLab","ckEditor"];
-          if (ok.includes(dest)) { setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(dest === "menu" ? "menuTrainer" : dest); }
+          // Ключ кнопки ассистента → экран (правка 153: ключи в нижнем регистре, новые
+          // разделы, stats = «Мой прогресс», analytics = «Аналитика»)
+          const GO = { sos: "sos", glossary: "glossary", leaderboard: "leaderboard", profile: "profile", daily: "daily",
+            checklist: "checklist", reference: "reference", stats: "stats", guestbook: "guestbook", mentor: "mentor",
+            menu: "menuTrainer", cocktails: "cocktails", barlab: "barLab", schedule: "schedule", mistakes: "mistakes",
+            certificates: "certificates", guide: "guide", onboarding: "onboarding", weeklyguest: "weeklyGuest",
+            shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team" };
+          const boss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
+          const k = String(dest || "").toLowerCase();
+          if (!GO[k]) return;
+          if ((k === "analytics" || k === "candidate") && !boss) return;   // разделы руководителей
+          if (k === "staff" && !profile?.is_admin) return;
+          setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(GO[k]);
         }} /></Suspense>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} /></Suspense></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}

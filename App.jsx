@@ -1484,7 +1484,9 @@ function ServiceAcademy() {
         {screen === "barLab" && <Suspense fallback={<ScreenLoader T={T} />}><BarLabScreen T={T} a11y={a11y} profile={profile} startId={labStart} onBack={() => goBack("reference")} onOpenDeck={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} /></Suspense>}
         {screen === "ckEditor" && <Suspense fallback={<ScreenLoader T={T} />}><CocktailEditor T={T} a11y={a11y} profile={profile} startEditId={ckEdit} onBack={() => goBack("cocktails")} onOpenCard={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} /></Suspense>}
         {screen === "barPrint" && <Suspense fallback={<ScreenLoader T={T} />}><BarCardPrint T={T} a11y={a11y} profile={profile} onBack={() => goBack("cocktails")} /></Suspense>}
-        {screen === "home" && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={MODULES[role]} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
+        {screen === "home" && !MODULES[role] && <ScreenLoader T={T} />}
+        {/* Экран трека — когда модули роли приехали (правка 163): при первом входе с нового устройства и на медленной сети он открывался раньше и падал */}
+        {screen === "home" && MODULES[role] && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
         {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
@@ -1582,7 +1584,15 @@ function ServiceAcademy() {
         }} /></Suspense>}
         {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} /></Suspense></div>}
         {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}
-          next={nextLessonOf(modules, completed, quizDone)}
+          next={(() => {
+            // «Дальше» внизу своего раздела — сначала непройденный шаг этого раздела (правка 163);
+            // раньше вела по штатной программе даже внутри незаконченного своего раздела
+            if (activeModule && activeModule.custom) {
+              const l = (activeModule.lessons || []).find(x => x.type !== "result" && !(x.type === "quiz" ? quizDone[x.id] : completed[x.id]));
+              if (l) return { mod: activeModule, lesson: l };
+            }
+            return nextLessonOf(modules, completed, quizDone);
+          })()}
           onNext={(n) => { if (!n) return; if (n.mod && n.mod.id !== activeModule?.id) setActiveModule(n.mod); openLesson(n.lesson); }}
           finish={(() => {
             // Доп. 197: конец роли — экзамен ступени → сертификат → следующая ступень трека → другие треки

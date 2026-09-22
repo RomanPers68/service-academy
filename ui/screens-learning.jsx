@@ -128,7 +128,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
 export const _estMins = (l) => Math.max(1, Math.round((((l.content || "").length) + ((l.questions || []).length * 250) + ((l.situations || []).length * 300)) / 900));
 export const _fmtMins = (mins) => mins < 60 ? `${mins} мин` : `${Math.floor(mins / 60)} ч ${mins % 60 ? (mins % 60) + " мин" : ""}`.trim();
 
-export function HomeScreen({ role, modules, completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [], onSearch }) {
+export function HomeScreen({ role, modules = [], completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [], onSearch }) {
   // Сколько минут осталось до конца программы (по незавершённым разделам)
   const leftMins = React.useMemo(() =>
     [...modules, ...customModules].reduce((s, m) =>

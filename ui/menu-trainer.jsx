@@ -729,10 +729,13 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 // Объявлен на уровне модуля: компонент внутри рендера пересоздавался бы и терял фокус.
 function EditorField({ value, onChange, placeholder, rows = 1, style, inputSt, textColor, a11y }) {
   const ref = React.useRef(null);
+  // Поле само выезжает в середину экрана, когда клавиатура уже открылась (правка 159:
+  // «Гость спрашивает…» уходило под клавиатуру и полосу кнопок, и прокрутить было нельзя)
+  const onFocusScroll = () => setTimeout(() => { try { ref.current && ref.current.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }, 350);
   React.useEffect(() => { const el = ref.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 220) + "px"; }, [value]);
   return (
     <div style={{ position: "relative", marginBottom: 10 }}>
-      <textarea ref={ref} className="sa-field" rows={rows} value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      <textarea ref={ref} className="sa-field" rows={rows} value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder} onFocus={onFocusScroll}
         style={{ ...inputSt, marginBottom: 2, paddingRight: value ? 38 : 13, resize: "none", overflow: "hidden", lineHeight: 1.45, fontFamily: "inherit", ...style }} />
       {value ? <span onClick={() => { onChange(""); vibrate("light"); ref.current && ref.current.focus(); }} {...onActivate(() => onChange(""))} aria-label="Очистить"
         style={{ position: "absolute", right: 10, top: 9, width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, color: textColor, background: a11y ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)", cursor: "pointer" }}>✕</span> : null}
@@ -764,6 +767,15 @@ function PreviewCard({ d, T, gold, red, glass }) {
 }
 
 function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, restaurant, custom, setCustom, shared = [], onPublished, hideSamples, setHideSamples, hiddenIds = {}, setHiddenIds, deleted = {}, setDeleted }) {
+  // «Печатаю» — пока в форме блюда фокус в поле ввода (полоса кнопок в это время уезжает)
+  const [typingMenu, setTypingMenu] = React.useState(false);
+  React.useEffect(() => {
+    const isField = (el) => !!(el && /^(TEXTAREA|INPUT)$/.test(el.tagName) && el.type !== "file");
+    const on = (e) => { if (isField(e.target)) setTypingMenu(true); };
+    const off = () => setTimeout(() => setTypingMenu(isField(document.activeElement)), 80);
+    document.addEventListener("focusin", on); document.addEventListener("focusout", off);
+    return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
+  }, []);
   const empty = { name: "", cat: "", ingredients: "", allergens: [], desc: "", pairing: "", note: "", img: "" };
   const [form, setForm] = React.useState(null); // null | { ...dish, ingredients: "строка" }
   // Доп. 274: пришли «дописать пищевую ценность» — сразу открываем карточку блюда
@@ -1143,8 +1155,11 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача, выход в граммах…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder={"Гость спрашивает — по строке «Вопрос — ответ», например:\nМожно без лука? — Да, скажи кухне при заказе"} value={form.faq || ""} onChange={v => setForm(f => ({ ...f, faq: v }))} rows={2} />
         </div>
-        {/* липкие кнопки — всегда под рукой */}
+        {/* запас снизу: последнее поле можно поднять выше полосы кнопок */}
+        <div aria-hidden="true" style={{ height: 160 }} />
+        {/* липкие кнопки — под рукой; пока печатаешь — уезжают вниз, чтобы не закрывать поле */}
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", zIndex: 30,
+          transform: typingMenu ? "translateY(120%)" : "none", transition: "transform .25s ease",
           background: a11y ? "rgba(245,238,222,0.92)" : "rgba(21,17,11,0.92)", borderTop: `1px solid ${gold}33`, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}66`, color: textColor, flex: 1 }} onClick={() => setForm(null)}>Отмена</button>

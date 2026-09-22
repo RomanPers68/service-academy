@@ -25,8 +25,16 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 const uid = () => Math.random().toString(36).slice(2, 9);
 const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
 const blankS = (genre = "action") => ({ id: uid(), genre, emoji: "", scene: "", question: genre === "find" ? "В чём ошибка?" : "Что делаешь?", options: ["", ""], correct: 0, win: "", fail: "" });
-const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], sort: 0 });
-const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length));
+const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, sort: 0 });
+const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue));
+// Живой диалог (правка 159) — один на урок, лежит в questions с пометкой kind: "dialogue"
+const blankChoice = () => ({ id: uid(), type: "choice", prompt: "Что ответишь?", options: [
+  { text: "", correct: true, feedback: "", moodDelta: 1 }, { text: "", correct: false, feedback: "", moodDelta: -1 }, { text: "", correct: false, feedback: "", moodDelta: 0 }] });
+const newDialogue = () => ({ tip: "", guest: { name: "", avatar: "🙂", context: "", mood: 3 }, steps: [{ id: uid(), type: "guest", text: "" }, blankChoice()] });
+const withIds = (d) => d ? { tip: d.tip || "", guest: { name: "", avatar: "🙂", context: "", mood: 3, ...(d.guest || {}) },
+  steps: (d.steps || []).map(st => ({ ...st, id: st.id || uid(), options: st.options ? st.options.map(o => ({ ...o })) : undefined })) } : null;
+const GUEST_AVATARS = ["🙂", "👔", "👩", "🧔", "👵", "👩‍💼", "🙋", "👨‍👩‍👧"];
+const MOODS = ["😠", "😕", "😐", "🙂", "😊"];
 // Сервер хранит у урока текст и вопросы; отдельного места для ситуаций нет. Чтобы не
 // трогать серверные функции, ситуации лежат в том же списке questions с пометкой
 // kind: "situation" (правка 158); приложение и редактор разделяют их при чтении.
@@ -34,8 +42,9 @@ const isSit = (q) => !!(q && q.kind === "situation");
 const fromServer = (l) => {
   const all = Array.isArray(l.questions) ? l.questions : [];
   return JSON.parse(JSON.stringify({ ...blankLesson(), ...l,
-    questions: all.filter(q => !isSit(q)).map(q => ({ id: uid(), ...q })),
-    situations: all.filter(isSit).map(({ kind, ...x }) => ({ id: uid(), ...x })) }));
+    questions: all.filter(q => !isSit(q) && !(q && q.kind === "dialogue")).map(q => ({ id: uid(), ...q })),
+    situations: all.filter(isSit).map(({ kind, ...x }) => ({ id: uid(), ...x })),
+    dialogue: withIds(all.find(q => q && q.kind === "dialogue")) }));
 };
 const SIT_EMOJI = ["🔥", "💬", "🍷", "🙋", "⚠️", "🤝", "🍽", "⏱"];
 const readDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { return null; } };
@@ -122,7 +131,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     const forId = base.id || "new";
     if (stored && stored.forId === forId && hasWork(stored.draft)) {
       setDraft({ ...base, ...stored.draft, questions: (stored.draft.questions || []).map(q => ({ id: uid(), ...q })),
-        situations: (stored.draft.situations || []).map(x => ({ id: uid(), ...x })) });
+        situations: (stored.draft.situations || []).map(x => ({ id: uid(), ...x })), dialogue: withIds(stored.draft.dialogue) });
       setDraftNote(`Восстановлен черновик от ${hhmm(stored.at)}`);
     } else { setDraft(base); setDraftNote(null); }
     setErr(null); setSavedAt(null); setNewSection(false); setAi({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
@@ -147,6 +156,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const addS = () => setDraft(d => ({ ...d, situations: [...(d.situations || []), blankS()] }));
   const delS = (sid) => setDraft(d => ({ ...d, situations: d.situations.filter(x => x.id !== sid) }));
   const moveS = (i, dir) => setDraft(d => { const j = i + dir; if (j < 0 || j >= d.situations.length) return d; const xs = [...d.situations]; [xs[i], xs[j]] = [xs[j], xs[i]]; return { ...d, situations: xs }; });
+  const setDlg = (f) => setDraft(d => ({ ...d, dialogue: typeof f === "function" ? f(d.dialogue) : f }));
+  const setGuest = (f) => setDlg(dl => ({ ...dl, guest: { ...dl.guest, ...f } }));
+  const setStep = (sid, f) => setDlg(dl => ({ ...dl, steps: dl.steps.map(st => st.id === sid ? { ...st, ...f } : st) }));
+  const addStep = (type) => setDlg(dl => ({ ...dl, steps: [...dl.steps, type === "choice" ? blankChoice() : { id: uid(), type, text: "" }] }));
+  const delStep = (sid) => setDlg(dl => ({ ...dl, steps: dl.steps.filter(st => st.id !== sid) }));
+  const moveStep = (i, dir) => setDlg(dl => { const j = i + dir; if (j < 0 || j >= dl.steps.length) return dl; const xs = [...dl.steps]; [xs[i], xs[j]] = [xs[j], xs[i]]; return { ...dl, steps: xs }; });
+  const setOpt = (sid, oi, f) => setDlg(dl => ({ ...dl, steps: dl.steps.map(st => st.id !== sid ? st : { ...st, options: st.options.map((o, k) => k === oi ? { ...o, ...f } : o) }) }));
+  const markRight = (sid, oi) => setDlg(dl => ({ ...dl, steps: dl.steps.map(st => st.id !== sid ? st : { ...st, options: st.options.map((o, k) => ({ ...o, correct: k === oi, moodDelta: k === oi ? 1 : (o.correct ? 0 : o.moodDelta) })) }) }));
   const moveQ = (i, dir) => setDraft(d => { const j = i + dir; if (j < 0 || j >= d.questions.length) return d; const qs = [...d.questions]; [qs[i], qs[j]] = [qs[j], qs[i]]; return { ...d, questions: qs }; });
 
   // ── Кнопки форматирования: работают с выделением в поле текста ──
@@ -200,6 +217,21 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       if (opts.length < 2) return `Ситуация ${i + 1}: нужно хотя бы два варианта.`;
       if (!(x.options[x.correct] || "").trim()) return `Ситуация ${i + 1}: отметь верный вариант.`;
     }
+    if (draft.dialogue) {
+      const dl = draft.dialogue;
+      if (!(dl.guest.name || "").trim()) return "Живой диалог: как зовут гостя?";
+      if (!dl.steps.some(st => st.type === "choice")) return "Живой диалог: нужен хотя бы один выбор.";
+      for (let i = 0; i < dl.steps.length; i++) {
+        const st = dl.steps[i];
+        if (st.type !== "choice" && !(st.text || "").trim()) return `Живой диалог, шаг ${i + 1}: пустой текст.`;
+        if (st.type === "choice") {
+          const filled = st.options.filter(o => (o.text || "").trim());
+          if (!(st.prompt || "").trim()) return `Живой диалог, шаг ${i + 1}: нужен вопрос.`;
+          if (filled.length < 2) return `Живой диалог, шаг ${i + 1}: нужно хотя бы два ответа.`;
+          if (!st.options.some(o => o.correct && (o.text || "").trim())) return `Живой диалог, шаг ${i + 1}: отметь верный ответ.`;
+        }
+      }
+    }
     for (let i = 0; i < draft.questions.length; i++) {
       const q = draft.questions[i]; const opts = q.options.filter(o => (o || "").trim());
       if (!(q.q || "").trim()) return `Вопрос ${i + 1}: нужен текст вопроса.`;
@@ -215,9 +247,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       const keep = q.options.map((o, i) => ({ o: (o || "").trim(), i })).filter(x => x.o);
       return { ...q, options: keep.map(x => x.o), correct: Math.max(0, keep.findIndex(x => x.i === q.correct)) };
     };
-    const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) }))];
+    const dlgOut = draft.dialogue ? [{ kind: "dialogue", tip: (draft.dialogue.tip || "").trim(), guest: { ...draft.dialogue.guest, name: draft.dialogue.guest.name.trim(), context: (draft.dialogue.guest.context || "").trim() },
+      steps: draft.dialogue.steps.map(st => st.type === "choice"
+        ? { type: "choice", prompt: st.prompt.trim(), options: st.options.filter(o => (o.text || "").trim()).map(o => ({ text: o.text.trim(), correct: !!o.correct, feedback: (o.feedback || "").trim(), moodDelta: o.moodDelta | 0 })) }
+        : { type: st.type, text: st.text.trim() }) }] : [];
+    const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut];
     try {
-      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: (({ situations, ...rest }) => ({ ...rest, module: draft.module.trim(), title: draft.title.trim(), questions }))(draft) });
+      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: (({ situations, dialogue, ...rest }) => ({ ...rest, module: draft.module.trim(), title: draft.title.trim(), questions }))(draft) });
       if (res && res.ok) { writeDraft(null); await load(); setView("list"); setDraft(null); }
       else setErr(res && res.error === "forbidden" ? "Недостаточно прав." : `Не удалось сохранить${res && (res.error || res.message) ? ": " + (res.error || res.message) : "."}`);
     } catch (e) { setErr("Нет связи. Черновик сохранён на телефоне — попробуй ещё раз."); }
@@ -276,13 +312,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                     </div>
                     {ls.map(l => {
                       const allQ = Array.isArray(l.questions) ? l.questions : [];
-                      const nq = allQ.filter(q => !isSit(q)).length, ns = allQ.filter(isSit).length;
+                      const hasDlg = allQ.some(q => q && q.kind === "dialogue");
+                      const nq = allQ.filter(q => !isSit(q) && !(q && q.kind === "dialogue")).length, ns = allQ.filter(isSit).length;
                       const asking = confirmDel === l.id;
                       return (
                         <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0 8px 44px", borderTop: `1px solid ${brd}` }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: txt, fontSize: 14, fontFamily: SERIF }}>{l.title || "Без названия"}</div>
-                            <div style={{ color: muted, fontSize: 11.5 }}>{[ns ? `практика · ${ns}` : "", nq ? `тест · ${nq} вопр.` : ""].filter(Boolean).join(" · ") || "только текст"}</div>
+                            <div style={{ color: muted, fontSize: 11.5 }}>{[ns ? `практика · ${ns}` : "", hasDlg ? "диалог" : "", nq ? `тест · ${nq} вопр.` : ""].filter(Boolean).join(" · ") || "только текст"}</div>
                           </div>
                           {asking ? (<>
                             <button onClick={() => remove(l.id)} disabled={busy} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 13 }}>Удалить</button>
@@ -360,6 +397,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <button onClick={() => setAi(a => ({ ...a, mode: "lesson", err: null, result: null }))} style={aiBtn}>Урок из текста</button>
             <button onClick={() => callAI("improve", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Улучшить текст</button>
             <button onClick={() => callAI("situations", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Придумать ситуации</button>
+            <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Собрать диалог</button>
             <button onClick={() => callAI("questions", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Придумать вопросы</button>
           </div>
           {ai.mode === "lesson" && !ai.result ? (
@@ -374,7 +412,25 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
-          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : ai.mode === "situations" ? "Придумываю ситуации…" : "Придумываю вопросы…"}</div> : null}
+          {ai.mode === "dialogue" && !ai.result && !ai.busy ? (
+            <div style={{ marginTop: 10 }}>
+              <input style={{ ...input, fontSize: 13 }} value={ai.idea || ""} onChange={e => setAi(a => ({ ...a, idea: e.target.value }))} placeholder="О чём разговор (необязательно): «гость пришёл первым и ждёт коллегу»" />
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button onClick={() => callAI("dialogue", { text: draft.content, idea: ai.idea || "" })} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Собрать диалог</button>
+                <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
+              </div>
+            </div>) : null}
+          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : ai.mode === "situations" ? "Придумываю ситуации…" : ai.mode === "dialogue" ? "Собираю диалог…" : "Придумываю вопросы…"}</div> : null}
+          {ai.result && ai.mode === "dialogue" ? (
+            <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
+              <div style={{ color: txt, fontFamily: SERIF, fontSize: 14, fontWeight: "bold", marginBottom: 6 }}>{ai.result.dialogue.guest.avatar} {ai.result.dialogue.guest.name} · {MOODS[ai.result.dialogue.guest.mood - 1]}</div>
+              <div style={{ color: muted, fontSize: 12.5, marginBottom: 8 }}>{ai.result.dialogue.guest.context}</div>
+              <div style={{ color: muted, fontSize: 12.5 }}>{ai.result.dialogue.steps.length} шагов · выборов: {ai.result.dialogue.steps.filter(x => x.type === "choice").length}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button onClick={() => { setDlg(withIds(ai.result.dialogue)); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.dialogue ? "Заменить диалог" : "Взять в урок"}</button>
+                <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
+              </div>
+            </div>) : null}
           {ai.err ? <div style={{ color: TN.bad, fontSize: 12.5, marginTop: 10, lineHeight: 1.45 }}>{ai.err}</div> : null}
           {ai.result && ai.mode === "lesson" ? (
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
@@ -468,6 +524,68 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         ))}
         <button onClick={addS} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
 
+        {/* Живой диалог — после практики, перед тестом (правка 159) */}
+        <SectionLabel a11y={a11y} right={draft.dialogue ? `${draft.dialogue.steps.length} шагов` : "необязательно"}>ЖИВОЙ ДИАЛОГ</SectionLabel>
+        {!draft.dialogue ? (
+          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+            <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Разговор с гостем по шагам: гость говорит — сотрудник выбирает ответ — настроение гостя меняется. Как штатные «Живые диалоги».</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} disabled={draft.content.trim().length < 40} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }}>Собрать с ассистентом</button>
+              <button onClick={() => setDlg(newDialogue())} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
+            </div>
+          </div>
+        ) : (<>
+          <div style={G({ padding: "12px 12px", marginBottom: 10 })}>
+            <div style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 8 }}>ГОСТЬ</div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }} aria-label="Аватар гостя">
+              {GUEST_AVATARS.map(a => <button key={a} onClick={() => setGuest({ avatar: a })} style={{ width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 17, background: draft.dialogue.guest.avatar === a ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.avatar === a ? gold : brd}` }}>{a}</button>)}
+            </div>
+            <input style={{ ...input, marginBottom: 8 }} value={draft.dialogue.guest.name} onChange={e => setGuest({ name: e.target.value })} placeholder="Имя гостя: «Михаил»" />
+            <textarea style={{ ...input, minHeight: 56, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={draft.dialogue.guest.context} onChange={e => setGuest({ context: e.target.value })} placeholder="Кто он и зачем пришёл: «Деловой ужин, ждёт коллегу, устал»" />
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: muted, fontSize: 12 }}>Настроение в начале:</span>
+              {MOODS.map((m, k) => <button key={k} onClick={() => setGuest({ mood: k + 1 })} aria-label={`Настроение ${k + 1}`} style={{ width: 32, height: 32, borderRadius: 10, cursor: "pointer", fontSize: 16, background: draft.dialogue.guest.mood === k + 1 ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.mood === k + 1 ? gold : brd}` }}>{m}</button>)}
+            </div>
+            <input style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора — главная мысль, покажется в конце" />
+          </div>
+          {draft.dialogue.steps.map((st, i) => (
+            <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8, borderLeft: `3px solid ${st.type === "choice" ? gold : st.type === "guest" ? track.color : brd}` })}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
+                <span style={{ color: st.type === "choice" ? gold : muted, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }}>{i + 1} · {st.type === "choice" ? "ВЫБОР СОТРУДНИКА" : st.type === "guest" ? "ГОСТЬ ГОВОРИТ" : "ДЕЙСТВИЕ"}</span>
+                <button onClick={() => moveStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг выше">{ico.up(muted)}</button>
+                <button onClick={() => moveStep(i, 1)} disabled={i === draft.dialogue.steps.length - 1} style={{ ...iconBtn, opacity: i === draft.dialogue.steps.length - 1 ? 0.3 : 1 }} aria-label="Шаг ниже">{ico.down(muted)}</button>
+                <button onClick={() => delStep(st.id)} style={iconBtn} aria-label="Удалить шаг">{ico.trash(TN.bad, 16)}</button>
+              </div>
+              {st.type !== "choice" ? (
+                <textarea style={{ ...input, minHeight: 48, lineHeight: 1.5, resize: "vertical" }} value={st.text} onChange={e => setStep(st.id, { text: e.target.value })}
+                  placeholder={st.type === "guest" ? "Реплика гостя: «Добрый вечер. Нас двое, жду коллегу.»" : "Что происходит: «Ты провожаешь гостя к столу»"} />
+              ) : (<>
+                <input style={{ ...input, marginBottom: 8 }} value={st.prompt} onChange={e => setStep(st.id, { prompt: e.target.value })} placeholder="Вопрос сотруднику: «Что ответишь?»" />
+                {st.options.map((o, oi) => (
+                  <div key={oi} style={{ border: `1px solid ${o.correct ? TN.good + "88" : brd}`, borderRadius: 12, padding: "8px 8px 6px", marginBottom: 7 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button onClick={() => markRight(st.id, oi)} aria-label="Верный ответ" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${o.correct ? TN.good : brd}`, background: o.correct ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{o.correct ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
+                      <input style={{ ...input, padding: "9px 11px" }} value={o.text} onChange={e => setOpt(st.id, oi, { text: e.target.value })} placeholder={`Ответ ${oi + 1}`} />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingLeft: 34 }}>
+                      <input style={{ ...input, padding: "7px 10px", fontSize: 12.5 }} value={o.feedback || ""} onChange={e => setOpt(st.id, oi, { feedback: e.target.value })} placeholder="Почему так" />
+                      {[-1, 0, 1].map(dv => <button key={dv} onClick={() => setOpt(st.id, oi, { moodDelta: dv })} aria-label={`Настроение ${dv}`}
+                        style={{ flexShrink: 0, minWidth: 34, height: 30, borderRadius: 9, cursor: "pointer", fontSize: 12.5, fontFamily: SERIF, color: dv > 0 ? TN.good : dv < 0 ? TN.bad : muted,
+                          background: (o.moodDelta | 0) === dv ? (dv > 0 ? TN.good : dv < 0 ? TN.bad : muted) + "22" : "transparent", border: `1px solid ${(o.moodDelta | 0) === dv ? (dv > 0 ? TN.good : dv < 0 ? TN.bad : muted) : brd}` }}>{dv > 0 ? "+1" : dv < 0 ? "−1" : "0"}</button>)}
+                    </div>
+                  </div>))}
+                <div style={{ color: muted, fontSize: 11, paddingLeft: 2 }}>зелёный — верный ответ · ±1 — как ответ меняет настроение гостя</div>
+              </>)}
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+            <button onClick={() => addStep("guest")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Гость говорит</button>
+            <button onClick={() => addStep("action")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Действие</button>
+            <button onClick={() => addStep("choice")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Выбор</button>
+          </div>
+          <button onClick={() => setDlg(null)} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5, padding: "2px 0 6px" }}>Убрать диалог из урока</button>
+        </>)}
+
         <SectionLabel a11y={a11y} right={draft.questions.length ? `${draft.questions.length}` : "необязательно"}>ВОПРОСЫ ТЕСТА</SectionLabel>
         {draft.questions.map((q, qi) => (
           <div key={q.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
@@ -526,6 +644,24 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             {x.options.filter(o => (o || "").trim()).map((o, k) => <div key={k} style={{ padding: "9px 12px", borderRadius: 12, marginBottom: 6, border: `1px solid ${brd}`, color: txt, fontSize: 13.5, fontFamily: SERIF }}>{o}</div>)}
             <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре — до 6 случайных ситуаций, варианты перемешаны, 3 жизни и звёзды.</div>
           </div>); })() : null}
+        {draft.dialogue ? (
+          <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+              <span style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>ЖИВОЙ ДИАЛОГ</span>
+              <span style={{ fontSize: 16 }}>{MOODS[(draft.dialogue.guest.mood || 3) - 1]}</span>
+            </div>
+            <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14.5 }}>{draft.dialogue.guest.avatar} {draft.dialogue.guest.name || "Гость"}</div>
+            {draft.dialogue.guest.context ? <div style={{ color: muted, fontSize: 12.5, fontStyle: "italic", margin: "3px 0 8px" }}>{draft.dialogue.guest.context}</div> : null}
+            {draft.dialogue.steps.slice(0, 4).map(st => st.type === "action"
+              ? <div key={st.id} style={{ color: muted, fontSize: 12.5, fontStyle: "italic", margin: "6px 0" }}>{st.text}</div>
+              : st.type === "guest"
+              ? <div key={st.id} style={{ display: "inline-block", maxWidth: "85%", background: `${track.color}1c`, border: `1px solid ${track.color}44`, borderRadius: "14px 14px 14px 4px", padding: "8px 11px", margin: "4px 0", color: txt, fontSize: 13.5, fontFamily: SERIF }}>{st.text || "…"}</div>
+              : <div key={st.id} style={{ margin: "8px 0" }}>
+                  <div style={{ color: gold, fontSize: 12.5, fontWeight: "bold", marginBottom: 5 }}>{st.prompt}</div>
+                  {st.options.filter(o => (o.text || "").trim()).map((o, k) => <div key={k} style={{ padding: "7px 11px", borderRadius: 12, marginBottom: 5, border: `1px solid ${brd}`, color: txt, fontSize: 13, fontFamily: SERIF }}>{o.text}</div>)}
+                </div>)}
+            <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре варианты перемешаны; после выбора — объяснение, настроение гостя меняется, при плохом — он уходит.</div>
+          </div>) : null}
         {err && <div style={{ color: TN.bad, fontSize: 13, marginBottom: 10, textAlign: "center", lineHeight: 1.45 }}>{err}</div>}
         <button onClick={save} disabled={busy} style={{ ...primary, marginBottom: 10, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
         <button onClick={cancel} style={ghost}>Отменить</button>

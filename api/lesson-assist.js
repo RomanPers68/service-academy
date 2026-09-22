@@ -7,6 +7,8 @@
 //   questions — вопросы к тесту по тексту урока → { questions: [{ q, options, correct, explanation }] }
 //   situations — «Практика ситуаций» по тексту урока (правка 158) →
 //                { situations: [{ genre, emoji, scene, question, options, correct, win, fail }] }
+//   dialogue   — «Живой диалог» по тексту урока (правка 159) →
+//                { dialogue: { guest: { name, avatar, context, mood }, steps: [action|guest|choice] } }
 //
 // Ключ — тот же OPENROUTER_API_KEY, что у импорта меню (Vercel → Settings →
 // Environment Variables); отдельный не нужен. Модель по умолчанию —
@@ -60,6 +62,17 @@ const PROMPT = {
     'Ответ — строго JSON без пояснений и без ```: {"questions": [{"q": "…", "options": ["…","…","…","…"], "correct": 0, "explanation": "…"}]}',
     "\nТЕКСТ УРОКА:\n" + text,
   ].join("\n"),
+  dialogue: (role, text, title, idea) => [
+    `Составь «Живой диалог» — тренажёр разговора с гостем по уроку «${title || "без названия"}» для: ${ROLE_RU[role] || "сотрудники зала"}.`,
+    idea ? "Ситуация разговора: " + idea : "Ситуацию выбери сам — самую жизненную для этого урока.",
+    "Гость: имя, аватар (один эмодзи человека), контекст — кто он, зачем пришёл, в каком настроении (1–2 предложения), начальное настроение mood от 1 до 5 (3 — нейтрально).",
+    "Шаги по порядку, 8–12 штук: action — что происходит (коротко, от третьего лица); guest — реплика гостя (живая, разговорная); choice — вопрос сотруднику и ровно 3 варианта ответа.",
+    "В choice: один вариант верный (correct: true, moodDelta: 1), два неверных — правдоподобные ошибки (correct: false, moodDelta: 0 или -1); feedback — почему так, одной фразой. Сделай 3–4 choice.",
+    "Опирайся на текст урока. Реплики сотрудника — на «вы» к гостю.",
+    "tip — итог разговора: главная мысль урока одной фразой, покажется в конце.",
+    'Ответ — строго JSON без пояснений и без ```: {"dialogue": {"tip": "…", "guest": {"name": "…", "avatar": "👔", "context": "…", "mood": 3}, "steps": [{"type": "action", "text": "…"}, {"type": "guest", "text": "…"}, {"type": "choice", "prompt": "…", "options": [{"text": "…", "correct": true, "feedback": "…", "moodDelta": 1}]}]}}',
+    "\nТЕКСТ УРОКА:\n" + text,
+  ].join("\n"),
   situations: (role, text, title) => [
     `Составь 4 ситуации для «Практики ситуаций» по уроку «${title || "без названия"}» для: ${ROLE_RU[role] || "сотрудники зала"}.`,
     "Ситуация — короткая сцена из смены, 1–3 предложения, от второго лица («Ты…», «Гость…»), вопрос и 4 варианта действия, ровно один верный.",
@@ -92,6 +105,24 @@ export function sanitize(mode, o) {
   if (mode === "improve") {
     const content = cut(o.content, 12000).trim();
     return content ? { content } : null;
+  }
+  if (mode === "dialogue") {
+    const d = (o && o.dialogue) || o || {}; const g = d.guest || {};
+    const steps = (Array.isArray(d.steps) ? d.steps : []).slice(0, 16).map(st => {
+      const type = st && ["action", "guest", "choice"].includes(st.type) ? st.type : null;
+      if (!type) return null;
+      if (type !== "choice") { const text = cut(st.text, 300).trim(); return text ? { type, text } : null; }
+      const options = (Array.isArray(st.options) ? st.options : []).slice(0, 3).map(op => ({
+        text: cut(op && op.text, 200).trim(), correct: !!(op && op.correct), feedback: cut(op && op.feedback, 240).trim(),
+        moodDelta: Math.max(-1, Math.min(1, parseInt(op && op.moodDelta, 10) || 0)) })).filter(op => op.text);
+      if (options.length < 2) return null;
+      let seen = false; options.forEach(op => { if (op.correct) { if (seen) op.correct = false; seen = true; } });   // ровно один верный
+      if (!seen) options[0].correct = true;
+      return { type, prompt: cut(st.prompt, 200).trim() || "Что ответишь?", options };
+    }).filter(Boolean);
+    if (!steps.some(st => st.type === "choice")) return null;
+    return { dialogue: { tip: cut(d.tip, 200).trim(), guest: { name: cut(g.name, 40).trim() || "Гость", avatar: cut(g.avatar, 4).trim() || "🙂",
+      context: cut(g.context, 300).trim(), mood: Math.max(1, Math.min(5, parseInt(g.mood, 10) || 3)) }, steps } };
   }
   if (mode === "situations") {
     const ss = (Array.isArray(o.situations) ? o.situations : []).slice(0, 8).map(x => {
@@ -156,8 +187,8 @@ export default async function handler(req, res) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
-  const { token, mode, role, title, text, pdfBase64 } = req.body || {};
-  if (!["lesson", "improve", "questions", "situations"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  const { token, mode, role, title, text, pdfBase64, idea } = req.body || {};
+  if (!["lesson", "improve", "questions", "situations", "dialogue"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
@@ -173,7 +204,8 @@ export default async function handler(req, res) {
   if (mode !== "lesson" && material.length < 40) return res.status(400).json({ ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" });
 
   const prompt = mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
-    : mode === "situations" ? PROMPT.situations(role, material, cut(title, 120)) : PROMPT.questions(role, material, cut(title, 120));
+    : mode === "situations" ? PROMPT.situations(role, material, cut(title, 120))
+    : mode === "dialogue" ? PROMPT.dialogue(role, material, cut(title, 120), cut(idea, 400).trim()) : PROMPT.questions(role, material, cut(title, 120));
   try {
     const out = await ask(key, prompt, mode === "lesson" ? b64 : "");
     if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });

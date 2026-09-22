@@ -409,7 +409,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
     let live = true;
     rpc("cms_list_lessons", { p_token: saToken() }).then(ls => {
       if (!live || !Array.isArray(ls)) return;
-      const m = {}; ls.forEach(c => { if (!c || c.id == null) return; const t = (c.title || "Урок").trim(); m["cms-l-" + c.id] = t; m["cms-q-" + c.id] = "Тест: " + t; m["cms-p-" + c.id] = "Практика: " + t; });
+      const m = {}; ls.forEach(c => { if (!c || c.id == null) return; const t = (c.title || "Урок").trim(); m["cms-l-" + c.id] = t; m["cms-q-" + c.id] = "Тест: " + t; m["cms-p-" + c.id] = "Практика: " + t; m["cms-d-" + c.id] = "Живой диалог: " + t; });
       setCmsTitles(m);
     }).catch(() => {});
     return () => { live = false; };

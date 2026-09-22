@@ -25,11 +25,16 @@ import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-car
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 
 const dlgLastByTerm = {};
-export function LiveDialogue({ dialogueId, T, onClose, color, pro, hintKey }) {
-  const initial = DIALOGUES_DATA.find(d => d.id === dialogueId);
+export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintKey }) {
+  // Свой диалог из редактора контента приходит прямо в уроке (inline, правка 159) и
+  // становится единственным вариантом своей темы. Источник запоминается один раз:
+  // иначе при каждой перерисовке варианты ответов перемешивались бы заново.
+  const SRC = React.useMemo(() => inline ? [{ termKey: "cms:" + inline.id, ...inline }] : null, [inline]);
+  const src = SRC || DIALOGUES_DATA;
+  const initial = src.find(d => d.id === (inline ? inline.id : dialogueId));
   // Группа = все сценарии одной темы (один termKey). Позволяет ротацию вариантов.
   const group = React.useMemo(
-    () => initial ? DIALOGUES_DATA.filter(d => d.termKey === initial.termKey) : [],
+    () => initial ? src.filter(d => d.termKey === initial.termKey) : [],
     [initial]
   );
   // Страховка: диалоги грузятся лениво. Если сценария ещё нет (чанк едет
@@ -44,7 +49,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro, hintKey }) {
   // При каждом открытии — случайный сценарий из группы (пока вариант один — он же и откроется)
   const [currentId, setCurrentId] = React.useState(() => {
     if (!initial) return dialogueId;
-    const grp = DIALOGUES_DATA.filter(d => d.termKey === initial.termKey);
+    const grp = src.filter(d => d.termKey === initial.termKey);
     if (!grp.length) return dialogueId;
     let pick = grp[Math.floor(Math.random() * grp.length)].id;
     if (grp.length > 1 && pick === dlgLastByTerm[initial.termKey]) {
@@ -170,7 +175,9 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro, hintKey }) {
       await sleep(350);
       runningRef.current = false;
       const nxt = step.next ? idxOf(step.next) : stepIdx + 1;
-      if (step.type !== "result") { if (dialogue.steps[nxt] && dialogue.steps[nxt].type === "result") setDone(true); else setStepIdx(nxt); }
+      // Нет следующего шага — разговор окончен (правка 159: иначе диалог без итогового
+      // шага result зависал после последней реплики — у своих и у 3 из 53 штатных)
+      if (step.type !== "result") { if (!dialogue.steps[nxt] || dialogue.steps[nxt].type === "result") setDone(true); else setStepIdx(nxt); }
     };
     run();
   }, [stepIdx]);
@@ -223,7 +230,7 @@ export function LiveDialogue({ dialogueId, T, onClose, color, pro, hintKey }) {
     }
     setChosen(null);
     const next = opt.goto ? idxOf(opt.goto) : stepIdx + 1;
-    if (next < 0 || dialogue.steps[next]?.type === "result") { setDone(true); return; }
+    if (next < 0 || !dialogue.steps[next] || dialogue.steps[next].type === "result") { setDone(true); return; }
     runningRef.current = false;
     setStepIdx(next);
   };

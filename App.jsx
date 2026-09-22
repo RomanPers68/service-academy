@@ -793,8 +793,14 @@ function ServiceAcademy() {
         // от вопросов теста. Порядок шагов — как у штатных модулей: урок → практика → тест.
         const all = Array.isArray(c.questions) ? c.questions : [];
         const sits = all.filter(q => q && q.kind === "situation").map(({ kind, ...x }) => x);
-        const quizQs = all.filter(q => !(q && q.kind === "situation"));
+        const dlg = all.find(q => q && q.kind === "dialogue");   // живой диалог (правка 159) — один на урок
+        const quizQs = all.filter(q => !(q && (q.kind === "situation" || q.kind === "dialogue")));
         if (sits.length) out.push({ id: "cms-p-" + c.id, title: "Практика: " + (c.title || ""), type: "practice", situations: sits });
+        if (dlg && Array.isArray(dlg.steps) && dlg.steps.length) out.push({ id: "cms-d-" + c.id, title: "Живой диалог: " + (c.title || ""), type: "dialogue", dialogueId: "cms-d-" + c.id,
+          dialogue: { id: "cms-d-" + c.id, title: c.title || "Живой диалог", icon: "💬", color: TRACK_COLOR[role] || GOLD, guest: dlg.guest || { name: "Гость", avatar: "🙂", context: "", mood: 3 },
+          // итоговый шаг с главной мыслью — как у штатных диалогов
+          steps: dlg.steps[dlg.steps.length - 1].type === "result" ? dlg.steps
+            : [...dlg.steps, { type: "result", tip: "✦ " + ((dlg.tip || "").trim() || "Разговор окончен — перечитай объяснения к ответам: в них суть урока.") }] } });
         if (quizQs.length) out.push({ id: "cms-q-" + c.id, title: "Тест: " + (c.title || ""), type: "quiz", questions: quizQs });
         return out;
       }),
@@ -1617,7 +1623,7 @@ function ServiceAcademy() {
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
         {screen === "lesson" && activeLesson?.type === "dialogue" && createPortal(
-          <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />
+          <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} inline={activeLesson.dialogue} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />
         , document.body)}
         {screen === "lesson" && activeLesson?.type === "build" && createPortal(
           <Suspense fallback={<ScreenLoader T={T} />}>

@@ -405,7 +405,14 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
   return createPortal(
     <div className="sa-screen sa-dlg"
       style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
-        transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)", }}>
+        transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
+        // Сплошной фон — ровно как у основы приложения (слой #sa-scene, App.jsx). Без фона
+        // экран чата, лежащий поверх приложения, становился прозрачным: сквозь него была видна
+        // строка «SA · Для чтения», шапки накладывались, а тап по «Для чтения» не проходил
+        // (правка 159; в правке 157 свой фон чата убрали, а сплошной не поставили).
+        background: (() => { try { const sc = document.getElementById("sa-scene"); if (sc && sc.style.background) return sc.style.background; } catch (e) {}
+          return a11y ? "radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), #E8DEC8"
+                      : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)"; })() }}>
       {/* ── Шапка ── */}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>

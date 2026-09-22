@@ -525,9 +525,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       {header(editing ? "Изменить урок" : "Новый урок", leave)}
       <div style={{ ...T.lessBody, flex: 1, overflowY: "visible", padding: "0 16px 150px" }}>
         {/* навигатор по разделам — закреплён сверху при прокрутке (правка 162) */}
-        <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px 6px", padding: "8px 16px", display: "flex", gap: 6, overflowX: "auto",
+        {/* все метки — в одну строку без прокрутки (правка 164: у бара «Просмотр» уезжал за край) */}
+        <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px 6px", padding: "7px 8px", display: "flex", gap: 3,
           background: dark ? "rgba(23,18,9,0.94)" : "rgba(242,233,212,0.94)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${brd}` }}>
-          {navItems.map(([k, l]) => <button key={k} onClick={() => jump(k)} style={{ ...aiBtn, padding: "6px 11px", fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }}>{l}</button>)}
+          {navItems.map(([k, l]) => { const m = l.match(/^(\S+)(?: (\d+))?$/) || [l, l, ""]; return (
+            <button key={k} onClick={() => jump(k)} style={{ ...aiBtn, flex: "1 1 0", minWidth: 0, padding: "5px 0", flexDirection: "column", gap: 0, justifyContent: "center", lineHeight: 1.15, borderRadius: 10 }}>
+              <span data-navlabel="1" style={{ fontSize: 10.5, letterSpacing: -0.2, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m[1]}</span>
+              <span style={{ fontSize: 10, color: muted, fontFamily: "monospace" }}>{m[2] || "·"}</span>
+            </button>); })}
         </div>
         {draftNote ? (
           <div style={{ ...G({ padding: "9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, color: muted, fontSize: 12.5 }}>

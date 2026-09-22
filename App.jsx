@@ -1074,14 +1074,19 @@ function ServiceAcademy() {
         // Доп. 205: текстовый урок — остаёмся на месте, кнопка превращается в «Далее: …»;
         // тест, диалог, практика, Сборка — у них свои экраны результата, возвращаемся в модуль
         // Доп. 206: «Далее» в уроке — буквально следующий по порядку (после текущего), а не первый непройденный в роли
-        const seq = (MODULES[role] || []).flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
+        // Свои разделы — в той же последовательности (правка 164): раньше урок своего раздела в
+        // ней не находился, и «Дальше» уводило в штатную программу, в другую тему
+        const seq = [...(MODULES[role] || []), ...(customModules || [])].flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
         const cur = seq.findIndex(x => x.lesson.id === activeLesson.id);
         const nx = cur >= 0 ? (seq[cur + 1] || null) : nextLessonOf(MODULES[role] || [], newCompleted, newQuizDone);
         if (activeLesson.type === "lesson") {
           // Доп. 207: подсказка, а не принуждение — первое непройденное ПОЗАДИ текущего
           const isDone = (l) => l.type === "quiz" ? !!newQuizDone[l.id] : !!newCompleted[l.id];
-          const skipped = cur > 0 ? seq.slice(0, cur).find(x => !isDone(x.lesson)) : null;
-          const skippedCount = cur > 0 ? seq.slice(0, cur).filter(x => !isDone(x.lesson)).length : 0;
+          // Внутри своего раздела «позади» — только его шаги (правка 164): свои разделы стоят после
+          // всей штатной программы, и подсказка звала назад к «85 непройденным» штатным урокам
+          const behind = cur > 0 ? seq.slice(0, cur).filter(x => !(activeModule && activeModule.custom) || x.mod.id === activeModule.id) : [];
+          const skipped = behind.find(x => !isDone(x.lesson)) || null;
+          const skippedCount = behind.filter(x => !isDone(x.lesson)).length;
           setLessonDone({ next: nx ? { ...nx, other: nx.mod && activeModule && nx.mod.id !== activeModule.id, done: isDone(nx.lesson) } : null, skipped: skipped ? { ...skipped, count: skippedCount } : null });
         } else {
           setTimeout(() => setScreen("module"), 50);
@@ -1091,7 +1096,7 @@ function ServiceAcademy() {
       console.error("completeLesson error:", e);
       setScreen("module");
     }
-  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, completed, quizDone, completedRoles, checkAndShowAchievements]);
+  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, completed, quizDone, completedRoles, checkAndShowAchievements, customModules]);
   const handleQuiz = useCallback((idx) => {
     if (quizState.blocked) return;
     const q = activeLesson.questions[quizState.step];

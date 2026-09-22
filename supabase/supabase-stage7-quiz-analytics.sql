@@ -24,12 +24,37 @@ create table if not exists quiz_events (
 create index if not exists quiz_events_rest_ts on quiz_events (restaurant, ts desc);
 
 -- ── 2. Запись события (вызывается приложением после каждого ответа в тесте) ──
+-- ── Переходник whoami_txt(text) — как в этапе 11c ────────────────────────────
+-- На этой базе whoami принимает токен не текстом (например, uuid), и прямой вызов
+-- whoami(p_token) с текстом падает: «function whoami(text) does not exist» (Доп. 155,
+-- этап 11c; в этом файле вызовы переведены на переходник в правке 151,
+-- чтобы повторный запуск не ломал функции, уже починенные этапом 11c). Все функции ниже зовут
+-- whoami_txt(p_token). Если переходника нет — создаём по фактической подписи whoami;
+-- если есть — не трогаем.
+do $$
+declare t0 text;
+begin
+  if exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+              where ns.nspname = 'public' and p.proname = 'whoami_txt') then
+    return;
+  end if;
+  select format_type(p.proargtypes[0], null) into t0
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.proname = 'whoami'
+   order by p.pronargs limit 1;
+  if t0 is null then
+    raise exception 'whoami в схеме public не найдена — пришли это сообщение разработчику';
+  end if;
+  execute format('create or replace function public.whoami_txt(p_token text) returns jsonb '
+                 'language sql stable security definer as $f$ select to_jsonb(public.whoami(p_token::%s)) $f$', t0);
+end $$;
+
 create or replace function log_quiz_answer(
   p_token text, p_role text, p_lesson text, p_question text, p_correct boolean
 ) returns json language plpgsql security definer as $$
 declare v jsonb;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := to_jsonb(whoami_txt(p_token));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -54,7 +79,7 @@ returns table (question text, lesson_id text, total bigint, fails bigint, fail_p
 language plpgsql security definer as $$
 declare v jsonb; v_pos text; v_admin boolean; v_rest text; v_all boolean;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := to_jsonb(whoami_txt(p_token));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return; -- пустой результат = нет доступа
   end if;

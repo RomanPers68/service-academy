@@ -2,7 +2,7 @@
 -- Free-план Supabase не делает бэкапов. Владелец (is_admin) в Аналитике нажимает
 -- «Скачать копию» → приложение берёт одноразовый билет (3 минуты, одно скачивание)
 -- → серверная функция Vercel /api/backup?t=… отдаёт JSON со ВСЕМИ таблицами public.
--- Связка токен→сотрудник — через вашу же функцию whoami(p_token).
+-- Связка токен→сотрудник — через вашу же функцию whoami_txt(p_token).
 -- Безвреден при повторном запуске. В конце печатает строку-подтверждение.
 
 create table if not exists backup_tickets (
@@ -12,11 +12,36 @@ create table if not exists backup_tickets (
 );
 
 -- Билет выдаётся только владельцу (is_admin). Менеджерам — нет: копия содержит все рестораны.
+-- ── Переходник whoami_txt(text) — как в этапе 11c ────────────────────────────
+-- На этой базе whoami принимает токен не текстом (например, uuid), и прямой вызов
+-- whoami(p_token) с текстом падает: «function whoami(text) does not exist» (Доп. 155,
+-- этап 11c; в этом файле вызовы переведены на переходник в правке 151,
+-- чтобы повторный запуск не ломал функции, уже починенные этапом 11c). Все функции ниже зовут
+-- whoami_txt(p_token). Если переходника нет — создаём по фактической подписи whoami;
+-- если есть — не трогаем.
+do $$
+declare t0 text;
+begin
+  if exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+              where ns.nspname = 'public' and p.proname = 'whoami_txt') then
+    return;
+  end if;
+  select format_type(p.proargtypes[0], null) into t0
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.proname = 'whoami'
+   order by p.pronargs limit 1;
+  if t0 is null then
+    raise exception 'whoami в схеме public не найдена — пришли это сообщение разработчику';
+  end if;
+  execute format('create or replace function public.whoami_txt(p_token text) returns jsonb '
+                 'language sql stable security definer as $f$ select to_jsonb(public.whoami(p_token::%s)) $f$', t0);
+end $$;
+
 create or replace function backup_ticket(p_token text)
 returns json language plpgsql security definer as $$
 declare v jsonb; v_employee text; t text;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := to_jsonb(whoami_txt(p_token));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;

@@ -388,9 +388,11 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   React.useEffect(() => {
     if (view !== "questions" || hardQ !== null) return;
     setHardQ("loading");
+    // Раньше ответ-ошибку считали пустым списком — и поломка на сервере выглядела как
+    // «трудных вопросов нет». Теперь ошибка — это ошибка, с её текстом (правка 151).
     rpc("quiz_hard_questions", { p_token: saToken() })
-      .then(rows => setHardQ(Array.isArray(rows) ? rows : []))
-      .catch(() => setHardQ("off")); // stage 7 ещё не применён
+      .then(rows => { if (Array.isArray(rows)) setHardQ(rows); else { setSrvErr(rows); setHardQ("off"); } })
+      .catch(() => setHardQ("off")); // нет связи
   }, [view, hardQ]);
   const allScope = !!(profile && (profile.is_admin || profile.position === "senior"));
   const scoped = React.useMemo(() => (scores||[]).filter(s => allScope || s.restaurant === profile?.restaurant), [scores, allScope, profile]);
@@ -700,7 +702,9 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
           <SectionLabel a11y={a11y} right="30 дней">ЧАЩЕ ВСЕГО МИМО</SectionLabel>
           <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px" }}>Каждый вопрос — готовая тема для брифинга.</div>
           {hardQ === "loading" && note("Загружаю…")}
-          {hardQ === "off" && note("Серверная часть ещё не включена — примени supabase-stage7-quiz-analytics.sql, и здесь появятся вопросы с наибольшим процентом ошибок.")}
+          {hardQ === "off" && note(srvErr && (srvErr.code || srvErr.message) && srvErr.code !== "PGRST202"
+            ? offText("вопросы")   // настоящая ошибка сервера — её текст
+            : "Серверная часть ещё не включена — примени supabase-stage7-quiz-analytics.sql, и здесь появятся вопросы с наибольшим процентом ошибок.")}
           {Array.isArray(hardQ) && hardQ.length === 0 && note("Пока нет трудных вопросов — данных мало (нужно минимум 3 ответа на вопрос) или команда отвечает без ошибок.")}
           {Array.isArray(hardQ) && hardQ.map((q, i) => { const tone = toneOfFail(q.fail_pct); const tt = indexTitle[q.lesson_id] || titleById[q.lesson_id]; return (
             <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>

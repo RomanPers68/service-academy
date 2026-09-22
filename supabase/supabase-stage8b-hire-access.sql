@@ -7,7 +7,7 @@
 -- Результаты кандидатов больше не живут только в localStorage телефона:
 -- каждый сохраняется на сервер (в рамках ресторана менеджера), история
 -- переживает смену телефона и видна всем админам этого ресторана.
--- Связка токен→сотрудник — через вашу же функцию whoami(p_token).
+-- Связка токен→сотрудник — через вашу же функцию whoami_txt(p_token).
 -- Запускается один раз в SQL-редакторе Supabase. Ничего адаптировать не нужно.
 
 create table if not exists candidate_results (
@@ -21,11 +21,36 @@ create index if not exists candidate_results_rest_idx
   on candidate_results (restaurant, created_at desc);
 
 -- Сохранить результат собеседования (только админ своего ресторана)
+-- ── Переходник whoami_txt(text) — как в этапе 11c ────────────────────────────
+-- На этой базе whoami принимает токен не текстом (например, uuid), и прямой вызов
+-- whoami(p_token) с текстом падает: «function whoami(text) does not exist» (Доп. 155,
+-- этап 11c; в этом файле вызовы переведены на переходник в правке 151,
+-- чтобы повторный запуск не ломал функции, уже починенные этапом 11c). Все функции ниже зовут
+-- whoami_txt(p_token). Если переходника нет — создаём по фактической подписи whoami;
+-- если есть — не трогаем.
+do $$
+declare t0 text;
+begin
+  if exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+              where ns.nspname = 'public' and p.proname = 'whoami_txt') then
+    return;
+  end if;
+  select format_type(p.proargtypes[0], null) into t0
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.proname = 'whoami'
+   order by p.pronargs limit 1;
+  if t0 is null then
+    raise exception 'whoami в схеме public не найдена — пришли это сообщение разработчику';
+  end if;
+  execute format('create or replace function public.whoami_txt(p_token text) returns jsonb '
+                 'language sql stable security definer as $f$ select to_jsonb(public.whoami(p_token::%s)) $f$', t0);
+end $$;
+
 create or replace function candidate_save(p_token text, p_restaurant text, p_result text)
 returns json language plpgsql security definer as $$
 declare v jsonb; v_employee text; v_id bigint;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := to_jsonb(whoami_txt(p_token));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -48,7 +73,7 @@ create or replace function candidate_list(p_token text, p_restaurant text)
 returns json language plpgsql security definer as $$
 declare v jsonb;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := to_jsonb(whoami_txt(p_token));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -74,7 +99,7 @@ create or replace function candidate_delete(p_token text, p_restaurant text, p_i
 returns json language plpgsql security definer as $$
 declare v jsonb;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := to_jsonb(whoami_txt(p_token));
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;

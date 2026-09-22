@@ -794,13 +794,17 @@ function ServiceAcademy() {
         const all = Array.isArray(c.questions) ? c.questions : [];
         const sits = all.filter(q => q && q.kind === "situation").map(({ kind, ...x }) => x);
         const dlg = all.find(q => q && q.kind === "dialogue");   // живой диалог (правка 159) — один на урок
-        const quizQs = all.filter(q => !(q && (q.kind === "situation" || q.kind === "dialogue")));
+        const bld = all.find(q => q && q.kind === "build");      // сборка (правка 160) — одна на урок
+        const quizQs = all.filter(q => !(q && (q.kind === "situation" || q.kind === "dialogue" || q.kind === "build")));
         if (sits.length) out.push({ id: "cms-p-" + c.id, title: "Практика: " + (c.title || ""), type: "practice", situations: sits });
         if (dlg && Array.isArray(dlg.steps) && dlg.steps.length) out.push({ id: "cms-d-" + c.id, title: "Живой диалог: " + (c.title || ""), type: "dialogue", dialogueId: "cms-d-" + c.id,
           dialogue: { id: "cms-d-" + c.id, title: c.title || "Живой диалог", icon: "💬", color: TRACK_COLOR[role] || GOLD, guest: dlg.guest || { name: "Гость", avatar: "🙂", context: "", mood: 3 },
           // итоговый шаг с главной мыслью — как у штатных диалогов
           steps: dlg.steps[dlg.steps.length - 1].type === "result" ? dlg.steps
             : [...dlg.steps, { type: "result", tip: "✦ " + ((dlg.tip || "").trim() || "Разговор окончен — перечитай объяснения к ответам: в них суть урока.") }] } });
+        if (bld && Array.isArray(bld.steps) && bld.steps.length) out.push({ id: "cms-b-" + c.id, title: "Сборка: " + (bld.title || c.title || ""), type: "build", role, buildId: "cms-b-" + c.id,
+          build: { id: "cms-b-" + c.id, role, mod: "cms", vis: "vessel", title: bld.title || c.title || "Сборка", glass: bld.glass || "rocks", tint: bld.tint || "#C8A96E",
+            from: "Своё · " + (c.module || c.title || ""), win: bld.win || "Собрано как надо — так и держи.", lose: bld.lose || "Одна ошибка тянет за собой весь напиток.", steps: bld.steps } });
         if (quizQs.length) out.push({ id: "cms-q-" + c.id, title: "Тест: " + (c.title || ""), type: "quiz", questions: quizQs });
         return out;
       }),
@@ -1627,7 +1631,7 @@ function ServiceAcademy() {
         , document.body)}
         {screen === "lesson" && activeLesson?.type === "build" && createPortal(
           <Suspense fallback={<ScreenLoader T={T} />}>
-            <BuildRunner key={"bld-" + gameKey} buildId={activeLesson.buildId} mod={activeLesson.mod || activeModule?.id} role={activeLesson.role || role}
+            <BuildRunner key={"bld-" + gameKey} buildId={activeLesson.buildId} inline={activeLesson.build} mod={activeLesson.mod || activeModule?.id} role={activeLesson.role || role}
               T={T} color={activeModule?.color} onClose={completeLesson} onResult={recordBuildResult} />
           </Suspense>
         , document.body)}

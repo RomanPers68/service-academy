@@ -19,14 +19,27 @@ import { TRACKS, trackOf, customIcon } from "../lib/tracks";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { glass as glassOf, SectionLabel, tones } from "./analytics-kit";
 import { GOLD } from "./tokens";
+import { COCKTAILS } from "../data/cocktails";
 
 const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const uid = () => Math.random().toString(36).slice(2, 9);
 const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
 const blankS = (genre = "action") => ({ id: uid(), genre, emoji: "", scene: "", question: genre === "find" ? "В чём ошибка?" : "Что делаешь?", options: ["", ""], correct: 0, win: "", fail: "" });
-const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, sort: 0 });
-const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue));
+const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, build: null, sort: 0 });
+const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue || d.build));
+// Сборка у бара (правка 160) — одна на урок, в questions с пометкой kind: "build"
+const blankBStep = () => ({ id: uid(), label: "", q: "", cost: "", options: [{ t: "", ok: true, fb: "" }, { t: "", ok: false, fb: "" }, { t: "", ok: false, fb: "" }, { t: "", ok: false, fb: "" }] });
+const newBuild = () => ({ title: "", glass: "rocks", tint: "#C8A96E", win: "", lose: "", steps: [blankBStep(), blankBStep()] });
+const withBIds = (b) => b ? { title: b.title || "", glass: b.glass || "rocks", tint: b.tint || "#C8A96E", win: b.win || "", lose: b.lose || "",
+  steps: (b.steps || []).map(st => ({ id: uid(), label: st.label || "", q: st.q || "", cost: st.cost || "", options: (st.options || []).map(o => ({ t: o.t || "", ok: !!o.ok, fb: o.fb || "" })) })) } : null;
+const GLASSES = [["high", "Хайбол"], ["rocks", "Рокс"], ["coupe", "Купе"], ["wine", "Винный"], ["pint", "Пинта"]];
+const TINTS = ["#C8A96E", "#B8352A", "#E8B04A", "#8FC471", "#6FA8C8", "#EDE3CF"];
+const GLASS_RU = { high: "хайбол", rocks: "рокс (олд фэшн)", coupe: "купе", wine: "винный бокал", pint: "пинта", martini: "мартини", flute: "флюте" };
+// Рецепт коктейля — текстом для ассистента: дозы, бокал, лёд, метод, гарниш — как в карте бара
+const recipeOf = (c) => [c.name + ".", c.glass ? "Бокал: " + (GLASS_RU[c.glass] || c.glass) + "." : "", "Лёд: " + (c.ice ? "да" : "нет") + ".",
+  c.method ? "Метод: " + c.method + "." : "", Array.isArray(c.ing) && c.ing.length ? "Ингредиенты: " + c.ing.map(x => Array.isArray(x) ? `${x[0]} ${x[1]} мл` : String(x)).join(", ") + "." : "",
+  c.garnish ? "Гарниш: " + c.garnish + "." : "", Array.isArray(c.steps) && c.steps.length ? "Как готовить: " + c.steps.join("; ") + "." : "", c.tip ? "Совет: " + c.tip : ""].filter(Boolean).join(" ");
 // Живой диалог (правка 159) — один на урок, лежит в questions с пометкой kind: "dialogue"
 const blankChoice = () => ({ id: uid(), type: "choice", prompt: "Что ответишь?", options: [
   { text: "", correct: true, feedback: "", moodDelta: 1 }, { text: "", correct: false, feedback: "", moodDelta: -1 }, { text: "", correct: false, feedback: "", moodDelta: 0 }] });
@@ -42,9 +55,9 @@ const isSit = (q) => !!(q && q.kind === "situation");
 const fromServer = (l) => {
   const all = Array.isArray(l.questions) ? l.questions : [];
   return JSON.parse(JSON.stringify({ ...blankLesson(), ...l,
-    questions: all.filter(q => !isSit(q) && !(q && q.kind === "dialogue")).map(q => ({ id: uid(), ...q })),
+    questions: all.filter(q => !isSit(q) && !(q && (q.kind === "dialogue" || q.kind === "build"))).map(q => ({ id: uid(), ...q })),
     situations: all.filter(isSit).map(({ kind, ...x }) => ({ id: uid(), ...x })),
-    dialogue: withIds(all.find(q => q && q.kind === "dialogue")) }));
+    dialogue: withIds(all.find(q => q && q.kind === "dialogue")), build: withBIds(all.find(q => q && q.kind === "build")) }));
 };
 const SIT_EMOJI = ["🔥", "💬", "🍷", "🙋", "⚠️", "🤝", "🍽", "⏱"];
 const readDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { return null; } };
@@ -131,7 +144,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     const forId = base.id || "new";
     if (stored && stored.forId === forId && hasWork(stored.draft)) {
       setDraft({ ...base, ...stored.draft, questions: (stored.draft.questions || []).map(q => ({ id: uid(), ...q })),
-        situations: (stored.draft.situations || []).map(x => ({ id: uid(), ...x })), dialogue: withIds(stored.draft.dialogue) });
+        situations: (stored.draft.situations || []).map(x => ({ id: uid(), ...x })), dialogue: withIds(stored.draft.dialogue), build: withBIds(stored.draft.build) });
       setDraftNote(`Восстановлен черновик от ${hhmm(stored.at)}`);
     } else { setDraft(base); setDraftNote(null); }
     setErr(null); setSavedAt(null); setNewSection(false); setAi({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
@@ -164,6 +177,21 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const moveStep = (i, dir) => setDlg(dl => { const j = i + dir; if (j < 0 || j >= dl.steps.length) return dl; const xs = [...dl.steps]; [xs[i], xs[j]] = [xs[j], xs[i]]; return { ...dl, steps: xs }; });
   const setOpt = (sid, oi, f) => setDlg(dl => ({ ...dl, steps: dl.steps.map(st => st.id !== sid ? st : { ...st, options: st.options.map((o, k) => k === oi ? { ...o, ...f } : o) }) }));
   const markRight = (sid, oi) => setDlg(dl => ({ ...dl, steps: dl.steps.map(st => st.id !== sid ? st : { ...st, options: st.options.map((o, k) => ({ ...o, correct: k === oi, moodDelta: k === oi ? 1 : (o.correct ? 0 : o.moodDelta) })) }) }));
+  const setBld = (f) => setDraft(d => ({ ...d, build: typeof f === "function" ? f(d.build) : f }));
+  const setBStep = (sid, f) => setBld(b => ({ ...b, steps: b.steps.map(st => st.id === sid ? { ...st, ...f } : st) }));
+  const moveBStep = (i, dir) => setBld(b => { const j = i + dir; if (j < 0 || j >= b.steps.length) return b; const xs = [...b.steps]; [xs[i], xs[j]] = [xs[j], xs[i]]; return { ...b, steps: xs }; });
+  const setBOpt = (sid, oi, f) => setBld(b => ({ ...b, steps: b.steps.map(st => st.id !== sid ? st : { ...st, options: st.options.map((o, k) => k === oi ? { ...o, ...f } : o) }) }));
+  const markBOk = (sid, oi) => setBld(b => ({ ...b, steps: b.steps.map(st => st.id !== sid ? st : { ...st, options: st.options.map((o, k) => ({ ...o, ok: k === oi })) }) }));
+  // коктейли для сборки: штатные и свои из карты бара ресторана
+  const [barShared, setBarShared] = React.useState([]);
+  const [ckQuery, setCkQuery] = React.useState("");
+  React.useEffect(() => {
+    let restaurant = ""; try { restaurant = (JSON.parse(localStorage.getItem("sa_profile") || "{}") || {}).restaurant || ""; } catch (e) {}
+    if (!restaurant) return; let alive = true;
+    rpc("menu_get", { p_restaurant: restaurant }).then(res => { const arr = typeof res === "string" ? JSON.parse(res) : res;
+      if (alive && Array.isArray(arr)) setBarShared(arr.filter(x => x && x.name && Array.isArray(x.ing))); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const moveQ = (i, dir) => setDraft(d => { const j = i + dir; if (j < 0 || j >= d.questions.length) return d; const qs = [...d.questions]; [qs[i], qs[j]] = [qs[j], qs[i]]; return { ...d, questions: qs }; });
 
   // ── Кнопки форматирования: работают с выделением в поле текста ──
@@ -217,6 +245,17 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       if (opts.length < 2) return `Ситуация ${i + 1}: нужно хотя бы два варианта.`;
       if (!(x.options[x.correct] || "").trim()) return `Ситуация ${i + 1}: отметь верный вариант.`;
     }
+    if (draft.build) {
+      const b = draft.build;
+      if (!(b.title || "").trim()) return "Сборка: как называется напиток?";
+      if (b.steps.length < 2) return "Сборка: нужно хотя бы два шага.";
+      for (let i = 0; i < b.steps.length; i++) {
+        const st = b.steps[i];
+        if (!(st.q || "").trim()) return `Сборка, шаг ${i + 1}: нужен вопрос.`;
+        if (st.options.filter(o => (o.t || "").trim()).length < 2) return `Сборка, шаг ${i + 1}: нужно хотя бы два варианта.`;
+        if (!st.options.some(o => o.ok && (o.t || "").trim())) return `Сборка, шаг ${i + 1}: отметь верный вариант.`;
+      }
+    }
     if (draft.dialogue) {
       const dl = draft.dialogue;
       if (!(dl.guest.name || "").trim()) return "Живой диалог: как зовут гостя?";
@@ -251,9 +290,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       steps: draft.dialogue.steps.map(st => st.type === "choice"
         ? { type: "choice", prompt: st.prompt.trim(), options: st.options.filter(o => (o.text || "").trim()).map(o => ({ text: o.text.trim(), correct: !!o.correct, feedback: (o.feedback || "").trim(), moodDelta: o.moodDelta | 0 })) }
         : { type: st.type, text: st.text.trim() }) }] : [];
-    const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut];
+    const bldOut = draft.build ? [{ kind: "build", title: draft.build.title.trim(), glass: draft.build.glass, tint: draft.build.tint, win: (draft.build.win || "").trim(), lose: (draft.build.lose || "").trim(),
+      steps: draft.build.steps.map(st => ({ label: (st.label || "").trim() || "Шаг", q: st.q.trim(), cost: (st.cost || "").trim(),
+        options: st.options.filter(o => (o.t || "").trim()).map(o => o.ok ? { t: o.t.trim(), ok: true, fb: (o.fb || "").trim() } : { t: o.t.trim(), fb: (o.fb || "").trim() }) })) }] : [];
+    const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut];
     try {
-      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: (({ situations, dialogue, ...rest }) => ({ ...rest, module: draft.module.trim(), title: draft.title.trim(), questions }))(draft) });
+      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: (({ situations, dialogue, build, ...rest }) => ({ ...rest, module: draft.module.trim(), title: draft.title.trim(), questions }))(draft) });
       if (res && res.ok) { writeDraft(null); await load(); setView("list"); setDraft(null); }
       else setErr(res && res.error === "forbidden" ? "Недостаточно прав." : `Не удалось сохранить${res && (res.error || res.message) ? ": " + (res.error || res.message) : "."}`);
     } catch (e) { setErr("Нет связи. Черновик сохранён на телефоне — попробуй ещё раз."); }
@@ -266,16 +308,32 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     setBusy(false); setConfirmDel(null);
   };
 
+  // Светлая тема (правка 160, «выглядит не очень»): поля — тёплое полупрозрачное стекло с
+  // бликом по кромке, как у остальных светлых экранов, а не серо-белые плоские коробки.
   const input = { width: "100%", boxSizing: "border-box", borderRadius: 12, padding: "12px 14px", fontFamily: SERIF, fontSize: 14, outline: "none",
-    background: dark ? "rgba(20,14,6,0.55)" : "rgba(255,255,255,0.65)", border: `1px solid ${brd}`, color: txt };
+    background: dark ? "rgba(20,14,6,0.55)" : "linear-gradient(180deg, rgba(255,252,245,0.82), rgba(250,243,228,0.78))",
+    border: `1px solid ${dark ? brd : "rgba(139,106,48,0.26)"}`, color: txt,
+    boxShadow: dark ? "none" : "inset 0 1px 0 rgba(255,255,255,0.95), inset 0 2px 6px rgba(120,90,30,0.05)" };
   const iconBtn = { background: "transparent", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", flexShrink: 0 };
-  const pill = (on, c) => ({ padding: "8px 13px", borderRadius: 12, fontFamily: SERIF, fontSize: 14, cursor: "pointer",
-    background: on ? c : "transparent", color: on ? "#1A1008" : c, border: `1px solid ${on ? c : c + "66"}`, fontWeight: on ? "bold" : "normal" });
+  // Выбранная метка в светлой теме — тонированная в свой цвет, с чёткой рамкой (раньше —
+  // тяжёлая заливка, «Новичок» становился тёмно-зелёным пятном)
+  const pill = (on, c) => dark
+    ? ({ padding: "8px 13px", borderRadius: 12, fontFamily: SERIF, fontSize: 14, cursor: "pointer",
+        background: on ? c : "transparent", color: on ? "#1A1008" : c, border: `1px solid ${on ? c : c + "66"}`, fontWeight: on ? "bold" : "normal" })
+    : ({ padding: "8px 13px", borderRadius: 12, fontFamily: SERIF, fontSize: 14, cursor: "pointer",
+        background: on ? `linear-gradient(180deg, ${c}26, ${c}14)` : "rgba(255,252,245,0.6)", color: c,
+        border: `${on ? 1.5 : 1}px solid ${on ? c : c + "55"}`, fontWeight: on ? "bold" : "normal",
+        boxShadow: on ? `inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 6px ${c}22` : "inset 0 1px 0 rgba(255,255,255,0.9)" });
   const primary = { width: "100%", padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", fontFamily: SERIF, fontSize: 15, fontWeight: "bold",
     color: "#1F160A", background: "linear-gradient(135deg, #E2C487, #A67C3A)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 6px 18px rgba(166,124,58,0.3)" };
-  const ghost = { width: "100%", padding: "13px", borderRadius: 14, cursor: "pointer", fontFamily: SERIF, fontSize: 14, background: "transparent", color: muted, border: `1px solid ${brd}` };
+  const ghost = dark
+    ? { width: "100%", padding: "13px", borderRadius: 14, cursor: "pointer", fontFamily: SERIF, fontSize: 14, background: "transparent", color: muted, border: `1px solid ${brd}` }
+    : { width: "100%", padding: "13px", borderRadius: 14, cursor: "pointer", fontFamily: SERIF, fontSize: 14, color: gold,
+        background: "linear-gradient(180deg, rgba(255,252,245,0.7), rgba(248,240,222,0.6))", border: "1px solid rgba(139,106,48,0.32)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.95), 0 2px 8px rgba(120,90,30,0.08)" };
   const aiBtn = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, cursor: "pointer", fontFamily: SERIF, fontSize: 13,
-    background: dark ? "rgba(214,178,102,0.10)" : "rgba(107,78,20,0.07)", color: gold, border: `1px solid ${gold}55` };
+    background: dark ? "rgba(214,178,102,0.10)" : "linear-gradient(180deg, rgba(255,250,238,0.85), rgba(244,232,206,0.8))", color: gold,
+    border: `1px solid ${dark ? gold + "55" : "rgba(139,106,48,0.38)"}`, boxShadow: dark ? "none" : "inset 0 1px 0 rgba(255,255,255,0.95)" };
   const header = (title, back) => (
     <div style={T.lessHead}><button style={T.backBtn2} onClick={back} aria-label="Назад">‹</button><div style={T.lessHeadTitle}>{title}</div></div>);
 
@@ -312,14 +370,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                     </div>
                     {ls.map(l => {
                       const allQ = Array.isArray(l.questions) ? l.questions : [];
-                      const hasDlg = allQ.some(q => q && q.kind === "dialogue");
-                      const nq = allQ.filter(q => !isSit(q) && !(q && q.kind === "dialogue")).length, ns = allQ.filter(isSit).length;
+                      const hasDlg = allQ.some(q => q && q.kind === "dialogue"), hasBld = allQ.some(q => q && q.kind === "build");
+                      const nq = allQ.filter(q => !isSit(q) && !(q && (q.kind === "dialogue" || q.kind === "build"))).length, ns = allQ.filter(isSit).length;
                       const asking = confirmDel === l.id;
                       return (
                         <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0 8px 44px", borderTop: `1px solid ${brd}` }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: txt, fontSize: 14, fontFamily: SERIF }}>{l.title || "Без названия"}</div>
-                            <div style={{ color: muted, fontSize: 11.5 }}>{[ns ? `практика · ${ns}` : "", hasDlg ? "диалог" : "", nq ? `тест · ${nq} вопр.` : ""].filter(Boolean).join(" · ") || "только текст"}</div>
+                            <div style={{ color: muted, fontSize: 11.5 }}>{[ns ? `практика · ${ns}` : "", hasDlg ? "диалог" : "", hasBld ? "сборка" : "", nq ? `тест · ${nq} вопр.` : ""].filter(Boolean).join(" · ") || "только текст"}</div>
                           </div>
                           {asking ? (<>
                             <button onClick={() => remove(l.id)} disabled={busy} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 13 }}>Удалить</button>
@@ -420,7 +478,20 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
-          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : ai.mode === "situations" ? "Придумываю ситуации…" : ai.mode === "dialogue" ? "Собираю диалог…" : "Придумываю вопросы…"}</div> : null}
+          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : ai.mode === "situations" ? "Придумываю ситуации…" : ai.mode === "dialogue" ? "Собираю диалог…" : ai.mode === "build" ? "Собираю сборку по рецепту…" : "Придумываю вопросы…"}</div> : null}
+          {ai.result && ai.mode === "build" ? (
+            <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span style={{ width: 16, height: 16, borderRadius: 5, background: ai.result.build.tint, border: `1px solid ${brd}` }} />
+                <span style={{ color: txt, fontFamily: SERIF, fontSize: 14.5, fontWeight: "bold" }}>{ai.result.build.title}</span>
+                <span style={{ color: muted, fontSize: 12 }}>· {(GLASSES.find(g => g[0] === ai.result.build.glass) || ["", ""])[1]} · шагов: {ai.result.build.steps.length}</span>
+              </div>
+              {ai.result.build.steps.map((st, i) => <div key={i} style={{ color: muted, fontSize: 12.5, lineHeight: 1.45 }}>{i + 1}. <b style={{ color: txt }}>{st.label}</b> — {(st.options.find(o => o.ok) || {}).t}</div>)}
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button onClick={() => { setBld(withBIds(ai.result.build)); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.build ? "Заменить сборку" : "Взять в урок"}</button>
+                <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
+              </div>
+            </div>) : null}
           {ai.result && ai.mode === "dialogue" ? (
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
               <div style={{ color: txt, fontFamily: SERIF, fontSize: 14, fontWeight: "bold", marginBottom: 6 }}>{ai.result.dialogue.guest.avatar} {ai.result.dialogue.guest.name} · {MOODS[ai.result.dialogue.guest.mood - 1]}</div>
@@ -586,6 +657,71 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           <button onClick={() => setDlg(null)} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5, padding: "2px 0 6px" }}>Убрать диалог из урока</button>
         </>)}
 
+        {/* Сборка — только в треке бара (правка 160) */}
+        {draft.role === "bar" || draft.build ? (<>
+        <SectionLabel a11y={a11y} right={draft.build ? `${draft.build.steps.length} шагов` : "необязательно"}>СБОРКА</SectionLabel>
+        {!draft.build ? (
+          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+            <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 8 }}>Собрать напиток по шагам: бокал, лёд, дозы, метод, гарниш — бокал на экране наполняется, ошибка тянет за собой вкус. Как штатные «Сборки».</div>
+            <input style={{ ...input, fontSize: 13.5 }} value={ckQuery} onChange={e => setCkQuery(e.target.value)} placeholder="Найти коктейль из карты бара: «негрони»" />
+            {ckQuery.trim().length >= 2 ? (() => {
+              const qq = ckQuery.trim().toLowerCase().replace(/ё/g, "е");
+              const found = [...barShared.map(c => ({ ...c, own: true })), ...COCKTAILS].filter(c => (c.name || "").toLowerCase().replace(/ё/g, "е").includes(qq)).slice(0, 6);
+              return found.length ? found.map((c, i) => (
+                <div key={i} onClick={() => { setCkQuery(""); callAI("build", { text: recipeOf(c) }); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 4px", cursor: "pointer", borderBottom: `1px solid ${brd}` }}>
+                  <span style={{ width: 14, height: 14, borderRadius: 4, flexShrink: 0, background: Array.isArray(c.color) ? c.color[0] : GOLD }} />
+                  <span style={{ flex: 1, color: txt, fontFamily: SERIF, fontSize: 14 }}>{c.name}</span>
+                  <span style={{ color: muted, fontSize: 11.5 }}>{c.own ? "своё · " : ""}{GLASS_RU[c.glass] || ""}</span>
+                </div>)) : <div style={{ color: muted, fontSize: 12.5, padding: "8px 2px" }}>Не нашёл — проверь название или составь вручную.</div>;
+            })() : null}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              <button onClick={() => setBld(newBuild())} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
+            </div>
+          </div>
+        ) : (<>
+          <div style={G({ padding: "12px 12px", marginBottom: 10 })}>
+            <div style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 8 }}>НАПИТОК</div>
+            <input style={{ ...input, marginBottom: 8 }} value={draft.build.title} onChange={e => setBld(b => ({ ...b, title: e.target.value }))} placeholder="Название: «Негрони»" />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+              {GLASSES.map(([g, lab]) => <button key={g} onClick={() => setBld(b => ({ ...b, glass: g }))} style={{ ...pill(draft.build.glass === g, gold), padding: "6px 11px", fontSize: 12.5 }}>{lab}</button>)}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <span style={{ color: muted, fontSize: 12 }}>Цвет напитка:</span>
+              {TINTS.map(c => <button key={c} onClick={() => setBld(b => ({ ...b, tint: c }))} aria-label={"Цвет " + c} style={{ width: 26, height: 26, borderRadius: 8, cursor: "pointer", background: c, border: `2px solid ${draft.build.tint === c ? txt : brd}` }} />)}
+            </div>
+            <input style={{ ...input, marginBottom: 8, fontSize: 13.5 }} value={draft.build.win} onChange={e => setBld(b => ({ ...b, win: e.target.value }))} placeholder="Если собрано чисто: «Негрони как надо — и завтра такой же»" />
+            <input style={{ ...input, fontSize: 13.5 }} value={draft.build.lose} onChange={e => setBld(b => ({ ...b, lose: e.target.value }))} placeholder="Если были ошибки: «Одна ошибка тянет за собой вкус»" />
+          </div>
+          {draft.build.steps.map((st, i) => (
+            <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8, borderLeft: `3px solid ${draft.build.tint}` })}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
+                <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }}>ШАГ {i + 1}</span>
+                <button onClick={() => moveBStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг сборки выше">{ico.up(muted)}</button>
+                <button onClick={() => moveBStep(i, 1)} disabled={i === draft.build.steps.length - 1} style={{ ...iconBtn, opacity: i === draft.build.steps.length - 1 ? 0.3 : 1 }} aria-label="Шаг сборки ниже">{ico.down(muted)}</button>
+                <button onClick={() => setBld(b => ({ ...b, steps: b.steps.filter(x => x.id !== st.id) }))} style={iconBtn} aria-label="Удалить шаг сборки">{ico.trash(TN.bad, 16)}</button>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <input style={{ ...input, flex: "0 0 34%", padding: "10px 11px" }} value={st.label} onChange={e => setBStep(st.id, { label: e.target.value })} placeholder="Бокал" />
+                <input style={{ ...input, padding: "10px 11px" }} value={st.q} onChange={e => setBStep(st.id, { q: e.target.value })} placeholder="Вопрос: «С чего начинаешь?»" />
+              </div>
+              {st.options.map((o, oi) => (
+                <div key={oi} style={{ border: `1px solid ${o.ok ? TN.good + "88" : brd}`, borderRadius: 12, padding: "7px 8px 6px", marginBottom: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button onClick={() => markBOk(st.id, oi)} aria-label="Верный вариант сборки" style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", border: `2px solid ${o.ok ? TN.good : brd}`, background: o.ok ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{o.ok ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
+                    <input style={{ ...input, padding: "8px 10px", fontSize: 13.5 }} value={o.t} onChange={e => setBOpt(st.id, oi, { t: e.target.value })} placeholder={`Вариант ${oi + 1}`} />
+                  </div>
+                  <input style={{ ...input, padding: "7px 10px", fontSize: 12.5, marginTop: 6 }} value={o.fb} onChange={e => setBOpt(st.id, oi, { fb: e.target.value })} placeholder="Почему так" />
+                </div>))}
+              <input style={{ ...input, padding: "8px 10px", fontSize: 12.5 }} value={st.cost} onChange={e => setBStep(st.id, { cost: e.target.value })} placeholder="Цена ошибки: «напиток выдохнется до второго глотка»" />
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
+            <button onClick={() => setBld(b => ({ ...b, steps: [...b.steps, blankBStep()] }))} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Шаг</button>
+            <button onClick={() => setBld(null)} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5 }}>Убрать сборку из урока</button>
+          </div>
+        </>)}
+        </>) : null}
+
         <SectionLabel a11y={a11y} right={draft.questions.length ? `${draft.questions.length}` : "необязательно"}>ВОПРОСЫ ТЕСТА</SectionLabel>
         {draft.questions.map((q, qi) => (
           <div key={q.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
@@ -661,6 +797,16 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                   {st.options.filter(o => (o.text || "").trim()).map((o, k) => <div key={k} style={{ padding: "7px 11px", borderRadius: 12, marginBottom: 5, border: `1px solid ${brd}`, color: txt, fontSize: 13, fontFamily: SERIF }}>{o.text}</div>)}
                 </div>)}
             <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре варианты перемешаны; после выбора — объяснение, настроение гостя меняется, при плохом — он уходит.</div>
+          </div>) : null}
+        {draft.build ? (
+          <div style={G({ padding: "14px 14px", marginBottom: 16, display: "flex", gap: 12, alignItems: "center" })}>
+            <span style={{ width: 34, height: 46, borderRadius: draft.build.glass === "coupe" || draft.build.glass === "wine" ? "4px 4px 16px 16px" : 6, flexShrink: 0,
+              background: `linear-gradient(180deg, transparent 22%, ${draft.build.tint}cc 22%)`, border: `2px solid ${brd}` }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>СБОРКА</div>
+              <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14.5 }}>{draft.build.title || "Напиток"}</div>
+              <div style={{ color: muted, fontSize: 12 }}>{(GLASSES.find(g => g[0] === draft.build.glass) || ["", ""])[1]} · шагов: {draft.build.steps.length} · бокал наполняется по ходу, звёзды за чистую сборку</div>
+            </div>
           </div>) : null}
         {err && <div style={{ color: TN.bad, fontSize: 13, marginBottom: 10, textAlign: "center", lineHeight: 1.45 }}>{err}</div>}
         <button onClick={save} disabled={busy} style={{ ...primary, marginBottom: 10, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>

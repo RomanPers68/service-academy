@@ -7,6 +7,8 @@
 //   questions — вопросы к тесту по тексту урока → { questions: [{ q, options, correct, explanation }] }
 //   situations — «Практика ситуаций» по тексту урока (правка 158) →
 //                { situations: [{ genre, emoji, scene, question, options, correct, win, fail }] }
+//   build      — «Сборка» напитка по рецепту (правка 160) →
+//                { build: { title, glass, tint, win, lose, steps: [{ label, q, cost, options: [{ t, ok, fb }] }] } }
 //   dialogue   — «Живой диалог» по тексту урока (правка 159) →
 //                { dialogue: { guest: { name, avatar, context, mood }, steps: [action|guest|choice] } }
 //
@@ -62,6 +64,15 @@ const PROMPT = {
     'Ответ — строго JSON без пояснений и без ```: {"questions": [{"q": "…", "options": ["…","…","…","…"], "correct": 0, "explanation": "…"}]}',
     "\nТЕКСТ УРОКА:\n" + text,
   ].join("\n"),
+  build: (role, recipe) => [
+    "Составь «Сборку» — пошаговый тренажёр приготовления напитка для барменов по рецепту ниже.",
+    "5–7 шагов по порядку приготовления: бокал, основа, лёд, алкоголь, долив или метод, гарниш — только то, что есть в рецепте.",
+    "Шаг: label — 1–2 слова («Бокал», «Лёд»…); q — вопрос бармену; ровно 4 варианта: один верный (ok: true) — строго по рецепту, с объёмами в мл; три неверных — правдоподобные ошибки (на глаз, не тот бокал, не тот лёд, не тот метод); fb — объяснение к каждому варианту одной фразой; cost — цена ошибки на этом шаге, коротко («напиток выдохнется до второго глотка»).",
+    "glass — форма бокала для картинки, одна из: high (хайбол, коллинз), rocks (олд фэшн), coupe (купе, мартини), wine (винный), pint (пинта). tint — цвет готового напитка в HEX (#RRGGBB).",
+    "win — фраза при чистой сборке, lose — при ошибках, по одной. Опирайся строго на рецепт — дозы, бокал, лёд, метод, гарниш как в нём, ничего не выдумывай.",
+    'Ответ — строго JSON без пояснений и без ```: {"build": {"title": "…", "glass": "rocks", "tint": "#B8352A", "win": "…", "lose": "…", "steps": [{"label": "Бокал", "q": "…", "cost": "…", "options": [{"t": "…", "ok": true, "fb": "…"}, {"t": "…", "fb": "…"}]}]}}',
+    "\nРЕЦЕПТ:\n" + recipe,
+  ].join("\n"),
   dialogue: (role, text, title, idea) => [
     `Составь «Живой диалог» — тренажёр разговора с гостем по уроку «${title || "без названия"}» для: ${ROLE_RU[role] || "сотрудники зала"}.`,
     idea ? "Ситуация разговора: " + idea : "Ситуацию выбери сам — самую жизненную для этого урока.",
@@ -105,6 +116,21 @@ export function sanitize(mode, o) {
   if (mode === "improve") {
     const content = cut(o.content, 12000).trim();
     return content ? { content } : null;
+  }
+  if (mode === "build") {
+    const b = (o && o.build) || o || {};
+    const steps = (Array.isArray(b.steps) ? b.steps : []).slice(0, 8).map(st => {
+      const options = (Array.isArray(st && st.options) ? st.options : []).slice(0, 4).map(op => ({ t: cut(op && op.t, 160).trim(), ok: !!(op && op.ok), fb: cut(op && op.fb, 200).trim() })).filter(op => op.t);
+      if (options.length < 2) return null;
+      let seen = false; options.forEach(op => { if (op.ok) { if (seen) op.ok = false; seen = true; } });   // ровно один верный
+      if (!seen) options[0].ok = true;
+      const q = cut(st && st.q, 160).trim(); if (!q) return null;
+      return { label: cut(st && st.label, 24).trim() || "Шаг", q, cost: cut(st && st.cost, 120).trim(), options: options.map(op => op.ok ? op : { t: op.t, fb: op.fb }) };
+    }).filter(Boolean);
+    if (steps.length < 2) return null;
+    const glass = ["high", "rocks", "coupe", "wine", "pint"].includes(b.glass) ? b.glass : "rocks";
+    const tint = /^#[0-9a-f]{6}$/i.test(String(b.tint || "")) ? b.tint : "#C8A96E";
+    return { build: { title: cut(b.title, 60).trim() || "Сборка", glass, tint, win: cut(b.win, 200).trim(), lose: cut(b.lose, 200).trim(), steps } };
   }
   if (mode === "dialogue") {
     const d = (o && o.dialogue) || o || {}; const g = d.guest || {};
@@ -188,7 +214,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
   const { token, mode, role, title, text, pdfBase64, idea } = req.body || {};
-  if (!["lesson", "improve", "questions", "situations", "dialogue"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  if (!["lesson", "improve", "questions", "situations", "dialogue", "build"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
@@ -205,7 +231,8 @@ export default async function handler(req, res) {
 
   const prompt = mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
     : mode === "situations" ? PROMPT.situations(role, material, cut(title, 120))
-    : mode === "dialogue" ? PROMPT.dialogue(role, material, cut(title, 120), cut(idea, 400).trim()) : PROMPT.questions(role, material, cut(title, 120));
+    : mode === "dialogue" ? PROMPT.dialogue(role, material, cut(title, 120), cut(idea, 400).trim())
+    : mode === "build" ? PROMPT.build(role, material) : PROMPT.questions(role, material, cut(title, 120));
   try {
     const out = await ask(key, prompt, mode === "lesson" ? b64 : "");
     if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });

@@ -57,7 +57,7 @@ const optKey = (state) => ({
   borderColor: state === "win" ? GREEN : state === "lose" ? RED : undefined,
 });
 
-export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose, onResult }) {
+export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color, onClose, onResult }) {
   const accent = color || GOLD;
   const a11y = !!T.a11y;
   // Инлайновые цвета текста под тему (классы красит CSS через html.sa-light)
@@ -69,11 +69,13 @@ export function BuildRunner({ buildId, mod, role = "bar", T = {}, color, onClose
   // Пул: если сценарий задан явно — берём его, иначе случайный из пула роли
   // Пул ограничен модулем урока (mod), иначе в модуле 1 может выпасть
   // сценарий из модуля 5. Если модуль не задан — берём всю роль.
+  // Своя сборка из редактора контента приходит прямо в уроке (inline, правка 160)
   const pool = React.useMemo(() => {
+    if (inline) return [inline];
     const byRole = BUILDS.filter(b => !b.role || b.role === role);
     const byMod = mod ? byRole.filter(b => b.mod === mod) : [];
     return byMod.length ? byMod : byRole;
-  }, [role, mod]);
+  }, [role, mod, inline]);
   const firstPick = React.useMemo(() => {
     const src = (buildId && pool.find(b => b.id === buildId)) || shuffleArray(pool)[0];
     return shuffleSteps(src);

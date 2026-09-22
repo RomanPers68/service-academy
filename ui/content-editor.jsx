@@ -153,6 +153,26 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const [savedAt, setSavedAt] = React.useState(null);
   const [newSection, setNewSection] = React.useState(false);
   const [base, setBase] = React.useState("");   // общие части раздела при открытии (как их хранит сервер)
+  // Сжатие длинной формы (правка 162): карточки свёрнуты в строку, раскрыта одна в разделе;
+  // навигатор по разделам; текст урока — до половины экрана; предпросмотр — по кнопке;
+  // «Сохранить» — закреплена внизу и уезжает, пока печатаешь.
+  const [openCard, setOpenCard] = React.useState({});   // { sit, q, st, bst }: номер раскрытой карточки
+  const [showPreview, setShowPreview] = React.useState(false);
+  const [textFull, setTextFull] = React.useState(false);
+  const [textTall, setTextTall] = React.useState(false);
+  const [typingEd, setTypingEd] = React.useState(false);
+  const secRef = { lesson: React.useRef(null), sit: React.useRef(null), dlg: React.useRef(null), bld: React.useRef(null), q: React.useRef(null), prev: React.useRef(null) };
+  const toggleCard = (sec, id) => setOpenCard(o => ({ ...o, [sec]: o[sec] === id ? null : id }));
+  const jump = (k) => { const el = secRef[k] && secRef[k].current; if (!el) return;
+    el.scrollIntoView({ block: "start" }); const r = document.getElementById("root"); if (r) r.scrollTop -= 58; };
+  React.useEffect(() => {
+    if (view !== "edit") return;
+    const isField = (el) => !!(el && /^(TEXTAREA|INPUT)$/.test(el.tagName) && el.type !== "file");
+    const on = (e) => { if (isField(e.target)) setTypingEd(true); };
+    const off = () => setTimeout(() => setTypingEd(isField(document.activeElement)), 80);
+    document.addEventListener("focusin", on); document.addEventListener("focusout", off);
+    return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
+  }, [view]);
   const [ai, setAi] = React.useState({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
   const taRef = React.useRef(null);
 
@@ -171,7 +191,10 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     return () => clearTimeout(t);
   }, [draft, view]);
   // поле текста растёт вместе с текстом
-  React.useEffect(() => { const el = taRef.current; if (el) { el.style.height = "auto"; el.style.height = Math.max(140, el.scrollHeight) + "px"; } }, [draft && draft.content, view]);
+  React.useEffect(() => { const el = taRef.current; if (!el) return;
+    el.style.height = "auto"; const full = Math.max(140, el.scrollHeight), cap = Math.round(window.innerHeight * 0.45);
+    el.style.height = (textFull ? full : Math.min(full, cap)) + "px"; el.style.overflowY = !textFull && full > cap ? "auto" : "hidden";
+    setTextTall(full > cap); }, [draft && draft.content, view, textFull]);
 
   const open = (base) => {
     const stored = readDraft();
@@ -183,6 +206,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     } else { setDraft(base); setDraftNote(null); }
     // «было при открытии» — чтобы не перезаписывать первый урок раздела без изменений
     setBase(JSON.stringify(serializeExtras({ ...noExtras(), ...base, ...(stored && stored.forId === forId && hasWork(stored.draft) ? {} : {}) })));
+    setOpenCard({}); setShowPreview(false); setTextFull(false);
     setErr(null); setSavedAt(null); setNewSection(false); setAi({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
     setView("edit");
   };
@@ -205,16 +229,16 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const toSection = (role, module) => setDraft(d => { const recs = sectionRecs(lessons, role, module);
     return { ...d, role, module, ...(recs.length ? sectionExtras(recs) : noExtras()), sort: recs.reduce((m, r) => Math.max(m, r.sort || 0), 0) + 1 }; });
   const setQ = (qid, f) => setDraft(d => ({ ...d, questions: d.questions.map(q => q.id === qid ? { ...q, ...f } : q) }));
-  const addQ = () => setDraft(d => ({ ...d, questions: [...d.questions, blankQ()] }));
+  const addQ = () => { const q = blankQ(); setDraft(d => ({ ...d, questions: [...d.questions, q] })); setOpenCard(o => ({ ...o, q: q.id })); };
   const delQ = (qid) => setDraft(d => ({ ...d, questions: d.questions.filter(q => q.id !== qid) }));
   const setS = (sid, f) => setDraft(d => ({ ...d, situations: d.situations.map(x => x.id === sid ? { ...x, ...f } : x) }));
-  const addS = () => setDraft(d => ({ ...d, situations: [...(d.situations || []), blankS()] }));
+  const addS = () => { const x = blankS(); setDraft(d => ({ ...d, situations: [...(d.situations || []), x] })); setOpenCard(o => ({ ...o, sit: x.id })); };
   const delS = (sid) => setDraft(d => ({ ...d, situations: d.situations.filter(x => x.id !== sid) }));
   const moveS = (i, dir) => setDraft(d => { const j = i + dir; if (j < 0 || j >= d.situations.length) return d; const xs = [...d.situations]; [xs[i], xs[j]] = [xs[j], xs[i]]; return { ...d, situations: xs }; });
   const setDlg = (f) => setDraft(d => ({ ...d, dialogue: typeof f === "function" ? f(d.dialogue) : f }));
   const setGuest = (f) => setDlg(dl => ({ ...dl, guest: { ...dl.guest, ...f } }));
   const setStep = (sid, f) => setDlg(dl => ({ ...dl, steps: dl.steps.map(st => st.id === sid ? { ...st, ...f } : st) }));
-  const addStep = (type) => setDlg(dl => ({ ...dl, steps: [...dl.steps, type === "choice" ? blankChoice() : { id: uid(), type, text: "" }] }));
+  const addStep = (type) => { const st = type === "choice" ? blankChoice() : { id: uid(), type, text: "" }; setDlg(dl => ({ ...dl, steps: [...dl.steps, st] })); setOpenCard(o => ({ ...o, st: st.id })); };
   const delStep = (sid) => setDlg(dl => ({ ...dl, steps: dl.steps.filter(st => st.id !== sid) }));
   const moveStep = (i, dir) => setDlg(dl => { const j = i + dir; if (j < 0 || j >= dl.steps.length) return dl; const xs = [...dl.steps]; [xs[i], xs[j]] = [xs[j], xs[i]]; return { ...dl, steps: xs }; });
   const setOpt = (sid, oi, f) => setDlg(dl => ({ ...dl, steps: dl.steps.map(st => st.id !== sid ? st : { ...st, options: st.options.map((o, k) => k === oi ? { ...o, ...f } : o) }) }));
@@ -322,7 +346,19 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     return null;
   };
   const save = async () => {
-    const p = problems(); if (p) { setErr(p); return; }
+    const p = problems();
+    if (p) {
+      setErr(p);
+      const n = (re) => { const m = p.match(re); return m ? parseInt(m[1], 10) - 1 : -1; };
+      const tgt = [[/^Ситуация (\d+):/, "sit", draft.situations], [/^Вопрос (\d+):/, "q", draft.questions],
+        [/^Живой диалог, шаг (\d+):/, "st", draft.dialogue && draft.dialogue.steps], [/^Сборка, шаг (\d+):/, "bst", draft.build && draft.build.steps]]
+        .map(([re, sec, arr]) => ({ sec, i: n(re), arr })).find(x => x.i >= 0 && x.arr && x.arr[x.i]);
+      if (tgt) { setOpenCard(o => ({ ...o, [tgt.sec]: tgt.arr[tgt.i].id })); setTimeout(() => jump(tgt.sec === "st" ? "dlg" : tgt.sec === "bst" ? "bld" : tgt.sec), 60); }
+      else if (/^Живой диалог/.test(p)) setTimeout(() => jump("dlg"), 60);
+      else if (/^Сборка/.test(p)) setTimeout(() => jump("bld"), 60);
+      else setTimeout(() => jump("lesson"), 60);
+      return;
+    }
     if (busy) return; setBusy(true); setErr(null);
     const questions = serializeExtras(draft);
     // общие части — на первый урок раздела; сам урок — свой текст
@@ -464,13 +500,35 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const secIcon = customIcon(draft.module);
   const nPicked = Object.values(ai.picked || {}).filter(Boolean).length;
   const editing = !!draft.id;
+  // свёрнутая карточка: номер и вид, начало текста, ✓ «заполнено» / «!» — нет; порядок — прямо в строке
+  const cardRow = (sec, id, label, text, ok, i, len, move) => (
+    <div key={id} data-card={sec} onClick={() => toggleCard(sec, id)} role="button" aria-label={label + " — раскрыть"}
+      style={{ ...G({ padding: "9px 10px 9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: gold, fontFamily: "monospace", fontSize: 9.5, letterSpacing: 1.4, fontWeight: "bold" }}>{label}</div>
+        <div style={{ color: text ? txt : muted, fontFamily: SERIF, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{text || "не заполнено"}</div>
+      </div>
+      <span title={ok ? "заполнено" : "не заполнено"} style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 11, fontWeight: "bold",
+        color: ok ? TN.good : TN.mid, border: `1px solid ${ok ? TN.good : TN.mid}88` }}>{ok ? "✓" : "!"}</span>
+      <button onClick={e => { e.stopPropagation(); move(i, -1); }} disabled={i === 0} style={{ ...iconBtn, padding: 4, opacity: i === 0 ? 0.3 : 1 }} aria-label="Выше">{ico.up(muted)}</button>
+      <button onClick={e => { e.stopPropagation(); move(i, 1); }} disabled={i === len - 1} style={{ ...iconBtn, padding: 4, opacity: i === len - 1 ? 0.3 : 1 }} aria-label="Ниже">{ico.down(muted)}</button>
+    </div>);
+  const filled = (opts, isOk) => opts.filter(o => ((o.t != null ? o.t : o.text != null ? o.text : o) || "").trim()).length >= 2 && opts.some((o, k) => isOk(o, k) && ((o.t != null ? o.t : o.text != null ? o.text : o) || "").trim());
+  const navItems = [["lesson", "Урок"], ["sit", "Практика" + ((draft.situations || []).length ? " " + draft.situations.length : "")],
+    ["dlg", "Диалог" + (draft.dialogue ? " " + draft.dialogue.steps.length : "")], ...(draft.role === "bar" || draft.build ? [["bld", "Сборка" + (draft.build ? " " + draft.build.steps.length : "")]] : []),
+    ["q", "Тест" + (draft.questions.length ? " " + draft.questions.length : "")], ["prev", "Просмотр"]];
   const otherRecs = sectionRecs(lessons, draft.role, draft.module).filter(r => r.id !== draft.id);
   const sectionText = [...otherRecs.map(r => r.content || ""), draft.content].join("\n\n").trim();
   const secLabel = (draft.module || "").trim() || "Свой раздел";
   return (
     <div style={T.screen}>
       {header(editing ? "Изменить урок" : "Новый урок", leave)}
-      <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "10px 16px 44px" }}>
+      <div style={{ ...T.lessBody, flex: 1, overflowY: "visible", padding: "0 16px 150px" }}>
+        {/* навигатор по разделам — закреплён сверху при прокрутке (правка 162) */}
+        <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px 6px", padding: "8px 16px", display: "flex", gap: 6, overflowX: "auto",
+          background: dark ? "rgba(23,18,9,0.94)" : "rgba(242,233,212,0.94)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${brd}` }}>
+          {navItems.map(([k, l]) => <button key={k} onClick={() => jump(k)} style={{ ...aiBtn, padding: "6px 11px", fontSize: 12.5, whiteSpace: "nowrap", flexShrink: 0 }}>{l}</button>)}
+        </div>
         {draftNote ? (
           <div style={{ ...G({ padding: "9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, color: muted, fontSize: 12.5 }}>
             <span style={{ flex: 1 }}>{draftNote}</span>
@@ -497,6 +555,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <SectionLabel a11y={a11y}>НАЗВАНИЕ УРОКА</SectionLabel>
         <input style={input} value={draft.title} onChange={e => patch({ title: e.target.value })} placeholder="Напр. «Базовые сорта белого»" />
 
+        <div ref={secRef.lesson} />
         <SectionLabel a11y={a11y}>ТЕКСТ УРОКА</SectionLabel>
         <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
           <button onClick={() => fmt("bold")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent", fontWeight: "bold" }} aria-label="Жирный">Ж</button>
@@ -505,6 +564,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         </div>
         <textarea ref={taRef} style={{ ...input, minHeight: 140, resize: "none", lineHeight: 1.6, overflow: "hidden" }} value={draft.content}
           onChange={e => patch({ content: e.target.value })} placeholder={"Напиши текст урока — или собери его ассистентом из регламента ниже.\n\n**Заголовок**\n• пункт списка"} />
+        {textTall ? <button onClick={() => setTextFull(v => !v)} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, padding: "6px 2px" }}>{textFull ? "Свернуть текст ▴" : "Показать текст целиком ▾"}</button> : null}
 
         {/* Ассистент */}
         <div style={G({ padding: "12px 12px", marginTop: 10 })}>
@@ -629,12 +689,15 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           </div>
         </div>
         {/* Практика ситуаций — между текстом и тестом, как шаги в программе (правка 158) */}
+        <div ref={secRef.sit} />
         <SectionLabel a11y={a11y} right={(draft.situations || []).length ? `${draft.situations.length}` : "необязательно"}>ПРАКТИКА СИТУАЦИЙ</SectionLabel>
         {!(draft.situations || []).length ? <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Короткие сцены из смены: выбрать верное действие или найти ошибку. В игре — до 6 случайных, со звёздами, как в штатных уроках.</div> : null}
-        {(draft.situations || []).map((x, si) => (
+        {(draft.situations || []).map((x, si) => openCard.sit !== x.id
+          ? cardRow("sit", x.id, `СИТУАЦИЯ ${si + 1} · ${x.genre === "find" ? "НАЙДИ ОШИБКУ" : "ЧТО ДЕЛАЕШЬ?"}`, ((x.emoji ? x.emoji + " " : "") + (x.scene || "")).trim(), !!(x.scene || "").trim() && filled(x.options, (o, k) => k === x.correct), si, draft.situations.length, moveS)
+          : (
           <div key={x.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
-              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }}>СИТУАЦИЯ {si + 1}</span>
+              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("sit", x.id)} role="button">СИТУАЦИЯ {si + 1} ▴</span>
               <button onClick={() => moveS(si, -1)} disabled={si === 0} style={{ ...iconBtn, opacity: si === 0 ? 0.3 : 1 }} aria-label="Ситуацию выше">{ico.up(muted)}</button>
               <button onClick={() => moveS(si, 1)} disabled={si === draft.situations.length - 1} style={{ ...iconBtn, opacity: si === draft.situations.length - 1 ? 0.3 : 1 }} aria-label="Ситуацию ниже">{ico.down(muted)}</button>
               <button onClick={() => delS(x.id)} style={iconBtn} aria-label="Удалить ситуацию">{ico.trash(TN.bad, 16)}</button>
@@ -665,6 +728,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <button onClick={addS} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
 
         {/* Живой диалог — после практики, перед тестом (правка 159) */}
+        <div ref={secRef.dlg} />
         <SectionLabel a11y={a11y} right={draft.dialogue ? `${draft.dialogue.steps.length} шагов` : "необязательно"}>ЖИВОЙ ДИАЛОГ</SectionLabel>
         {!draft.dialogue ? (
           <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
@@ -688,10 +752,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>
             <input style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора — главная мысль, покажется в конце" />
           </div>
-          {draft.dialogue.steps.map((st, i) => (
+          {draft.dialogue.steps.map((st, i) => openCard.st !== st.id
+            ? cardRow("st", st.id, `${i + 1} · ${st.type === "choice" ? "ВЫБОР СОТРУДНИКА" : st.type === "guest" ? "ГОСТЬ ГОВОРИТ" : "ДЕЙСТВИЕ"}`, st.type === "choice" ? st.prompt : st.text,
+                st.type === "choice" ? !!(st.prompt || "").trim() && filled(st.options, o => o.correct) : !!(st.text || "").trim(), i, draft.dialogue.steps.length, moveStep)
+            : (
             <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8, borderLeft: `3px solid ${st.type === "choice" ? gold : st.type === "guest" ? track.color : brd}` })}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
-                <span style={{ color: st.type === "choice" ? gold : muted, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }}>{i + 1} · {st.type === "choice" ? "ВЫБОР СОТРУДНИКА" : st.type === "guest" ? "ГОСТЬ ГОВОРИТ" : "ДЕЙСТВИЕ"}</span>
+                <span style={{ color: st.type === "choice" ? gold : muted, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("st", st.id)} role="button">{i + 1} · {st.type === "choice" ? "ВЫБОР СОТРУДНИКА" : st.type === "guest" ? "ГОСТЬ ГОВОРИТ" : "ДЕЙСТВИЕ"} ▴</span>
                 <button onClick={() => moveStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг выше">{ico.up(muted)}</button>
                 <button onClick={() => moveStep(i, 1)} disabled={i === draft.dialogue.steps.length - 1} style={{ ...iconBtn, opacity: i === draft.dialogue.steps.length - 1 ? 0.3 : 1 }} aria-label="Шаг ниже">{ico.down(muted)}</button>
                 <button onClick={() => delStep(st.id)} style={iconBtn} aria-label="Удалить шаг">{ico.trash(TN.bad, 16)}</button>
@@ -728,6 +795,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
 
         {/* Сборка — только в треке бара (правка 160) */}
         {draft.role === "bar" || draft.build ? (<>
+        <div ref={secRef.bld} />
         <SectionLabel a11y={a11y} right={draft.build ? `${draft.build.steps.length} шагов` : "необязательно"}>СБОРКА</SectionLabel>
         {!draft.build ? (
           <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
@@ -761,10 +829,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <input style={{ ...input, marginBottom: 8, fontSize: 13.5 }} value={draft.build.win} onChange={e => setBld(b => ({ ...b, win: e.target.value }))} placeholder="Если собрано чисто: «Негрони как надо — и завтра такой же»" />
             <input style={{ ...input, fontSize: 13.5 }} value={draft.build.lose} onChange={e => setBld(b => ({ ...b, lose: e.target.value }))} placeholder="Если были ошибки: «Одна ошибка тянет за собой вкус»" />
           </div>
-          {draft.build.steps.map((st, i) => (
+          {draft.build.steps.map((st, i) => openCard.bst !== st.id
+            ? cardRow("bst", st.id, `ШАГ ${i + 1}${st.label ? " · " + st.label.toUpperCase() : ""}`, st.q, !!(st.q || "").trim() && filled(st.options, o => o.ok), i, draft.build.steps.length, moveBStep)
+            : (
             <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8, borderLeft: `3px solid ${draft.build.tint}` })}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
-                <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }}>ШАГ {i + 1}</span>
+                <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("bst", st.id)} role="button">ШАГ {i + 1} ▴</span>
                 <button onClick={() => moveBStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг сборки выше">{ico.up(muted)}</button>
                 <button onClick={() => moveBStep(i, 1)} disabled={i === draft.build.steps.length - 1} style={{ ...iconBtn, opacity: i === draft.build.steps.length - 1 ? 0.3 : 1 }} aria-label="Шаг сборки ниже">{ico.down(muted)}</button>
                 <button onClick={() => setBld(b => ({ ...b, steps: b.steps.filter(x => x.id !== st.id) }))} style={iconBtn} aria-label="Удалить шаг сборки">{ico.trash(TN.bad, 16)}</button>
@@ -785,17 +855,20 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>
           ))}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
-            <button onClick={() => setBld(b => ({ ...b, steps: [...b.steps, blankBStep()] }))} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Шаг</button>
+            <button onClick={() => (() => { const st = blankBStep(); setBld(b => ({ ...b, steps: [...b.steps, st] })); setOpenCard(o => ({ ...o, bst: st.id })); })()} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Шаг</button>
             <button onClick={() => setBld(null)} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5 }}>Убрать сборку из урока</button>
           </div>
         </>)}
         </>) : null}
 
+        <div ref={secRef.q} />
         <SectionLabel a11y={a11y} right={draft.questions.length ? `${draft.questions.length}` : "необязательно"}>ВОПРОСЫ ТЕСТА</SectionLabel>
-        {draft.questions.map((q, qi) => (
+        {draft.questions.map((q, qi) => openCard.q !== q.id
+          ? cardRow("q", q.id, `ВОПРОС ${qi + 1}`, q.q, !!(q.q || "").trim() && filled(q.options, (o, k) => k === q.correct), qi, draft.questions.length, moveQ)
+          : (
           <div key={q.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
-              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }}>ВОПРОС {qi + 1}</span>
+              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("q", q.id)} role="button">ВОПРОС {qi + 1} ▴</span>
               <button onClick={() => moveQ(qi, -1)} disabled={qi === 0} style={{ ...iconBtn, opacity: qi === 0 ? 0.3 : 1 }} aria-label="Выше">{ico.up(muted)}</button>
               <button onClick={() => moveQ(qi, 1)} disabled={qi === draft.questions.length - 1} style={{ ...iconBtn, opacity: qi === draft.questions.length - 1 ? 0.3 : 1 }} aria-label="Ниже">{ico.down(muted)}</button>
               <button onClick={() => delQ(q.id)} style={iconBtn} aria-label="Удалить вопрос">{ico.trash(TN.bad, 16)}</button>
@@ -822,7 +895,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <button onClick={addQ} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить вопрос</button>
 
         {/* Как увидит сотрудник */}
+        <div ref={secRef.prev} />
         <SectionLabel a11y={a11y}>КАК УВИДИТ СОТРУДНИК</SectionLabel>
+        {showPreview ? (<>
         <div style={{ ...T.modCard, margin: "0 0 10px" }}>
           <div style={{ ...T.modBar, background: track.color }} />
           <div style={{ ...T.modIcon, display: "flex", alignItems: "center", justifyContent: "center" }}>{MOD_SVG[secIcon] ? MOD_SVG[secIcon](track.color, 28) : null}</div>
@@ -877,6 +952,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: muted, fontSize: 12 }}>{(GLASSES.find(g => g[0] === draft.build.glass) || ["", ""])[1]} · шагов: {draft.build.steps.length} · бокал наполняется по ходу, звёзды за чистую сборку</div>
             </div>
           </div>) : null}
+          <button onClick={() => setShowPreview(false)} style={{ ...ghost, marginBottom: 12 }}>Скрыть предпросмотр ▴</button>
+        </>) : <button onClick={() => setShowPreview(true)} style={{ ...ghost, marginBottom: 12 }}>Показать, как увидит сотрудник ▾</button>}
         {(() => {
           const extrasQ = [...draft.questions, ...(draft.situations || []).map(x => ({ kind: "situation", ...x })), ...(draft.dialogue ? [{ kind: "dialogue", ...draft.dialogue }] : []), ...(draft.build ? [{ kind: "build", ...draft.build }] : [])];
           const me = { id: draft.id || "new", title: draft.title || "Этот урок", sort: draft.sort || 0 };
@@ -890,10 +967,17 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <span style={{ width: 18, color: muted }}>{i + 1}</span><span>{st.title}</span></div>)}
             </div>);
         })()}
-        {err && <div style={{ color: TN.bad, fontSize: 13, marginBottom: 10, textAlign: "center", lineHeight: 1.45 }}>{err}</div>}
-        <button onClick={save} disabled={busy} style={{ ...primary, marginBottom: 10, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
-        <button onClick={cancel} style={ghost}>Отменить</button>
-        <div style={{ color: muted, fontSize: 11.5, textAlign: "center", marginTop: 10 }}>{savedAt ? `Черновик сохранён на телефоне · ${hhmm(savedAt)}` : "Черновик сохраняется на телефоне сам"}</div>
+        {/* «Сохранить» — закреплена внизу; пока печатаешь — уезжает, чтобы не закрывать поле (правка 162) */}
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "8px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
+          transform: typingEd ? "translateY(120%)" : "none", transition: "transform .25s ease",
+          background: dark ? "rgba(21,17,11,0.94)" : "rgba(245,238,222,0.94)", borderTop: `1px solid ${gold}33`, WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}>
+          {err && <div style={{ color: TN.bad, fontSize: 12.5, marginBottom: 6, textAlign: "center", lineHeight: 1.4 }}>{err}</div>}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={cancel} style={{ ...ghost, width: "auto", flex: 1, padding: "12px" }}>Отменить</button>
+            <button onClick={save} disabled={busy} style={{ ...primary, flex: 1.6, padding: "12px", opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
+          </div>
+          <div style={{ color: muted, fontSize: 11, textAlign: "center", marginTop: 6 }}>{savedAt ? `Черновик сохранён на телефоне · ${hhmm(savedAt)}` : "Черновик сохраняется на телефоне сам"}</div>
+        </div>
       </div>
     </div>
   );

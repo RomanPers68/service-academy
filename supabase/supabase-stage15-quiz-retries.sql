@@ -21,8 +21,32 @@
 -- жопка» — у себя на телефоне; руководители видят всех в «Аналитике».
 --
 -- Запускать в SQL Editor после этапа 14. Повторный запуск безопасен.
--- Нужна функция whoami (этапы 2 и 11c).
+-- Нужна функция whoami (этап 2); переходник whoami_txt создаётся здесь, если его нет (см. 11c).
 -- ════════════════════════════════════════════════════════════════════════════
+
+-- ── Переходник whoami_txt(text) — как в этапе 11c ────────────────────────────
+-- На этой базе whoami принимает токен не текстом (например, uuid), и прямой вызов
+-- whoami(p_token) с текстом падает: «function whoami(text) does not exist» (Доп. 155,
+-- этап 11c; то же случилось с этапами 15–16 до этой правки). Все функции ниже зовут
+-- whoami_txt(p_token). Если переходника нет — создаём по фактической подписи whoami;
+-- если есть — не трогаем.
+do $$
+declare t0 text;
+begin
+  if exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+              where ns.nspname = 'public' and p.proname = 'whoami_txt') then
+    return;
+  end if;
+  select format_type(p.proargtypes[0], null) into t0
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.proname = 'whoami'
+   order by p.pronargs limit 1;
+  if t0 is null then
+    raise exception 'whoami в схеме public не найдена — пришли это сообщение разработчику';
+  end if;
+  execute format('create or replace function public.whoami_txt(p_token text) returns jsonb '
+                 'language sql stable security definer as $f$ select to_jsonb(public.whoami(p_token::%s)) $f$', t0);
+end $$;
 
 -- ── Лестница видимости ─────────────────────────────────────────────────────
 -- 0 — линейный персонал, 1 — менеджер, 2 — руководящий состав, 3 — админ.
@@ -47,7 +71,7 @@ create or replace function log_quiz_pick(
 ) returns json language plpgsql security definer set search_path to 'public' as $$
 declare v jsonb; v_emp text;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := whoami_txt(p_token);   -- переходник, см. выше
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -80,7 +104,7 @@ create or replace function log_quiz_skip(
 ) returns json language plpgsql security definer set search_path to 'public' as $$
 declare v jsonb;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := whoami_txt(p_token);   -- переходник, см. выше
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
@@ -100,7 +124,7 @@ returns table (employee text, restaurant text, emp_position text, lesson_id text
 language plpgsql security definer set search_path to 'public' as $$
 declare v jsonb; v_rank int; v_rest text;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := whoami_txt(p_token);   -- переходник, см. выше
   if coalesce((v->>'ok')::boolean, false) is not true then
     return; -- пустой результат = нет доступа
   end if;
@@ -126,7 +150,7 @@ returns table (employee text, restaurant text, emp_position text, lesson_id text
 language plpgsql security definer set search_path to 'public' as $$
 declare v jsonb; v_rank int; v_rest text;
 begin
-  v := to_jsonb(whoami(p_token));
+  v := whoami_txt(p_token);   -- переходник, см. выше
   if coalesce((v->>'ok')::boolean, false) is not true then
     return;
   end if;

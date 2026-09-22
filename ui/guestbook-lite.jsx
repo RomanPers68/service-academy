@@ -6,7 +6,7 @@ import React from "react";
 import { GOLD } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { MODULES } from "../data/modules";
-import { MODULE_REVIEWS, reviewOf, LEGEND_REVIEWS, moduleDone } from "../data/reviews";
+import { MODULE_REVIEWS, reviewOf, bookModules, LEGEND_REVIEWS, moduleDone } from "../data/reviews";
 
 const GOLD_SOFT = "#D2A85A";
 const MONO = { fontFamily: "ui-monospace, Menlo, monospace" };
@@ -16,7 +16,7 @@ const loadRead = () => { try { return JSON.parse(localStorage.getItem("sa_book_r
 export function countUnreadPages(completed, quizDone, examResults) {
   const read = loadRead();
   let n = 0;
-  for (const [rid, mods] of Object.entries(MODULES)) {
+  for (const [rid, mods] of Object.entries(bookModules(MODULES))) {   // и свои страницы (правка 167)
     for (const m of (mods || [])) if (MODULE_REVIEWS[m.id] && moduleDone(m, completed, quizDone) && !read.includes(m.id)) n++;
     if (LEGEND_REVIEWS[rid] && examResults?.[rid]?.passed && !read.includes("lg_" + rid)) n++;
   }

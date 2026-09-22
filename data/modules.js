@@ -91,3 +91,15 @@ export function loadOpenModules(profile) {
   if (profile && profile.is_admin) { open.add("service_manager"); open.add("bar"); }
   return Promise.all([...open].map(r => loadRoleModules(r).catch(() => {})));
 }
+
+// Свои разделы по ролям (правка 167): App кладёт сюда свои модули; экраны, которые считают
+// программу роли (статистика, рейтинг, карточка сотрудника и обучения), берут её отсюда —
+// свои уроки для них как родные.
+let CUSTOM_BY_ROLE = {};
+export function setCustomProgram(byRole) { CUSTOM_BY_ROLE = byRole || {}; }
+export function programOf(role) { return [...(MODULES[role] || []), ...(CUSTOM_BY_ROLE[role] || [])]; }
+export function programAll() {
+  const out = {};
+  new Set([...Object.keys(MODULES), ...Object.keys(CUSTOM_BY_ROLE)]).forEach(r => { out[r] = programOf(r); });
+  return out;
+}

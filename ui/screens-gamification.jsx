@@ -9,7 +9,7 @@ import React from "react";
 import { hintsFor } from "../data/hints";
 import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
-import { MODULES } from "../data/modules";
+import { MODULES, programOf, programAll } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
@@ -707,9 +707,9 @@ export function PlayerDetailScreen({ player, T, onBack }) {
     const key = `${p.role}|${p.lesson_id}`;
     if (seenLessons.has(key)) return;
     seenLessons.add(key);
-    const roleQuizIds = new Set((MODULES[p.role] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id)));
+    const roleQuizIds = new Set(programOf(p.role).flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id)));
     if (roleQuizIds.has(p.lesson_id)) return; // квизы считаем отдельно
-    const roleLessons = (MODULES[p.role] || []).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").map(l => l.id));
+    const roleLessons = programOf(p.role).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").map(l => l.id));
     if (!roleLessons.includes(p.lesson_id)) return;
     if (!byRole[p.role]) byRole[p.role] = 0;
     byRole[p.role]++;
@@ -721,7 +721,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
   quizDonePlayer.forEach(q => {
     if (seenQuizzes.has(q.quiz_id)) return;
     seenQuizzes.add(q.quiz_id);
-    for (const [roleId, modules] of Object.entries(MODULES)) {
+    for (const [roleId, modules] of Object.entries(programAll())) {
       const quizIds = modules.flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id));
       if (quizIds.includes(q.quiz_id)) {
         if (!quizByRole[roleId]) quizByRole[roleId] = 0;
@@ -744,7 +744,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
 
   // Честное число пройденных уроков (без дублей и устаревших)
   const validLessonIds = new Set(
-    Object.values(MODULES).flatMap(modules =>
+    Object.values(programAll()).flatMap(modules =>
       modules.flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result").map(l => l.id))
     )
   );
@@ -793,8 +793,8 @@ export function PlayerDetailScreen({ player, T, onBack }) {
               const lessonCount = byRole[roleId] || 0;
               const quizCount = quizByRole[roleId] || 0;
               const count = lessonCount + quizCount;
-              const lessonTotal = (MODULES[roleId] || []).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result")).length;
-              const quizTotal = (MODULES[roleId] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz")).length;
+              const lessonTotal = programOf(roleId).flatMap(m => m.lessons.filter(l => l.type !== "quiz" && l.type !== "result")).length;
+              const quizTotal = programOf(roleId).flatMap(m => m.lessons.filter(l => l.type === "quiz")).length;
               const total = lessonTotal + quizTotal;
               const pct = total > 0 ? Math.round((count / total) * 100) : 0;
               const color = roleColors[roleId] || GOLD;
@@ -1020,8 +1020,8 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
           const roleScores = myScores.filter(s => s.role === r);
           const avg = roleScores.length > 0 ? Math.round(roleScores.reduce((s, x) => s + x.pct, 0) / roleScores.length) : 0;
           const done = completedRoles.has(r) && roleScores.length > 0;
-          const roleAllIds = new Set((MODULES[r] || []).flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id)));
-          const roleQuizIds = new Set((MODULES[r] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id)));
+          const roleAllIds = new Set(programOf(r).flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id)));
+          const roleQuizIds = new Set(programOf(r).flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id)));
           const lessonDone = Object.keys(completed).filter(k => completed[k] && roleAllIds.has(k) && !roleQuizIds.has(k)).length;
           const quizzesDone = Object.keys(quizDone).filter(k => quizDone[k] && roleQuizIds.has(k)).length;
           const totalDone = lessonDone + quizzesDone;

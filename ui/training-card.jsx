@@ -6,7 +6,7 @@
 // это документ, а не экран; рамка вокруг подстраивается под тему.
 
 import React from "react";
-import { MODULES } from "../data/modules";
+import { MODULES, programOf } from "../data/modules";
 import { ROLES } from "../data/roles";
 import { ROLE_SKILLS } from "../data/skills";
 import { onActivate, vibrate } from "../lib/utils";
@@ -27,7 +27,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
 
   // Прогресс по каждому треку
   const tracks = ROLES.map(r => {
-    const mods = MODULES[r.id] || [];
+    const mods = programOf(r.id);   // свои разделы — как родные (правка 167)
     const ls = mods.flatMap(m => (m.lessons || [])).filter(l => l.type !== "result");
     const total = ls.length;
     const done = ls.filter(l => (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length;

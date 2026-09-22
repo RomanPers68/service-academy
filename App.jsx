@@ -6,6 +6,7 @@ import React from "react";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
+import { setCustomProgram } from "./data/modules";
 import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
@@ -768,7 +769,11 @@ function ServiceAcademy() {
   const loadCustomLessons = useCallback(async () => {
     const t = saToken();
     if (!t) { setCustomLessons([]); return; }
-    try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) { setCustomLessons(res); setCustomLoaded(true); } } catch(e) {}
+    // Копия своих уроков на телефоне (правка 167): без сети свои разделы не пропадают — как
+    // штатные, встроенные в приложение. Пока свежий список не пришёл, ничего не считается удалённым.
+    const ck = "sa_cms_cache_" + (((JSON.parse(localStorage.getItem("sa_profile") || "{}") || {}).restaurant) || "");
+    try { const c = JSON.parse(localStorage.getItem(ck) || "null"); if (Array.isArray(c)) setCustomLessons(prev => prev.length ? prev : c); } catch (e) {}
+    try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) { setCustomLessons(res); setCustomLoaded(true); try { localStorage.setItem(ck, JSON.stringify(res)); } catch (e) {} } } catch(e) {}
   }, []);
   React.useEffect(() => { if (profile) loadCustomLessons(); }, [profile, loadCustomLessons]);
   // Свои разделы: иконка и цвет трека — lib/tracks.js (общие с редактором контента)
@@ -781,7 +786,7 @@ function ServiceAcademy() {
   // свои разделы по всем ролям — для «Учусь» (проценты треков) и экзамена
   const customByRole = useMemo(() => Object.fromEntries(ROLES.map(r => [r.id, buildCustomModules(customLessons, r.id, { color: TRACK_COLOR[r.id] || GOLD, icon: customIcon })])), [customLessons]);
   // книга отзывов видит свои разделы с отзывом (правка 166)
-  useMemo(() => setCustomBook(customByRole), [customByRole]);
+  useMemo(() => { setCustomBook(customByRole); setCustomProgram(customByRole); }, [customByRole]);
   // Живые свои шаги (правка 166): что удалено в редакторе — не видно нигде. Пока список своих
   // уроков не загрузился, ничего не считаем удалённым (офлайн, сбой сети).
   const liveCms = useMemo(() => new Set(Object.values(customByRole).flat().flatMap(m => m.lessons.map(l => l.id))), [customByRole]);
@@ -1109,7 +1114,7 @@ function ServiceAcademy() {
         // ней не находился, и «Дальше» уводило в штатную программу, в другую тему
         const seq = [...(MODULES[role] || []), ...(customModules || [])].flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
         const cur = seq.findIndex(x => x.lesson.id === activeLesson.id);
-        const nx = cur >= 0 ? (seq[cur + 1] || null) : nextLessonOf(MODULES[role] || [], newCompleted, newQuizDone);
+        const nx = cur >= 0 ? (seq[cur + 1] || null) : nextLessonOf([...(MODULES[role] || []), ...(customModules || [])], newCompleted, newQuizDone);
         if (activeLesson.type === "lesson") {
           // Доп. 207: подсказка, а не принуждение — первое непройденное ПОЗАДИ текущего
           const isDone = (l) => l.type === "quiz" ? !!newQuizDone[l.id] : !!newCompleted[l.id];
@@ -1628,7 +1633,7 @@ function ServiceAcademy() {
               const l = (activeModule.lessons || []).find(x => x.type !== "result" && !(x.type === "quiz" ? quizDone[x.id] : completed[x.id]));
               if (l) return { mod: activeModule, lesson: l };
             }
-            return nextLessonOf(modules, completed, quizDone);
+            return nextLessonOf(programModules, completed, quizDone);   // штатная пройдена — дальше свои разделы
           })()}
           onNext={(n) => { if (!n) return; if (n.mod && n.mod.id !== activeModule?.id) setActiveModule(n.mod); openLesson(n.lesson); }}
           finish={(() => {

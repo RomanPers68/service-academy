@@ -776,6 +776,32 @@ function ServiceAcademy() {
     try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) setCustomLessons(res); } catch(e) {}
   }, []);
   React.useEffect(() => { if (profile) loadCustomLessons(); }, [profile, loadCustomLessons]);
+  // Свои разделы: иконка — из набора SVG по смыслу названия, цвет — трека роли
+  // (правка 154; раньше у всех «📘» и золото — карточка выпадала из ряда).
+  const CUSTOM_ICON_RULES = [
+    [/субордин|иерарх|подчин|руковод|структур|порядок/i, "🏛️"],
+    [/безопас|охран|пожар|эваку|травм/i, "🛡️"],
+    [/авари|чп|срочн|экстрен/i, "🚨"],
+    [/вин|сомел/i, "🍷"],
+    // «бар» — отдельным словом: \b в JavaScript не видит границ русских слов
+    [/коктейл|(^|[^а-яё])бар(а|у|ом|е|ы|ов|ам|ами|ах)?([^а-яё]|$)|барн/i, "🍸"],
+    [/виски|крепк/i, "🥃"],
+    [/стандарт|правил|регламент|норм/i, "📐"],
+    [/этик|честн|справедлив|конфликт/i, "⚖️"],
+    [/гост|сервис|встреч|приём|прием/i, "🤝"],
+    [/общен|разговор|диалог|реч|фраз/i, "💬"],
+    [/команд|коллег|смен/i, "👥"],
+    [/обуч|наставн|экзамен|аттестац/i, "🎓"],
+    [/новичок|начал|перв/i, "🌱"],
+    [/продаж|деньг|касс|чек|выручк/i, "💼"],
+    [/мотивац|лучш|звезд/i, "🌟"],
+    [/психолог|мышлен|стресс/i, "🧠"],
+    [/путь|маршрут|карьер/i, "🧭"],
+    [/скорост|быстр/i, "⚡"],
+    [/связ|партнёр|партнер/i, "🔗"],
+  ];
+  const customIcon = (name) => { for (const [re, ic] of CUSTOM_ICON_RULES) if (re.test(name || "")) return ic; return "📘"; };
+  const TRACK_COLOR = { seasonal: "#7C9E87", core: "#C8A96E", spg: "#C8917A", bar: "#C8A96E", manager: "#8B7BAB", service_manager: "#7B8FAB" };
   // Свои разделы для текущей роли (синтетические модули: урок + тест)
   const customModules = useMemo(() => {
     if (!role) return [];
@@ -784,7 +810,7 @@ function ServiceAcademy() {
     mine.forEach(c => { const k = ((c.module || "").trim()) || "Свой раздел"; (groups[k] = groups[k] || []).push(c); });
     return Object.entries(groups).map(([name, list], mi) => ({
       id: "cms-" + role + "-" + mi, tag: "Своё", title: name, subtitle: "Раздел вашего ресторана",
-      icon: "📘", color: GOLD, custom: true,
+      icon: customIcon(name), color: TRACK_COLOR[role] || GOLD, custom: true,
       lessons: list.flatMap(c => {
         const out = [{ id: "cms-l-" + c.id, title: c.title || "Урок", type: "lesson", content: c.content || "" }];
         if (Array.isArray(c.questions) && c.questions.length) out.push({ id: "cms-q-" + c.id, title: "Тест: " + (c.title || ""), type: "quiz", questions: c.questions });

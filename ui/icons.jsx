@@ -266,6 +266,14 @@ export const MOD_SVG = {
       <path d="M12 12.6v8.6M7.1 13.4l2.6 6.9M16.9 13.4l-2.6 6.9" />
     </svg>
   ),
+  // Книга — для своих разделов из редактора контента (правка 154): раньше там было
+  // эмодзи «📘», которого в наборе не было, и карточка выпадала из ряда SVG-иконок.
+  "📘": (c, s=30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 6.6C10.2 5.3 7.8 4.7 4.4 4.9v13.2c3.4-.2 5.8.4 7.6 1.7 1.8-1.3 4.2-1.9 7.6-1.7V4.9c-3.4-.2-5.8.4-7.6 1.7z" />
+      <path d="M12 6.6v13.2" /><path d="M7 8.6c1.2 0 2.3.2 3.2.6M7 11.8c1.2 0 2.3.2 3.2.6M16.9 8.6c-1.2 0-2.3.2-3.2.6" />
+    </svg>
+  ),
   "🧭": (c, s=30) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="8.7" /><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z" />

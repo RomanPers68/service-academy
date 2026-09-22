@@ -116,7 +116,12 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
     const clean = draft.map(x=>({ id:x.id||_clId(), text:(x.text||"").trim() })).filter(x=>x.text);
     setSaving(true);
     rpc("checklist_save", { p_token: saToken(), p_kind: tab, p_items: clean })
-      .then(d => { setSaving(false); if (d && d.ok) { setTpls(prev=>({...prev,[tab]:clean})); setEdit(false); setToast("Чек-лист сохранён"); } else { setToast("Не удалось сохранить"); } setTimeout(()=>setToast(""),1800); })
+      .then(d => { setSaving(false);
+        if (d && d.ok) { setTpls(prev=>({...prev,[tab]:clean})); setEdit(false); setToast("Чек-лист сохранён"); setTimeout(()=>setToast(""),1800); return; }
+        // Правка 154: причина отказа — словами сервера (раньше любая ошибка была «Не удалось сохранить»)
+        const why = d && (d.error || d.message || d.hint || d.code);
+        setToast(why ? `Не удалось сохранить: ${String(why).slice(0, 140)}` : "Не удалось сохранить");
+        setTimeout(()=>setToast(""), why ? 7000 : 1800); })
       .catch(()=>{ setSaving(false); setToast("Нет сети"); setTimeout(()=>setToast(""),1800); });
   };
 

@@ -47,9 +47,10 @@ function collectRoleQuestions(roleId) {
   return out;
 }
 
-export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit }) {
+export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit, extraQuestions = [] }) {
   const color = roleObj?.color || GOLD;
-  const pool = useMemo(() => collectRoleQuestions(roleId), [roleId]);
+  // вопросы своих тестов роли — в том же наборе (правка 165); набор запоминается в App
+  const pool = useMemo(() => [...collectRoleQuestions(roleId), ...(extraQuestions || [])], [roleId, extraQuestions]);
   const [attempt, setAttempt] = React.useState(0);
   const questions = useMemo(() => shuffleArray([...pool]).slice(0, Math.min(EXAM_COUNT, pool.length)).map(shuffleQuizOptions), [pool, attempt]);
   const [step, setStep] = React.useState(0);

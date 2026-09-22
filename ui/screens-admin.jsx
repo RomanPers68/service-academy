@@ -386,11 +386,21 @@ function BackupCard({ C, cardBase, serif }) {
   );
 }
 
+// Строки удалённых своих тестов в аналитике не показываем (правка 166): записи остались на
+// сервере, а урока уже нет. Пока список своих уроков не пришёл — ничего не прячем.
+function liveRowsOf(rows, loaded, titles) {
+  if (!Array.isArray(rows) || !loaded) return rows;
+  return rows.filter(r => { const id = String((r && (r.lesson_id || r.lesson || r.quiz_id)) || ""); return !/^cms-/.test(id) || !!titles[id]; });
+}
+
 export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
+  const [cmsTitles, setCmsTitles] = React.useState({});   // свои уроки: номер шага → название
+  const [cmsLoaded, setCmsLoaded] = React.useState(false);  // список своих уроков пришёл (правка 166)
   const C = moodPalette(a11y);
   const serif = "Georgia, 'Times New Roman', serif";
   const [view, setView] = React.useState("people");   // «Люди» — первыми: кто, где и как ошибается
-  const [hardQ, setHardQ] = React.useState(null); // null=не грузили | "loading" | "off" | []
+  const [hardQRaw, setHardQ] = React.useState(null); // null=не грузили | "loading" | "off" | []
+  const hardQ = React.useMemo(() => liveRowsOf(hardQRaw, cmsLoaded, cmsTitles), [hardQRaw, cmsLoaded, cmsTitles]);
   React.useEffect(() => {
     if (view !== "questions" || hardQ !== null) return;
     setHardQ("loading");
@@ -405,12 +415,11 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   const contentVerA = useContentVersion(); // Доп. 132
   // Свои уроки из редактора контента: в аналитике — их названия, а не служебные
   // номера cms-q-12 (правка 157). Уроки — те же, что видят сотрудники заведения.
-  const [cmsTitles, setCmsTitles] = React.useState({});
   React.useEffect(() => {
     let live = true;
     rpc("cms_list_lessons", { p_token: saToken() }).then(ls => {
       if (!live || !Array.isArray(ls)) return;
-      setCmsTitles(cmsTitleMap(ls));   // названия шагов — те же, что видит сотрудник (lib/custom-modules.js)
+      setCmsTitles(cmsTitleMap(ls)); setCmsLoaded(true);   // названия шагов — те же, что видит сотрудник (lib/custom-modules.js)
     }).catch(() => {});
     return () => { live = false; };
   }, []);
@@ -420,7 +429,8 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   // Выход фиксирует приложение (ui/loophole.jsx) — только оно отличает лазейку от
   // честной пересдачи после провала. Сотрудник видит свою ачивку у себя, здесь —
   // все; рядовым сервер отчёт не отдаёт. Не наказание: первая попытка — пробелы.
-  const [retries, setRetries] = React.useState(null); // null | "loading" | "off" | []
+  const [retriesRaw, setRetries] = React.useState(null); // null | "loading" | "off" | []
+  const retries = React.useMemo(() => liveRowsOf(retriesRaw, cmsLoaded, cmsTitles), [retriesRaw, cmsLoaded, cmsTitles]);
   React.useEffect(() => {
     if (view !== "retries" || retries !== null) return;
     setRetries("loading");
@@ -457,7 +467,8 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
   // ── «Люди» (этап 15): кто, где и как ошибается. Кого видно — решает сервер по лестнице:
   // менеджер — линейный персонал своего ресторана, руководящий состав — ещё и менеджеров
   // всех ресторанов, админ — всех.
-  const [people, setPeople] = React.useState(null); // null | "loading" | "off" | []
+  const [peopleRaw, setPeople] = React.useState(null); // null | "loading" | "off" | []
+  const people = React.useMemo(() => liveRowsOf(peopleRaw, cmsLoaded, cmsTitles), [peopleRaw, cmsLoaded, cmsTitles]);
   // Почему сервер не отдал отчёт. PGRST202 — функция в базе есть, а сервер API её
   // ещё не видит (не перечитал список): лечится одной строкой в SQL Editor.
   const [srvErr, setSrvErr] = React.useState(null);

@@ -127,10 +127,24 @@ export const moduleDone = (mod, completed = {}, quizDone = {}) => {
 };
 
 // Сводка для профиля/рейтинга: страницы, печати, звание
+// Свои разделы в книге (правка 166): отзыв своего раздела — в том же виде, что у штатных
+// ({ text, guest, table }), лежит в самом модуле (m.review). App кладёт сюда свои разделы
+// по ролям; книга, её счёт и баннер «новая страница» берут модули отсюда.
+let CUSTOM_BOOK = {};
+export function setCustomBook(byRole) { CUSTOM_BOOK = byRole || {}; }
+export const reviewOf = (m) => (m && (MODULE_REVIEWS[m.id] || m.review)) || null;
+export function bookModules(modulesByRole) {
+  const out = {}; const base = modulesByRole || {};
+  new Set([...Object.keys(base), ...Object.keys(CUSTOM_BOOK)]).forEach(r => {
+    out[r] = [...(base[r] || []), ...((CUSTOM_BOOK[r] || []).filter(m => m && m.review && m.review.text))];
+  });
+  return out;
+}
+
 export function bookStats(modulesByRole, completed = {}, quizDone = {}, examResults = {}) {
   let pages = 0, total = 0;
-  for (const mods of Object.values(modulesByRole || {})) {
-    for (const m of mods) { if (!MODULE_REVIEWS[m.id]) continue; total++; if (moduleDone(m, completed, quizDone)) pages++; }
+  for (const mods of Object.values(bookModules(modulesByRole))) {
+    for (const m of mods) { if (!reviewOf(m)) continue; total++; if (moduleDone(m, completed, quizDone)) pages++; }
   }
   let seals = 0;
   for (const r of Object.keys(LEGEND_REVIEWS)) if (examResults[r]?.passed) seals++;

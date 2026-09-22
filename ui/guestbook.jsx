@@ -16,9 +16,11 @@ import { MODULES } from "../data/modules";
 import { useContentVersion } from "../lib/use-content";
 import { ROLES } from "../data/roles";
 import {
-  MODULE_REVIEWS, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
+  MODULE_REVIEWS, reviewOf, bookModules, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
   moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
 } from "../data/reviews";
+// модули для книги — штатные и свои разделы с отзывом (правка 166)
+const BM = () => bookModules(MODULES);
 
 const GOLD_SOFT = "#D2A85A", PAPER = "#F5EFE2", PAPER_DIM = "#F0E8D8",
   INK = "#2A1F0E", BROWN = "#7A6548", WAX = "#8B3020";
@@ -48,8 +50,8 @@ const markRead = (key) => { try { const r = loadRead(); if (!r.includes(key)) lo
 // ── Сборка страниц одной роли ──
 function buildRolePages(roleId, completed, quizDone, examResults, dates) {
   const pages = [];
-  for (const m of (MODULES[roleId] || [])) {
-    const rv = MODULE_REVIEWS[m.id];
+  for (const m of (BM()[roleId] || [])) {
+    const rv = reviewOf(m);
     if (!rv) continue;
     if (moduleDone(m, completed, quizDone)) pages.push({ kind: "earned", key: m.id, ...rv, source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, date: dates[m.id] ? ruDate(dates[m.id]) : "" });
     else pages.push({ kind: "locked", key: m.id, source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, hint: `Пройди «${m.title}» — и этот разворот займёт гость, для которого ты это сделаешь по-настоящему.` });
@@ -68,7 +70,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const [gbHint, gbHintDone] = useHintOnce("guestbook");
   const [gbStep, setGBStep] = React.useState(0);
   const gbSteps = hintsFor("guestbook");
-  const [tab, setTab] = React.useState(role && MODULES[role] ? role : "seasonal");
+  const [tab, setTab] = React.useState(role && BM()[role] ? role : "seasonal");
   const [idx, setIdx] = React.useState(0);
   const [dir, setDir] = React.useState("r");
   const [readList, setReadList] = React.useState(loadRead); // прочитанные страницы (живое состояние для подсветки)
@@ -76,7 +78,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   // Открытие по уведомлению: листаем к заработанной странице
   React.useEffect(() => {
     if (!focusId) return;
-    for (const [rid, mods] of Object.entries(MODULES)) {
+    for (const [rid, mods] of Object.entries(BM())) {
       if ((mods || []).some(m => m.id === focusId)) {
         const p = buildRolePages(rid, completed, quizDone, examResults, loadDates());
         const i = p.findIndex(pg => pg.key === focusId);
@@ -93,7 +95,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
     const read = loadRead();
     const d = loadDates();
     for (const r of ROLES) {
-      if (!MODULES[r.id] || !(MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])) continue;
+      if (!BM()[r.id] || !(BM()[r.id] || []).some(m => reviewOf(m))) continue;
       const p = buildRolePages(r.id, completed, quizDone, examResults, d);
       const i = p.findIndex(pg => (pg.kind === "earned" || pg.kind === "legend") && !read.includes(pg.key));
       if (i >= 0) { setTab(r.id); setIdx(i); setDir("r"); return; }
@@ -114,8 +116,8 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   // Даты: фиксируем момент первого появления заработанных страниц
   const dates = React.useMemo(() => {
     const d = loadDates(); let changed = false;
-    for (const [rid, mods] of Object.entries(MODULES)) {
-      for (const m of mods) if (MODULE_REVIEWS[m.id] && moduleDone(m, completed, quizDone) && !d[m.id]) { d[m.id] = Date.now(); changed = true; }
+    for (const [rid, mods] of Object.entries(BM())) {
+      for (const m of mods) if (reviewOf(m) && moduleDone(m, completed, quizDone) && !d[m.id]) { d[m.id] = Date.now(); changed = true; }
       if (examResults?.[rid]?.passed && !d["lg_" + rid]) { d["lg_" + rid] = Date.now(); changed = true; }
     }
     if (completed[weeklyLessonId()] && !d[weeklyLessonId()]) { d[weeklyLessonId()] = Date.now(); changed = true; }
@@ -156,7 +158,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };
   const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
 
-  const chips = [...ROLES.filter(r => MODULES[r.id] && (MODULES[r.id] || []).some(m => MODULE_REVIEWS[m.id])).map(r => ({ id: r.id, label: r.shortLabel || r.label })),
+  const chips = [...ROLES.filter(r => BM()[r.id] && (BM()[r.id] || []).some(m => reviewOf(m))).map(r => ({ id: r.id, label: r.shortLabel || r.label })),
     ...((MODULES.bar || []).some(m => (m.lessons || []).some(l => l.type === "build")) ? [{ id: "builds", label: "Сборка" }] : []),
     { id: "weekly", label: "✦ Гость недели" }];
   // Витрина сборки: build-уроки роли «Бар» и лучшие звёзды по каждому.
@@ -168,7 +170,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const unreadByTab = React.useMemo(() => {
     const d = loadDates(); const map = {};
     for (const r of ROLES) {
-      if (!MODULES[r.id]) continue;
+      if (!BM()[r.id]) continue;
       const p = buildRolePages(r.id, completed, quizDone, examResults, d);
       map[r.id] = p.some(pg => (pg.kind === "earned" || pg.kind === "legend") && !readList.includes(pg.key));
     }

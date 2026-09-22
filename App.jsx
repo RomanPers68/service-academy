@@ -6,6 +6,7 @@ import React from "react";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
+import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
@@ -473,7 +474,8 @@ function ServiceAcademy() {
   const [a11y, setA11y] = useState(() => { try { return localStorage.getItem("sa_a11y") === "1"; } catch (e) { return false; } });
   const [streak, setStreak] = useState({ count: 0, best: 0, last: "", days: [] });
   const [mistakeBank, setMistakeBank] = useState([]); // #5/#6 — заваленные вопросы для повтора
-  const [customLessons, setCustomLessons] = useState([]); // свой контент (редактор)
+  const [customLessons, setCustomLessons] = useState([]);
+  const [customLoaded, setCustomLoaded] = useState(false);   // список своих уроков пришёл (правка 166) // свой контент (редактор)
   const [saved, setSaved] = useState({}); // #5 — избранные термины и заметки: { termKey: { fav?: bool, note?: string } }
   const [examResults, setExamResults] = useState({}); // #2 — результаты экзаменов: { roleId: { passed, score, correct, total, date } }
   // Празднование побед: золотая вспышка ✦ на большие моменты (экзамен).
@@ -761,27 +763,56 @@ function ServiceAcademy() {
   const contentVer = useContentVersion();
   useEffect(() => { if (role) loadRoleModules(role).catch(() => {}); }, [role]);
   const modules = useMemo(() => role ? (MODULES[role] || []) : [], [role, contentVer]);
-  const totalLessons = useMemo(() => modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0), [modules]);
-  const roleLesonIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id))), [modules]);
-  const roleQuizIds = useMemo(() => new Set(modules.flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id))), [modules]);
-  const doneCount = useMemo(() => {
-    const lessonsDone = Object.keys(completed).filter(k => completed[k] && roleLesonIds.has(k) && !roleQuizIds.has(k)).length;
-    const quizzesDone = Object.keys(quizDone).filter(k => quizDone[k] && roleQuizIds.has(k)).length;
-    return lessonsDone + quizzesDone;
-  }, [completed, quizDone, roleLesonIds, roleQuizIds]);
-  const progress = useMemo(() => totalLessons ? Math.round((doneCount / totalLessons) * 100) : 0, [doneCount, totalLessons]);
 
   // ── Свой контент (редактор) ──
   const loadCustomLessons = useCallback(async () => {
     const t = saToken();
     if (!t) { setCustomLessons([]); return; }
-    try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) setCustomLessons(res); } catch(e) {}
+    try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) { setCustomLessons(res); setCustomLoaded(true); } } catch(e) {}
   }, []);
   React.useEffect(() => { if (profile) loadCustomLessons(); }, [profile, loadCustomLessons]);
   // Свои разделы: иконка и цвет трека — lib/tracks.js (общие с редактором контента)
   // Свои разделы для текущей роли: все уроки раздела подряд, потом общая практика,
   // диалоги, сборки и один тест раздела — lib/custom-modules.js (правка 161)
   const customModules = useMemo(() => buildCustomModules(customLessons, role, { color: TRACK_COLOR[role] || GOLD, icon: customIcon }), [customLessons, role]);
+  // Программа роли — штатные модули и свои разделы вместе (правка 165): по ней считаются процент
+  // трека, «пройдено N из M», завершение роли, «Задания дня» — свои уроки как родные
+  const programModules = useMemo(() => [...modules, ...customModules], [modules, customModules]);
+  // свои разделы по всем ролям — для «Учусь» (проценты треков) и экзамена
+  const customByRole = useMemo(() => Object.fromEntries(ROLES.map(r => [r.id, buildCustomModules(customLessons, r.id, { color: TRACK_COLOR[r.id] || GOLD, icon: customIcon })])), [customLessons]);
+  // книга отзывов видит свои разделы с отзывом (правка 166)
+  useMemo(() => setCustomBook(customByRole), [customByRole]);
+  // Живые свои шаги (правка 166): что удалено в редакторе — не видно нигде. Пока список своих
+  // уроков не загрузился, ничего не считаем удалённым (офлайн, сбой сети).
+  const liveCms = useMemo(() => new Set(Object.values(customByRole).flat().flatMap(m => m.lessons.map(l => l.id))), [customByRole]);
+  const deadCms = useCallback((id) => customLoaded && /^cms-/.test(String(id || "")) && !liveCms.has(id), [customLoaded, liveCms]);
+  const liveScores = useMemo(() => scores.filter(s => !deadCms(s.quiz_id)), [scores, deadCms]);
+  const liveStars = useMemo(() => Object.fromEntries(Object.entries(practiceStars || {}).map(([u, o]) => [u, Object.fromEntries(Object.entries(o || {}).filter(([k]) => !deadCms(k)))])), [practiceStars, deadCms]);
+  const liveCompleted = useMemo(() => Object.fromEntries(Object.entries(completed || {}).filter(([k]) => !deadCms(k))), [completed, deadCms]);
+  const liveQuizDone = useMemo(() => Object.fromEntries(Object.entries(quizDone || {}).filter(([k]) => !deadCms(k))), [quizDone, deadCms]);
+  // Банк ошибок: вопросы, которых больше нет нигде (удалённый свой урок, вопрос, убранный из
+  // программы) — убираем. Только когда загружена вся программа и список своих уроков.
+  React.useEffect(() => {
+    if (!customLoaded) return; let alive = true;
+    loadAllModules().then(() => {
+      if (!alive) return;
+      const liveQ = new Set([...Object.values(MODULES).flat(), ...Object.values(customByRole).flat()]
+        .flatMap(m => (m.lessons || []).filter(l => l.type === "quiz").flatMap(l => (l.questions || []).map(q => q.q))));
+      if (liveQ.size < 50) return;   // программа загрузилась не вся — лучше не трогать
+      setMistakeBank(prev => { const next = prev.filter(m => liveQ.has(m.q)); return next.length === prev.length ? prev : next; });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [customLoaded, customByRole]);
+  const examExtra = useMemo(() => (customByRole[examRole] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").flatMap(l => l.questions || [])), [customByRole, examRole]);
+  const totalLessons = useMemo(() => programModules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0), [programModules]);
+  const roleLesonIds = useMemo(() => new Set(programModules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id))), [programModules]);
+  const roleQuizIds = useMemo(() => new Set(programModules.flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id))), [programModules]);
+  const doneCount = useMemo(() => {
+    const lessonsDone = Object.keys(completed).filter(k => completed[k] && roleLesonIds.has(k) && !roleQuizIds.has(k)).length;
+    const quizzesDone = Object.keys(quizDone).filter(k => quizDone[k] && roleQuizIds.has(k)).length;
+    return lessonsDone + quizzesDone;
+  }, [completed, quizDone, roleLesonIds, roleQuizIds]);
+  const progress = useMemo(() => totalLessons ? Math.round((doneCount / totalLessons) * 100) : 0, [doneCount, totalLessons]);
   const navigate = useCallback((to, opts) => {
     const cur = screenRef.current;
     if (TAB_SCREENS.includes(to)) commitStack([]);                          // вкладка — новая ветка, назад некуда
@@ -1050,7 +1081,7 @@ function ServiceAcademy() {
       }
 
       // 4. Пройдена ли вся роль? (используем СВЕЖИЕ newCompleted / newQuizDone)
-      const allLessons = (MODULES[role] || []).flatMap(m => m.lessons).filter(l => l.type !== "result");
+      const allLessons = [...(MODULES[role] || []), ...(customModules || [])].flatMap(m => m.lessons).filter(l => l.type !== "result");   // свои — как родные (правка 165)
       const allDone = allLessons.length > 0 && allLessons.every(l => l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]); // Доп. 132: пустой список — не «всё пройдено»
       const roleIdx = ROLE_ORDER.indexOf(role);
       const nextRole = roleIdx >= 0 ? ROLE_ORDER[roleIdx + 1] : undefined; // роли вне лестницы (напр. СПГ) — без следующей ступени
@@ -1112,7 +1143,7 @@ function ServiceAcademy() {
     if (isCorrect) vibrate("light");
     else {
       vibrate("error");
-      const _qe = { q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "", img: q.img || null, lessonTitle: (activeLesson && activeLesson.title) || "", stage: 0, due: Date.now() };
+      const _qe = { q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "", img: q.img || null, lessonTitle: (activeLesson && activeLesson.title) || "", lessonId: (activeLesson && activeLesson.id) || "", stage: 0, due: Date.now() };
       setMistakeBank(prev => {
         if (prev.some(m => m.q === q.q)) return prev;
         return [...prev, _qe].slice(-200);
@@ -1346,7 +1377,7 @@ function ServiceAcademy() {
         {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} />}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
-        {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={scores} completedRoles={completedRoles} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+        {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
             // Удаление сотрудника из «Управления данными»: находим его id в
             // списке доступа по имени, себя удалить нельзя. Серверная функция
@@ -1435,10 +1466,10 @@ function ServiceAcademy() {
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
-        {screen === "daily" && <DailyScreen mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={modules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")} /></div>}
+        {screen === "daily" && <DailyScreen mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={scores} profile={profile} practiceStars={practiceStars} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} onBack={() => navigate("roleSelect")} /></div>}
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
         {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня"
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
@@ -1513,6 +1544,7 @@ function ServiceAcademy() {
         )}
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile}
           learner={{ position: profile?.position, roleTitle: (ROLES.find(r => r.id === role) || {}).title,
+            customLessons: (customModules || []).flatMap(m => m.lessons.filter(l => l.type === "lesson").map(l => ({ id: l.id, title: l.title, section: m.title }))),
             done: doneCount, total: totalLessons, dueMistakes,
             topics: mistakeBank.filter(m => !m.due || m.due <= Date.now()).slice(0, 3).map(m => m.lessonTitle).filter(Boolean),
             todayShift: (() => { try {
@@ -1626,7 +1658,7 @@ function ServiceAcademy() {
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
-        {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} />}
+        {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} extraQuestions={examExtra} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} />}
         {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}
         </div>
 

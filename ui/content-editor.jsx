@@ -27,8 +27,8 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 const uid = () => Math.random().toString(36).slice(2, 9);
 const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
 const blankS = (genre = "action") => ({ id: uid(), genre, emoji: "", scene: "", question: genre === "find" ? "В чём ошибка?" : "Что делаешь?", options: ["", ""], correct: 0, win: "", fail: "" });
-const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, build: null, sort: 0 });
-const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue || d.build));
+const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, build: null, review: null, sort: 0 });
+const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue || d.build || d.review));
 // Сборка у бара (правка 160) — одна на урок, в questions с пометкой kind: "build"
 const blankBStep = () => ({ id: uid(), label: "", q: "", cost: "", options: [{ t: "", ok: true, fb: "" }, { t: "", ok: false, fb: "" }, { t: "", ok: false, fb: "" }, { t: "", ok: false, fb: "" }] });
 const newBuild = () => ({ title: "", glass: "rocks", tint: "#C8A96E", win: "", lose: "", steps: [blankBStep(), blankBStep()] });
@@ -72,9 +72,11 @@ const sectionExtras = (recs) => {
     situations: parts.flatMap(x => x.sits).map(withIdsQ),
     dialogue: withIds((parts.find(x => x.dlg) || {}).dlg),
     build: withBIds((parts.find(x => x.bld) || {}).bld),
+    // страница книги отзывов (правка 166)
+    review: (() => { const rv = (parts.find(x => x.review) || {}).review; return rv ? { guest: rv.guest || "", table: rv.table || "", text: rv.text || "" } : null; })(),
   };
 };
-const noExtras = () => ({ questions: [], situations: [], dialogue: null, build: null });
+const noExtras = () => ({ questions: [], situations: [], dialogue: null, build: null, review: null });
 const SIT_EMOJI = ["🔥", "💬", "🍷", "🙋", "⚠️", "🤝", "🍽", "⏱"];
 const readDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { return null; } };
 const writeDraft = (v) => { try { v ? localStorage.setItem(DRAFT_KEY, JSON.stringify(v)) : localStorage.removeItem(DRAFT_KEY); } catch (e) {} };
@@ -126,7 +128,8 @@ function serializeExtras(draft) {
   const bldOut = draft.build ? [{ kind: "build", title: draft.build.title.trim(), glass: draft.build.glass, tint: draft.build.tint, win: (draft.build.win || "").trim(), lose: (draft.build.lose || "").trim(),
     steps: draft.build.steps.map(st => ({ label: (st.label || "").trim() || "Шаг", q: st.q.trim(), cost: (st.cost || "").trim(),
       options: st.options.filter(o => (o.t || "").trim()).map(o => o.ok ? { t: o.t.trim(), ok: true, fb: (o.fb || "").trim() } : { t: o.t.trim(), fb: (o.fb || "").trim() }) })) }] : [];
-  const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut];
+  const rvOut = draft.review && (draft.review.text || "").trim() ? [{ kind: "review", guest: (draft.review.guest || "").trim(), table: (draft.review.table || "").trim(), text: draft.review.text.trim() }] : [];
+  const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut, ...rvOut];
   return questions;
 }
 
@@ -311,6 +314,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       if (opts.length < 2) return `Ситуация ${i + 1}: нужно хотя бы два варианта.`;
       if (!(x.options[x.correct] || "").trim()) return `Ситуация ${i + 1}: отметь верный вариант.`;
     }
+    if (draft.review && !(draft.review.text || "").trim() && ((draft.review.guest || "").trim() || (draft.review.table || "").trim()))
+      return "Книга отзывов: напиши сам отзыв гостя.";
     if (draft.build) {
       const b = draft.build;
       if (!(b.title || "").trim()) return "Сборка: как называется напиток?";
@@ -605,7 +610,16 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
-          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : ai.mode === "situations" ? "Придумываю ситуации…" : ai.mode === "dialogue" ? "Собираю диалог…" : ai.mode === "build" ? "Собираю сборку по рецепту…" : "Придумываю вопросы…"}</div> : null}
+          {ai.busy && ai.mode !== "lesson" ? <div style={{ color: muted, fontSize: 13, marginTop: 10 }}>{ai.mode === "improve" ? "Улучшаю текст…" : ai.mode === "situations" ? "Придумываю ситуации…" : ai.mode === "dialogue" ? "Собираю диалог…" : ai.mode === "build" ? "Собираю сборку по рецепту…" : ai.mode === "review" ? "Пишу отзыв гостя…" : "Придумываю вопросы…"}</div> : null}
+          {ai.result && ai.mode === "review" ? (
+            <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
+              <div style={{ color: txt, fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5 }}>«{ai.result.review.text}»</div>
+              <div style={{ color: muted, fontSize: 12, marginTop: 4 }}>— {ai.result.review.guest}{ai.result.review.table ? ", " + ai.result.review.table : ""}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button onClick={() => { patch({ review: { ...ai.result.review } }); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.review ? "Заменить отзыв" : "Взять в раздел"}</button>
+                <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
+              </div>
+            </div>) : null}
           {ai.result && ai.mode === "build" ? (
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -900,6 +914,32 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <button onClick={addQ} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить вопрос</button>
 
         {/* Как увидит сотрудник */}
+        {/* Страница в книге отзывов — общая для раздела (правка 166): откроется, когда раздел пройден */}
+        <SectionLabel a11y={a11y} right={draft.review ? "есть" : "необязательно"}>КНИГА ОТЗЫВОВ</SectionLabel>
+        {!draft.review ? (
+          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+            <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Отзыв гостя — страница в «Книге отзывов», как у штатных модулей: откроется сотруднику, когда он пройдёт весь раздел.</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => callAI("review", { text: sectionText, title: secLabel })} disabled={sectionText.length < 40} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }}>Написать с ассистентом</button>
+              <button onClick={() => patch({ review: { guest: "", table: "", text: "" } })} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Написать самому</button>
+            </div>
+          </div>
+        ) : (
+          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input style={{ ...input, flex: 1.6, padding: "10px 11px" }} value={draft.review.guest} onChange={e => patch({ review: { ...draft.review, guest: e.target.value } })} placeholder="Кто гость: «Пара на годовщине»" />
+              <input style={{ ...input, flex: 1, padding: "10px 11px" }} value={draft.review.table} onChange={e => patch({ review: { ...draft.review, table: e.target.value } })} placeholder="стол 7" />
+            </div>
+            <textarea style={{ ...input, minHeight: 84, lineHeight: 1.5, resize: "vertical" }} value={draft.review.text} onChange={e => patch({ review: { ...draft.review, text: e.target.value } })}
+              placeholder="Отзыв от лица гостя: что сотрудник сделал так, что захотелось вернуться" />
+            {(draft.review.text || "").trim() ? (
+              <div style={{ margin: "10px 2px 2px", padding: "10px 12px", borderRadius: 12, borderLeft: `3px solid ${track.color}`, background: `${track.color}10` }}>
+                <div style={{ color: txt, fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5 }}>«{draft.review.text.trim()}»</div>
+                <div style={{ color: muted, fontSize: 11.5, marginTop: 4 }}>— {(draft.review.guest || "").trim() || "Гость"}{(draft.review.table || "").trim() ? ", " + draft.review.table.trim() : ""}</div>
+              </div>) : null}
+            <button onClick={() => patch({ review: null })} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5, padding: "8px 0 0" }}>Убрать страницу</button>
+          </div>
+        )}
         <div ref={secRef.prev} />
         <SectionLabel a11y={a11y}>КАК УВИДИТ СОТРУДНИК</SectionLabel>
         {showPreview ? (<>

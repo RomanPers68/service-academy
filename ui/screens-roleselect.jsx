@@ -74,7 +74,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode }) {
+export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {} }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
@@ -159,7 +159,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
         {/* ═══ Карточка «Твой трек»: урок → ошибки → гость недели ═══ */}
         {role && onContinueLesson && (() => {
           const roleObj = ROLES.find(r => r.id === role);
-          const mods = MODULES[role] || [];
+          const mods = [...(MODULES[role] || []), ...(customByRole[role] || [])];   // свои разделы — как родные (правка 165)
           if (!mods.length) return <div style={{ padding:"0 14px 9px" }}><SkeletonCard a11y={a11y} h={92} style={{ borderRadius:14 }} /></div>; // Доп. 132/146: уроки едут — мерцающий силуэт
           const next = nextLessonOf(mods, completed, quizDone);
           const dueM = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
@@ -602,7 +602,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           // Ступень внутри профессии: компактная строка на нити с номером.
           // Отличается от самостоятельного трека и высотой, и формой.
           const roleProgress = (rid) => {
-            const mods = MODULES[rid] || [];
+            const mods = [...(MODULES[rid] || []), ...(customByRole[rid] || [])];
             const all = mods.flatMap(m => (m.lessons || []).filter(l => l.type !== "result"));
             if (!all.length) return 0;
             const done = all.filter(l => l.type === "quiz" ? quizDone[l.id] : completed[l.id]).length;

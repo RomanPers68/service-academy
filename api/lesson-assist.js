@@ -64,6 +64,13 @@ const PROMPT = {
     'Ответ — строго JSON без пояснений и без ```: {"questions": [{"q": "…", "options": ["…","…","…","…"], "correct": 0, "explanation": "…"}]}',
     "\nТЕКСТ УРОКА:\n" + text,
   ].join("\n"),
+  review: (role, text, title) => [
+    `Напиши отзыв гостя для «Книги отзывов» ресторана по разделу обучения «${title || "раздел"}» (${ROLE_RU[role] || "сотрудники зала"}).`,
+    "2–4 предложения от лица гостя: тепло, живо и конкретно — что сотрудник сделал так, что захотелось вернуться; опирайся на уроки раздела ниже. Без имён сотрудников, без цен и блюд, которых нет в тексте.",
+    "guest — кто гость, 2–4 слова («Пара на годовщине», «Семья с детьми»); table — «стол N».",
+    'Ответ — строго JSON без пояснений и без ```: {"review": {"guest": "…", "table": "стол 5", "text": "…"}}',
+    "\nУРОКИ РАЗДЕЛА:\n" + text,
+  ].join("\n"),
   build: (role, recipe) => [
     "Составь «Сборку» — пошаговый тренажёр приготовления напитка для барменов по рецепту ниже.",
     "5–7 шагов по порядку приготовления: бокал, основа, лёд, алкоголь, долив или метод, гарниш — только то, что есть в рецепте.",
@@ -116,6 +123,11 @@ export function sanitize(mode, o) {
   if (mode === "improve") {
     const content = cut(o.content, 12000).trim();
     return content ? { content } : null;
+  }
+  if (mode === "review") {
+    const v = (o && o.review) || o || {};
+    const text = cut(v.text, 600).trim();
+    return text ? { review: { guest: cut(v.guest, 40).trim() || "Гость", table: cut(v.table, 20).trim(), text } } : null;
   }
   if (mode === "build") {
     const b = (o && o.build) || o || {};
@@ -214,7 +226,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
   const { token, mode, role, title, text, pdfBase64, idea } = req.body || {};
-  if (!["lesson", "improve", "questions", "situations", "dialogue", "build"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  if (!["lesson", "improve", "questions", "situations", "dialogue", "build", "review"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
@@ -232,7 +244,7 @@ export default async function handler(req, res) {
   const prompt = mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
     : mode === "situations" ? PROMPT.situations(role, material, cut(title, 120))
     : mode === "dialogue" ? PROMPT.dialogue(role, material, cut(title, 120), cut(idea, 400).trim())
-    : mode === "build" ? PROMPT.build(role, material) : PROMPT.questions(role, material, cut(title, 120));
+    : mode === "build" ? PROMPT.build(role, material) : mode === "review" ? PROMPT.review(role, material, cut(title, 120)) : PROMPT.questions(role, material, cut(title, 120));
   try {
     const out = await ask(key, prompt, mode === "lesson" ? b64 : "");
     if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });

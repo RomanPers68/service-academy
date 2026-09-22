@@ -6,7 +6,7 @@ import React from "react";
 import { GOLD } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { MODULES } from "../data/modules";
-import { MODULE_REVIEWS, LEGEND_REVIEWS, moduleDone } from "../data/reviews";
+import { MODULE_REVIEWS, reviewOf, LEGEND_REVIEWS, moduleDone } from "../data/reviews";
 
 const GOLD_SOFT = "#D2A85A";
 const MONO = { fontFamily: "ui-monospace, Menlo, monospace" };
@@ -27,7 +27,7 @@ export function countUnreadPages(completed, quizDone, examResults) {
 export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   const [hidden, setHidden] = React.useState(false);
   const [leaving, setLeaving] = React.useState(false); // плавный уход при скрытии
-  if (hidden || !mod || !MODULE_REVIEWS[mod.id] || !moduleDone(mod, completed, quizDone)) return null;
+  if (hidden || !mod || !reviewOf(mod) || !moduleDone(mod, completed, quizDone)) return null;
   let read = [];
   // Баннер живёт, пока страница реально не прочитана в книге (см. markRead в GuestBookScreen)
   try { read = JSON.parse(localStorage.getItem("sa_book_read") || "[]"); } catch (e) {}

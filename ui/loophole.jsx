@@ -110,17 +110,31 @@ const CSS = `
 `;
 export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
   const [shown, setShown] = React.useState(false);
-  React.useEffect(() => { const t = setTimeout(() => setShown(true), 20); return () => clearTimeout(t); }, []);
+  // Первые 0,8 с тап мимо карточки не закрывает её. Жалоба владельца: «тапнул на баннер —
+  // следующая страница схлопнулась». Баннер гаснет, карточка ещё не встала — рука тапает
+  // второй раз, и этот тап попадал в затемнение вокруг карточки, закрывая её (и ачивка
+  // считалась просмотренной). Кнопки внутри работают сразу.
+  const armed = React.useRef(false);
+  React.useEffect(() => { const t = setTimeout(() => setShown(true), 20); const a = setTimeout(() => { armed.current = true; }, 800);
+    return () => { clearTimeout(t); clearTimeout(a); }; }, []);
+  const backdropTap = () => { if (armed.current) onClose && onClose(); };
   const narrow = typeof window !== "undefined" && window.innerWidth < 380;
   const C = a11y
     ? { text: "#2A2113", muted: "#5E4E30", gold: "#6B4E14", miss: "#A4452A", hit: "#2F6B45",
-        ink: "#A8392A", bg: "linear-gradient(180deg, rgba(252,247,236,0.99) 0%, rgba(241,230,206,0.99) 100%)", dim: "rgba(70,50,20,0.40)",
+        ink: "#962F21", dim: "rgba(70,50,20,0.22)", foot: "rgba(250,244,230,0.78)",
+        // «Морозный лёд» (просьба владельца): полупрозрачное стекло, изморозь, блики по углам.
+        // Чернила штампа ярче прежних: на стекле мелкое «СНОВА» давало 4,3–4,5 при норме 4,5.
+        // Изморозь на большой тёмной карточке — тише, чем на баннере: иначе рябит при чтении.
+        bg: "radial-gradient(circle at 12% 22%, rgba(255,255,255,0.55) 0 0.6px, transparent 1.4px), radial-gradient(circle at 78% 30%, rgba(255,255,255,0.45) 0 0.6px, transparent 1.4px), radial-gradient(circle at 42% 78%, rgba(255,255,255,0.4) 0 0.5px, transparent 1.2px), radial-gradient(circle at 90% 82%, rgba(255,255,255,0.45) 0 0.6px, transparent 1.4px), radial-gradient(120% 70% at 0% 0%, rgba(255,255,255,0.65), transparent 55%), radial-gradient(120% 70% at 100% 100%, rgba(255,255,255,0.4), transparent 60%), rgba(255,250,240,0.66)",
+        edge: "rgba(255,255,255,0.9)", edgeTop: "rgba(255,255,255,1)",
         plate: "rgba(255,255,255,0.55)", plateBd: "rgba(107,78,20,0.20)", title: "linear-gradient(90deg, #7A5716, #A67C3A 45%, #6B4E14)",
-        glow: "inset 0 0 30px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 12px 36px rgba(90,60,20,0.30)" }
+        glow: "inset 0 0 30px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,1), 0 14px 38px rgba(90,60,20,0.22)" }
     : { text: "#EFE4C8", muted: "#BFAE8A", gold: GOLD, miss: "#E08A62", hit: "#7FC49A",
-        ink: "#D2553F", bg: "linear-gradient(180deg, rgba(58,44,23,0.98) 0%, rgba(30,23,12,0.99) 70%)", dim: "rgba(0,0,0,0.62)",
+        ink: "#E36A52", dim: "rgba(8,6,3,0.44)", foot: "rgba(26,20,10,0.72)",
+        bg: "radial-gradient(circle at 12% 22%, rgba(255,255,255,0.22) 0 0.6px, transparent 1.4px), radial-gradient(circle at 78% 30%, rgba(255,255,255,0.16) 0 0.6px, transparent 1.4px), radial-gradient(circle at 42% 78%, rgba(255,255,255,0.14) 0 0.5px, transparent 1.2px), radial-gradient(circle at 90% 82%, rgba(255,255,255,0.16) 0 0.6px, transparent 1.4px), radial-gradient(120% 70% at 0% 0%, rgba(255,244,215,0.12), transparent 55%), radial-gradient(120% 70% at 100% 100%, rgba(255,244,215,0.07), transparent 60%), rgba(26,20,10,0.60)",
+        edge: "rgba(255,240,205,0.30)", edgeTop: "rgba(255,244,215,0.60)",
         plate: "rgba(255,236,190,0.045)", plateBd: "rgba(214,178,102,0.18)", title: "linear-gradient(90deg, #F1DFA8, #C8A96E 45%, #F6E8BE)",
-        glow: "inset 0 0 40px rgba(214,178,102,0.08), inset 0 1px 0 rgba(255,236,190,0.22), 0 14px 40px rgba(0,0,0,0.6), 0 0 60px rgba(214,178,102,0.10)" };
+        glow: "inset 0 0 40px rgba(255,236,190,0.08), inset 0 1px 0 rgba(255,244,215,0.38), 0 16px 44px rgba(0,0,0,0.5), 0 0 60px rgba(214,178,102,0.10)" };
   const serif = "Georgia, 'Times New Roman', serif";
   const list = (rec.wrong || []).slice(0, 5);
   // «В тесте «Тест: философия сервиса»» — слово дважды. Внутри фразы — без «Тест:».
@@ -138,13 +152,17 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
   const ring = narrow ? 60 : 68;
   const n = rec.n || 1; const W = loopWords(n);
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1200, background: C.dim, display: "flex",
+    <div onClick={backdropTap} style={{ position: "fixed", inset: 0, zIndex: 1200, background: C.dim, display: "flex",
       alignItems: "flex-end", justifyContent: "center", padding: "0 12px calc(18px + env(safe-area-inset-bottom, 0px))",
-      opacity: shown ? 1 : 0, transition: "opacity .3s ease" }}>
+      opacity: shown ? 1 : 0, transition: "opacity .3s ease",
+      WebkitBackdropFilter: "blur(3px)", backdropFilter: "blur(3px)" }}>
       <style>{CSS}</style>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Секретная ачивка «Находчивая жопка»" className="la-a"
         style={{ width: "100%", maxWidth: 460, maxHeight: "86vh", overflowY: "auto", borderRadius: 24,
-          padding: "22px 18px 16px", background: C.bg, border: `1px solid ${C.gold}55`, borderTop: `1px solid ${C.gold}aa`,
+          padding: "22px 18px 16px", background: C.bg, border: `1px solid ${C.edge}`, borderTop: `1px solid ${C.edgeTop}`,
+          backgroundSize: "46px 38px, 58px 44px, 52px 40px, 64px 48px, auto, auto, auto",
+          WebkitBackdropFilter: "blur(22px) saturate(150%)", backdropFilter: "blur(22px) saturate(150%)",
+          textShadow: a11y ? "0 1px 1px rgba(255,255,255,0.6)" : "0 1px 2px rgba(0,0,0,0.5)",
           boxShadow: C.glow, transform: shown ? "translateY(0)" : "translateY(40px)", transition: "transform .5s cubic-bezier(.16,1,.3,1)",
           animation: "laThump .35s ease-out .95s" }}>
         {/* Шапка: медальон, подпись, название — и штамп поверх */}
@@ -173,7 +191,7 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
               <span style={{ color: C.gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 2, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</span>
             </div>
             <div style={{ fontFamily: serif, fontSize: narrow ? 20 : 22, fontWeight: "bold", lineHeight: 1.15, marginTop: 5,
-              background: C.title, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>«Находчивая жопка»</div>
+              background: C.title, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", textShadow: "none" }}>«Находчивая жопка»</div>
           </div>
           <div className="la-stamp" style={{ position: "absolute", right: -2, top: W.stampTop ? -22 : -16, padding: W.stampTop ? "3px 12px 4px" : "5px 12px", border: `2.5px double ${C.ink}`, borderRadius: 7,
             display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.1,
@@ -238,9 +256,12 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
         </div>
         {/* Кнопки прилипают к низу: с двумя ошибками и зачётом карточка выше экрана и
             прокручивается внутри — без этого кнопки уезжали вниз, их было не видно */}
-        <div style={{ display: "flex", gap: 10, position: "sticky", bottom: -16, margin: "0 -18px -16px", padding: "18px 18px 16px",
-          background: a11y ? "linear-gradient(180deg, rgba(241,230,206,0), rgba(241,230,206,0.98) 38%)"
-                           : "linear-gradient(180deg, rgba(30,23,12,0), rgba(30,23,12,0.98) 38%)" }}>
+        <div style={{ display: "flex", gap: 10, position: "sticky", bottom: -16, margin: "0 -18px -16px", padding: "18px 18px 16px", zIndex: 1 }}>
+          {/* матовый слой под кнопками: размытие плавно нарастает сверху вниз */}
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: -1, pointerEvents: "none",
+            background: `linear-gradient(180deg, transparent, ${C.foot} 45%)`,
+            WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)",
+            WebkitMaskImage: "linear-gradient(180deg, transparent, #000 45%)", maskImage: "linear-gradient(180deg, transparent, #000 45%)" }} />
           <button onClick={onMistakes} style={{ position: "relative", overflow: "hidden", flex: 1, padding: "13px 10px", borderRadius: 14, border: "none", cursor: "pointer",
             background: "linear-gradient(135deg, #E2C487, #A67C3A)", color: "#1F160A", fontFamily: serif, fontSize: 14.5, fontWeight: "bold",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 6px 18px rgba(166,124,58,0.35)" }}>
@@ -278,18 +299,29 @@ export function LoopholeBanner({ a11y, n = 1, onOpen, onHide }) {
   const off = phase === "in" || phase === "out";
   return (
     <div onClick={open} role="button" aria-label="Секретная ачивка. Тапни, чтобы посмотреть" className="la-a"
-      style={{ position: "fixed", zIndex: 1250, left: 12, right: 12, top: "calc(10px + env(safe-area-inset-top, 0px))",
+      style={{ position: "fixed", zIndex: 1250, left: 12, right: 12, top: "calc(62px + env(safe-area-inset-top, 0px))",   // под верхней строкой «SA · Для чтения»
         maxWidth: 460, margin: "0 auto", cursor: "pointer", WebkitTapHighlightColor: "transparent",
         transform: off ? "translateY(-150%)" : phase === "open" ? "translateY(-8px) scale(.96)" : "translateY(0)",
         opacity: phase === "open" ? 0 : 1,
         transition: phase === "open" ? "transform .22s ease, opacity .22s ease" : "transform .7s cubic-bezier(.2,1.3,.35,1)" }}>
       <style>{CSS}</style>
+      {/* «Морозный лёд» (просьба владельца): почти прозрачное стекло — под ним размыто
+          видна страница; изморозь по краям, блик по верхней кромке, светлый контур. */}
       <div style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 12, padding: "11px 14px 11px 11px",
-        borderRadius: 20, border: `1px solid ${gold}66`, borderTop: `1px solid ${gold}aa`,
-        background: a11y ? "linear-gradient(180deg, rgba(252,247,236,0.97), rgba(240,228,203,0.97))" : "linear-gradient(180deg, rgba(60,46,24,0.96), rgba(31,24,12,0.97))",
-        boxShadow: a11y ? "inset 0 1px 0 rgba(255,255,255,0.95), 0 10px 28px rgba(90,60,20,0.28)"
-                        : "inset 0 0 26px rgba(214,178,102,0.08), inset 0 1px 0 rgba(255,236,190,0.22), 0 12px 30px rgba(0,0,0,0.55)",
-        WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)" }}>
+        borderRadius: 20,
+        border: `1px solid ${a11y ? "rgba(255,255,255,0.85)" : "rgba(255,240,205,0.30)"}`,
+        borderTop: `1px solid ${a11y ? "rgba(255,255,255,1)" : "rgba(255,244,215,0.55)"}`,
+        background: a11y
+          ? "radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.55), transparent 55%), radial-gradient(120% 140% at 100% 100%, rgba(255,255,255,0.35), transparent 60%), rgba(255,250,240,0.38)"
+          : "radial-gradient(120% 140% at 0% 0%, rgba(255,244,215,0.16), transparent 55%), radial-gradient(120% 140% at 100% 100%, rgba(255,244,215,0.10), transparent 60%), rgba(36,28,16,0.30)",
+        boxShadow: a11y ? "inset 0 1px 0 rgba(255,255,255,1), inset 0 0 18px rgba(255,255,255,0.45), 0 10px 26px rgba(90,60,20,0.18)"
+                        : "inset 0 1px 0 rgba(255,244,215,0.35), inset 0 0 22px rgba(255,236,190,0.10), 0 10px 28px rgba(0,0,0,0.35)",
+        WebkitBackdropFilter: "blur(18px) saturate(150%)", backdropFilter: "blur(18px) saturate(150%)",
+        textShadow: a11y ? "0 1px 1px rgba(255,255,255,0.7)" : "0 1px 2px rgba(0,0,0,0.55)" }}>
+        {/* изморозь: мелкие светлые искры по стеклу */}
+        <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: a11y ? 0.55 : 0.4,
+          backgroundImage: "radial-gradient(circle at 12% 22%, rgba(255,255,255,0.9) 0 0.6px, transparent 1.4px), radial-gradient(circle at 78% 30%, rgba(255,255,255,0.8) 0 0.6px, transparent 1.4px), radial-gradient(circle at 42% 78%, rgba(255,255,255,0.7) 0 0.5px, transparent 1.2px), radial-gradient(circle at 90% 82%, rgba(255,255,255,0.8) 0 0.6px, transparent 1.4px), radial-gradient(circle at 60% 12%, rgba(255,255,255,0.6) 0 0.5px, transparent 1.2px)",
+          backgroundSize: "46px 38px, 58px 44px, 52px 40px, 64px 48px, 40px 34px" }} />
         <span className="la-a" style={{ position: "relative", width: 46, height: 46, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center",
           background: "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #8B6A30, #F4E2AE)", animation: "laHalo 2.8s ease-in-out infinite" }}>
           <span style={{ width: 38, height: 38, borderRadius: "50%", display: "grid", placeItems: "center",

@@ -9,8 +9,12 @@
 --
 -- Что делает (безвреден повторно):
 --   1) переходник whoami_txt(text) — если его нет, создаёт по подписи whoami (как 11c);
---   2) ВСЕ функции public, где встречается прямой whoami(p_token), переводит на
---      whoami_txt(p_token) — тела не меняются (как 11c);
+--   2) функции с токеном-ТЕКСТОМ, где встречается прямой whoami(p_token), переводит
+--      на whoami_txt(p_token) — как 11c, но только их;
+--   2б) функции с токеном НЕ текстом (uuid), где стоит whoami_txt(p_token), чинит на
+--      whoami_txt(p_token::text). Так их сломал 11c: он переводил на переходник все
+--      функции подряд, а переходник принимает только текст — «function
+--      whoami_txt(uuid) does not exist». Так не сохранялись чек-листы (правка 155);
 --   3) будит сервер API (notify pgrst);
 --   4) сверяет каждую функцию, которую зовёт приложение: есть ли она и принимает ли
 --      параметры, которые шлёт приложение.
@@ -42,12 +46,44 @@ begin
     select p.oid, p.proname from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
      where ns.nspname = 'public' and p.proname not in ('whoami', 'whoami_txt')
        and p.prosrc ~ '(^|[^_a-z])whoami\(p_token\)'
+       -- только токен-текст: у токена uuid прямой whoami(p_token) и так работает
+       and pg_get_function_identity_arguments(p.oid) ~ '(^|, )p_token text(,|$)'
      order by p.proname
   loop
     def := regexp_replace(pg_get_functiondef(fn.oid), '(^|[^_a-z])whoami\(p_token\)', '\1whoami_txt(p_token)', 'g');
     begin
       execute def;
       insert into sa_check_log(что, статус, подробности) values (fn.proname, 'ПОЧИНЕНА', 'звала whoami напрямую → whoami_txt');
+    exception when others then
+      insert into sa_check_log(что, статус, подробности) values (fn.proname, 'НЕ УДАЛОСЬ ПОЧИНИТЬ', sqlerrm);
+    end;
+  end loop;
+  -- 2б) токен не текст (uuid), а зовёт переходник. Если тип токена тот же, что
+  --     принимает whoami, — возвращаем функции её исходный вызов whoami(p_token), как
+  --     было до 11c; иначе — переходник с текстом: whoami_txt(p_token::text).
+  select format_type(p.proargtypes[0], null) into t0
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.proname = 'whoami' order by p.pronargs limit 1;
+  for fn in
+    select p.oid, p.proname,
+           format_type(p.proargtypes[array_position(p.proargnames, 'p_token') - 1], null) as tok
+      from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+     where ns.nspname = 'public' and p.proname not in ('whoami', 'whoami_txt')
+       and p.prosrc ~ 'whoami_txt\(p_token\)'
+       and array_position(p.proargnames, 'p_token') is not null
+     order by p.proname
+  loop
+    continue when fn.tok = 'text';   -- токен-текст и переходник — это правильно
+    if fn.tok = t0 then
+      def := regexp_replace(pg_get_functiondef(fn.oid), 'whoami_txt\(p_token\)', 'whoami(p_token)', 'g');
+    else
+      def := regexp_replace(pg_get_functiondef(fn.oid), 'whoami_txt\(p_token\)', 'whoami_txt(p_token::text)', 'g');
+    end if;
+    begin
+      execute def;
+      insert into sa_check_log(что, статус, подробности) values (fn.proname, 'ПОЧИНЕНА',
+        'токен ' || fn.tok || ': 11c перевёл на переходник, а тот принимает текст → '
+        || case when fn.tok = t0 then 'вернул whoami(p_token), как было' else 'whoami_txt(p_token::text)' end);
     exception when others then
       insert into sa_check_log(что, статус, подробности) values (fn.proname, 'НЕ УДАЛОСЬ ПОЧИНИТЬ', sqlerrm);
     end;
@@ -123,7 +159,10 @@ with need(fn, params) as (values
   select need.fn,
          case when not exists (select 1 from fx where fx.proname = need.fn) then 'НЕТ НА СЕРВЕРЕ'
               when not exists (select 1 from fx where fx.proname = need.fn and fx.names @> need.params) then 'ДРУГИЕ ПАРАМЕТРЫ'
-              when exists (select 1 from fx where fx.proname = need.fn and fx.prosrc ~ '(^|[^_a-z])whoami\(p_token\)') then 'ЗОВЁТ whoami НАПРЯМУЮ'
+              when exists (select 1 from fx where fx.proname = need.fn and fx.prosrc ~ '(^|[^_a-z])whoami\(p_token\)'
+                             and pg_get_function_identity_arguments(fx.oid) ~ '(^|, )p_token text(,|$)') then 'ЗОВЁТ whoami НАПРЯМУЮ'
+              when exists (select 1 from fx where fx.proname = need.fn and fx.prosrc ~ 'whoami_txt\(p_token\)'
+                             and pg_get_function_identity_arguments(fx.oid) !~ '(^|, )p_token text(,|$)') then 'ТОКЕН uuid → ПЕРЕХОДНИК'
               else 'ok' end as st,
          coalesce((select string_agg(pg_get_function_identity_arguments(fx.oid), ' | ') from fx where fx.proname = need.fn), '—') as srv,
          array_to_string(need.params, ', ') as want

@@ -4,6 +4,7 @@ import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
+import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
@@ -776,32 +777,7 @@ function ServiceAcademy() {
     try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) setCustomLessons(res); } catch(e) {}
   }, []);
   React.useEffect(() => { if (profile) loadCustomLessons(); }, [profile, loadCustomLessons]);
-  // Свои разделы: иконка — из набора SVG по смыслу названия, цвет — трека роли
-  // (правка 154; раньше у всех «📘» и золото — карточка выпадала из ряда).
-  const CUSTOM_ICON_RULES = [
-    [/субордин|иерарх|подчин|руковод|структур|порядок/i, "🏛️"],
-    [/безопас|охран|пожар|эваку|травм/i, "🛡️"],
-    [/авари|чп|срочн|экстрен/i, "🚨"],
-    [/вин|сомел/i, "🍷"],
-    // «бар» — отдельным словом: \b в JavaScript не видит границ русских слов
-    [/коктейл|(^|[^а-яё])бар(а|у|ом|е|ы|ов|ам|ами|ах)?([^а-яё]|$)|барн/i, "🍸"],
-    [/виски|крепк/i, "🥃"],
-    [/стандарт|правил|регламент|норм/i, "📐"],
-    [/этик|честн|справедлив|конфликт/i, "⚖️"],
-    [/гост|сервис|встреч|приём|прием/i, "🤝"],
-    [/общен|разговор|диалог|реч|фраз/i, "💬"],
-    [/команд|коллег|смен/i, "👥"],
-    [/обуч|наставн|экзамен|аттестац/i, "🎓"],
-    [/новичок|начал|перв/i, "🌱"],
-    [/продаж|деньг|касс|чек|выручк/i, "💼"],
-    [/мотивац|лучш|звезд/i, "🌟"],
-    [/психолог|мышлен|стресс/i, "🧠"],
-    [/путь|маршрут|карьер/i, "🧭"],
-    [/скорост|быстр/i, "⚡"],
-    [/связ|партнёр|партнер/i, "🔗"],
-  ];
-  const customIcon = (name) => { for (const [re, ic] of CUSTOM_ICON_RULES) if (re.test(name || "")) return ic; return "📘"; };
-  const TRACK_COLOR = { seasonal: "#7C9E87", core: "#C8A96E", spg: "#C8917A", bar: "#C8A96E", manager: "#8B7BAB", service_manager: "#7B8FAB" };
+  // Свои разделы: иконка и цвет трека — lib/tracks.js (общие с редактором контента)
   // Свои разделы для текущей роли (синтетические модули: урок + тест)
   const customModules = useMemo(() => {
     if (!role) return [];

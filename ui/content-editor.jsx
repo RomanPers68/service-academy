@@ -20,6 +20,7 @@ import { MOD_SVG, UI_SVG } from "./icons";
 import { glass as glassOf, SectionLabel, tones } from "./analytics-kit";
 import { GOLD } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
+import { splitExtras, sectionName, bySort, sectionSteps } from "../lib/custom-modules";
 
 const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -59,6 +60,21 @@ const fromServer = (l) => {
     situations: all.filter(isSit).map(({ kind, ...x }) => ({ id: uid(), ...x })),
     dialogue: withIds(all.find(q => q && q.kind === "dialogue")), build: withBIds(all.find(q => q && q.kind === "build")) }));
 };
+// Общие части раздела (правка 161): практика, диалог, сборка и тест — одни на весь раздел,
+// лежат на первом уроке раздела; собираются со всех уроков раздела (старые разделы, где
+// части лежали на разных уроках, редактор при сохранении соберёт на первый урок).
+const sectionRecs = (lessons, role, module) => lessons.filter(l => (l.role || "seasonal") === role && sectionName(l) === ((module || "").trim() || "Свой раздел")).sort(bySort);
+const sectionExtras = (recs) => {
+  const parts = recs.map(r => splitExtras(r.questions));
+  const withIdsQ = (q) => ({ id: uid(), ...q });
+  return {
+    questions: parts.flatMap(x => x.quiz).map(withIdsQ),
+    situations: parts.flatMap(x => x.sits).map(withIdsQ),
+    dialogue: withIds((parts.find(x => x.dlg) || {}).dlg),
+    build: withBIds((parts.find(x => x.bld) || {}).bld),
+  };
+};
+const noExtras = () => ({ questions: [], situations: [], dialogue: null, build: null });
 const SIT_EMOJI = ["🔥", "💬", "🍷", "🙋", "⚠️", "🤝", "🍽", "⏱"];
 const readDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { return null; } };
 const writeDraft = (v) => { try { v ? localStorage.setItem(DRAFT_KEY, JSON.stringify(v)) : localStorage.removeItem(DRAFT_KEY); } catch (e) {} };
@@ -97,6 +113,23 @@ function Rich({ text, T, color, a11y }) {
   });
 }
 
+// Общие части раздела → список questions, как их хранит сервер (правка 161)
+function serializeExtras(draft) {
+  const tidy = ({ id, ...q }) => {   // пустые варианты убираются, верный сдвигается вместе с ними
+    const keep = q.options.map((o, i) => ({ o: (o || "").trim(), i })).filter(x => x.o);
+    return { ...q, options: keep.map(x => x.o), correct: Math.max(0, keep.findIndex(x => x.i === q.correct)) };
+  };
+  const dlgOut = draft.dialogue ? [{ kind: "dialogue", tip: (draft.dialogue.tip || "").trim(), guest: { ...draft.dialogue.guest, name: draft.dialogue.guest.name.trim(), context: (draft.dialogue.guest.context || "").trim() },
+    steps: draft.dialogue.steps.map(st => st.type === "choice"
+      ? { type: "choice", prompt: st.prompt.trim(), options: st.options.filter(o => (o.text || "").trim()).map(o => ({ text: o.text.trim(), correct: !!o.correct, feedback: (o.feedback || "").trim(), moodDelta: o.moodDelta | 0 })) }
+      : { type: st.type, text: st.text.trim() }) }] : [];
+  const bldOut = draft.build ? [{ kind: "build", title: draft.build.title.trim(), glass: draft.build.glass, tint: draft.build.tint, win: (draft.build.win || "").trim(), lose: (draft.build.lose || "").trim(),
+    steps: draft.build.steps.map(st => ({ label: (st.label || "").trim() || "Шаг", q: st.q.trim(), cost: (st.cost || "").trim(),
+      options: st.options.filter(o => (o.t || "").trim()).map(o => o.ok ? { t: o.t.trim(), ok: true, fb: (o.fb || "").trim() } : { t: o.t.trim(), fb: (o.fb || "").trim() }) })) }] : [];
+  const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut];
+  return questions;
+}
+
 export function ContentEditorScreen({ T, a11y, onBack }) {
   const dark = !a11y;
   const TN = tones(a11y);
@@ -119,6 +152,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const [draftNote, setDraftNote] = React.useState(null);   // «восстановлен черновик от …»
   const [savedAt, setSavedAt] = React.useState(null);
   const [newSection, setNewSection] = React.useState(false);
+  const [base, setBase] = React.useState("");   // общие части раздела при открытии (как их хранит сервер)
   const [ai, setAi] = React.useState({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
   const taRef = React.useRef(null);
 
@@ -147,21 +181,29 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         situations: (stored.draft.situations || []).map(x => ({ id: uid(), ...x })), dialogue: withIds(stored.draft.dialogue), build: withBIds(stored.draft.build) });
       setDraftNote(`Восстановлен черновик от ${hhmm(stored.at)}`);
     } else { setDraft(base); setDraftNote(null); }
+    // «было при открытии» — чтобы не перезаписывать первый урок раздела без изменений
+    setBase(JSON.stringify(serializeExtras({ ...noExtras(), ...base, ...(stored && stored.forId === forId && hasWork(stored.draft) ? {} : {}) })));
     setErr(null); setSavedAt(null); setNewSection(false); setAi({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
     setView("edit");
   };
+  const lessonOnly = (l) => ({ id: l.id, role: l.role || "seasonal", module: l.module || "", title: l.title || "", content: l.content || "", sort: l.sort || 0 });
   const startNew = () => open(blankLesson());
-  const startEdit = (l) => open(fromServer(l));
+  // новый урок сразу в раздел: видит общие части раздела, встаёт последним
+  const startNewIn = (role, module) => { const recs = sectionRecs(lessons, role, module);
+    open({ ...blankLesson(), role, module, sort: recs.reduce((m, r) => Math.max(m, r.sort || 0), 0) + 1, ...sectionExtras(recs) }); };
+  const startEdit = (l) => open({ ...blankLesson(), ...lessonOnly(l), ...sectionExtras(sectionRecs(lessons, l.role || "seasonal", l.module)) });
   // «Начать заново»: черновик стирается, урок — как на сервере (или пустой)
   const discardDraft = () => {
     writeDraft(null); setDraftNote(null);
     setDraft(d => { const orig = d && d.id ? lessons.find(l => l.id === d.id) : null;
-      return orig ? fromServer(orig) : blankLesson(); });
+      return orig ? { ...blankLesson(), ...lessonOnly(orig), ...sectionExtras(sectionRecs(lessons, orig.role || "seasonal", orig.module)) } : blankLesson(); });
   };
   const leave = () => { setView("list"); setDraft(null); };                 // ‹ — черновик остаётся
   const cancel = () => { writeDraft(null); setView("list"); setDraft(null); }; // «Отменить» — черновик стирается
 
   const patch = (f) => setDraft(d => ({ ...d, ...f }));
+  const toSection = (role, module) => setDraft(d => { const recs = sectionRecs(lessons, role, module);
+    return { ...d, role, module, ...(recs.length ? sectionExtras(recs) : noExtras()), sort: recs.reduce((m, r) => Math.max(m, r.sort || 0), 0) + 1 }; });
   const setQ = (qid, f) => setDraft(d => ({ ...d, questions: d.questions.map(q => q.id === qid ? { ...q, ...f } : q) }));
   const addQ = () => setDraft(d => ({ ...d, questions: [...d.questions, blankQ()] }));
   const delQ = (qid) => setDraft(d => ({ ...d, questions: d.questions.filter(q => q.id !== qid) }));
@@ -282,28 +324,39 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const save = async () => {
     const p = problems(); if (p) { setErr(p); return; }
     if (busy) return; setBusy(true); setErr(null);
-    const tidy = ({ id, ...q }) => {   // пустые варианты убираются, верный сдвигается вместе с ними
-      const keep = q.options.map((o, i) => ({ o: (o || "").trim(), i })).filter(x => x.o);
-      return { ...q, options: keep.map(x => x.o), correct: Math.max(0, keep.findIndex(x => x.i === q.correct)) };
-    };
-    const dlgOut = draft.dialogue ? [{ kind: "dialogue", tip: (draft.dialogue.tip || "").trim(), guest: { ...draft.dialogue.guest, name: draft.dialogue.guest.name.trim(), context: (draft.dialogue.guest.context || "").trim() },
-      steps: draft.dialogue.steps.map(st => st.type === "choice"
-        ? { type: "choice", prompt: st.prompt.trim(), options: st.options.filter(o => (o.text || "").trim()).map(o => ({ text: o.text.trim(), correct: !!o.correct, feedback: (o.feedback || "").trim(), moodDelta: o.moodDelta | 0 })) }
-        : { type: st.type, text: st.text.trim() }) }] : [];
-    const bldOut = draft.build ? [{ kind: "build", title: draft.build.title.trim(), glass: draft.build.glass, tint: draft.build.tint, win: (draft.build.win || "").trim(), lose: (draft.build.lose || "").trim(),
-      steps: draft.build.steps.map(st => ({ label: (st.label || "").trim() || "Шаг", q: st.q.trim(), cost: (st.cost || "").trim(),
-        options: st.options.filter(o => (o.t || "").trim()).map(o => o.ok ? { t: o.t.trim(), ok: true, fb: (o.fb || "").trim() } : { t: o.t.trim(), fb: (o.fb || "").trim() }) })) }] : [];
-    const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut];
+    const questions = serializeExtras(draft);
+    // общие части — на первый урок раздела; сам урок — свой текст
+    const recs = sectionRecs(lessons, draft.role, draft.module).filter(r => r.id !== draft.id);
+    const anchorIsMe = !recs.length || (draft.id && sectionRecs(lessons, draft.role, draft.module)[0].id === draft.id);
+    const me = { id: draft.id, role: draft.role, module: draft.module.trim(), title: draft.title.trim(), content: draft.content, sort: draft.sort || 0, questions: anchorIsMe ? questions : [] };
+    const fail = (res) => setErr(res && res.error === "forbidden" ? "Недостаточно прав." : `Не удалось сохранить${res && (res.error || res.message) ? ": " + (res.error || res.message) : "."}`);
     try {
-      const res = await rpc("cms_save_lesson", { p_token: token, p_lesson: (({ situations, dialogue, build, ...rest }) => ({ ...rest, module: draft.module.trim(), title: draft.title.trim(), questions }))(draft) });
-      if (res && res.ok) { writeDraft(null); await load(); setView("list"); setDraft(null); }
-      else setErr(res && res.error === "forbidden" ? "Недостаточно прав." : `Не удалось сохранить${res && (res.error || res.message) ? ": " + (res.error || res.message) : "."}`);
+      let res = await rpc("cms_save_lesson", { p_token: token, p_lesson: me });
+      if (!(res && res.ok)) { fail(res); setBusy(false); return; }
+      // первый урок раздела — общие части (если это не я и они поменялись)
+      const anchor = anchorIsMe ? null : recs[0];
+      // перезаписываем первый урок, только если общие части изменились или лежали на других уроках
+      const scattered = recs.slice(1).some(r => (r.questions || []).length);
+      if (anchor && (JSON.stringify(questions) !== base || scattered)) {
+        res = await rpc("cms_save_lesson", { p_token: token, p_lesson: { ...anchor, questions } });
+        if (!(res && res.ok)) { fail(res); setBusy(false); return; }
+      }
+      // остальные уроки раздела — только текст (старые разделы: части лежали на разных уроках)
+      for (const r of recs.slice(anchorIsMe ? 0 : 1)) if ((r.questions || []).length) await rpc("cms_save_lesson", { p_token: token, p_lesson: { ...r, questions: [] } });
+      writeDraft(null); await load(); setView("list"); setDraft(null);
     } catch (e) { setErr("Нет связи. Черновик сохранён на телефоне — попробуй ещё раз."); }
     setBusy(false);
   };
   const remove = async (id) => {
     if (busy) return; setBusy(true); setErr(null);
-    try { const res = await rpc("cms_delete_lesson", { p_token: token, p_id: id }); if (res && res.ok) setLessons(ls => ls.filter(l => l.id !== id)); else setErr("Не удалось удалить."); }
+    try {
+      const l = lessons.find(x => x.id === id);
+      if (l && (l.questions || []).length) {
+        const recs = sectionRecs(lessons, l.role || "seasonal", l.module).filter(r => r.id !== id);
+        if (recs.length) await rpc("cms_save_lesson", { p_token: token, p_lesson: { ...recs[0], questions: [...(l.questions || []), ...(recs[0].questions || [])] } });
+      }
+      const res = await rpc("cms_delete_lesson", { p_token: token, p_id: id }); if (res && res.ok) await load(); else setErr("Не удалось удалить.");
+    }
     catch (e) { setErr("Нет связи."); }
     setBusy(false); setConfirmDel(null);
   };
@@ -366,7 +419,11 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                   <div key={name} style={G({ padding: "12px 12px 6px", marginBottom: 10, borderLeft: `3px solid ${t.color}` })}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                       <span style={{ width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center", flexShrink: 0, border: `1px solid ${t.color}55`, background: `${t.color}14` }}>{MOD_SVG[ic] ? MOD_SVG[ic](trackInk(t), 22) : null}</span>
-                      <span style={{ flex: 1, minWidth: 0, color: txt, fontFamily: SERIF, fontSize: 15, fontWeight: "bold" }}>{name}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", color: txt, fontFamily: SERIF, fontSize: 15, fontWeight: "bold" }}>{name}</span>
+                        <span style={{ display: "block", color: muted, fontSize: 11.5 }}>{(() => { const ex = sectionExtras(sectionRecs(lessons, t.id, name));
+                          return [`уроков ${ls.length}`, ex.situations.length ? `практика ${ex.situations.length}` : "", ex.dialogue ? "диалог" : "", ex.build ? "сборка" : "", ex.questions.length ? `тест ${ex.questions.length} вопр.` : "без теста"].filter(Boolean).join(" · "); })()}</span>
+                      </span>
                     </div>
                     {ls.map(l => {
                       const allQ = Array.isArray(l.questions) ? l.questions : [];
@@ -377,7 +434,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                         <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0 8px 44px", borderTop: `1px solid ${brd}` }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: txt, fontSize: 14, fontFamily: SERIF }}>{l.title || "Без названия"}</div>
-                            <div style={{ color: muted, fontSize: 11.5 }}>{[ns ? `практика · ${ns}` : "", hasDlg ? "диалог" : "", hasBld ? "сборка" : "", nq ? `тест · ${nq} вопр.` : ""].filter(Boolean).join(" · ") || "только текст"}</div>
+                            <div style={{ color: muted, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(l.content || "").replace(/\*\*/g, "").replace(/\s+/g, " ").trim().slice(0, 60) || "текст не написан"}</div>
                           </div>
                           {asking ? (<>
                             <button onClick={() => remove(l.id)} disabled={busy} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 13 }}>Удалить</button>
@@ -388,6 +445,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                           </>)}
                         </div>);
                     })}
+                    <button onClick={() => startNewIn(t.id, name)} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 13, gap: 5, padding: "8px 0 6px 44px" }}>{ico.plus(gold, 14)} Урок в раздел</button>
                   </div>);
               })}
             </div>
@@ -406,6 +464,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const secIcon = customIcon(draft.module);
   const nPicked = Object.values(ai.picked || {}).filter(Boolean).length;
   const editing = !!draft.id;
+  const otherRecs = sectionRecs(lessons, draft.role, draft.module).filter(r => r.id !== draft.id);
+  const sectionText = [...otherRecs.map(r => r.content || ""), draft.content].join("\n\n").trim();
+  const secLabel = (draft.module || "").trim() || "Свой раздел";
   return (
     <div style={T.screen}>
       {header(editing ? "Изменить урок" : "Новый урок", leave)}
@@ -418,15 +479,16 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
 
         <SectionLabel a11y={a11y}>ДЛЯ КОГО</SectionLabel>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {TRACKS.map(t => <button key={t.id} onClick={() => { patch({ role: t.id }); setNewSection(false); }} style={pill(draft.role === t.id, trackInk(t))}>{t.label}</button>)}
+          {TRACKS.map(t => <button key={t.id} disabled={!!draft.id} onClick={() => { toSection(t.id, ""); setNewSection(false); }} style={{ ...pill(draft.role === t.id, trackInk(t)), opacity: draft.id && draft.role !== t.id ? 0.4 : 1 }}>{t.label}</button>)}
         </div>
 
         <SectionLabel a11y={a11y}>РАЗДЕЛ</SectionLabel>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: typingNew ? 8 : 0 }}>
-          {sections.map(s => <button key={s} onClick={() => { patch({ module: s }); setNewSection(false); }} style={pill(!typingNew && draft.module.trim() === s, trackInk(track))}>{s}</button>)}
-          <button onClick={() => { setNewSection(true); patch({ module: sections.includes(draft.module.trim()) ? "" : draft.module }); }} style={{ ...pill(typingNew, gold), display: "inline-flex", alignItems: "center", gap: 4 }}>{ico.plus(typingNew ? "#1A1008" : gold, 14)} Новый</button>
+          {sections.map(s => <button key={s} disabled={!!draft.id} onClick={() => { toSection(draft.role, s); setNewSection(false); }} style={{ ...pill(!typingNew && draft.module.trim() === s, trackInk(track)), opacity: draft.id && draft.module.trim() !== s ? 0.4 : 1 }}>{s}</button>)}
+          {!draft.id ? <button onClick={() => { setNewSection(true); toSection(draft.role, ""); }} style={{ ...pill(typingNew, gold), display: "inline-flex", alignItems: "center", gap: 4 }}>{ico.plus(typingNew && dark ? "#1A1008" : gold, 14)} Новый</button> : null}
         </div>
-        {typingNew ? <input style={input} value={draft.module} onChange={e => patch({ module: e.target.value })} placeholder="Напр. «Наше вино»" autoFocus={newSection} /> : null}
+        {typingNew && !draft.id ? <input style={input} value={draft.module} onChange={e => patch({ module: e.target.value })} placeholder="Напр. «Наше вино»" autoFocus={newSection} /> : null}
+        {draft.id ? <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>Урок остаётся в своём разделе: практика, диалог и тест — общие для раздела.</div> : null}
         {draft.module.trim() ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, color: muted, fontSize: 12 }}>
             {MOD_SVG[secIcon] ? MOD_SVG[secIcon](trackInk(track), 18) : null}<span>так раздел будет выглядеть у сотрудников — иконка по смыслу названия, цвет трека</span>
@@ -454,9 +516,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button onClick={() => setAi(a => ({ ...a, mode: "lesson", err: null, result: null }))} style={aiBtn}>Урок из текста</button>
             <button onClick={() => callAI("improve", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Улучшить текст</button>
-            <button onClick={() => callAI("situations", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Придумать ситуации</button>
-            <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Собрать диалог</button>
-            <button onClick={() => callAI("questions", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Придумать вопросы</button>
+            <button onClick={() => callAI("situations", { text: sectionText })} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Придумать ситуации</button>
+            <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Собрать диалог</button>
+            <button onClick={() => callAI("questions", { text: sectionText })} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Придумать вопросы</button>
           </div>
           {ai.mode === "lesson" && !ai.result ? (
             <div style={{ marginTop: 10 }}>
@@ -474,7 +536,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <div style={{ marginTop: 10 }}>
               <input style={{ ...input, fontSize: 13 }} value={ai.idea || ""} onChange={e => setAi(a => ({ ...a, idea: e.target.value }))} placeholder="О чём разговор (необязательно): «гость пришёл первым и ждёт коллегу»" />
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button onClick={() => callAI("dialogue", { text: draft.content, idea: ai.idea || "" })} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Собрать диалог</button>
+                <button onClick={() => callAI("dialogue", { text: sectionText, idea: ai.idea || "" })} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Собрать диалог</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
@@ -559,6 +621,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>) : null}
         </div>
 
+        {/* Общие части раздела (правка 161): одни на весь раздел, сотрудник проходит их после всех уроков */}
+        <div style={{ margin: "22px 0 4px", padding: "12px 14px", borderRadius: 14, border: `1px solid ${track.color}66`, background: `${track.color}12` }}>
+          <div style={{ color: dark ? track.color : track.ink, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>РАЗДЕЛ «{secLabel.toUpperCase()}» — ДЛЯ ВСЕХ УРОКОВ</div>
+          <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginTop: 4 }}>
+            Практика, диалог{draft.role === "bar" ? ", сборка" : ""} и тест — общие для раздела: сотрудник проходит их после всех уроков.{otherRecs.length ? ` В разделе ещё ${otherRecs.length} ${otherRecs.length === 1 ? "урок" : otherRecs.length < 5 ? "урока" : "уроков"} — ассистент учтёт их текст.` : ""}
+          </div>
+        </div>
         {/* Практика ситуаций — между текстом и тестом, как шаги в программе (правка 158) */}
         <SectionLabel a11y={a11y} right={(draft.situations || []).length ? `${draft.situations.length}` : "необязательно"}>ПРАКТИКА СИТУАЦИЙ</SectionLabel>
         {!(draft.situations || []).length ? <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Короткие сцены из смены: выбрать верное действие или найти ошибку. В игре — до 6 случайных, со звёздами, как в штатных уроках.</div> : null}
@@ -601,7 +670,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Разговор с гостем по шагам: гость говорит — сотрудник выбирает ответ — настроение гостя меняется. Как штатные «Живые диалоги».</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} disabled={draft.content.trim().length < 40} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }}>Собрать с ассистентом</button>
+              <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} disabled={sectionText.length < 40} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }}>Собрать с ассистентом</button>
               <button onClick={() => setDlg(newDialogue())} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
             </div>
           </div>
@@ -808,6 +877,19 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: muted, fontSize: 12 }}>{(GLASSES.find(g => g[0] === draft.build.glass) || ["", ""])[1]} · шагов: {draft.build.steps.length} · бокал наполняется по ходу, звёзды за чистую сборку</div>
             </div>
           </div>) : null}
+        {(() => {
+          const extrasQ = [...draft.questions, ...(draft.situations || []).map(x => ({ kind: "situation", ...x })), ...(draft.dialogue ? [{ kind: "dialogue", ...draft.dialogue }] : []), ...(draft.build ? [{ kind: "build", ...draft.build }] : [])];
+          const me = { id: draft.id || "new", title: draft.title || "Этот урок", sort: draft.sort || 0 };
+          const recs = [...otherRecs.map(r => ({ ...r, questions: [] })), me].sort(bySort);
+          recs[0] = { ...recs[0], questions: extrasQ };
+          const order = sectionSteps(secLabel, recs, draft.role, track.color);
+          return (
+            <div style={G({ padding: "12px 14px", marginBottom: 16 })}>
+              <div style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 6 }}>ПОРЯДОК ШАГОВ РАЗДЕЛА</div>
+              {order.map((st, i) => <div key={i} style={{ display: "flex", gap: 8, padding: "3px 0", color: st.id === "cms-l-" + (draft.id || "new") ? txt : muted, fontWeight: st.id === "cms-l-" + (draft.id || "new") ? "bold" : "normal", fontSize: 13, fontFamily: SERIF }}>
+                <span style={{ width: 18, color: muted }}>{i + 1}</span><span>{st.title}</span></div>)}
+            </div>);
+        })()}
         {err && <div style={{ color: TN.bad, fontSize: 13, marginBottom: 10, textAlign: "center", lineHeight: 1.45 }}>{err}</div>}
         <button onClick={save} disabled={busy} style={{ ...primary, marginBottom: 10, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
         <button onClick={cancel} style={ghost}>Отменить</button>

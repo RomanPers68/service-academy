@@ -8,6 +8,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES, MODULES_INDEX } from "../data/modules";
+import { cmsTitleMap } from "../lib/custom-modules";
 import { tones, toneOfFail, toneOfScore, glass, Avatar, Chip, Ring, Bar, ExitTrack, MissPlate, SectionLabel, Icon, Spark } from "./analytics-kit";
 import { useContentVersion } from "../lib/use-content";
 import { ROLES, RESTAURANTS } from "../data/roles";
@@ -409,8 +410,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
     let live = true;
     rpc("cms_list_lessons", { p_token: saToken() }).then(ls => {
       if (!live || !Array.isArray(ls)) return;
-      const m = {}; ls.forEach(c => { if (!c || c.id == null) return; const t = (c.title || "Урок").trim(); m["cms-l-" + c.id] = t; m["cms-q-" + c.id] = "Тест: " + t; m["cms-p-" + c.id] = "Практика: " + t; m["cms-d-" + c.id] = "Живой диалог: " + t; m["cms-b-" + c.id] = "Сборка: " + t; });
-      setCmsTitles(m);
+      setCmsTitles(cmsTitleMap(ls));   // названия шагов — те же, что видит сотрудник (lib/custom-modules.js)
     }).catch(() => {});
     return () => { live = false; };
   }, []);

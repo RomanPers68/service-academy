@@ -712,7 +712,10 @@ function ServiceAcademy() {
       const ts = res && res.ok ? res.reset_at : null;
       if (!ts) return;
       if ((localStorage.getItem("sa_reset_seen" + uk) || "") === String(ts)) return;
-      ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved", "sa_book_read", "sa_book_dates"]
+      // включая записи секретной ачивки: иначе после сброса она считала «какой это раз»
+      // с прежнего числа, хотя тайный зачёт на сервере уже обнулён (правка 175)
+      ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved",
+       "sa_book_read", "sa_book_dates", "sa_loopholes", "sa_qskip", "sa_qtry"]
         .forEach(k => { try { localStorage.removeItem(k + uk); localStorage.removeItem(k); } catch (e) {} });
       try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
       setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);

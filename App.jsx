@@ -1558,15 +1558,20 @@ function ServiceAcademy() {
             navigate("roleSelect");
           } : null}
           onUnlockQuiz={isAdmin ? (name, surname) => {
-           
-            rpc("admin_unlock_quiz", { p_token: saToken(), p_name: name, p_surname: surname || "" }).then(() => {
-              if (profile && profile.name === name && profile.surname === surname) {
-                setQuizDone({});
-                try { localStorage.removeItem("sa_quiz_done"); } catch(e) {}
+            // Раньше ошибка сервера проглатывалась и выглядело как «кнопка не работает» (правка 181)
+            const say = (m) => { try { if (window.Telegram?.WebApp?.showAlert) window.Telegram.WebApp.showAlert(m); else alert(m); } catch (e) { alert(m); } };
+            rpc("admin_unlock_quiz", { p_token: saToken(), p_name: name, p_surname: surname || "" }).then(res => {
+              if (res && res.ok === false) {
+                say(res.error === "forbidden" ? "Недостаточно прав." : `Не получилось: ${res.error || "сервер отказал"}`);
+                return;
               }
-              const msg = `Тесты для ${name} ${surname} разблокированы!`;
-              if (window.Telegram?.WebApp?.showAlert) window.Telegram.WebApp.showAlert(msg); else alert(msg);
-            }).catch(() => {});
+              if (profile && profile.name === name && (profile.surname || "") === (surname || "")) {
+                setQuizDone({});
+                try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
+              }
+              const n = res && typeof res.rows === "number" ? ` (снято отметок: ${res.rows})` : "";
+              say(`Тесты для ${name} ${surname} разблокированы${n}`);
+            }).catch(e => say("Не получилось: нет связи с сервером" + (e && e.message ? ` (${e.message})` : "")));
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}

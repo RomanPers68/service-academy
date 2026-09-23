@@ -145,7 +145,7 @@ export function SOSScreen({ T, a11y, onBack }) {
   const [sHint, sHintDone] = useHintOnce("sos");
   const sSteps = hintsFor("sos");
   const red = sosRed(a11y);
-  const gold = a11y ? "#8B6A30" : GOLD;
+  const gold = a11y ? "#7A5D2A" : GOLD;
   const text = a11y ? "#2e211a" : "#F5EFE2";
   const sub = T.modSub?.color || "#9A8C74";
   const [open, setOpen] = React.useState(null);

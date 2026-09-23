@@ -10,7 +10,7 @@ import { dishNutrition, nutritionLine } from "../lib/nutrition";
 // Ссылка в браузер не годится — у сотрудников одноразовые коды входа.
 
 export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
-  const gold = a11y ? "#8B6A30" : GOLD; const text = T.modTitle.color, sub = T.modSub.color;
+  const gold = a11y ? "#7A5D2A" : GOLD; const text = T.modTitle.color, sub = T.modSub.color;
   const [shot, setShot] = React.useState(null);   // [{ url, blob, name }]
   const [page, setPage] = React.useState(0);
   const [busy, setBusy] = React.useState(false);

@@ -192,7 +192,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
     const h = el.scrollHeight;
     if (h > 44) el.style.height = Math.min(h, 122) + "px";
   }, [input]);
-  const gold = a11y ? "#8B6A30" : GOLD;
+  const gold = a11y ? "#7A5D2A" : GOLD;
   const sub = T.modSub.color;
 
   const glass = {
@@ -519,7 +519,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
             <div style={{ color: T.lessHeadTitle?.color, fontFamily: ACCENT_SERIF, fontSize: a11y ? 20 : 18, fontWeight: "bold", textAlign: "center", marginBottom: 8 }}>
               Привет, {profile?.name || "коллега"}!
             </div>
-            <div style={{ color: sub, fontSize: a11y ? 14.5 : 13, lineHeight: 1.65, textAlign: "center", marginBottom: 4 }}>
+            <div style={{ color: sub, fontSize: a11y ? 15 : 14, lineHeight: 1.65, textAlign: "center", marginBottom: 4 }}>
               Я знаю стандарты Service Academy и помогу с любой рабочей ситуацией:
               гости, конфликты, подача, запара. Спрашивай как коллегу — или начни с готового вопроса:
             </div>
@@ -540,7 +540,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
         {msgs.map((m, i) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
             <div className="dlg-in" style={{
-              maxWidth: "86%", padding: "11px 14px", fontSize: a11y ? 15 : 13.5, lineHeight: 1.6,
+              // Размер как у читаемого текста приложения (правка 170): в тёмной теме было 13,5 — мелко
+        maxWidth: "86%", padding: "12px 15px", fontSize: a11y ? 16 : 15, lineHeight: 1.7,
               fontFamily: "Georgia, serif",
               ...frost(m.role === "user"),
               borderRadius: RADIUS.lg,
@@ -636,7 +637,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
             maxLength={600}
             style={{ flex: 1, minWidth: 0, padding: "11px 0", fontSize: 14, fontFamily: "Georgia, serif",
               lineHeight: 1.45, resize: "none", height: 44, minHeight: 44, maxHeight: 122, overflowY: "auto", boxSizing: "border-box",
-              caretColor: a11y ? "#8B6A30" : "#C8A96E",
+              caretColor: a11y ? "#7A5D2A" : "#C8A96E",
               background: "transparent", border: "none", outline: "none",
               color: a11y ? "#3A2E1C" : "#F0E8D8" }}
           />
@@ -647,7 +648,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
           <button className="sa-btn" onClick={() => send()} disabled={sending || !input.trim()}
             style={{ width: 44, height: 44, borderRadius: 22, border: "none", cursor: "pointer", flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
-              background: input.trim() && !sending ? "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)" : "rgba(160,120,60,0.22)",
+              background: input.trim() && !sending ? "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)" : "rgba(160,120,60,0.22)",
               boxShadow: input.trim() && !sending ? "0 4px 14px rgba(200,160,80,0.3)" : "none", transition: "all 0.2s ease" }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           </button>

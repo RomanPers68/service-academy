@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
-import { MODULES } from "../data/modules";
+import { MODULES, programOf } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
@@ -212,7 +212,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
   // Роль считается пройденной, если она в completedRoles ИЛИ все её уроки фактически пройдены
   // (страховка для прогресса, сохранённого до появления флага роли)
   const roleAllDone = (id) => {
-    const ls = (MODULES[id] || []).flatMap(m => (m && m.lessons) || []).filter(l => l.type !== "result");
+    const ls = programOf(id).flatMap(m => (m && m.lessons) || []).filter(l => l.type !== "result");   // и свои разделы (правка 173)
     return ls.length > 0 && ls.every(l => (l.type === "quiz" ? quizDone[l.id] : completed[l.id]));
   };
   // Страничная подсказка: правило про весь экран, а не про одну кнопку
@@ -222,7 +222,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
     <div style={T.screen}>
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onExit}>‹</button>
-        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gradcap(a11y ? "#8B6A30" : GOLD, 19)}<span>Сертификаты</span></div>
+        <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gradcap(a11y ? "#7A5D2A" : GOLD, 19)}<span>Сертификаты</span></div>
       </div>
       {ceHint && ceSteps.length ? (
         <HintBubble a11y={a11y} text={ceSteps[0]} arrow="up" step={1} total={1} onClose={ceHintDone} />
@@ -249,7 +249,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
             }
           }
           const untilStr = validUntil ? validUntil.toLocaleDateString("ru-RU") : null;
-          const amber = a11y ? "#8B6A30" : "#E0B060";
+          const amber = a11y ? "#7A5D2A" : "#E0B060";
           const redC = a11y ? "#A33A2A" : "#E07878";
           const statusLine = !passed
             ? (eligible ? "Доступен экзамен" : "Сначала пройди роль")

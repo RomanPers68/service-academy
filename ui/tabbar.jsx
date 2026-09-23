@@ -40,7 +40,7 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   const lensVisible = cellW > 0 && (dragX !== null || activeIdx >= 0);
 
   const accent = a11y ? "#6B4E1A" : GOLD;
-  const dim = a11y ? "#5C3D10" : "#9A8060";
+  const dim = a11y ? "#5C3D10" : "#7A654C";
   const spring = "cubic-bezier(0.3,1.3,0.45,1)";
 
   const evX = (e) => {

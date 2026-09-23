@@ -4,7 +4,7 @@ import React from "react";
 // Тот же язык, что у бокала в Колоде: тёмное стекло, золотой свинец контура,
 // цветная жидкость/материал с глубиной, блик. viewBox 120x120. light — светлая тема.
 
-const lead = (light) => (light ? "#8B6A30" : "#D2A85A");
+const lead = (light) => (light ? "#7A5D2A" : "#D2A85A");
 const glass = (light) => (light ? "rgba(139,106,48,0.10)" : "rgba(255,248,230,0.06)");
 const shine = (light) => (light ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.35)");
 

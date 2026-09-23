@@ -52,7 +52,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
     return () => clearTimeout(t);
   }, [q]);
   const [openKey, setOpenKey] = React.useState(null);
-  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const gold = a11y ? "#7A5D2A" : "#C8A96E";
   const red = a11y ? "#A33A2A" : "#E07878";
   const textColor = a11y ? "#2e211a" : "#F5EFE2";
   const query = norm(q.trim());

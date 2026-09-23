@@ -29,7 +29,7 @@ const glass = (T) => ({
 });
 
 export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
-  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const gold = a11y ? "#7A5D2A" : "#C8A96E";
   const green = "#5DBB8A";
   const textColor = a11y ? "#2e211a" : "#F5EFE2";
   const skills = ROLE_SKILLS[role] || [];
@@ -181,7 +181,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack }) {
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={closeModal}>Отмена</button>
-              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? green : gold + "55", color: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? "#fff" : (a11y ? "#7A6548" : "#e8dcc0"), transition: "background .25s" }} onClick={byName ? confirm : confirmByPin}>{busy ? "Проверяю…" : "Подтвердить ✓"}</button>
+              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? green : gold + "55", color: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? "#fff" : (a11y ? "#735F44" : "#e8dcc0"), transition: "background .25s" }} onClick={byName ? confirm : confirmByPin}>{busy ? "Проверяю…" : "Подтвердить ✓"}</button>
             </div>
           </div>
         </div>,

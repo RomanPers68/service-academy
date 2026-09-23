@@ -3,6 +3,7 @@
 // Вынесено из ui/screens.jsx БЕЗ изменения кода (barrel-разбиение);
 // публичный API остался в ui/screens.jsx — App.jsx не менялся.
 
+import { inkOf } from "../lib/tracks";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
@@ -23,7 +24,7 @@ import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } 
 import { hintsFor, hintKey } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor, goldText } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
 
 const _WAX_BLOB = "M12 1.9c2.3-.3 4.5.7 6.1 2.2 1.6 1.5 2.9 3.5 3.5 5.6.6 2.2.2 4.6-1 6.5-1.1 1.9-3 3.5-5.1 4.4-2.1.9-4.6 1-6.7.1-2.1-.8-3.9-2.5-5-4.5-1.1-2-1.5-4.4-.9-6.6C3.5 7.4 5 5.4 6.9 4 8.4 2.9 10.2 2.1 12 1.9Z";
@@ -140,7 +141,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           return (
             <div style={{ padding:"2px 20px 12px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
               <div style={{ color: T.modTitle.color, fontSize:18, fontFamily:ACCENT_SERIF, minWidth:0 }}>
-                {hello}, <span style={{ color: GOLD }}>{profile.name}</span>
+                {hello}, <span style={{ color: goldText(a11y) }}>{profile.name}</span>
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
                 {(() => { try {
                   const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
@@ -166,7 +167,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           const done = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0);
           const total = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0);
           const prog = total ? Math.round((done / total) * 100) : 0;
-          const RC = roleObj?.color || (a11y ? "#4E7A58" : "#8FB890"); // цвет роли
+          const RC = inkOf(roleObj?.color, a11y) || (a11y ? "#4E7A58" : "#8FB890"); // цвет роли (правка 172: в светлой теме тёмный вариант)
           const GRN = RC, GRN2 = RC;
           let title, sub, cta, go, gold = false, kind = null;
           // Что за шаг: тест, практика или урок. Человек заранее знает, на что
@@ -265,7 +266,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                       раздувалась), но и не плашка в 9 px, неотличимая от стрелки. */}
                   <div style={{ flexShrink:0, padding:"9px 15px", borderRadius:999,
                     fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold", color:"#1A1008",
-                    background: gold ? `linear-gradient(180deg, ${GOLD_SOFT}, #8B6A30)` : `linear-gradient(180deg,#E4C88C,${GOLD})` }}>
+                    background: gold ? `linear-gradient(180deg, ${GOLD_SOFT}, #7A5D2A)` : `linear-gradient(180deg,#E4C88C,${GOLD})` }}>
                     {cta.charAt(0) + cta.slice(1).toLowerCase()}
                   </div>
                 </div>
@@ -353,7 +354,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                 {unread > 0 && (
                   <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
                     display:"flex", alignItems:"center", justifyContent:"center",
-                    background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #8B6A30 100%)",
+                    background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #7A5D2A 100%)",
                     color:"#1A1008", fontSize:9, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
                     border: a11y ? "1.5px solid #F5EFE2" : "1.5px solid #1A1008",
                     boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
@@ -362,7 +363,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                   {/* ляссе */}
                   <div style={{ position:"absolute", right:16, top:0, width:7, height:20, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />
                   <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px 8px" }}>
-                    <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, border:`1.2px solid ${GOLD}88`, background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)", display:"flex", alignItems:"center", justifyContent:"center", color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif" }}>{(profile.name || "?")[0]}</div>
+                    <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, border:`1.2px solid ${GOLD}88`, background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)", display:"flex", alignItems:"center", justifyContent:"center", color: a11y ? "#7A5D2A" : GOLD, fontSize:14, fontFamily:"Georgia, serif" }}>{(profile.name || "?")[0]}</div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
                         <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
@@ -385,7 +386,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
 
         {(() => {
           const Cc = moodPalette(a11y);
-          const sosR = a11y ? "#A33A2A" : "#E07878";
+          const sosR = a11y ? "#A33A2A" : "#EA8C8C";   // на тёмно-красной плитке 4,23 → 5,0 (правка 172)
           const tiles = [];
           // Плитки «Ассистент» больше нет: плавающая AI-кнопка и так на каждом
           // экране — два одинаковых входа на главной путали (замечание владельца)
@@ -618,7 +619,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
               <div key={r.id} className={cls} onClick={go} {...onActivate(go)}>
                 <span className="sa-stepnum">{pct === 100 ? "✓" : nth}</span>
                 <span className="sa-steptext">
-                  <b style={{ color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</b>
+                  <b style={{ color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color }}>{r.label}</b>
                   <span>{isUnlocked ? r.sublabel : "Откроется после предыдущей ступени"}</span>
                 </span>
                 {isUnlocked
@@ -653,8 +654,8 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                 </div>
                 <div style={T.roleInfo}>
                   <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    <div style={{ ...T.roleLabel, color: isUnlocked ? r.color : T.modSub.color }}>{r.label}</div>
-                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? r.color : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+                    <div style={{ ...T.roleLabel, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color }}>{r.label}</div>
+                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
                   </div>
                   <div style={T.roleSublabel}>{r.sublabel}</div>
                   {isUnlocked
@@ -694,7 +695,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                 </div>
                 <div style={T.roleInfo}>
                   <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    <div style={{ ...T.roleLabel, color: anyUnlocked ? g.color : T.modSub.color }}>{g.label}</div>
+                    <div style={{ ...T.roleLabel, color: anyUnlocked ? inkOf(g.color, a11y) : T.modSub.color }}>{g.label}</div>
                   </div>
                   <div style={T.roleSublabel}>{g.sublabel} · {members.length} ступени</div>
                   <div style={T.roleDesc}>{g.desc}</div>
@@ -757,16 +758,16 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
             background: T.roleCard?.background, border: active ? "1px solid rgba(212,168,90,0.35)" : "1px solid rgba(255,255,255,0.06)",
           }}>
             <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter: active ? "none" : "grayscale(0.6)" }}>
-              {s.icon(active ? (a11y ? "#8B6A30" : "#D2A85A") : (a11y ? "#8B6A30" : "#8A8070"))}
+              {s.icon(active ? (a11y ? "#7A5D2A" : "#D2A85A") : (a11y ? "#7A5D2A" : "#8A8070"))}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color: T.modSub.color, fontSize:14, fontWeight:"bold" }}>{s.label}</div>
               <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:2, opacity:0.85 }}>{s.sub}</div>
             </div>
             {active ? (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#8B6A30" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"3px 8px" }}>НОВОЕ</div>
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#7A5D2A" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"3px 8px" }}>НОВОЕ</div>
             ) : (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#8B6A30" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#7A5D2A" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
             )}
           </div>
           );
@@ -774,7 +775,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
       </div>
 
       <div style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D2A85A44" }}>
-        <span style={{ color:"#7A6C58", fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
+        <span style={{ color:T.modSub.color, fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
           «Сервис — это не обслуживание, а забота»
         </span>
       </div>

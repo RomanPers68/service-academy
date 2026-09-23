@@ -3,6 +3,7 @@
 // Вынесено из ui/screens.jsx БЕЗ изменения кода (barrel-разбиение);
 // публичный API остался в ui/screens.jsx — App.jsx не менялся.
 
+import { inkOf } from "../lib/tracks";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
@@ -28,7 +29,7 @@ import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTE
 import { LiveDialogue } from "./screens-dialogue";
 
 export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack }) {
-  const gold = a11y ? "#8B6A30" : GOLD;
+  const gold = a11y ? "#7A5D2A" : GOLD;
   const [mkHint, mkHintDone] = useHintOnce("mistakes");
   const [mkStep, setMkStep] = React.useState(0);
   const mkSteps = hintsFor("mistakes");
@@ -147,8 +148,8 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         </div>
         <div style={{ ...T.homeRoleBadge, background:role.color+"22", borderColor:role.color+"66" }}>
           <span style={{ display:"inline-flex", alignItems:"center" }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
-          <span style={{ color:role.color, fontSize:14, fontWeight:"bold" }}>{role.label}</span>
-          <span style={{ color:"#c8b898", fontSize:12.5 }}>{role.sublabel}</span>
+          <span style={{ color: inkOf(role.color, a11y), fontSize:14, fontWeight:"bold" }}>{role.label}</span>
+          <span style={{ color: a11y ? "#665337" : "#c8b898", fontSize:12.5 }}>{role.sublabel}</span>
           {role.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
         </div>
       </div>
@@ -180,7 +181,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         const meta = [qn ? `${qn} ${qn === 1 ? "вопрос" : qn < 5 ? "вопроса" : "вопросов"}` : null,
           step ? `≈ ${_estMins(step)} мин` : null,
           started ? `пройдено ${pct}%` : null].filter(Boolean).join(" · ");
-        const RC = nx.color || role.color;
+        const RC = inkOf(nx.color || role.color, a11y);   // читаемо и в светлой теме (правка 170)
         const go = () => onModule(nx);
         return (
           <div onClick={go} {...onActivate(go)} className="sa-card"
@@ -235,7 +236,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         border:`1px solid ${a11y ? "rgba(150,112,40,0.25)" : "rgba(145,108,40,0.28)"}`,
         background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
         boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(255,248,230,0.05)" }}>
-        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#8F7B57", flexShrink:0 }}>
+        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#9A865F", flexShrink:0 }}>
           {doneCount} из {totalLessons}
         </span>
         <span style={{ flex:1, height:4, borderRadius:999, overflow:"hidden",
@@ -243,15 +244,15 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           <i style={{ display:"block", height:"100%", borderRadius:999,
             width:`${Math.max(progress, progress > 0 ? 2 : 0)}%`, background:role.color }} />
         </span>
-        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#8F7B57", flexShrink:0 }}>
+        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#9A865F", flexShrink:0 }}>
           {leftMins > 0 ? `≈ ${_fmtMins(leftMins)}` : "пройдено 🎓"}
         </span>
         {streak && streak.count > 0 ? (
-          <span style={{ fontSize:11.5, color: a11y ? "#8B6A30" : GOLD, flexShrink:0 }}>серия {streak.count}</span>
+          <span style={{ fontSize:11.5, color: a11y ? "#7A5D2A" : GOLD, flexShrink:0 }}>серия {streak.count}</span>
         ) : null}
       </div>
       {mistakeBank.filter(m => !m.due || m.due <= Date.now()).length > 0 && onMistakes && (() => {
-        const _g = a11y ? "#8B6A30" : GOLD;
+        const _g = a11y ? "#7A5D2A" : GOLD;
         const _n = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
         const _w = _n === 1 ? "вопрос" : (_n % 10 >= 2 && _n % 10 <= 4 && (_n % 100 < 10 || _n % 100 >= 20)) ? "вопроса" : "вопросов";
         return (
@@ -279,12 +280,12 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
               <div style={{ ...T.modBar, background:m.color }} />
               <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{MOD_SVG[m.icon] ? MOD_SVG[m.icon](m.color, 28) : m.icon}</div>
               <div style={T.modInfo}>
-                <div style={{ ...T.modTag, color:m.color }}>{m.tag} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
+                <div style={{ ...T.modTag, color: inkOf(m.color, a11y) }}>{m.tag} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
                 <div style={T.modTitle}>{m.title}</div>
                 <div style={T.modSub}>{m.subtitle}</div>
               </div>
               <div style={T.modRight}>
-                <div style={{ color:pct===100?"#4CAF50":m.color, fontSize:12.5, fontWeight:"bold" }}>{pct===100?"✓":`${pct}%`}</div>
+                <div style={{ color: pct===100 ? "#4CAF50" : inkOf(m.color, a11y), fontSize:12.5, fontWeight:"bold" }}>{pct===100?"✓":`${pct}%`}</div>
                 <div style={T.modArrow}>›</div>
               </div>
             </div>
@@ -301,7 +302,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
 
 export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T, next, onNext, finish, a11y = false }) {
   const frost = frostOf(a11y); // Доп. 198: «Морозный след», обе темы
-  const goldA = a11y ? "#8B6A30" : GOLD;
+  const goldA = a11y ? "#7A5D2A" : GOLD;
   return (
     <div style={T.screen} className="sa-slide-r">
       <div style={{ ...T.modHead, background:`linear-gradient(160deg, ${mod.color}99 0%, rgba(44,33,22,0.95) 100%)` }}>

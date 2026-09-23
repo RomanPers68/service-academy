@@ -5,7 +5,7 @@ import { onActivate, vibrate } from "../lib/utils";
 // Объясняет честно: где офлайн работает сам, где нужен экран «Домой», что
 // доступно без связи. Кнопка «Открыть в браузере» — путь для iPhone.
 export function OfflineScreen({ T, a11y, onBack }) {
-  const gold = a11y ? "#8B6A30" : "#D2A85A";
+  const gold = a11y ? "#7A5D2A" : "#D2A85A";
   const text = T.modTitle.color, sub = T.modSub.color;
   const [copied, setCopied] = React.useState(false);
   const tg = typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp;

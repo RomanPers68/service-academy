@@ -31,7 +31,7 @@ export function Avatar({ who, size = 40, tone, a11y }) {
   const T = tones(a11y);
   const ring = tone && tone !== "good"
     ? `conic-gradient(from 210deg, ${T[tone]}, ${T[tone]}88, ${T[tone]})`
-    : "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #8B6A30, #F4E2AE)";
+    : "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #7A5D2A, #F4E2AE)";
   return (
     <span style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", background: ring,
       boxShadow: a11y ? "0 2px 6px rgba(107,78,20,0.18)" : "0 0 14px rgba(214,178,102,0.16)" }}>

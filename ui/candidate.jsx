@@ -10,6 +10,7 @@
 //    реалистична ли самооценка;
 //  • правильные ответы кандидату не показываются.
 // ─────────────────────────────────────────────────────────────────────
+import { hintsFor } from "../data/hints";
 import React from "react";
 import { CANDIDATE_QUESTIONS } from "../data/candidate-questions";
 import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS } from "./tokens";
@@ -17,7 +18,7 @@ import { shuffleArray, vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { MOD_SVG, UI_SVG } from "./icons";
-import { LiquidSegment } from "./widgets";
+import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 
 const STORE_KEY = "sa_candidate_results";
 const SECONDS_PER_Q = 60; // ситуации читаются дольше — минута на вопрос
@@ -181,6 +182,10 @@ function QTimer({ seconds, onExpire }) {
 }
 
 export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
+  // Подсказка экрана — один раз при первом входе (правка 171)
+  const [cdHint, cdHintDone] = useHintOnce("candidate");
+  const [cdStep, setCDStep] = React.useState(0);
+  const cdSteps = hintsFor("candidate");
   // intro | setup | profile | handoff | test | selfcheck | gate | result
   const [phase, setPhase] = React.useState("intro");
   const [name, setName] = React.useState("");
@@ -264,14 +269,14 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const goldBtn = {
     padding:"14px", borderRadius: RADIUS.md, border:"none", width:"100%",
     fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
-    color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
+    color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)",
     boxShadow:"0 4px 18px rgba(200,160,80,0.25)",
   };
   const ghostBtn = {
     padding:"13px", borderRadius: RADIUS.md, width:"100%", cursor:"pointer",
     border: a11y ? "1px solid rgba(139,106,48,0.55)" : "1px solid rgba(200,160,80,0.4)",
     background:"transparent",
-    color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif",
+    color: a11y ? "#7A5D2A" : GOLD, fontSize:14, fontFamily:"Georgia, serif",
   };
   const inputStyle = {
     width:"100%", padding:"13px 14px", borderRadius: RADIUS.sm, fontSize:14,
@@ -282,7 +287,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     outline:"none", boxSizing:"border-box",
   };
   const optSel = {
-    border: a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E",
+    border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E",
     background: a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.18)",
   };
   // Подпись секции — фирменный monospace-капс приложения
@@ -514,6 +519,12 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
 
   return (
     <div style={T.screen} className="sa-screen">
+      {cdHint && cdSteps.length ? (
+        <HintBubble a11y={a11y} text={cdSteps[cdStep]} arrow="up"
+          step={cdStep + 1} total={cdSteps.length}
+          onNext={cdStep >= cdSteps.length - 1 ? null : () => setCDStep(v => v + 1)}
+          onClose={cdHintDone} />
+      ) : null}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={backFromHeader}>‹</button>
         <div style={T.lessHeadTitle}>Собеседование</div>
@@ -607,7 +618,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div key={rl.id} className="sa-btn" onClick={() => { vibrate("light"); setRole(rl); }} {...onActivate(() => setRole(rl))}
                 style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
-                  ...(role.id === rl.id ? { border: a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E" } : {}) }}>
+                  ...(role.id === rl.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
                 {role.id === rl.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <span style={{ display: "flex", flexShrink: 0 }}>{ROLE_ICO[rl.id](role.id === rl.id ? gold : sub)}</span>
                 <div style={{ flex: 1 }}>
@@ -652,7 +663,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div key={x.id} className="sa-btn" onClick={() => { vibrate("light"); setExp(x); }} {...onActivate(() => setExp(x))}
                 style={{ ...glass, padding: "12px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
-                  ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E" } : {}) }}>
+                  ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
                 {exp?.id === x.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <div style={{ flex: 1 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>{x.label}</div>
@@ -784,7 +795,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <button className="sa-btn" onClick={aiSend} disabled={aiBusy || !aiInput.trim()}
                 style={{ width: 46, height: 46, alignSelf: "flex-end", borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  background: aiInput.trim() && !aiBusy ? "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)" : "rgba(160,120,60,0.25)" }}>
+                  background: aiInput.trim() && !aiBusy ? "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)" : "rgba(160,120,60,0.25)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
               </button>
             </div>

@@ -169,7 +169,7 @@ export const injectStyles = () => {
     .sa-step.locked .sa-stepnum{border-color:rgba(255,255,255,0.22);color:rgba(255,255,255,0.35)}
     .sa-steptext{flex:1;min-width:0}
     .sa-steptext b{display:block;font-size:15px;font-weight:normal;line-height:1.2}
-    .sa-steptext span{font-size:11.5px;color:#756A58}
+    .sa-steptext span{font-size:11.5px;color:#918879}
     .sa-steppct{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#D4A85A}
     html.sa-light .sa-branch::before{background:linear-gradient(180deg,rgba(139,106,48,0.45),rgba(139,106,48,0.10))}
     html.sa-light .sa-step{background:rgba(250,242,222,0.60);border-color:rgba(175,140,65,0.22);
@@ -178,13 +178,13 @@ export const injectStyles = () => {
                  0 3px 12px rgba(120,90,30,0.10)}
     html.sa-light .sa-step::before{background:rgba(139,106,48,0.30)}
     html.sa-light .sa-stepnum{background:linear-gradient(160deg,rgba(255,252,244,0.95),rgba(238,228,204,0.98));
-      border-color:rgba(139,106,48,0.8);border-top-color:rgba(255,240,200,0.95);color:#8B6A30;
+      border-color:rgba(139,106,48,0.8);border-top-color:rgba(255,240,200,0.95);color:#7A5D2A;
       box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 2px 5px rgba(120,90,30,0.18)}
     html.sa-light .sa-step.done .sa-stepnum{background:linear-gradient(160deg,#3C8A5C,#245C3C);
       border-color:#2A6B45;border-top-color:#4E9E70;color:#fff;
       box-shadow:inset 0 1px 0 rgba(255,255,255,0.28),0 2px 5px rgba(30,70,45,0.28)}
     html.sa-light .sa-steptext span{color:#6B5B40}
-    html.sa-light .sa-steppct{color:#8B6A30}
+    html.sa-light .sa-steppct{color:#7A5D2A}
     /* Ступени отдельных анимаций не имеют — проявляются вместе с контейнером */
     .sa-tracksub > * { animation: none !important; }
     @media (prefers-reduced-motion: reduce) {
@@ -229,7 +229,7 @@ export const injectStyles = () => {
        в обеих темах (тема задаётся классом sa-light на <html>) */
     input, textarea, select { caret-color: #C8A96E; }
     input::placeholder, textarea::placeholder { color: rgba(200, 180, 152, 0.65); opacity: 1; }
-    .sa-light input, .sa-light textarea, .sa-light select { caret-color: #8B6A30; }
+    .sa-light input, .sa-light textarea, .sa-light select { caret-color: #7A5D2A; }
     .sa-light input::placeholder, .sa-light textarea::placeholder { color: rgba(90, 70, 50, 0.62); opacity: 1; }
     /* Поля чатов (Наставник, AI-интервью): инеевый плейсхолдер в тёмной —
        в тон ледяным пузырям */
@@ -447,7 +447,7 @@ export const injectStyles = () => {
     html.sa-light .sa-schedsec,html.sa-light .sa-schedemp{background:rgba(250,242,222,0.72);
       border-color:rgba(175,140,65,0.26);border-top-color:rgba(255,240,200,0.8);
       box-shadow:inset 0 0 18px rgba(255,255,255,0.6),inset 0 1px 0 rgba(255,255,255,0.9)}
-    html.sa-light .sa-schedno{color:#8B6A30;border-color:rgba(139,106,48,0.7);
+    html.sa-light .sa-schedno{color:#7A5D2A;border-color:rgba(139,106,48,0.7);
       border-top-color:rgba(255,240,200,0.95);
       background:linear-gradient(160deg,rgba(255,252,244,0.95),rgba(238,228,204,0.98));
       box-shadow:inset 0 0 10px rgba(255,255,255,0.7),inset 0 1px 0 rgba(255,255,255,0.9),
@@ -468,7 +468,7 @@ export const injectStyles = () => {
     .sa-bld-article span{color:#C8BFAE}
     html.sa-light .sa-bld-article{background:rgba(252,246,232,0.7);border-color:rgba(175,140,65,0.24);
       border-top-color:rgba(255,244,214,0.7)}
-    html.sa-light .sa-bld-article b{color:#8B6A30}
+    html.sa-light .sa-bld-article b{color:#7A5D2A}
     html.sa-light .sa-bld-article span{color:#4A3D28}
 
     .sa-bld-opt{width:100%;text-align:left;display:flex;align-items:center;gap:11px;
@@ -541,7 +541,7 @@ export const injectStyles = () => {
     .sa-bld-sealtext{font-family:ui-monospace,Menlo,monospace;font-size:7.5px;letter-spacing:1.6px;
       text-transform:uppercase;position:relative;z-index:2;opacity:.92}
     .sa-bld-seal.ok{background:radial-gradient(circle at 34% 28%,#3E8E63,#215A3C);color:#EAF6EE}
-    .sa-bld-seal.warn{background:radial-gradient(circle at 34% 28%,#C8A050,#8B6A30);color:#FFF7E4}
+    .sa-bld-seal.warn{background:radial-gradient(circle at 34% 28%,#C8A050,#7A5D2A);color:#FFF7E4}
     .sa-bld-seal.bad{background:radial-gradient(circle at 34% 28%,#A8402F,#6E1F16);color:#FBE7E2}
     @media (prefers-reduced-motion: reduce){ .sa-bld-seal{animation:none} }
     @media (prefers-reduced-motion: reduce){ .sa-bld-opt.pop{animation:none} }
@@ -647,7 +647,7 @@ export const injectStyles = () => {
       background:rgba(150,195,230,0.12);
       box-shadow:inset 0 0 14px rgba(200,235,255,0.10),inset 0 1px 0 rgba(255,255,255,0.14)}
     .sa-bld-icegen > span,.sa-bld-icetub > span,.sa-bld-iceglass > span{position:absolute;left:6px;top:4px;
-      font-family:ui-monospace,Menlo,monospace;font-size:6.5px;letter-spacing:1.1px;color:#756A58;z-index:2}
+      font-family:ui-monospace,Menlo,monospace;font-size:6.5px;letter-spacing:1.1px;color:#918879;z-index:2}
     .sa-bld-iceglass > span{top:auto;bottom:4px;left:0;right:0;text-align:center}
     .sa-bld-icearrow{height:16px;display:grid;place-items:center;color:#5C5244;font-size:11px;transition:color .4s ease}
     .sa-bld-icearrow.on{color:#C8A96E}
@@ -668,7 +668,7 @@ export const injectStyles = () => {
       background:linear-gradient(0deg,rgba(200,169,110,0.16),rgba(200,169,110,0));
       transition:transform .55s cubic-bezier(.3,1,.4,1);pointer-events:none}
     .sa-bld-cleanhead{display:flex;justify-content:space-between;gap:6px;position:relative;z-index:2;
-      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#756A58;margin-bottom:6px}
+      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#918879;margin-bottom:6px}
     .sa-bld-cslot{display:flex;align-items:center;gap:6px;padding:5px 7px;margin-bottom:4px;
       border-radius:7px;position:relative;z-index:2;
       background:rgba(255,250,238,0.035);border:1px solid rgba(145,108,40,0.22);
@@ -689,7 +689,7 @@ export const injectStyles = () => {
     .sa-bld-station.clean{border-color:rgba(200,169,110,0.5);box-shadow:inset 0 0 20px rgba(214,170,80,0.08)}
     .sa-bld-station.spoiled{border-color:rgba(224,120,120,0.35)}
     .sa-bld-icebin{position:relative;height:26px;border-radius:7px;margin-bottom:6px;overflow:hidden;
-      display:flex;align-items:center;padding:0 7px;font-size:8.5px;color:#756A58;
+      display:flex;align-items:center;padding:0 7px;font-size:8.5px;color:#918879;
       background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
       box-shadow:inset 0 0 12px rgba(255,248,230,0.04);transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease}
     .sa-bld-icebin.on{color:#CFE4EF;border-style:solid;border-color:rgba(160,200,230,0.38);
@@ -702,7 +702,7 @@ export const injectStyles = () => {
       box-shadow:inset 0 0 12px rgba(255,248,230,0.05);transition:background .4s ease,border-color .4s ease,opacity .4s ease}
     .sa-bld-zone.on{background:rgba(200,169,110,0.11);border-color:rgba(200,169,110,0.36)}
     .sa-bld-zname{font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.1px;
-      text-transform:uppercase;color:#756A58;margin-bottom:3px}
+      text-transform:uppercase;color:#918879;margin-bottom:3px}
     .sa-bld-zone.on .sa-bld-zname{color:#D4A85A}
     .sa-bld-zchip{font-size:8.5px;padding:2px 5px;border-radius:999px;color:#E8DEC8;
       background:rgba(200,169,110,0.17);border:1px solid rgba(200,169,110,0.3)}
@@ -732,7 +732,7 @@ export const injectStyles = () => {
       border-top:1px solid rgba(210,168,65,0.42);
       box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10)}
     .sa-bld-passhead{display:flex;justify-content:space-between;gap:6px;
-      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#756A58;margin-bottom:8px}
+      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#918879;margin-bottom:8px}
     .sa-bld-rail{display:flex;gap:5px;justify-content:center;align-items:flex-end;min-height:34px}
     .sa-bld-slot{width:28px;height:32px;border-radius:6px;display:grid;place-items:center;
       background:rgba(255,250,238,0.03);border:1px dashed rgba(145,108,40,0.26);
@@ -743,7 +743,7 @@ export const injectStyles = () => {
       animation:saServeIn .42s cubic-bezier(.3,1.3,.5,1) both}
     .sa-bld-railline{height:3px;margin-top:5px;border-radius:2px;
       background:linear-gradient(90deg,rgba(200,169,110,0.10),rgba(200,169,110,0.42),rgba(200,169,110,0.10))}
-    .sa-bld-passfoot{font-size:8px;color:#756A58;text-align:center;margin-top:7px;font-style:italic}
+    .sa-bld-passfoot{font-size:8px;color:#918879;text-align:center;margin-top:7px;font-style:italic}
 
     /* носитель: полка склада */
     .sa-bld-shelf{flex:0 0 146px;padding:8px;border-radius:10px;
@@ -751,7 +751,7 @@ export const injectStyles = () => {
       border-top:1px solid rgba(210,168,65,0.42);
       box-shadow:inset 0 0 20px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10)}
     .sa-bld-shelfhead{display:flex;justify-content:space-between;gap:6px;
-      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#756A58;margin-bottom:7px}
+      font-family:ui-monospace,Menlo,monospace;font-size:7px;letter-spacing:1.3px;color:#918879;margin-bottom:7px}
     .sa-bld-bottles{display:flex;gap:4px;align-items:flex-end;justify-content:center;
       padding-bottom:6px;border-bottom:2px solid rgba(200,169,110,0.32)}
     .sa-bld-bottle{position:relative;width:17px;height:40px;border-radius:3px 3px 4px 4px;overflow:hidden;
@@ -779,7 +779,7 @@ export const injectStyles = () => {
       border-top-color:rgba(210,168,65,0.46);
       box-shadow:inset 0 0 14px rgba(255,248,230,0.06),inset 0 1px 0 rgba(255,255,255,0.10);
       transition:background .4s ease,border-color .4s ease,opacity .4s ease,color .4s ease;position:relative;z-index:2;opacity:.55}
-    .sa-bld-fnm{font-size:9px;color:#756A58;margin-top:6px;line-height:1.2;
+    .sa-bld-fnm{font-size:9px;color:#918879;margin-top:6px;line-height:1.2;
       font-family:ui-monospace,Menlo,monospace;letter-spacing:.3px}
     .sa-bld-fstage.on .sa-bld-fring{opacity:1;background:rgba(200,169,110,0.16);border-color:#C8A96E;
       box-shadow:0 0 14px rgba(200,169,110,0.28)}
@@ -796,7 +796,7 @@ export const injectStyles = () => {
     }
 
     /* «Сборка» в светлой теме (режим чтения) */
-    html.sa-light .sa-bld-term{color:#8B6A30;background:rgba(139,106,48,0.10);border-color:rgba(139,106,48,0.35)}
+    html.sa-light .sa-bld-term{color:#7A5D2A;background:rgba(139,106,48,0.10);border-color:rgba(139,106,48,0.35)}
     html.sa-light .sa-bld-vessel{border-color:rgba(107,78,26,0.55);
       background:linear-gradient(100deg,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0.25) 42%,rgba(255,255,255,0.5) 100%)}
     html.sa-light .sa-bld-vessel::after{box-shadow:inset 3px 0 7px rgba(255,255,255,0.5),inset -4px 0 8px rgba(107,78,26,0.18)}
@@ -835,7 +835,7 @@ export const injectStyles = () => {
       border-top-color:rgba(255,244,214,0.7);box-shadow:inset 0 0 12px rgba(255,255,255,0.45)}
     html.sa-light .sa-bld-zone.on{background:rgba(200,169,110,0.24);border-color:rgba(139,106,48,0.5)}
     html.sa-light .sa-bld-zname{color:#8A7A5C}
-    html.sa-light .sa-bld-zone.on .sa-bld-zname{color:#8B6A30}
+    html.sa-light .sa-bld-zone.on .sa-bld-zname{color:#7A5D2A}
     html.sa-light .sa-bld-zchip{color:#2E2412;background:rgba(200,169,110,0.3);border-color:rgba(139,106,48,0.45)}
     html.sa-light .sa-bld-counter::after{background:linear-gradient(90deg,rgba(139,106,48,0.08),rgba(139,106,48,0.40),rgba(139,106,48,0.08));
       box-shadow:0 3px 10px rgba(120,90,30,0.18)}
@@ -859,14 +859,14 @@ export const injectStyles = () => {
       border-top-color:rgba(255,240,200,0.7);
       box-shadow:inset 0 0 14px rgba(255,255,255,0.5),inset 0 1px 0 rgba(255,255,255,0.85)}
     html.sa-light .sa-bld-fnm{color:#8A7A5C}
-    html.sa-light .sa-bld-fstage.on .sa-bld-fring{opacity:1;background:rgba(200,169,110,0.3);border-color:#8B6A30;box-shadow:none}
-    html.sa-light .sa-bld-fstage.on .sa-bld-fnm{color:#8B6A30}
-    html.sa-light .sa-bld-fstage.on .sa-bld-fbar{background:linear-gradient(90deg,rgba(139,106,48,0.25),#8B6A30)}
+    html.sa-light .sa-bld-fstage.on .sa-bld-fring{opacity:1;background:rgba(200,169,110,0.3);border-color:#7A5D2A;box-shadow:none}
+    html.sa-light .sa-bld-fstage.on .sa-bld-fnm{color:#7A5D2A}
+    html.sa-light .sa-bld-fstage.on .sa-bld-fbar{background:linear-gradient(90deg,rgba(139,106,48,0.25),#7A5D2A)}
     html.sa-light .sa-bld-fstage.bad .sa-bld-fring{background:rgba(139,48,32,0.12);border-color:#8B3020}
     html.sa-light .sa-bld-fstage.bad .sa-bld-fnm{color:#8B3020}
     html.sa-light .sa-bld-fstage.bad .sa-bld-fbar{background:linear-gradient(90deg,rgba(139,48,32,0.25),#8B3020)}
-    html.sa-light .sa-bld-fstage.now .sa-bld-fring{border-color:#8B6A30}
-    html.sa-light .sa-bld-fstage.now .sa-bld-fnm{color:#8B6A30}
+    html.sa-light .sa-bld-fstage.now .sa-bld-fring{border-color:#7A5D2A}
+    html.sa-light .sa-bld-fstage.now .sa-bld-fnm{color:#7A5D2A}
   `;
   document.head.appendChild(style);
 

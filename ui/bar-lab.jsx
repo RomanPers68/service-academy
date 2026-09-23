@@ -75,7 +75,7 @@ const mix = (cols) => { if (!cols.length) return "#D6B266"; const rgb = cols.map
 
 function GlassView({ glass, fill, colors, ice, garnish, shake, a11y, spilled, layers, floatColor, bubbles, served }) {
   const path = GLASS_PATH[glass] || GLASS_PATH.rocks; const box = LIQ_BOX[glass] || LIQ_BOX.rocks;
-  const line = a11y ? "#8B6A30" : GOLD; const liq = mix(colors);
+  const line = a11y ? "#7A5D2A" : GOLD; const liq = mix(colors);
   const [x, y, w, h] = box; const lh = Math.min(1, fill) * h;
   // Доп. 220: слоистые коктейли — полосы по порядку; флоат — тонкий слой сверху; пузырьки; лёд покачивается; краш искрится
   const total = layers && layers.length ? layers.reduce((a, l) => a + l.ml, 0) || 1 : 1;
@@ -169,7 +169,7 @@ function Bottle({ color, label, on, dim, ghost, gold, a11y, onClick, delay = 0, 
         {on && <div style={{ position: "absolute", left: -8, right: -8, bottom: -4, height: 12, borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(214,178,102,.55), rgba(214,178,102,0) 70%)", animation: "saLabPulse 1.4s ease-in-out infinite" }} />}
         <svg viewBox="0 0 44 62" width="52" height="73">
           <defs><clipPath id={"bt-" + kind}><path d={sh.d} /></clipPath></defs>
-          <path d={sh.d} fill={a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.06)"} stroke={on ? gold : (a11y ? "#8B6A30" : "rgba(255,255,255,0.28)")} strokeWidth={on ? 1.6 : 1} />
+          <path d={sh.d} fill={a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.06)"} stroke={on ? gold : (a11y ? "#7A5D2A" : "rgba(255,255,255,0.28)")} strokeWidth={on ? 1.6 : 1} />
           {!ghost && <rect x={sh.liq[0]} y={sh.liq[1]} width={sh.liq[2]} height={sh.liq[3]} fill={color} opacity="0.9" clipPath={`url(#bt-${kind})`} />}
           {kind === "soda" && [0, 1, 2, 3].map(i => <circle key={i} cx={19 + (i * 5) % 8} cy={50 - i * 9} r="1.3" fill="rgba(255,255,255,0.7)" clipPath={`url(#bt-${kind})`} />)}
           {kind === "fresh" && <path d="M14 30c4-6 12-6 16 0" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" fill="none" />}
@@ -187,7 +187,7 @@ function Item({ icon, label, on, gold, a11y, onClick, delay = 0, wide }) {
   const text = a11y ? "#2A1F0E" : "#EFE4C8";
   return (
     <div className="sa-lab-in sa-lab-bottle" onClick={onClick} {...onActivate(onClick)} style={{ animationDelay: `${delay}ms`, minWidth: wide ? 88 : 64, flexShrink: 0, cursor: "pointer", textAlign: "center", transition: "transform .12s" }}>
-      <div style={{ width: 54, height: 54, margin: "0 auto 5px", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? gold : (a11y ? "#8B6A3055" : "rgba(255,255,255,0.14)")}`, background: on ? "radial-gradient(circle at 50% 60%, rgba(214,178,102,0.34), rgba(214,178,102,0.08) 70%)" : (a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)"), boxShadow: on ? `inset 0 0 0 1.5px ${gold}, inset 0 0 12px rgba(214,178,102,.5)` : "none", animation: on ? "saLabPulse 1.6s ease-in-out infinite" : "none" }}>{icon}</div>
+      <div style={{ width: 54, height: 54, margin: "0 auto 5px", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${on ? gold : (a11y ? "#7A5D2A55" : "rgba(255,255,255,0.14)")}`, background: on ? "radial-gradient(circle at 50% 60%, rgba(214,178,102,0.34), rgba(214,178,102,0.08) 70%)" : (a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)"), boxShadow: on ? `inset 0 0 0 1.5px ${gold}, inset 0 0 12px rgba(214,178,102,.5)` : "none", animation: on ? "saLabPulse 1.6s ease-in-out infinite" : "none" }}>{icon}</div>
       <div style={{ fontSize: 11, lineHeight: 1.2, color: on ? gold : text, height: 26, overflow: "hidden" }}>{label}</div>
     </div>
   );
@@ -199,7 +199,7 @@ const IceIcon = ({ id, gold }) => <span style={{ fontSize: 21, color: gold }}>{i
 
 // Доп. 219: сосуд на сцене — в него льётся, в нём лёд, он дрожит; при стрейне переливается в бокал
 function VesselView({ kind, fill, colors, ice, a11y, shake, tilt }) {
-  const line = a11y ? "#8B6A30" : GOLD; const liq = mix(colors);
+  const line = a11y ? "#7A5D2A" : GOLD; const liq = mix(colors);
   const shapes = {
     shaker: { d: "M38 8h44l-6 30v58a6 6 0 0 1-6 6H50a6 6 0 0 1-6-6V38z M40 8h40v-6H40z", box: [46, 40, 28, 60], cap: true },
     mixing: { d: "M36 12h48v86a6 6 0 0 1-6 6H42a6 6 0 0 1-6-6z", box: [40, 16, 40, 84], spoon: true },
@@ -236,7 +236,7 @@ function useNarrow(threshold = 400) {
 const ukOf = (profile) => profile ? `_${profile.name}_${profile.surname || ""}` : "";
 
 export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) {
-  const gold = a11y ? "#8B6A30" : GOLD; const text = T.modTitle.color, sub = T.modSub.color, frost = frostOf(a11y);
+  const gold = a11y ? "#7A5D2A" : GOLD; const text = T.modTitle.color, sub = T.modSub.color, frost = frostOf(a11y);
   const uk = ukOf(profile);
   const [mastery, setMastery] = React.useState(() => loadMastery(uk));
   const [view, setView] = React.useState(startId ? "pick" : "hub"); // hub | pick | play | rush | station
@@ -607,7 +607,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           const shelf = (nodes) => (
             <div style={{ position: "relative", borderRadius: 14, background: a11y ? "linear-gradient(180deg, rgba(255,250,235,0.55), rgba(240,228,200,0.35))" : "linear-gradient(180deg, rgba(255,248,230,0.02), rgba(255,236,190,0.06) 70%, rgba(214,178,102,0.10))", boxShadow: a11y ? "none" : "inset 0 -14px 20px -14px rgba(214,178,102,0.55)" }}>
               <div className="sa-hscroll" style={rowStyle}>{nodes}</div>
-              <div style={{ height: 5, borderRadius: "0 0 14px 14px", background: a11y ? "linear-gradient(180deg,#B08A4E,#8B6A30)" : "linear-gradient(180deg,#6B4A22,#3A2C10)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
+              <div style={{ height: 5, borderRadius: "0 0 14px 14px", background: a11y ? "linear-gradient(180deg,#B08A4E,#7A5D2A)" : "linear-gradient(180deg,#6B4A22,#3A2C10)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
             </div>);
           const doneLine = (text, more = true) => <div className="sa-fadein" style={{ padding: "10px 14px", borderRadius: 14, border: `1px solid ${gold}33`, color: sub, fontSize: 12.5 }}>✓ {text}{more && !finished ? <span style={{ display: "block", marginTop: 4, fontSize: 11, color: gold, opacity: 0.85 }}>{mode === "hint" ? "полка переключится сама" : "дальше — на вкладках выше"}</span> : null}</div>;
           const content = tab === "glass"

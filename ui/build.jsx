@@ -249,7 +249,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
           {passed.has("gen") && [...Array(6)].map((_, i) => cube(i, 6, "g"))}
         </div>
         <div className={"sa-bld-icearrow" + (passed.has("scoop") ? " on" : "")}>
-          {passed.has("scoop") ? BUILD_SVG.scoop(murky ? RED : (a11y ? "#8B6A30" : GOLD), 15) : <b>↓</b>}
+          {passed.has("scoop") ? BUILD_SVG.scoop(murky ? RED : (a11y ? "#7A5D2A" : GOLD), 15) : <b>↓</b>}
         </div>
         <div className={"sa-bld-icetub" + (passed.has("bin") ? " on" : "")}>
           <span>ВАННА</span>
@@ -281,7 +281,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
       <div className="sa-bld-clean" style={{ "--clean": done / items.length }}>
         <div className="sa-bld-cleanhead">
           <span>СМЕНА</span>
-          <span style={{ color: done === items.length ? GREEN : (a11y ? "#8B6A30" : GOLD) }}>
+          <span style={{ color: done === items.length ? GREEN : (a11y ? "#7A5D2A" : GOLD) }}>
             {done === items.length ? "СДАНА ✓" : done + " / " + items.length}
           </span>
         </div>
@@ -363,7 +363,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
           {served.length
             ? served.map((k, i) => (
                 <span key={i} className="sa-bld-gitem">
-                  {(BUILD_SVG[k] || BUILD_SVG.glass)(a11y ? "#8B6A30" : GOLD, 15)}
+                  {(BUILD_SVG[k] || BUILD_SVG.glass)(a11y ? "#7A5D2A" : GOLD, 15)}
                 </span>
               ))
             : <span className="sa-bld-gempty">стойка пуста</span>}
@@ -382,7 +382,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
       <div className="sa-bld-pass">
         <div className="sa-bld-passhead">
           <span>ВЫДАЧА</span>
-          <span style={{ color: waiting ? (a11y ? "#8B6A30" : GOLD) : GREEN }}>
+          <span style={{ color: waiting ? (a11y ? "#7A5D2A" : GOLD) : GREEN }}>
             {waiting ? "ждут " + waiting : "готово ✓"}
           </span>
         </div>
@@ -390,7 +390,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
           {[...Array(total)].map((_, i) => (
             <span key={i} className={"sa-bld-slot" + (i < served.length ? " on" : "")}>
               {i < served.length
-                ? (BUILD_SVG[served[i]] || BUILD_SVG.glass)(spoiled ? RED : (a11y ? "#8B6A30" : GOLD), 17)
+                ? (BUILD_SVG[served[i]] || BUILD_SVG.glass)(spoiled ? RED : (a11y ? "#7A5D2A" : GOLD), 17)
                 : <b>·</b>}
             </span>
           ))}
@@ -410,7 +410,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
       <div className="sa-bld-shelf">
         <div className="sa-bld-shelfhead">
           <span>СКЛАД</span>
-          <span style={{ color: marks.has("handover") ? GREEN : (a11y ? "#8B6A30" : GOLD) }}>
+          <span style={{ color: marks.has("handover") ? GREEN : (a11y ? "#7A5D2A" : GOLD) }}>
             {marks.has("handover") ? "сдан ✓" : marks.has("measure") ? "посчитан" : "не считан"}
           </span>
         </div>
@@ -427,7 +427,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
           <span>{marks.has("perish") ? "скоропорт под оборот" : "скоропорт не учтён"}</span>
         </div>
         <div className={"sa-bld-crate" + (marks.has("order") ? " on" : "")}>
-          {BUILD_SVG.box(marks.has("order") ? (a11y ? "#8B6A30" : GOLD) : "#5C5244", 12)}
+          {BUILD_SVG.box(marks.has("order") ? (a11y ? "#7A5D2A" : GOLD) : "#5C5244", 12)}
           <span>{marks.has("order") ? "заказ отправлен" : "заказ не собран"}</span>
         </div>
       </div>
@@ -445,7 +445,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
             {i > 0 && <div className="sa-bld-fbar" />}
             <div className="sa-bld-fring">
               {(BUILD_SVG[st.ic] || BUILD_SVG.ice)(
-                r === true ? (a11y ? "#8B6A30" : GOLD)
+                r === true ? (a11y ? "#7A5D2A" : GOLD)
                 : r === false ? (a11y ? "#8B3020" : RED)
                 : (a11y ? "#8A7A5C" : MUTED_2), 20)}
             </div>
@@ -460,7 +460,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
     <div style={{ flex: 1, minWidth: 0 }}>
       {sc.steps.map((st, i) => {
         const r = results[i];
-        const c = r === true ? P.stepDone : r === false ? RED : (i === step && !done) ? (a11y ? "#8B6A30" : GOLD) : P.sub;
+        const c = r === true ? P.stepDone : r === false ? RED : (i === step && !done) ? (a11y ? "#7A5D2A" : GOLD) : P.sub;
         return (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 12.5, color: c }}>
             <span style={{
@@ -673,7 +673,7 @@ function Shell({ title, onClose, accent, T, children }) {
           <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: a11y ? "#6B5B40" : MUTED_2 }}>Сборка</div>
           <div style={{ color: a11y ? "#2A1F0E" : CREAM, fontSize: 16, fontFamily: serif }}>{title}</div>
         </div>
-        {UI_SVG.shaker ? UI_SVG.shaker(a11y ? "#8B6A30" : accent, 22) : null}
+        {UI_SVG.shaker ? UI_SVG.shaker(a11y ? "#7A5D2A" : accent, 22) : null}
       </div>
       {children}
       <div style={{ height: 24 }} />
@@ -688,7 +688,7 @@ function Eyebrow({ left, right, a11y }) {
       color: a11y ? "#6B5B40" : MUTED_2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
     }}>
       <span>{left}</span>
-      <span style={{ color: a11y ? "#8B6A30" : GOLD_SOFT, whiteSpace: "nowrap" }}>{right}</span>
+      <span style={{ color: a11y ? "#7A5D2A" : GOLD_SOFT, whiteSpace: "nowrap" }}>{right}</span>
     </div>
   );
 }

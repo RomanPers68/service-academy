@@ -71,7 +71,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   // Цвет приходит от кнопки, которой сюда вошли, — как у SOS. Без него
   // остаётся прежний золотой, чтобы прочие входы не поменяли вид.
-  const gold = accent || (a11y ? "#8B6A30" : "#C8A96E");
+  const gold = accent || (a11y ? "#7A5D2A" : "#C8A96E");
   // Роль берётся из профиля: редактор меню доступен только руководству,
   // и подсказка про публикацию сотруднику не нужна.
   const mBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);

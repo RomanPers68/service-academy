@@ -20,7 +20,7 @@ import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
 import { GLOSSARY } from "./data/glossary";
 import { LOGO_SRC, LOGO_SRC_DARK } from "./assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions } from "./lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions, isFemaleName } from "./lib/utils";
 
 // ── Ленивые экраны: код и данные подгружаются при первом открытии ──
 // (тренажёр меню, книга, SOS, наставничество, поиск, справочник,
@@ -75,7 +75,7 @@ function ScreenLoader({ T }) {
         </div>
       ))}
       <div className="sa-pagein" style={{ textAlign: "center", marginTop: 22, ...later(4) }}>
-        <span className="sa-pulse" style={{ color: T.a11y ? "#8B6A30" : "#C8A96E", fontFamily: "monospace", fontSize: T.a11y ? 13 : 11, letterSpacing: 4 }}>✦ SA</span>
+        <span className="sa-pulse" style={{ color: T.a11y ? "#7A5D2A" : "#C8A96E", fontFamily: "monospace", fontSize: T.a11y ? 13 : 11, letterSpacing: 4 }}>✦ SA</span>
       </div>
     </div>
   );
@@ -255,7 +255,7 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
     setLeaving(true);
     setTimeout(onClose, 280);
   };
-  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const gold = a11y ? "#7A5D2A" : "#C8A96E";
   const last = idx === cards.length - 1;
   const card = cards[idx];
   const glass = {
@@ -295,7 +295,7 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
         <button className="sa-btn" onClick={() => { if (last) close(); else go(1); }}
           style={{ padding: "14px", borderRadius: 14, border: "none", width: "100%", fontSize: 16, fontFamily: "Georgia, serif",
             fontWeight: "bold", cursor: "pointer", color: "#fff",
-            background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", boxShadow: "0 4px 18px rgba(200,160,80,0.25)" }}>
+            background: "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", boxShadow: "0 4px 18px rgba(200,160,80,0.25)" }}>
           {last ? "Начать" : "Дальше"}
         </button>
         {!last && (
@@ -317,7 +317,7 @@ function AiFab({ a11y, onClick }) {
   const [seen, setSeen] = useState(() => {
     try { return localStorage.getItem("sa_ai_fab") === "1"; } catch (e) { return true; }
   });
-  const gold = a11y ? "#8B6A30" : "#C8A96E";
+  const gold = a11y ? "#7A5D2A" : "#C8A96E";
   const tap = () => {
     try { localStorage.setItem("sa_ai_fab", "1"); } catch (e) {}
     setSeen(true);
@@ -347,7 +347,7 @@ import { injectStyles } from "./ui/css";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./ui/icons";
 import { S, A, ACCENT_SERIF } from "./ui/styles";
 import { NewPageBanner } from "./ui/guestbook-lite";
-import { weeklyDialogueId, weeklyLessonId } from "./data/reviews";
+import { weeklyDialogueIdFrom, weeklyLessonId } from "./data/reviews";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./ui/mood-cards";
@@ -808,6 +808,10 @@ function ServiceAcademy() {
     }).catch(() => {});
     return () => { alive = false; };
   }, [customLoaded, customByRole]);
+  // Гость недели: свои живые диалоги трека — в том же пуле, что штатные (правка 168)
+  const weeklyOwn = useMemo(() => (customModules || []).filter(m => !m.hidden).flatMap(m => m.lessons.filter(l => l.type === "dialogue" && l.dialogue)), [customModules]);
+  const weeklyId = useMemo(() => weeklyDialogueIdFrom(weeklyOwn.map(l => l.dialogue.id)), [weeklyOwn]);
+  const weeklyInline = useMemo(() => (weeklyOwn.find(l => l.dialogue.id === weeklyId) || {}).dialogue || null, [weeklyOwn, weeklyId]);
   const examExtra = useMemo(() => (customByRole[examRole] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").flatMap(l => l.questions || [])), [customByRole, examRole]);
   const totalLessons = useMemo(() => programModules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0), [programModules]);
   const roleLesonIds = useMemo(() => new Set(programModules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id))), [programModules]);
@@ -1321,7 +1325,7 @@ function ServiceAcademy() {
       <div style={T.phone}>
         {!["profile","login"].includes(screen) && (
           <div style={T.a11yBar}>
-            <span style={{ ...T.a11yLabel, color:GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
+            <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
             <button style={{ ...T.a11yBtn,
               // Капелька-канон (рецепт AI-кнопки): золото вместо светофора
               background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.10)",
@@ -1355,7 +1359,7 @@ function ServiceAcademy() {
         {/* ── Книга отзывов ── */}
         {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} focusId={bookFocus} onBack={() => { setBookFocus(null); goBack(); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}
         {/* «Гость недели»: живой диалог из книги; завершение = страница в книге */}
-        {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyDialogueId()} hintKey="weeklyGuest" T={T} color={"#C8A96E"} onClose={(finished) => {
+        {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyId} inline={weeklyInline} hintKey="weeklyGuest" T={T} color={"#C8A96E"} onClose={(finished) => {
           try {
             const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
             const wid = weeklyLessonId();
@@ -1382,7 +1386,7 @@ function ServiceAcademy() {
         {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} />}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
-        {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} profile={profile} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+        {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} a11y={a11y} profile={profile} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
             // Удаление сотрудника из «Управления данными»: находим его id в
             // списке доступа по имени, себя удалить нельзя. Серверная функция
@@ -1471,7 +1475,7 @@ function ServiceAcademy() {
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
-        {screen === "daily" && <DailyScreen mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
+        {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
         {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} onBack={() => navigate("roleSelect")} /></div>}
@@ -1543,7 +1547,7 @@ function ServiceAcademy() {
               <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 15, lineHeight: 1.6, color: a11y ? "#3A2E1C" : "#EFE6D2", marginBottom: 16 }}>{lessonLockMsg}</div>
               <button onClick={() => setLessonLockMsg(null)} style={{ padding: "10px 24px", borderRadius: 999, border: "none", cursor: "pointer",
-                background: "linear-gradient(135deg, #C8A96E, #8B6A30)", color: "#fff", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold" }}>Понятно</button>
+                background: "linear-gradient(135deg, #C8A96E, #7A5D2A)", color: "#fff", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold" }}>Понятно</button>
             </div>
           </div>
         )}
@@ -1669,7 +1673,7 @@ function ServiceAcademy() {
 
         {/* Онбординг: приветствие при первом входе */}
         {loophole && !welcome && loopView === "banner" && (
-          <LoopholeBanner a11y={a11y} n={loophole.n || 1}
+          <LoopholeBanner a11y={a11y} n={loophole.n || 1} female={isFemaleName(profile?.name, profile?.surname)}
             onOpen={() => {
               setLoopView("card");
               if (!loopRank) { try { rpc("quiz_key_rank", { p_token: saToken() }).then(r => { if (r && r.ok) setLoopRank(r); }).catch(() => {}); } catch (e) {} }
@@ -1677,7 +1681,7 @@ function ServiceAcademy() {
             onHide={() => setLoopView(null)} />
         )}
         {loophole && !welcome && loopView === "card" && (
-          <LoopholeCard rec={loophole} rank={loopRank} a11y={a11y}
+          <LoopholeCard rec={loophole} rank={loopRank} a11y={a11y} female={isFemaleName(profile?.name, profile?.surname)}
             onClose={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); setLoopView(null); setLoopRank(null); }}
             onMistakes={() => { try { loopSeen(loopUk, loophole); } catch (e) {} setLoophole(null); setLoopView(null); setLoopRank(null); navigate("mistakes"); }} />
         )}
@@ -1694,7 +1698,7 @@ function ServiceAcademy() {
               boxShadow: a11y
                 ? "inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 30px rgba(70,50,15,0.25)"
                 : "inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px rgba(0,0,0,0.5)" }}>
-            <span className="sa-pulse" style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.target(a11y ? "#8B6A30" : "#C8A96E", 18)}</span>
+            <span className="sa-pulse" style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.target(a11y ? "#7A5D2A" : "#C8A96E", 18)}</span>
             <div onClick={() => closeMistakeHint(true)} {...onActivate(() => closeMistakeHint(true))}
               style={{ flex: 1, cursor: "pointer", color: T.modSub?.color || "#C8B898", fontSize: a11y ? 14 : 12.5, lineHeight: 1.5 }}>
               Появились вопросы на повторение — загляни в «Работу над ошибками»
@@ -1821,17 +1825,17 @@ class ErrorBoundary extends React.Component {
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "Georgia, serif" }}>
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>{ROLE_SVG.bar("#C8A96E", 44)}</div>
           <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>{this.state.updating ? "Приложение обновилось" : this.state.offline ? "Экран не докачался" : "Что-то пошло не так"}</div>
-          <div style={{ color: "#9A8060", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
+          <div style={{ color: "#7A654C", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
             {this.state.updating ? "Вышла новая версия — перезагружаю, секунду…" : this.state.offline ? "Похоже, связь оборвалась на полпути. Прогресс на месте — проверь интернет и нажми «Повторить»." : "Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение."}
           </div>
-          <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
+          <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
             Перезагрузить
           </button>
           {/* Диагностика: текст ошибки для скриншота в поддержку */}
           {(this.state.errMsg || this.state.errStack) && (
             <div style={{ marginTop: 22, maxWidth: 330, padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(140,106,38,0.3)", background: "rgba(0,0,0,0.25)" }}>
-              <div style={{ color: "#756A58", fontSize: 9, letterSpacing: 2, fontFamily: "monospace", marginBottom: 5 }}>ДЛЯ ПОДДЕРЖКИ · СДЕЛАЙ СКРИНШОТ</div>
-              <div style={{ color: "#9A8060", fontSize: 10.5, fontFamily: "monospace", lineHeight: 1.6, wordBreak: "break-word" }}>{this.state.errMsg}{this.state.errStack ? " | " + this.state.errStack : ""}</div>
+              <div style={{ color: "#918879", fontSize: 9, letterSpacing: 2, fontFamily: "monospace", marginBottom: 5 }}>ДЛЯ ПОДДЕРЖКИ · СДЕЛАЙ СКРИНШОТ</div>
+              <div style={{ color: "#7A654C", fontSize: 10.5, fontFamily: "monospace", lineHeight: 1.6, wordBreak: "break-word" }}>{this.state.errMsg}{this.state.errStack ? " | " + this.state.errStack : ""}</div>
             </div>
           )}
         </div>

@@ -93,11 +93,15 @@ export const weekKey = (d = new Date()) => {
   return `${t.getFullYear()}-w${wn}`;
 };
 export const weeklyLessonId = () => `weekly_${weekKey()}`;
-export const weeklyDialogueId = () => {
+// Гость недели выбирается из штатных диалогов и своих живых диалогов трека (правка 168):
+// свои встают в пул наравне со штатными, выбор на неделе постоянный.
+export const weeklyDialogueIdFrom = (extra = []) => {
+  const pool = [...WEEKLY_DIALOGUE_POOL, ...(extra || []).filter(Boolean)];
   const k = weekKey(); let h = 0;
   for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
-  return WEEKLY_DIALOGUE_POOL[h % WEEKLY_DIALOGUE_POOL.length];
+  return pool[h % pool.length];
 };
+export const weeklyDialogueId = () => weeklyDialogueIdFrom([]);
 
 // Новые позиции меню ресторана (isNew, младше 30 дней) — для бейджа на главной
 export const countNewDishes = (restaurant) => {
@@ -136,7 +140,9 @@ export const reviewOf = (m) => (m && (MODULE_REVIEWS[m.id] || m.review)) || null
 export function bookModules(modulesByRole) {
   const out = {}; const base = modulesByRole || {};
   new Set([...Object.keys(base), ...Object.keys(CUSTOM_BOOK)]).forEach(r => {
-    out[r] = [...(base[r] || []), ...((CUSTOM_BOOK[r] || []).filter(m => m && m.review && m.review.text))];
+    // Свои разделы целиком: страница открывается только при отзыве (это проверяет reviewOf),
+    // а вкладке «Сборка» нужны все модули бара со сборками (правка 173).
+    out[r] = [...(base[r] || []), ...(CUSTOM_BOOK[r] || [])];
   });
   return out;
 }

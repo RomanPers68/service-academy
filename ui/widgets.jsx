@@ -17,8 +17,8 @@ import { HINTS_VERSION } from "../data/hints";
  *  Формулировка тоже часть приёма — «сегодня смен нет» вместо «не найдена». */
 export function EmptyState({ a11y, icon, title, hint, action, onAction }) {
   const text = a11y ? "#2A2113" : "#EFE4C8";
-  const sub  = a11y ? "#6E5C3C" : "#8F7B57";
-  const gold = a11y ? "#8B6A30" : GOLD;
+  const sub  = a11y ? "#6E5C3C" : "#9A865F";
+  const gold = a11y ? "#7A5D2A" : GOLD;
   return (
     <div style={{ textAlign:"center", padding:"18px 14px", borderRadius:14,
       border:`1px dashed ${a11y ? "rgba(150,112,40,0.38)" : "rgba(145,108,40,0.38)"}`,
@@ -103,10 +103,10 @@ export function resetHints() {
 export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef, anchorId,
                              step = 1, total = 1, onNext, onClose, style }) {
   const txt  = a11y ? "#2A2113" : "#EFE4C8";
-  // Крестик: было #6E5C3C / #8F7B57 — 4,4:1 и 3,7:1 (аудит подсказок 21.09).
+  // Крестик: было #6E5C3C / #9A865F — 4,4:1 и 3,7:1 (аудит подсказок 21.09).
   // Тот же цвет в EmptyState выше не трогаем — там он для текста, не для крестика.
   const sub  = a11y ? "#5E4E30" : "#A8966F";
-  const gold = a11y ? "#8B6A30" : GOLD;
+  const gold = a11y ? "#7A5D2A" : GOLD;
   // У привязанной подсказки контраст создаёт затемнение вокруг цели.
   // У страничной его нет — и на светлой теме кремовый пузырь лежал на
   // кремовом фоне почти незаметно. Ей нужен более плотный фон и заметная
@@ -436,7 +436,7 @@ export function LiquidSegment({
   const drag = React.useRef(null);
   const dragEndAt = React.useRef(0);
   const acc = accent || (a11y ? "#6B4E1A" : GOLD);
-  const dim = muted || (a11y ? "#5C3D10" : "#9A8060");
+  const dim = muted || (a11y ? "#5C3D10" : "#7A654C");
   const canDrag = !scroll; // в скролл-лентах горизонтальный жест — это прокрутка
 
   const measure = React.useCallback(() => {

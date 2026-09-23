@@ -110,6 +110,8 @@ export const A = {
   app:        { ...S.app, background:`radial-gradient(130% 80% at 50% -5%, rgba(255,251,240,0.9) 0%, rgba(255,251,240,0) 55%), ${SAND}`, fontFamily:"Georgia, serif" },
   phone:      { ...S.phone, background:"transparent" },
   screen:     { ...S.screen, background:"transparent" },
+  // Логотип в светлой теме — тёмное золото: #C8A050 на креме даёт 1,8 (правка 170)
+  logoText: { ...S.logoText, color:"#765E2F" },
 
   a11yBar:    { ...S.a11yBar, background:"transparent", borderBottom:"1px solid rgba(160,120,60,0.25)" },
   a11yLabel:  { ...S.a11yLabel, color:BROWN, fontSize:12 },
@@ -132,13 +134,13 @@ export const A = {
   progLabel:  { ...S.progLabel, color:INK, fontSize:16 },
   progBar:    { ...S.progBar, background:"rgba(160,120,60,0.15)" },
   progSub:    { ...S.progSub, color:BROWN, fontSize:14 },
-  secTitle:   { ...S.secTitle, color:"#9A8060", fontSize:13, fontWeight:"normal" },
+  secTitle:   { ...S.secTitle, color:"#6D5A40", fontSize:13, fontWeight:"normal" },   // 4,5 на креме (правка 170)
 
   modList:    { ...S.modList, gap:10 },
   modCard:    { ...S.modCard, background:"rgba(250,242,222,0.60)", border:"1px solid rgba(139,106,48,0.35)", boxShadow:"inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 14px rgba(120,90,30,0.10)" },
   modIcon:    { ...S.modIcon, background:"transparent" },
   modTitle:   { ...S.modTitle, color:INK, fontSize:17, fontWeight:"bold" },
-  modSub:     { ...S.modSub, color:BROWN, fontSize:15 },
+  modSub:     { ...S.modSub, color:"#6D5A40", fontSize:15 },   // 4,5 на креме (правка 172)
   modArrow:   { ...S.modArrow, color:CLAY },
   modTag:     { ...S.modTag, fontSize:13 },
 
@@ -170,7 +172,7 @@ export const A = {
   doneBtn:    { ...S.doneBtn, fontSize:17, padding:"16px", border:"1px solid rgba(160,120,60,0.3)", color:"#fff", boxShadow:"0 4px 20px rgba(100,70,20,0.2), inset 0 1px 0 rgba(255,220,140,0.2)" },
 
   quizWrap:      { ...S.quizWrap, background:"transparent" },
-  quizProgress:  { ...S.quizProgress, color:"#9A8060", fontSize:14 },
+  quizProgress:  { ...S.quizProgress, color:"#7A654C", fontSize:14 },
   quizQ:         { ...S.quizQ, color:INK, fontSize:18, lineHeight:1.9 },
   quizOpt:       { ...S.quizOpt, background:"rgba(250,242,222,0.55)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", boxShadow:"inset 0 0 18px rgba(255,250,235,0.5), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset", color:INK, fontSize:16, padding:"14px 16px",  },
   explain:       { ...S.explain, color:INK, background:"rgba(235,220,192,0.75)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.20)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },

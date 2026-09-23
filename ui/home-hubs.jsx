@@ -35,7 +35,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
   // сотрудника и руководителя.
   const [hint, hintDone] = useHintOnce(hintKey || "hub", !!hintKey && !!(hintSteps || []).length);
   const [hstep, setHstep] = React.useState(0);
-  const gold = a11y ? "#8B6A30" : "#D2A85A";
+  const gold = a11y ? "#7A5D2A" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
   const sub = T.modSub?.color || (a11y ? "#6B5B40" : "#9C8760");
   // «Морозный след»: иней без блюра
@@ -99,7 +99,7 @@ export const frostOf = (a11y) => ({
     ? "inset 0 0 26px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(120,85,25,0.14)"
     : "inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.45)",
 });
-const tagStyle = (a11y) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9, letterSpacing: 1.6, color: a11y ? "#8B6A30" : "#D2A85A" });
+const tagStyle = (a11y) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9, letterSpacing: 1.6, color: a11y ? "#7A5D2A" : "#D2A85A" });
 
 /** Скелет карточки — пока данные едут (мерцание из css: .sa-skel). */
 export function SkeletonCard({ a11y, h = 74, style }) {
@@ -116,7 +116,7 @@ export function ShiftHero({ a11y, onOpen }) {
   let label = null;
   try { const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null"); if (r && r.date === key && r.label) label = r.label; } catch (e) {}
   const off = label === "выходной";
-  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#8B6A30" : "#D2A85A";
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const go = () => { vibrate("light"); onOpen && onOpen(); };
   return (
     <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
@@ -147,7 +147,7 @@ export function ShiftHero({ a11y, onOpen }) {
 
 /** «Команда»: три лидера по среднему баллу тестов. */
 export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
-  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#8B6A30" : "#D2A85A";
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const mine = profile?.restaurant;
   const pool = mine ? leaderboard.filter(p => p.restaurant === mine) : leaderboard;
   const top = pool.slice(0, 3);
@@ -187,7 +187,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
 
 /** «Я»: кольцо прогресса роли, серия дней, счётчики. */
 export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen }) {
-  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#8B6A30" : "#D2A85A";
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const pct = total ? Math.round((done / total) * 100) : 0;
   const R = 26, C = 2 * Math.PI * R;
   const go = () => { vibrate("light"); onOpen && onOpen(); };

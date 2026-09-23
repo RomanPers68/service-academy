@@ -3,6 +3,7 @@
 // Вынесено из ui/screens.jsx БЕЗ изменения кода (barrel-разбиение);
 // публичный API остался в ui/screens.jsx — App.jsx не менялся.
 
+import { inkOf } from "../lib/tracks";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { KEYS, BADGES, teamRecords, badgesFor, loadLocal } from "../lib/achievements";
 import React from "react";
@@ -23,7 +24,7 @@ import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, goldText } from "./tokens";
 
 export function AchievementPopup({ ach, a11y, onClose }) {
   const [visible, setVisible] = React.useState(false);
@@ -99,8 +100,8 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
   const achivements = {
     seasonal: { title:"Новичок пройден!", badge:"Стажёр сервиса", desc:"Ты освоил базовые стандарты и готов к реальным сменам. Это только начало пути!", color:"#7C9E87" },
     core:     { title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Твои стандарты — пример для новичков.", color:GOLD },
-    manager:  { title:"Менеджер пройден!", badge:"Лидер зала", desc:"Управление командой, разрешение конфликтов, финансы — ты готов к большему.", color:"#8B7BAB" },
-    service_manager: { title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Ты прошёл весь путь. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
+    manager:  { title:"Менеджер пройден!", badge:"Лидер зала", desc:"Управление командой, разрешение конфликтов, финансы — впереди большее.", color:"#8B7BAB" },
+    service_manager: { title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Весь путь пройден. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
     bar: { title:"Бар пройден!", badge:"Мастер стойки", desc:"Станция, техника, продукт и гость за стойкой — всё твоё. Бар держится на таких людях.", color:GOLD },
     spg: { title:"Хостес пройдена!", badge:"Лицо ресторана", desc:"Ты — первое и последнее впечатление гостя. Встреча, поток и атмосфера у входа теперь твоя стихия.", color:"#C8917A" },
   };
@@ -155,7 +156,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
           <div style={{ background:"linear-gradient(135deg, rgba(212,168,90,0.15) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(212,168,90,0.4)", borderRadius:18, padding:"16px 20px", textAlign:"center" }}>
             <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{crownIcon(GOLD_SOFT, 32)}</div>
             <div style={{ color:GOLD_SOFT, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>Мастер сервиса</div>
-            <div style={{ color:"#8A8070", fontSize:12.5, lineHeight:1.6 }}>Ты прошёл весь путь Service Academy. Теперь ты — архитектор сервиса.</div>
+            <div style={{ color:"#8A8070", fontSize:12.5, lineHeight:1.6 }}>Весь путь Service Academy пройден. Теперь ты — архитектор сервиса.</div>
           </div>
         </div>
       )}
@@ -164,7 +165,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
         <button
           onClick={onExam}
           className="sa-btn sa-btn-pulse"
-          style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"none", background:"linear-gradient(135deg, #D2A85A 0%, #8B6A30 100%)", color:"#1A1008", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3, marginBottom:12 }}
+          style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"none", background:"linear-gradient(135deg, #D2A85A 0%, #7A5D2A 100%)", color:"#1A1008", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3, marginBottom:12 }}
         >
           🎓 Сдать экзамен роли
         </button>
@@ -196,7 +197,7 @@ export function WeekStar({ weekly, T }) {
     <div style={wrap}>
       <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} СОТРУДНИК НЕДЕЛИ</div>
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #8B6A30)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#FBF7EE", 24)}</div>
+        <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #7A5D2A)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#FBF7EE", 24)}</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ ...T.modTitle, fontSize:16 }}>{top.name} {top.surname}</div>
           <div style={{ color:T.modSub.color, fontSize:12.5 }}>{top.restaurant || ""}</div>
@@ -394,7 +395,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
             itemStyle={{ fontFamily:"Georgia, serif", fontSize:11, fontWeight:"bold", padding:"9px 13px", whiteSpace:"nowrap" }}
             items={visibleTabs.map(t => ({ id: t.id, render: (active) => (
               <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:4, whiteSpace:"nowrap", maxWidth:"100%" }}>
-                {POS_SVG[t.id] ? POS_SVG[t.id](active ? (T.a11y ? "#6B4E1A" : GOLD) : (T.a11y ? "#5C3D10" : "#9A8060"), 13) : null}{t.label}
+                {POS_SVG[t.id] ? POS_SVG[t.id](active ? (T.a11y ? "#6B4E1A" : GOLD) : (T.a11y ? "#5C3D10" : "#7A654C"), 13) : null}{t.label}
               </span>
             ) }))}
             activeId={tab}
@@ -409,7 +410,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           <div className="sa-card" style={{ padding:"12px 14px", marginBottom:12, borderRadius:14, border:`1px solid ${GOLD}55`, background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.07)" }}>
             <div onClick={() => setShowRec(v => !v)} {...onActivate(() => setShowRec(v => !v))} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
               <div>
-                <div style={{ fontSize:11, letterSpacing:1.6, color:GOLD, fontFamily:"monospace" }}>РЕКОРДЫ КОМАНДЫ</div>
+                <div style={{ fontSize:11, letterSpacing:1.6, color: goldText(!!T.a11y), fontFamily:"monospace" }}>РЕКОРДЫ КОМАНДЫ</div>
                 <div style={{ fontSize:12.5, color:T.modSub.color, marginTop:2 }}>{records ? Object.values(records).flat().length ? `Лидеры по ${Object.values(records).filter(l => l.length).length} дисциплинам` : "Пока пусто — первый рекорд твой" : recErr ? "Нужен stage14 на сервере" : "Загружаю…"}{myBadges.length ? ` · твоих ачивок ${myBadges.length}` : ""}</div>
               </div>
               <span style={{ color:GOLD, fontSize:18, transform: showRec ? "rotate(90deg)" : "none", transition:"transform .2s" }}>›</span>
@@ -535,7 +536,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   );
 }
 
-export function DailyScreen({ T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson, mistakeTopics }) {
+export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson, mistakeTopics }) {
   const [dyHint, dyHintDone] = useHintOnce("daily");
   const [dyStep, setDYStep] = React.useState(0);
   const dySteps = hintsFor("daily");
@@ -617,7 +618,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
 
         {/* Дата */}
         <div style={{ textAlign:"center", marginBottom:16 }}>
-          <div style={{ color:GOLD, fontSize:12.5, letterSpacing:2, fontFamily:"monospace" }}>{today}</div>
+          <div style={{ color: goldText(a11y), fontSize:12.5, letterSpacing:2, fontFamily:"monospace" }}>{today}</div>
           <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:4 }}>3 задания обновляются каждый день</div>
         </div>
 
@@ -628,10 +629,10 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
             </div>
             <div style={{ flex:1 }}>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                <div style={{ color:"rgba(200,160,80,0.6)", fontSize:9, letterSpacing:2, fontFamily:"monospace" }}>СПРАВОЧНИК · {refTask.type === "quiz" ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
+                <div style={{ color: goldText(a11y), fontSize:9, letterSpacing:2, fontFamily:"monospace", opacity: a11y ? 1 : 0.85 }}>СПРАВОЧНИК · {refTask.type === "quiz" ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
               </div>
               <div style={{ ...T.modTitle, fontSize:14 }}>{refTask.title}</div>
-              <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:2 }}>Курс: Сервировка</div>
+              <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:2 }}>Курс: {refTask.course || "Справочник"}</div>
             </div>
             <div style={{ color:GOLD, fontSize:18, flexShrink:0 }}>›</div>
           </div>
@@ -654,7 +655,7 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
               <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{isDone ? UI_SVG.checkCircle(GREEN, 26) : (UI_SVG[taskTypeIcon[task.type]] || UI_SVG.book)(GOLD, 26)}</div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                  <div style={{ color:"rgba(200,160,80,0.6)", fontSize:9, letterSpacing:2, fontFamily:"monospace" }}>ЗАДАНИЕ {i+1} · {taskTypeLabel[task.type] || "Урок"}</div>
+                  <div style={{ color: goldText(a11y), fontSize:9, letterSpacing:2, fontFamily:"monospace", opacity: a11y ? 1 : 0.85 }}>ЗАДАНИЕ {i+1} · {taskTypeLabel[task.type] || "Урок"}</div>
                 </div>
                 <div style={{ ...T.modTitle, fontSize:14 }}>{task.title}</div>
                 <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:2 }}>{task.mod?.title}</div>
@@ -677,6 +678,10 @@ export function DailyScreen({ T, profile, completed, quizDone, role, modules, on
 }
 
 export function PlayerDetailScreen({ player, T, onBack }) {
+  // Подсказка экрана — один раз при первом входе (правка 171)
+  const [pdHint, pdHintDone] = useHintOnce("playerDetail");
+  const [pdStep, setPDStep] = React.useState(0);
+  const pdSteps = hintsFor("playerDetail");
   const [progress, setProgress] = React.useState([]);
   const [scores, setScores] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -762,6 +767,12 @@ export function PlayerDetailScreen({ player, T, onBack }) {
 
   return (
     <div style={T.screen}>
+      {pdHint && pdSteps.length ? (
+        <HintBubble a11y={!!T.a11y} text={pdSteps[pdStep]} arrow="up"
+          step={pdStep + 1} total={pdSteps.length}
+          onNext={pdStep >= pdSteps.length - 1 ? null : () => setPDStep(v => v + 1)}
+          onClose={pdHintDone} />
+      ) : null}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.barChart(GOLD, 18)} {player.name} {player.surname}</div>
@@ -788,7 +799,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
             </div>
 
             {/* Прогресс по ролям */}
-            <div style={{ color: T.secTitle?.color || "#9A8060", fontSize:11, letterSpacing:3, marginBottom:10, fontFamily:"monospace" }}>ПРОГРЕСС ПО РОЛЯМ</div>
+            <div style={{ color: T.secTitle?.color || "#7A654C", fontSize:11, letterSpacing:3, marginBottom:10, fontFamily:"monospace" }}>ПРОГРЕСС ПО РОЛЯМ</div>
             {Object.entries(roleNames).map(([roleId, roleName]) => {
               const lessonCount = byRole[roleId] || 0;
               const quizCount = quizByRole[roleId] || 0;
@@ -815,7 +826,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
             {/* Последние тесты */}
             {scores.length > 0 && (
               <>
-                <div style={{ color: T.secTitle?.color || "#9A8060", fontSize:11, letterSpacing:3, margin:"16px 0 10px", fontFamily:"monospace" }}>ПОСЛЕДНИЕ ТЕСТЫ</div>
+                <div style={{ color: T.secTitle?.color || "#7A654C", fontSize:11, letterSpacing:3, margin:"16px 0 10px", fontFamily:"monospace" }}>ПОСЛЕДНИЕ ТЕСТЫ</div>
                 {uniqueScores.sort((a,b) => (b.score/b.total) - (a.score/a.total)).map((s, i) => {
                   const pct = Math.round(s.score / s.total * 100);
                   return (
@@ -938,7 +949,7 @@ export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlaye
   );
 }
 
-export function StatsScreen({ T, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
+export function StatsScreen({ T, a11y, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const STAT_ROLES = ["spg", "bar", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
@@ -979,7 +990,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
 
         {/* Профиль */}
         <div style={{ ...T.modCard, marginBottom:12, gap:12 }}>
-          <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:"bold", color:GOLD, fontFamily:"Georgia, serif", flexShrink:0 }}>
+          <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:"bold", color: goldText(a11y), fontFamily:"Georgia, serif", flexShrink:0 }}>
             {profile?.is_admin ? UI_SVG.crown(GOLD, 24) : `${profile?.name?.[0]}${(profile?.surname||"")[0]||""}`.toUpperCase()}
           </div>
           <div>
@@ -989,7 +1000,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
             {(() => { const bs = bookStats(MODULES, completed, quizDone, examResults); return (
               <div ref={stRefRank} style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, border:`1px solid ${GOLD}55`, background:"rgba(200,169,110,0.08)", borderRadius:12, padding:"3px 9px" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="1.6"/></svg>
-                <span style={{ color:GOLD, fontSize:11, fontWeight:"bold" }}>{bs.rank.label}</span>
+                <span style={{ color: goldText(a11y), fontSize:11, fontWeight:"bold" }}>{bs.rank.label}</span>
                 <span style={{ color:T.modSub.color, fontSize:9 }}>· {bs.pages} стр.</span>
               </div>
             ); })()}
@@ -999,16 +1010,16 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
         {/* Ключевые цифры */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
           {[
-            { label:"Средний балл", value:`${avgScore}%`, icon:"target", color:GOLD },
+            { label:"Средний балл", value:`${avgScore}%`, icon:"target", color: goldText(a11y) },
             { label:"Тестов пройдено", value:totalTests, icon:"quiz", color:"#7C9E87" },
             { label:"На 100%", value:perfect, icon:"diamond", color:"#8B7BAB" },
             { label:"Звёзды практики", value: myStars, icon:"star", color:"#E8A020" },
             { label:"Уроков пройдено", value:completedLessons, icon:"book", color:"#7B8FAB" },
-            { label:"Ролей завершено", value:`${rolesCompleted}/4`, icon:"gradcap", color:GOLD },
+            { label:"Ролей завершено", value:`${rolesCompleted}/4`, icon:"gradcap", color: goldText(a11y) },
           ].map((s, i) => (
             <div key={i} ref={s.label === "Ролей завершено" ? stRefRoles : undefined} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon](s.color, 22) : s.icon}</div>
-              <div style={{ color:s.color, fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 10 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
+              <div style={{ color: inkOf(s.color, a11y), fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 10 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
               <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15 }}>{s.label}</div>
             </div>
           ))}
@@ -1035,7 +1046,7 @@ export function StatsScreen({ T, profile, scores, completedRoles, completed, qui
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
                   <div style={{ ...T.modTitle, fontSize: T.modTitle?.fontSize || 17 }}>{roleLabel[r]}</div>
-                  <div style={{ color:roleColor[r], fontSize: T.modSub?.fontSize || 15, fontWeight:"bold" }}>
+                  <div style={{ color: inkOf(roleColor[r], a11y), fontSize: T.modSub?.fontSize || 15, fontWeight:"bold" }}>
                     {done ? "✓ Завершено" : hasAnyProgress ? `${displayPct}%` : "Не начато"}
                   </div>
                 </div>
@@ -1220,7 +1231,7 @@ export function ProfileScreen({ onDone, T }) {
                 style={{ ...PS.fieldBase, ...(position ? PS.fieldFocus : PS.fieldNormal),
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                   cursor:"pointer", userSelect:"none" }}>
-                <span style={{ color: position ? CREAM : "#9A8060", fontSize:14 }}>
+                <span style={{ color: position ? CREAM : "#7A654C", fontSize:14 }}>
                   {position ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{(() => { const ic = POS_SVG[position === "senior_bartender" ? "bartender" : position]; return ic ? ic(GOLD, 16) : null; })()}{({waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав"})[position]}</span> : "Выбери должность"}
                 </span>
                 <span style={{ color:"#C8A96E", fontSize:14, transition:"transform 0.2s", display:"inline-block", transform: showPositionSheet ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
@@ -1241,7 +1252,7 @@ export function ProfileScreen({ onDone, T }) {
                         border: position === pos.id ? "1px solid rgba(200,160,80,0.45)" : "1px solid rgba(150,112,42,0.20)",
                         borderTop: position === pos.id ? "1px solid rgba(220,175,75,0.55)" : "1px solid rgba(180,140,50,0.15)",
                         boxShadow: position === pos.id ? "0 4px 14px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.15) inset" : "0 2px 8px rgba(0,0,0,0.25)" }}>
-                      <div style={{ display:"flex", alignItems:"center" }}>{POS_SVG[pos.id] ? POS_SVG[pos.id](position === pos.id ? GOLD : "#9A8060", 22) : pos.icon}</div>
+                      <div style={{ display:"flex", alignItems:"center" }}>{POS_SVG[pos.id] ? POS_SVG[pos.id](position === pos.id ? GOLD : "#7A654C", 22) : pos.icon}</div>
                       <div style={{ flex:1 }}>
                         <div style={{ color: position === pos.id ? CREAM : "#A89880", fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{pos.label}</div>
                         <div style={{ color:MUTED_2, fontSize:11, marginTop:2 }}>{pos.sub}</div>

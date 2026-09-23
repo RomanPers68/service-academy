@@ -239,7 +239,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   };
   const chip = (active) => ({
     padding:"8px 13px", borderRadius:18, fontSize:12.5, fontFamily:"Georgia, serif", cursor:"pointer",
-    border: active ? (a11y ? "1.5px solid #8B6A30" : "1px solid #C8A96E") : (a11y ? "1px solid rgba(160,120,60,0.4)" : "1px solid rgba(200,160,80,0.3)"),
+    border: active ? (a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E") : (a11y ? "1px solid rgba(160,120,60,0.4)" : "1px solid rgba(200,160,80,0.3)"),
     background: active ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.12)") : "transparent",
     boxShadow: active ? (a11y
       ? "inset 0 0 12px rgba(255,255,255,0.4), inset 0 1px 0 rgba(255,255,255,0.8)"
@@ -251,14 +251,14 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const goldBtn = {
     padding:"14px", borderRadius:14, border:"none", width:"100%",
     fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
-    color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
+    color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)",
     boxShadow:"0 4px 18px rgba(200,160,80,0.25)"
   };
   const ghostBtn = {
     padding:"13px", borderRadius:14, width:"100%", cursor:"pointer",
     border: a11y ? "1px solid rgba(139,106,48,0.55)" : "1px solid rgba(200,160,80,0.4)",
     background:"transparent",
-    color: a11y ? "#8B6A30" : GOLD, fontSize:14, fontFamily:"Georgia, serif"
+    color: a11y ? "#7A5D2A" : GOLD, fontSize:14, fontFamily:"Georgia, serif"
   };
 
   // ── Сводка ──
@@ -383,7 +383,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
           <div style={{ ...T.modCard, gap:12, marginBottom:12 }}>
             <div style={{ width:50, height:50, borderRadius:"50%", flexShrink:0,
-              background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
+              background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)",
               display:"flex", alignItems:"center", justifyContent:"center" }}>
               <span style={{ color:"#fff", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
                 {selected.is_admin ? UI_SVG.crown("#fff", 22) : `${selected.name?.[0] || ""}${(selected.surname||"")[0]||""}`.toUpperCase()}
@@ -520,7 +520,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           </div>
           <button className="sa-btn" onClick={() => { setActionError(null); setView("add"); }}
             style={{ padding:"9px 16px", borderRadius:18, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
-              color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", boxShadow:"0 3px 12px rgba(200,160,80,0.3)" }}>
+              color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", boxShadow:"0 3px 12px rgba(200,160,80,0.3)" }}>
             + Добавить
           </button>
         </div>
@@ -693,7 +693,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         disabled={busy}
         style={{ marginTop:20, width:"100%", maxWidth:280, padding:"15px", borderRadius:14, border:"none",
           fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor: busy ? "default" : "pointer",
-          color:"#fff", background: busy ? "rgba(200,169,110,0.4)" : "linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)",
+          color:"#fff", background: busy ? "rgba(200,169,110,0.4)" : "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)",
           boxShadow:"0 4px 18px rgba(200,160,80,0.3)" }}>
         {busy ? "Проверяем..." : "Войти"}
       </button>
@@ -765,7 +765,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
       ) : null}
       <div style={{ flex:1, padding:"20px 18px 40px" }}>
         <div ref={acRefCard} style={{ ...T.modCard, gap:12, marginBottom:12 }}>
-          <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #8B6A30 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
+          <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
             <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown("#fff", 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
             </span>

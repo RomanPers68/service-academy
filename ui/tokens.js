@@ -15,12 +15,12 @@ export const SAND_DEEP = "#DDD4C4";
 export const PAPER = "#FBF5E8";
 export const INK = "#2A1F0E";
 export const INK_DEEP = "#1A1008";
-export const BROWN = "#7A6548";
+export const BROWN = "#735F44";
 export const BROWN_GOLD = "#6B4A10";
 export const BROWN_NOTE = "#4A3010";
 export const MUTED = "#948872";
-export const MUTED_2 = "#756A58";
-export const MUTED_3 = "#686050";
+export const MUTED_2 = "#918879";
+export const MUTED_3 = "#A29679";   // контраст 4,5 на карточках (правка 170; было #686050 — 2,5)
 export const CLAY = "#B09060";
 export const BG_DARK = "#14110A";
 export const PANEL = "#141210";
@@ -36,9 +36,13 @@ export const RADIUS = { sm: 12, md: 14, lg: 18, xl: 22, pill: 999 };
 // она открывает. Пока цвет задавался в двух местах, кнопка обещала сиреневый
 // глоссарий, а открывался золотой. Здесь и только здесь.
 export const TOOL_COLOR = {
-  sp:   { dark: GOLD,      light: "#8B6A30" },   // Справочник
+  sp:   { dark: GOLD,      light: "#7A5D2A" },   // Справочник
   menu: { dark: "#8FB890", light: "#4E7A58" },   // Меню
   gl:   { dark: "#9B8FC4", light: "#5F5490" },   // Глоссарий
 };
 export const toolColor = (key, a11y) =>
   (TOOL_COLOR[key] || TOOL_COLOR.sp)[a11y ? "light" : "dark"];
+
+// Золото как ЦВЕТ НАДПИСИ (правка 170): на креме #C8A96E даёт контраст 1,7–1,9 —
+// в светлой теме берём тёмное золото. Для иконок, рамок и полос цвет прежний.
+export const goldText = (light) => light ? "#7A5A1E" : GOLD;

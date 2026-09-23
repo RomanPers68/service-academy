@@ -171,7 +171,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
               </div>
             ))}
             <button onClick={dAdd} style={{ width:"100%", padding:"12px", borderRadius:12, border:`1.5px dashed ${C.gold}`, background:"transparent", color:C.gold, fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", marginTop:2 }}>+ Добавить пункт</button>
-            <button onClick={saveEdit} disabled={saving} style={{ width:"100%", marginTop:12, padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C8A96E,#8B6A30)", color:"#fff", fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Сохраняю…":"Сохранить чек-лист"}</button>
+            <button onClick={saveEdit} disabled={saving} style={{ width:"100%", marginTop:12, padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C8A96E,#7A5D2A)", color:"#fff", fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Сохраняю…":"Сохранить чек-лист"}</button>
           </>
         ) : (
           <>
@@ -200,7 +200,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
         )}
       </div>
 
-      {toast && <div style={{ position:"fixed", bottom:100, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg,#C8A96E,#8B6A30)", color:"#fff", padding:"11px 20px", borderRadius:14, fontWeight:"bold", fontFamily:serif, fontSize:14, zIndex:60 }}>{toast}</div>}
+      {toast && <div style={{ position:"fixed", bottom:100, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg,#C8A96E,#7A5D2A)", color:"#fff", padding:"11px 20px", borderRadius:14, fontWeight:"bold", fontFamily:serif, fontSize:14, zIndex:60 }}>{toast}</div>}
     </div>
   );
 }
@@ -227,6 +227,10 @@ export const DEFAULT_ONBOARDING = [
 export const ONB_TOTAL = DEFAULT_ONBOARDING.reduce((n,p)=>n+p.steps.length,0);
 
 export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
+  // Подсказка экрана — один раз при первом входе (правка 171)
+  const [obHint, obHintDone] = useHintOnce("onboarding");
+  const [obStep, setOBStep] = React.useState(0);
+  const obSteps = hintsFor("onboarding");
   const C = moodPalette(a11y);
   const serif = "Georgia, 'Times New Roman', serif";
   const isLeader = !!(profile && (profile.is_admin || ["manager","senior"].includes(profile.position)));
@@ -258,6 +262,12 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
 
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
+      {obHint && obSteps.length ? (
+        <HintBubble a11y={a11y} text={obSteps[obStep]} arrow="up"
+          step={obStep + 1} total={obSteps.length}
+          onNext={obStep >= obSteps.length - 1 ? null : () => setOBStep(v => v + 1)}
+          onClose={obHintDone} />
+      ) : null}
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
         <div onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:18, fontWeight:"bold" }}>{isNew && view==="me" ? "Первая неделя" : "Новички на онбординге"}</div>
@@ -267,7 +277,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
         <div style={{ padding:"0 14px", marginBottom:12 }}>
           <div style={{ display:"flex", gap:4, padding:4, borderRadius:12, background:a11y?"rgba(140,105,40,0.12)":"rgba(160,120,60,0.14)" }}>
             {[["me","Мой путь"],["mentor","Новички"]].map(([k,label])=>(
-              <button key={k} onClick={()=>setView(k)} style={{ flex:1, padding:"8px 0", borderRadius:9, border:"none", fontFamily:serif, fontSize:12.5, fontWeight:"bold", cursor:"pointer", background:view===k?"linear-gradient(135deg,#C8A96E,#8B6A30)":"transparent", color:view===k?"#fff":C.muted }}>{label}</button>
+              <button key={k} onClick={()=>setView(k)} style={{ flex:1, padding:"8px 0", borderRadius:9, border:"none", fontFamily:serif, fontSize:12.5, fontWeight:"bold", cursor:"pointer", background:view===k?"linear-gradient(135deg,#C8A96E,#7A5D2A)":"transparent", color:view===k?"#fff":C.muted }}>{label}</button>
             ))}
           </div>
         </div>
@@ -280,7 +290,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
               <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>Добро пожаловать в команду 👋</div>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:12 }}>
                 <div style={{ flex:1, height:8, borderRadius:6, background:trackBg, overflow:"hidden" }}>
-                  <div style={{ width:`${pct}%`, height:"100%", borderRadius:6, background:"linear-gradient(90deg,#C8A96E,#8B6A30)", transition:"width .3s" }} />
+                  <div style={{ width:`${pct}%`, height:"100%", borderRadius:6, background:"linear-gradient(90deg,#C8A96E,#7A5D2A)", transition:"width .3s" }} />
                 </div>
                 <span style={{ color:C.gold, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>{pct}%</span>
               </div>
@@ -312,7 +322,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
             ) : list.map((h,i)=>{ const tot=h.total||ONB_TOTAL; const p=Math.round(((h.checked||0)/tot)*100); const ini=((h.name||"?")[0]||"")+((h.surname||"")[0]||""); return (
               <div key={i} style={{ ...card, padding:"14px 16px", marginBottom:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                  <div style={{ width:40, height:40, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#8B6A30)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:serif, fontWeight:"bold", fontSize:14 }}>{ini.toUpperCase()}</div>
+                  <div style={{ width:40, height:40, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#7A5D2A)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:serif, fontWeight:"bold", fontSize:14 }}>{ini.toUpperCase()}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ color:C.text, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>{h.name} {h.surname||""}</div>
                     <div style={{ color:C.muted, fontSize:12.5 }}>{h.restaurant||""}</div>
@@ -320,7 +330,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
                   <span style={{ color:C.gold, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>{p}%</span>
                 </div>
                 <div style={{ height:6, borderRadius:3, background:trackBg, overflow:"hidden", marginTop:10 }}>
-                  <div style={{ width:`${p}%`, height:"100%", background:"linear-gradient(90deg,#C8A96E,#8B6A30)" }} />
+                  <div style={{ width:`${p}%`, height:"100%", background:"linear-gradient(90deg,#C8A96E,#7A5D2A)" }} />
                 </div>
               </div>
             ); })}
@@ -394,6 +404,10 @@ function liveRowsOf(rows, loaded, titles) {
 }
 
 export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
+  // Подсказка экрана — один раз при первом входе (правка 171)
+  const [anHint, anHintDone] = useHintOnce("analytics");
+  const [anStep, setANStep] = React.useState(0);
+  const anSteps = hintsFor("analytics");
   const [cmsTitles, setCmsTitles] = React.useState({});   // свои уроки: номер шага → название
   const [cmsLoaded, setCmsLoaded] = React.useState(false);  // список своих уроков пришёл (правка 166)
   const C = moodPalette(a11y);
@@ -569,6 +583,12 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
 
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
+      {anHint && anSteps.length ? (
+        <HintBubble a11y={a11y} text={anSteps[anStep]} arrow="up"
+          step={anStep + 1} total={anSteps.length}
+          onNext={anStep >= anSteps.length - 1 ? null : () => setANStep(v => v + 1)}
+          onClose={anHintDone} />
+      ) : null}
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 2px" }}>
         <div onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1 }}>
@@ -667,7 +687,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
         </>) : view === "retries" ? (<>
           <div style={{ ...G({ padding:"14px 14px", marginTop:8 }), display:"flex", gap:12, alignItems:"center" }}>
             <span style={{ width:48, height:48, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center",
-              background:"conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #8B6A30, #F4E2AE)", boxShadow: a11y ? "none" : "0 0 18px rgba(214,178,102,0.25)" }}>
+              background:"conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #7A5D2A, #F4E2AE)", boxShadow: a11y ? "none" : "0 0 18px rgba(214,178,102,0.25)" }}>
               <span style={{ width:41, height:41, borderRadius:"50%", display:"grid", placeItems:"center",
                 background: a11y ? "radial-gradient(circle at 35% 30%, #FFF8E8, #EADBB8)" : "radial-gradient(circle at 35% 30%, #4A3A20, #1E160A)" }}>{Icon.key(TN.gold, 21)}</span>
             </span>

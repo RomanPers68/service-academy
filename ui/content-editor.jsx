@@ -13,6 +13,8 @@
 //   • вопросы карточками: верный — тапом, пояснение, фото, порядок ↑↓;
 //   • черновик сам сохраняется на телефоне и восстанавливается;
 //   • «Как увидит сотрудник» — карточка раздела и текст урока, как в программе.
+import { hintsFor } from "../data/hints";
+import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { rpc, saToken } from "../api/supabase";
 import { TRACKS, trackOf, customIcon } from "../lib/tracks";
@@ -134,6 +136,10 @@ function serializeExtras(draft) {
 }
 
 export function ContentEditorScreen({ T, a11y, onBack }) {
+  // Подсказка экрана — один раз при первом входе (правка 171)
+  const [ceHint, ceHintDone] = useHintOnce("contentEditor");
+  const [ceStep, setCEStep] = React.useState(0);
+  const ceSteps = hintsFor("contentEditor");
   const dark = !a11y;
   const TN = tones(a11y);
   const gold = dark ? GOLD : "#6B4E14";
@@ -440,6 +446,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     }).filter(g => g.mine.length);
     return (
       <div style={T.screen}>
+      {ceHint && ceSteps.length ? (
+        <HintBubble a11y={a11y} text={ceSteps[ceStep]} arrow="up"
+          step={ceStep + 1} total={ceSteps.length}
+          onNext={ceStep >= ceSteps.length - 1 ? null : () => setCEStep(v => v + 1)}
+          onClose={ceHintDone} />
+      ) : null}
         {header("Редактор контента", onBack)}
         <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "12px 16px 44px" }}>
           <div style={{ color: muted, fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>Свои уроки под твой ресторан — сотрудники увидят их в своём треке рядом со штатными.</div>

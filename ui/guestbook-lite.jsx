@@ -17,7 +17,7 @@ export function countUnreadPages(completed, quizDone, examResults) {
   const read = loadRead();
   let n = 0;
   for (const [rid, mods] of Object.entries(bookModules(MODULES))) {   // и свои страницы (правка 167)
-    for (const m of (mods || [])) if (MODULE_REVIEWS[m.id] && moduleDone(m, completed, quizDone) && !read.includes(m.id)) n++;
+    for (const m of (mods || [])) if (reviewOf(m) && moduleDone(m, completed, quizDone) && !read.includes(m.id)) n++;
     if (LEGEND_REVIEWS[rid] && examResults?.[rid]?.passed && !read.includes("lg_" + rid)) n++;
   }
   return n;
@@ -57,11 +57,11 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
         border: lt ? "1px solid rgba(139,106,48,0.4)" : `1px solid ${GOLD}55`,
         boxShadow: lt ? "0 0 14px rgba(180,140,60,0.25)" : `0 0 18px ${GOLD}30` }}>📖</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ ...MONO, color: lt ? "#8B6A30" : GOLD_SOFT, fontSize: 9, letterSpacing: 2 }}>КНИГА ОТЗЫВОВ</div>
+        <div style={{ ...MONO, color: lt ? "#7A5D2A" : GOLD_SOFT, fontSize: 9, letterSpacing: 2 }}>КНИГА ОТЗЫВОВ</div>
         <div style={{ color: T?.modTitle?.color || "#F0E8D8", fontFamily: "Georgia, serif", fontSize: 14, marginTop: 2 }}>Гость оставил тебе новую страницу</div>
       </div>
       <button onClick={open} {...onActivate(open)} style={{ ...MONO, flexShrink: 0, fontSize: 9, letterSpacing: 1.5, color: lt ? "#FBF7EE" : "#1A1008",
-        background: `linear-gradient(135deg, ${lt ? "#A8823E" : GOLD} 0%, #8B6A30 100%)`, border: "none", borderRadius: 14, padding: "9px 13px",
+        background: `linear-gradient(135deg, ${lt ? "#A8823E" : GOLD} 0%, #7A5D2A 100%)`, border: "none", borderRadius: 14, padding: "9px 13px",
         cursor: "pointer", boxShadow: lt ? "0 4px 12px rgba(139,106,48,0.3)" : "0 4px 14px rgba(200,160,80,0.35)" }}>ЧИТАТЬ ›</button>
       <button onClick={dismiss} {...onActivate(dismiss)} aria-label="Скрыть"
         style={{ background: "none", border: "none", color: lt ? "rgba(120,90,40,0.6)" : "rgba(200,169,110,0.55)", fontSize: 14, lineHeight: 1, padding: "4px 2px", cursor: "pointer", flexShrink: 0 }}>✕</button>

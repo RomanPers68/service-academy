@@ -77,7 +77,7 @@ const GUIDE = [
 ];
 
 export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
-  const gold = a11y ? "#8B6A30" : "#D2A85A";
+  const gold = a11y ? "#7A5D2A" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
   const sub = T.modSub?.color || (a11y ? "#6B5B40" : "#9C8760");
   const staff = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);

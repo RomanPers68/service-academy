@@ -211,7 +211,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 // ── Корень раздела ──
 export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent }) {
   // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
-  const gold = accent || (a11y ? "#8B6A30" : GOLD);
+  const gold = accent || (a11y ? "#7A5D2A" : GOLD);
   const [rHint, rHintDone] = useHintOnce("reference");
   const [rStep, setRStep] = React.useState(0);
   const rSteps = hintsFor("reference");

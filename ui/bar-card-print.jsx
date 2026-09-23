@@ -1,3 +1,5 @@
+import { hintsFor } from "../data/hints";
+import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
@@ -12,7 +14,11 @@ import { CocktailArt } from "./cocktail-art";
 // тогда «Скопировать текстом»: тот же лист в буфер, вставить в заметки или сообщение.
 
 export function BarCardPrint({ T, a11y, profile, onBack }) {
-  const gold = a11y ? "#8B6A30" : GOLD; const text = T.modTitle.color, sub = T.modSub.color;
+  // Подсказка экрана — один раз при первом входе (правка 171)
+  const [bpHint, bpHintDone] = useHintOnce("barPrint");
+  const [bpStep, setBPStep] = React.useState(0);
+  const bpSteps = hintsFor("barPrint");
+  const gold = a11y ? "#7A5D2A" : GOLD; const text = T.modTitle.color, sub = T.modSub.color;
   const restaurant = profile?.restaurant || "";
   const shared = cachedShared(restaurant); const card = readBarcard(shared);
   const all = [...houseCocktails(shared).filter(isFullCocktail), ...COCKTAILS];
@@ -55,8 +61,8 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
         x2.globalAlpha = 0.85; x2.fillRect(bx, by + bh - lh, bw, lh); x2.globalAlpha = 1;
         if (c.ice) { x2.fillStyle = "rgba(255,255,255,0.55)"; for (let i = 0; i < 3; i++) x2.fillRect(bx + 6 + i * (bw / 3.2), by + bh - lh + 4 + i * 6, bw / 4, bw / 4); }
         x2.restore();
-        x2.strokeStyle = "#8B6A30"; x2.lineWidth = 2.4; x2.lineJoin = "round"; x2.lineCap = "round"; x2.stroke(new Path2D(full));
-        if (c.garnish && c.garnish !== "none") { x2.beginPath(); x2.arc(box[0] + box[2] - 4, Math.max(14, box[1] - 2), 8, 0, 7); x2.fillStyle = c.garnish === "cherry" ? "#C4483A" : /mint|olive/.test(c.garnish) ? "#7FA05A" : c.garnish === "cream" ? "#EFE4C8" : "#E2A63A"; x2.fill(); x2.strokeStyle = "#8B6A30"; x2.lineWidth = 1.2; x2.stroke(); }
+        x2.strokeStyle = "#7A5D2A"; x2.lineWidth = 2.4; x2.lineJoin = "round"; x2.lineCap = "round"; x2.stroke(new Path2D(full));
+        if (c.garnish && c.garnish !== "none") { x2.beginPath(); x2.arc(box[0] + box[2] - 4, Math.max(14, box[1] - 2), 8, 0, 7); x2.fillStyle = c.garnish === "cherry" ? "#C4483A" : /mint|olive/.test(c.garnish) ? "#7FA05A" : c.garnish === "cream" ? "#EFE4C8" : "#E2A63A"; x2.fill(); x2.strokeStyle = "#7A5D2A"; x2.lineWidth = 1.2; x2.stroke(); }
         x2.restore();
       };
       const probe = document.createElement("canvas").getContext("2d");
@@ -118,6 +124,12 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
   };
   return (
     <div style={T.screen} className="sa-screen">
+      {bpHint && bpSteps.length ? (
+        <HintBubble a11y={a11y} text={bpSteps[bpStep]} arrow="up"
+          step={bpStep + 1} total={bpSteps.length}
+          onNext={bpStep >= bpSteps.length - 1 ? null : () => setBPStep(v => v + 1)}
+          onClose={bpHintDone} />
+      ) : null}
       <style>{`@media print { body * { visibility: hidden !important; } #sa-print, #sa-print * { visibility: visible !important; } #sa-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; color: #1A1008 !important; background: #fff !important; } #sa-print .sa-noprint { display: none !important; } #sa-print .sa-pcard { break-inside: avoid; border-bottom: 1px solid #ccc; } }`}</style>
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }} className="sa-noprint">
         <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>

@@ -272,7 +272,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
           <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`${dColor}1e`, border:`1px solid ${dColor}55`, display:"flex", alignItems:"center", justifyContent:"center", color:dColor, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14 }}>{(dialogue.guest.name || "?").trim()[0].toUpperCase()}</div>
           <div style={{ flex:1 }}>
             <div style={{ color: T.modTitle?.color || CREAM, fontSize: T.modTitle?.fontSize || 15, fontWeight:"bold" }}>{dialogue.guest.name}</div>
-            <div style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
+            <div style={{ color: T.modSub?.color || "#7A654C", fontSize: T.modSub?.fontSize ? T.modSub.fontSize - 2 : 12 }}>{dialogue.title}</div>
           </div>
           <div style={{ color: T.modTitle?.color || BROWN, fontSize: T.modSub?.fontSize || 13 }}>{score}/{totalChoices} ✓</div>
         </div>
@@ -343,7 +343,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
 
         {dialogue.steps[stepIdx]?.type === "choice" && !typing && messages.length > 0 && chosen === null && !done && (
           <div ref={optsRef} style={{ marginTop:8 }}>
-            <div className="dlg-in" style={{ color: T.modSub?.color || "#9A8060", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}><span style={{ flexShrink:0, marginTop:2 }}>{MOD_SVG["💬"](T.modSub?.color || "#9A8060", 13)}</span><span>{dialogue.steps[stepIdx].prompt}</span></div>
+            <div className="dlg-in" style={{ color: T.modSub?.color || "#7A654C", fontSize: T.modSub?.fontSize || 13, marginBottom:8, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}><span style={{ flexShrink:0, marginTop:2 }}>{MOD_SVG["💬"](T.modSub?.color || "#7A654C", 13)}</span><span>{dialogue.steps[stepIdx].prompt}</span></div>
             {dialogue.steps[stepIdx].options.map((opt, oi) => {
               const isPicked = picked === oi;
               const isFading = picked !== null && !isPicked;

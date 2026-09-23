@@ -2,6 +2,14 @@
 // главный экран не тянул за собой весь справочник с иллюстрациями.
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 
+// Курс главы (правка 169): раньше в «Заданиях дня» у любой главы было «Курс: Сервировка»
+const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE];
+const withCourse = (l) => {
+  if (!l) return l;
+  const c = REF_COURSES.find(c => (c.lessons || []).some(x => x.id === l.id));
+  return { ...l, course: (c && (c.title || c.name)) || "Справочник" };
+};
+
 export function referenceDailyTask(seed, mistakeTopics) {
   // Глава руководителей в «главу дня» не попадает: пул общий для всех ролей
   const ls = [...REFERENCE_COURSE.lessons, ...REFERENCE_WINE_COURSE.lessons, ...REFERENCE_COFFEE_COURSE.lessons, ...REFERENCE_BAR_COURSE.lessons, ...REFERENCE_APP_COURSE.lessons.filter(l => !l.leaderOnly)];
@@ -19,8 +27,8 @@ export function referenceDailyTask(seed, mistakeTopics) {
         let n = 0; toks(l.title).forEach(w => { if (want.has(w)) n++; });
         if (n > bestN || (n === bestN && n > 0 && best !== null && (i % ls.length) === ((seed % ls.length) + ls.length) % ls.length)) { best = l; bestN = n; }
       });
-      if (best && bestN > 0) return best;
+      if (best && bestN > 0) return withCourse(best);
     }
   }
-  return ls[((seed % ls.length) + ls.length) % ls.length];
+  return withCourse(ls[((seed % ls.length) + ls.length) % ls.length]);
 }

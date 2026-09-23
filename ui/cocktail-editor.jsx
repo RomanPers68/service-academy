@@ -1,3 +1,5 @@
+import { hintsFor } from "../data/hints";
+import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { onActivate, vibrate, readPhoto } from "../lib/utils";
 import { GOLD } from "./tokens";
@@ -23,7 +25,11 @@ const GARNISHES = Object.keys(GARNISH_RU);
 const empty = () => ({ id: "", name: "", base: "", glass: "rocks", method: "билд", ice: "cube", garnish: "none", color: PALETTE[0], strength: 3, sweet: 2, ing: [["", "", "мл"]], steps: [""], tip: "", story: "", pair: "", note: "", short: "", fizz: false, foam: false, inCard: true });
 
 export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEditId }) {
-  const gold = a11y ? "#8B6A30" : GOLD; const text = T.modTitle.color, sub = T.modSub.color, frost = frostOf(a11y);
+  // Подсказка экрана — один раз при первом входе (правка 171)
+  const [ckHint, ckHintDone] = useHintOnce("ckEditor");
+  const [ckStep, setCKStep] = React.useState(0);
+  const ckSteps = hintsFor("ckEditor");
+  const gold = a11y ? "#7A5D2A" : GOLD; const text = T.modTitle.color, sub = T.modSub.color, frost = frostOf(a11y);
   const restaurant = profile?.restaurant || "";
   const [shared, setShared] = React.useState(() => cachedShared(restaurant));
   const [busy, setBusy] = React.useState(false);
@@ -114,6 +120,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
     const showMore = more || !!form.id;
     return (
       <div style={T.screen} className="sa-screen">
+
         {Head(form.id ? "Правка коктейля" : "Новый коктейль", () => setForm(null))}
         <div style={{ padding: "4px 16px 210px" }}>
           {/* живой витраж и сборка — как увидит бармен */}
@@ -243,6 +250,12 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
   // ─────────────────────────────────────────────── СПИСОК
   return (
     <div style={T.screen} className="sa-screen">
+      {ckHint && ckSteps.length ? (
+        <HintBubble a11y={a11y} text={ckSteps[ckStep]} arrow="up"
+          step={ckStep + 1} total={ckSteps.length}
+          onNext={ckStep >= ckSteps.length - 1 ? null : () => setCKStep(v => v + 1)}
+          onClose={ckHintDone} />
+      ) : null}
       {Head("Свои коктейли", onBack)}
       <div style={{ padding: "4px 16px 100px" }}>
         <div style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 12 }}>

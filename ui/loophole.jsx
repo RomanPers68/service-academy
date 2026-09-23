@@ -79,10 +79,11 @@ export const skipPayload = (skip) => ({ p_answered: skip.answered, p_total: skip
 
 
 // ── Какой раз попался: первый — «Ах ты…», дальше — повторы узнаются
-export const loopWords = (n = 1) => ({
-  teaser: n <= 1 ? "Кажется, ты кое-что нашёл…" : n === 2 ? "Снова ты? Ещё один ключ в копилке…"
+export const loopWords = (n = 1, female = false) => ({
+  teaser: n <= 1 ? (female ? "Кажется, ты кое-что нашла…" : "Кажется, ты кое-что нашёл…") : n === 2 ? "Снова ты? Ещё один ключ в копилке…"
         : n === 3 ? "Третий ключ. Это уже привычка?" : `Ключ №${n}. Копилка тяжелеет…`,
   punch: n <= 1 ? "Ах ты, хитрая жопка ☺️" : n === 2 ? "Опять ты, хитрая жопка ☺️" : "И снова здравствуй, хитрая жопка ☺️",
+  stamp: female ? "ПОПАЛАСЬ" : "ПОПАЛСЯ",
   stampTop: n <= 1 ? null : n === 2 ? "СНОВА" : `${n}-Й РАЗ`,
 });
 // Золотой кружок с номером ключа на медальоне — со второго раза
@@ -106,7 +107,7 @@ const CSS = `
   .la-stamp { animation: none !important; opacity: .93 !important }   /* без анимации штамп просто стоит */
 }
 `;
-export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
+export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMistakes }) {
   const [shown, setShown] = React.useState(false);
   // Первые 0,8 с тап мимо карточки не закрывает её. Жалоба владельца: «тапнул на баннер —
   // следующая страница схлопнулась». Баннер гаснет, карточка ещё не встала — рука тапает
@@ -149,7 +150,7 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
     </svg>);
   const tag = (t, c) => <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.4, color: c, fontWeight: "bold", marginRight: 6 }}>{t}</span>;
   const ring = narrow ? 60 : 68;
-  const n = rec.n || 1; const W = loopWords(n);
+  const n = rec.n || 1; const W = loopWords(n, female);
   return (
     <div onClick={backdropTap} style={{ position: "fixed", inset: 0, zIndex: 1200, background: C.dim, display: "flex",
       alignItems: "flex-end", justifyContent: "center", padding: "0 12px calc(18px + env(safe-area-inset-bottom, 0px))",
@@ -169,7 +170,7 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
         <div style={{ display: "flex", alignItems: "center", gap: 14, position: "relative", marginTop: W.stampTop ? 12 : 0 }}>
           <span style={{ position: "relative", flexShrink: 0 }}>
           <span style={{ position: "relative", width: ring, height: ring, borderRadius: "50%", flexShrink: 0, overflow: "hidden", display: "grid", placeItems: "center",
-            background: "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #8B6A30, #F4E2AE)",
+            background: "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #7A5D2A, #F4E2AE)",
             boxShadow: `0 0 26px ${a11y ? "rgba(166,124,58,0.35)" : "rgba(214,178,102,0.28)"}` }}>
             <span style={{ width: ring - 10, height: ring - 10, borderRadius: "50%", display: "grid", placeItems: "center",
               background: a11y ? "radial-gradient(circle at 35% 30%, #FFF8E8, #EADBB8)" : "radial-gradient(circle at 35% 30%, #4A3A20, #1E160A)",
@@ -195,15 +196,15 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
             transform: "rotate(-11deg)", opacity: 0, animation: "laStamp .45s cubic-bezier(.2,1.4,.4,1) .55s forwards",
             textShadow: a11y ? "none" : "0 0 1px rgba(210,85,63,0.6)", pointerEvents: "none" }}>
             {W.stampTop ? <span style={{ fontSize: 9, letterSpacing: 2.4 }}>{W.stampTop}</span> : null}
-            <span>ПОПАЛСЯ</span>
+            <span>{W.stamp}</span>
           </div>
         </div>
         <div style={{ color: C.text, fontFamily: serif, fontStyle: "italic", fontSize: 17, margin: "14px 0 6px" }}>{W.punch}</div>
         <div style={{ color: C.muted, fontFamily: serif, fontSize: 13.5, lineHeight: 1.55, marginBottom: 12 }}>
           {(rec.exits || 1) > 1
-            ? <>В тесте «{title}» ты выходил {rec.exits} {((n) => { const d = n % 10, h = n % 100; return (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "раза" : "раз"; })(rec.exits)} — впервые на {rec.answered}-м вопросе — и прошёл его заново.</>
-            : <>В тесте «{title}» ты вышел на {rec.answered}-м вопросе и прошёл его заново.</>}
-          {" "}Находчивость засчитана — а ошибки, которые ты стёр, мы сохранили:
+            ? <>В тесте «{title}» ты {female ? "выходила" : "выходил"} {rec.exits} {((n) => { const d = n % 10, h = n % 100; return (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "раза" : "раз"; })(rec.exits)} — впервые на {rec.answered}-м вопросе — и прошёл его заново.</>
+            : <>В тесте «{title}» ты {female ? "вышла" : "вышел"} на {rec.answered}-м вопросе и {female ? "прошла" : "прошёл"} его заново.</>}
+          {" "}Находчивость засчитана — а ошибки, которые ты {female ? "стёрла" : "стёр"}, мы сохранили:
         </div>
         {rank && rank.ok && rank.mine > 0 ? (() => {
           // Фразы — владельца: «хитрый», «пока впереди»
@@ -211,7 +212,7 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
           const first = rank.place === 1 && !rank.tied;
           const phrase = first ? "Ты впереди всех хитрецов. Пока впереди 😉"
             : rank.place === 1 ? "Ты делишь первое место с другими хитрецами. Ещё ключ — и оторвёшься."
-            : `Ты хитрый, но до первого места — ещё ${need} ${kl(need)}.`;
+            : `Ты ${female ? "хитрая" : "хитрый"}, но до первого места — ещё ${need} ${kl(need)}.`;
           const owned = Math.min(rank.mine, 8);
           const missing = first ? 0 : Math.max(0, Math.min(rank.place === 1 ? 1 : need, 8 - owned));
           return (
@@ -238,7 +239,7 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
               <div style={{ color: C.text, fontFamily: serif, fontSize: 14, fontWeight: "bold", lineHeight: 1.4 }}>{w.q}</div>
             </div>
             <div style={{ paddingLeft: 29, marginTop: 7 }}>
-              {w.a ? <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.45 }}>{tag("ТЫ ОТВЕТИЛ", C.muted)}{w.a}</div> : null}
+              {w.a ? <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.45 }}>{tag(female ? "ТЫ ОТВЕТИЛА" : "ТЫ ОТВЕТИЛ", C.muted)}{w.a}</div> : null}
               {w.r ? <div style={{ color: C.hit, fontSize: 12.5, lineHeight: 1.45, marginTop: 3 }}>{tag("ВЕРНО", C.hit)}{w.r}</div> : null}
               {w.e ? <div style={{ color: C.muted, fontFamily: serif, fontStyle: "italic", fontSize: 12.5, lineHeight: 1.5, marginTop: 7,
                 paddingLeft: 10, borderLeft: `2px solid ${C.gold}77` }}>{w.e}</div> : null}
@@ -277,7 +278,7 @@ export function LoopholeCard({ rec, rank, a11y, onClose, onMistakes }) {
 // медальоне время от времени поворачивается, как в замке; по плашке пробегает блик.
 // Не тапнули за 12 секунд — плашка тихо уезжает; ачивка не просмотрена и
 // вернётся при следующем входе.
-export function LoopholeBanner({ a11y, n = 1, onOpen, onHide }) {
+export function LoopholeBanner({ a11y, n = 1, female = false, onOpen, onHide }) {
   const [phase, setPhase] = React.useState("in");   // in → shown → out
   const hideRef = React.useRef(onHide); hideRef.current = onHide;
   React.useEffect(() => {
@@ -313,7 +314,7 @@ export function LoopholeBanner({ a11y, n = 1, onOpen, onHide }) {
         WebkitBackdropFilter: "blur(18px) saturate(150%)", backdropFilter: "blur(18px) saturate(150%)",
         textShadow: a11y ? "0 1px 1px rgba(255,255,255,0.7)" : "0 1px 2px rgba(0,0,0,0.55)" }}>
         <span className="la-a" style={{ position: "relative", width: 46, height: 46, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center",
-          background: "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #8B6A30, #F4E2AE)", animation: "laHalo 2.8s ease-in-out infinite" }}>
+          background: "conic-gradient(from 200deg, #F4E2AE, #A67C3A, #E9CF8E, #7A5D2A, #F4E2AE)", animation: "laHalo 2.8s ease-in-out infinite" }}>
           <span style={{ width: 38, height: 38, borderRadius: "50%", display: "grid", placeItems: "center",
             background: a11y ? "radial-gradient(circle at 35% 30%, #FFF8E8, #EADBB8)" : "radial-gradient(circle at 35% 30%, #4A3A20, #1E160A)" }}>
             <svg className="la-a" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
@@ -326,7 +327,7 @@ export function LoopholeBanner({ a11y, n = 1, onOpen, onHide }) {
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ color: gold, fontFamily: "monospace", fontSize: 9.5, letterSpacing: 1.8, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
           <div style={{ color: text, fontFamily: serif, fontSize: 15.5, fontWeight: "bold", lineHeight: 1.25, marginTop: 2 }}>Тапни, чтобы посмотреть</div>
-          <div style={{ color: muted, fontFamily: serif, fontStyle: "italic", fontSize: 12.5, marginTop: 1 }}>{loopWords(n).teaser}</div>
+          <div style={{ color: muted, fontFamily: serif, fontStyle: "italic", fontSize: 12.5, marginTop: 1 }}>{loopWords(n, female).teaser}</div>
         </div>
         <span style={{ color: gold, fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
       </div>

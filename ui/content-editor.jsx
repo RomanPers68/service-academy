@@ -402,7 +402,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         const recs = sectionRecs(lessons, l.role || "seasonal", l.module).filter(r => r.id !== id);
         if (recs.length) await rpc("cms_save_lesson", { p_token: token, p_lesson: { ...recs[0], questions: [...(l.questions || []), ...(recs[0].questions || [])] } });
       }
-      const res = await rpc("cms_delete_lesson", { p_token: token, p_id: id }); if (res && res.ok) await load(); else setErr("Не удалось удалить.");
+      const res = await rpc("cms_delete_lesson", { p_token: token, p_id: id });
+      if (res && res.ok) {
+        // следы шагов урока на сервере (этап 20): ответы, выходы, ключи, результаты
+        await rpc("admin_wipe_lesson_traces", { p_token: token, p_ids: ["cms-l-" + id, "cms-p-" + id, "cms-d-" + id, "cms-b-" + id, "cms-q-" + id] }).catch(() => {});
+        await load();
+      } else setErr("Не удалось удалить.");
     }
     catch (e) { setErr("Нет связи."); }
     setBusy(false); setConfirmDel(null);

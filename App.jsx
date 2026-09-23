@@ -476,7 +476,11 @@ function ServiceAcademy() {
   const [streak, setStreak] = useState({ count: 0, best: 0, last: "", days: [] });
   const [mistakeBank, setMistakeBank] = useState([]); // #5/#6 — заваленные вопросы для повтора
   const [customLessons, setCustomLessons] = useState([]);
-  const [customLoaded, setCustomLoaded] = useState(false);   // список своих уроков пришёл (правка 166) // свой контент (редактор)
+  const [customLoaded, setCustomLoaded] = useState(false);   // список своих уроков пришёл (правка 166)
+  // Сброс прогресса дочищает следы (этап 20): аналитика, выходы, ключи лазейки,
+  // прогресс по меню и ачивки привязаны к «Имя Фамилия» и сбросом не убирались.
+  const wipeTraces = useCallback((name, surname) =>
+    rpc("admin_wipe_traces", { p_token: saToken(), p_name: name, p_surname: surname || "" }).catch(() => {}), []); // свой контент (редактор)
   const [saved, setSaved] = useState({}); // #5 — избранные термины и заметки: { termKey: { fav?: bool, note?: string } }
   const [examResults, setExamResults] = useState({}); // #2 — результаты экзаменов: { roleId: { passed, score, correct, total, date } }
   // Празднование побед: золотая вспышка ✦ на большие моменты (экзамен).
@@ -695,6 +699,25 @@ function ServiceAcademy() {
         setCompleted(merged);
         try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed"+uk, JSON.stringify(merged)); } catch(e) {}
       }
+    }).catch(() => {});
+  }, [profile]);
+
+  // Сброс руководителем (этап 20): прогресс живёт и на телефоне, поэтому сервер
+  // ставит метку времени, а приложение сотрудника по ней стирает своё. По «пустому
+  // ответу» так делать нельзя: сбой сети стёр бы живой прогресс.
+  React.useEffect(() => {
+    if (!profile) return;
+    const uk = `_${profile.name}_${profile.surname || ""}`;
+    rpc("my_reset_at", { p_token: saToken() }).then(res => {
+      const ts = res && res.ok ? res.reset_at : null;
+      if (!ts) return;
+      if ((localStorage.getItem("sa_reset_seen" + uk) || "") === String(ts)) return;
+      ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved", "sa_book_read", "sa_book_dates"]
+        .forEach(k => { try { localStorage.removeItem(k + uk); localStorage.removeItem(k); } catch (e) {} });
+      try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
+      setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);
+      setCompletedRoles(new Set()); setExamResults({}); setStreak({ count: 0, best: 0, last: "", days: [] });
+      try { localStorage.setItem("sa_reset_seen" + uk, String(ts)); } catch (e) {}
     }).catch(() => {});
   }, [profile]);
 
@@ -1414,7 +1437,7 @@ function ServiceAcademy() {
               if (hits.length === 0) {
                 // Призрак-профиль: зарегистрировался, но в «Команде» не создан
                 // (или уже удалён оттуда). Доступа нет — стираем записи.
-                try { await rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }); } catch (e2) {}
+                try { await rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }); await wipeTraces(name, surname); } catch (e2) {}
                 setScores(prev => prev.filter(x => !(x.name === name && x.surname === surname)));
                 setPracticeStars(prev => { const nx = { ...prev }; delete nx[name + "|" + (surname || "")]; return nx; });
                 setAllProfiles(prev => (prev || []).filter(x => !(x.name === name && x.surname === surname)));
@@ -1423,14 +1446,15 @@ function ServiceAcademy() {
               if (hits.length > 1) return { ok: false, msg: "Нашёл несколько похожих: " + hits.slice(0, 3).map(e => (e.name + " " + (e.surname || "")).trim()).join(", ") + " — удали точечно через «Команду»" };
               const emp = hits[0];
               const res = await rpc("admin_delete_employee", { p_token: saToken(), p_employee_id: emp.id });
+          await wipeTraces(emp.name, emp.surname);   // следы по имени остаются и после удаления (этап 20)
               if (!(res && res.ok)) return { ok: false, msg: "Сервер не подтвердил удаление" };
               // «Удалил — значит удалил ВСЁ»: следом стираем результаты той же
               // функцией, что под кнопкой «Сбросить». Чистим ОБЕ личности —
               // профильную (карточка) и из списка доступа, если написания
               // разошлись (урок Доп. 75). Сбой зачистки удаление не отменяет.
-              try { await rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }); } catch (e) {}
+              try { await rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }); await wipeTraces(name, surname); } catch (e) {}
               if (norm(emp.name + " " + (emp.surname || "")) !== norm(name + " " + (surname || ""))) {
-                try { await rpc("admin_reset_player", { p_token: saToken(), p_name: emp.name, p_surname: emp.surname || "" }); } catch (e) {}
+                try { await rpc("admin_reset_player", { p_token: saToken(), p_name: emp.name, p_surname: emp.surname || "" }); await wipeTraces(emp.name, emp.surname); } catch (e) {}
               }
               setScores(prev => prev.filter(x => !(x.name === name && x.surname === surname)));
               setPracticeStars(prev => { const nx = { ...prev }; delete nx[name + "|" + (surname || "")]; return nx; });
@@ -1450,7 +1474,7 @@ function ServiceAcademy() {
               try { localStorage.removeItem("sa_scores"); } catch(e) {}
               try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
             }
-            rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }).catch(() => {});
+            rpc("admin_reset_player", { p_token: saToken(), p_name: name, p_surname: surname || "" }).then(() => wipeTraces(name, surname)).catch(() => {});
            
             // Сразу обнуляем звёзды в state и localStorage
             setPracticeStars(prev => { const n = {...prev}; delete n[`${name}|${surname||""}`]; return n; });

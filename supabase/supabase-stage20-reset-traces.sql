@@ -44,7 +44,7 @@ end; $$;
 
 create or replace function admin_wipe_traces(p_token text, p_name text, p_surname text)
 returns jsonb language plpgsql security definer set search_path to public as $$
-declare v jsonb; v_rest text; v_pos text; v_admin boolean; who text; target text; n bigint; total bigint := 0;
+declare v jsonb; v_rest text; v_pos text; v_admin boolean; who text; target text; uid uuid; tbl text; n bigint; total bigint := 0;
 begin
   v := _sa_who(p_token);
   if v is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
@@ -84,6 +84,33 @@ begin
   if to_regclass('public.achievements') is not null then
     execute 'delete from achievements where employee_id in (select id from employees where name = $1 and coalesce(surname, '''') = coalesce($2, ''''))' using p_name, p_surname;
     get diagnostics n = row_count; total := total + n;
+  end if;
+
+  -- Сам прогресс: сброс его чистит, но какие именно таблицы — зависит от версии
+  -- admin_reset_player на сервере. Дочищаем сами: повторное удаление безвредно,
+  -- зато результат предсказуем и на телефон ничего не вернётся.
+  begin
+    select e.id into uid from employees e
+     where e.name = p_name and coalesce(e.surname, '') = coalesce(p_surname, '') limit 1;
+  exception when others then uid := null; end;
+  if uid is not null then
+    foreach tbl in array array['progress', 'quiz_done', 'practice_stars', 'completed_roles'] loop
+      if to_regclass('public.' || tbl) is not null
+         and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = tbl and column_name = 'user_id') then
+        execute format('delete from %I where user_id = $1', tbl) using uid;
+        get diagnostics n = row_count; total := total + n;
+      end if;
+    end loop;
+    if to_regclass('public.scores') is not null then
+      if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'scores' and column_name = 'user_id') then
+        execute 'delete from scores where user_id = $1' using uid;
+      elsif exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'scores' and column_name = 'employee') then
+        execute 'delete from scores where employee = $1' using who;
+      elsif exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'scores' and column_name = 'name') then
+        execute 'delete from scores where name = $1 and coalesce(surname, '''') = coalesce($2, '''')' using p_name, p_surname;
+      end if;
+      get diagnostics n = row_count; total := total + n;
+    end if;
   end if;
 
   insert into player_resets(restaurant, employee, reset_at) values (target, who, now())
@@ -157,9 +184,10 @@ grant execute on function my_reset_at(text) to anon, authenticated;
 
 notify pgrst, 'reload schema';
 
--- Что чистит сам сброс (для сведения: функция создана на сервере)
+-- Что чистит сам сброс (для сведения) и что дочищает зачистка
 select 'admin_reset_player чистит: ' ||
        coalesce((select string_agg(distinct m[1], ', ')
                    from pg_proc p, regexp_matches(p.prosrc, 'delete\s+from\s+(?:public\.)?([a-z_]+)', 'gi') as m
                   where p.proname = 'admin_reset_player'), '— не удалось разобрать') as "сброс",
-       (select count(*) from pg_proc where proname in ('admin_wipe_traces', 'my_reset_at', 'admin_wipe_lesson_traces')) as "новых функций (ожидаем 3)";
+       (select count(*) from pg_proc where proname in ('admin_wipe_traces', 'my_reset_at', 'admin_wipe_lesson_traces')) as "новых функций (ожидаем 3)",
+       'зачистка дочищает: quiz_events, quiz_skips, quiz_keys, menu_progress, achievements, progress, quiz_done, practice_stars, completed_roles, scores' as "зачистка";

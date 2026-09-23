@@ -703,7 +703,7 @@ function ServiceAcademy() {
   }, [profile]);
 
   // Версия очистки телефона после сброса: растёт, когда в список добавляется новое
-  const WIPE_VERSION = 2;
+  const WIPE_VERSION = 3;
   // Сброс руководителем (этап 20): прогресс живёт и на телефоне, поэтому сервер
   // ставит метку времени, а приложение сотрудника по ней стирает своё. По «пустому
   // ответу» так делать нельзя: сбой сети стёр бы живой прогресс.
@@ -720,14 +720,40 @@ function ServiceAcademy() {
       // включая записи секретной ачивки: иначе после сброса она считала «какой это раз»
       // с прежнего числа, хотя тайный зачёт на сервере уже обнулён (правка 175)
       ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved",
-       "sa_book_read", "sa_book_dates", "sa_loopholes", "sa_qskip", "sa_qtry"]
+       "sa_book_read", "sa_book_dates", "sa_loopholes", "sa_qskip", "sa_qtry",
+       // ачивки и рекорды тренажёров — тоже личный прогресс (правка 178)
+       "sa_achv", "sa_bar_mastery", "sa_bar_rush_best", "sa_bar_station_best", "sa_daily5", "sa_cocktail_sr"]
         .forEach(k => { try { localStorage.removeItem(k + uk); localStorage.removeItem(k); } catch (e) {} });
+      // ключи с хвостом: рекорд спринта, «выучено» по волнам, повторения меню, снимок рейтинга
+      try {
+        Object.keys(localStorage)
+          .filter(k => /^sa_(al_sprint_best|menu_learned_|menu_sr_|rank_snap_)/.test(k))
+          .forEach(k => localStorage.removeItem(k));
+      } catch (e) {}
       try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
       setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);
       setCompletedRoles(new Set()); setExamResults({}); setStreak({ count: 0, best: 0, last: "", days: [] });
       try { localStorage.setItem("sa_reset_seen" + uk, mark); } catch (e) {}
     }).catch(() => {});
   }, [profile]);
+
+  // Точный ответ сервера по токену (этап 20в): «вот мои сданные тесты и пройденные
+  // уроки». Здесь пустой список означает именно пусто, поэтому приложение может убрать
+  // с телефона лишнее — например, после «Открыть тест заново», когда этот тест был
+  // единственным сданным, или после точечного удаления на сервере.
+  React.useEffect(() => {
+    if (!profile || !storageLoaded) return;
+    const uk = `_${profile.name}_${profile.surname || ""}`;
+    rpc("my_state", { p_token: saToken() }).then(res => {
+      if (!res || !res.ok || !Array.isArray(res.quiz) || !Array.isArray(res.lessons)) return;
+      const done = {}; res.quiz.forEach(id => { if (id) done[id] = true; });
+      const comp = {}; res.lessons.forEach(id => { if (id) comp[id] = true; });
+      setQuizDone(prev => (JSON.stringify(prev) === JSON.stringify(done) ? prev : done));
+      setCompleted(prev => (JSON.stringify(prev) === JSON.stringify(comp) ? prev : comp));
+      try { localStorage.setItem("sa_quiz_done", JSON.stringify(done)); } catch (e) {}
+      try { localStorage.setItem("sa_completed" + uk, JSON.stringify(comp)); } catch (e) {}
+    }).catch(() => {});
+  }, [profile, storageLoaded]);
 
   // Загрузка quizDone из Supabase — авторитетный источник
   React.useEffect(() => {
@@ -1275,6 +1301,22 @@ function ServiceAcademy() {
   // Сначала выезжает баннер-загадка, по тапу — карточка (решение владельца)
   const [loopView, setLoopView] = useState(null);   // "banner" | "card" | null
   const [loopRank, setLoopRank] = useState(null);   // место в тайном зачёте (этап 16)
+  // Сервер — главный по ключам (правка 177): счёт «какой это раз» ачивка вела по своему
+  // списку на телефоне и после чистки продолжал расти. Теперь при запуске сверяем список
+  // с тайным зачётом: на сервере ключей меньше — подрезаем и перенумеровываем.
+  React.useEffect(() => {
+    if (!profile || !storageLoaded) return;
+    rpc("quiz_key_rank", { p_token: saToken() }).then(r => {
+      if (!r || !r.ok) return;
+      const mine = Math.max(0, Number(r.mine) || 0);
+      const key = "sa_loopholes" + loopUk;
+      let recs = []; try { recs = JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return; }
+      if (!Array.isArray(recs) || recs.length <= mine) return;
+      const keep = recs.slice(recs.length - mine).map((x, i) => ({ ...x, n: i + 1 }));
+      try { localStorage.setItem(key, JSON.stringify(keep)); } catch (e) {}
+      if (!keep.length) { setLoophole(null); setLoopView(null); }
+    }).catch(() => {});
+  }, [profile, storageLoaded, loopUk]);
   useEffect(() => { if (profile && storageLoaded) { try { const r = loopUnseen(loopUk); if (r) { setLoophole(r); setLoopView("banner"); } } catch (e) {} } }, [profile, storageLoaded]);
   const [mistakeHint, setMistakeHint] = useState(false);
   useEffect(() => {

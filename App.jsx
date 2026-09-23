@@ -479,8 +479,16 @@ function ServiceAcademy() {
   const [customLoaded, setCustomLoaded] = useState(false);   // список своих уроков пришёл (правка 166)
   // Сброс прогресса дочищает следы (этап 20): аналитика, выходы, ключи лазейки,
   // прогресс по меню и ачивки привязаны к «Имя Фамилия» и сбросом не убирались.
+  const wipeLocalProgressRef = React.useRef(null);
   const wipeTraces = useCallback((name, surname) =>
-    rpc("admin_wipe_traces", { p_token: saToken(), p_name: name, p_surname: surname || "" }).catch(() => {}), []); // свой контент (редактор)
+    rpc("admin_wipe_traces", { p_token: saToken(), p_name: name, p_surname: surname || "" })
+      .then(res => {
+        // сбросил себя — телефон чистим сразу, не дожидаясь перезапуска (правка 179)
+        if (profile && name === profile.name && (surname || "") === (profile.surname || "") && wipeLocalProgressRef.current) {
+          try { wipeLocalProgressRef.current(`_${profile.name}_${profile.surname || ""}`); } catch (e) {}
+        }
+        return res;
+      }).catch(() => {}), [profile]); // свой контент (редактор)
   const [saved, setSaved] = useState({}); // #5 — избранные термины и заметки: { termKey: { fav?: bool, note?: string } }
   const [examResults, setExamResults] = useState({}); // #2 — результаты экзаменов: { roleId: { passed, score, correct, total, date } }
   // Празднование побед: золотая вспышка ✦ на большие моменты (экзамен).
@@ -704,6 +712,34 @@ function ServiceAcademy() {
 
   // Версия очистки телефона после сброса: растёт, когда в список добавляется новое
   const WIPE_VERSION = 3;
+  // Очистка телефона после сброса (этап 20): всё, что относится к прогрессу человека.
+  // Вынесена отдельно, чтобы звать и при сбросе самого себя — сразу, без перезапуска.
+  const wipeLocalProgress = useCallback((uk) => {
+    // включая записи секретной ачивки: иначе после сброса она считала «какой это раз»
+    // с прежнего числа, хотя тайный зачёт на сервере уже обнулён (правка 175)
+    ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved",
+     "sa_book_read", "sa_book_dates", "sa_loopholes", "sa_qskip", "sa_qtry",
+     // ачивки и рекорды тренажёров — тоже личный прогресс (правка 178)
+     "sa_achv", "sa_bar_mastery", "sa_bar_rush_best", "sa_bar_station_best", "sa_daily5", "sa_cocktail_sr"]
+      .forEach(k => { try { localStorage.removeItem(k + uk); localStorage.removeItem(k); } catch (e) {} });
+    // ключи с хвостом: рекорд спринта, «выучено» по волнам, повторения меню, снимок рейтинга
+    try {
+      Object.keys(localStorage)
+        .filter(k => /^sa_(al_sprint_best|menu_learned_|menu_sr_|rank_snap_)/.test(k))
+        .forEach(k => localStorage.removeItem(k));
+    } catch (e) {}
+    try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
+    setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);
+    setCompletedRoles(new Set()); setExamResults({}); setStreak({ count: 0, best: 0, last: "", days: [] });
+    setLoophole(null); setLoopView(null); setLoopRank(null);
+  }, []);
+  wipeLocalProgressRef.current = wipeLocalProgress;
+  // для сквозных проверок: сброс самого себя одной командой
+  React.useEffect(() => { if (!profile) return; window.__saResetSelf = async () => {
+    try { await rpc("admin_reset_player", { p_token: saToken(), p_name: profile.name, p_surname: profile.surname || "" }); } catch (e) {}
+    await wipeTraces(profile.name, profile.surname);
+  }; }, [profile, wipeTraces]);
+
   // Сброс руководителем (этап 20): прогресс живёт и на телефоне, поэтому сервер
   // ставит метку времени, а приложение сотрудника по ней стирает своё. По «пустому
   // ответу» так делать нельзя: сбой сети стёр бы живой прогресс.
@@ -717,22 +753,7 @@ function ServiceAcademy() {
       // пополнился, телефон приберётся ещё раз сам — без нового сброса.
       const mark = String(ts) + "|v" + WIPE_VERSION;
       if ((localStorage.getItem("sa_reset_seen" + uk) || "") === mark) return;
-      // включая записи секретной ачивки: иначе после сброса она считала «какой это раз»
-      // с прежнего числа, хотя тайный зачёт на сервере уже обнулён (правка 175)
-      ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved",
-       "sa_book_read", "sa_book_dates", "sa_loopholes", "sa_qskip", "sa_qtry",
-       // ачивки и рекорды тренажёров — тоже личный прогресс (правка 178)
-       "sa_achv", "sa_bar_mastery", "sa_bar_rush_best", "sa_bar_station_best", "sa_daily5", "sa_cocktail_sr"]
-        .forEach(k => { try { localStorage.removeItem(k + uk); localStorage.removeItem(k); } catch (e) {} });
-      // ключи с хвостом: рекорд спринта, «выучено» по волнам, повторения меню, снимок рейтинга
-      try {
-        Object.keys(localStorage)
-          .filter(k => /^sa_(al_sprint_best|menu_learned_|menu_sr_|rank_snap_)/.test(k))
-          .forEach(k => localStorage.removeItem(k));
-      } catch (e) {}
-      try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
-      setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);
-      setCompletedRoles(new Set()); setExamResults({}); setStreak({ count: 0, best: 0, last: "", days: [] });
+      wipeLocalProgress(uk);
       try { localStorage.setItem("sa_reset_seen" + uk, mark); } catch (e) {}
     }).catch(() => {});
   }, [profile]);

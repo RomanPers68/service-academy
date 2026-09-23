@@ -702,6 +702,8 @@ function ServiceAcademy() {
     }).catch(() => {});
   }, [profile]);
 
+  // Версия очистки телефона после сброса: растёт, когда в список добавляется новое
+  const WIPE_VERSION = 2;
   // Сброс руководителем (этап 20): прогресс живёт и на телефоне, поэтому сервер
   // ставит метку времени, а приложение сотрудника по ней стирает своё. По «пустому
   // ответу» так делать нельзя: сбой сети стёр бы живой прогресс.
@@ -711,7 +713,10 @@ function ServiceAcademy() {
     rpc("my_reset_at", { p_token: saToken() }).then(res => {
       const ts = res && res.ok ? res.reset_at : null;
       if (!ts) return;
-      if ((localStorage.getItem("sa_reset_seen" + uk) || "") === String(ts)) return;
+      // К метке добавлен номер версии очистки (правка 176): если список стираемого
+      // пополнился, телефон приберётся ещё раз сам — без нового сброса.
+      const mark = String(ts) + "|v" + WIPE_VERSION;
+      if ((localStorage.getItem("sa_reset_seen" + uk) || "") === mark) return;
       // включая записи секретной ачивки: иначе после сброса она считала «какой это раз»
       // с прежнего числа, хотя тайный зачёт на сервере уже обнулён (правка 175)
       ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved",
@@ -720,7 +725,7 @@ function ServiceAcademy() {
       try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
       setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);
       setCompletedRoles(new Set()); setExamResults({}); setStreak({ count: 0, best: 0, last: "", days: [] });
-      try { localStorage.setItem("sa_reset_seen" + uk, String(ts)); } catch (e) {}
+      try { localStorage.setItem("sa_reset_seen" + uk, mark); } catch (e) {}
     }).catch(() => {});
   }, [profile]);
 

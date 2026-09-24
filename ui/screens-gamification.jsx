@@ -862,6 +862,7 @@ function PlayersManager({ players, scores, T, a11y, onResetPlayer, onUnlockQuiz,
   const [q, setQ] = React.useState("");
   const [tab, setTab] = React.useState("all");        // all | new | sleep
   const [sheet, setSheet] = React.useState(null);     // { p, stat }
+  const [showPeek] = React.useState(() => { try { const k = "sa_admin_swipe_seen"; if (localStorage.getItem(k)) return false; localStorage.setItem(k, "1"); return true; } catch (e) { return false; } });
 
   // сводка по каждому: тестов, средний балл, дней с последнего результата
   const statOf = React.useCallback((p) => {
@@ -905,7 +906,7 @@ function PlayersManager({ players, scores, T, a11y, onResetPlayer, onUnlockQuiz,
         {chip("all", "Все")}{chip("new", "Не начали")}{chip("sleep", "Уснули")}
       </div>
       {rows.length ? rows.map(({ p, stat }, i) => (
-        <PlayerRow key={`${p.name}|${p.surname}|${i}`} p={p} stat={stat} T={T} a11y={a11y}
+        <PlayerRow key={`${p.name}|${p.surname}|${i}`} p={p} stat={stat} T={T} a11y={a11y} peek={i === 0 && showPeek}
           onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} onDeleteEmployee={onDeleteEmployee}
           openMenu={(pp, ss) => setSheet({ p: pp, stat: ss })} />
       )) : <div style={{ color: T.modSub.color, fontSize: 13, textAlign: "center", padding: "18px 0" }}>Никого не нашлось</div>}
@@ -929,13 +930,21 @@ const kk = (n, one, few, many) => {
 // Строка сотрудника в «Управлении данными» (правка 182). Было: три крупные кнопки на
 // каждого — три человека на экран и много красного. Стало: строка со сводкой, свайп
 // влево открывает два частых действия, «⋯» — полный список с подтверждениями.
-function PlayerRow({ p, stat, T, a11y, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee, openMenu }) {
+function PlayerRow({ p, stat, T, a11y, peek, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee, openMenu }) {
   const OPEN = 152;                                   // ширина двух кнопок
   const [dx, setDx] = React.useState(0);
   const [ask, setAsk] = React.useState(null);         // null | "reset"
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState(null);
   const st = React.useRef({ x: 0, dx: 0, moved: false, id: null });
+  // Подсказка жестом (правка 183): при первом заходе первая строка сама приоткрывается
+  // и возвращается — видно, что строки тянутся. Один раз на устройство.
+  React.useEffect(() => {
+    if (!peek) return;
+    const t1 = setTimeout(() => setDx(-58), 450);
+    const t2 = setTimeout(() => setDx(0), 1250);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [peek]);
 
   const start = (e) => { const t = e.touches ? e.touches[0] : e; st.current = { x: t.clientX, dx, moved: false }; };
   const move = (e) => {
@@ -960,9 +969,10 @@ function PlayerRow({ p, stat, T, a11y, onResetPlayer, onUnlockQuiz, onViewPlayer
   );
 
   return (
-    <div style={{ position: "relative", marginBottom: 7, height: 62, touchAction: "pan-y" }}>
+    // обрезка по карточке: строка уезжает внутри неё, а не за край списка (правка 183)
+    <div style={{ position: "relative", marginBottom: 7, height: 62, touchAction: "pan-y", borderRadius: 16, overflow: "hidden" }}>
       {/* действия под строкой */}
-      <div style={{ position: "absolute", inset: 0, borderRadius: 16, overflow: "hidden", display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "flex-end" }}>
         <div onClick={() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setDx(0); }} {...onActivate(() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setDx(0); })}
           style={{ width: 76, display: "grid", placeItems: "center", cursor: "pointer", gap: 3,
             background: "rgba(143,184,144,0.20)", color: "#A6C8A7", fontFamily: "monospace", fontSize: 10, letterSpacing: 0.6 }}>
@@ -994,6 +1004,9 @@ function PlayerRow({ p, stat, T, a11y, onResetPlayer, onUnlockQuiz, onViewPlayer
         {badge ? <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1, padding: "3px 7px", borderRadius: 7,
           color: badge.c, background: `${badge.c}1f`, border: `1px solid ${badge.c}4d`, flexShrink: 0 }}>{badge.t}</span> : null}
         <button onClick={(e) => { e.stopPropagation(); setDx(0); openMenu(p, stat); }} aria-label="Ещё"
+          // палец: строка тоже слушает нажатия, поэтому гасим их на кнопке (правка 184)
+          onPointerDown={(e) => e.stopPropagation()} onPointerMove={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => { e.stopPropagation(); }}
           style={{ background: "none", border: "none", cursor: "pointer", color: T.modSub.color, fontSize: 19, padding: "0 4px", letterSpacing: 1 }}>⋯</button>
       </div>
     </div>

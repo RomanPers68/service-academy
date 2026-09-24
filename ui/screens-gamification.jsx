@@ -9,6 +9,7 @@ import { KEYS, BADGES, teamRecords, badgesFor, loadLocal } from "../lib/achievem
 import React from "react";
 import { hintsFor } from "../data/hints";
 import { createPortal } from "react-dom";
+import { glass, Avatar, tones } from "./analytics-kit";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES, programOf, programAll } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
@@ -931,124 +932,171 @@ const kk = (n, one, few, many) => {
 // каждого — три человека на экран и много красного. Стало: строка со сводкой, свайп
 // влево открывает два частых действия, «⋯» — полный список с подтверждениями.
 function PlayerRow({ p, stat, T, a11y, peek, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee, openMenu }) {
-  const OPEN = 152;                                   // ширина двух кнопок
-  const [dx, setDx] = React.useState(0);
-  const [ask, setAsk] = React.useState(null);         // null | "reset"
-  const [busy, setBusy] = React.useState(false);
+  const OPEN = 152;
+  // В наборе «морозного льда» только акценты; цвет текста берём у темы приложения,
+  // иначе он остаётся пустым и браузер рисует чёрным (правка 187)
+  const C = { ...tones(a11y), text: T.modTitle.color, muted: T.modSub.color };
+  // мелкие подписи в светлой теме: акцентные цвета на своих подложках дают 3,3–3,5
+  const L = a11y ? { good: "#1F5636", mid: "#6B4E14", bad: "#8A3A22" } : { good: C.good, mid: C.mid, bad: C.bad };
+  const ref = React.useRef(null);
+  const st = React.useRef({ x0: 0, cur: 0, start: 0, moved: false });
+  const [ask, setAsk] = React.useState(false);
   const [done, setDone] = React.useState(null);
-  const st = React.useRef({ x: 0, dx: 0, moved: false, id: null });
-  // Подсказка жестом (правка 183): при первом заходе первая строка сама приоткрывается
-  // и возвращается — видно, что строки тянутся. Один раз на устройство.
-  React.useEffect(() => {
+
+  // двигаем строку напрямую: без перерисовки на каждое движение пальца — отсюда плавность
+  const setX = React.useCallback((x, animate) => {
+    const el = ref.current; if (!el) return;
+    el.style.transition = animate ? "transform .3s cubic-bezier(.22,.9,.28,1)" : "none";
+    el.style.transform = `translateX(${x}px)`;
+    el.style.boxShadow = x < -8 ? "0 8px 22px rgba(0,0,0,0.35)" : "none";
+    st.current.cur = x;
+  }, []);
+
+  React.useEffect(() => {                                   // подсказка жестом — один раз
     if (!peek) return;
-    const t1 = setTimeout(() => setDx(-58), 450);
-    const t2 = setTimeout(() => setDx(0), 1250);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [peek]);
+    st.current.peek = [setTimeout(() => setX(-62, true), 500), setTimeout(() => setX(0, true), 1350)];
+    return () => (st.current.peek || []).forEach(clearTimeout);
+  }, [peek, setX]);
+  // палец важнее подсказки: коснулись — подсказка сразу отменяется, иначе её анимация
+  // возвращает строку на место прямо во время жеста (правка 186)
+  const stopPeek = () => { (st.current.peek || []).forEach(clearTimeout); st.current.peek = []; };
 
-  const start = (e) => { const t = e.touches ? e.touches[0] : e; st.current = { x: t.clientX, dx, moved: false }; };
+  const start = (e) => {
+    const t = e.touches ? e.touches[0] : e;
+    stopPeek();
+    st.current.active = true;                                  // без этого строка ехала уже от наведения мышью
+    st.current.start = t.clientX; st.current.x0 = st.current.cur; st.current.moved = false;
+    // захват жеста: строка уезжает из-под пальца, и без этого движения до неё не доходят
+    try { if (e.pointerId != null && ref.current && ref.current.setPointerCapture) ref.current.setPointerCapture(e.pointerId); } catch (err) {}
+  };
   const move = (e) => {
-    const t = e.touches ? e.touches[0] : e; const d = t.clientX - st.current.x;
-    if (Math.abs(d) > 6) st.current.moved = true;
-    if (!st.current.moved) return;
-    setDx(Math.max(-OPEN - 18, Math.min(0, st.current.dx + d)));
+    if (!st.current.active) return;
+    const t = e.touches ? e.touches[0] : e; const d = t.clientX - st.current.start;
+    if (!st.current.moved && Math.abs(d) < 6) return;
+    st.current.moved = true;
+    const x = st.current.x0 + d;
+    setX(x > 0 ? x * 0.25 : Math.max(-OPEN - 22, x), false);   // вправо — тугая резинка
   };
-  const end = () => {
-    if (!st.current.moved) { setDx(0); onViewPlayer && onViewPlayer(p); return; }
-    setDx(dx < -OPEN / 2 ? -OPEN : 0);
-    if (dx >= -OPEN / 2) setAsk(null);
+  const end = (e) => {
+    if (!st.current.active) return;
+    st.current.active = false;
+    try { if (e && e.pointerId != null && ref.current && ref.current.releasePointerCapture) ref.current.releasePointerCapture(e.pointerId); } catch (err) {}
+    if (!st.current.moved) { setX(0, true); setAsk(false); onViewPlayer && onViewPlayer(p); return; }
+    const opened = st.current.cur < -OPEN / 2;
+    setX(opened ? -OPEN : 0, true);
+    if (!opened) setAsk(false);
   };
 
-  const init = ((p.name || "?")[0] || "") + ((p.surname || "")[0] || "");
-  const tone = stat.tests === 0 ? "#C98B7A" : stat.avg >= 90 ? "#8FB890" : GOLD;
+  const tone = stat.tests === 0 ? "bad" : stat.avg >= 90 ? "good" : "mid";
   const sub = stat.tests === 0 ? "не начинал" : `${stat.tests} ${kk(stat.tests, "тест", "теста", "тестов")} · ${stat.avg}%`;
-  const badge = stat.tests === 0 ? { t: "НОВЫЙ", c: "#E0B25A" } : stat.days >= 14 ? { t: `${stat.days} ДН.`, c: "#C98B7A" } : null;
+  const badge = stat.tests === 0 ? { t: "НОВЫЙ", c: L.mid } : stat.days >= 14 ? { t: `${stat.days} ДН.`, c: L.bad } : null;
 
   if (done) return (
-    <div style={{ ...T.modCard, marginBottom: 7, padding: "12px 14px", color: T.modSub.color, fontSize: 13 }}>{done}</div>
+    <div style={glass(C, a11y, { marginBottom: 7, padding: "14px 16px", color: C.muted, fontSize: 13, fontFamily: "Georgia, serif" })}>{done}</div>
   );
 
   return (
-    // обрезка по карточке: строка уезжает внутри неё, а не за край списка (правка 183)
-    <div style={{ position: "relative", marginBottom: 7, height: 62, touchAction: "pan-y", borderRadius: 16, overflow: "hidden" }}>
-      {/* действия под строкой */}
+    <div style={{ position: "relative", marginBottom: 7, height: 64, touchAction: "pan-y", borderRadius: 18, overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "flex-end" }}>
-        <div onClick={() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setDx(0); }} {...onActivate(() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setDx(0); })}
+        <div onClick={() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setX(0, true); }} {...onActivate(() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setX(0, true); })}
           style={{ width: 76, display: "grid", placeItems: "center", cursor: "pointer", gap: 3,
-            background: "rgba(143,184,144,0.20)", color: "#A6C8A7", fontFamily: "monospace", fontSize: 10, letterSpacing: 0.6 }}>
-          {UI_SVG.lockOpen("#A6C8A7", 15)}<span>ТЕСТЫ</span>
+            background: a11y ? "rgba(79,122,88,0.16)" : "rgba(143,184,144,0.18)", color: L.good, fontFamily: "monospace", fontSize: 10, letterSpacing: 0.6 }}>
+          {UI_SVG.lockOpen(L.good, 15)}<span>ТЕСТЫ</span>
         </div>
-        <div onClick={() => { if (ask === "reset") { setBusy(true); onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk("reset"); }}
-          {...onActivate(() => { if (ask === "reset") { setBusy(true); onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk("reset"); })}
+        <div onClick={() => { if (ask) { onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk(true); }}
+          {...onActivate(() => { if (ask) { onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk(true); })}
           style={{ width: 76, display: "grid", placeItems: "center", cursor: "pointer", gap: 3,
-            background: ask === "reset" ? "rgba(217,136,120,0.35)" : "rgba(224,178,90,0.20)", color: ask === "reset" ? "#E8A294" : "#E0B25A",
-            fontFamily: "monospace", fontSize: 10, letterSpacing: 0.6 }}>
-          {ask === "reset" ? <span style={{ fontSize: 11 }}>ТОЧНО?</span> : <><span style={{ fontSize: 15 }}>↺</span><span>СБРОС</span></>}
+            background: ask ? (a11y ? "rgba(168,68,52,0.22)" : "rgba(217,136,120,0.32)") : (a11y ? "rgba(168,124,40,0.18)" : "rgba(224,178,90,0.20)"),
+            color: ask ? L.bad : L.mid, fontFamily: "monospace", fontSize: 10, letterSpacing: 0.6 }}>
+          {ask ? <span style={{ fontSize: 11 }}>ТОЧНО?</span> : <><span style={{ fontSize: 15 }}>↺</span><span>СБРОС</span></>}
         </div>
       </div>
-      {/* сама строка */}
-      <div onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDx(0)}
-        onTouchStart={start} onTouchMove={move} onTouchEnd={end}
-        style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", gap: 11, padding: "11px 12px",
-          borderRadius: 16, cursor: "pointer", transform: `translateX(${dx}px)`, transition: st.current.moved ? "none" : "transform .22s cubic-bezier(.3,.8,.4,1)",
-          background: a11y ? "linear-gradient(180deg, #FDFAF2, #F5EDDC)" : "linear-gradient(180deg, #2C2413, #201A0F)",
-          border: `1px solid ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.22)"}`, boxShadow: dx < -10 ? "0 6px 18px rgba(0,0,0,0.35)" : "none" }}>
-        <div style={{ width: 38, height: 38, borderRadius: "50%", flex: "0 0 38px", display: "grid", placeItems: "center",
-          fontFamily: "monospace", fontSize: 12, fontWeight: "bold", color: tone, border: `1.5px solid ${tone}80`, background: `${tone}14` }}>{init}</div>
+      {/* только «указатель»: он покрывает и палец, и мышь. Раньше рядом висели ещё
+          события касания — два потока сбивали начальную точку и давали рывки */}
+      <div ref={ref} data-row="player" onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={() => { st.current.active = false; setX(0, true); }}
+        style={{ ...glass(C, a11y, { borderRadius: 18 }), position: "absolute", inset: 0, display: "flex", alignItems: "center", gap: 11,
+          padding: "0 12px", cursor: "pointer", WebkitBackdropFilter: "blur(14px)", backdropFilter: "blur(14px)",
+          background: a11y ? "linear-gradient(180deg, rgba(255,252,244,0.86), rgba(246,236,214,0.9))"
+                           : "linear-gradient(180deg, rgba(58,46,26,0.72), rgba(32,25,14,0.82))" }}>
+        <Avatar who={`${p.name} ${p.surname}`} size={38} tone={tone === "good" ? null : tone} a11y={a11y} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ ...T.modTitle, fontSize: 14.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name} {p.surname}</div>
-          <div style={{ color: T.modSub.color, fontSize: 11.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ color: C.text, fontFamily: "Georgia, serif", fontSize: 14.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name} {p.surname}</div>
+          <div style={{ color: C.muted, fontSize: 11.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {POSITION_RU[p.position] || "Сотрудник"} · {sub}
           </div>
         </div>
         {badge ? <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1, padding: "3px 7px", borderRadius: 7,
           color: badge.c, background: `${badge.c}1f`, border: `1px solid ${badge.c}4d`, flexShrink: 0 }}>{badge.t}</span> : null}
-        <button onClick={(e) => { e.stopPropagation(); setDx(0); openMenu(p, stat); }} aria-label="Ещё"
-          // палец: строка тоже слушает нажатия, поэтому гасим их на кнопке (правка 184)
+        <button onClick={(e) => { e.stopPropagation(); setX(0, true); openMenu(p, stat); }} aria-label="Ещё"
           onPointerDown={(e) => e.stopPropagation()} onPointerMove={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => { e.stopPropagation(); }}
-          style={{ background: "none", border: "none", cursor: "pointer", color: T.modSub.color, fontSize: 19, padding: "0 4px", letterSpacing: 1 }}>⋯</button>
+          onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}
+          style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 19, padding: "0 4px", letterSpacing: 1 }}>⋯</button>
       </div>
     </div>
   );
 }
 
-// Лист действий по сотруднику: редкое и опасное — здесь, с подтверждением
+// Лист действий по сотруднику — всплывающая карточка «морозный лёд» (правка 186)
 function PlayerSheet({ p, stat, T, a11y, onClose, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
+  // В наборе «морозного льда» только акценты; цвет текста берём у темы приложения,
+  // иначе он остаётся пустым и браузер рисует чёрным (правка 187)
+  const C = { ...tones(a11y), text: T.modTitle.color, muted: T.modSub.color };
+  // мелкие подписи в светлой теме: акцентные цвета на своих подложках дают 3,3–3,5
+  const L = a11y ? { good: "#1F5636", mid: "#6B4E14", bad: "#8A3A22" } : { good: C.good, mid: C.mid, bad: C.bad };
   const [ask, setAsk] = React.useState(null);        // null | "reset" | "del"
   const [note, setNote] = React.useState(null);
-  const C = { text: T.modTitle.color, muted: T.modSub.color };
-  const item = (icon, label, color, onClick, danger) => (
+  const [shown, setShown] = React.useState(false);
+  React.useEffect(() => { const t = setTimeout(() => setShown(true), 10); return () => clearTimeout(t); }, []);
+
+  const item = (icon, label, color, onClick) => (
     <div onClick={onClick} {...onActivate(onClick)}
-      style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 12px", cursor: "pointer",
-        borderTop: `1px solid ${a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.12)"}`, color, fontFamily: "Georgia, serif", fontSize: 14.5 }}>
+      style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px", cursor: "pointer",
+        borderTop: `1px solid ${a11y ? "rgba(107,78,20,0.13)" : "rgba(214,178,102,0.13)"}`, color, fontFamily: "Georgia, serif", fontSize: 15 }}>
       <span style={{ width: 20, display: "grid", placeItems: "center" }}>{icon}</span>{label}
     </div>
   );
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(10,8,4,0.6)", display: "flex", alignItems: "flex-end",
-      paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ margin: 10, width: "100%", borderRadius: 20, padding: 8,
-        background: a11y ? "linear-gradient(180deg, rgba(255,252,245,0.98), rgba(246,238,222,0.98))" : "linear-gradient(180deg, rgba(40,32,18,0.98), rgba(26,21,12,0.98))",
-        border: `1px solid ${a11y ? "rgba(139,106,48,0.3)" : "rgba(200,169,110,0.3)"}` }}>
-        <div style={{ color: C.text, fontSize: 15, fontWeight: "bold", fontFamily: "Georgia, serif", padding: "8px 12px 2px" }}>{p.name} {p.surname}</div>
-        <div style={{ color: C.muted, fontSize: 11.5, padding: "0 12px 8px" }}>
-          {POSITION_RU[p.position] || "Сотрудник"} · {p.restaurant}{stat.tests ? ` · ${stat.tests} ${kk(stat.tests, "тест", "теста", "тестов")} · ${stat.avg}%` : " · не начинал"}
+
+  return createPortal((
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 5000, display: "grid", placeItems: "center", padding: "0 14px",
+      // в светлой теме вуаль тёплая и мягкая: тёмная просвечивала сквозь карточку и делала её серой (правка 188)
+      background: shown ? (a11y ? "rgba(74,54,24,0.26)" : "rgba(10,8,4,0.5)") : "rgba(10,8,4,0)",
+      WebkitBackdropFilter: shown ? "blur(7px)" : "blur(0px)", backdropFilter: shown ? "blur(7px)" : "blur(0px)",
+      transition: "background .22s ease, backdrop-filter .22s ease" }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ ...glass(C, a11y, { borderRadius: 22 }), width: "100%", maxWidth: 360, padding: 6, overflow: "hidden",
+          WebkitBackdropFilter: "blur(26px)", backdropFilter: "blur(26px)",
+          background: a11y ? "linear-gradient(180deg, rgba(255,253,249,0.97), rgba(250,244,231,0.95))"
+                           : "linear-gradient(180deg, rgba(62,50,30,0.72), rgba(28,22,13,0.78))",
+          border: `1px solid ${a11y ? "rgba(139,106,48,0.28)" : "rgba(214,178,102,0.22)"}`,
+          boxShadow: a11y ? "0 20px 48px rgba(86,58,18,0.30), inset 0 1px 0 rgba(255,255,255,0.96)"
+                          : "0 20px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,236,190,0.14)",
+          transform: shown ? "translateY(0) scale(1)" : "translateY(14px) scale(0.97)", opacity: shown ? 1 : 0,
+          transition: "transform .26s cubic-bezier(.2,.9,.3,1), opacity .2s ease" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 12px 10px" }}>
+          <Avatar who={`${p.name} ${p.surname}`} size={40} tone={stat.tests === 0 ? "bad" : null} a11y={a11y} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: C.text, fontSize: 15.5, fontWeight: "bold", fontFamily: "Georgia, serif" }}>{p.name} {p.surname}</div>
+            <div style={{ color: C.muted, fontSize: 11.5, marginTop: 2 }}>
+              {POSITION_RU[p.position] || "Сотрудник"} · {p.restaurant}{stat.tests ? ` · ${stat.tests} ${kk(stat.tests, "тест", "теста", "тестов")} · ${stat.avg}%` : " · не начинал"}
+            </div>
+          </div>
         </div>
-        {note ? <div style={{ color: C.muted, fontSize: 13, padding: "10px 12px", textAlign: "center" }}>{note}</div> : (<>
-          {item(UI_SVG.barChart(GOLD, 16), "Карточка обучения", C.text, () => { onClose(); onViewPlayer && onViewPlayer(p); })}
-          {onUnlockQuiz ? item(UI_SVG.lockOpen("#8FB890", 16), "Разблокировать тесты", C.text, () => { onUnlockQuiz(p.name, p.surname); onClose(); }) : null}
+        {note ? <div style={{ color: C.muted, fontSize: 13.5, padding: "16px 12px", textAlign: "center", fontFamily: "Georgia, serif" }}>{note}</div> : (<>
+          {item(UI_SVG.barChart(C.gold || GOLD, 16), "Карточка обучения", C.text, () => { onClose(); onViewPlayer && onViewPlayer(p); })}
+          {onUnlockQuiz ? item(UI_SVG.lockOpen(C.good, 16), "Разблокировать тесты", C.text, () => { onUnlockQuiz(p.name, p.surname); onClose(); }) : null}
           {ask === "reset"
-            ? item(<span style={{ color: "#E0B25A" }}>↺</span>, "Точно сбросить прогресс?", "#E0B25A", () => { onResetPlayer && onResetPlayer(p.name, p.surname); setNote("Прогресс сброшен ✓"); })
-            : item(<span style={{ color: "#E0B25A" }}>↺</span>, "Сбросить прогресс", "#E0B25A", () => setAsk("reset"))}
+            ? item(<span style={{ color: C.bad }}>↺</span>, "Точно сбросить прогресс?", C.bad, () => { onResetPlayer && onResetPlayer(p.name, p.surname); setNote("Прогресс сброшен ✓"); })
+            : item(<span style={{ color: C.mid }}>↺</span>, "Сбросить прогресс", C.mid, () => setAsk("reset"))}
           {onDeleteEmployee ? (ask === "del"
-            ? item(UI_SVG.trash("#D98878", 16), "Точно удалить? Это навсегда", "#D98878", async () => { setNote("Удаляю…"); const r = await onDeleteEmployee(p.name, p.surname); setNote(r && r.ok === false ? `Не удалось: ${r.error || "сервер отказал"}` : "Сотрудник удалён ✓"); })
-            : item(UI_SVG.trash("#D98878", 16), "Удалить сотрудника", "#D98878", () => setAsk("del"))) : null}
+            ? item(UI_SVG.trash(C.bad, 16), "Точно удалить? Это навсегда", C.bad, async () => { setNote("Удаляю…"); const r = await onDeleteEmployee(p.name, p.surname); setNote(r && r.ok === false ? `Не удалось: ${r.error || "сервер отказал"}` : "Сотрудник удалён ✓"); })
+            : item(UI_SVG.trash(C.bad, 16), "Удалить сотрудника", C.bad, () => setAsk("del"))) : null}
         </>)}
-        <div onClick={onClose} {...onActivate(onClose)} style={{ textAlign: "center", padding: "12px 0 8px", color: C.muted, fontSize: 14, cursor: "pointer" }}>Закрыть</div>
+        <div onClick={onClose} {...onActivate(onClose)}
+          style={{ textAlign: "center", padding: "13px 0 11px", marginTop: 4, color: C.muted, fontSize: 14.5, cursor: "pointer", fontFamily: "Georgia, serif",
+            borderTop: `1px solid ${a11y ? "rgba(107,78,20,0.13)" : "rgba(214,178,102,0.13)"}` }}>Закрыть</div>
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 export function StatsScreen({ T, a11y, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {

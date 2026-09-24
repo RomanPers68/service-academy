@@ -360,7 +360,6 @@ import {
   LeaderboardScreen,
   DailyScreen,
   PlayerDetailScreen,
-  PlayerResetCard,
   StatsScreen,
   PS,
   ProfileScreen,

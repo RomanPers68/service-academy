@@ -857,94 +857,183 @@ export function PlayerDetailScreen({ player, T, onBack }) {
   );
 }
 
-export function PlayerResetCard({ p, T, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
-  const [showConfirm, setShowConfirm] = React.useState(false);
-  // Удаление сотрудника (доступ + запись) — отдельный поток с жёстким
-  // подтверждением: это навсегда, в отличие от сброса результатов
-  const [delAsk, setDelAsk] = React.useState(false);
-  const [delBusy, setDelBusy] = React.useState(false);
-  const [delDone, setDelDone] = React.useState(null);   // null | текст итога
-  const [delErr, setDelErr] = React.useState(null);
+export // «Управление данными»: поиск, фильтры, строки со свайпом и лист действий (правка 182)
+function PlayersManager({ players, scores, T, a11y, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
+  const [q, setQ] = React.useState("");
+  const [tab, setTab] = React.useState("all");        // all | new | sleep
+  const [sheet, setSheet] = React.useState(null);     // { p, stat }
+
+  // сводка по каждому: тестов, средний балл, дней с последнего результата
+  const statOf = React.useCallback((p) => {
+    const mine = (scores || []).filter(s => s.name === p.name && (s.surname || "") === (p.surname || ""));
+    const byQuiz = [...new Map(mine.map(s => [s.quiz_id, s])).values()];
+    const avg = byQuiz.length ? Math.round(byQuiz.reduce((a, s) => a + (s.pct || 0), 0) / byQuiz.length) : 0;
+    const last = mine.reduce((a, s) => Math.max(a, new Date(s.updated_at || 0).getTime() || 0), 0);
+    return { tests: byQuiz.length, avg, days: last ? Math.floor((Date.now() - last) / 86400000) : 999 };
+  }, [scores]);
+
+  const rows = React.useMemo(() => {
+    const needle = q.trim().toLowerCase().replace(/ё/g, "е");
+    return players.map(p => ({ p, stat: statOf(p) }))
+      .filter(({ p, stat }) => {
+        if (needle && !`${p.name} ${p.surname}`.toLowerCase().replace(/ё/g, "е").includes(needle)) return false;
+        if (tab === "new") return stat.tests === 0;
+        if (tab === "sleep") return stat.tests > 0 && stat.days >= 14;
+        return true;
+      })
+      .sort((a, b) => (a.stat.tests === 0 ? -1 : 0) - (b.stat.tests === 0 ? -1 : 0) || b.stat.days - a.stat.days);
+  }, [players, q, tab, statOf]);
+
+  const chip = (id, label) => (
+    <button key={id} onClick={() => setTab(id)} style={{ fontFamily: "Georgia, serif", fontSize: 11.5, padding: "5px 11px", borderRadius: 10, cursor: "pointer",
+      color: tab === id ? (a11y ? "#F7F1E4" : "#1A1008") : T.modSub.color,
+      background: tab === id ? "linear-gradient(180deg, #D9BE84, #C8A96E)" : "transparent",
+      border: `1px solid ${tab === id ? "transparent" : (a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.22)")}` }}>{label}</button>
+  );
+
   return (
-    <div style={{ ...T.modCard, marginBottom:8, gap:12, flexDirection:"column" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <div style={{ flex:1 }}>
-          <div style={{ ...T.modTitle, fontSize:12.5 }}>{p.name} {p.surname}</div>
-          <div style={{ color:T.modSub.color, fontSize:11 }}>{p.restaurant}</div>
+    <>
+      <div style={{ color: T.modSub.color, fontSize: 9, letterSpacing: 3, fontFamily: "monospace", margin: "16px 0 8px" }}>
+        УПРАВЛЕНИЕ ДАННЫМИ · {players.length}
+      </div>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Найти сотрудника"
+        style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 13, marginBottom: 8, outline: "none",
+          fontFamily: "Georgia, serif", fontSize: 13.5, color: T.modTitle.color,
+          background: a11y ? "rgba(255,252,245,0.8)" : "rgba(20,14,6,0.5)",
+          border: `1px solid ${a11y ? "rgba(139,106,48,0.24)" : "rgba(200,169,110,0.22)"}` }} />
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {chip("all", "Все")}{chip("new", "Не начали")}{chip("sleep", "Уснули")}
+      </div>
+      {rows.length ? rows.map(({ p, stat }, i) => (
+        <PlayerRow key={`${p.name}|${p.surname}|${i}`} p={p} stat={stat} T={T} a11y={a11y}
+          onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} onDeleteEmployee={onDeleteEmployee}
+          openMenu={(pp, ss) => setSheet({ p: pp, stat: ss })} />
+      )) : <div style={{ color: T.modSub.color, fontSize: 13, textAlign: "center", padding: "18px 0" }}>Никого не нашлось</div>}
+      <div style={{ color: T.modSub.color, fontSize: 11, textAlign: "center", padding: "6px 0 2px" }}>
+        потяни строку влево — тесты и сброс · «⋯» — всё остальное
+      </div>
+      {sheet ? <PlayerSheet p={sheet.p} stat={sheet.stat} T={T} a11y={a11y} onClose={() => setSheet(null)}
+        onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} onDeleteEmployee={onDeleteEmployee} /> : null}
+    </>
+  );
+}
+
+// Должности и склонение — для строки сотрудника (правка 182)
+const POSITION_RU = { waiter: "Официант", hostess: "Хостес", bartender: "Бармен", senior_bartender: "Старший бармен",
+  manager: "Менеджер", senior: "Руководитель", service_manager: "Сервис-менеджер", chef: "Повар", admin: "Руководитель" };
+const kk = (n, one, few, many) => {
+  const a = Math.abs(n) % 100, b = a % 10;
+  return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many;
+};
+
+// Строка сотрудника в «Управлении данными» (правка 182). Было: три крупные кнопки на
+// каждого — три человека на экран и много красного. Стало: строка со сводкой, свайп
+// влево открывает два частых действия, «⋯» — полный список с подтверждениями.
+function PlayerRow({ p, stat, T, a11y, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee, openMenu }) {
+  const OPEN = 152;                                   // ширина двух кнопок
+  const [dx, setDx] = React.useState(0);
+  const [ask, setAsk] = React.useState(null);         // null | "reset"
+  const [busy, setBusy] = React.useState(false);
+  const [done, setDone] = React.useState(null);
+  const st = React.useRef({ x: 0, dx: 0, moved: false, id: null });
+
+  const start = (e) => { const t = e.touches ? e.touches[0] : e; st.current = { x: t.clientX, dx, moved: false }; };
+  const move = (e) => {
+    const t = e.touches ? e.touches[0] : e; const d = t.clientX - st.current.x;
+    if (Math.abs(d) > 6) st.current.moved = true;
+    if (!st.current.moved) return;
+    setDx(Math.max(-OPEN - 18, Math.min(0, st.current.dx + d)));
+  };
+  const end = () => {
+    if (!st.current.moved) { setDx(0); onViewPlayer && onViewPlayer(p); return; }
+    setDx(dx < -OPEN / 2 ? -OPEN : 0);
+    if (dx >= -OPEN / 2) setAsk(null);
+  };
+
+  const init = ((p.name || "?")[0] || "") + ((p.surname || "")[0] || "");
+  const tone = stat.tests === 0 ? "#C98B7A" : stat.avg >= 90 ? "#8FB890" : GOLD;
+  const sub = stat.tests === 0 ? "не начинал" : `${stat.tests} ${kk(stat.tests, "тест", "теста", "тестов")} · ${stat.avg}%`;
+  const badge = stat.tests === 0 ? { t: "НОВЫЙ", c: "#E0B25A" } : stat.days >= 14 ? { t: `${stat.days} ДН.`, c: "#C98B7A" } : null;
+
+  if (done) return (
+    <div style={{ ...T.modCard, marginBottom: 7, padding: "12px 14px", color: T.modSub.color, fontSize: 13 }}>{done}</div>
+  );
+
+  return (
+    <div style={{ position: "relative", marginBottom: 7, height: 62, touchAction: "pan-y" }}>
+      {/* действия под строкой */}
+      <div style={{ position: "absolute", inset: 0, borderRadius: 16, overflow: "hidden", display: "flex", justifyContent: "flex-end" }}>
+        <div onClick={() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setDx(0); }} {...onActivate(() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setDx(0); })}
+          style={{ width: 76, display: "grid", placeItems: "center", cursor: "pointer", gap: 3,
+            background: "rgba(143,184,144,0.20)", color: "#A6C8A7", fontFamily: "monospace", fontSize: 10, letterSpacing: 0.6 }}>
+          {UI_SVG.lockOpen("#A6C8A7", 15)}<span>ТЕСТЫ</span>
         </div>
-        <div onClick={() => onViewPlayer && onViewPlayer(p)} {...onActivate(() => onViewPlayer && onViewPlayer(p))}
-          style={{ padding:"6px 12px", borderRadius:9, cursor:"pointer", fontSize:12.5, fontFamily:"Georgia, serif",
-            background:"rgba(200,169,110,0.12)", border:"1px solid rgba(200,169,110,0.3)", color:GOLD, display:"flex", alignItems:"center" }}>
-          {UI_SVG.barChart(GOLD, 15)}
-        </div>
-        <div onClick={() => setShowConfirm(s => !s)} {...onActivate(() => setShowConfirm(s => !s))}
-          style={{ padding:"6px 12px", borderRadius:9, cursor:"pointer", fontSize:12.5, fontFamily:"Georgia, serif",
-            background:"rgba(220,80,80,0.12)", border:"1px solid rgba(220,80,80,0.3)", color:"#E07878", display:"flex", alignItems:"center", gap:6 }}>
-          {UI_SVG.trash("#E07878", 13)} Сбросить
+        <div onClick={() => { if (ask === "reset") { setBusy(true); onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk("reset"); }}
+          {...onActivate(() => { if (ask === "reset") { setBusy(true); onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk("reset"); })}
+          style={{ width: 76, display: "grid", placeItems: "center", cursor: "pointer", gap: 3,
+            background: ask === "reset" ? "rgba(217,136,120,0.35)" : "rgba(224,178,90,0.20)", color: ask === "reset" ? "#E8A294" : "#E0B25A",
+            fontFamily: "monospace", fontSize: 10, letterSpacing: 0.6 }}>
+          {ask === "reset" ? <span style={{ fontSize: 11 }}>ТОЧНО?</span> : <><span style={{ fontSize: 15 }}>↺</span><span>СБРОС</span></>}
         </div>
       </div>
-      {showConfirm && (
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <div style={{ color:"#E07878", fontSize:12.5, flex:1 }}>Удалить все результаты?</div>
-          <div onClick={() => { onResetPlayer(p.name, p.surname); setShowConfirm(false); }} {...onActivate(() => { onResetPlayer(p.name, p.surname); setShowConfirm(false); })}
-            style={{ padding:"6px 14px", borderRadius:9, cursor:"pointer", fontSize:12.5,
-              background:"rgba(220,80,80,0.25)", border:"1px solid rgba(220,80,80,0.5)", color:"#E07878", fontWeight:"bold" }}>
-            Да
+      {/* сама строка */}
+      <div onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDx(0)}
+        onTouchStart={start} onTouchMove={move} onTouchEnd={end}
+        style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", gap: 11, padding: "11px 12px",
+          borderRadius: 16, cursor: "pointer", transform: `translateX(${dx}px)`, transition: st.current.moved ? "none" : "transform .22s cubic-bezier(.3,.8,.4,1)",
+          background: a11y ? "linear-gradient(180deg, #FDFAF2, #F5EDDC)" : "linear-gradient(180deg, #2C2413, #201A0F)",
+          border: `1px solid ${a11y ? "rgba(139,106,48,0.22)" : "rgba(200,169,110,0.22)"}`, boxShadow: dx < -10 ? "0 6px 18px rgba(0,0,0,0.35)" : "none" }}>
+        <div style={{ width: 38, height: 38, borderRadius: "50%", flex: "0 0 38px", display: "grid", placeItems: "center",
+          fontFamily: "monospace", fontSize: 12, fontWeight: "bold", color: tone, border: `1.5px solid ${tone}80`, background: `${tone}14` }}>{init}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ ...T.modTitle, fontSize: 14.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name} {p.surname}</div>
+          <div style={{ color: T.modSub.color, fontSize: 11.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {POSITION_RU[p.position] || "Сотрудник"} · {sub}
           </div>
-          <div onClick={() => setShowConfirm(false)} {...onActivate(() => setShowConfirm(false))}
-            style={{ padding:"6px 14px", borderRadius:9, cursor:"pointer", fontSize:12.5,
-              background:T.modCard.background, border:"1px solid rgba(255,255,255,0.08)", color:T.modSub.color }}>
-            Нет
-          </div>
         </div>
-      )}
-      {onUnlockQuiz && (
-        <div onClick={() => onUnlockQuiz(p.name, p.surname)} {...onActivate(() => onUnlockQuiz(p.name, p.surname))}
-          style={{ padding:"6px 12px", borderRadius:9, cursor:"pointer", fontSize:12.5, fontFamily:"Georgia, serif",
-            background:"rgba(80,160,80,0.12)", border:"1px solid rgba(80,160,80,0.3)", color:"#81C784", alignSelf:"flex-start", display:"flex", alignItems:"center", gap:6 }}>
-          {UI_SVG.lockOpen("#81C784", 13)} Разблокировать тесты
+        {badge ? <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1, padding: "3px 7px", borderRadius: 7,
+          color: badge.c, background: `${badge.c}1f`, border: `1px solid ${badge.c}4d`, flexShrink: 0 }}>{badge.t}</span> : null}
+        <button onClick={(e) => { e.stopPropagation(); setDx(0); openMenu(p, stat); }} aria-label="Ещё"
+          style={{ background: "none", border: "none", cursor: "pointer", color: T.modSub.color, fontSize: 19, padding: "0 4px", letterSpacing: 1 }}>⋯</button>
+      </div>
+    </div>
+  );
+}
+
+// Лист действий по сотруднику: редкое и опасное — здесь, с подтверждением
+function PlayerSheet({ p, stat, T, a11y, onClose, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee }) {
+  const [ask, setAsk] = React.useState(null);        // null | "reset" | "del"
+  const [note, setNote] = React.useState(null);
+  const C = { text: T.modTitle.color, muted: T.modSub.color };
+  const item = (icon, label, color, onClick, danger) => (
+    <div onClick={onClick} {...onActivate(onClick)}
+      style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 12px", cursor: "pointer",
+        borderTop: `1px solid ${a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.12)"}`, color, fontFamily: "Georgia, serif", fontSize: 14.5 }}>
+      <span style={{ width: 20, display: "grid", placeItems: "center" }}>{icon}</span>{label}
+    </div>
+  );
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 3000, background: "rgba(10,8,4,0.6)", display: "flex", alignItems: "flex-end",
+      paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ margin: 10, width: "100%", borderRadius: 20, padding: 8,
+        background: a11y ? "linear-gradient(180deg, rgba(255,252,245,0.98), rgba(246,238,222,0.98))" : "linear-gradient(180deg, rgba(40,32,18,0.98), rgba(26,21,12,0.98))",
+        border: `1px solid ${a11y ? "rgba(139,106,48,0.3)" : "rgba(200,169,110,0.3)"}` }}>
+        <div style={{ color: C.text, fontSize: 15, fontWeight: "bold", fontFamily: "Georgia, serif", padding: "8px 12px 2px" }}>{p.name} {p.surname}</div>
+        <div style={{ color: C.muted, fontSize: 11.5, padding: "0 12px 8px" }}>
+          {POSITION_RU[p.position] || "Сотрудник"} · {p.restaurant}{stat.tests ? ` · ${stat.tests} ${kk(stat.tests, "тест", "теста", "тестов")} · ${stat.avg}%` : " · не начинал"}
         </div>
-      )}
-      {onDeleteEmployee && !delDone && (
-        <div onClick={() => { setDelAsk(a => !a); setDelErr(null); }} {...onActivate(() => { setDelAsk(a => !a); setDelErr(null); })}
-          style={{ padding:"6px 12px", borderRadius:9, cursor:"pointer", fontSize:12.5, fontFamily:"Georgia, serif",
-            background:"rgba(180,50,50,0.10)", border:"1px solid rgba(200,60,60,0.35)", color:"#D96A5E", alignSelf:"flex-start", display:"flex", alignItems:"center", gap:6 }}>
-          {UI_SVG.trash("#D96A5E", 13)} Удалить сотрудника
-        </div>
-      )}
-      {delAsk && !delDone && (
-        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-          <div style={{ color:"#D96A5E", fontSize:12.5, lineHeight:1.5 }}>
-            Удалить {p.name} насовсем? Пропадёт доступ в приложение. Это нельзя отменить.
-          </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <div onClick={async () => {
-              if (delBusy) return;
-              setDelBusy(true); setDelErr(null);
-              const r = await onDeleteEmployee(p.name, p.surname);
-              setDelBusy(false);
-              if (r && r.ok) { setDelDone(r.note || "Сотрудник удалён: доступ и все результаты стёрты."); setDelAsk(false); }
-              else setDelErr((r && r.msg) || "Не получилось удалить");
-            }} {...onActivate(() => {})}
-              style={{ padding:"7px 14px", borderRadius:9, cursor:"pointer", fontSize:12.5, fontWeight:"bold",
-                background:"rgba(200,60,60,0.28)", border:"1px solid rgba(210,70,70,0.55)", color:"#E88378",
-                opacity: delBusy ? 0.6 : 1 }}>
-              {delBusy ? "Удаляю…" : "Да, удалить навсегда"}
-            </div>
-            <div onClick={() => setDelAsk(false)} {...onActivate(() => setDelAsk(false))}
-              style={{ padding:"7px 14px", borderRadius:9, cursor:"pointer", fontSize:12.5,
-                background:T.modCard.background, border:"1px solid rgba(255,255,255,0.08)", color:T.modSub.color }}>
-              Отмена
-            </div>
-          </div>
-          {delErr ? <div style={{ color:"#D96A5E", fontSize:11 }}>{delErr}</div> : null}
-        </div>
-      )}
-      {delDone && (
-        <div style={{ color:T.modSub.color, fontSize:11, fontStyle:"italic" }}>
-          {delDone}
-        </div>
-      )}
+        {note ? <div style={{ color: C.muted, fontSize: 13, padding: "10px 12px", textAlign: "center" }}>{note}</div> : (<>
+          {item(UI_SVG.barChart(GOLD, 16), "Карточка обучения", C.text, () => { onClose(); onViewPlayer && onViewPlayer(p); })}
+          {onUnlockQuiz ? item(UI_SVG.lockOpen("#8FB890", 16), "Разблокировать тесты", C.text, () => { onUnlockQuiz(p.name, p.surname); onClose(); }) : null}
+          {ask === "reset"
+            ? item(<span style={{ color: "#E0B25A" }}>↺</span>, "Точно сбросить прогресс?", "#E0B25A", () => { onResetPlayer && onResetPlayer(p.name, p.surname); setNote("Прогресс сброшен ✓"); })
+            : item(<span style={{ color: "#E0B25A" }}>↺</span>, "Сбросить прогресс", "#E0B25A", () => setAsk("reset"))}
+          {onDeleteEmployee ? (ask === "del"
+            ? item(UI_SVG.trash("#D98878", 16), "Точно удалить? Это навсегда", "#D98878", async () => { setNote("Удаляю…"); const r = await onDeleteEmployee(p.name, p.surname); setNote(r && r.ok === false ? `Не удалось: ${r.error || "сервер отказал"}` : "Сотрудник удалён ✓"); })
+            : item(UI_SVG.trash("#D98878", 16), "Удалить сотрудника", "#D98878", () => setAsk("del"))) : null}
+        </>)}
+        <div onClick={onClose} {...onActivate(onClose)} style={{ textAlign: "center", padding: "12px 0 8px", color: C.muted, fontSize: 14, cursor: "pointer" }}>Закрыть</div>
+      </div>
     </div>
   );
 }
@@ -1093,12 +1182,8 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
           const allKeys = new Set([...profilePlayers.map(p => `${p.name}|${p.surname}`), ...scorePlayers.map(p => `${p.name}|${p.surname}`)]);
           const players = [...allKeys].map(key => scorePlayers.find(p => `${p.name}|${p.surname}` === key) || profilePlayers.find(p => `${p.name}|${p.surname}` === key)).filter(Boolean);
           return players.length > 0 ? (
-            <>
-              <div style={{ color:T.modSub.color, fontSize:9, letterSpacing:3, fontFamily:"monospace", margin:"16px 0 8px" }}>УПРАВЛЕНИЕ ДАННЫМИ</div>
-              {players.map((p, i) => (
-                <PlayerResetCard key={i} p={p} T={T} onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} onDeleteEmployee={onDeleteEmployee} />
-              ))}
-            </>
+            <PlayersManager players={players} scores={scores} T={T} a11y={a11y}
+              onResetPlayer={onResetPlayer} onUnlockQuiz={onUnlockQuiz} onViewPlayer={onViewPlayer} onDeleteEmployee={onDeleteEmployee} />
           ) : null;
         })()}
       </div>

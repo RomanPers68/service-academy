@@ -19,6 +19,18 @@
 -- Запускать в SQL Editor. Повторный запуск безопасен.
 -- ════════════════════════════════════════════════════════════════════════════
 
+-- ── v30: защита от повторного запуска ─────────────────────────────────────────
+-- Этап 21 заменил всё, что делает этот файл (и починил «Сбросить»). Запуск после него
+-- вернул бы старую версию сброса (без проверки ресторана) и ещё раз стёр бы прогресс
+-- сотрудника из ручной чистки ниже. Поэтому после этапа 21 файл останавливается сам и
+-- ничего не меняет. Нужно сбросить кого-то — кнопка «Сбросить» в приложении.
+do $$
+begin
+  if to_regprocedure('public._sa_caller(text)') is not null then
+    raise exception 'Этап 21 уже применён — этот файл устарел, запускать его не нужно (ничего не изменено). Сброс прогресса работает через этап 21: кнопка «Сбросить» в приложении.';
+  end if;
+end $$;
+
 -- Удаление строк одного сотрудника из одной таблицы. Возвращает сколько удалено.
 create or replace function _sa_wipe_person(p_table text, p_uid text, p_who text, p_name text, p_surname text, p_rest text)
 returns bigint language plpgsql security definer set search_path to public as $$
@@ -46,7 +58,7 @@ begin
     col_exists := exists (select 1 from information_schema.columns
                            where table_schema = 'public' and table_name = p_table and column_name = 'surname');
     if col_exists then
-      key_cond := 'name = $1 and coalesce(surname, ) = coalesce($2, )'; p1 := p_name; p2 := coalesce(p_surname, '');
+      key_cond := 'name = $1 and coalesce(surname, '''') = coalesce($2, '''')'; p1 := p_name; p2 := coalesce(p_surname, '');   -- кавычки возвращены (Доп. 285): без них «Сбросить» падало
     else
       key_cond := 'name = $1 and ($2 is null or $2 is not null)'; p1 := p_name; p2 := null;
     end if;

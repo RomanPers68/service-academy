@@ -424,7 +424,6 @@ import {
   LeaderboardScreen,
   DailyScreen,
   PlayerDetailScreen,
-  PlayerResetCard,
   StatsScreen,
   PS,
   ProfileScreen,
@@ -1202,7 +1201,9 @@ function ServiceAcademy() {
     } catch (e) { warmLinkRef.current = false; }
   }
   React.useEffect(() => {
-    if (!warmLinkRef.current || !profile || !tbMod) return;
+    // v32: ждём и прогресс с телефона — без него пул разминки пуст, и ссылка уводила в трек
+    // (гонка: модуль стола иногда подгружался раньше, чем читался сохранённый прогресс)
+    if (!warmLinkRef.current || !profile || !tbMod || !storageLoaded) return;
     if (warmSits.length < 2) {
       // Доп. 310: разминать пока нечего (уроки трека ещё не приехали — подождём; приехали, а
       // заданий нет) — ссылка из напоминания не молчит, а открывает трек
@@ -1211,7 +1212,7 @@ function ServiceAcademy() {
     }
     warmLinkRef.current = false;
     setWarmupOpen(true);
-  }, [profile, tbMod, warmSits.length, role]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile, tbMod, warmSits.length, role, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Доп. 305: чек недели — что сделано за 7 дней, можно отправить команде ──
   const weekOpen = layerData(layers, "week"), setWeekOpen = layerSet.week;   // null | "last7" | "prev"

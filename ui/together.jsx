@@ -26,10 +26,23 @@ html.sa-light .tg-tag{color:#7A5D2A}
 html.sa-light .tg-h{color:#2A1F0E}
 .tg-sub{font-size:12.5px;line-height:1.4;color:#A8966F}
 html.sa-light .tg-sub{color:#6B5B40}
-.tg-bars{display:flex;flex-direction:column;gap:7px;margin:12px 0 4px}
-.tg-bar{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center;font-size:12.5px;color:#CFC2A4}
+/* v32 (Доп. 335): квест компактнее — три шкалы в одну строку, «Подробнее» раскрывает остальное */
+.tg-qtop{display:flex;align-items:center;gap:8px;min-height:22px}
+.tg-qtop .tg-tag{flex:1;min-width:0}
+.tg-more{flex:0 0 auto;width:28px;height:28px;margin:-3px -4px -3px 0;display:grid;place-items:center;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.12);
+  background:rgba(226,186,116,.08);color:#C8A96E;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+html.sa-light .tg-more{border-color:rgba(139,106,48,.3);background:rgba(255,250,238,.7);color:#7A5D2A}
+.tg-more span{display:inline-block;font-size:11px;line-height:1;transition:transform .2s}
+.tg-more[aria-expanded="true"] span{transform:rotate(180deg)}
+.tg-more:focus-visible{outline:2px solid #D9B87C;outline-offset:2px;border-radius:8px}
+.tg-quest .tg-h{margin:2px 0 1px}
+.tg-goal{margin-top:2px}
+.tg-bars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 12px;margin:10px 0 2px}
+.tg-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 6px;align-items:baseline;font-size:12px;color:#CFC2A4}
+.tg-bar .lb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tg-bar .nv{font-variant-numeric:tabular-nums;font-weight:700}
 html.sa-light .tg-bar{color:#4A3B22}
-.tg-bar i{grid-column:1/-1;display:flex;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.tg-bar i{grid-column:1/-1;display:flex;height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
 html.sa-light .tg-bar i{background:rgba(120,90,30,.14)}
 .tg-bar i b{display:block;height:100%;background:linear-gradient(90deg,#C8A96E,#E8C56A);transition:width .6s cubic-bezier(.2,.8,.2,1)}
 .tg-bar i b+b{box-shadow:inset 1.5px 0 0 rgba(20,14,6,.55)}
@@ -43,7 +56,7 @@ html.sa-light .tg-p{border-color:rgba(139,106,48,.3);color:#4A3B22}
 .tg-p.me{border-color:#C8A96E}
 .tg-p .d{color:#D9B87C;font-weight:700}
 html.sa-light .tg-p .d{color:#7A5D2A}
-.tg-who{display:flex;align-items:center;gap:8px;width:100%;margin:10px 0 2px;padding:6px 2px;border:0;background:none;color:inherit;font:12.5px ${BODY};cursor:pointer;text-align:left}
+.tg-who{display:flex;align-items:center;gap:8px;width:100%;margin:6px 0 0;padding:5px 2px;border:0;background:none;color:inherit;font:12.5px ${BODY};cursor:pointer;text-align:left}
 .tg-who .avs{display:flex}
 .tg-who .avs span{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 10px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E);box-shadow:0 0 0 2px #1E170C;margin-left:-5px}
 html.sa-light .tg-who .avs span{box-shadow:0 0 0 2px #F6EEDC}
@@ -52,13 +65,13 @@ html.sa-light .tg-who .avs span{box-shadow:0 0 0 2px #F6EEDC}
 html.sa-light .tg-who .t{color:#4A3B22}
 .tg-who .ch{color:#A8966F;transition:transform .2s}
 .tg-who[aria-expanded="true"] .ch{transform:rotate(180deg)}
-.tg-sep{display:flex;align-items:center;gap:8px;margin:12px 0 6px}
+.tg-sep{display:flex;align-items:center;gap:8px;margin:8px 0 2px}
 .tg-sep i{flex:1;border-top:1px dashed rgba(214,178,102,.3)}
 html.sa-light .tg-sep i{border-color:rgba(139,106,48,.3)}
-.tg-task{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 2px;border:0;background:none;color:inherit;font:inherit;cursor:pointer}
+.tg-task{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:7px 2px;border:0;background:none;color:inherit;font:inherit;cursor:pointer}
 .tg-task .ck{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1.5px solid #C8A96E;display:grid;place-items:center;color:#1A1008}
 .tg-task.done .ck{background:#C8A96E}
-.tg-task .tt{flex:1;min-width:0;font-size:14px;line-height:1.35;color:#EFE4C8}
+.tg-task .tt{flex:1;min-width:0;font-size:14px;line-height:1.3;color:#EFE4C8}
 html.sa-light .tg-task .tt{color:#2A1F0E}
 .tg-task.done .tt{color:#A8966F;text-decoration:line-through;text-decoration-color:rgba(168,150,111,.6)}
 html.sa-light .tg-task.done .tt{color:#6B5B40}
@@ -79,13 +92,17 @@ html.sa-light .tg-chipbtn.on{background:rgba(47,107,69,.1);color:#2F6B45}
 .tg-chipbtn[disabled]{opacity:.55;cursor:default}
 .tg-thanks{font-size:12.5px;line-height:1.45;color:#CFC2A4;margin-top:6px}
 html.sa-light .tg-thanks{color:#4A3B22}
-.tg-lead{margin-top:10px;padding:10px 12px;border-radius:14px;border:1px dashed rgba(214,178,102,.4)}
+.tg-lead{margin-top:8px;padding:9px 12px;border-radius:14px;border:1px dashed rgba(214,178,102,.4)}
+.tg-lead.min{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 6px 6px 12px}
+.tg-lead.min .tg-sub{flex:1;min-width:0}
+.tg-lead.min .tg-row2{margin-top:0}
+.tg-notg{margin-top:3px;font-size:12px}
 html.sa-light .tg-lead{border-color:rgba(139,106,48,.4)}
 /* Свеча на двоих */
 .tg-scrim{position:fixed;inset:0;z-index:1050;display:flex;align-items:flex-end;justify-content:center;background:rgba(8,6,3,.62)}
 html.sa-light .tg-scrim{background:rgba(70,52,24,.35)}
-.tg-sheet{width:100%;max-width:560px;max-height:90vh;overflow:auto;box-sizing:border-box;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;background:#1E170C;color:#EFE4C8;border:1px solid rgba(214,178,102,.32);border-bottom:0;font-family:${BODY}}
-html.sa-light .tg-sheet{background:#F6EEDC;color:#2A1F0E;border-color:rgba(150,112,40,.35)}
+.tg-sheet{width:100%;max-width:560px;max-height:90vh;overflow:auto;box-sizing:border-box;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;background-color:#1E170C;background-image:var(--sheet-bg,none);color:#EFE4C8;border:1px solid var(--sheet-edge,rgba(214,178,102,.32));border-top-color:var(--sheet-top,rgba(214,178,102,.32));border-bottom:0;box-shadow:var(--sheet-shadow,none);font-family:${BODY}}
+html.sa-light .tg-sheet{background-color:#F6EEDC;color:#2A1F0E}
 .tg-two{position:relative;display:flex;align-items:flex-end;justify-content:center;gap:46px;margin:18px 0 6px}
 .tg-two>div{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;color:#CFC2A4;min-width:84px}
 html.sa-light .tg-two>div{color:#4A3B22}
@@ -140,6 +157,7 @@ const POS = { waiter: "официант", hostess: "хостес", bartender: "�
 const short = (p) => (p ? (p.name || "") + (p.surname ? " " + p.surname[0] + "." : p.initial ? " " + p.initial + "." : "") : "");
 const WD = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const BAR_LABEL = { warm: "Разминки", steps: "Шаги обучения", guest: "Живые гости" };
+const BAR_SHORT = { warm: "Разминки", steps: "Шаги", guest: "Гости" };   // v32: шкалы в одну строку
 const BAR_FIELD = { warm: "warm", steps: "steps", guest: "guest" };
 // цвета людей в шкалах: у каждого свой оттенок (у тебя — самый яркий)
 const PC_DARK = ["#E8C56A", "#9CC7A8", "#D99A6C", "#8FB0D6", "#C9A2D8", "#C8A96E", "#E0B08A", "#A8C68F"];
@@ -229,34 +247,58 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
       setCall({ busy: false, msg: e === "no_bot" ? "Бот ещё не подключён (этап 22б и токен бота)." : e === "forbidden" ? "Звать может старший смены." : "Не получилось — попробуй ещё раз." });
     }).catch(() => setCall({ busy: false, msg: "Нет связи — попробуй ещё раз." }));
   };
+  // v32 (Доп. 335): три шкалы — в одну строку (подпись и счёт над тонкой полосой)
   const bar = (k) => {
     const need = (team.goal || {})[k] || 0, have = (team.done || {})[k] || 0;
     if (!need) return null;
     const segs = questSegments(people, BAR_FIELD[k], need, pal);
     const fallback = !segs.length && have > 0 ? [{ w: Math.min(100, (have / need) * 100), c: pal[0], who: "" }] : segs;
     return (
-      <div key={k} className={"tg-bar" + (have >= need ? " ok" : "")} role="group" aria-label={GOAL_WORDS[k][2] + ": " + have + " из " + need + (segs.length ? " — " + segs.map((x) => x.who + " " + x.v).join(", ") : "")}>
-        <span>{BAR_LABEL[k]}</span><span>{Math.min(have, need)} / {need}{have >= need ? " ✓" : ""}</span>
+      <div key={k} className={"tg-bar" + (have >= need ? " ok" : "")} role="group" title={BAR_LABEL[k]} aria-label={GOAL_WORDS[k][2] + ": " + have + " из " + need + (segs.length ? " — " + segs.map((x) => x.who + " " + x.v).join(", ") : "")}>
+        <span className="lb">{BAR_SHORT[k]}</span><span className="nv">{Math.min(have, need)}/{need}{have >= need ? " ✓" : ""}</span>
         <i>{fallback.map((x, j) => <b key={j} style={{ width: x.w + "%", background: x.c }} title={x.who} />)}</i>
       </div>
     );
   };
+  // v32 (Доп. 335): карточка свёрнута по умолчанию — цель, шкалы, твой следующий шаг и люди одной
+  // строкой; «Подробнее» раскрывает всё остальное (люди с вкладом, «Спасибо», кто не начал, все
+  // задания). Выбор запоминается.
+  const [open, setOpen] = React.useState(() => readLS("sa_quest_open") === "1");
+  const toggleOpen = () => { vibrate("light"); setOpen((v) => { writeLS("sa_quest_open", v ? "0" : "1"); return !v; }); };
+  const nextTask = tasks.find((t) => !taskProgress(t, todayRec).done) || null;
+  const taskRow = (t) => {
+    const pg = taskProgress(t, todayRec);
+    return (
+      <button key={t.id} type="button" className={"tg-task" + (pg.done ? " done" : "")} onClick={() => { if (!pg.done && onTask) { vibrate("light"); onTask(t); } }} aria-label={t.label + (pg.done ? " — сделано" : " — " + pg.have + " из " + pg.need)}>
+        <span className="ck" aria-hidden="true">{pg.done ? <Ic n="check" s={12} /> : null}</span>
+        <span className="tt">{t.label}</span>
+        <span className="n">{pg.done ? "✓" : pg.need > 1 ? pg.have + "/" + pg.need : "›"}</span>
+      </button>
+    );
+  };
+  const me = people.find((p) => p.me) || {};
+  const noTg = notStarted.filter((p) => p.tg === false && !p.called);
   return (
-    <div className="sa-card sa-pagein" style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px" }} data-quest="">
-      <div className="tg-tag">КВЕСТ {team && !team.known ? "ЗАВЕДЕНИЯ" : "СМЕНЫ"}{shift ? " · " + shift.toUpperCase() : ""}</div>
+    <div className={"sa-card sa-pagein tg-quest" + (open ? " open" : "")} style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 10px" }} data-quest="">
+      <div className="tg-qtop">
+        <div className="tg-tag">КВЕСТ {team && !team.known ? "ЗАВЕДЕНИЯ" : "СМЕНЫ"}{shift ? " · " + shift.toUpperCase() : ""}</div>
+        <button type="button" className="tg-more" aria-expanded={open} onClick={toggleOpen} data-quest-more="" aria-label={open ? "Свернуть квест" : "Подробнее: люди, спасибо, все задания"} title={open ? "Свернуть" : "Подробнее"}><span aria-hidden="true">▾</span></button>
+      </div>
       {team ? (
         <>
           <div className="tg-h">{team.complete ? "Смена отработана ✦" : team.known ? (team.me_on ? "Смена вместе" : "Сегодня у тебя выходной") : "Заведение сегодня"}</div>
-          <div className="tg-sub">{team.known && !team.me_on ? "Смена занимается без тебя — отдыхай. " : ""}{goalLine(team.goal)}</div>
+          {team.known && !team.me_on ? <div className="tg-sub">Смена занимается без тебя — отдыхай.</div> : null}
+          {open ? <div className="tg-sub tg-goal">Цель: {goalLine(team.goal)}</div> : null}
           <div className="tg-bars">{["warm", "steps", "guest"].map(bar)}</div>
+          {team.complete ? <div className={"tg-stamp" + (drop ? " drop" : "")}><span>✦</span>СМЕНА ОТРАБОТАНА</div> : null}
           {people.length ? (
             <>
-              <button type="button" className="tg-who" aria-expanded={openWho} onClick={toggleWho}>
+              <button type="button" className="tg-who" aria-expanded={open && openWho} onClick={() => { if (!open) { setOpen(true); writeLS("sa_quest_open", "1"); if (!openWho) { setOpenWho(true); writeLS("sa_quest_who", "1"); } vibrate("light"); } else toggleWho(); }}>
                 <span className="avs" aria-hidden="true">{people.slice(0, 5).map((p, i) => <span key={p.id} style={{ "--pc": pal[p.me ? 0 : (i % (pal.length - 1)) + 1] }}>{(p.name || "?")[0]}</span>)}</span>
-                <span className="t">{people.length} {plural(people.length, "человек", "человека", "человек")} {team.known ? "в смене" : "сегодня"} · ты {(people.find((p) => p.me) || {}).steps || 0} {plural((people.find((p) => p.me) || {}).steps || 0, "шаг", "шага", "шагов")}</span>
+                <span className="t">{people.length} {plural(people.length, "человек", "человека", "человек")} {team.known ? "в смене" : "сегодня"} · ты {me.steps || 0} {plural(me.steps || 0, "шаг", "шага", "шагов")}{!open && thanksList.length ? " · спасибо: " + thanksList.length : ""}</span>
                 <span className="ch" aria-hidden="true">▾</span>
               </button>
-              {openWho ? (
+              {open && openWho ? (
                 <div className="tg-people" aria-label="Кто в смене">
                   {people.map((p, i) => (
                     <span key={p.id} className={"tg-p" + (p.me ? " me" : "")} title={p.synced ? "" : "ещё не открывал(а) приложение сегодня"}>
@@ -267,16 +309,20 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
               ) : null}
             </>
           ) : null}
-          {team.complete ? <div className={"tg-stamp" + (drop ? " drop" : "")}><span>✦</span>СМЕНА ОТРАБОТАНА</div> : null}
-          {people.length >= 2 && !thx.missing && (team.thanks !== undefined) ? (
+          {open && people.length >= 2 && !thx.missing && (team.thanks !== undefined) ? (
             <div className="tg-row2">
               <button type="button" className={"tg-chipbtn" + (iThanked ? " on" : "")} onClick={sayThanks} disabled={thx.busy} aria-pressed={iThanked}>{iThanked ? "Ты сказал(а) спасибо ✓" : "Спасибо команде ✦"}</button>
             </div>
           ) : null}
-          {thanksList.length ? <div className="tg-thanks">Спасибо от {thanksList.map((t) => (t.me ? "тебя" : t.name + (t.initial ? " " + t.initial + "." : ""))).join(", ")} ✦</div> : null}
+          {open && thanksList.length ? <div className="tg-thanks">Спасибо от {thanksList.map((t) => (t.me ? "тебя" : t.name + (t.initial ? " " + t.initial + "." : ""))).join(", ")} ✦</div> : null}
           {team.lead && notStarted.length ? (
-            <div className="tg-lead" role="group" aria-label="Кто ещё не начал">
-              <div className="tg-sub">Ещё не начали: {notStarted.map((p) => short(p) + (p.called ? " (позвали)" : p.tg === false ? " (без Telegram)" : "")).join(", ")}</div>
+            <div className={"tg-lead" + (open ? "" : " min")} role="group" aria-label="Кто ещё не начал">
+              {open ? (
+                <>
+                  <div className="tg-sub">Ещё не начали: {notStarted.map((p) => short(p) + (p.called ? " (позвали)" : "")).join(", ")}</div>
+                  {noTg.length ? <div className="tg-sub tg-notg">{noTg.length === notStarted.length && notStarted.length > 1 ? "Без Telegram — все" : "Без Telegram: " + noTg.map(short).join(", ")}</div> : null}
+                </>
+              ) : <div className="tg-sub">Ещё не начали: <b>{notStarted.length}</b></div>}
               {team.tg !== false ? <div className="tg-row2"><button type="button" className="tg-chipbtn" onClick={callAll} disabled={call.busy || notStarted.every((p) => p.called || p.tg === false)}>{call.busy ? "Минуту…" : "Позвать на разминку"}</button></div> : null}
               {call.msg ? <div className="tg-note" role="status">{call.msg}</div> : null}
             </div>
@@ -289,28 +335,19 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
       )}
       {tasks.length ? (
         <>
-          {allMine && !openTasks ? (
-            <button type="button" className="tg-who" aria-expanded={false} onClick={() => setOpenTasks(true)}>
+          {allMine && !openTasks && !open ? (
+            <button type="button" className="tg-who" aria-expanded={false} onClick={() => { setOpenTasks(true); setOpen(true); writeLS("sa_quest_open", "1"); }}>
               <span className="t"><b style={{ color: a11y ? "#2F6B45" : "#9CC7A8" }}>Твоя часть сделана · {myDone} из {tasks.length} ✓</b></span><span className="ch" aria-hidden="true">▾</span>
             </button>
           ) : (
             <>
               <div className="tg-sep"><i /><span className="tg-tag">ТВОЯ ЧАСТЬ · {myDone} ИЗ {tasks.length}</span><i /></div>
-              {tasks.map((t) => {
-                const pg = taskProgress(t, todayRec);
-                return (
-                  <button key={t.id} type="button" className={"tg-task" + (pg.done ? " done" : "")} onClick={() => { if (!pg.done && onTask) { vibrate("light"); onTask(t); } }} aria-label={t.label + (pg.done ? " — сделано" : " — " + pg.have + " из " + pg.need)}>
-                    <span className="ck" aria-hidden="true">{pg.done ? <Ic n="check" s={12} /> : null}</span>
-                    <span className="tt">{t.label}</span>
-                    <span className="n">{pg.done ? "✓" : pg.need > 1 ? pg.have + "/" + pg.need : "›"}</span>
-                  </button>
-                );
-              })}
+              {open || openTasks ? tasks.map(taskRow) : nextTask ? taskRow(nextTask) : null}
             </>
           )}
         </>
       ) : null}
-      {team && people.some((p) => !p.synced) ? <div className="tg-note">Занятия приходят с телефонов за несколько секунд.</div> : null}
+      {open && team && people.some((p) => !p.synced) ? <div className="tg-note">Занятия приходят с телефонов за несколько секунд.</div> : null}
     </div>
   );
 }

@@ -220,7 +220,7 @@ export const TABLE_LESSON_CSS = `
 .tb-recap li.no .s{color:var(--bad-ink)}
 /* шторка «выйти?» */
 .tb-scrim{position:absolute;inset:0;z-index:5;background:var(--scrim);display:flex;align-items:flex-end;animation:tbFade .2s ease}
-.tb-sheet{width:100%;max-width:560px;margin:0 auto;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;background:var(--sheet);border:1px solid var(--edge);border-bottom:0;box-shadow:0 -10px 30px var(--drop);animation:tbUp .28s cubic-bezier(.2,.8,.2,1)}
+.tb-sheet{width:100%;max-width:560px;margin:0 auto;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;background-color:var(--sheet);background-image:var(--sheet-bg,none);border:1px solid var(--sheet-edge,var(--edge));border-top-color:var(--sheet-top,var(--edge));border-bottom:0;box-shadow:var(--sheet-shadow,0 -10px 30px var(--drop));animation:tbUp .28s cubic-bezier(.2,.8,.2,1)}
 .tb-sheet h3{margin:0 0 6px;font-family:var(--font-display);font-size:20px;font-weight:700}
 .tb-sheet p{margin:0 0 14px;color:var(--sub);font-size:14px;line-height:1.5}
 

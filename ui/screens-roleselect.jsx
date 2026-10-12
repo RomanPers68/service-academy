@@ -152,15 +152,23 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                   }
                 } catch (e) {} return null; })()}
               </div>
-              <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
+              {/* Доп. 298, 306: ритм дня — свеча серии и стакан «цель дня» (из App). Есть трек —
+                  значки стоят в строке роли над главной карточкой; трека нет — здесь, под
+                  заведением (v32: раньше стояли отдельной строкой без полей и вылезали за край) */}
+              {!role && dayStrip ? (
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:7, flexShrink:0 }}>
+                  <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap" }}>{profile.restaurant}</div>
+                  <div data-day-chips="" style={{ display:"inline-flex" }}>{dayStrip}</div>
+                </div>
+              ) : (
+                <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
+              )}
             </div>
           );
         })()}
 
-        {/* Доп. 298, 306: ритм дня — свеча серии и стакан «цель дня» (из App). Есть трек —
-            значки стоят в строке роли над главной карточкой; трека нет — здесь */}
-        {!role ? dayStrip : null}
-        {!role ? dayNote : null}
+        {/* v31: строка напарника; без трека — с теми же полями, что у карточек ниже */}
+        {!role && dayNote ? <div style={{ padding:"0 10px" }}>{dayNote}</div> : null}
 
         {/* ═══ Карточка «Твой трек»: урок → ошибки → гость недели ═══ */}
         {role && onContinueLesson && (() => {

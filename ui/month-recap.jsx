@@ -75,9 +75,50 @@ const CSS = `
 .mr-pv a.mr-btn{text-decoration:none;max-width:360px}
 .mr-pv .mr-ghost{max-width:360px}
 @media (prefers-reduced-motion: reduce){.mr-art{animation:none}.mr-cmp .br i{transition:none}}
+/* v32 (Доп. 338): светлая тема — истории в светлом пергаменте и «морозном льде» (раньше всегда были тёмными).
+   Картинка «Поделиться» остаётся тёмной — это открытка. */
+html.sa-light .mr{color:#2A1F0E}
+html.sa-light .mr-bars i{background:rgba(120,90,30,.18)}
+html.sa-light .mr-bars i b{background:#8A6414}
+html.sa-light .mr-hd{color:rgba(42,31,14,.75)}
+html.sa-light .mr-hd b,html.sa-light .mr-ey{color:#8A6414}
+html.sa-light .mr-x{border-color:rgba(139,106,48,.35);background:rgba(255,250,238,.7);color:#2A1F0E}
+html.sa-light .mr-big,html.sa-light .mr-h{color:#2A1F0E}
+html.sa-light .mr-p{color:rgba(42,31,14,.82)}
+html.sa-light .mr-art{color:#8A6414}
+html.sa-light .mr-cal span{background:rgba(250,242,222,.62);box-shadow:inset 0 0 0 1px rgba(139,106,48,.14);color:rgba(42,31,14,.5)}
+html.sa-light .mr-cal span.on{background:rgba(201,154,46,.24);color:#2A1F0E}
+html.sa-light .mr-cal span.fr{background:rgba(47,90,134,.14)}
+html.sa-light .mr-cal span.wk{background:transparent;box-shadow:none}
+html.sa-light .mr-chips span{border-color:rgba(139,106,48,.3);background:rgba(250,242,222,.62);color:#2A1F0E;box-shadow:inset 0 1px 0 #fff}
+html.sa-light .mr-chips span b{color:#8A6414}
+html.sa-light .mr-stamp{border-color:#A4452A;color:#8F3520}
+html.sa-light .mr-btn{color:#1A1008;background:linear-gradient(180deg,#E6C987,#B8925A)}
+html.sa-light .mr-ghost{color:rgba(42,31,14,.78)}
+html.sa-light .mr-sent{color:rgba(42,31,14,.8)}
+html.sa-light .mr-cmp .lb{color:rgba(42,31,14,.66)}
+html.sa-light .mr-cmp .br i{background:linear-gradient(90deg,#A8843F,#D9B66E)}
+html.sa-light .mr-cmp .br.was i{background:rgba(120,90,30,.2)}
+html.sa-light .mr-cmp .br span{color:#2A1F0E}
+html.sa-light .mr-cmp .br.was span{color:rgba(42,31,14,.6)}
+html.sa-light .mr-cmp .br small{color:rgba(42,31,14,.5)}
+html.sa-light .mr-delta{background:rgba(201,154,46,.18);color:#6B4E0E}
+html.sa-light .mr-delta.eq{background:rgba(120,90,30,.1);color:rgba(42,31,14,.75)}
+html.sa-light .mr-delta.down{background:rgba(47,90,134,.12);color:#2F5A86}
+html.sa-light .mr-row2 .mr-ghost{border-color:rgba(139,106,48,.3)}
+html.sa-light .mr-pv .mr-ghost{color:rgba(243,233,210,.8);border-color:rgba(243,233,210,.24)}
+html.sa-light .mr-pv .mr-btn{color:#1A1008;background:linear-gradient(180deg,#F0D9A0,#C8A96E)}
 `;
 let cssOn = false;
 function ensureCss() { ensureTableCss(); if (cssOn || typeof document === "undefined" || !document.head || !document.createElement) return; cssOn = true; const st = document.createElement("style"); st.id = "sa-month-css"; st.textContent = CSS; document.head.appendChild(st); }
+// v32: в светлой теме — светлые фоны тех же оттенков
+const BG_L = [
+  "radial-gradient(120% 80% at 20% 10%,#F2DDA8 0%,#F5EDDB 58%,#EFE5CF 100%)",
+  "radial-gradient(120% 80% at 80% 0%,#D9E4C6 0%,#F3EEDC 60%,#EEE6D2 100%)",
+  "radial-gradient(120% 80% at 10% 90%,#F0D2C2 0%,#F5ECDD 60%,#EFE4D0 100%)",
+  "radial-gradient(120% 80% at 90% 80%,#D2DDEA 0%,#F2EEE4 60%,#ECE6D8 100%)",
+  "radial-gradient(120% 80% at 50% 0%,#F1D9A0 0%,#F6EEDB 60%,#F0E6D0 100%)",
+];
 const BG = [
   "radial-gradient(120% 80% at 20% 10%,#5A3E18 0%,#1E150A 60%,#120C05 100%)",
   "radial-gradient(120% 80% at 80% 0%,#3D4A2A 0%,#18160C 62%,#0E0C06 100%)",
@@ -267,7 +308,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   const canFiles = (() => { try { return !!(typeof navigator !== "undefined" && navigator.canShare && typeof File !== "undefined" && navigator.canShare({ files: [new File([""], "a.png", { type: "image/png" })] })); } catch (e) { return false; } })();
   const el = (
     <div className="mr tbv" role="dialog" aria-modal="true" aria-label={"Итоги месяца: " + r.title}>
-      <div className="mr-bg" style={{ background: BG[i % BG.length] }} />
+      <div className="mr-bg" style={{ background: (a11y ? BG_L : BG)[i % BG.length] }} />
       <div className="mr-top">
         <div className="mr-bars" aria-hidden="true">{cards.map((c, k) => <i key={c.k} className={k < i ? "done" : k === i ? "run" + (hold || last ? " hold" : "") : undefined}><b style={k === i ? { animationDuration: SHOW + "ms" } : undefined} /></i>)}</div>
         <div className="mr-hd"><b>✦ ИТОГИ · {r.title.toUpperCase()}</b><span>{i + 1} / {cards.length}</span>

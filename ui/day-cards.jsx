@@ -81,7 +81,7 @@ function GoalSheet({ a11y, goal, onPick, onClose }) {
   return (
     <div className="tbv" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: a11y ? "rgba(70,52,24,0.35)" : "rgba(8,6,3,0.62)", display: "flex", alignItems: "flex-end" }}>
       <div role="dialog" aria-modal="true" aria-label="Цель дня" onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "18px 18px calc(18px + env(safe-area-inset-bottom,0px))", borderRadius: "22px 22px 0 0", background: a11y ? "#F6EEDC" : "#1E170C", border: `1px solid ${c.line}`, borderBottom: 0 }}>
+        style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "18px 18px calc(18px + env(safe-area-inset-bottom,0px))", borderRadius: "22px 22px 0 0", backgroundColor: a11y ? "#F6EEDC" : "#1E170C", backgroundImage: "var(--sheet-bg,none)", border: "1px solid var(--sheet-edge," + c.line + ")", borderTop: "1px solid var(--sheet-top," + c.line + ")", borderBottom: 0, boxShadow: "var(--sheet-shadow,none)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <Glass s={26} pct={0.6} />
           <h3 style={{ margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Цель дня</h3>
@@ -278,7 +278,7 @@ export function RemindSheet({ a11y, uk = "", lead = false, shift = "", onClose, 
   return createPortal(
     <div className="tbv" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: a11y ? "rgba(70,52,24,0.35)" : "rgba(8,6,3,0.62)", display: "flex", alignItems: "flex-end" }}>
       <div role="dialog" aria-modal="true" aria-label="Напоминания в Telegram" onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 560, maxHeight: "88vh", overflowY: "auto", boxSizing: "border-box", margin: "0 auto", padding: "18px 18px calc(18px + env(safe-area-inset-bottom,0px))", borderRadius: "22px 22px 0 0", background: a11y ? "#F6EEDC" : "#1E170C", border: `1px solid ${c.line}`, borderBottom: 0 }}>
+        style={{ width: "100%", maxWidth: 560, maxHeight: "88vh", overflowY: "auto", boxSizing: "border-box", margin: "0 auto", padding: "18px 18px calc(18px + env(safe-area-inset-bottom,0px))", borderRadius: "22px 22px 0 0", backgroundColor: a11y ? "#F6EEDC" : "#1E170C", backgroundImage: "var(--sheet-bg,none)", border: "1px solid var(--sheet-edge," + c.line + ")", borderTop: "1px solid var(--sheet-top," + c.line + ")", borderBottom: 0, boxShadow: "var(--sheet-shadow,none)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <span style={{ color: c.gold, display: "inline-flex" }}><Ic n="bell" s={24} /></span>
           <h3 style={{ margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Напоминания в Telegram</h3>

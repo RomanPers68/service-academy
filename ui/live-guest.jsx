@@ -22,6 +22,7 @@ import { dishesOf } from "../lib/reference-context";
 import { COCKTAILS } from "../data/cocktails";
 import { vibrate } from "../lib/utils";
 import { ymd } from "../lib/streak";
+import { speakText, audioWake, audioSleep, stopSpeech } from "../lib/speech";   // v32 (Доп. 336)
 
 const CSS = `
 .lg-card{position:relative;margin:6px 0 14px;padding:16px 16px 14px;border-radius:6px;background:var(--paper);color:var(--paper-ink);box-shadow:0 10px 26px var(--drop);font-family:var(--font-body)}
@@ -121,8 +122,9 @@ const PLACE_NAME = { hall: "зал", door: "вход", bar: "бар" };
 function speak(text, female) {
   try {
     if (!("speechSynthesis" in window) || !text) return;
-    const u = new window.SpeechSynthesisUtterance(String(text).replace(/\*[^*]*\*/g, "")); u.lang = "ru-RU"; u.rate = 1; u.pitch = female ? 1.12 : 0.88;
-    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    // v32 (Доп. 336): через lib/speech — слышно и в беззвучном режиме iPhone
+    audioWake();
+    speakText(String(text).replace(/\*[^*]*\*/g, ""), { rate: 1, pitch: female ? 1.12 : 0.88, cancelBefore: true, onend: () => audioSleep(), onerror: () => audioSleep() });
   } catch (e) {}
 }
 const isFemale = (name) => /[ая]$/i.test(String(name || "").split(" ")[0]) && !/^(никита|илья|кузьма|фома|лука)$/i.test(String(name || "").split(" ")[0]);
@@ -327,7 +329,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const doneRef = React.useRef(false);
   const female = isFemale(guest.name);
   const vars = tableVars(color, a11y);
-  React.useEffect(() => () => { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }, []);
+  React.useEffect(() => () => { try { stopSpeech(); } catch (e) {} }, []);
   React.useEffect(() => { const el = bodyRef.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs.length, busy, phase, partial]);
   // v31: свои гости заведения (этап 25). Пришли быстро, пока карточка только открылась, — гость
   // может смениться на своего; позже — войдут в следующий выбор («Другой гость»).
@@ -420,7 +422,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const finish = async () => {
     if (busy || myTurns < 2) return;
     vibrate("light");
-    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+    try { stopSpeech(); } catch (e) {}
     setPhase("eval"); setErr(null);
     try {
       const reply = await call(msgs, true);

@@ -50,7 +50,7 @@ function TopicActs({ topic, acts, passive }) {
   return (
     <div className="tbm-acts">
       {line || marks ? <div className={"tbm-fresh" + (f && f.level !== "fresh" ? " " + f.level : "") + (f && f.updated ? " upd" : "")}>{[line, marks].filter(Boolean).join(" · ")}
-        {acts.onCellar && done && !passive ? <button type="button" className="tbm-cellar" onClick={acts.onCellar}>погреб тем ›</button> : null}</div> : null}
+        {acts.onCellar && done ? <button type="button" className="tbm-cellar" tabIndex={off} onClick={acts.onCellar}>погреб тем ›</button> : null}</div> : null}
       {items.length ? <div className="tbm-actrow">{items}</div> : null}
     </div>
   );
@@ -109,8 +109,11 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
         <span className="tbm-lasse" aria-hidden="true" style={{ background: "linear-gradient(180deg,transparent 40%,rgba(0,0,0,.28))," + (deco || "#8B3020") }} />
         {showSeal ? <span className={"tbm-seal" + (stampNow ? " stamp" : "")} aria-hidden="true"><Wax s={58} /></span> : null}
         <div className="tbm-head">
-          {MOD_SVG[mod.icon] ? <div className="tbm-icon">{MOD_SVG[mod.icon](deco, 30)}</div> : (mod.icon ? <div className="tbm-icon" style={{ fontSize: 26 }}>{mod.icon}</div> : null)}
-          <div className="tbm-eyebrow" style={{ color: ink }}>{[mod.tag, real.length + " " + plural(real.length, "шаг", "шага", "шагов"), "≈ " + fmt(total)].filter(Boolean).join(" · ")}</div>
+          {/* v32 (Доп. 334): значок темы — в одной строке с меткой (меню компактнее, без лишней прокрутки) */}
+          <div className="tbm-top">
+            {MOD_SVG[mod.icon] ? <div className="tbm-icon">{MOD_SVG[mod.icon](deco, 20)}</div> : (mod.icon ? <div className="tbm-icon" style={{ fontSize: 18 }}>{mod.icon}</div> : null)}
+            <div className="tbm-eyebrow" style={{ color: ink }}>{[mod.tag, real.length + " " + plural(real.length, "шаг", "шага", "шагов"), "≈ " + fmt(total)].filter(Boolean).join(" · ")}</div>
+          </div>
           <h2 className="tbm-title">{mod.title}</h2>
           {mod.subtitle ? <p className="tbm-sub">{mod.subtitle}</p> : null}
           {sealed ? <div className="tbm-sealnote" role="note">раздел пройден · печать</div> : null}
@@ -127,9 +130,10 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
             const cls = [cur ? "cur" : "", i > 0 && isDone(lessons[i - 1]) ? "pd" : "", done ? "sd" : "", final ? "final" : ""].filter(Boolean).join(" ");
             const go = () => onLesson(l);
             const sub = "шаг " + (i + 1) + " · " + kind + (l.type === "lesson" ? "" : " · " + detail(l, est(l)));
+            // v32 (Доп. 334): номер шага — в кружке на линии (раньше — отдельной строкой «шаг N · урок»)
             const marker = isQuiz
               ? <span className="tbm-mk seal" aria-hidden="true">{done ? <Wax s={26} /> : null}</span>
-              : <span className="tbm-mk" aria-hidden="true">{done ? <svg width="10" height="10" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg> : null}</span>;
+              : <span className="tbm-mk" aria-hidden="true">{done ? <svg width="10" height="10" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg> : cur ? null : <span className="nm">{i + 1}</span>}</span>;
             if (cur) {
               const started = doneN > 0;
               return (
@@ -150,7 +154,8 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
             }
             return (
               <li key={l.id} className={cls}>
-                <button type="button" className={"tbm-node" + (done ? " done" : "")} onClick={go}>
+                <button type="button" className={"tbm-node" + (done ? " done" : "")} onClick={go}
+                  aria-label={l.title + " · " + sub + " · " + (done ? DONE_WORD[l.type] || "пройден" : est(l) + " мин")}>
                   {marker}
                   <span className="tbm-row">
                     <span className="tbm-t">{l.title}</span>
@@ -159,7 +164,9 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
                       ? <span className={"tbm-m tbm-hand" + (fresh.has(l.id) ? " just" : "")}>{DONE_WORD[l.type] || "пройден"}</span>
                       : <span className="tbm-m">{est(l)} мин</span>}
                   </span>
-                  <span className="tbm-s">{sub}</span>
+                  {/* у урока подпись «шаг N · урок» стала номером в кружке; у практики, теста, диалога
+                      и сборки строка осталась — в ней то, чего не видно иначе (сколько ситуаций, вопросов) */}
+                  {l.type !== "lesson" ? <span className="tbm-s">{sub}</span> : null}
                 </button>
               </li>
             );

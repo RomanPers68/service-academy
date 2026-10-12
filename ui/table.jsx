@@ -36,6 +36,7 @@ import { inkOf } from "../lib/tracks";
 import { mistakeFromSituation, tfLabel, missText } from "../lib/practice-mistake";
 import { weekShareText } from "../lib/activity";
 import { creditPassed, goldPassed, CREDIT_PASS, CREDIT_N, GOLD_MAX_WRONG } from "../lib/marks";
+import { speakText, stopSpeech, audioWake, audioSleep } from "../lib/speech";   // v32 (Доп. 336)
 
 ensureTableCss();
 ensureLessonCss();
@@ -123,8 +124,9 @@ function SayAloud({ phrase, onVoice }) {
   const [err, setErr] = React.useState("");
   const canTts = typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
   const canMic = (() => { try { return voiceSupported(); } catch (e) { return false; } })();
+  // v32 (Доп. 336): через lib/speech — слышно и в беззвучном режиме iPhone, фраза не «теряется»
   const speak = () => {
-    try { const u = new window.SpeechSynthesisUtterance(phrase); u.lang = "ru-RU"; u.rate = 0.95; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) {}
+    try { audioWake(); speakText(phrase, { rate: 0.95, cancelBefore: true, onend: () => audioSleep(), onerror: () => audioSleep() }); } catch (e) {}
   };
   const chk = heard != null ? checkSaid(phrase, heard) : null;
   React.useEffect(() => { if (chk) { sfx(chk.ok ? "ok" : "bad"); if (onVoice) onVoice(chk); } }, [heard]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -312,14 +314,15 @@ function sitSpeech(sit) {
 function ListenBtn({ text }) {
   const can = typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
   const [on, setOn] = React.useState(false);
-  React.useEffect(() => () => { try { if (can) window.speechSynthesis.cancel(); } catch (e) {} }, [text, can]);
+  React.useEffect(() => () => { try { if (can) stopSpeech(); } catch (e) {} }, [text, can]);
   if (!can) return null;
+  // v32 (Доп. 336): «Послушать ситуацию» — через lib/speech (беззвучный режим iPhone, «зависание» фразы)
   const toggle = () => {
     try {
-      if (on) { window.speechSynthesis.cancel(); setOn(false); return; }
-      const u = new window.SpeechSynthesisUtterance(text); u.lang = "ru-RU"; u.rate = 0.97;
-      u.onend = () => setOn(false); u.onerror = () => setOn(false);
-      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); setOn(true);
+      if (on) { stopSpeech(); setOn(false); audioSleep(); return; }
+      audioWake();
+      speakText(text, { rate: 0.97, cancelBefore: true, onend: () => { setOn(false); audioSleep(); }, onerror: () => { setOn(false); audioSleep(); } });
+      setOn(true);
     } catch (e) { setOn(false); }
   };
   return <button type="button" className={"tb-tool" + (on ? " on" : "")} onClick={toggle} aria-label={on ? "Остановить чтение" : "Послушать ситуацию"} aria-pressed={on}><Ic n={on ? "stop" : "headphones"} s={17} /></button>;

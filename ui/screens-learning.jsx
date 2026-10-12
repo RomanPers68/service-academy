@@ -6,7 +6,7 @@
 import { inkOf } from "../lib/tracks";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
@@ -186,6 +186,9 @@ export const _fmtMins = (mins) => mins < 60 ? `${mins} мин` : `${Math.floor(m
 // Доп. 307: какую тему трека смотрел последней (на время сессии, по ролям)
 const TRACK_PAGE = new Map();
 const TRACK_VIEW_KEY = "sa_track_view";   // "list" — прежний список тем
+// v32 (Доп. 333): у соседних страниц те же кнопки темы, что у текущей, — только без действия
+const NOOP = () => {};
+const PASSIVE_ACTS = { onRefresh: NOOP, onCredit: NOOP, onGold: NOOP, onCellar: NOOP };
 
 export function HomeScreen({ role, modules = [], completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [], onSearch, dayGoal = null,
   focusId = null, onPage, onLesson, nextFor, onNext, finish, onBookPage, pagerOnly = false, marks = null, topicActs = null }) {
@@ -242,10 +245,64 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const nudgeRef = React.useRef(null);   // разовое «покачивание» ленты: подсказка, что темы листаются
   const settleT = React.useRef(0);
   const stopNudge = () => { const a = nudgeRef.current; nudgeRef.current = null; if (a) { try { a.cancel(); } catch (e) {} } };
-  const setX = (x, animate) => {
+  // ── v32 (Доп. 332): «монета» текущей темы в ленте номеров. Едет за пальцем вместе со
+  //    страницей; внутри неё — копия номеров тёмными цифрами (видна только в монете), поэтому
+  //    номер под монетой читается всегда, даже на полпути между темами ──
+  const EASE = "cubic-bezier(.22,.8,.24,1)";
+  const indMain = React.useRef(null), indMainRow = React.useRef(null);
+  const indPin = React.useRef(null), indPinRow = React.useRef(null);
+  const geoOf = (row) => {
+    if (!row) return null;
+    const btns = row.querySelectorAll(".tbp-num");
+    const key = row.clientWidth + ":" + row.scrollWidth + ":" + btns.length;
+    if (row.__saGeo && row.__saGeo.key === key) return row.__saGeo;
+    const cells = [];
+    btns.forEach((b) => { const n = b.querySelector(".n"); cells.push({ cx: b.offsetLeft + b.offsetWidth / 2, w: b.offsetWidth, lw: n ? n.offsetWidth : 10 }); });
+    row.__saGeo = { key, cells };
+    return row.__saGeo;
+  };
+  const pillW = (c) => Math.round(Math.min(c.w + 4, Math.max(24, c.lw + 12)));
+  const placeInd = (pin, x, w, anim) => {
+    const ind = (pin ? indPin : indMain).current, cr = (pin ? indPinRow : indMainRow).current;
+    if (!ind) return;
+    ind.style.transition = anim ? "transform .32s " + EASE + ",width .32s " + EASE : "none";
+    ind.style.transform = "translate3d(" + x + "px,0,0)"; ind.style.width = w + "px"; ind.style.opacity = "1";
+    if (cr) { cr.style.transition = anim ? "transform .32s " + EASE : "none"; cr.style.transform = "translate3d(" + (-x) + "px,0,0)"; }
+  };
+  const indAt = (pin, from, to, p, anim) => {
+    const row = pin ? pinNumsRef.current : stripRef.current;
+    const g = geoOf(row); if (!g || !g.cells.length) return;
+    const lim = (i) => Math.max(0, Math.min(g.cells.length - 1, i));
+    const a = g.cells[lim(from)], b = g.cells[lim(to)] || a;
+    const wa = pillW(a), wb = pillW(b), w = wa + (wb - wa) * p, cx = a.cx + (b.cx - a.cx) * p;
+    const maxX = Math.max(0, (row.scrollWidth || 0) - w);
+    placeInd(pin, Math.max(0, Math.min(maxX, cx - w / 2)), w, anim);
+  };
+  // тёмные цифры внутри монеты — точно над своими номерами
+  const syncCopy = (pin) => {
+    const row = pin ? pinNumsRef.current : stripRef.current, cr = (pin ? indPinRow : indMainRow).current;
+    const g = geoOf(row); if (!g || !cr) return;
+    [...cr.children].forEach((s, i) => { const c = g.cells[i]; if (c) s.style.left = c.cx + "px"; });
+  };
+  const setX = (x, animate, skipInd) => {
     const el = trackRef.current; if (!el) return;
-    el.style.transition = animate ? "transform .32s cubic-bezier(.22,.8,.24,1)" : "none";
+    el.style.transition = animate ? "transform .32s " + EASE : "none";
     el.style.transform = x ? "translate3d(" + x + "px,0,0)" : "";
+    // монета — к соседней теме ровно на ту же долю, на какую сдвинута страница
+    if (!skipInd) {
+      const nI = x < 0 && nextMod ? pg + 1 : x > 0 && prevMod ? pg - 1 : pg;
+      const pI = nI !== pg ? Math.min(1, Math.abs(x) / dist()) : 0;
+      indAt(false, pg, nI, pI, animate); indAt(true, pg, nI, pI, animate);
+    }
+    // закладки соседних тем проявляются и гаснут вместе с движением (без вспышек после свайпа)
+    try {
+      el.querySelectorAll(".tbp-tab[data-k]").forEach((b) => {
+        const pos = Number(b.getAttribute("data-k")) + x / dist();
+        const o = b.getAttribute("data-side") === "next" ? Math.max(0, Math.min(1, pos)) : Math.max(0, Math.min(1, -pos));
+        b.style.transition = animate ? "opacity .32s " + EASE : "none";
+        b.style.opacity = String(o);
+      });
+    } catch (e) {}
     // свечение цвета темы перетекает в цвет соседней — ровно на столько, на сколько сдвинута страница
     const ta = tintARef.current, tb = tintBRef.current;
     if (ta && tb) {
@@ -264,8 +321,12 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const holdH = () => { try { holdRef.current = (vpRef.current && vpRef.current.offsetHeight) || 0; } catch (e) { holdRef.current = 0; } };
   const commitStep = (d) => { clearTimeout(settleT.current); settleRef.current = 0; setFadeId(null); holdH(); setPage(Math.max(0, Math.min(pages.length - 1, pg + d))); };
   // новая текущая страница уже стоит там, где закончилась анимация, — ленту в ноль до отрисовки
+  const farRef = React.useRef(false);   // v32: дальний переход (тап по номеру) — монета едет плавно
   React.useLayoutEffect(() => {
-    setX(0, false);
+    setX(0, false, true);
+    syncCopy(false); syncCopy(true);
+    const far = farRef.current && !calmMotion(); farRef.current = false;
+    indAt(false, pg, pg, 0, far); indAt(true, pg, pg, 0, far);
     const vp = vpRef.current, from = holdRef.current;
     holdRef.current = 0;
     if (!vp || !from || calmMotion()) return;
@@ -294,7 +355,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     if (settleRef.current) commitStep(settleRef.current);
   };
   const markSwiped = () => { if (!swiped) { setSwiped(true); try { localStorage.setItem("sa_track_swiped", "1"); } catch (e) {} } };
-  React.useEffect(() => { const i = idxOf(focusId); if (i >= 0 && i !== pg) { setFadeId(pages[i].id); setPage(i); } }, [focusId, pages]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { const i = idxOf(focusId); if (i >= 0 && i !== pg) { farRef.current = true; setFadeId(pages[i].id); setPage(i); } }, [focusId, pages]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (!pageMod) return;
     TRACK_PAGE.set(role.id, pageMod.id);
@@ -315,24 +376,39 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   }, [pg, pageMod && pageMod.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     const st = stripRef.current; if (!st) return undefined;
-    const check = () => setStripOver(st.scrollWidth > st.clientWidth + 1);
+    // v32: ширина поменялась — монета и тёмные цифры заново встают над своими номерами
+    const check = () => { setStripOver(st.scrollWidth > st.clientWidth + 1); requestAnimationFrame(() => { syncCopy(false); syncCopy(true); if (!settleRef.current && !gest.current) { indAt(false, pg, pg, 0, false); indAt(true, pg, pg, 0, false); } }); };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
-  }, [pages.length, shown]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pages.length, shown, stripOver, pg]);   // eslint-disable-line react-hooks/exhaustive-deps
   const goTo = (i) => {
     const n = Math.max(0, Math.min(pages.length - 1, i));
     if (n === pg || settleRef.current) return;
     vibrate("light");
     stopNudge();
     if (Math.abs(n - pg) === 1) { slide(n - pg); return; }
+    farRef.current = true;
     setFadeId(pages[n].id); holdH(); setPage(n);
   };
   const openPage = (i) => { setFadeId(null); setPage(i); switchView("pager"); vibrate("light"); };
   const onTouchStart = (e) => {
     stopNudge();
     const t = e.touches && e.touches[0];
-    gest.current = t && !settleRef.current && e.touches.length === 1 ? { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: 0 } : null;
+    if (!t || e.touches.length !== 1) { gest.current = null; return; }
+    let base = 0;
+    if (settleRef.current) {
+      // v32: листают дальше, пока страница ещё доезжает, — не ждём конца анимации: переход
+      // фиксируем сразу и продолжаем жест с того места, где лента сейчас (без рывка)
+      const d = settleRef.current, el = trackRef.current;
+      let cur = -d * dist();
+      try { const st = getComputedStyle(el).transform; if (st && st !== "none") cur = new DOMMatrixReadOnly(st).m41; } catch (err) {}
+      try { flushSync(() => commitStep(d)); } catch (err) { commitStep(d); }
+      base = cur + d * dist();
+      if (Math.abs(base) < 1) base = 0;
+      if (base) setX(base, false);
+    }
+    gest.current = { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: base, base };
   };
   const onTouchMove = (e) => {
     const g = gest.current, t = e.touches && e.touches[0];
@@ -340,21 +416,26 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     const dx = t.clientX - g.x, dy = t.clientY - g.y;
     if (!g.axis) {
       if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) g.axis = "x";
-      else if (Math.abs(dy) > 10) g.axis = "y";
+      else if (Math.abs(dy) > 10) { g.axis = "y"; if (g.base) { g.base = 0; setX(0, true); } }
       else return;
     }
     if (g.axis !== "x") return;
-    g.dx = (dx > 0 && !prevMod) || (dx < 0 && !nextMod) ? dx * 0.3 : dx;   // у края — упругое сопротивление
+    const raw = g.base + dx;
+    g.dx = (raw > 0 && !prevMod) || (raw < 0 && !nextMod) ? raw * 0.3 : raw;   // у края — упругое сопротивление
     setX(g.dx, false);
   };
   const onTouchEnd = () => {
     const g = gest.current; gest.current = null;
-    if (!g || g.axis !== "x") return;
-    const v = g.dx / Math.max(1, Date.now() - g.t);
-    // далеко потянул — или быстро смахнул (но не случайное подрагивание пальца)
-    const far = Math.abs(g.dx) > dist() * 0.22 || (Math.abs(v) > 0.45 && Math.abs(g.dx) > 28);
-    if (far && g.dx < 0 && nextMod) { vibrate("light"); markSwiped(); slide(1); }
-    else if (far && g.dx > 0 && prevMod) { vibrate("light"); markSwiped(); slide(-1); }
+    if (!g) return;
+    if (g.axis !== "x") { if (g.base) setX(0, true); return; }   // перехватили на лету и отпустили — доехать
+    const moved = g.dx - g.base;
+    const v = moved / Math.max(1, Date.now() - g.t);
+    // далеко потянул — или быстро смахнул (но не случайное подрагивание пальца); у смахивания
+    // направление — по движению пальца (v32: и когда страницу перехватили на лету)
+    const fling = Math.abs(v) > 0.45 && Math.abs(moved) > 28;
+    const dir = fling ? (v < 0 ? 1 : -1) : Math.abs(g.dx) > dist() * 0.22 ? (g.dx < 0 ? 1 : -1) : 0;
+    if (dir === 1 && nextMod) { vibrate("light"); markSwiped(); slide(1); }
+    else if (dir === -1 && prevMod) { vibrate("light"); markSwiped(); slide(-1); }
     else setX(0, true);
   };
   // Telegram на компьютере: два пальца по тачпаду влево/вправо — тоже листают (одна тема за жест);
@@ -395,6 +476,8 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const pinRef = React.useRef(null);
   const pinNumsRef = React.useRef(null);
   const [pinned, setPinned] = React.useState(false);
+  // прилипшая полоса появилась — её монета сразу на своём номере
+  React.useLayoutEffect(() => { if (pinned) { syncCopy(true); indAt(true, pg, pg, 0, false); } }, [pinned]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     const el = stripWrapRef.current;
     if (!el || typeof IntersectionObserver === "undefined") { setPinned(false); return undefined; }
@@ -559,9 +642,12 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     const nx = i >= 0 && i < pages.length - 1 ? pages[i + 1] : null;
     return (
       <>
+        {/* v32 (Доп. 333): соседняя страница рисуется тем же составом, что и текущая (кнопки
+            «Освежить», «Я это умею — зачёт на опыт», «Раунд мастера» — те же, только не нажимаются),
+            поэтому после свайпа ничего не появляется и не сдвигается */}
         <ModuleMenu embedded passive={passive} mod={m} tint={i >= 0 ? shadeAt(i) : null} completed={completed} quizDone={quizDone} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins}
           onLesson={passive ? () => {} : (l) => (onLesson ? onLesson(l, m) : onModule && onModule(m))}
-          topic={topicOf(m)} acts={topicActs && !passive ? { onRefresh: () => topicActs.refresh(m), onCredit: () => topicActs.credit(m), onGold: () => topicActs.gold(m), onCellar: topicActs.cellar } : (topicActs ? {} : null)} />
+          topic={topicOf(m)} acts={topicActs ? (passive ? PASSIVE_ACTS : { onRefresh: () => topicActs.refresh(m), onCredit: () => topicActs.credit(m), onGold: () => topicActs.gold(m), onCellar: topicActs.cellar }) : null} />
         {/* Доп. 308: в конце меню — тихая ссылка на следующую тему (для тех, кто листает вниз, а не вбок) */}
         {nx && !nextCardFor(m) ? (
           <button type="button" className="tbp-nextlink" tabIndex={passive ? -1 : undefined} onClick={passive ? undefined : () => goTo(i + 1)}>
@@ -572,8 +658,11 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     );
   };
   const listIcon = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M8 6h12M8 12h12M8 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></svg>;
-  // ряд номеров: в странице (оглавление, доступное с клавиатуры) и копия в прилипшей полосе
+  // ряд номеров: в странице (оглавление, доступное с клавиатуры) и копия в прилипшей полосе.
+  // v32 (Доп. 332): ряд — в стеклянной капсуле, текущая тема — под золотой «монетой» (последний
+  // ребёнок ряда, поверх номеров; внутри — те же номера тёмными цифрами)
   const numsRow = (pin) => (
+    <div className="tbp-cap">
     <div className={"tbp-nums" + (stripOver ? " over" : "")} ref={pin ? pinNumsRef : stripRef} role={pin ? undefined : "tablist"} aria-label={pin ? undefined : "Темы трека"}
       onKeyDown={pin ? undefined : onNumsKey} onTouchEnd={peekEnd} onTouchCancel={peekCancel}>
       {pages.map((m, i) => {
@@ -593,6 +682,10 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           </button>
         );
       })}
+      <i className="tbp-ind" ref={pin ? indPin : indMain} aria-hidden="true">
+        <span className="tbp-ind-row" ref={pin ? indPinRow : indMainRow}>{pages.map((m, i) => <span key={m.id} data-n={labelOf(m, i)} />)}</span>
+      </i>
+    </div>
     </div>
   );
   const dueN = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
@@ -600,6 +693,9 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const gold = a11y ? "#7A5D2A" : GOLD;
   const chip = { display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11.5, color: gold, flexShrink: 0 };
   const pageNext = pageMod && nextFor ? nextFor(pageMod) : null;
+  // v32 (Доп. 333): окно страниц трека — k = −2…2 от текущей
+  const win = [];
+  for (let k = -2; k <= 2; k++) { const i = pg + k; if (i >= 0 && i < pages.length) win.push({ m: pages[i], k, i }); }
   const pageDone = !!pageMod && stepsOf(pageMod).length > 0 && stepsOf(pageMod).every(isDoneL);
   const showNext = !!nextFor && !!pageMod && (!pageNext || (pageDone && pageNext.mod && pageNext.mod.id !== pageMod.id));
   return (
@@ -662,14 +758,26 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           {onBookPage ? <NewPageBanner T={T} mod={pageMod} completed={completed} quizDone={quizDone} onOpen={() => onBookPage(pageMod)} /> : null}
           <div className="tbp-vp" ref={vpRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}>
             <div className="tbp-track" ref={trackRef} onTransitionEnd={onTrackEnd}>
-              {prevMod ? <div key={prevMod.id} className="tbp-side prev" aria-hidden="true" ref={inertRef}>{menuFor(prevMod, true)}</div> : null}
-              <div key={pageMod.id} className={"tbp-cur" + (fadeId === pageMod.id ? " tbp-fade" : "")} ref={liveRef}>{menuFor(pageMod, false)}</div>
-              {nextMod ? <div key={nextMod.id} className="tbp-side next" aria-hidden="true" ref={inertRef}>{menuFor(nextMod, true)}</div> : null}
-              {/* Доп. 308: закладки соседних тем — их номера на видимом крае, цветом темы; тап — листнуть */}
-              {prevMod ? <button key="tab-prev" type="button" className="tbp-tab prev" onClick={() => goTo(pg - 1)} aria-label={"Предыдущая тема: " + labelOf(prevMod, pg - 1) + " · " + prevMod.title}
-                style={{ background: shadeAt(pg - 1), color: inkOnColor(shadeAt(pg - 1)) }}>{labelOf(prevMod, pg - 1)}</button> : null}
-              {nextMod ? <button key="tab-next" type="button" className="tbp-tab next" onClick={() => goTo(pg + 1)} aria-label={"Следующая тема: " + labelOf(nextMod, pg + 1) + " · " + nextMod.title}
-                style={{ background: shadeAt(pg + 1), color: inkOnColor(shadeAt(pg + 1)) }}>{labelOf(nextMod, pg + 1)}</button> : null}
+              {/* v32 (Доп. 333): окно из пяти страниц — текущая, соседние (видны краем) и ещё по
+                  одной за ними: после свайпа новая соседняя уже нарисована и не «выпрыгивает» */}
+              {win.map(({ m, k }) => (
+                <div key={m.id} data-k={k} className={k === 0 ? "tbp-cur" + (fadeId === m.id ? " tbp-fade" : "") : "tbp-side" + (k === -1 ? " prev" : k === 1 ? " next" : " far")}
+                  style={k ? { "--k": k } : undefined} aria-hidden={k ? "true" : undefined} ref={k ? inertRef : liveRef}>{menuFor(m, k !== 0)}</div>
+              ))}
+              {/* Доп. 308: закладки соседних тем — их номера на видимом крае, цветом темы; тап — листнуть.
+                  v32: у каждой страницы окна своя пара закладок — при листании одна гаснет, другая
+                  проявляется вместе с движением страницы (раньше менялись рывком после свайпа) */}
+              {win.flatMap(({ m, k, i }) => ["prev", "next"].map((side) => {
+                const on = (side === "next" && k === 1) || (side === "prev" && k === -1);
+                const op = side === "next" ? Math.max(0, Math.min(1, k)) : Math.max(0, Math.min(1, -k));
+                return (
+                  <button key={"tab-" + side + "-" + m.id} type="button" data-k={k} data-side={side}
+                    className={"tbp-tab " + (side === "prev" ? "pv" : "nx") + (on ? " " + side : "")}
+                    onClick={on ? () => goTo(i) : undefined} tabIndex={on ? undefined : -1} aria-hidden={on ? undefined : "true"}
+                    aria-label={on ? (side === "prev" ? "Предыдущая тема: " : "Следующая тема: ") + labelOf(m, i) + " · " + m.title : undefined}
+                    style={{ "--k": k, opacity: op, pointerEvents: on ? "auto" : "none", background: shadeAt(i), color: inkOnColor(shadeAt(i)) }}>{labelOf(m, i)}</button>
+                );
+              }))}
             </div>
           </div>
           {showNext ? <ModuleNextCard mod={pageMod} next={pageNext} onNext={onNext} finish={finish} T={T} a11y={a11y} /> : null}

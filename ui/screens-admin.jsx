@@ -403,7 +403,7 @@ function liveRowsOf(rows, loaded, titles) {
   return rows.filter(r => { const id = String((r && (r.lesson_id || r.lesson || r.quiz_id)) || ""); return !/^cms-/.test(id) || !!titles[id]; });
 }
 
-export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
+export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onReport }) {
   // Подсказка экрана — один раз при первом входе (правка 171)
   const [anHint, anHintDone] = useHintOnce("analytics");
   const [anStep, setANStep] = React.useState(0);
@@ -597,6 +597,17 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
         </div>
       </div>
 
+      {/* Доп. 309: отчёт по сотруднику — Excel по команде и PDF-карточки */}
+      {onReport ? (
+        <div role="button" tabIndex={0} onClick={onReport} {...onActivate(onReport)} style={G({ margin:"10px 14px 0", padding:"12px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer" })}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9.5 17v-3M12.5 17v-5M15.5 17v-2"/></svg>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>Отчёт по сотруднику</div>
+            <div style={{ color:muted, fontSize:12, lineHeight:1.4 }}>Где ошибается, что не пройдено, что повторить · Excel по команде и PDF-карточки</div>
+          </div>
+          <span aria-hidden="true" style={{ color:C.gold, fontSize:20 }}>›</span>
+        </div>
+      ) : null}
       {/* Динамика (выбор владельца из трёх вариантов): кольцо недели, изменение к прошлой,
           график среднего результата за 6 недель — видно на любой вкладке */}
       <div style={G({ margin:"10px 14px 10px", padding:"14px 14px 8px" })}>
@@ -813,4 +824,5 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack }) {
 
 // Редактор контента переехал в ui/content-editor.jsx (правка 156: треки в цветах,
 // хостес, разделы метками, форматирование, ассистент, черновик, предпросмотр).
-export { ContentEditorScreen } from "./content-editor";
+// Лёгкий старт: редактор (≈100 КБ) больше не подключается статически — App.jsx
+// загружает его лениво, только когда руководитель открывает «Редактор контента».

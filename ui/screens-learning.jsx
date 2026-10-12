@@ -18,7 +18,7 @@ import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_IC
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
-import { countUnreadPages } from "./guestbook-lite";
+import { countUnreadPages, NewPageBanner } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
@@ -27,6 +27,60 @@ import { hintsFor } from "../data/hints";
 import { frostOf } from "./home-hubs";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
 import { LiveDialogue } from "./screens-dialogue";
+import { practiceRound } from "../lib/practice-round";
+import { lessonCards } from "../lib/lesson-cards";
+import { missText } from "../lib/practice-mistake";
+import { ensureTableCss } from "./table-css";
+import { ModuleMenu } from "./module-menu";
+import { Candle, Glass } from "./table-bits";
+import { ymd } from "../lib/streak";
+import { topicShade, inkOnColor } from "../lib/topic-tint";
+import { topicFreshness, freshLabel, wineLevel } from "../lib/freshness";
+import { canCredit, canGold, canRefresh } from "../lib/marks";
+
+// Доп. 289–292: формат «у стола» (практика, проверка после урока) — отдельный
+// модуль, грузится фоном. Пока не приехал (или без сети не загрузился) —
+// работает классический вид, ничего не ломается.
+let tableMod = null;
+let tablePromise = null;
+export function loadTable() {
+  if (tableMod) return Promise.resolve(tableMod);
+  if (!tablePromise) tablePromise = import("./table").then((m) => (tableMod = m)).catch(() => { tablePromise = null; return null; });
+  return tablePromise;
+}
+function useTable() {
+  const [m, setM] = React.useState(tableMod);
+  React.useEffect(() => {
+    if (m) return undefined;
+    let alive = true;
+    loadTable().then((x) => { if (alive && x) setM(x); });
+    return () => { alive = false; };
+  }, [m]);
+  return m;
+}
+// Доп. 298: тот же модуль «у стола» нужен App (разминка до смены, чек недели).
+export const useTableModule = useTable;
+const TABLE_VIEW_KEY = "sa_table_view";   // "0" — классический вид практики
+const readTableView = () => { try { return localStorage.getItem(TABLE_VIEW_KEY) !== "0"; } catch (e) { return true; } };
+// Доп. 310: «у стола» есть и в треках без практики — из вопросов тестов раздела
+const hasPracticePool = (mod) => !!(mod && (mod.lessons || []).some((l) => l && ((l.type === "practice" && (l.situations || []).length)
+  || (l.type === "quiz" && (l.questions || []).some((q) => q && !q.kind && Array.isArray(q.options) && q.options.length > 1)))));
+// Доп. 293: на какой карточке остановился в уроке (по сотруднику, последние 60 уроков)
+const CARD_POS_KEY = "sa_card_pos";
+function readCardPos(uk, id) {
+  try { const m = JSON.parse(localStorage.getItem(CARD_POS_KEY + uk) || "{}") || {}; const v = m[id] | 0; return v > 0 ? v : 0; } catch (e) { return 0; }
+}
+function writeCardPos(uk, id, v) {
+  try {
+    const k = CARD_POS_KEY + uk;
+    const m = JSON.parse(localStorage.getItem(k) || "{}") || {};
+    if ((m[id] | 0) === (v | 0) || (!m[id] && !(v > 0))) return;
+    if (v > 0) { delete m[id]; m[id] = v; } else delete m[id];
+    const keys = Object.keys(m);
+    while (keys.length > 60) delete m[keys.shift()];
+    localStorage.setItem(k, JSON.stringify(m));
+  } catch (e) {}
+}
 
 export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack }) {
   const gold = a11y ? "#7A5D2A" : GOLD;
@@ -129,30 +183,515 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
 export const _estMins = (l) => Math.max(1, Math.round((((l.content || "").length) + ((l.questions || []).length * 250) + ((l.situations || []).length * 300)) / 900));
 export const _fmtMins = (mins) => mins < 60 ? `${mins} мин` : `${Math.floor(mins / 60)} ч ${mins % 60 ? (mins % 60) + " мин" : ""}`.trim();
 
-export function HomeScreen({ role, modules = [], completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [], onSearch }) {
+// Доп. 307: какую тему трека смотрел последней (на время сессии, по ролям)
+const TRACK_PAGE = new Map();
+const TRACK_VIEW_KEY = "sa_track_view";   // "list" — прежний список тем
+
+export function HomeScreen({ role, modules = [], completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [], onSearch, dayGoal = null,
+  focusId = null, onPage, onLesson, nextFor, onNext, finish, onBookPage, pagerOnly = false, marks = null, topicActs = null }) {
+  ensureTableCss();   // стили свечи серии (Доп. 288) и листаемого трека (Доп. 307)
   // Сколько минут осталось до конца программы (по незавершённым разделам)
   const leftMins = React.useMemo(() =>
     [...modules, ...customModules].reduce((s, m) =>
       s + (m.lessons || []).filter(l => l.type !== "result").reduce((a, l) =>
         a + ((l.type === "quiz" ? quizDone[l.id] : completed[l.id]) ? 0 : _estMins(l)), 0), 0),
     [modules, customModules, completed, quizDone]);
+  // ── Доп. 307: трек — меню тем, листаются свайпом; номера тем — оглавление ──
+  const pages = React.useMemo(() => [...modules, ...customModules], [modules, customModules]);
+  // Доп. 310: свои разделы ресторана в оглавлении — «✦1», «✦2»… (раньше все были одинаковым «✦»)
+  const customNo = React.useMemo(() => { const map = {}; let k = 0; pages.forEach((m) => { if (m && m.custom) map[m.id] = ++k; }); return { map, n: k }; }, [pages]);
+  const labelOf = (m, i) => { const d = String((m && m.tag) || "").match(/\d+/); if (d) return d[0]; if (m && m.custom) return customNo.n > 1 ? "✦" + customNo.map[m.id] : "✦"; return String(i + 1); };
+  const isDoneL = (l) => (l.type === "quiz" ? !!quizDone[l.id] : !!completed[l.id]);
+  const stepsOf = (m) => ((m && m.lessons) || []).filter((l) => l && l.type !== "result");
+  const idxOf = (id) => (id ? pages.findIndex((m) => m.id === id) : -1);
+  const curIdx = pages.findIndex((m) => stepsOf(m).some((l) => !isDoneL(l)));
+  const [view, setView] = React.useState(() => { try { return localStorage.getItem(TRACK_VIEW_KEY) === "list" ? "list" : "pager"; } catch (e) { return "pager"; } });
+  // из урока («3 из 6») и после теста — сначала меню темы, даже если выбран список
+  const [forcePager, setForcePager] = React.useState(!!pagerOnly);
+  const switchView = (v) => { setForcePager(false); setView(v); try { localStorage.setItem(TRACK_VIEW_KEY, v); } catch (e) {} };
+  const shown = forcePager ? "pager" : view;
+  const [page, setPage] = React.useState(() => {
+    let i = idxOf(focusId);
+    if (i < 0) i = idxOf(TRACK_PAGE.get(role.id));
+    if (i < 0) i = curIdx;
+    return Math.max(0, i);
+  });
+  const pg = Math.max(0, Math.min(page, pages.length - 1));
+  const pageMod = pages[pg] || null;
+  const prevMod = pg > 0 ? pages[pg - 1] : null;
+  const nextMod = pg < pages.length - 1 ? pages[pg + 1] : null;
+  // Страницы листаются за пальцем: текущая, а соседние видны краем (как стопка меню).
+  // Палец ведёт ленту напрямую (без перерисовки на каждое движение), отпустил —
+  // лента доезжает до соседней страницы или возвращается. Дальний номер — мягкое появление.
+  const PEEK = 22;
+  const vpRef = React.useRef(null);
+  const trackRef = React.useRef(null);
+  const stripRef = React.useRef(null);
+  const gest = React.useRef(null);
+  const settleRef = React.useRef(0);
+  const [fadeId, setFadeId] = React.useState(null);
+  const [swiped, setSwiped] = React.useState(() => { try { return localStorage.getItem("sa_track_swiped") === "1"; } catch (e) { return false; } });
+  const [stripOver, setStripOver] = React.useState(false);
+  const calmMotion = () => { try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } };
+  // ── Доп. 308: у каждой темы свой оттенок цвета трека — цвет «путешествует» от первой темы к последней ──
+  const shades = React.useMemo(() => pages.map((m, i) => topicShade((m && m.color) || role.color, i, pages.length)), [pages, role.color]);
+  const shadeAt = (i) => shades[i] || role.color;
+  const glowOf = (c) => "radial-gradient(120% 460px at 50% -80px, " + c + (a11y ? "3D" : "52") + " 0%, " + c + "00 76%)";
+  const tintARef = React.useRef(null);   // свечение текущей темы
+  const tintBRef = React.useRef(null);   // свечение соседней — проявляется вместе с пальцем
+  const nudgeRef = React.useRef(null);   // разовое «покачивание» ленты: подсказка, что темы листаются
+  const settleT = React.useRef(0);
+  const stopNudge = () => { const a = nudgeRef.current; nudgeRef.current = null; if (a) { try { a.cancel(); } catch (e) {} } };
+  const setX = (x, animate) => {
+    const el = trackRef.current; if (!el) return;
+    el.style.transition = animate ? "transform .32s cubic-bezier(.22,.8,.24,1)" : "none";
+    el.style.transform = x ? "translate3d(" + x + "px,0,0)" : "";
+    // свечение цвета темы перетекает в цвет соседней — ровно на столько, на сколько сдвинута страница
+    const ta = tintARef.current, tb = tintBRef.current;
+    if (ta && tb) {
+      const ni = x < 0 && nextMod ? pg + 1 : x > 0 && prevMod ? pg - 1 : -1;
+      const p = ni >= 0 ? Math.min(1, Math.abs(x) / dist()) : 0;
+      const tr = animate ? "opacity .32s cubic-bezier(.22,.8,.24,1)" : "none";
+      ta.style.transition = tr; tb.style.transition = tr;
+      if (ni >= 0) { const g = glowOf(shadeAt(ni)); if (tb.getAttribute("data-g") !== g) { tb.style.background = g; tb.setAttribute("data-g", g); } }
+      tb.style.opacity = String(p); ta.style.opacity = String(1 - p);
+    }
+  };
+  const dist = () => Math.max(1, ((vpRef.current && vpRef.current.offsetWidth) || 360) - PEEK);
+  // высота прежней страницы — чтобы новая (короче или длиннее) не дёргала всё, что ниже, а плавно подстроилась
+  const holdRef = React.useRef(0);
+  const hTimer = React.useRef(0);
+  const holdH = () => { try { holdRef.current = (vpRef.current && vpRef.current.offsetHeight) || 0; } catch (e) { holdRef.current = 0; } };
+  const commitStep = (d) => { clearTimeout(settleT.current); settleRef.current = 0; setFadeId(null); holdH(); setPage(Math.max(0, Math.min(pages.length - 1, pg + d))); };
+  // новая текущая страница уже стоит там, где закончилась анимация, — ленту в ноль до отрисовки
+  React.useLayoutEffect(() => {
+    setX(0, false);
+    const vp = vpRef.current, from = holdRef.current;
+    holdRef.current = 0;
+    if (!vp || !from || calmMotion()) return;
+    clearTimeout(hTimer.current);
+    vp.style.transition = "none"; vp.style.height = "";
+    const to = vp.offsetHeight;   // естественная высота новой страницы (с полями меню)
+    if (Math.abs(from - to) < 8) { vp.style.transition = ""; return; }
+    vp.style.height = from + "px";
+    void vp.offsetHeight;   // зафиксировать старую высоту и только потом ехать к новой
+    vp.style.transition = "height .3s cubic-bezier(.22,.8,.24,1)"; vp.style.height = to + "px";
+    hTimer.current = setTimeout(() => { const v = vpRef.current; if (v) { v.style.height = ""; v.style.transition = ""; } }, 360);
+  }, [pg]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => () => { clearTimeout(hTimer.current); clearTimeout(settleT.current); }, []);
+  const slide = (d) => {
+    stopNudge();
+    if ((d > 0 && !nextMod) || (d < 0 && !prevMod)) { setX(0, true); return; }
+    if (calmMotion()) { commitStep(d); return; }
+    settleRef.current = d;
+    setX(-d * dist(), true);
+    // страховка: если конец анимации не пришёл (вкладка в фоне и т. п.) — всё равно перейти
+    clearTimeout(settleT.current);
+    settleT.current = setTimeout(() => { if (settleRef.current === d) commitStep(d); }, 460);
+  };
+  const onTrackEnd = (e) => {
+    if (e.target !== trackRef.current || e.propertyName !== "transform") return;
+    if (settleRef.current) commitStep(settleRef.current);
+  };
+  const markSwiped = () => { if (!swiped) { setSwiped(true); try { localStorage.setItem("sa_track_swiped", "1"); } catch (e) {} } };
+  React.useEffect(() => { const i = idxOf(focusId); if (i >= 0 && i !== pg) { setFadeId(pages[i].id); setPage(i); } }, [focusId, pages]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    if (!pageMod) return;
+    TRACK_PAGE.set(role.id, pageMod.id);
+    if (onPage && pageMod.id !== focusId) onPage(pageMod);
+    // номер темы — в поле зрения ленты номеров (только по горизонтали, страницу не дёргаем)
+    try {
+      const st = stripRef.current, el = st && st.children[pg];
+      if (st && el && st.scrollWidth > st.clientWidth + 1) st.scrollTo({ left: Math.max(0, el.offsetLeft - st.clientWidth / 2 + el.offsetWidth / 2), behavior: calmMotion() ? "auto" : "smooth" });
+    } catch (e) {}
+    // листал внизу длинного меню — подняться к началу новой темы (номера тем снова на своём месте)
+    try {
+      const vp = vpRef.current, sw = stripWrapRef.current; if (!vp) return;
+      if (vp.getBoundingClientRect().top < 0) {
+        const top = sw ? sw.getBoundingClientRect().top - 8 : vp.getBoundingClientRect().top - 12;
+        scrollerOf(vp).scrollBy({ top, behavior: calmMotion() ? "auto" : "smooth" });
+      }
+    } catch (e) {}
+  }, [pg, pageMod && pageMod.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    const st = stripRef.current; if (!st) return undefined;
+    const check = () => setStripOver(st.scrollWidth > st.clientWidth + 1);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [pages.length, shown]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const goTo = (i) => {
+    const n = Math.max(0, Math.min(pages.length - 1, i));
+    if (n === pg || settleRef.current) return;
+    vibrate("light");
+    stopNudge();
+    if (Math.abs(n - pg) === 1) { slide(n - pg); return; }
+    setFadeId(pages[n].id); holdH(); setPage(n);
+  };
+  const openPage = (i) => { setFadeId(null); setPage(i); switchView("pager"); vibrate("light"); };
+  const onTouchStart = (e) => {
+    stopNudge();
+    const t = e.touches && e.touches[0];
+    gest.current = t && !settleRef.current && e.touches.length === 1 ? { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: 0 } : null;
+  };
+  const onTouchMove = (e) => {
+    const g = gest.current, t = e.touches && e.touches[0];
+    if (!g || !t) return;
+    const dx = t.clientX - g.x, dy = t.clientY - g.y;
+    if (!g.axis) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) g.axis = "x";
+      else if (Math.abs(dy) > 10) g.axis = "y";
+      else return;
+    }
+    if (g.axis !== "x") return;
+    g.dx = (dx > 0 && !prevMod) || (dx < 0 && !nextMod) ? dx * 0.3 : dx;   // у края — упругое сопротивление
+    setX(g.dx, false);
+  };
+  const onTouchEnd = () => {
+    const g = gest.current; gest.current = null;
+    if (!g || g.axis !== "x") return;
+    const v = g.dx / Math.max(1, Date.now() - g.t);
+    // далеко потянул — или быстро смахнул (но не случайное подрагивание пальца)
+    const far = Math.abs(g.dx) > dist() * 0.22 || (Math.abs(v) > 0.45 && Math.abs(g.dx) > 28);
+    if (far && g.dx < 0 && nextMod) { vibrate("light"); markSwiped(); slide(1); }
+    else if (far && g.dx > 0 && prevMod) { vibrate("light"); markSwiped(); slide(-1); }
+    else setX(0, true);
+  };
+  // Telegram на компьютере: два пальца по тачпаду влево/вправо — тоже листают (одна тема за жест);
+  // стрелки ← → (и Home/End) на номерах — соседняя тема, как во вкладках
+  const wheelRef = React.useRef(null);
+  wheelRef.current = (d) => {
+    if (settleRef.current || (d > 0 && !nextMod) || (d < 0 && !prevMod)) return;
+    markSwiped(); slide(d);
+  };
+  React.useEffect(() => {
+    const el = vpRef.current; if (!el) return undefined;
+    let acc = 0, lock = false, idle = 0;
+    const onWheel = (e) => {
+      if (e.ctrlKey || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();   // и браузер не уходит «назад» жестом
+      clearTimeout(idle); idle = setTimeout(() => { acc = 0; lock = false; }, 220);
+      if (lock) return;
+      acc += e.deltaMode === 1 ? e.deltaX * 16 : e.deltaMode === 2 ? e.deltaX * 400 : e.deltaX;
+      if (Math.abs(acc) > 60) { lock = true; const d = acc > 0 ? 1 : -1; acc = 0; if (wheelRef.current) wheelRef.current(d); }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => { el.removeEventListener("wheel", onWheel); clearTimeout(idle); };
+  }, [shown, !!pageMod]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const onNumsKey = (e) => {
+    const k = e.key;
+    const n = k === "ArrowRight" ? pg + 1 : k === "ArrowLeft" ? pg - 1 : k === "Home" ? 0 : k === "End" ? pages.length - 1 : null;
+    if (n === null) return;
+    e.preventDefault();
+    const i = Math.max(0, Math.min(pages.length - 1, n));
+    goTo(i);
+    try { const b = stripRef.current && stripRef.current.children[i]; if (b) b.focus(); } catch (err) {}
+  };
+  // ── Доп. 308: номера прилипают сверху тонкой полосой с названием темы, когда меню прокручено ──
+  const stripWrapRef = React.useRef(null);
+  // слои поверх страницы (прилипшие номера, «К уроку») — только в браузере, после первой отрисовки
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  const pinRef = React.useRef(null);
+  const pinNumsRef = React.useRef(null);
+  const [pinned, setPinned] = React.useState(false);
+  React.useEffect(() => {
+    const el = stripWrapRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") { setPinned(false); return undefined; }
+    const io = new IntersectionObserver((ents) => {
+      const en = ents[ents.length - 1];
+      if (en) setPinned(!en.isIntersecting && en.boundingClientRect.bottom <= 0);
+    }, { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [shown, !!pageMod]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const scrollerOf = (el) => {
+    let sc = el && el.parentElement;
+    while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+    return sc && sc !== document.body ? sc : (document.scrollingElement || document.documentElement);
+  };
+  const toTop = () => { try { scrollerOf(vpRef.current).scrollTo({ top: 0, behavior: calmMotion() ? "auto" : "smooth" }); } catch (e) {} };
+  // в прилипшей полосе текущий номер тоже на виду (если номера не помещаются)
+  React.useEffect(() => {
+    const st = pinNumsRef.current, el = st && st.children[pg];
+    try { if (st && el && st.scrollWidth > st.clientWidth + 1) st.scrollLeft = Math.max(0, el.offsetLeft - st.clientWidth / 2 + el.offsetWidth / 2); } catch (e) {}
+  }, [pinned, pg]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Доп. 308: название темы по долгому нажатию на номер (палец можно вести по номерам);
+  //    на компьютере — при наведении, с клавиатуры — при фокусе ──
+  const [peek, setPeek] = React.useState(null);   // { i, pinned, soft }
+  const peekRef = React.useRef(null);
+  const peekT = React.useRef(0);
+  const peekG = React.useRef(null);
+  const hoverT = React.useRef(0);
+  const noClickUntil = React.useRef(0);
+  const numClick = (i) => { if (Date.now() < noClickUntil.current) return; setPeek(null); goTo(i); };
+  const peekStart = (e, i, pin) => {
+    clearTimeout(peekT.current);
+    const t = e.touches && e.touches[0];
+    if (!t || e.touches.length > 1) { peekG.current = null; return; }
+    const row = pin ? pinNumsRef.current : stripRef.current;
+    peekG.current = { x: t.clientX, y: t.clientY, i, pin, on: false, out: false, drag: false, sl: row ? row.scrollLeft : 0 };
+    peekT.current = setTimeout(() => {
+      const g = peekG.current; if (!g) return;
+      g.on = true; vibrate("light"); setPeek({ i: g.i, pinned: g.pin });
+    }, 380);
+  };
+  const peekCancel = () => { clearTimeout(peekT.current); const g = peekG.current; peekG.current = null; if (g && g.on) setPeek(null); };
+  const peekEnd = (e) => {
+    clearTimeout(peekT.current);
+    const g = peekG.current; peekG.current = null;
+    if (g && g.drag) { noClickUntil.current = Date.now() + 400; return; }   // ленту номеров прокрутили пальцем
+    if (!g || !g.on) return;   // обычный тап — дальше сработает нажатие
+    if (e.cancelable) e.preventDefault();
+    noClickUntil.current = Date.now() + 700;
+    setPeek(null);
+    if (!g.out) goTo(g.i);   // отпустил на номере — туда и перешли; увёл палец с номеров — передумал
+  };
+  React.useEffect(() => {
+    const els = [stripRef.current, pinNumsRef.current].filter(Boolean);
+    if (!els.length) return undefined;
+    const move = (e) => {
+      const g = peekG.current, t = e.touches && e.touches[0];
+      if (!g || !t) return;
+      if (!g.on) {
+        // номера не помещаются — ленту прокручиваем пальцем сами (в приложении жесты вбок отданы нам)
+        const dx = t.clientX - g.x, dy = t.clientY - g.y;
+        const r0 = g.pin ? pinNumsRef.current : stripRef.current;
+        if (!g.drag && r0 && r0.scrollWidth > r0.clientWidth + 1 && Math.abs(dx) > 9 && Math.abs(dx) > Math.abs(dy)) { g.drag = true; clearTimeout(peekT.current); }
+        if (g.drag) { if (e.cancelable) e.preventDefault(); if (r0) r0.scrollLeft = g.sl - dx; return; }
+        if (Math.abs(dx) > 9 || Math.abs(dy) > 9) { clearTimeout(peekT.current); peekG.current = null; }
+        return;
+      }
+      if (e.cancelable) e.preventDefault();   // ведёт по номерам — страница стоит
+      const hit = document.elementFromPoint(t.clientX, t.clientY);
+      const b = hit && hit.closest ? hit.closest(".tbp-num") : null;
+      const row = g.pin ? pinNumsRef.current : stripRef.current;
+      const i = b && b.parentElement === row ? Number(b.getAttribute("data-i")) : -1;
+      if (i >= 0 && (i !== g.i || g.out)) { if (i !== g.i) vibrate("light"); g.i = i; g.out = false; setPeek({ i, pinned: g.pin }); }
+      else if (i < 0 && !g.out) { g.out = true; setPeek(null); }
+    };
+    els.forEach((el) => el.addEventListener("touchmove", move, { passive: false }));
+    return () => els.forEach((el) => el.removeEventListener("touchmove", move));
+  }, [shown, pinned, !!pageMod]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const canHover = () => { try { return window.matchMedia("(hover: hover) and (pointer: fine)").matches; } catch (e) { return false; } };
+  const hoverIn = (i, pin) => { if (!canHover()) return; clearTimeout(hoverT.current); hoverT.current = setTimeout(() => setPeek({ i, pinned: pin, soft: true }), 260); };
+  const hoverOut = () => { clearTimeout(hoverT.current); setPeek((p) => (p && p.soft ? null : p)); };
+  const focusIn = (e, i) => { try { if (e.target.matches(":focus-visible")) setPeek({ i, pinned: false, soft: true }); } catch (err) {} };
+  React.useEffect(() => () => { clearTimeout(peekT.current); clearTimeout(hoverT.current); }, []);
+  // подпись ставим над своим номером и не даём ей вылезти за край
+  React.useLayoutEffect(() => {
+    const bub = peekRef.current; if (!peek || !bub) return;
+    const host = peek.pinned ? pinRef.current : stripWrapRef.current;
+    const row = peek.pinned ? pinNumsRef.current : stripRef.current;
+    const btn = row && row.querySelector('.tbp-num[data-i="' + peek.i + '"]');
+    if (!host || !btn) return;
+    const hr = host.getBoundingClientRect(), br = btn.getBoundingClientRect();
+    const c = br.left + br.width / 2 - hr.left;
+    const w = bub.offsetWidth;
+    const x = Math.max(4, Math.min(hr.width - w - 4, c - w / 2));
+    bub.style.left = x + "px";
+    const ar = bub.querySelector(".ar"); if (ar) ar.style.left = (c - x) + "px";
+  }, [peek, pinned]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const stepsWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? "шаг" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "шага" : "шагов");
+  // v30 (Доп. 313, 315, 316): свежесть, зачёт на опыт и золото темы
+  const topicOf = (m) => {
+    if (!marks || !m) return null;
+    const fr = canRefresh(m);
+    const f = fr ? topicFreshness(m, marks.fresh, completed, quizDone) : null;
+    return { f, credit: (marks.credit || {})[m.id] || null, gold: (marks.gold || {})[m.id] || null,
+      canCredit: canCredit(m), canGold: canGold(m), canRefresh: fr, tried: !!(topicActs && topicActs.tried && topicActs.tried(m.id)) };
+  };
+  const statOf = (m) => {
+    const st = stepsOf(m); const dn = st.filter(isDoneL).length;
+    if (!st.length) return "";
+    if (dn >= st.length) { const tp = topicOf(m); return tp && tp.gold ? "золотая тема ✦" : tp && tp.f && tp.f.level !== "fresh" ? freshLabel(tp.f) : "тема пройдена ✓"; }
+    const left = st.filter((l) => !isDoneL(l)).reduce((a, l) => a + _estMins(l), 0);
+    return (dn ? "пройдено " + dn + " из " + st.length : st.length + " " + stepsWord(st.length)) + " · ≈ " + _fmtMins(left);
+  };
+  const peekBubble = (pin) => {
+    if (!peek || !!peek.pinned !== !!pin) return null;
+    const m = pages[peek.i]; if (!m) return null;
+    const line = statOf(m);
+    return (
+      <div className="tbp-peek" ref={peekRef} role="tooltip">
+        <i className="ar" aria-hidden="true" />
+        <b>{labelOf(m, peek.i) + " · " + m.title}</b>
+        {line ? <span>{line}</span> : null}
+      </div>
+    );
+  };
+  // ── Доп. 308: разовое «покачивание» ленты вместо подписи «листай свайпом» (пока ни разу не листал, до 3 раз) ──
+  React.useEffect(() => {
+    if (shown !== "pager" || swiped || pages.length < 2 || calmMotion()) return undefined;
+    let n = 0; try { n = Number(localStorage.getItem("sa_track_nudge") || 0) || 0; } catch (e) {}
+    if (n >= 3) return undefined;
+    const t = setTimeout(() => {
+      const el = trackRef.current;
+      if (!el || typeof el.animate !== "function" || settleRef.current || gest.current) return;
+      const d = pg < pages.length - 1 ? -1 : 1;
+      try { localStorage.setItem("sa_track_nudge", String(n + 1)); } catch (e) {}
+      try {
+        nudgeRef.current = el.animate([{ transform: "translate3d(0,0,0)" }, { transform: "translate3d(" + (d * 34) + "px,0,0)", offset: 0.42 }, { transform: "translate3d(0,0,0)" }],
+          { duration: 1000, easing: "cubic-bezier(.3,.6,.3,1)" });
+        nudgeRef.current.onfinish = () => { nudgeRef.current = null; };
+      } catch (e) {}
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [shown]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Доп. 308: «К уроку» — ушёл смотреть другие темы, одно касание возвращает туда, где остановился ──
+  const GO_WORD = { lesson: "К уроку", quiz: "К тесту", practice: "К практике", dialogue: "К диалогу", build: "К сборке" };
+  const curMod = curIdx >= 0 ? pages[curIdx] : null;
+  const curStep = curMod ? stepsOf(curMod).find((l) => !isDoneL(l)) || null : null;
+  const showGo = shown === "pager" && !!pageMod && !!curStep && pg !== curIdx && !!onLesson;
+  const goWord = curStep ? (GO_WORD[curStep.type] || "К уроку") : "";
+  const goCur = () => { vibrate("light"); if (onLesson && curStep) onLesson(curStep, curMod); };
+  // соседние страницы — только картинка: ни фокуса, ни нажатий (атрибут inert ставим напрямую)
+  const inertRef = (el) => { if (el) { try { el.setAttribute("inert", ""); } catch (e) {} } };
+  const liveRef = (el) => { if (el) { try { el.removeAttribute("inert"); el.removeAttribute("aria-hidden"); } catch (e) {} } };
+  // тема пройдена и дальше — другая тема, или пройдена вся программа: под меню карточка «Дальше»/экзамен
+  const nextCardFor = (m) => {
+    if (!nextFor || !m) return false;
+    const nx = nextFor(m); const st = stepsOf(m);
+    return !nx || (st.length > 0 && st.every(isDoneL) && !!nx.mod && nx.mod.id !== m.id);
+  };
+  const menuFor = (m, passive) => {
+    const i = pages.indexOf(m);
+    const nx = i >= 0 && i < pages.length - 1 ? pages[i + 1] : null;
+    return (
+      <>
+        <ModuleMenu embedded passive={passive} mod={m} tint={i >= 0 ? shadeAt(i) : null} completed={completed} quizDone={quizDone} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins}
+          onLesson={passive ? () => {} : (l) => (onLesson ? onLesson(l, m) : onModule && onModule(m))}
+          topic={topicOf(m)} acts={topicActs && !passive ? { onRefresh: () => topicActs.refresh(m), onCredit: () => topicActs.credit(m), onGold: () => topicActs.gold(m), onCellar: topicActs.cellar } : (topicActs ? {} : null)} />
+        {/* Доп. 308: в конце меню — тихая ссылка на следующую тему (для тех, кто листает вниз, а не вбок) */}
+        {nx && !nextCardFor(m) ? (
+          <button type="button" className="tbp-nextlink" tabIndex={passive ? -1 : undefined} onClick={passive ? undefined : () => goTo(i + 1)}>
+            <span>Дальше:</span><b>{labelOf(nx, i + 1) + " · " + nx.title}</b><span className="ar" aria-hidden="true">›</span>
+          </button>
+        ) : null}
+      </>
+    );
+  };
+  const listIcon = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M8 6h12M8 12h12M8 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></svg>;
+  // ряд номеров: в странице (оглавление, доступное с клавиатуры) и копия в прилипшей полосе
+  const numsRow = (pin) => (
+    <div className={"tbp-nums" + (stripOver ? " over" : "")} ref={pin ? pinNumsRef : stripRef} role={pin ? undefined : "tablist"} aria-label={pin ? undefined : "Темы трека"}
+      onKeyDown={pin ? undefined : onNumsKey} onTouchEnd={peekEnd} onTouchCancel={peekCancel}>
+      {pages.map((m, i) => {
+        const st = stepsOf(m); const dn = st.filter(isDoneL).length;
+        const tp = st.length && dn >= st.length ? topicOf(m) : null;
+        const fz = tp && tp.f ? (tp.f.updated ? " upd" : tp.f.level === "faded" ? " fade2" : tp.f.level === "fading" ? " fade1" : "") : "";
+        const cls = "tbp-num" + (i === pg ? " on" : "") + (st.length && dn >= st.length ? " done" : dn > 0 ? " part" : "") + (i === curIdx ? " cur" : "") + (tp && tp.gold ? " gold" : fz);
+        return (
+          <button key={m.id} type="button" role={pin ? undefined : "tab"} aria-selected={pin ? undefined : i === pg} tabIndex={pin ? -1 : (i === pg ? 0 : -1)} className={cls} data-i={i}
+            style={{ "--dot": shadeAt(i) }} onClick={() => numClick(i)} onTouchStart={(e) => peekStart(e, i, pin)} onContextMenu={(e) => e.preventDefault()}
+            onMouseEnter={() => hoverIn(i, pin)} onMouseLeave={hoverOut} onFocus={pin ? undefined : (e) => focusIn(e, i)} onBlur={pin ? undefined : hoverOut}
+            aria-label={pin ? undefined : (m.tag ? m.tag + " · " : "") + m.title + " · пройдено " + dn + " из " + st.length + (i === curIdx ? " · ты здесь" : "") + (tp && tp.gold ? " · золотая тема" : tp && tp.f && tp.f.level !== "fresh" ? " · " + freshLabel(tp.f) : "")}>
+            <span className="n">{labelOf(m, i)}</span>
+            {tp && tp.f && !tp.gold && !tp.f.updated
+              ? <i className="wl" aria-hidden="true"><b style={{ height: Math.round(wineLevel(tp.f) * 100) + "%" }} /></i>
+              : <i className="st" aria-hidden="true" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+  const dueN = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
+  const sub = a11y ? "#6E5C3C" : "#9A865F";
+  const gold = a11y ? "#7A5D2A" : GOLD;
+  const chip = { display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11.5, color: gold, flexShrink: 0 };
+  const pageNext = pageMod && nextFor ? nextFor(pageMod) : null;
+  const pageDone = !!pageMod && stepsOf(pageMod).length > 0 && stepsOf(pageMod).every(isDoneL);
+  const showNext = !!nextFor && !!pageMod && (!pageNext || (pageDone && pageNext.mod && pageNext.mod.id !== pageMod.id));
   return (
-    <div style={T.screen} className="sa-screen">
-      <div style={T.homeHead}>
-        <div style={T.homeTopRow}>
-          <div style={T.logoRow}><span style={{ color:role.color, fontSize:21 }}>✦</span><span style={T.logoText}>SERVICE ACADEMY</span></div>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center" }} onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
-            <button style={T.changeRoleBtn} onClick={onChangeRole}>Сменить</button>
+    <div style={T.screen} className="sa-screen tbp-root">
+      {/* Шапка: роль (и «Сменить»), поиск; под ней — прогресс трека, свеча и стакан */}
+      <div style={{ padding: "34px 14px 4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ ...T.homeRoleBadge, background: role.color + "22", borderColor: role.color + "66", minWidth: 0, flex: "0 1 auto", overflow: "hidden" }}>
+            <span style={{ display:"inline-flex", alignItems:"center", flexShrink: 0 }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
+            <span style={{ color: inkOf(role.color, a11y), fontSize:14, fontWeight:"bold", flexShrink: 0 }}>{role.label}</span>
+            <span style={{ color: a11y ? "#665337" : "#c8b898", fontSize:12.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{role.sublabel}</span>
+            {role.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4, flexShrink: 0 }}>BETA</span>}
           </div>
+          <span style={{ flex: 1 }} />
+          {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink: 0 }} onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
+          <button style={{ ...T.changeRoleBtn, flexShrink: 0 }} onClick={onChangeRole}>Сменить</button>
         </div>
-        <div style={{ ...T.homeRoleBadge, background:role.color+"22", borderColor:role.color+"66" }}>
-          <span style={{ display:"inline-flex", alignItems:"center" }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
-          <span style={{ color: inkOf(role.color, a11y), fontSize:14, fontWeight:"bold" }}>{role.label}</span>
-          <span style={{ color: a11y ? "#665337" : "#c8b898", fontSize:12.5 }}>{role.sublabel}</span>
-          {role.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 9 }}>
+          <span style={{ fontSize: 11.5, color: sub, flexShrink: 0 }}>{doneCount} из {totalLessons} · {leftMins > 0 ? `≈ ${_fmtMins(leftMins)}` : "пройдено 🎓"}</span>
+          <span style={{ flex: 1, height: 3, borderRadius: 999, overflow: "hidden", background: a11y ? "rgba(120,90,30,0.14)" : "rgba(255,255,255,0.07)" }}>
+            <i style={{ display: "block", height: "100%", borderRadius: 999, width: `${Math.max(progress, progress > 0 ? 2 : 0)}%`, background: role.color }} />
+          </span>
+          {streak && streak.count > 0 ? (
+            // Доп. 288: свеча серии — горит, когда сегодня уже занимался; выходной по графику её не гасит
+            <span className="tbv" title={streak.last === ymd(new Date()) ? "Сегодня занимался — свеча горит" : "Пройди урок — и свеча загорится"} style={chip}>
+              <Candle s={15} lit={streak.last === ymd(new Date())} />{streak.count}
+            </span>
+          ) : null}
+          {dayGoal && dayGoal.goal ? (
+            // Доп. 298: стакан «цель дня» — сколько шагов сегодня из цели
+            <span className="tbv" title={"Цель дня: " + Math.min(dayGoal.steps || 0, dayGoal.goal) + " из " + dayGoal.goal} style={chip}>
+              <Glass s={15} pct={Math.min(1, (dayGoal.steps || 0) / dayGoal.goal)} />{Math.min(dayGoal.steps || 0, dayGoal.goal)}/{dayGoal.goal}
+            </span>
+          ) : null}
         </div>
       </div>
+
+      {shown === "pager" && pageMod ? (
+        <>
+          {/* Доп. 308: мягкое свечение цвета темы за шапкой — при листании перетекает в цвет соседней */}
+          <div className="tbp-tint" aria-hidden="true">
+            <i key={fadeId === pageMod.id ? "f" + pageMod.id : "a"} ref={tintARef} className={"a" + (fadeId === pageMod.id ? " in" : "")} style={{ background: glowOf(shadeAt(pg)) }} />
+            <i ref={tintBRef} className="b" />
+          </div>
+          {/* Оглавление — номера тем, как страницы меню: золотой номер — где ты сейчас, точка под
+              номером (цвета темы) — пройдена (залита) или начата (кружок). Тап — сразу к теме;
+              долгое нажатие — название темы (Доп. 308) */}
+          <div className="tbp-strip" ref={stripWrapRef} style={{ "--role": role.color, "--role-ink": inkOf(role.color, a11y) }}>
+            {numsRow(false)}
+            <button type="button" className="tbp-view" onClick={() => switchView("list")} aria-label="Все темы списком">{listIcon}</button>
+            {peekBubble(false)}
+          </div>
+          {dueN > 0 && onMistakes ? (
+            <div role="button" tabIndex={0} onClick={onMistakes} {...onActivate(onMistakes)} className="tbp-mist">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              <span style={{ flex: 1, minWidth: 0 }}>Работа над ошибками · {dueN} {dueN % 10 === 1 && dueN % 100 !== 11 ? "вопрос" : (dueN % 10 >= 2 && dueN % 10 <= 4 && (dueN % 100 < 10 || dueN % 100 >= 20)) ? "вопроса" : "вопросов"} на повтор</span>
+              <span aria-hidden="true">›</span>
+            </div>
+          ) : null}
+          {onBookPage ? <NewPageBanner T={T} mod={pageMod} completed={completed} quizDone={quizDone} onOpen={() => onBookPage(pageMod)} /> : null}
+          <div className="tbp-vp" ref={vpRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}>
+            <div className="tbp-track" ref={trackRef} onTransitionEnd={onTrackEnd}>
+              {prevMod ? <div key={prevMod.id} className="tbp-side prev" aria-hidden="true" ref={inertRef}>{menuFor(prevMod, true)}</div> : null}
+              <div key={pageMod.id} className={"tbp-cur" + (fadeId === pageMod.id ? " tbp-fade" : "")} ref={liveRef}>{menuFor(pageMod, false)}</div>
+              {nextMod ? <div key={nextMod.id} className="tbp-side next" aria-hidden="true" ref={inertRef}>{menuFor(nextMod, true)}</div> : null}
+              {/* Доп. 308: закладки соседних тем — их номера на видимом крае, цветом темы; тап — листнуть */}
+              {prevMod ? <button key="tab-prev" type="button" className="tbp-tab prev" onClick={() => goTo(pg - 1)} aria-label={"Предыдущая тема: " + labelOf(prevMod, pg - 1) + " · " + prevMod.title}
+                style={{ background: shadeAt(pg - 1), color: inkOnColor(shadeAt(pg - 1)) }}>{labelOf(prevMod, pg - 1)}</button> : null}
+              {nextMod ? <button key="tab-next" type="button" className="tbp-tab next" onClick={() => goTo(pg + 1)} aria-label={"Следующая тема: " + labelOf(nextMod, pg + 1) + " · " + nextMod.title}
+                style={{ background: shadeAt(pg + 1), color: inkOnColor(shadeAt(pg + 1)) }}>{labelOf(nextMod, pg + 1)}</button> : null}
+            </div>
+          </div>
+          {showNext ? <ModuleNextCard mod={pageMod} next={pageNext} onNext={onNext} finish={finish} T={T} a11y={a11y} /> : null}
+          {/* Доп. 308: номера прилипают сверху, когда меню прокручено; название темы — тап к началу */}
+          {pinned && mounted ? createPortal(
+            <div className="tbp-pin" ref={pinRef} aria-hidden="true" style={{ "--role": role.color, "--role-ink": inkOf(role.color, a11y) }}>
+              <div className="tbp-strip">
+                {numsRow(true)}
+                <button type="button" className="tbp-view" tabIndex={-1} onClick={() => switchView("list")}>{listIcon}</button>
+              </div>
+              <button type="button" className="tbp-pin-t" tabIndex={-1} onClick={toTop}><b>{labelOf(pageMod, pg) + " · " + pageMod.title}</b>{statOf(pageMod) ? " · " + statOf(pageMod) : ""}</button>
+              {peekBubble(true)}
+            </div>, document.body) : null}
+          {/* Доп. 308: смотришь другую тему — «К уроку: …» над нижним меню, одно касание — туда, где остановился */}
+          {showGo && mounted ? createPortal(
+            <button type="button" className="tbp-go" onClick={goCur} aria-label={goWord + ": " + curStep.title}>
+              <span className="ic" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg></span>
+              <span className="k">{goWord + ":"}</span><span className="t">{curStep.title}</span>
+            </button>, document.body) : null}
+        </>
+      ) : (
+        <>
       {/* ── Точка входа ──────────────────────────────────────────────────
           Тот же вид, что у карточки трека на экране роли, — чтобы два главных
           экрана говорили на одном языке. Первая версия была с кнопкой во всю
@@ -228,29 +767,6 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         );
       })()}
 
-      {/* Статус — одной строкой. Прогресс и серия это справка, а не действие:
-          двух карточек они не стоят, а полоска на 2 % в отдельной карточке
-          выглядела сломанной. */}
-      <div style={{ margin:"0 14px 12px", display:"flex", alignItems:"center", gap:10,
-        padding:"9px 13px", borderRadius:999,
-        border:`1px solid ${a11y ? "rgba(150,112,40,0.25)" : "rgba(145,108,40,0.28)"}`,
-        background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
-        boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(255,248,230,0.05)" }}>
-        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#9A865F", flexShrink:0 }}>
-          {doneCount} из {totalLessons}
-        </span>
-        <span style={{ flex:1, height:4, borderRadius:999, overflow:"hidden",
-          background: a11y ? "rgba(120,90,30,0.14)" : "rgba(255,255,255,0.07)" }}>
-          <i style={{ display:"block", height:"100%", borderRadius:999,
-            width:`${Math.max(progress, progress > 0 ? 2 : 0)}%`, background:role.color }} />
-        </span>
-        <span style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#9A865F", flexShrink:0 }}>
-          {leftMins > 0 ? `≈ ${_fmtMins(leftMins)}` : "пройдено 🎓"}
-        </span>
-        {streak && streak.count > 0 ? (
-          <span style={{ fontSize:11.5, color: a11y ? "#7A5D2A" : GOLD, flexShrink:0 }}>серия {streak.count}</span>
-        ) : null}
-      </div>
       {mistakeBank.filter(m => !m.due || m.due <= Date.now()).length > 0 && onMistakes && (() => {
         const _g = a11y ? "#7A5D2A" : GOLD;
         const _n = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
@@ -267,16 +783,17 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           </div>
         );
       })()}
-      <div style={T.secTitle}>Программа обучения</div>
+      <div style={{ ...T.secTitle, display: "flex", alignItems: "center", gap: 8 }}><span style={{ flex: 1 }}>Программа обучения</span>
+        <button type="button" className="sa-btn" onClick={() => switchView("pager")} aria-label="Листать темы по одной" style={{ textTransform: "none", letterSpacing: 0.4, fontFamily: "Georgia, serif", fontSize: 12, padding: "4px 10px", borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${role.color}77`, color: inkOf(role.color, a11y) }}>листать ›</button></div>
       <div style={T.modList} className="sa-stagger">
-        {[...modules, ...customModules].map((m) => {
+        {pages.map((m, mi) => {
           const lessonsDone = m.lessons.filter(l => l.type !== "quiz" && l.type !== "result" && completed[l.id]).length;
           const quizzesDone = m.lessons.filter(l => l.type === "quiz" && quizDone[l.id]).length;
           const done = lessonsDone + quizzesDone;
           const total = m.lessons.filter(l => l.type !== "result").length;
           const pct = total > 0 ? Math.round((done / total) * 100) : 0;
           return (
-            <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => onModule(m)} {...onActivate(() => onModule(m))}>
+            <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => openPage(mi)} {...onActivate(() => openPage(mi))}>
               <div style={{ ...T.modBar, background:m.color }} />
               <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{MOD_SVG[m.icon] ? MOD_SVG[m.icon](m.color, 28) : m.icon}</div>
               <div style={T.modInfo}>
@@ -292,87 +809,74 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           );
         })}
       </div>
+        </>
+      )}
       {/* Настроение и пульс команды — под списком. Штука приятная, но не то,
           ради чего открывают приложение: наверху она отодвигала урок за сгиб. */}
       <MoodCheckCard a11y={a11y} />
       {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && <TeamMoodCard a11y={a11y} />}
+      {/* Доп. 308: место под плавающей «К уроку», чтобы она не закрывала низ страницы */}
+      {showGo && mounted ? <div aria-hidden="true" style={{ height: 52, flexShrink: 0 }} /> : null}
     </div>
   );
 }
 
-export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T, next, onNext, finish, a11y = false }) {
-  const frost = frostOf(a11y); // Доп. 198: «Морозный след», обе темы
+// Доп. 196–197: карточка под меню раздела — следующий шаг (не искать глазами, куда идти
+// дальше) или, когда программа роли пройдена, экзамен → сертификат → следующая ступень.
+// Доп. 307: вынесена из ModuleScreen без изменений — её же показывает листаемый трек.
+export function ModuleNextCard({ mod, next, onNext, finish, T, a11y = false }) {
+  const frost = frostOf(a11y);
   const goldA = a11y ? "#7A5D2A" : GOLD;
+  if (!next) {
+    // Доп. 197: конец программы роли — не подпись, а действие: экзамен → сертификат → следующая ступень
+    const f = finish || {};
+    const go = () => f.onGo && f.onGo();
+    return (
+      <div className="sa-card" style={{ ...frost, margin: "10px 16px 96px", padding: "14px 16px", borderRadius: 18 }}>
+        <div style={{ fontSize: 11, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 4 }}>{(f.eyebrow || "ПРОГРАММА РОЛИ ПРОЙДЕНА ✦").toUpperCase()}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: T.modTitle.color, lineHeight: 1.25 }}>{f.title || "Все уроки пройдены"}</div>
+            {f.sub && <div style={{ fontSize: 12.5, color: T.modSub.color, marginTop: 2, lineHeight: 1.45 }}>{f.sub}</div>}
+          </div>
+        </div>
+        {f.cta && <button className="sa-btn" onClick={go} style={{ marginTop: 12, width: "100%", border: "none", cursor: "pointer", padding: "12px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", boxShadow: "0 6px 18px rgba(214,178,102,0.32)" }}>{f.cta}</button>}
+        {f.secondary && <div onClick={(e) => { e.stopPropagation(); f.secondary.onGo && f.secondary.onGo(); }} style={{ marginTop: 10, fontSize: 12.5, color: goldA, cursor: "pointer" }}>{f.secondary.label} ›</div>}
+      </div>
+    );
+  }
+  const same = next.mod && mod && next.mod.id === mod.id;
+  const go = () => onNext && onNext(next);
+  const lessons = (next.mod && next.mod.lessons ? next.mod.lessons : []).filter(l => l.type !== "result");
+  const pos = lessons.findIndex(l => l.id === next.lesson.id) + 1;
+  const kind = next.lesson.type === "quiz" ? "Тест" : next.lesson.type === "dialogue" ? "Живой диалог" : next.lesson.type === "practice" ? "Практика" : next.lesson.type === "build" ? "Сборка" : "Урок";
+  // Доп. 202: кнопка на всю ширину под названием — не прячется под кнопкой Наставника;
+  // снизу воздух, чтобы кнопка Наставника висела над пустотой, а не над карточкой
+  // Доп. 203: компактно — одна строка: номер · название с подписью · капсула
+  return (
+    <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "10px 16px 96px", padding: "10px 12px 10px 12px", borderRadius: 18, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 9, letterSpacing: 1.5, color: goldA, fontFamily: "monospace", marginBottom: 2 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `ДАЛЬШЕ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.lesson.title}</div>
+        <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length}` : ""}</div>
+      </div>
+      <span style={{ padding: "9px 14px", borderRadius: 999, flexShrink: 0, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.32)" }}>Перейти ›</span>
+    </div>
+  );
+
+}
+
+export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T, next, onNext, finish, a11y = false }) {
+  // Доп. 292: модуль (раздел) — «меню раздела»: строки с отточием, «пройден» от руки,
+  // тест под сургучом, текущий шаг — карточка. Прежняя информация вся на месте
+  // (см. ui/module-menu.jsx); код формата «у стола» начинает грузиться фоном уже здесь.
+  React.useEffect(() => { loadTable(); }, []);
   return (
     <div style={T.screen} className="sa-slide-r">
-      <div style={{ ...T.modHead, background:`linear-gradient(160deg, ${mod.color}99 0%, rgba(44,33,22,0.95) 100%)` }}>
-        <button style={T.backBtn} onClick={onBack}>‹ Назад</button>
-        <div style={{ marginBottom:10, display:"flex" }}>{MOD_SVG[mod.icon] ? MOD_SVG[mod.icon](mod.color, 38) : mod.icon}</div>
-        <div style={{ fontSize:11, letterSpacing:3, color:"rgba(255,255,255,0.6)", marginBottom:4, fontFamily:"monospace" }}>{mod.tag}</div>
-        <div style={{ fontSize:21, fontWeight:"bold", color:"#fff", marginBottom:4 }}>{mod.title}</div>
-        <div style={{ fontSize:14, color:"rgba(255,255,255,0.6)" }}>{mod.subtitle}</div>
-      </div>
-      <div style={T.lessList} className="sa-stagger">
-        {mod.lessons.map((l,i) => {
-          const done = l.type === "quiz" ? quizDone[l.id] : completed[l.id];
-          const typeMap = { lesson:"Урок", quiz:"Тест", practice:"Практика" };
-          const typeColor = { lesson:"#7C9E87", quiz:GOLD, practice:"#8B7BAB" };
-          return (
-            <div key={l.id} className="sa-card sa-glass" style={{ ...T.lessCard, opacity: 1 }} onClick={() => onLesson(l)} {...onActivate(() => onLesson(l))}>
-              <div style={{ ...T.lessNum, background: done ? mod.color : "transparent", color: done ? "#fff" : l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : l.type==="build" ? "#C89A6E" : (T.lessNumColor || "#C8B898"), fontSize: (l.type==="practice"||l.type==="quiz"||l.type==="dialogue"||l.type==="build") ? 16 : 13, fontWeight: T.lessNumColor ? "bold" : "normal", border: done ? "none" : l.type==="practice" ? "1.5px solid rgba(139,123,171,0.5)" : l.type==="quiz" ? "1.5px solid rgba(200,169,110,0.5)" : l.type==="dialogue" ? "1.5px solid rgba(127,176,160,0.5)" : l.type==="build" ? "1.5px solid rgba(200,154,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
-                {done ? "✓" : l.type==="practice" ? UI_SVG.gamepad("#A090C8", 15) : l.type==="quiz" ? UI_SVG.quiz(GOLD, 15) : l.type==="dialogue" ? UI_SVG.dialog("#7FB0A0", 15) : l.type==="build" ? UI_SVG.shaker("#C89A6E", 15) : i+1}
-              </div>
-              <div style={{ ...T.lessInfo, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ ...T.lessTitle, marginBottom:2, color: l.type==="practice" ? "#A090C8" : l.type==="quiz" ? GOLD : l.type==="dialogue" ? "#7FB0A0" : l.type==="build" ? "#C89A6E" : T.lessTitle.color }}>
-                  {l.title}
-                </div>
-                {l.type === "lesson" && <div style={{ fontSize:9, letterSpacing:1, fontFamily:"monospace", color:typeColor[l.type], marginTop:2 }}>{typeMap[l.type]}</div>}
-              </div>
-              <div style={T.lessArrow}>{l.type==="quiz" && quizDone[l.id] ? UI_SVG.trophy(GOLD, 16) : l.type==="quiz" && completed[l.id] ? "✓" : "›"}</div>
-            </div>
-          );
-        })}
-      </div>
+      <ModuleMenu mod={mod} completed={completed} quizDone={quizDone} onLesson={onLesson} onBack={onBack} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins} />
       {/* Доп. 196: следующий шаг — не искать глазами, куда идти дальше */}
-      {(() => {
-        if (!next) {
-          // Доп. 197: конец программы роли — не подпись, а действие: экзамен → сертификат → следующая ступень
-          const f = finish || {};
-          const go = () => f.onGo && f.onGo();
-          return (
-            <div className="sa-card" style={{ ...frost, margin: "10px 16px 96px", padding: "14px 16px", borderRadius: 18 }}>
-              <div style={{ fontSize: 11, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 4 }}>{(f.eyebrow || "ПРОГРАММА РОЛИ ПРОЙДЕНА ✦").toUpperCase()}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: T.modTitle.color, lineHeight: 1.25 }}>{f.title || "Все уроки пройдены"}</div>
-                  {f.sub && <div style={{ fontSize: 12.5, color: T.modSub.color, marginTop: 2, lineHeight: 1.45 }}>{f.sub}</div>}
-                </div>
-              </div>
-              {f.cta && <button className="sa-btn" onClick={go} style={{ marginTop: 12, width: "100%", border: "none", cursor: "pointer", padding: "12px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", boxShadow: "0 6px 18px rgba(214,178,102,0.32)" }}>{f.cta}</button>}
-              {f.secondary && <div onClick={(e) => { e.stopPropagation(); f.secondary.onGo && f.secondary.onGo(); }} style={{ marginTop: 10, fontSize: 12.5, color: goldA, cursor: "pointer" }}>{f.secondary.label} ›</div>}
-            </div>
-          );
-        }
-        const same = next.mod && mod && next.mod.id === mod.id;
-        const go = () => onNext && onNext(next);
-        const lessons = (next.mod && next.mod.lessons ? next.mod.lessons : []).filter(l => l.type !== "result");
-        const pos = lessons.findIndex(l => l.id === next.lesson.id) + 1;
-        const kind = next.lesson.type === "quiz" ? "Тест" : next.lesson.type === "dialogue" ? "Живой диалог" : next.lesson.type === "practice" ? "Практика" : next.lesson.type === "build" ? "Сборка" : "Урок";
-        // Доп. 202: кнопка на всю ширину под названием — не прячется под кнопкой Наставника;
-        // снизу воздух, чтобы кнопка Наставника висела над пустотой, а не над карточкой
-        // Доп. 203: компактно — одна строка: номер · название с подписью · капсула
-        return (
-          <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "10px 16px 96px", padding: "10px 12px 10px 12px", borderRadius: 18, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, letterSpacing: 1.5, color: goldA, fontFamily: "monospace", marginBottom: 2 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `ДАЛЬШЕ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.lesson.title}</div>
-              <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length}` : ""}</div>
-            </div>
-            <span style={{ padding: "9px 14px", borderRadius: 999, flexShrink: 0, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.32)" }}>Перейти ›</span>
-          </div>
-        );
-      })()}
+      <ModuleNextCard mod={mod} next={next} onNext={onNext} finish={finish} T={T} a11y={a11y} />
     </div>
   );
 }
@@ -423,7 +927,30 @@ function TapAnchored({ x, y, T, children }) {
   );
 }
 
-export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule, skipped, onSkipped }) {
+export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule, skipped, onSkipped,
+  mod = null, profile = null, streak = null, mistakeBank = [], onMistakes, onResolveMistake, onFailMistake, wasCompleted = false,
+  modules = null, mentorName = "", goal = null, onAskMentor, onActivity, onContents }) {
+  // Доп. 299–303: повтор пройденного — меньше нажатий (автопереход), шпаргалка из уроков
+  // раздела, подпись настоящего наставника, стакан «цель дня» в чеке, вопрос Наставнику.
+  const replay = !!wasCompleted;
+  // Доп. 306: где я в разделе — «2 из 6»; тап открывает содержание раздела
+  const stepInfo = React.useMemo(() => {
+    const ls = ((mod && mod.lessons) || []).filter((l) => l && l.type !== "result");
+    const i = ls.findIndex((l) => l.id === lesson.id);
+    return i >= 0 ? { i: i + 1, n: ls.length } : null;
+  }, [mod, lesson.id]);
+  // Доп. 289–293: формат «у стола» — практика и «закрепить у стола» после урока
+  const tb = useTable();
+  const tbAtMount = React.useRef(!!tableMod).current;
+  const [tableView, setTableView] = React.useState(readTableView);
+  const startedTable = React.useRef(false);
+  const [checkOpen, setCheckOpen] = React.useState(false);
+  const switchView = (v) => { setTableView(v); startedTable.current = v; try { localStorage.setItem(TABLE_VIEW_KEY, v ? "1" : "0"); } catch (e) {} };
+  // Доп. 293: урок открывается на той карточке, где остановился (официанта отвлекают)
+  const posUk = profile ? "_" + profile.name + "_" + (profile.surname || "") : "";
+  // пройденный урок (и раньше, и сейчас) открывается с начала и место не запоминает
+  const posOff = lesson.type !== "lesson" || !!done || !!wasCompleted;
+  const [resumeFrom, setResumeFrom] = React.useState(() => (posOff ? 0 : readCardPos(posUk, lesson.id)));
   // Доп. 205: после «Урок пройден ✓» кнопка становится «Далее: …» — без шторок и затемнений
   const DoneNext = () => {
     if (!done) return null;
@@ -466,7 +993,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   const [modeHint, setModeHint] = React.useState(() => { try { return !localStorage.getItem("sa_mode_hint"); } catch (e) { return false; } });
   const dismissModeHint = React.useCallback(() => { setModeHint(false); try { localStorage.setItem("sa_mode_hint", "1"); } catch (e) {} }, []);
   React.useEffect(() => { if (!modeHint) return; const t = setTimeout(dismissModeHint, 7000); return () => clearTimeout(t); }, [modeHint, dismissModeHint]);
-  const [cardIdx, setCardIdx] = React.useState(0);
+  const [cardIdx, setCardIdx] = React.useState(resumeFrom);
   // Мгновенная обратная связь в тесте — по образцу «Работы над ошибками»:
   // выбранный вариант подсвечивается (и правильный тоже), затем автопереход.
   // Раньше тап молча перекидывал на следующий вопрос — тест был «слепым».
@@ -490,34 +1017,23 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   React.useEffect(() => { setReveal(null); }, [lesson.id]);
   const [cardDir, setCardDir] = React.useState("r"); // направление перелистывания для анимации
   const touchRef = React.useRef(null);
-  React.useEffect(() => { setCardIdx(0); }, [lesson.id]);
+  const firstLessonId = React.useRef(lesson.id);
+  React.useEffect(() => {
+    if (firstLessonId.current === lesson.id) return;   // первый показ — позиция уже взята при создании
+    firstLessonId.current = lesson.id;
+    const p = posOff ? 0 : readCardPos(posUk, lesson.id);
+    setCardIdx(p); setResumeFrom(p);
+  }, [lesson.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    if (lesson.type !== "lesson") return;
+    writeCardPos(posUk, lesson.id, posOff ? 0 : cardIdx);   // пройден — в следующий раз с начала
+  }, [cardIdx, posOff, lesson.id, lesson.type, posUk]);
   // Делим контент на смысловые карточки: новые начинаются на заголовках/стикерах,
   // лимит ~700 знаков, а короткие «хвосты» приклеиваются к предыдущей — мысль не обрывается
-  const cards = React.useMemo(() => {
-    const lines = (lesson.content || "").split("\n");
-    const blocks = []; let cur = [];
-    for (const ln of lines) { if (!ln.trim()) { if (cur.length) { blocks.push(cur); cur = []; } } else cur.push(ln); }
-    if (cur.length) blocks.push(cur);
-    const blockLen = (b) => b.join(" ").length;
-    const isHeader = (b) => {
-      const t = (b[0] || "").trim();
-      if (t.startsWith("**") && t.endsWith("**")) return true;
-      if (t.startsWith("[mm:")) return true;
-      return /^[\p{Extended_Pictographic}\s\uFE0F\u200D]+$/u.test(t) && t.length <= 12;
-    };
-    const out = []; let acc = []; let len = 0;
-    for (const b of blocks) {
-      const L = blockLen(b);
-      if (acc.length && (len + L > 700 || (isHeader(b) && len > 250))) { out.push(acc); acc = []; len = 0; }
-      acc = acc.concat(acc.length ? [""] : [], b); len += L;
-    }
-    if (acc.length) out.push(acc);
-    for (let i = out.length - 1; i > 0; i--) {
-      if (out[i].join(" ").length < 140) { out[i - 1] = out[i - 1].concat([""], out[i]); out.splice(i, 1); }
-    }
-    if (out.length > 1 && out[0].join(" ").length < 140) { out[1] = out[0].concat([""], out[1]); out.splice(0, 1); }
-    return out.length ? out : [lines];
-  }, [lesson.content]);
+  // деление на карточки — lib/lesson-cards.js (Доп. 299: общее с «Подсмотреть в уроке»)
+  const cards = React.useMemo(() => lessonCards(lesson.content), [lesson.content]);
+  // сохранённая позиция могла пережить правку урока — не дальше последней карточки
+  React.useEffect(() => { if (cardIdx > cards.length - 1) { setCardIdx(Math.max(0, cards.length - 1)); setResumeFrom(0); } }, [cards.length, cardIdx]);
   const goCard = React.useCallback((d) => {
     const n = Math.max(0, Math.min(cards.length - 1, cardIdx + d));
     if (n === cardIdx) return; // край — не дёргаемся и не вибрируем
@@ -599,10 +1115,40 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     onPracticeChoice(idx);
     setTimeout(() => { if (nextBtnRef.current) nextBtnRef.current.scrollIntoView({ behavior: "smooth", block: "end" }); }, 150);
   }, [onPracticeChoice]);
+  // Доп. 289: конец урока — «Закрепить у стола» (две ситуации из практики раздела по теме
+  // урока + повтор ошибки, если подошёл срок) или, как раньше, «Урок пройден ✓».
+  const canCheck = !!tb && lesson.type === "lesson" && hasPracticePool(mod);
+  const dueN = canCheck ? (mistakeBank || []).filter((m) => m && (!m.due || m.due <= Date.now())).length : 0;
+  const FinishLesson = ({ mt }) => {
+    if (!canCheck) return <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: mt }} onClick={onComplete}>Урок пройден ✓</button>;
+    return (
+      <div style={{ marginTop: mt }}>
+        <button className="sa-btn sa-btn-pulse" data-tb-check="" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }} onClick={() => { vibrate("light"); setCheckOpen(true); }}>
+          <span>Закрепить у стола</span><span style={{ fontFamily: "monospace", fontSize: 11, letterSpacing: 1, opacity: 0.85 }}>· 2 ситуации{dueN ? " + повтор" : ""}</span>
+        </button>
+        <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", color: T.modTitle?.color || "#F0E8D8", border: `1px solid ${color}88`, boxShadow: "none" }} onClick={onComplete}>Урок пройден ✓</button>
+        <div style={{ textAlign: "center", fontSize: 12, color: T.modSub.color, marginTop: 8, lineHeight: 1.45 }}>У стола — ситуации из практики этого раздела по теме урока. Можно пропустить.</div>
+      </div>
+    );
+  };
+  const resumeBanner = cardMode && resumeFrom > 0 && cardIdx === resumeFrom && !done ? (
+    <div className="sa-fadein" style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 10px", padding: "8px 12px", borderRadius: 12, border: `1px dashed ${color}77`, fontSize: 12.5, color: T.modSub.color }}>
+      <span style={{ flex: 1, minWidth: 0 }}>Продолжаем с того же места — карточка {Math.min(cardIdx, cards.length - 1) + 1} из {cards.length}</span>
+      <span role="button" tabIndex={0} onClick={() => { setCardDir("l"); setCardIdx(0); setResumeFrom(0); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCardDir("l"); setCardIdx(0); setResumeFrom(0); } }} style={{ color: inkOf(color, !!T.a11y), fontWeight: "bold", cursor: "pointer", whiteSpace: "nowrap" }}>С начала</span>
+    </div>
+  ) : null;
+  const checkLayer = checkOpen && tb ? (
+    <tb.TableCheck lesson={lesson} mod={mod} modules={modules} color={color} a11y={!!T.a11y} profile={profile} streak={streak} next={next} mistakeBank={mistakeBank}
+      replay={replay} mentorName={mentorName} goal={goal} onAskMentor={onAskMentor} onActivity={onActivity}
+      onComplete={onComplete} onNext={onNext} onClose={() => setCheckOpen(false)} onMistakes={onMistakes} onResolveMistake={onResolveMistake} onFailMistake={onFailMistake} />
+  ) : null;
   if (lesson.type === "lesson") {
     return (
       <div style={{ ...T.screen, position: "relative" }}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div><button onClick={() => { dismissModeHint(); setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center", borderRadius: 12, animation: modeHint ? "pulse 2s infinite" : "none" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
+        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div>{onContents && stepInfo ? (
+          <button onClick={onContents} aria-label={"Содержание раздела: шаг " + stepInfo.i + " из " + stepInfo.n} data-sa-contents=""
+            style={{ flexShrink: 0, background: "transparent", border: `1px solid ${color}77`, borderRadius: 999, padding: "4px 10px", color: inkOf(color, !!T.a11y), fontFamily: "monospace", fontSize: 11, letterSpacing: 0.5, cursor: "pointer", whiteSpace: "nowrap" }}>{stepInfo.i} из {stepInfo.n}</button>
+        ) : null}<button onClick={() => { dismissModeHint(); setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center", borderRadius: 12, animation: modeHint ? "pulse 2s infinite" : "none" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
           ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
           : GAME_SVG.cards(color, 17)}</button></div>
         <div style={{ height:3, background: T.progBar?.background || "rgba(255,255,255,0.08)" }}><div style={{ height:3, width:`${cardMode ? Math.round(((cardIdx + 1) / cards.length) * 100) : scrollPct}%`, background:color, transition:"width 0.2s", borderRadius:3 }} /></div>
@@ -616,6 +1162,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           </div>
         )}
         <div ref={bodyRef} key={cardMode ? "card" + cardIdx : "feed"} className={cardMode ? (cardDir === "l" ? "sa-cardpage-l" : "sa-cardpage-r") : undefined} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
+          {resumeBanner}
           {/* Стеклянная подложка для текста урока */}
           <div style={{
             background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
@@ -720,11 +1267,11 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               )}
               {cardIdx === cards.length - 1 && (done
                 ? <DoneNext />
-                : <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 6 }} onClick={onComplete}>Урок пройден ✓</button>
+                : <FinishLesson mt={6} />
               )}
             </div>
           ) : (
-            done ? <DoneNext /> : <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color }} onClick={onComplete}>Урок пройден ✓</button>
+            done ? <DoneNext /> : <FinishLesson mt={24} />
           )}
         </div>
         {/* Живой диалог — полноэкранный «экран» с автопрокруткой: он должен жить
@@ -734,6 +1281,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         {dialogueScreen && createPortal(
           <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />
         , document.body)}
+        {checkLayer}
         {termPopup && createPortal(
           <div onClick={() => setTermPopup(null)} {...onActivate(() => setTermPopup(null))}
             style={{ position:"fixed", inset:0, background:"transparent", zIndex:999 }}>
@@ -769,6 +1317,16 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   }
 
   if (lesson.type === "practice") {
+    // Доп. 290: практика «у стола». Тот же practiceState, те же очки, жизни (тарелки), звёзды.
+    // Модуль ещё не приехал или выбран классический вид — работает прежний экран ниже.
+    const freshRound = !practiceState.isAnswered && practiceState.step === 0 && !practiceState.done;
+    if (tb && tableView && (tbAtMount || startedTable.current || freshRound)) {
+      startedTable.current = true;
+      return <tb.TablePractice lesson={lesson} color={color} a11y={!!T.a11y} practiceState={practiceState} setPracticeState={setPracticeState}
+        onPracticeChoice={onPracticeChoice} onPracticeNext={onPracticeNext} onBack={onBack} onComplete={onComplete}
+        onClassic={() => switchView(false)} streak={streak} profile={profile}
+        mod={mod} replay={replay} mentorName={mentorName} goal={goal} onAskMentor={onAskMentor} />;
+    }
     const situations = practiceState.situations.length > 0
       ? practiceState.situations
       : pickRandom(lesson.situations || [], 6);
@@ -779,26 +1337,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       const total = situations.length;
       const stars = practiceState.score >= 60 ? 3 : practiceState.score >= 30 ? 2 : 1;
       const restartGame = () => {
-        const pool = lesson.situations || [];
-        // Берём ключи уже показанных сценариев
-        const shownKeys = new Set(practiceState.usedIds || []);
-        // Сначала берём те что ещё не показывали
-        const fresh = pool.filter(s => {
-          const k = s.scene || s.statement || s.question || JSON.stringify(s).slice(0,60);
-          return !shownKeys.has(k);
-        });
-        // Если свежих хватает — берём только их, иначе добираем из показанных
-        const sourcePool = fresh.length >= 6 ? fresh : pool;
-        const shuffled = pickRandom([...sourcePool], 6).map(shuffleSituationOptions);
-        // Запоминаем новые показанные ключи
-        const newUsedIds = [...shownKeys];
-        shuffled.forEach(s => {
-          const k = s.scene || s.statement || s.question || JSON.stringify(s).slice(0,60);
-          if (!newUsedIds.includes(k)) newUsedIds.push(k);
-        });
-        // Если показали уже всё — сбрасываем историю
-        const finalUsedIds = newUsedIds.length >= pool.length ? [] : newUsedIds;
-        setPracticeState({ step:0, choice:null, results:[], done:false, lives:3, score:0, combo:0, situations:shuffled, flash:null, timerActive:false, timeLeft:10, inputVal:"", usedIds:finalUsedIds });
+        // Сначала ситуации, которых ещё не было; показали всё — история с нуля.
+        // Доп. 290: логика вынесена в lib/practice-round.js (общая с видом «у стола»), не менялась.
+        setPracticeState(practiceRound(lesson.situations || [], practiceState.usedIds));
         // Доп. 232: setGameKey здесь не существует (состояние App) — сброс practiceState выше уже перезапускает игру
       };
       return (
@@ -878,8 +1419,11 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div style={{ display:"flex", gap:2 }}>
               {[1,2,3].map(h=><span key={h} style={{ fontSize:16, opacity:h<=practiceState.lives?1:0.2, transition:"opacity 0.3s" }}>❤️</span>)}
             </div>
-            <div style={{ background:"rgba(212,168,90,0.2)", borderRadius:18, padding:"4px 12px", border:"1px solid rgba(212,168,90,0.4)" }}>
-              <span style={{ color:GOLD_SOFT, fontSize:12.5, fontWeight:"bold" }}>⭐ {practiceState.score}</span>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ background:"rgba(212,168,90,0.2)", borderRadius:18, padding:"4px 12px", border:"1px solid rgba(212,168,90,0.4)" }}>
+                <span style={{ color:GOLD_SOFT, fontSize:12.5, fontWeight:"bold" }}>⭐ {practiceState.score}</span>
+              </div>
+              {tb ? <button className="sa-btn" onClick={() => switchView(true)} aria-label="Вид «у стола»" style={{ background:"transparent", border:`1px solid ${color}88`, borderRadius:18, padding:"4px 10px", color: T.modSub.color, fontSize:11.5, cursor:"pointer", fontFamily:"Georgia, serif" }}>у стола</button> : null}
             </div>
           </div>
           <div style={{ display:"flex", gap:2 }}>
@@ -950,7 +1494,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 let bc = neutralBC;
                 let tc = T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -972,7 +1516,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -992,7 +1536,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color,prefix="";
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";prefix="❌ ";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
               })}
             </>
           )}
@@ -1006,7 +1550,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                   {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock(RED, 15)}Время вышло!</span> : isCorrectAnswer ? `🎉 +${practiceState.combo>=2?20:10} очков!` : `😬 −1 ❤️ (осталось ${practiceState.lives})`}
                 </div>
                 <div style={{ color:isCorrectAnswer?GREEN:RED, fontSize:12.5, lineHeight:1.6 }}>
-                  {isCorrectAnswer ? sit.win : sit.fail||"Попробуй ещё раз в следующем раунде!"}
+                  {isCorrectAnswer ? sit.win : missText(sit, practiceState.choice >= 0 ? (sit.options || [])[practiceState.choice] : "")||"Попробуй ещё раз в следующем раунде!"}
                 </div>
               </div>
               {sayPhrase && <SayAloud phrase={sayPhrase} T={T} color={color} />}

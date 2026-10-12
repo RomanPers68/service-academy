@@ -29,8 +29,8 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 const uid = () => Math.random().toString(36).slice(2, 9);
 const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
 const blankS = (genre = "action") => ({ id: uid(), genre, emoji: "", scene: "", question: genre === "find" ? "В чём ошибка?" : "Что делаешь?", options: ["", ""], correct: 0, win: "", fail: "" });
-const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, build: null, review: null, sort: 0 });
-const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue || d.build || d.review));
+const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, build: null, review: null, skills: [], sort: 0 });
+const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue || d.build || d.review || (d.skills || []).length));
 // Сборка у бара (правка 160) — одна на урок, в questions с пометкой kind: "build"
 const blankBStep = () => ({ id: uid(), label: "", q: "", cost: "", options: [{ t: "", ok: true, fb: "" }, { t: "", ok: false, fb: "" }, { t: "", ok: false, fb: "" }, { t: "", ok: false, fb: "" }] });
 const newBuild = () => ({ title: "", glass: "rocks", tint: "#C8A96E", win: "", lose: "", steps: [blankBStep(), blankBStep()] });
@@ -58,7 +58,7 @@ const isSit = (q) => !!(q && q.kind === "situation");
 const fromServer = (l) => {
   const all = Array.isArray(l.questions) ? l.questions : [];
   return JSON.parse(JSON.stringify({ ...blankLesson(), ...l,
-    questions: all.filter(q => !isSit(q) && !(q && (q.kind === "dialogue" || q.kind === "build"))).map(q => ({ id: uid(), ...q })),
+    questions: all.filter(q => !isSit(q) && !(q && (q.kind === "dialogue" || q.kind === "build" || q.kind === "review" || q.kind === "skill"))).map(q => ({ id: uid(), ...q })),
     situations: all.filter(isSit).map(({ kind, ...x }) => ({ id: uid(), ...x })),
     dialogue: withIds(all.find(q => q && q.kind === "dialogue")), build: withBIds(all.find(q => q && q.kind === "build")) }));
 };
@@ -76,9 +76,11 @@ const sectionExtras = (recs) => {
     build: withBIds((parts.find(x => x.bld) || {}).bld),
     // страница книги отзывов (правка 166)
     review: (() => { const rv = (parts.find(x => x.review) || {}).review; return rv ? { guest: rv.guest || "", table: rv.table || "", text: rv.text || "" } : null; })(),
+    // навыки для «Подтверждения в зале» (Доп. 310)
+    skills: parts.flatMap(x => x.skills || []).map(s => ({ id: uid(), sid: s.sid || uid(), label: s.label || "", hint: s.hint || "" })),
   };
 };
-const noExtras = () => ({ questions: [], situations: [], dialogue: null, build: null, review: null });
+const noExtras = () => ({ questions: [], situations: [], dialogue: null, build: null, review: null, skills: [] });
 const SIT_EMOJI = ["🔥", "💬", "🍷", "🙋", "⚠️", "🤝", "🍽", "⏱"];
 const readDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { return null; } };
 const writeDraft = (v) => { try { v ? localStorage.setItem(DRAFT_KEY, JSON.stringify(v)) : localStorage.removeItem(DRAFT_KEY); } catch (e) {} };
@@ -131,7 +133,8 @@ function serializeExtras(draft) {
     steps: draft.build.steps.map(st => ({ label: (st.label || "").trim() || "Шаг", q: st.q.trim(), cost: (st.cost || "").trim(),
       options: st.options.filter(o => (o.t || "").trim()).map(o => o.ok ? { t: o.t.trim(), ok: true, fb: (o.fb || "").trim() } : { t: o.t.trim(), fb: (o.fb || "").trim() }) })) }] : [];
   const rvOut = draft.review && (draft.review.text || "").trim() ? [{ kind: "review", guest: (draft.review.guest || "").trim(), table: (draft.review.table || "").trim(), text: draft.review.text.trim() }] : [];
-  const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut, ...rvOut];
+  const skOut = (draft.skills || []).filter(s => (s.label || "").trim()).map(s => ({ kind: "skill", sid: s.sid || uid(), label: s.label.trim(), hint: (s.hint || "").trim() }));
+  const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut, ...rvOut, ...skOut];
   return questions;
 }
 
@@ -957,6 +960,21 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <button onClick={() => patch({ review: null })} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5, padding: "8px 0 0" }}>Убрать страницу</button>
           </div>
         )}
+        {/* Доп. 310: навыки раздела — наставник подтверждает их в зале, как штатные */}
+        <SectionLabel a11y={a11y} right={(draft.skills || []).length ? String((draft.skills || []).length) : "необязательно"}>НАВЫКИ В ЗАЛЕ</SectionLabel>
+        <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+          <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: (draft.skills || []).length ? 10 : 8 }}>Что старший должен увидеть своими глазами в зале. Навык появится в «Наставничестве» у сотрудников этого трека: «Отправить старшему» или PIN — как у штатных навыков.</div>
+          {(draft.skills || []).map((sk, i) => (
+            <div key={sk.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <input style={{ ...input, padding: "10px 11px" }} value={sk.label} maxLength={80} onChange={e => setDraft(d => ({ ...d, skills: d.skills.map(x => x.id === sk.id ? { ...x, label: e.target.value } : x) }))} placeholder={"Навык " + (i + 1) + ": «Подача фирменного десерта»"} aria-label={"Навык " + (i + 1)} />
+                <input style={{ ...input, padding: "9px 11px", fontSize: 12.5, marginTop: 6 }} value={sk.hint} maxLength={140} onChange={e => setDraft(d => ({ ...d, skills: d.skills.map(x => x.id === sk.id ? { ...x, hint: e.target.value } : x) }))} placeholder="Как понять, что получилось (необязательно)" aria-label={"Признак навыка " + (i + 1)} />
+              </div>
+              <button onClick={() => setDraft(d => ({ ...d, skills: d.skills.filter(x => x.id !== sk.id) }))} style={{ ...iconBtn, padding: "10px 4px" }} aria-label={"Убрать навык " + (i + 1)}>{ico.trash(TN.bad)}</button>
+            </div>
+          ))}
+          {(draft.skills || []).length < 8 ? <button onClick={() => setDraft(d => ({ ...d, skills: [...(d.skills || []), { id: uid(), sid: uid(), label: "", hint: "" }] }))} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить навык</button> : null}
+        </div>
         <div ref={secRef.prev} />
         <SectionLabel a11y={a11y}>КАК УВИДИТ СОТРУДНИК</SectionLabel>
         {showPreview ? (<>

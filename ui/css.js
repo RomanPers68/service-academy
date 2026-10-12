@@ -284,7 +284,7 @@ export const injectStyles = () => {
       30%{transform:scale(1)} 78%{opacity:1} 100%{opacity:0;transform:scale(1.02)} }
     @keyframes saCelebSpark { 0%{opacity:0;transform:translate(0,0) scale(.4)}
       25%{opacity:1} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1)} }
-    .sa-celeb { position:fixed; inset:0; z-index:340; display:grid; place-items:center;
+    .sa-celeb { position:fixed; inset:0; z-index:1200; display:grid; place-items:center;
       pointer-events:none; animation: saCelebIn 1.5s ease both; }
     .sa-celeb .c-core { position:relative; text-align:center; font-family:Georgia,serif;
       color:#EFE4C8; font-size:21px; padding:18px 30px; border-radius:18px;
@@ -316,6 +316,10 @@ export const injectStyles = () => {
     }
     .sa-hintglow { animation: saHintGlow 2.8s cubic-bezier(.4,0,.2,1) 3; }
     @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin, .sa-hintglow { animation:none; } }
+    /* v31: кнопка ИИ-ассистента уезжает за край, пока листаешь вниз */
+    .sa-fab { transition: transform .3s cubic-bezier(.3,1,.4,1), opacity .22s ease; }
+    .sa-fab.hid { transform: translateX(84px); opacity: 0; pointer-events: none; }
+    @media (prefers-reduced-motion: reduce) { .sa-fab { transition: opacity .15s linear; } .sa-fab.hid { transform: none; } }
 
     /* ══ График смен ══════════════════════════════════════════════
        Фактура «морозного льда»: тёплый полупрозрачный фон, светлая

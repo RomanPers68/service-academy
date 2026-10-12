@@ -3,6 +3,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { groupByCat, dishMatches, normCat } from "../lib/menu-sections";
 import { dishFaq, cocktailLinks, bumpDaily, allergenLabel } from "../lib/deck-extras";
+import { emitActivity } from "../lib/activity";
 import { report as reportAch } from "../lib/achievements";
 import { suggestAllergens } from "../lib/menu-sections";
 
@@ -283,7 +284,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
     setQ({ d, al, has: als.includes(al) }); setSeen(s => [...s, d.id]);
   }, [pool, seen]);
   React.useEffect(() => { if (phase !== "play") return; const t = setInterval(() => setLeft(l => { if (l <= 1) { clearInterval(t); setPhase("done"); return 0; } return l - 1; }), 1000); return () => clearInterval(t); }, [phase]);
-  React.useEffect(() => { if (phase === "done") { if (score > best) { setBest(score); try { localStorage.setItem(bestKey, String(score)); } catch (e) {} } reportAch(uk, "sprint_best", score); vibrate(score > best ? "success" : "medium"); } }, [phase]); // Доп. 216: рекорд в команду
+  React.useEffect(() => { if (phase === "done") { if (score > best) { setBest(score); try { localStorage.setItem(bestKey, String(score)); } catch (e) {} } reportAch(uk, "sprint_best", score); vibrate(score > best ? "success" : "medium"); emitActivity("trainer"); } }, [phase]); // Доп. 216: рекорд в команду
   const start = () => { setScore(0); setMiss(0); setLeft(30); setSeen([]); queueRef.current = []; setFlash(null); setPhase("play"); vibrate("heavy"); setTimeout(nextQ, 0); };
   const answer = (yes) => {
     if (!q || flash) return;

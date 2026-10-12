@@ -23,6 +23,13 @@ export const rpc = (fn, params) => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
 // Текущий токен сессии — серверные функции записи берут из него личность пользователя
 export const saToken = () => { try { return localStorage.getItem("sa_session_token"); } catch(e) { return null; } };
 
+// Этап 21: функции, которых на сервере ещё нет. PostgREST отвечает 404 с кодом
+// PGRST202 (или 42883 — нет функции с такими параметрами). По этому признаку
+// приложение читает данные по-старому, пока владелец не выполнил новый SQL-этап, —
+// так новую версию можно выкладывать в любом порядке с базой.
+export const rpcMissing = (res) => !!(res && typeof res === "object" && !Array.isArray(res)
+  && (res.code === "PGRST202" || res.code === "42883"));
+
 // ── Офлайн-очередь записи: при сбое сети сохранения не теряются ──────────────
 const SYNC_KEY = "sa_sync_queue";
 const _loadQueue = () => { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || "[]"); } catch(e) { return []; } };

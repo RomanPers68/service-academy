@@ -18,7 +18,7 @@ import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
-import { rpc, rpcSync, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
 import { TimerBar, LiquidSegment } from "./widgets";
 
@@ -236,7 +236,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v25</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v31</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -338,8 +338,17 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
   const [err, setErr] = React.useState(false);
   React.useEffect(() => {
     let alive = true;
-    rpc("menu_progress_list", { p_restaurant: restaurant })
+    // Этап 21: по токену — свой ресторан, руководителю сети любой; без этапа 21 — по-старому
+    const legacy = () => rpc("menu_progress_list", { p_restaurant: restaurant })
       .then(res => { if (!alive) return; Array.isArray(res) ? setRows(res) : setErr(true); })
+      .catch(() => alive && setErr(true));
+    rpc("menu_progress_team", { p_token: saToken(), p_restaurant: restaurant })
+      .then(res => {
+        if (!alive) return;
+        if (res && res.ok && Array.isArray(res.rows)) setRows(res.rows);
+        else if (rpcMissing(res)) legacy();
+        else setErr(res && res.error === "forbidden" ? "forbidden" : true);
+      })
       .catch(() => alive && setErr(true));
     return () => { alive = false; };
   }, [restaurant]);
@@ -347,7 +356,12 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
   return (
     <div style={T.screen} className="sa-screen">
       {Head("Кто выучил новинки")}
-      {err && (
+      {err === "forbidden" && (
+        <div style={{ textAlign: "center", padding: "44px 24px", fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>
+          Сводка по команде — для своего ресторана. Другие рестораны видят руководящий состав сети и владелец.
+        </div>
+      )}
+      {err && err !== "forbidden" && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🔌</div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase/supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. docs/UPGRADE_NOTES.md) — и здесь появится картина по каждому сотруднику.</div>

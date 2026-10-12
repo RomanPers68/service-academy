@@ -3,6 +3,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
 import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
+import { emitActivity } from "../lib/activity";
 import { frostOf } from "./home-hubs";
 import { readBarcard, cachedShared, houseCocktails, isFullCocktail } from "../lib/deck-extras";
 import { CocktailArt, VesselArt } from "./cocktail-art";
@@ -268,6 +269,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   const startPlay = (c, m) => { setCurrent(c); setMode(m); setView("play"); vibrate("light"); };
   const finishPlay = (clean) => {
     save(recordRun(mastery, current.id, mode, clean));
+    if (!rush) emitActivity("trainer");   // Доп. 310: собрал — занятие (свеча, цель дня, чек недели)
     if (rush) {
       const next = rush.i + 1;
       if (next >= rush.orders.length) {
@@ -276,6 +278,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         setRushBest(best); try { localStorage.setItem("sa_bar_rush_best" + uk, String(best)); } catch (e) {}
         reportAch(uk, "rush_best", total); // Доп. 216
         setRush({ ...rush, done: true, total }); setView("rush");
+        emitActivity("trainer");
       } else { setRush({ ...rush, i: next }); setCurrent(rush.orders[next]); setView("play"); }
     }
   };
@@ -655,7 +658,7 @@ function StationPrep({ T, a11y, gold, frost, Head, onExit, uk }) {
   const curPhase = Math.min(...PREP.map((_, i) => i).filter(i => PREP[i].items.some(it => !placed.includes(it.id))), 99);
   const finished = placed.length === all.length;
   const took = Math.round((Date.now() - start) / 1000);
-  React.useEffect(() => { if (finished) { const t = took; if (!best || t < best) { setBest(t); try { localStorage.setItem("sa_bar_station_best" + uk, String(t)); } catch (e) {} } vibrate("success"); } }, [finished]);
+  React.useEffect(() => { if (finished) { const t = took; if (!best || t < best) { setBest(t); try { localStorage.setItem("sa_bar_station_best" + uk, String(t)); } catch (e) {} } vibrate("success"); emitActivity("trainer"); } }, [finished]);
   const tap = (it) => {
     if (finished) return;
     if (it.pi === curPhase) { setPlaced(p => [...p, it.id]); setMsg({ ok: true, text: it.why }); vibrate("light"); }

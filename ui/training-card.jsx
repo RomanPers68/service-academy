@@ -53,7 +53,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
   // Подтверждённые допуски с подписями навыков
   const skillLabel = {};
   Object.values(ROLE_SKILLS || {}).forEach(list => (list || []).forEach(s => { skillLabel[s.id] = s.label; }));
-  const confirmed = Object.entries(skills).map(([id, rec]) => ({ id, label: skillLabel[id] || id, ...rec }));
+  const confirmed = Object.entries(skills).map(([id, rec]) => ({ id, ...rec, label: skillLabel[id] || (rec && rec.label) || id }));
 
   const doPrint = () => { vibrate("light"); try { window.print(); } catch (e) {} };
 
@@ -149,7 +149,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
                 <tr key={s.id} style={{ borderBottom: "1px solid rgba(139,106,48,0.15)" }}>
                   <td style={{ padding: "5px 0", lineHeight: 1.35 }}>{s.label}</td>
                   <td style={{ padding: "5px 0 5px 12px", textAlign: "right", color: "#735F44", fontSize: 11, whiteSpace: "nowrap" }}>
-                    {s.mentor} · {s.date}{s.verified ? " · PIN ✓" : ""}
+                    {s.mentor} · {s.date}{s.hall ? " · в зале ✓" : s.verified ? " · PIN ✓" : ""}
                   </td>
                 </tr>
               ))}

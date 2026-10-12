@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "./api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase, rpcMissing } from "./api/supabase";
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
 import { setCustomProgram } from "./data/modules";
@@ -14,13 +14,30 @@ import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf } from "./ui/home-hubs";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
-import { modeOfDay, dailyCount, dailyStreak } from "./lib/deck-extras";
+import { modeOfDay, dailyCount, dailyStreak } from "./lib/day-mode";
+import { nextStreak, dayOffFromSchedule, myShiftOn, shiftLabel, ymd } from "./lib/streak";
+import { readActivity, bumpActivity, stepsOn, readGoal, saveGoal, weekSummary, ACTIVITY_EVENT } from "./lib/activity";
+import { pushLearning, scheduleLearningPush, scheduleDayPush, cancelDayPush } from "./lib/learning-sync";
+import { warmupPool, pickWarmup, refreshPick } from "./lib/warmup";
+import { readFresh, saveFresh, syncFresh, touchFresh, fadedList, moduleDone, INTERVALS } from "./lib/freshness";
+import { layersReducer, layerData } from "./lib/layers";
+import { useFreshMarks, useDayBrief, pairLineOf } from "./lib/use-day";
+import { readCredits, readGold, saveCredit, saveGold, creditTriedToday, markCreditTry, creditPool, goldPool, creditPassed, goldPassed, canRefresh, canCredit, GOLD_TIMER, GOLD_N, CREDIT_PASS, CREDIT_N } from "./lib/marks";
+import { tablePool } from "./lib/table-pick";
+import { tasksFor, markQuestDone, questDays } from "./lib/quest";
+import { playlist } from "./lib/radio";
+import { readGuestRuns } from "./lib/live-guest";
+import { recapMonth, monthRecap, MONTH } from "./lib/month-recap";
+import { Candle } from "./ui/table-bits";
+import { DayChips, WarmupCard, RemindSheet, readRemindFlag, inTelegramApp } from "./ui/day-cards";
+import { syncMySchedule } from "./lib/schedule-sync";
+import { practiceQuestionTexts, mistakeFromSituation } from "./lib/practice-mistake";
 import { LiquidTabBar } from "./ui/tabbar";
 import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
 import { GLOSSARY } from "./data/glossary";
 import { LOGO_SRC, LOGO_SRC_DARK } from "./assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions, isFemaleName } from "./lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions, isFemaleName, isTelegram, clickScreenBack } from "./lib/utils";
 
 // ── Ленивые экраны: код и данные подгружаются при первом открытии ──
 // (тренажёр меню, книга, SOS, наставничество, поиск, справочник,
@@ -37,12 +54,23 @@ const TrainingCardScreen = lazy(() => retryImport(() => import("./ui/training-ca
 const ReferenceSection = lazy(() => retryImport(() => import("./ui/ReferenceSection")).then(m => ({ default: m.ReferenceSection })));
 const CandidateScreen = lazy(() => retryImport(() => import("./ui/candidate")).then(m => ({ default: m.CandidateScreen })));
 const AssistantScreen = lazy(() => retryImport(() => import("./ui/assistant")).then(m => ({ default: m.AssistantScreen })));
+// Доп. 309: отчёты по сотрудникам (Excel и PDF) — грузятся только руководителю и по кнопке
+const ReportScreen = lazy(() => retryImport(() => import("./ui/report")).then(m => ({ default: m.ReportScreen })));
+const LiveGuestScreen = lazy(() => retryImport(() => import("./ui/live-guest")).then(m => ({ default: m.LiveGuestScreen })));   // v30: Доп. 312
+const QuestCard = lazy(() => retryImport(() => import("./ui/together")).then(m => ({ default: m.QuestCard })));   // Доп. 314
+const PairSheet = lazy(() => retryImport(() => import("./ui/together")).then(m => ({ default: m.PairSheet })));   // Доп. 318
+const LeagueScreen = lazy(() => retryImport(() => import("./ui/league")).then(m => ({ default: m.LeagueScreen })));   // Доп. 317
+const RadioScreen = lazy(() => retryImport(() => import("./ui/radio")).then(m => ({ default: m.RadioScreen })));   // Доп. 319
+const MonthRecap = lazy(() => retryImport(() => import("./ui/month-recap")).then(m => ({ default: m.MonthRecap })));   // Доп. 320
+const CellarScreen = lazy(() => retryImport(() => import("./ui/cellar")).then(m => ({ default: m.CellarScreen })));   // v31: «Погреб тем»
 const ScheduleScreen = lazy(() => retryImport(() => import("./ui/schedule")).then(m => ({ default: m.ScheduleScreen })));
 const BuildRunner = lazy(() => retryImport(() => import("./ui/build")).then(m => ({ default: m.BuildRunner })));
 const BarLabScreen = lazy(() => retryImport(() => import("./ui/bar-lab")).then(m => ({ default: m.BarLabScreen }))); // Доп. 218: лениво, как остальные экраны
 const CocktailEditor = lazy(() => retryImport(() => import("./ui/cocktail-editor")).then(m => ({ default: m.CocktailEditor }))); // Доп. 240
 const BarCardPrint = lazy(() => retryImport(() => import("./ui/bar-card-print")).then(m => ({ default: m.BarCardPrint })));
 const GuideScreen = lazy(() => retryImport(() => import("./ui/guide")).then(m => ({ default: m.GuideScreen })));   // Доп. 280: 73 КБ мимо старта // Доп. 244
+// Лёгкий старт: редактор контента нужен только руководителю — грузится при открытии
+const ContentEditorScreen = lazy(() => retryImport(() => import("./ui/content-editor")).then(m => ({ default: m.ContentEditorScreen })));
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -313,10 +341,43 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
 // ── Плавающая кнопка AI-ассистента: стеклянная линза в правом нижнем углу.
 // Живёт на основных экранах поверх контента, над навбаром. До первого
 // открытия пульсирует золотым кольцом-приглашением, после — спокойная.
-function AiFab({ a11y, onClick }) {
+// v31: подпись «Лиги недели» в «Команде» — место и очки из сводки дня (этап 25)
+function leagueSub(brief) {
+  const lg = brief && brief.league;
+  if (!lg || !(Number(lg.pts) > 0) || !lg.rank_rest) return null;
+  const pts = Number(lg.pts), m10 = pts % 10, m100 = pts % 100;
+  const w = m10 === 1 && m100 !== 11 ? "очко" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "очка" : "очков";
+  return lg.rank_rest + "-е место в заведении" + (lg.n_rest ? " из " + lg.n_rest : "") + " · " + pts + " " + w + (lg.rank_net ? " · в сети " + lg.rank_net + "-е" : "");
+}
+
+// v31: кнопка не закрывает собой строки списка — при листании вниз уезжает за край,
+// при листании вверх (или у самого верха экрана) возвращается. Экраны листаются
+// своими контейнерами, поэтому слушаем «scroll» всего документа на перехвате.
+function useHideOnScroll(resetKey) {
+  const [hid, setHid] = useState(false);
+  useEffect(() => { setHid(false); }, [resetKey]);
+  useEffect(() => {
+    const last = new WeakMap();
+    const h = (e) => {
+      const t = e.target && e.target.nodeType === 1 ? e.target : document.scrollingElement;
+      if (!t || typeof t.scrollTop !== "number") return;
+      const y = t.scrollTop, prev = last.has(t) ? last.get(t) : y;
+      last.set(t, y);
+      if (y < 40) setHid(false);
+      else if (y - prev > 6) setHid(true);
+      else if (y - prev < -6) setHid(false);
+    };
+    document.addEventListener("scroll", h, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", h, { capture: true });
+  }, []);
+  return hid;
+}
+
+function AiFab({ a11y, onClick, screen }) {
   const [seen, setSeen] = useState(() => {
     try { return localStorage.getItem("sa_ai_fab") === "1"; } catch (e) { return true; }
   });
+  const hid = useHideOnScroll(screen);
   const gold = a11y ? "#7A5D2A" : "#C8A96E";
   const tap = () => {
     try { localStorage.setItem("sa_ai_fab", "1"); } catch (e) {}
@@ -325,8 +386,10 @@ function AiFab({ a11y, onClick }) {
     onClick();
   };
   return (
-    <div className="sa-pop" onClick={tap} {...onActivate(tap)} role="button" aria-label="AI-ассистент"
-      style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350,
+    <div className={"sa-fab" + (hid ? " hid" : "")} data-fab={hid ? "hid" : "on"} aria-hidden={hid ? "true" : undefined}
+      style={{ position: "fixed", right: 14, bottom: "calc(122px + env(safe-area-inset-bottom, 0px))", zIndex: 350 }}>
+    <div className="sa-pop" onClick={tap} {...onActivate(tap)} role="button" aria-label="AI-ассистент" tabIndex={hid ? -1 : 0}
+      style={{ position: "relative",
         width: 58, height: 58, borderRadius: 29, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
         background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)",
@@ -340,6 +403,7 @@ function AiFab({ a11y, onClick }) {
         <path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z"/>
         <text x="12" y="14.2" textAnchor="middle" fontSize="7.5" fontWeight="bold" fontFamily="Georgia, serif" letterSpacing="0.3" fill={gold} stroke="none">AI</text>
       </svg>
+    </div>
     </div>
   );
 }
@@ -360,6 +424,7 @@ import {
   LeaderboardScreen,
   DailyScreen,
   PlayerDetailScreen,
+  PlayerResetCard,
   StatsScreen,
   PS,
   ProfileScreen,
@@ -378,7 +443,6 @@ import {
   ONB_TOTAL,
   OnboardingScreen,
   AnalyticsScreen,
-  ContentEditorScreen,
   MistakesScreen,
   HomeScreen,
   ModuleScreen,
@@ -387,7 +451,8 @@ import {
   LiveDialogue,
   ExamScreen,
   CertificateScreen,
-  CertificatesScreen
+  CertificatesScreen,
+  loadTable, useTableModule,
 } from "./ui/screens";
 
 
@@ -412,6 +477,7 @@ const CERTIFICATES_ENABLED = true;
 
 // Этап 1 — интервальное повторение: через сколько дней вопрос возвращается после верного ответа
 const SR_DAYS = [1, 3, 7, 30];
+const PRACTICE_RESUME_KEY = "sa_practice_resume";   // Доп. 293
 
 function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
@@ -442,6 +508,7 @@ function ServiceAcademy() {
   const [quizDone, setQuizDone] = useState({});
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [role, setRole] = useState(null);
+  const roleRef = useRef(null); roleRef.current = role;   // текущая роль для ответов сервера, пришедших позже
   const [activeModule, setActiveModule] = useState(null);
   const [activeLesson, setActiveLesson] = useState(null);
   const [refStart, setRefStart] = useState(null);
@@ -499,6 +566,46 @@ function ServiceAcademy() {
     setTimeout(() => setCelebrate(null), 1500);
   }, []);
   const [examRole, setExamRole] = useState(null); // #2 — для какой роли открыт экзамен/сертификат
+  // Доп. 288: серия знает график. Выходной по графику (офлайн-копия экрана «График»)
+  // серию не сжигает — такие дни помечаются «замороженными». Отметить день умеют
+  // урок, практика, «у стола» и «Работа над ошибками». Значение считается от
+  // актуальной серии (ref), а не внутри setState: вспышка 7/30 не задваивается.
+  const streakRef = useRef(streak); streakRef.current = streak;
+  const touchStreak = useCallback(() => {
+    try {
+      const prev = streakRef.current;
+      const next = nextStreak(prev, new Date(), (d) => dayOffFromSchedule(profile, d));
+      if (!next || next === prev) return prev;
+      streakRef.current = next;
+      setStreak(next);
+      const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
+      try { localStorage.setItem("sa_streak"+uk, JSON.stringify(next)); } catch(e) {}
+      // Серия — повод для золотой вспышки (7 и 30 дней)
+      if (next.count === 7 || next.count === 30) setTimeout(() => cheer("Серия " + next.count + " дней"), 500);
+      return next;
+    } catch(e) { return streakRef.current; }
+  }, [profile, cheer]);
+  // Доп. 298: журнал дня и цель дня (стакан). Шаг — урок, практика, тест, диалог,
+  // сборка или разминка; дошёл до цели — короткая вспышка «Цель дня ✓».
+  const ukP = profile ? `_${profile.name}_${profile.surname || ""}` : "";
+  const [activity, setActivity] = useState({});
+  const [goal, setGoalState] = useState(2);
+  React.useEffect(() => { setActivity(readActivity(ukP)); setGoalState(readGoal(ukP)); }, [ukP]);
+  const logActivity = useCallback((kind, n = 1) => {
+    try {
+      const day = ymd(new Date());
+      const before = stepsOn(readActivity(ukP), day);
+      const next = bumpActivity(ukP, kind, n);
+      setActivity(next);
+      // v31: квест смены и свеча на двоих видят занятие через секунды (этап 25: sa_day_push)
+      if (profile) scheduleDayPush({ uk: ukP, profile });
+      const g = readGoal(ukP);
+      if (before < g && stepsOn(next, day) >= g) setTimeout(() => cheer("Цель дня ✓"), 700);
+    } catch (e) {}
+  }, [ukP, cheer, profile]);
+  const setGoal = useCallback((g) => { setGoalState(saveGoal(ukP, g)); }, [ukP]);
+  const todayKey = ymd(new Date());
+  const todaySteps = stepsOn(activity, todayKey);
 
   // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
   React.useEffect(() => {
@@ -613,7 +720,11 @@ function ServiceAcademy() {
         } else { clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return; }
       } catch(e) { clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return; }
       try { const s = await storageGet("sa_scores"); if (s) { const saved = JSON.parse(s.value); setScores(prev => { const ids = new Set(saved.map(x => x.id)); return [...prev.filter(x => !ids.has(x.id)), ...saved]; }); } } catch(e) {}
-      // quizDone загружается из Supabase ниже
+      // Сданные тесты — сначала с телефона (личный ключ), потом сервер уточнит (my_state ниже).
+      // Раньше они читались только с сервера: без сети пройденные тесты выглядели несданными.
+      // Общий ключ "sa_quiz_done" прежних версий не читаем: на общем телефоне он мог
+      // принадлежать другому сотруднику, а сданный тест закрывается для пересдачи.
+      try { const ukQ = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; if (ukQ) { const qd = await storageGet("sa_quiz_done" + ukQ); if (qd) { const obj = JSON.parse(qd.value); if (obj && typeof obj === "object" && !Array.isArray(obj)) setQuizDone(obj); } } } catch(e) {}
       try { const uk2 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const cr = await storageGet("sa_completed_roles"+uk2) || await storageGet("sa_completed_roles"); if (cr) setCompletedRoles(new Set(JSON.parse(cr.value))); } catch(e) {}
       try { const uk3 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const sc = await storageGet("sa_completed"+uk3) || await storageGet("sa_completed"); if (sc) setCompleted(JSON.parse(sc.value)); } catch(e) {}
       try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
@@ -634,18 +745,29 @@ function ServiceAcademy() {
     })();
   }, []);
 
-  // Загрузка всех профилей из Supabase
+  // Список сотрудников для «Управления данными» (этап 21): по токену и только руководителю —
+  // сети все, ресторана свои. Раньше список всей сети грузился у каждого по открытому ключу.
+  // Пока на сервере нет этапа 21 (функции нет) — читаем по-старому, ничего не пропадает.
   React.useEffect(() => {
-    const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
-    fetch(`${SUPABASE_URL}/rest/v1/profiles?select=name,surname,restaurant,position,last_role`, { headers: h })
-      .then(r => r.json()).then(data => {
-        if (Array.isArray(data) && data.length > 0) setAllProfiles(data);
-      }).catch(() => {});
-  }, []);
+    if (!profile) return;
+    const legacy = () => {
+      const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=name,surname,restaurant,position,last_role`, { headers: h })
+        .then(r => r.json()).then(data => {
+          if (Array.isArray(data) && data.length > 0) setAllProfiles(data);
+        }).catch(() => {});
+    };
+    rpc("team_profiles", { p_token: saToken() }).then(res => {
+      if (res && res.ok && Array.isArray(res.rows)) { if (res.rows.length > 0) setAllProfiles(res.rows); }
+      else if (rpcMissing(res)) legacy();
+    }).catch(() => {});
+  }, [profile]);
 
-  // Загрузка рейтинга из Supabase
+  // Загрузка рейтинга из Supabase (этап 21: только по токену — team_scores;
+  // без этапа 21 на сервере — по-старому, напрямую из таблицы)
   React.useEffect(() => {
-    supabase.from("scores").select("*").then(({ data }) => {
+    if (!profile) return;
+    const applyScores = (data) => {
       if (data && data.length > 0) {
         const mapped = data.map(s => ({
           id: s.id, name: s.name, surname: s.surname || "",
@@ -675,51 +797,34 @@ function ServiceAcademy() {
           }
         }
       }
-    }).catch(() => {});
-  }, [profile]);
-
-  // Загрузка progress из Supabase и синхронизация с completed
-  React.useEffect(() => {
-    if (!profile) return;
-    // Сначала ждём ленивые СПГ-модули: их уроки должны попасть в allValidIds ниже,
-    // иначе при быстром ответе сервера прогресс роли СПГ отфильтруется как «неизвестные id»
-    // и перезапишет localStorage без этих уроков (гонка загрузок).
-    Promise.resolve().then(() =>
-    fetch(`${SUPABASE_URL}/rest/v1/progress?user_id=eq.${encodeURIComponent(profile.id)}`, {
-      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-    })).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
-      if (data.length === 0) return; // пусто — не обнуляем
-      {
-        // Восстанавливаем completed из Supabase — авторитетный источник
-        // Доп. 132: id всех уроков всех ролей — из лёгкого индекса, ленивая загрузка ролей не влияет
-        const allValidIds = new Set(allLessonIds());
-        const seen = new Set();
-        const validRows = data.filter(row => {
-          if (!allValidIds.has(row.lesson_id)) return false;
-          if (seen.has(row.lesson_id)) return false;
-          seen.add(row.lesson_id);
-          return true;
-        });
-        const merged = {};
-        validRows.forEach(row => { merged[row.lesson_id] = true; });
-        setCompleted(merged);
-        try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed"+uk, JSON.stringify(merged)); } catch(e) {}
-      }
+    };
+    rpc("team_scores", { p_token: saToken() }).then(res => {
+      if (res && res.ok && Array.isArray(res.rows)) applyScores(res.rows);
+      else if (rpcMissing(res)) supabase.from("scores").select("*").then(({ data }) => applyScores(data)).catch(() => {});
     }).catch(() => {});
   }, [profile]);
 
   // Версия очистки телефона после сброса: растёт, когда в список добавляется новое
+  // v30: новые записи (свежесть тем, зачёты, золото, живой гость, квесты, радио, итоги)
+  // добавлены в список ниже, но версия НЕ поднята: они появились уже после любого
+  // прошлого сброса, значит «старых» данных в них нет. Подъём версии стёр бы заново
+  // всё, что человек успел пройти после давнего сброса (находка ревью v30).
   const WIPE_VERSION = 3;
   // Очистка телефона после сброса (этап 20): всё, что относится к прогрессу человека.
   // Вынесена отдельно, чтобы звать и при сбросе самого себя — сразу, без перезапуска.
   const wipeLocalProgress = useCallback((uk) => {
     // включая записи секретной ачивки: иначе после сброса она считала «какой это раз»
     // с прежнего числа, хотя тайный зачёт на сервере уже обнулён (правка 175)
-    ["sa_completed", "sa_completed_roles", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved",
+    ["sa_completed", "sa_completed_roles", "sa_quiz_done", "sa_scores", "sa_practice_stars", "sa_mistakes", "sa_exam", "sa_streak", "sa_saved",
      "sa_book_read", "sa_book_dates", "sa_loopholes", "sa_qskip", "sa_qtry",
      // ачивки и рекорды тренажёров — тоже личный прогресс (правка 178)
-     "sa_achv", "sa_bar_mastery", "sa_bar_rush_best", "sa_bar_station_best", "sa_daily5", "sa_cocktail_sr"]
+     "sa_achv", "sa_bar_mastery", "sa_bar_rush_best", "sa_bar_station_best", "sa_daily5", "sa_cocktail_sr",
+     // Доп. 293: место в уроке и незаконченный раунд практики; Доп. 289: сколько раз проверялся урок у стола
+     "sa_card_pos", "sa_practice_resume", "sa_tb_runs",
+     // Доп. 298–305: журнал дня, разминка, чек недели, печати разделов
+     "sa_activity", "sa_warmup", "sa_week_seen", "sa_seal_seen",
+     // v30 (Доп. 312–320): свежесть тем, зачёт на опыт, золото, живой гость, квест смены, радио, итоги месяца
+     "sa_fresh", "sa_credit", "sa_credit_try", "sa_gold", "sa_guest_runs", "sa_quest_tasks", "sa_quest_done", "sa_radio_done", "sa_recap_seen"]
       .forEach(k => { try { localStorage.removeItem(k + uk); localStorage.removeItem(k); } catch (e) {} });
     // ключи с хвостом: рекорд спринта, «выучено» по волнам, повторения меню, снимок рейтинга
     try {
@@ -757,85 +862,111 @@ function ServiceAcademy() {
     }).catch(() => {});
   }, [profile]);
 
-  // Точный ответ сервера по токену (этап 20в): «вот мои сданные тесты и пройденные
-  // уроки». Здесь пустой список означает именно пусто, поэтому приложение может убрать
-  // с телефона лишнее — например, после «Открыть тест заново», когда этот тест был
-  // единственным сданным, или после точечного удаления на сервере.
+  // Прогресс напрямую из таблиц — так приложение читало его до этапа 21. Нужно, только
+  // пока на сервере нет этапа 21: my_state старый (без звёзд и ролей) или его нет вовсе.
+  // После шага 21б таблицы закрыты, и сюда приложение уже не ходит.
+  const loadLegacyProgress = useCallback((prof, parts) => {
+    const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
+    const get = (path) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h }).then(r => r.json());
+    const uid = encodeURIComponent(prof.id);
+    const uk = `_${prof.name}_${prof.surname || ""}`;
+    if (parts.lessons) get(`progress?user_id=eq.${uid}`).then(data => {
+      if (!Array.isArray(data) || data.length === 0) return; // ошибка или пусто — не обнуляем
+      // id всех уроков всех ролей — из лёгкого индекса, ленивая загрузка ролей не влияет (Доп. 132)
+      const allValidIds = new Set(allLessonIds());
+      const merged = {};
+      data.forEach(row => { if (allValidIds.has(row.lesson_id)) merged[row.lesson_id] = true; });
+      setCompleted(merged);
+      try { localStorage.setItem("sa_completed" + uk, JSON.stringify(merged)); } catch (e) {}
+    }).catch(() => {});
+    if (parts.quiz) get(`quiz_done?user_id=eq.${uid}`).then(data => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const done = {};
+      data.forEach(row => { if (row.quiz_id) done[row.quiz_id] = true; });
+      setQuizDone(done);
+      try { localStorage.setItem("sa_quiz_done" + uk, JSON.stringify(done)); } catch (e) {}
+    }).catch(() => {});
+    if (parts.lastRole) get(`profiles?user_id=eq.${uid}&select=last_role`).then(data => {
+      if (roleRef.current || !Array.isArray(data) || !data.length || !data[0].last_role) return;
+      setRole(data[0].last_role);
+      try { localStorage.setItem("sa_last_role", JSON.stringify(data[0].last_role)); } catch (e) {}
+      setScreen("home");
+    }).catch(() => {});
+    if (parts.stars) get(`practice_stars?user_id=eq.${uid}`).then(data => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const starsObj = {};
+      data.forEach(row => { starsObj[row.lesson_id] = row.stars; });
+      const userKey = `${prof.name}|${prof.surname || ""}`;
+      setPracticeStars(prev => {
+        const updated = { ...prev, [userKey]: starsObj };
+        try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
+    }).catch(() => {});
+    if (parts.roles) get(`completed_roles?user_id=eq.${uid}`).then(data => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const roles = new Set(data.map(row => row.role));
+      setCompletedRoles(roles);
+      try { localStorage.setItem("sa_completed_roles" + uk, JSON.stringify([...roles])); } catch (e) {}
+    }).catch(() => {});
+  }, []);
+
+  // Точный ответ сервера по токену (этап 20в, расширен в этапе 21): сданные тесты,
+  // пройденные уроки, а теперь и звёзды практики, пройденные роли и последняя роль.
+  // Пустой список здесь означает именно «пусто», поэтому приложение может убрать
+  // с телефона лишнее — например, после «Открыть тест заново». Раньше то же самое
+  // читалось пятью запросами напрямую к таблицам открытым ключом.
   React.useEffect(() => {
     if (!profile || !storageLoaded) return;
     const uk = `_${profile.name}_${profile.surname || ""}`;
     rpc("my_state", { p_token: saToken() }).then(res => {
+      if (rpcMissing(res)) { loadLegacyProgress(profile, { lessons: true, quiz: true, stars: true, roles: true, lastRole: true }); return; }
       if (!res || !res.ok || !Array.isArray(res.quiz) || !Array.isArray(res.lessons)) return;
       const done = {}; res.quiz.forEach(id => { if (id) done[id] = true; });
       const comp = {}; res.lessons.forEach(id => { if (id) comp[id] = true; });
       setQuizDone(prev => (JSON.stringify(prev) === JSON.stringify(done) ? prev : done));
       setCompleted(prev => (JSON.stringify(prev) === JSON.stringify(comp) ? prev : comp));
-      try { localStorage.setItem("sa_quiz_done", JSON.stringify(done)); } catch (e) {}
+      // Сданные тесты — личный ключ, как у ошибок и уроков: без сети они не «забываются»,
+      // а на общем телефоне не достаются следующему сотруднику
+      try { localStorage.setItem("sa_quiz_done" + uk, JSON.stringify(done)); } catch (e) {}
       try { localStorage.setItem("sa_completed" + uk, JSON.stringify(comp)); } catch (e) {}
-    }).catch(() => {});
-  }, [profile, storageLoaded]);
-
-  // Загрузка quizDone из Supabase — авторитетный источник
-  React.useEffect(() => {
-    if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/quiz_done?user_id=eq.${encodeURIComponent(profile.id)}`, {
-      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-    }).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return; // ошибка от Supabase — не трогаем state
-      if (data.length === 0) return; // пусто — не обнуляем
-      const done = {};
-      data.forEach(row => { if (row.quiz_id) done[row.quiz_id] = true; });
-      setQuizDone(done);
-      try { localStorage.setItem("sa_quiz_done", JSON.stringify(done)); } catch(e) {}
-    }).catch(() => {});
-  }, [profile]);
-
-  // Загрузка last_role из Supabase если localStorage не дал роль
-  React.useEffect(() => {
-    if (!profile || role) return; // уже есть роль — не нужно
-    fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=eq.${encodeURIComponent(profile.id)}&select=last_role`, {
-      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-    }).then(r => r.json()).then(data => {
-      if (data && data.length > 0 && data[0].last_role) {
-        setRole(data[0].last_role);
-        try { localStorage.setItem("sa_last_role", JSON.stringify(data[0].last_role)); } catch(e) {}
+      if (res.stars === undefined) { loadLegacyProgress(profile, { stars: true, roles: true, lastRole: true }); return; }
+      if (res.stars && typeof res.stars === "object" && Object.keys(res.stars).length) {
+        const userKey = `${profile.name}|${profile.surname || ""}`;
+        setPracticeStars(prev => {
+          const updated = { ...prev, [userKey]: res.stars };
+          try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
+      }
+      if (Array.isArray(res.roles) && res.roles.length) {
+        const roles = new Set(res.roles);
+        setCompletedRoles(roles);
+        try { localStorage.setItem("sa_completed_roles" + uk, JSON.stringify([...roles])); } catch (e) {}
+      }
+      if (res.last_role && !roleRef.current) {
+        setRole(res.last_role);
+        try { localStorage.setItem("sa_last_role", JSON.stringify(res.last_role)); } catch (e) {}
         setScreen("home");
       }
     }).catch(() => {});
-  }, [profile, role]);
+  }, [profile, storageLoaded, loadLegacyProgress]);
 
-  // Загрузка practiceStars из Supabase — авторитетный источник
+  // Доп. 303: подпись в записках у стола — настоящий наставник ресторана (старший или
+  // менеджер, по имени). Этап 22: my_mentors. Нет этапа или сети — «наставник», как было.
+  const [mentors, setMentors] = useState([]);
   React.useEffect(() => {
-    if (!profile) return;
-    const userKey = `${profile.name}|${profile.surname || ""}`;
-    fetch(`${SUPABASE_URL}/rest/v1/practice_stars?user_id=eq.${encodeURIComponent(profile.id)}`, {
-      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-    }).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return; // ошибка — не трогаем
-      if (data.length === 0) return; // пусто — не обнуляем, оставляем как есть
-      const starsObj = {};
-      data.forEach(row => { starsObj[row.lesson_id] = row.stars; });
-      setPracticeStars(prev => {
-        const updated = { ...prev, [userKey]: starsObj };
-        try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch(e) {}
-        return updated;
-      });
+    if (!profile || !storageLoaded) return;
+    const uk = `_${profile.name}_${profile.surname || ""}`;
+    try { const c = JSON.parse(localStorage.getItem("sa_mentors" + uk) || "null"); if (Array.isArray(c)) setMentors(c); } catch (e) {}
+    rpc("my_mentors", { p_token: saToken() }).then(res => {
+      if (!res || !res.ok || !Array.isArray(res.rows)) return;
+      const rows = res.rows.map(r => ({ name: String((r && r.name) || "").trim() })).filter(r => r.name).slice(0, 6);
+      setMentors(rows);
+      try { localStorage.setItem("sa_mentors" + uk, JSON.stringify(rows)); } catch (e) {}
     }).catch(() => {});
-  }, [profile]);
-
-  // Загрузка completedRoles из Supabase — авторитетный источник
-  React.useEffect(() => {
-    if (!profile) return;
-    fetch(`${SUPABASE_URL}/rest/v1/completed_roles?user_id=eq.${encodeURIComponent(profile.id)}`, {
-      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-    }).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return; // ошибка — не трогаем
-      if (data.length === 0) return; // пусто — не обнуляем
-      const roles = new Set(data.map(row => row.role));
-      setCompletedRoles(roles);
-      try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_completed_roles"+uk, JSON.stringify([...roles])); } catch(e) {}
-    }).catch(() => {});
-  }, [profile]);
+  }, [profile, storageLoaded]);
+  const mentorName = mentors.length ? mentors[new Date().getDate() % mentors.length].name : "";
 
   // Доп. 132: уроки роли приезжают лениво — грузим при смене роли, мемо зависит от версии контента
   const contentVer = useContentVersion();
@@ -857,6 +988,7 @@ function ServiceAcademy() {
   // Свои разделы для текущей роли: все уроки раздела подряд, потом общая практика,
   // диалоги, сборки и один тест раздела — lib/custom-modules.js (правка 161)
   const customModules = useMemo(() => buildCustomModules(customLessons, role, { color: TRACK_COLOR[role] || GOLD, icon: customIcon }), [customLessons, role]);
+  const customSkills = useMemo(() => customModules.flatMap(m => m.skills || []), [customModules]);   // Доп. 310
   // Программа роли — штатные модули и свои разделы вместе (правка 165): по ней считаются процент
   // трека, «пройдено N из M», завершение роли, «Задания дня» — свои уроки как родные
   const programModules = useMemo(() => [...modules, ...customModules], [modules, customModules]);
@@ -878,10 +1010,12 @@ function ServiceAcademy() {
     if (!customLoaded) return; let alive = true;
     loadAllModules().then(() => {
       if (!alive) return;
-      const liveQ = new Set([...Object.values(MODULES).flat(), ...Object.values(customByRole).flat()]
-        .flatMap(m => (m.lessons || []).filter(l => l.type === "quiz").flatMap(l => (l.questions || []).map(q => q.q))));
+      const allMods = [...Object.values(MODULES).flat(), ...Object.values(customByRole).flat()];
+      const liveQ = new Set(allMods.flatMap(m => (m.lessons || []).filter(l => l.type === "quiz").flatMap(l => (l.questions || []).map(q => q.q))));
       if (liveQ.size < 50) return;   // программа загрузилась не вся — лучше не трогать
-      setMistakeBank(prev => { const next = prev.filter(m => liveQ.has(m.q)); return next.length === prev.length ? prev : next; });
+      // Доп. 291: ошибки практики живут, пока такая ситуация есть в программе
+      const livePQ = practiceQuestionTexts(allMods);
+      setMistakeBank(prev => { const next = prev.filter(m => (m.from === "practice" ? livePQ.has(m.q) : liveQ.has(m.q))); return next.length === prev.length ? prev : next; });
     }).catch(() => {});
     return () => { alive = false; };
   }, [customLoaded, customByRole]);
@@ -899,6 +1033,233 @@ function ServiceAcademy() {
     return lessonsDone + quizzesDone;
   }, [completed, quizDone, roleLesonIds, roleQuizIds]);
   const progress = useMemo(() => totalLessons ? Math.round((doneCount / totalLessons) * 100) : 0, [doneCount, totalLessons]);
+
+  // ── Доп. 301: «Разминка до смены» — три ситуации из уже начатого, в день смены ──
+  const tbMod = useTableModule();
+  // v31: слои поверх вкладок — один за раз (lib/layers.js); Наставник — поверх слоя
+  const [layers, dispatchLayers] = React.useReducer(layersReducer, []);
+  const layerSet = useMemo(() => {
+    const set = (kind) => (v) => dispatchLayers(v != null && v !== false ? { type: "open", kind, data: v } : { type: "close", kind });
+    return { warmup: set("warmup"), radio: set("radio"), recap: set("recap"), guest: set("guest"), special: set("special"),
+      week: set("week"), mentor: set("mentor"), remind: set("remind"), pair: set("pair") };
+  }, []);
+  const warmupOpen = layerData(layers, "warmup") != null, setWarmupOpen = layerSet.warmup;
+  const [warmDone, setWarmDone] = useState("");
+  const [schedTick, setSchedTick] = useState(0);
+  React.useEffect(() => { try { setWarmDone(localStorage.getItem("sa_warmup" + ukP) || ""); } catch (e) { setWarmDone(""); } }, [ukP]);
+  // график подтягивается тихо раз в день — разминка и серия знают смену, даже если
+  // экран «График» в этом месяце не открывали (lib/schedule-sync.js)
+  React.useEffect(() => {
+    if (!profile || !storageLoaded || !profile.restaurant) return undefined;
+    let alive = true;
+    syncMySchedule(rpc, saToken(), profile).then((changed) => { if (alive && changed) setSchedTick((x) => x + 1); }).catch(() => {});
+    return () => { alive = false; };
+  }, [profile, storageLoaded]);
+  // смена сегодня: своя копия графика, потом сводка sa_today_shift (её пишет экран графика)
+  const shiftToday = useMemo(() => {
+    if (!profile) return null;
+    const sh = myShiftOn(profile, new Date());
+    if (sh) return sh;
+    try {
+      const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
+      if (r && r.date === todayKey && r.label) return r.label === "выходной" ? { off: true } : { off: false, label: r.label };
+    } catch (e) {}
+    return null;
+  }, [profile, todayKey, screen, schedTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const shiftText = shiftToday && !shiftToday.off ? (shiftToday.label || shiftLabel(shiftToday)) : "";
+  // ── v30 (Доп. 313, 315, 316): свежесть тем, зачёт на опыт, золотая тема — на телефоне ──
+  // v31: логика вынесена в хук lib/use-day.js (useFreshMarks)
+  const { marks, bumpMarks, freshMods, fadedIds, marksVer } = useFreshMarks({ profile, storageLoaded, ukP, programModules, completed, quizDone });
+  const warmSits = useMemo(() => (role ? pickWarmup(warmupPool(programModules, completed, quizDone), 3, todayKey + ukP, fadedIds) : []),
+    [role, programModules, completed, quizDone, todayKey, ukP, fadedIds]);
+  // показываем в день смены (и когда график неизвестен); в выходной и после конца смены — нет
+  const warmShow = !!profile && warmSits.length >= 2 && !(shiftToday && shiftToday.off)
+    && !(shiftToday && typeof shiftToday.to === "number" && new Date().getHours() >= shiftToday.to);
+  const finishWarmup = useCallback((res) => {
+    try { localStorage.setItem("sa_warmup" + ukP, todayKey); } catch (e) {}
+    setWarmDone(todayKey);
+    touchStreak();
+    logActivity("warmup");
+    // v30: верный ответ с первого раза освежает тему (срок повтора не растёт)
+    if (res && Array.isArray(res.okMods) && res.okMods.length) {
+      let m = readFresh(ukP);
+      new Set(res.okMods).forEach((id) => { if (m[id]) m = touchFresh(m, id, Date.now(), true); });
+      saveFresh(ukP, m); bumpMarks();
+    }
+  }, [ukP, todayKey, touchStreak, logActivity]);
+  // ── v30 (Доп. 319–320): «Радио в дорогу» и «Итоги месяца» — слои поверх вкладки ──
+  const radioList = layerData(layers, "radio"), setRadioList = layerSet.radio;
+  const recapKey = layerData(layers, "recap"), setRecapKey = layerSet.recap;
+  // ── v30 (Доп. 312): «Живой гость» — слой поверх вкладки ──
+  const guestOpen = layerData(layers, "guest") != null, setGuestOpen = layerSet.guest;
+  const openGuest = useCallback(() => { vibrate("light"); loadTable(); setGuestOpen(true); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  // ── v30: «Освежить тему», «Зачёт на опыт», «Раунд мастера» — тот же стол поверх трека ──
+  const special = layerData(layers, "special"), setSpecial = layerSet.special;   // { mode, mod, sits, timer, verdict, key }
+  const specialRef = useRef(null); specialRef.current = special;
+  const pl3 = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
+  const openTopicRun = useCallback((mode, mod) => {
+    if (!mod) return;
+    vibrate("light"); loadTable();
+    if (mode === "credit") {
+      if (creditTriedToday(ukP, mod.id, todayKey)) return;
+      // задания зачёта — одни и те же весь день: открыть-закрыть, чтобы перебрать вопросы, не выйдет (ревью v31)
+      const sits = creditPool(mod, todayKey + "|" + mod.id + "|" + ukP);
+      if (sits.length < 5) return;
+      const need = Math.ceil(sits.length * CREDIT_PASS / CREDIT_N);
+      // v31: сначала правила; попытка дня тратится только с первым ответом (раньше — при открытии)
+      setSpecial({ mode, mod, sits, key: Date.now(), verdict: {
+        ok: "Тема засчитана с пометкой «по опыту» — руководитель увидит это в отчёте.",
+        bad: "Нужно " + need + " из " + sits.length + ". Пройди тему по урокам — или попробуй зачёт завтра." },
+        intro: { title: "Зачёт на опыт", sub: mod.title, cta: "Начать зачёт",
+          lines: [sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + " — вопросы теста и ситуации из практики темы",
+            "Без подсказок и второго шанса — как на смене", "Нужно " + need + " из " + sits.length + " — тема засчитана с пометкой «по опыту», её видно в отчёте",
+            "Одна попытка в день. Она начнётся с первого ответа — открыть и закрыть можно без потерь"],
+          icons: ["✎", "✕", "✓", "☾"] },
+        onBegin: () => { markCreditTry(ukP, mod.id, todayKey); bumpMarks(); } });
+    } else if (mode === "gold") {
+      const key = Date.now();
+      setSpecial({ mode, mod, sits: goldPool(mod), timer: GOLD_TIMER, key, verdict: {
+        ok: "Номер темы в треке теперь золотой, в «Книге отзывов» — печать.",
+        bad: "Для золота — не больше одной ошибки. Можно сразу ещё раз." },
+        intro: { title: "Раунд мастера ✦", sub: mod.title, cta: "Начать раунд",
+          lines: [GOLD_N + " заданий, на каждое " + GOLD_TIMER + " секунд — последние 5 тикают", "Без подсказок", "Одна ошибка в запасе — это запасная свеча",
+            "Получилось — номер темы в треке золотой, в «Книге отзывов» печать"],
+          icons: ["⏱", "✕", "🕯", "✦"] } });
+      // v31: рекорд заведения по теме (этап 25) — в правилах и в чеке
+      rpc("gold_records", { p_token: saToken(), p_mod: mod.id }).then((r) => {
+        const cur = specialRef.current;
+        if (!r || !r.ok || !cur || cur.key !== key) return;
+        const b = r.best;
+        setSpecial({ ...cur, record: r, intro: cur.intro ? { ...cur.intro,
+          note: b && b.sec ? "Рекорд заведения: " + Math.floor(b.sec / 60) + ":" + String(b.sec % 60).padStart(2, "0") + " — " + (b.me ? "твой" : b.name + (b.initial ? " " + b.initial + "." : "")) + (r.mine && r.mine.sec && !b.me ? " · твой — " + Math.floor(r.mine.sec / 60) + ":" + String(r.mine.sec % 60).padStart(2, "0") : "") : "" } : cur.intro });
+      }).catch(() => {});
+    } else {
+      if (!canRefresh(mod)) return;
+      const rec = readFresh(ukP)[mod.id];
+      const nd = INTERVALS[Math.min(((rec && rec.n) || 0) + 1, INTERVALS.length - 1)];
+      setSpecial({ mode: "refresh", mod, sits: refreshPick(tablePool(mod), 3, String(Date.now())), key: Date.now(), verdict: {
+        ok: "Тема снова свежая. Следующий повтор — через " + nd + " " + pl3(nd, "день", "дня", "дней") + ".",
+        bad: "Нужно хотя бы 2 верно — тема пока бледная." } });
+    }
+  }, [ukP, todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v31: «Освежить всё выдохшееся» — 2–3 темы за один заход (по 2 задания, одна тема — 3)
+  const openFreshAll = useCallback(() => {
+    const list = fadedList(marks.fresh, freshMods, completed, quizDone).slice(0, 3);
+    if (!list.length) return;
+    vibrate("light"); loadTable();
+    const per = list.length === 1 ? 3 : 2;
+    const seed = String(Date.now());
+    const sits = list.flatMap((x, i) => refreshPick(tablePool(x.mod), per, seed + i).map((sit) => ({ ...sit, _mod: x.mod.id })));
+    const mods = list.map((x) => x.mod);
+    setSpecial({ mode: "freshall", mods, sits, key: Date.now(), verdict: {
+      name: mods.length + " " + pl3(mods.length, "тема", "темы", "тем"),
+      ok: "Освежённые темы снова полные — следующий повтор позже, чем в прошлый раз.",
+      bad: "Тема считается освежённой, если верно хотя бы половина её заданий." },
+      extra: ({ okMods, sits: used }) => {
+        const per2 = {}, ok = {};
+        (used || []).forEach((x) => { if (x && x._mod) per2[x._mod] = (per2[x._mod] || 0) + 1; });
+        (okMods || []).forEach((id) => { ok[id] = (ok[id] || 0) + 1; });
+        return <ul className="r-topics">{mods.map((m) => { const good = (ok[m.id] || 0) >= Math.ceil((per2[m.id] || 1) / 2); return <li key={m.id}><span className="t">«{m.title}»</span><span className={"v" + (good ? " ok" : "")}>{good ? "освежена ✓" : "ещё раз"}</span></li>; })}</ul>;
+      } });
+  }, [marks, freshMods, completed, quizDone]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v31: «Проверка по треку» для опытных — по 2 задания из каждой непройденной темы (до 8 тем)
+  const probeMods = useMemo(() => programModules.filter((m) => !moduleDone(m, completed, quizDone) && canCredit(m)).slice(0, 8), [programModules, completed, quizDone]);
+  const openProbe = useCallback(() => {
+    if (probeMods.length < 2) return;
+    vibrate("light"); loadTable();
+    const seed = Date.now();
+    const sits = probeMods.flatMap((m, i) => creditPool(m, seed + i).slice(0, 2));
+    const mods = probeMods;
+    setSpecial({ mode: "probe", mods, sits, key: seed, verdict: {
+      name: mods.length + " " + pl3(mods.length, "тема", "темы", "тем") + " · " + sits.length + " " + pl3(sits.length, "задание", "задания", "заданий"),
+      ok: "Где оба ответа верные — тема знакома: сдай её на опыт (7 заданий без подсказок). Остальные — по урокам." },
+      intro: { title: "Проверка по треку", sub: "для тех, кто уже работал в сервисе", cta: "Начать проверку",
+        lines: ["По 2 задания из каждой непройденной темы — " + sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + ", минут 10",
+          "Без подсказок — чтобы честно понять, что уже знаешь", "В конце — какие темы можно сдать на опыт, а какие пройти по урокам",
+          "Ничего не засчитывается само и ничего не теряется"],
+        icons: ["✎", "✕", "✓", "☾"] },
+      extra: ({ okMods, sits: used }) => {
+        const per2 = {}, ok = {};
+        (used || []).forEach((x) => { if (x && x._mod) per2[x._mod] = (per2[x._mod] || 0) + 1; });
+        (okMods || []).forEach((id) => { ok[id] = (ok[id] || 0) + 1; });
+        return <ul className="r-topics">{mods.map((m) => {
+          const n = ok[m.id] || 0, t = per2[m.id] || 0, strong = t > 0 && n >= t;
+          const can = strong && canCredit(m) && !creditTriedToday(ukP, m.id, todayKey);
+          return <li key={m.id}><span className="t">«{m.title}»</span><span className={"v" + (strong ? " ok" : "")}>{n} из {t}</span>{can ? <button type="button" onClick={() => openTopicRun("credit", m)}>Зачёт</button> : null}</li>;
+        })}</ul>;
+      } });
+  }, [probeMods, ukP, todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const topicActs = useMemo(() => ({ refresh: (m) => openTopicRun("refresh", m), credit: (m) => openTopicRun("credit", m), gold: (m) => openTopicRun("gold", m),
+    tried: (id) => creditTriedToday(ukP, id, todayKey), cellar: () => navigate("cellar") }), [openTopicRun, ukP, todayKey, marksVer]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const openWarmup = useCallback(() => { vibrate("light"); loadTable(); setWarmupOpen(true); }, []);
+  // Доп. 304: напоминание из Telegram (?go=warmup или startapp=go_warmup) открывает разминку сразу
+  const warmLinkRef = useRef(null);
+  if (warmLinkRef.current === null) {
+    try {
+      const q = new URLSearchParams(location.search).get("go");
+      const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
+      warmLinkRef.current = q === "warmup" || sp === "go_warmup";
+    } catch (e) { warmLinkRef.current = false; }
+  }
+  React.useEffect(() => {
+    if (!warmLinkRef.current || !profile || !tbMod) return;
+    if (warmSits.length < 2) {
+      // Доп. 310: разминать пока нечего (уроки трека ещё не приехали — подождём; приехали, а
+      // заданий нет) — ссылка из напоминания не молчит, а открывает трек
+      if (role && (MODULES[role] || []).length) { warmLinkRef.current = false; navigate("home"); }
+      return;
+    }
+    warmLinkRef.current = false;
+    setWarmupOpen(true);
+  }, [profile, tbMod, warmSits.length, role]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Доп. 305: чек недели — что сделано за 7 дней, можно отправить команде ──
+  const weekOpen = layerData(layers, "week"), setWeekOpen = layerSet.week;   // null | "last7" | "prev"
+  const [reportSelf, setReportSelf] = useState(false);   // Доп. 309: «Мой отчёт» — сразу своя карточка
+  const [weekSeen, setWeekSeen] = useState("");
+  React.useEffect(() => { try { setWeekSeen(localStorage.getItem("sa_week_seen" + ukP) || ""); } catch (e) { setWeekSeen(""); } }, [ukP]);
+  const prevWeekEnd = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 1); return d; }, [todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const prevWeek = useMemo(() => weekSummary(activity, streak, prevWeekEnd), [activity, streak, prevWeekEnd]);
+  // по понедельникам на главной — карточка «Чек недели готов» за прошлую неделю (пн–вс)
+  const weekCardShow = !!profile && new Date().getDay() === 1 && weekSeen !== todayKey && prevWeek.activeDays > 0;
+  const openWeek = useCallback((kind) => {
+    vibrate("light"); loadTable(); setWeekOpen(kind || "last7");
+    if (kind === "prev") { try { localStorage.setItem("sa_week_seen" + ukP, todayKey); } catch (e) {} setWeekSeen(todayKey); }
+  }, [ukP, todayKey]);
+
+  // ── Доп. 302: «Разобрать с Наставником» — чат поверх ситуации, вопрос уже задан ──
+  const mentorAsk = layerData(layers, "mentor"), setMentorAsk = layerSet.mentor;
+  const askMentor = useCallback((q) => { if (q) setMentorAsk(String(q)); }, []);
+
+  // ── Доп. 304: напоминания в Telegram за час до смены (этап 22б) ──
+  const remindOpen = layerData(layers, "remind") != null, setRemindOpen = layerSet.remind;
+  const [tgRemind, setTgRemind] = useState(false);
+  React.useEffect(() => { setTgRemind(readRemindFlag(ukP)); }, [ukP]);
+  // ── Доп. 303: подтверждение в зале — сколько запросов ждут старшего (этап 22) ──
+  const isLead = !!profile && (!!profile.is_admin || ["manager", "senior"].includes(profile.position));
+  const [hallInbox, setHallInbox] = useState(0);
+  React.useEffect(() => {
+    if (!isLead || !storageLoaded || !["teamHub", "roleSelect"].includes(screen)) return undefined;
+    let alive = true;
+    rpc("skill_requests_inbox", { p_token: saToken() }).then((res) => {
+      if (alive && res && res.ok && Array.isArray(res.rows)) setHallInbox(res.rows.length);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [isLead, storageLoaded, screen]);
+  // ссылка из сообщения бота: ?go=mentor / startapp=go_mentor — сразу в «Наставничество»
+  const mentorLinkRef = useRef(null);
+  if (mentorLinkRef.current === null) {
+    try {
+      const q = new URLSearchParams(location.search).get("go");
+      const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
+      mentorLinkRef.current = q === "mentor" || sp === "go_mentor";
+    } catch (e) { mentorLinkRef.current = false; }
+  }
+  React.useEffect(() => {
+    if (!mentorLinkRef.current || !profile || !storageLoaded) return;
+    mentorLinkRef.current = false;
+    navigate("mentor");
+  }, [profile, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
   const navigate = useCallback((to, opts) => {
     const cur = screenRef.current;
     if (TAB_SCREENS.includes(to)) commitStack([]);                          // вкладка — новая ветка, назад некуда
@@ -934,6 +1295,88 @@ function ServiceAcademy() {
     commitStack(st);
     const dest = to || fallback; screenRef.current = dest; setScreen(dest);
   }, [commitStack]);
+  const openRadio = useCallback(() => {
+    vibrate("light"); loadTable();
+    setRadioList(playlist({ modules: programModules, completed, quizDone, faded: [...fadedIds], seed: todayKey + ukP }));
+  }, [programModules, completed, quizDone, fadedIds, todayKey, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const recapWhich = useMemo(() => recapMonth(activity), [activity]);
+  const openRecap = useCallback((key) => { vibrate("light"); setRecapKey(key || recapWhich.key); try { localStorage.setItem("sa_recap_seen" + ukP, recapWhich.key); } catch (e) {} }, [recapWhich, ukP]);
+  // ── v30 (Доп. 314): «Квест смены» — общая цель смены (сервер) и три личных задания на день ──
+  const [questTick, setQuestTick] = useState(0);
+  const [questVer, setQuestVer] = useState(0);
+  // задания выбираются, когда человек впервые за день открыл «Смену» (данные уже загружены) — и до вечера не меняются
+  const onShiftTab = screen === "shift";
+  const questTasks = useMemo(() => {
+    if (!profile || !storageLoaded || !onShiftTab || !programModules.length) return [];
+    const nx = nextLessonOf(programModules, completed, quizDone);
+    return tasksFor(ukP, {
+      day: todayKey, dueMistakes: mistakeBank.filter((m) => !m.due || m.due <= Date.now()).length,
+      faded: fadedList(marks.fresh, freshMods, completed, quizDone).slice(0, 1).map((x) => ({ id: x.mod.id, title: x.mod.title })),
+      warm: warmShow && warmDone !== todayKey, next: nx && nx.lesson ? { title: nx.lesson.title } : null, guest: true,
+    });
+  }, [profile, ukP, todayKey, programModules.length, storageLoaded, onShiftTab]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const onQuestTask = useCallback((t) => {
+    if (!t) return;
+    if (t.go === "mistakes") navigate("mistakes");
+    else if (t.go === "refresh") { const m = programModules.find((x) => x.id === t.mod); if (m) openTopicRun("refresh", m); else navigate("home"); }
+    else if (t.go === "warmup") { if (warmSits.length >= 2) openWarmup(); else navigate("home"); }
+    else if (t.go === "guest") openGuest();
+    else navigate("home");
+  }, [programModules, openTopicRun, warmSits.length, openWarmup, openGuest, navigate]);
+  const onQuestComplete = useCallback((day) => { const before = questDays(ukP).length; const after = markQuestDone(ukP, day).length; if (after > before) { vibrate("success"); setQuestVer((v) => v + 1); } }, [ukP]);
+  // ── v30 (Доп. 318): «Свеча на двоих» — статус пары; v31: сводка дня одним запросом (этап 25) ──
+  const pairOpen = layerData(layers, "pair") != null, setPairOpen = layerSet.pair;
+  const { brief, briefStatus, pairInfo, setPairInfo, refreshDay } = useDayBrief({ profile, storageLoaded, screen, activity });
+  const refreshPair = refreshDay;
+  // квест: без этапа 25 карточка грузит сама — перечитать при входе во вкладку «Смена» и после занятий
+  useEffect(() => { if (screen === "shift") setQuestTick((t) => t + 1); }, [screen]);
+  useEffect(() => {
+    if (screen !== "shift") return undefined;
+    const t = setTimeout(() => setQuestTick((x) => x + 1), 25000);
+    return () => clearTimeout(t);
+  }, [activity, screen]);
+  const pairLine = pairLineOf(pairInfo);
+  // v31: ссылки из подталкиваний бота: ?go=pair|league|cellar|month|shift|radio|guest|probe (или startapp=go_…)
+  const goLinkRef = useRef(null);
+  if (goLinkRef.current === null) {
+    try {
+      const q = new URLSearchParams(location.search).get("go");
+      const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
+      const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe"].includes(v) ? v : "";
+    } catch (e) { goLinkRef.current = ""; }
+  }
+  React.useEffect(() => {
+    const g = goLinkRef.current;
+    if (!g || !profile || !storageLoaded) return;
+    if (["cellar", "radio", "probe"].includes(g) && !programModules.length) return;   // ждём уроки трека
+    goLinkRef.current = "";
+    if (g === "pair") setPairOpen(true);
+    else if (g === "league") navigate("league");
+    else if (g === "cellar") navigate("cellar");
+    else if (g === "month") openRecap();
+    else if (g === "shift" || g === "quest") navigate("shift");
+    else if (g === "radio") openRadio();
+    else if (g === "guest") openGuest();
+    else if (g === "probe") { navigate("cellar"); openProbe(); }
+  }, [profile, storageLoaded, programModules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
+  // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
+  // выхода из теста). Стрелки нет — шаг назад по истории переходов.
+  useEffect(() => {
+    if (!isTelegram()) return;
+    const bb = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.BackButton;
+    if (!bb) return;
+    // Доп. 301–305: поверх вкладки открыт слой (разминка, чек недели, Наставник) — кнопка
+    // «Назад» есть и закрывает верхний слой (его крестик или стрелку)
+    const overlay = layers.length > 0;   // v31: любой слой поверх вкладки (lib/layers.js)
+    const atRoot = (TAB_SCREENS.includes(screen) || screen === "login") && !overlay;
+    try { if (atRoot) bb.hide(); else bb.show(); } catch (e) {}
+    if (atRoot) return;
+    const onTgBack = () => { if (!clickScreenBack()) goBack(); };
+    try { bb.onClick(onTgBack); } catch (e) {}
+    return () => { try { bb.offClick(onTgBack); } catch (e) {} };
+  }, [screen, goBack, layers]);
   // #5 — избранное/заметки: переключение и сохранение, с очисткой пустых записей
   const toggleFav = useCallback((k) => setSaved(prev => {
     const cur = prev[k] || {}; const next = { ...prev, [k]: { ...cur, fav: !cur.fav } };
@@ -953,7 +1396,8 @@ function ServiceAcademy() {
     if (!storageLoaded || !profile) return;
     try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_exam"+uk, JSON.stringify(examResults)); } catch(e) {}
   }, [examResults, storageLoaded, profile]);
-  const recordExam = useCallback((roleId, result) => setExamResults(prev => ({ ...prev, [roleId]: result })), []);
+  // Доп. 310: экзамен — тоже занятие (свеча, цель дня, чек недели); результат — в отчёт руководителя
+  const recordExam = useCallback((roleId, result) => { setExamResults(prev => ({ ...prev, [roleId]: result })); try { touchStreak(); logActivity("exam"); } catch (e) {} }, [touchStreak, logActivity]);
   const openExam = useCallback((roleId) => { setExamRole(roleId); navigate("exam"); }, [navigate]);
   const openCertificate = useCallback((roleId) => { setExamRole(roleId); navigate("certificate"); }, [navigate]);
   const handleLogin = useCallback((token, emp) => {
@@ -966,6 +1410,7 @@ function ServiceAcademy() {
     setScreen("roleSelect");
   }, []);
   const handleLogout = useCallback(() => {
+    cancelDayPush();   // v31: отметка дня прошлого человека не уходит после выхода
     try {
       localStorage.removeItem("sa_session_token");
       localStorage.removeItem("sa_profile");
@@ -984,7 +1429,18 @@ function ServiceAcademy() {
     }
     setScreen("home");
   }, [profile]);
-  const openModule = useCallback((m) => { setActiveModule(m); setScreen("module"); }, []);
+  // Доп. 306: тема открывается сразу на тексте следующего непройденного урока — без лишней
+  // ступеньки. Если следующий шаг — тест, практика, диалог или сборка, сначала содержание
+  // раздела: там видно, на что подписываешься, и кнопка «Начать». Тема пройдена — содержание
+  // (выбрать, что повторить). Содержание из урока — кнопка «1 из 6» в шапке.
+  const openLessonRef = useRef(null);
+  const openModule = useCallback((m) => {
+    setActiveModule(m);
+    const isDoneL = (l) => (l.type === "quiz" ? !!quizDone[l.id] : !!completed[l.id]);
+    const step = ((m && m.lessons) || []).find((l) => l && l.type !== "result" && !isDoneL(l));
+    if (step && step.type === "lesson" && openLessonRef.current) { openLessonRef.current(step); return; }
+    setScreen("module");
+  }, [completed, quizDone]);
   const openLesson = (l) => {
     setLessonDone(null); // Доп. 205: новый урок — кнопка снова «Урок пройден ✓»
     if (l.type === "quiz" && quizDone[l.id]) return;
@@ -1008,12 +1464,26 @@ function ServiceAcademy() {
     setActiveLesson(lessonToOpen);
     setQuizState({ step: 0, answers: [], done: false, mistakes: 0, blocked: false, questions: initQuestions });
     const pool = l.situations || [];
-    const shuffled = pickRandom(pool, 6).map(shuffleSituationOptions);
-    const firstUsedIds = shuffled.map(s => s.scene || s.statement || s.question || JSON.stringify(s).slice(0,60));
-    setPracticeState({ step: 0, choice: null, isAnswered: false, results: [], done: false, lives: 3, score: 0, combo: 0, situations: shuffled, flash: null, usedIds: firstUsedIds });
+    // Доп. 293: незаконченный раунд практики (ушёл к гостю, позвонили) — продолжаем с той же
+    // ситуации, если вернулся в течение 12 часов. Законченный или старый — новый раунд, как раньше.
+    let resumed = null;
+    if (l.type === "practice") {
+      try {
+        const map = JSON.parse(localStorage.getItem(PRACTICE_RESUME_KEY + (profile ? `_${profile.name}_${profile.surname||""}` : "")) || "{}") || {};
+        const r = map[l.id];
+        if (r && Date.now() - (r.at || 0) < 12 * 3600 * 1000 && r.ps && Array.isArray(r.ps.situations) && r.ps.situations.length && !r.ps.done && (r.ps.lives || 0) > 0) resumed = { ...r.ps, flash: null, resumed: true };
+      } catch (e) {}
+    }
+    if (resumed) setPracticeState(resumed);
+    else {
+      const shuffled = pickRandom(pool, 6).map(shuffleSituationOptions);
+      const firstUsedIds = shuffled.map(s => s.scene || s.statement || s.question || JSON.stringify(s).slice(0,60));
+      setPracticeState({ step: 0, choice: null, isAnswered: false, results: [], done: false, lives: 3, score: 0, combo: 0, situations: shuffled, flash: null, usedIds: firstUsedIds });
+    }
     setGameKey(k => k + 1);
     navigate("lesson");
   };
+  openLessonRef.current = openLesson;
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   // Результат «Сборки» → звёзды практики: тот же контур (practice_stars), что и у
   // игровых практик — попадает в лидерборд и статистику без отдельного хранилища.
@@ -1093,24 +1563,9 @@ function ServiceAcademy() {
       try { localStorage.setItem("sa_completed"+uk, JSON.stringify(newCompleted)); } catch(e) {}
       setCompleted(newCompleted);
 
-      // Стрик: отмечаем активность за сегодня
-      try {
-        const _ymd = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-        const _today = _ymd(new Date());
-        setStreak(prev => {
-          if (prev.last === _today) return prev;
-          const _y = new Date(); _y.setDate(_y.getDate() - 1);
-          const _yest = _ymd(_y);
-          const count = prev.last === _yest ? (prev.count || 0) + 1 : 1;
-          const best = Math.max(prev.best || 0, count);
-          const days = [...new Set([...(prev.days || []), _today])].slice(-21);
-          const next = { count, best, last: _today, days };
-          // Серия — повод для золотой вспышки (7 и 30 дней)
-          if (count === 7 || count === 30) setTimeout(() => cheer("Серия " + count + " дней"), 500);
-          try { localStorage.setItem("sa_streak"+uk, JSON.stringify(next)); } catch(e) {}
-          return next;
-        });
-      } catch(e) {}
+      // Стрик: отмечаем активность за сегодня (Доп. 288: с учётом графика — lib/streak.js)
+      touchStreak();
+      logActivity(["lesson", "quiz", "practice", "dialogue", "build"].includes(activeLesson.type) ? activeLesson.type : "lesson");   // Доп. 298
 
       // Прогресс урока в Supabase — только при первом прохождении
       if (profile && activeLesson.type !== "quiz" && !completed[activeLesson.id]) {
@@ -1137,7 +1592,7 @@ function ServiceAcademy() {
 
         if (!quizDone[activeLesson.id]) {
           newQuizDone = { ...quizDone, [activeLesson.id]: true };
-          try { localStorage.setItem("sa_quiz_done", JSON.stringify(newQuizDone)); } catch(e) {}
+          try { localStorage.setItem("sa_quiz_done" + uk, JSON.stringify(newQuizDone)); } catch(e) {}
           setQuizDone(newQuizDone);
           rpcSync("save_quiz_done", { p_token: saToken(), p_quiz_id: activeLesson.id });
           try { const rec = loopPassed(loopUk, activeLesson); if (rec) {
@@ -1213,7 +1668,63 @@ function ServiceAcademy() {
       console.error("completeLesson error:", e);
       setScreen("module");
     }
-  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, completed, quizDone, completedRoles, checkAndShowAchievements, customModules]);
+  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, completed, quizDone, completedRoles, checkAndShowAchievements, customModules, touchStreak, logActivity]);
+  // ── v30 (Доп. 315): «Зачёт на опыт» сдан — шаги темы засчитаны (тест — без балла: рейтинг не трогаем) ──
+  const creditModule = useCallback((mod, res) => {
+    if (!mod || !profile) return;
+    const uk = `_${profile.name}_${profile.surname || ""}`;
+    const steps = (mod.lessons || []).filter((l) => l.type !== "result");
+    const newCompleted = { ...completed }; const newQuizDone = { ...quizDone };
+    steps.forEach((l) => {
+      if (l.type === "quiz") {
+        if (!newQuizDone[l.id]) { newQuizDone[l.id] = true; rpcSync("save_quiz_done", { p_token: saToken(), p_quiz_id: l.id }); }
+      } else if (!newCompleted[l.id]) {
+        newCompleted[l.id] = true; rpcSync("save_progress", { p_token: saToken(), p_lesson_id: l.id, p_role: role });
+      }
+    });
+    try { localStorage.setItem("sa_completed" + uk, JSON.stringify(newCompleted)); } catch (e) {}
+    try { localStorage.setItem("sa_quiz_done" + uk, JSON.stringify(newQuizDone)); } catch (e) {}
+    setCompleted(newCompleted); setQuizDone(newQuizDone);
+    saveCredit(uk, mod.id, { d: ymd(new Date()), s: res.firstOk, t: res.total });
+    bumpMarks();
+    // роль пройдена целиком — как после последнего урока (completeLesson)
+    const allLessons = [...(MODULES[role] || []), ...(customModules || [])].flatMap((m) => m.lessons).filter((l) => l.type !== "result");
+    const allDone = allLessons.length > 0 && allLessons.every((l) => (l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]));
+    const roleIdx = ROLE_ORDER.indexOf(role);
+    const nextRole = roleIdx >= 0 ? ROLE_ORDER[roleIdx + 1] : undefined;
+    const firstCompletion = nextRole ? !completedRoles.has(nextRole) : !completedRoles.has(role);
+    if (allDone && firstCompletion) {
+      const updatedRoles = new Set([...completedRoles, role]);
+      if (nextRole) updatedRoles.add(nextRole);
+      try { localStorage.setItem("sa_completed_roles" + uk, JSON.stringify([...updatedRoles])); } catch (e) {}
+      setCompletedRoles(updatedRoles);
+      [role, nextRole].filter(Boolean).forEach((r) => rpcSync("save_completed_role", { p_token: saToken(), p_role: r }));
+      setTimeout(() => setScreen("roleComplete"), 50);
+    }
+  }, [profile, completed, quizDone, role, customModules, completedRoles]);
+  const finishSpecial = useCallback((res) => {
+    const sp = special; if (!sp || !res) return;
+    const { mode, mod } = sp;
+    if (mode === "refresh") {
+      if (res.firstOk >= Math.min(2, res.total)) { saveFresh(ukP, touchFresh(readFresh(ukP), mod.id, Date.now(), false, mod.rev)); bumpMarks(); touchStreak(); logActivity("refresh"); }
+    } else if (mode === "credit") {
+      if (creditPassed(res.firstOk, res.total)) { creditModule(mod, res); touchStreak(); logActivity("credit"); }
+    } else if (mode === "freshall") {
+      // тема освежена, если верно хотя бы половина её заданий
+      const per = {}, ok = {};
+      (sp.sits || []).forEach((x) => { if (x && x._mod) per[x._mod] = (per[x._mod] || 0) + 1; });
+      (res.okMods || []).forEach((id) => { ok[id] = (ok[id] || 0) + 1; });
+      let m = readFresh(ukP), n = 0;
+      (sp.mods || []).forEach((md) => { if ((ok[md.id] || 0) >= Math.ceil((per[md.id] || 1) / 2)) { m = touchFresh(m, md.id, Date.now(), false, md.rev); n++; } });
+      if (n) { saveFresh(ukP, m); bumpMarks(); touchStreak(); logActivity("refresh", n); }
+    } else if (mode === "gold") {
+      if (goldPassed(res.firstOk, res.total)) {
+        saveGold(ukP, mod.id, { d: todayKey, w: res.wrongN, sec: res.secs });
+        if (canRefresh(mod)) saveFresh(ukP, touchFresh(readFresh(ukP), mod.id, Date.now(), false, mod.rev));
+        bumpMarks(); touchStreak(); logActivity("gold");
+      }
+    }
+  }, [special, ukP, todayKey, creditModule, touchStreak, logActivity]);
   const handleQuiz = useCallback((idx) => {
     if (quizState.blocked) return;
     const q = activeLesson.questions[quizState.step];
@@ -1256,10 +1767,25 @@ function ServiceAcademy() {
       if (stage > SR_DAYS.length) return null; // вопрос закреплён
       return { ...m, stage, due: Date.now() + SR_DAYS[stage - 1] * 24 * 3600 * 1000 };
     }).filter(Boolean));
-  }, []);
+    touchStreak();   // Доп. 288: повтор ошибок — тоже занятие, свеча загорается
+    logActivity("fix");
+  }, [touchStreak, logActivity]);
   // Неверный ответ при повторе: прогресс сгорает, вопрос снова доступен сразу
   const failMistake = useCallback((qText) => {
     setMistakeBank(prev => prev.map(m => m.q === qText ? { ...m, stage: 0, due: Date.now() } : m));
+    touchStreak();
+  }, [touchStreak]);
+  // Доп. 291: ошибки практики и «у стола» тоже попадают в «Работу над ошибками» —
+  // тем же форматом, что вопросы тестов ({ q, options, correct, explanation, … }).
+  const addMistakes = useCallback((items) => {
+    const list = (items || []).filter(x => x && x.q && Array.isArray(x.options) && x.options.length > 1);
+    if (!list.length) return;
+    setMistakeBank(prev => {
+      const have = new Set(prev.map(m => m.q));
+      const add = [];
+      list.forEach(x => { if (!have.has(x.q)) { have.add(x.q); add.push({ stage: 0, due: Date.now(), img: null, explanation: "", lessonTitle: "", lessonId: "", ...x }); } });
+      return add.length ? [...prev, ...add].slice(-200) : prev;
+    });
   }, []);
   // Единая точка сохранения банка ошибок (персональный ключ) — как у saved/examResults.
   // Раньше три колбэка писали общий "sa_mistakes" внутри setState-апдейтеров:
@@ -1268,8 +1794,59 @@ function ServiceAcademy() {
     if (!storageLoaded || !profile) return;
     try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_mistakes"+uk, JSON.stringify(mistakeBank)); } catch(e) {}
   }, [mistakeBank, storageLoaded, profile]);
+  // Доп. 309: копия «телефонных» данных (ошибки, экзамены, дни занятий, разминки, навыки)
+  // уходит на сервер для отчёта руководителя — через 20 с после изменений и при сворачивании.
+  // Нет этапа 23 или сети — тихо, ничего не ломается.
+  React.useEffect(() => {
+    if (!storageLoaded || !profile) return;
+    scheduleLearningPush({ uk: ukP, profile }, 20000);
+  }, [storageLoaded, profile, ukP, mistakeBank, examResults, streak, activity, goal]);
+  // Доп. 310: занятия в тренажёрах (колоды, «Сборка руками», спринт) приходят событием
+  React.useEffect(() => {
+    if (!profile) return undefined;
+    const on = (e) => { try { const k = (e && e.detail && e.detail.kind) || "trainer"; touchStreak(); logActivity(k); } catch (err) {} };
+    window.addEventListener(ACTIVITY_EVENT, on);
+    return () => window.removeEventListener(ACTIVITY_EVENT, on);
+  }, [profile, touchStreak, logActivity]);
+  React.useEffect(() => {
+    if (!profile) return undefined;
+    const onHide = () => { try { if (document.visibilityState === "hidden") pushLearning({ uk: ukP, profile, force: true }); } catch (e) {} };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [profile, ukP]);
+  // Доп. 293: незаконченный раунд практики помним до 12 часов (см. openLesson)
+  // Раунды хранятся по урокам: открыть другую практику — не значит потерять эту.
+  useEffect(() => {
+    if (screen !== "lesson" || !activeLesson || activeLesson.type !== "practice") return;
+    try {
+      const k = PRACTICE_RESUME_KEY + (profile ? `_${profile.name}_${profile.surname||""}` : "");
+      let map = {};
+      try { map = JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch (e) { map = {}; }
+      if (typeof map !== "object" || Array.isArray(map) || map.id) map = {};
+      const now = Date.now();
+      Object.keys(map).forEach(id => { if (!map[id] || now - (map[id].at || 0) > 12 * 3600 * 1000) delete map[id]; });
+      const fresh = !practiceState.isAnswered && practiceState.step === 0;
+      if (practiceState.done || fresh || !(practiceState.situations || []).length) delete map[activeLesson.id];
+      else map[activeLesson.id] = { at: now, ps: { ...practiceState, flash: null } };
+      if (Object.keys(map).length) localStorage.setItem(k, JSON.stringify(map)); else localStorage.removeItem(k);
+    } catch (e) {}
+  }, [practiceState, activeLesson, screen, profile]);
+  // Доп. 288: раунд практики доигран — день засчитан в серию (в обоих видах), даже если
+  // человек сыграет ещё раз и уйдёт без «Продолжить»
+  useEffect(() => {
+    if (screen === "lesson" && activeLesson && activeLesson.type === "practice" && practiceState.done) touchStreak();
+  }, [practiceState.done]);   // eslint-disable-line react-hooks/exhaustive-deps
   const flashTimerRef = useRef(null);
+  const practiceRef = useRef(practiceState); practiceRef.current = practiceState;
+  const activeLessonRef = useRef(activeLesson); activeLessonRef.current = activeLesson;
   const handlePracticeChoice = useCallback((idx) => {
+    // Доп. 291: промах практики (и в классическом виде, и «у стола») — в «Работу над ошибками»
+    try {
+      const p0 = practiceRef.current;
+      const sit0 = p0 && !p0.isAnswered ? (p0.situations || [])[p0.step] : null;
+      if (sit0) logActivity("sit");
+      if (sit0 && idx !== sit0.correct) { const m = mistakeFromSituation(sit0, activeLessonRef.current); if (m) addMistakes([m]); }
+    } catch (e) {}
     let vibratePattern = null;
     setPracticeState(p => {
       if (p.isAnswered) return p;
@@ -1284,7 +1861,7 @@ function ServiceAcademy() {
     if (vibratePattern) vibrate(vibratePattern);
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = setTimeout(() => setPracticeState(p => ({ ...p, flash: null })), 600);
-  }, []);
+  }, [addMistakes, logActivity]);
   const handlePracticeNext = useCallback(() => {
     setPracticeState(p => {
       const sit = p.situations[p.step];
@@ -1350,6 +1927,138 @@ function ServiceAcademy() {
     setWelcome(false);
   };
   // Контекстная подсказка: появляется в момент, когда впервые есть что повторить
+  // «Дальше» под меню раздела и конец программы (Доп. 196–197) — вынесено из экрана раздела без
+  // изменений: тем же пользуется листаемый трек (Доп. 307)
+  const inPages = (m) => !!m && programModules.some((x) => x.id === m.id);
+  const moduleNextFor = (m) => {
+    // «Дальше» внизу своего раздела — сначала непройденный шаг этого раздела (правка 163);
+    // раньше вела по штатной программе даже внутри незаконченного своего раздела
+    if (m && m.custom) {
+      const l = (m.lessons || []).find(x => x.type !== "result" && !(x.type === "quiz" ? quizDone[x.id] : completed[x.id]));
+      if (l) return { mod: m, lesson: l };
+    }
+    return nextLessonOf(programModules, completed, quizDone);   // штатная пройдена — дальше свои разделы
+  };
+  const moduleOnNext = (n) => { if (!n) return; if (n.mod && n.mod.id !== activeModule?.id) setActiveModule(n.mod); openLesson(n.lesson); };
+  const moduleFinishFor = () => {
+    // Доп. 197: конец роли — экзамен ступени → сертификат → следующая ступень трека → другие треки
+    const passed = !!(examResults[role] && examResults[role].passed);
+    const group = TRACK_GROUPS.find(g => g.members.includes(role));
+    const nextRoleId = group ? group.members[group.members.indexOf(role) + 1] : null;
+    const nextRole = nextRoleId ? ROLES.find(r => r.id === nextRoleId) : null;
+    if (!passed) return { eyebrow: "Все уроки пройдены ✦", title: "Экзамен ступени", sub: "«Слепой» тест без подсказок — как у гостя нет второй попытки на первое впечатление. Сдал — сертификат и печать в Книге.", cta: "Сдать ›", onGo: () => openExam(role) };
+    if (nextRole) return { eyebrow: "Экзамен сдан ✦", title: `Следующая ступень: ${nextRole.label}`, sub: nextRole.desc || nextRole.sublabel || "Трек продолжается — новые модули уже ждут", cta: "Перейти ›", onGo: () => { selectRole(nextRole.id); commitStack([]); }, // selectRole сам открывает программу новой роли
+      secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
+    return { eyebrow: "Экзамен сдан ✦", title: "Трек пройден до конца", sub: "Можно открыть новый трек — или держать форму: «Задание дня» и «Гость недели» во вкладке «Смена».", cta: "Другие треки ›", onGo: () => navigate("roleSelect"),
+      secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
+  };
+  // Что Наставник знает о сотруднике (роль, прогресс, ошибки, смена) — вынесено из экрана
+  // «Наставник» без изменений: тот же контекст нужен чату поверх ситуации (Доп. 302)
+  const assistantLearner = () => ({ position: profile?.position, roleTitle: (ROLES.find(r => r.id === role) || {}).title,
+    customLessons: (customModules || []).flatMap(m => m.lessons.filter(l => l.type === "lesson").map(l => ({ id: l.id, title: l.title, section: m.title }))),
+    done: doneCount, total: totalLessons, dueMistakes,
+    // Доп. 310: ритм дня — Наставник знает про свечу, стакан и разминку
+    streak: (streak && streak.count) || 0, steps: todaySteps || 0, goal: goal || 0,
+    warmup: warmShow ? (warmDone === todayKey ? "done" : "open") : "",
+    topics: mistakeBank.filter(m => !m.due || m.due <= Date.now()).slice(0, 3).map(m => m.lessonTitle).filter(Boolean),
+    todayShift: (() => { try {
+      const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
+      const t = new Date();
+      const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+      return (r && r.date === key && r.label) ? r.label : null;
+    } catch (e) { return null; } })() });
+  // Переходы из ответа Наставника (карточки блюд и коктейлей, уроки, разделы). Вынесено из
+  // экрана «Наставник» без изменений, чтобы тем же путём ходил и чат поверх ситуации
+  // «Разобрать с Наставником» (Доп. 302): там текущий экран просто уходит в историю.
+  const assistantNavigate = (dest, overlay = false) => {
+    const jump = (to) => {
+      if (overlay) { navigate(to); return; }
+      setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(to);
+    };
+    // Карточка блюда в ответе → Колода меню на этом блюде (Доп. 170)
+    if (dest && typeof dest === "object" && dest.dish) {
+      setMenuStart(dest.dish);
+      jump("menuTrainer");
+      return;
+    }
+    // Карточка коктейля в ответе → колода на этом коктейле (Доп. 130)
+    if (dest && typeof dest === "object" && dest.cocktail) {
+      setCkStart(dest.cocktail);
+      jump("cocktails");
+      return;
+    }
+    // Переход на урок по id: [[lesson:ID]]
+    if (dest && typeof dest === "object" && dest.lesson) {
+      // Роли, доступные сотруднику: его текущая + все пройденные.
+      // Вариант В: урок закрытой роли не открываем, мягко сообщаем.
+      const myRoles = new Set([role, ...completedRoles]);
+      // спг/сезонник — базовый уровень, всегда доступен как основа
+      const roleOfLesson = (lid) => roleOfLessonId(lid); // Доп. 132: по индексу, без ожидания загрузки
+      const lessonRole = roleOfLesson(dest.lesson);
+      const inCustom = (customModules || []).some(m => (m.lessons || []).some(x => x.id === dest.lesson));
+      // FAIL-SAFE: блокируем ТОЛЬКО когда роль урока определена ОДНОЗНАЧНО и она
+      // среди закрытых. Любая неясность (роль не найдена, урок в custom, я админ) →
+      // урок ОТКРЫВАЕТСЯ. Лучше пропустить, чем случайно заблокировать доступное.
+      const iamAdmin = !!profile?.is_admin;
+      const knownRole = lessonRole && ["seasonal","core","manager","service_manager","spg","bar"].includes(lessonRole);
+      const blocked = !iamAdmin && knownRole && !myRoles.has(lessonRole) && !inCustom;
+
+      if (blocked) {
+        setLessonLockMsg("Этот урок из трека, который откроется позже — когда дойдёшь до него по программе. Спрашивай меня по теме сколько угодно, а систематически изучишь его на своём уровне 😊");
+        return;
+      }
+
+      (lessonRole ? loadRoleModules(lessonRole).catch(() => {}) : Promise.resolve()).then(() => {
+        const everyMod = [...Object.values(MODULES).flat(), ...(customModules || [])];
+        let foundMod = null, foundLesson = null;
+        for (const m of everyMod) {
+          const l = (m.lessons || []).find(x => x.id === dest.lesson);
+          if (l) { foundMod = m; foundLesson = l; break; }
+        }
+        if (foundLesson) {
+          if (!overlay) setPrevScreen("roleSelect");
+          setActiveModule(foundMod); openLesson(foundLesson);
+        } else {
+          jump("roleSelect");
+        }
+      });
+      return;
+    }
+    // Переход в раздел: [[go:key]]
+    // Ключ кнопки ассистента → экран (правка 153: ключи в нижнем регистре, новые
+    // разделы, stats = «Мой прогресс», analytics = «Аналитика»)
+    const GO = { sos: "sos", glossary: "glossary", leaderboard: "leaderboard", profile: "profile", daily: "daily",
+      checklist: "checklist", reference: "reference", stats: "stats", guestbook: "guestbook", mentor: "mentor",
+      menu: "menuTrainer", cocktails: "cocktails", barlab: "barLab", schedule: "schedule", mistakes: "mistakes",
+      certificates: "certificates", guide: "guide", onboarding: "onboarding", weeklyguest: "weeklyGuest",
+      shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team" };
+    const boss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
+    const k = String(dest || "").toLowerCase();
+    // Доп. 310: разделы v28–v29 — разминка, чек недели и напоминания открываются поверх экрана,
+    // отчёты — экраном (сотруднику — только свой)
+    if (k === "warmup") { if (warmSits.length >= 2) openWarmup(); else jump("home"); return; }
+    if (k === "week") { openWeek("last7"); return; }
+    if (k === "remind") { setRemindOpen(true); return; }
+    if (k === "track") { jump("home"); return; }
+    if (k === "guest") { openGuest(); return; }   // v30
+    if (k === "league") { jump("league"); return; }
+    if (k === "pair") { setPairOpen(true); return; }
+    if (k === "quest") { jump("shift"); return; }
+    if (k === "radio") { openRadio(); return; }
+    if (k === "month") { openRecap(); return; }
+    // v31: «Погреб тем», «Освежить всё выдохшееся», «Проверка по треку»
+    if (k === "cellar") { jump("cellar"); return; }
+    if (k === "freshall") { if (fadedIds.size) openFreshAll(); else jump("cellar"); return; }
+    if (k === "probe") { if (probeMods.length >= 2) { jump("cellar"); openProbe(); } else jump("cellar"); return; }
+    if (k === "report" || k === "myreport") {
+      if (k === "report" && !boss) return;
+      setReportSelf(k === "myreport"); jump("report"); return;
+    }
+    if (!GO[k]) return;
+    if ((k === "analytics" || k === "candidate") && !boss) return;   // разделы руководителей
+    if (k === "staff" && !profile?.is_admin) return;
+    jump(GO[k]);
+  };
   const dueMistakes = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
   useEffect(() => {
     if (welcome || !profile) return;
@@ -1394,6 +2103,8 @@ function ServiceAcademy() {
         () => import("./ui/training-card"),
         () => import("./ui/candidate"),
         () => import("./ui/assistant"),
+        () => import("./ui/mm-images"),   // картинки-эмоции уроков — для работы без сети
+        () => import("./ui/table"),       // Доп. 289: формат «у стола» — практика и проверка после урока
       ].reduce((p, load) => p.then(() => load().catch(() => {})), Promise.resolve());
     }, 1500);
     return () => { if (warm) clearTimeout(warm); };
@@ -1437,7 +2148,70 @@ function ServiceAcademy() {
             экран начисто — лечит iOS-призраки старого рендера под стеклом.
             Исключение — «Собеседование»: там живёт прогресс интервью,
             перемонтаж его уничтожил бы (тема переключается без пересборки) */}
-        {celebrate ? (
+        {/* Доп. 301: разминка до смены — слой «у стола» поверх вкладки */}
+        {warmupOpen && tbMod && warmSits.length ? (
+          <tbMod.TableCheck mode="warmup" situations={warmSits} modules={programModules} shift={shiftText}
+            color={TRACK_COLOR[role] || "#C8A96E"} a11y={a11y} profile={profile} streak={streak} mistakeBank={mistakeBank}
+            mentorName={mentorName} goal={{ steps: todaySteps, goal }} onFinish={finishWarmup} onActivity={logActivity}
+            onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake} onAskMentor={askMentor}
+            onClose={() => setWarmupOpen(false)} />
+        ) : null}
+        {/* v30: освежить тему, зачёт на опыт, раунд мастера — тот же стол поверх трека */}
+        {special && tbMod ? (
+          <tbMod.TableCheck key={special.key} mode={special.mode} mod={special.mod} situations={special.sits} modules={programModules} timer={special.timer || 0}
+            intro={special.intro || null} record={special.record || null} extra={special.extra || null} onBegin={special.onBegin || null}
+            color={TRACK_COLOR[role] || "#C8A96E"} a11y={a11y} profile={profile} streak={streak} mistakeBank={mistakeBank} mentorName={mentorName}
+            goal={{ steps: todaySteps, goal }} verdict={special.verdict} onFinish={finishSpecial} onActivity={logActivity}
+            onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake} onAskMentor={askMentor}
+            onAgain={special.mode === "credit" || special.mode === "probe" ? null : special.mode === "freshall" ? openFreshAll : () => openTopicRun(special.mode, special.mod)}
+            onClose={() => setSpecial(null)} />
+        ) : null}
+        {/* v30 (Доп. 319): «Радио в дорогу» */}
+        {radioList && profile ? (
+          <Suspense fallback={null}><RadioScreen a11y={a11y} uk={ukP} color={TRACK_COLOR[role] || "#C8A96E"} episodes={radioList}
+            onMistakes={addMistakes} onActivity={logActivity} onTouch={touchStreak} onClose={() => setRadioList(null)} /></Suspense>
+        ) : null}
+        {/* v30 (Доп. 320): «Итоги месяца» */}
+        {recapKey && profile ? (
+          <Suspense fallback={null}><MonthRecap a11y={a11y} profile={profile} month={recapKey} shareUrl={APP_SHARE_URL}
+            data={{ act: activity, streak, quests: questDays(ukP), guests: readGuestRuns(ukP), gold: marks.gold, credits: marks.credit, fresh: marks.fresh }}
+            onClose={() => setRecapKey(null)} /></Suspense>
+        ) : null}
+        {/* v30 (Доп. 318): «Свеча на двоих» */}
+        {pairOpen && profile ? (
+          <Suspense fallback={null}><PairSheet a11y={a11y} profile={profile} onChange={setPairInfo} onClose={() => { setPairOpen(false); refreshPair(true); }}
+            onGo={(d) => { setPairOpen(false); if (d === "warmup" && warmSits.length >= 2) openWarmup(); else navigate("home"); }} /></Suspense>
+        ) : null}
+        {/* v30 (Доп. 312): «Живой гость» */}
+        {guestOpen && profile ? (
+          <Suspense fallback={null}><LiveGuestScreen a11y={a11y} profile={profile} role={role} uk={ukP} color={TRACK_COLOR[role] || "#C8A96E"}
+            track={programModules} modules={[...programModules, ...Object.values(MODULES).flat()]} mistakeBank={mistakeBank}
+            onMistakes={addMistakes} onActivity={logActivity} onTouch={touchStreak}
+            onOpenLesson={(id) => { setGuestOpen(false); assistantNavigate({ lesson: id }, true); }}
+            onClose={() => setGuestOpen(false)} /></Suspense>
+        ) : null}
+        {/* Доп. 305: чек недели */}
+        {weekOpen && tbMod && tbMod.WeekReceipt ? (
+          <tbMod.WeekReceipt a11y={a11y} profile={profile} streak={streak} goal={goal} shareUrl={APP_SHARE_URL} quests={questDays(ukP)}
+            summary={weekOpen === "prev" ? prevWeek : weekSummary(activity, streak)} prev={weekOpen === "prev"}
+            onClose={() => setWeekOpen(null)} />
+        ) : null}
+        {/* Доп. 304: напоминания в Telegram */}
+        {remindOpen ? <RemindSheet a11y={a11y} uk={ukP} lead={isLead} shift={shiftText} onChange={setTgRemind} onClose={() => setRemindOpen(false)} /> : null}
+        {/* Доп. 302: «Разобрать с Наставником» — чат поверх ситуации (выше слоёв «у стола») */}
+        {mentorAsk != null ? (
+          <Suspense fallback={null}><AssistantScreen T={T} a11y={a11y} profile={profile} learner={assistantLearner()}
+            initialAsk={mentorAsk} z={1100} onBack={() => setMentorAsk(null)}
+            onNavigate={(dest) => {
+              // v30 (ревью): переход из ответа Наставника закрывает и новые слои — иначе урок
+              // открывался бы под столом «Освежить»/«Раунда мастера», живым гостем или радио
+              setMentorAsk(null); setWarmupOpen(false); setWeekOpen(null);
+              setSpecial(null); setGuestOpen(false); setRadioList(null); setRecapKey(null); setPairOpen(false);
+              assistantNavigate(dest, true);
+            }} /></Suspense>
+        ) : null}
+        {/* Доп. 288: вспышка — порталом в body, поверх слоёв урока «у стола» (z-index 1000) */}
+        {celebrate ? createPortal(
           <div className="sa-celeb">
             <div className="c-core">
               {[[-96,-74],[92,-80],[-120,18],[118,26],[-58,-108],[64,96],[0,-118],[-10,104]].map(([dx, dy], i) => (
@@ -1445,8 +2219,7 @@ function ServiceAcademy() {
               ))}
               <span style={{ color:"#D2A85A" }}>✦</span> {celebrate}
             </div>
-          </div>
-        ) : null}
+          </div>, document.body) : null}
         <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
         {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
         {/* ── Книга отзывов ── */}
@@ -1462,6 +2235,8 @@ function ServiceAcademy() {
               setCompleted(nc);
               try { localStorage.setItem("sa_completed"+uk, JSON.stringify(nc)); } catch(e) {}
             }
+            // Доп. 310: доведённый до конца диалог с гостем недели — занятие (свеча, цель, чек недели)
+            if (finished === true) { touchStreak(); logActivity("dialogue"); }
           } catch(e) {}
           // Доп. 158: успех — показать печать в Книге, но диалог из истории убрать (иначе Книга ↔ диалог по кругу);
           // вышел без финала — просто назад, откуда пришёл
@@ -1475,8 +2250,10 @@ function ServiceAcademy() {
         {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => navigate(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
         {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
         {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "contentEditor" && <ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} />}
+        {screen === "report" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={customLessons} startSelf={reportSelf}
+          onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
+        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></div>}
+        {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} a11y={a11y} profile={profile} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
@@ -1540,7 +2317,7 @@ function ServiceAcademy() {
               setCompletedRoles(new Set());
               setRole(null);
               try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); localStorage.removeItem("sa_last_role"); } catch(e) {}
-              try { localStorage.removeItem("sa_quiz_done"); } catch(e) {}
+              try { localStorage.removeItem("sa_quiz_done"); localStorage.removeItem("sa_quiz_done" + `_${name}_${surname||""}`); } catch(e) {}
               try { localStorage.removeItem("sa_scores"); } catch(e) {}
               try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
             }
@@ -1566,7 +2343,7 @@ function ServiceAcademy() {
               }
               if (profile && profile.name === name && (profile.surname || "") === (surname || "")) {
                 setQuizDone({});
-                try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
+                try { localStorage.removeItem("sa_quiz_done"); localStorage.removeItem("sa_quiz_done" + `_${name}_${surname || ""}`); } catch (e) {}
               }
               const n = res && typeof res.rows === "number" ? ` (снято отметок: ${res.rows})` : "";
               say(`Тесты для ${name} ${surname} разблокированы${n}`);
@@ -1575,16 +2352,41 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")} /></div>}
+        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
+          dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey} /> : null}
+          dayNote={profile && pairLine ? (
+            /* v30 (Доп. 318): напарник уже занимался сегодня — твоя очередь; v31 — своей строкой */
+            <div role="button" tabIndex={0} className="sa-pairline" onClick={() => { vibrate("light"); if (pairLine.warm && warmSits.length >= 2) openWarmup(); else setPairOpen(true); }}
+              {...onActivate(() => { if (pairLine.warm && warmSits.length >= 2) openWarmup(); else setPairOpen(true); })}
+              style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 4px 9px", padding: "7px 11px", borderRadius: 12, fontSize: 12.5, cursor: "pointer",
+                color: a11y ? "#6B4E1A" : "#D9B87C", border: `1px solid ${a11y ? "rgba(139,106,48,0.32)" : "rgba(214,178,102,0.28)"}`, background: a11y ? "rgba(255,250,238,0.5)" : "rgba(214,178,102,0.06)" }}>
+              <Candle s={16} lit /><span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
+          warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
+            {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
+              style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
+          </WarmupCard> : null} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></div>}
+        {screen === "league" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} onBack={() => goBack("teamHub")} /></Suspense></div>}
+        {/* v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека */}
+        {screen === "cellar" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CellarScreen T={T} a11y={a11y} modules={programModules} completed={completed} quizDone={quizDone} marks={marks}
+          tried={(id) => creditTriedToday(ukP, id, todayKey)} onBack={() => goBack("me")} onOpenTopic={(m) => { setActiveModule(m); navigate("module"); }}
+          onRefresh={(m) => openTopicRun("refresh", m)} onGold={(m) => openTopicRun("gold", m)} onCredit={(m) => openTopicRun("credit", m)}
+          onFreshAll={openFreshAll} onProbe={openProbe} probeCount={probeMods.length} /></Suspense></div>}
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
         {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня"
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
-          hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<ShiftHero a11y={a11y} onOpen={() => navigate("schedule")} />} items={[
+          hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} onOpen={() => navigate("schedule")} />
+            {/* v30 (Доп. 314): квест смены и твоя часть */}
+            <Suspense fallback={null}><QuestCard a11y={a11y} tasks={questTasks} todayRec={activity[todayKey] || {}} tick={questTick} lead={isLead} shift={shiftText}
+              data={briefStatus === "ok" ? (brief && brief.quest) || { ok: false } : briefStatus === "pending" ? null : undefined} onReload={() => refreshDay(true)}
+              onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
           { key:"sch", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
           { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
           { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
+          { key:"remind", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено — за час до смены зовёт на разминку" : "За час до смены — разминка в 2 минуты", onClick:() => setRemindOpen(true) },
+          { key:"lg", icon:"guestai", label:"Живой гость", sub:"Разговор с гостем-ИИ из твоего меню · чек разбора", onClick: openGuest },   // v30: Доп. 312
+          { key:"rd", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков — слушать по пути на смену", onClick: openRadio },   // Доп. 319
           { key:"wg", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest") },
           role === "seasonal" && { key:"ob", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },
         ]} /></div>}
@@ -1594,10 +2396,12 @@ function ServiceAcademy() {
           return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" hintKey={hintKey("team", staff)}
             hintSteps={hintsFor(hintKey("team", staff))} subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />} items={[
             { key:"lb", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
-            { key:"mt", icon:"mentor", label:"Наставничество", sub:"Допуски и подтверждение навыков", onClick:() => navigate("mentor") },
+            { key:"lg", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника · заведение, сеть и кубок", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
+            { key:"mt", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },
             role !== "seasonal" && { key:"ob", icon:"onboarding", label:"Новички", sub:"План первой недели и прогресс новых сотрудников", onClick:() => navigate("onboarding") },
             { key:"mis", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
             staff && { key:"an", icon:"analytics", label:"Аналитика", sub:"Сводка по команде и резервная копия", onClick:() => navigate("analytics") },
+            staff && { key:"rep", icon:"report", label:"Отчёты по сотрудникам", sub:"Где ошибается, что не пройдено · Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
             profile?.is_admin && { key:"tm", icon:"team", label:"Сотрудники", sub:"Карточки, коды, роли", onClick:() => navigate("team") },
             staff && { key:"hire", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
             staff && { key:"ce", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
@@ -1608,6 +2412,11 @@ function ServiceAcademy() {
           else if (dest === "reference") { setRefStart(null); navigate("reference"); }
           else if (dest === "cocktails") { setRefStart(null); setCkStart(null); navigate("cocktails"); }
           else if (dest === "guestbook") { setBookFocus(null); navigate("guestbook"); }
+          else if (dest === "report" || dest === "myreport") { setReportSelf(dest === "myreport"); navigate("report"); }   // Доп. 309
+          else if (dest === "guest") openGuest();   // v30
+          else if (dest === "radio") openRadio();
+          else if (dest === "month") openRecap();
+          else if (dest === "pair") setPairOpen(true);
           else navigate(dest);
         }} /></Suspense>}
         {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y}
@@ -1615,10 +2424,31 @@ function ServiceAcademy() {
           hintSteps={hintsFor("me")}
           title={profile.name} subtitle={profile.restaurant || "Service Academy"}
           hero={<MeHero a11y={a11y} streak={streak} roleLabel={ROLES.find(r => r.id === role)?.label} total={totalLessons}
-            done={modules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}
+            done={programModules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}
             onOpen={() => navigate("stats")} />} items={[
           { key:"guide", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
           { key:"st", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
+          // Доп. 306: по понедельникам — чек прошлой недели (с главной сюда, чтобы главная была лёгкой)
+          weekCardShow
+            ? { key:"week", icon:"receipt", label:"Чек недели", sub:`Прошлая неделя: в деле ${prevWeek.activeDays} из 7 — можно отправить команде`, badge:"новый", onClick:() => openWeek("prev") }
+            : { key:"week", icon:"receipt", label:"Чек недели", sub:"Что сделано за 7 дней — можно отправить команде", onClick:() => openWeek("last7") },
+          // v30 (Доп. 320): итоги месяца; первые три дня месяца — итоги прошлого с отметкой «новые»
+          (() => {
+            const seenR = (() => { try { return localStorage.getItem("sa_recap_seen" + ukP) || ""; } catch (e) { return ""; } })();
+            const rc = monthRecap({ act: activity, streak, month: recapWhich.key });
+            const fresh = recapWhich.prev && seenR !== recapWhich.key;
+            return { key:"month", icon:"month", label:"Итоги месяца", sub: (recapWhich.prev ? "Итоги: " : "") + MONTH[rc.month - 1] + (recapWhich.prev ? "" : " пока") + ": " + rc.active + " " + pl3(rc.active, "день", "дня", "дней") + " в деле — карточки и «поделиться»",
+              badge: fresh ? "новые" : null, onClick:() => openRecap(recapWhich.key) };
+          })(),
+          // v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека
+          { key:"cellar", icon:"cellar", label:"Погреб тем", sub: (() => { const g = Object.keys(marks.gold || {}).length; const f = fadedIds.size; return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? " · золотых " + g : "") + " · освежить, раунд мастера, зачёт"; })(),
+            badge: fadedIds.size >= 3 ? String(fadedIds.size) : null, onClick:() => navigate("cellar") },
+          { key:"myrep", icon:"report", label:"Мой отчёт", sub:"Что пройдено, где ошибаюсь, что повторить — PDF", onClick:() => { setReportSelf(true); navigate("report"); } },
+          // v30 (Доп. 318): свеча на двоих
+          { key:"pair", icon:"pair", label:"Свеча на двоих",
+            sub: pairInfo && pairInfo.pair ? "С " + ((pairInfo.pair.partner && pairInfo.pair.partner.name) || "напарником") + " · " + pairInfo.pair.streak + " " + pl3(pairInfo.pair.streak, "день", "дня", "дней") + " вместе"
+              : pairInfo && pairInfo.invites && pairInfo.invites.length ? "Тебя зовут в пару — ответь" : "Общая серия с напарником или наставником",
+            badge: pairInfo && pairInfo.invites && pairInfo.invites.length ? String(pairInfo.invites.length) : null, onClick:() => { vibrate("light"); setPairOpen(true); } },
           CERTIFICATES_ENABLED && { key:"cert", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },
           { key:"acc", icon:"profile", label:"Аккаунт и настройки", sub:"Тренировочная карточка, крупный шрифт, выход", onClick:() => navigate("profile") },
           { key:"roles", icon:"roles", label:"Мои роли", sub:"Сменить трек или открыть новый", onClick:() => navigate("roleSelect") },
@@ -1630,7 +2460,12 @@ function ServiceAcademy() {
         {screen === "barPrint" && <Suspense fallback={<ScreenLoader T={T} />}><BarCardPrint T={T} a11y={a11y} profile={profile} onBack={() => goBack("cocktails")} /></Suspense>}
         {screen === "home" && !MODULES[role] && <ScreenLoader T={T} />}
         {/* Экран трека — когда модули роли приехали (правка 163): при первом входе с нового устройства и на медленной сети он открывался раньше и падал */}
-        {screen === "home" && MODULES[role] && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} /></div>}
+        {/* Доп. 307: трек и раздел — один экран: меню темы, темы листаются свайпом. Раздел из чужой
+            роли (открыт через Наставника) — прежним отдельным экраном ниже */}
+        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
+          focusId={activeModule ? activeModule.id : null} pagerOnly={screen === "module"} onPage={setActiveModule}
+          onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
+          nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
         {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
@@ -1651,106 +2486,10 @@ function ServiceAcademy() {
           </div>
         )}
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile}
-          learner={{ position: profile?.position, roleTitle: (ROLES.find(r => r.id === role) || {}).title,
-            customLessons: (customModules || []).flatMap(m => m.lessons.filter(l => l.type === "lesson").map(l => ({ id: l.id, title: l.title, section: m.title }))),
-            done: doneCount, total: totalLessons, dueMistakes,
-            topics: mistakeBank.filter(m => !m.due || m.due <= Date.now()).slice(0, 3).map(m => m.lessonTitle).filter(Boolean),
-            todayShift: (() => { try {
-              const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
-              const t = new Date();
-              const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
-              return (r && r.date === key && r.label) ? r.label : null;
-            } catch (e) { return null; } })() }} onBack={() => goBack()} onNavigate={(dest) => {
-          // Карточка блюда в ответе → Колода меню на этом блюде (Доп. 170)
-          if (dest && typeof dest === "object" && dest.dish) {
-            setMenuStart(dest.dish);
-            setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
-            setScreen("menuTrainer");
-            return;
-          }
-          // Карточка коктейля в ответе → колода на этом коктейле (Доп. 130)
-          if (dest && typeof dest === "object" && dest.cocktail) {
-            setCkStart(dest.cocktail);
-            setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
-            setScreen("cocktails");
-            return;
-          }
-          // Переход на урок по id: [[lesson:ID]]
-          if (dest && typeof dest === "object" && dest.lesson) {
-            // Роли, доступные сотруднику: его текущая + все пройденные.
-            // Вариант В: урок закрытой роли не открываем, мягко сообщаем.
-            const myRoles = new Set([role, ...completedRoles]);
-            // спг/сезонник — базовый уровень, всегда доступен как основа
-            const roleOfLesson = (lid) => roleOfLessonId(lid); // Доп. 132: по индексу, без ожидания загрузки
-            const lessonRole = roleOfLesson(dest.lesson);
-            const inCustom = (customModules || []).some(m => (m.lessons || []).some(x => x.id === dest.lesson));
-            // FAIL-SAFE: блокируем ТОЛЬКО когда роль урока определена ОДНОЗНАЧНО и она
-            // среди закрытых. Любая неясность (роль не найдена, урок в custom, я админ) →
-            // урок ОТКРЫВАЕТСЯ. Лучше пропустить, чем случайно заблокировать доступное.
-            const iamAdmin = !!profile?.is_admin;
-            const knownRole = lessonRole && ["seasonal","core","manager","service_manager","spg","bar"].includes(lessonRole);
-            const blocked = !iamAdmin && knownRole && !myRoles.has(lessonRole) && !inCustom;
-
-            if (blocked) {
-              setLessonLockMsg("Этот урок из трека, который откроется позже — когда дойдёшь до него по программе. Спрашивай меня по теме сколько угодно, а систематически изучишь его на своём уровне 😊");
-              return;
-            }
-
-            (lessonRole ? loadRoleModules(lessonRole).catch(() => {}) : Promise.resolve()).then(() => {
-              const everyMod = [...Object.values(MODULES).flat(), ...(customModules || [])];
-              let foundMod = null, foundLesson = null;
-              for (const m of everyMod) {
-                const l = (m.lessons || []).find(x => x.id === dest.lesson);
-                if (l) { foundMod = m; foundLesson = l; break; }
-              }
-              if (foundLesson) {
-                setPrevScreen("roleSelect"); setActiveModule(foundMod); openLesson(foundLesson);
-              } else {
-                setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect");
-                setScreen("roleSelect");
-              }
-            });
-            return;
-          }
-          // Переход в раздел: [[go:key]]
-          // Ключ кнопки ассистента → экран (правка 153: ключи в нижнем регистре, новые
-          // разделы, stats = «Мой прогресс», analytics = «Аналитика»)
-          const GO = { sos: "sos", glossary: "glossary", leaderboard: "leaderboard", profile: "profile", daily: "daily",
-            checklist: "checklist", reference: "reference", stats: "stats", guestbook: "guestbook", mentor: "mentor",
-            menu: "menuTrainer", cocktails: "cocktails", barlab: "barLab", schedule: "schedule", mistakes: "mistakes",
-            certificates: "certificates", guide: "guide", onboarding: "onboarding", weeklyguest: "weeklyGuest",
-            shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team" };
-          const boss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
-          const k = String(dest || "").toLowerCase();
-          if (!GO[k]) return;
-          if ((k === "analytics" || k === "candidate") && !boss) return;   // разделы руководителей
-          if (k === "staff" && !profile?.is_admin) return;
-          setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(GO[k]);
-        }} /></Suspense>}
-        {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} /></Suspense></div>}
-        {screen === "module" && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}
-          next={(() => {
-            // «Дальше» внизу своего раздела — сначала непройденный шаг этого раздела (правка 163);
-            // раньше вела по штатной программе даже внутри незаконченного своего раздела
-            if (activeModule && activeModule.custom) {
-              const l = (activeModule.lessons || []).find(x => x.type !== "result" && !(x.type === "quiz" ? quizDone[x.id] : completed[x.id]));
-              if (l) return { mod: activeModule, lesson: l };
-            }
-            return nextLessonOf(programModules, completed, quizDone);   // штатная пройдена — дальше свои разделы
-          })()}
-          onNext={(n) => { if (!n) return; if (n.mod && n.mod.id !== activeModule?.id) setActiveModule(n.mod); openLesson(n.lesson); }}
-          finish={(() => {
-            // Доп. 197: конец роли — экзамен ступени → сертификат → следующая ступень трека → другие треки
-            const passed = !!(examResults[role] && examResults[role].passed);
-            const group = TRACK_GROUPS.find(g => g.members.includes(role));
-            const nextRoleId = group ? group.members[group.members.indexOf(role) + 1] : null;
-            const nextRole = nextRoleId ? ROLES.find(r => r.id === nextRoleId) : null;
-            if (!passed) return { eyebrow: "Все уроки пройдены ✦", title: "Экзамен ступени", sub: "«Слепой» тест без подсказок — как у гостя нет второй попытки на первое впечатление. Сдал — сертификат и печать в Книге.", cta: "Сдать ›", onGo: () => openExam(role) };
-            if (nextRole) return { eyebrow: "Экзамен сдан ✦", title: `Следующая ступень: ${nextRole.label}`, sub: nextRole.desc || nextRole.sublabel || "Трек продолжается — новые модули уже ждут", cta: "Перейти ›", onGo: () => { selectRole(nextRole.id); commitStack([]); }, // selectRole сам открывает программу новой роли
-              secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
-            return { eyebrow: "Экзамен сдан ✦", title: "Трек пройден до конца", sub: "Можно открыть новый трек — или держать форму: «Задание дня» и «Гость недели» во вкладке «Смена».", cta: "Другие треки ›", onGo: () => navigate("roleSelect"),
-              secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
-          })()} /></div>}
+          learner={assistantLearner()} onBack={() => goBack()} onNavigate={(dest) => assistantNavigate(dest, false)} /></Suspense>}
+        {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} onInbox={setHallInbox} extraSkills={customSkills} /></Suspense></div>}
+        {screen === "module" && !(inPages(activeModule) && MODULES[role]) && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}
+          next={moduleNextFor(activeModule)} onNext={moduleOnNext} finish={moduleFinishFor()} /></div>}
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
         {screen === "lesson" && activeLesson?.type === "dialogue" && createPortal(
@@ -1762,7 +2501,11 @@ function ServiceAcademy() {
               T={T} color={activeModule?.color} onClose={completeLesson} onResult={recordBuildResult} />
           </Suspense>
         , document.body)}
-        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => { if (activeLesson?.type === "quiz" && profile) { try { const sk = loopExit(loopUk, activeLesson.id); if (sk) logSkip(activeLesson.id, sk); } catch (e) {} } navigate("module"); }} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T} />}
+        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => { if (activeLesson?.type === "quiz" && profile) { try { const sk = loopExit(loopUk, activeLesson.id); if (sk) logSkip(activeLesson.id, sk); } catch (e) {} } goBack("module"); /* Доп. 306: туда, откуда пришёл */ }} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T}
+          mod={activeModule} profile={profile} streak={streak} mistakeBank={mistakeBank} onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake}
+          wasCompleted={!!(activeLesson && completed[activeLesson.id])}
+          modules={programModules} mentorName={mentorName} goal={{ steps: todaySteps, goal }} onAskMentor={askMentor} onActivity={logActivity}
+          onContents={activeModule ? () => navigate("module") : undefined} />}
         {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
         {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
@@ -1809,7 +2552,7 @@ function ServiceAcademy() {
 
         {/* Плавающий AI-ассистент — главный вход во флагманскую фичу */}
         {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"].includes(screen) && profile && !welcome && !mistakeHint && (
-          <AiFab a11y={a11y} onClick={() => navigate("assistant")} />
+          <AiFab a11y={a11y} screen={screen} onClick={() => navigate("assistant")} />
         )}
 
         {/* Нижняя навигация — только на основных экранах */}

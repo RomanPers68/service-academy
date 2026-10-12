@@ -75,7 +75,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {} }) {
+export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
@@ -157,6 +157,11 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           );
         })()}
 
+        {/* Доп. 298, 306: ритм дня — свеча серии и стакан «цель дня» (из App). Есть трек —
+            значки стоят в строке роли над главной карточкой; трека нет — здесь */}
+        {!role ? dayStrip : null}
+        {!role ? dayNote : null}
+
         {/* ═══ Карточка «Твой трек»: урок → ошибки → гость недели ═══ */}
         {role && onContinueLesson && (() => {
           const roleObj = ROLES.find(r => r.id === role);
@@ -214,8 +219,11 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                     <span style={{ fontSize:11, color:T.modSub.color, minWidth:0, overflow:"hidden",
                       textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{roleObj.sublabel}</span>
                   ) : null}
+                  {dayStrip ? <span style={{ marginLeft:"auto", display:"inline-flex", flexShrink:0 }}>{dayStrip}</span> : null}
                 </div>
-              ) : null}
+              ) : dayStrip}
+              {/* v31: строка напарника — отдельной строкой под чипами (раньше уезжала за край экрана) */}
+              {dayNote}
               <div ref={refTrack} onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
                 // Тот же «морозный лёд», но ярче остальных карточек: это
                 // единственное действие, ради которого экран открывают.
@@ -270,10 +278,15 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                     {cta.charAt(0) + cta.slice(1).toLowerCase()}
                   </div>
                 </div>
+                {/* Доп. 306: в день смены — нижняя строка этой же карточки «разминка 2 мин» (из App) */}
+                {warmupCard ? <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>{warmupCard}</div> : null}
               </div>
             </div>
           );
         })()}
+
+        {/* Доп. 305: «Чек недели» (если App передаст карточку; сейчас он во вкладке «Я») */}
+        {weekCard}
 
         {/* Пульс недели: владельцу — командная сводка одним взглядом */}
         {profile?.is_admin && scores.length > 0 && (() => {

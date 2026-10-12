@@ -1,18 +1,16 @@
 // Ежедневное задание справочника — вынесено из ReferenceSection, чтобы
 // главный экран не тянул за собой весь справочник с иллюстрациями.
-import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
+// Лёгкий старт: теперь и сам текст справочника на старте не нужен — «глава дня»
+// выбирается по индексу глав (data/reference-index.js, ~5 КБ вместо ~190 КБ).
+// Индекс собирает scripts/gen-reference-index.mjs, тест сверяет его со справочником.
+import { REFERENCE_DAILY_INDEX } from "../data/reference-index";
 
-// Курс главы (правка 169): раньше в «Заданиях дня» у любой главы было «Курс: Сервировка»
-const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE];
-const withCourse = (l) => {
-  if (!l) return l;
-  const c = REF_COURSES.find(c => (c.lessons || []).some(x => x.id === l.id));
-  return { ...l, course: (c && (c.title || c.name)) || "Справочник" };
-};
+// Курс главы (правка 169) хранится в индексе: раньше у любой главы было «Курс: Сервировка»
+const withCourse = (l) => (l ? { ...l, course: l.course || "Справочник" } : l);
 
 export function referenceDailyTask(seed, mistakeTopics) {
   // Глава руководителей в «главу дня» не попадает: пул общий для всех ролей
-  const ls = [...REFERENCE_COURSE.lessons, ...REFERENCE_WINE_COURSE.lessons, ...REFERENCE_COFFEE_COURSE.lessons, ...REFERENCE_BAR_COURSE.lessons, ...REFERENCE_APP_COURSE.lessons.filter(l => !l.leaderOnly)];
+  const ls = REFERENCE_DAILY_INDEX.filter(l => !l.leaderOnly);
   // Прицел в слабые места: если в банке ошибок есть темы — глава дня
   // выбирается по пересечению слов с их названиями (детерминированно).
   // Нет совпадений или ошибок — прежняя ротация по кругу.

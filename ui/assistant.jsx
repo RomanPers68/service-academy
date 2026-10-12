@@ -121,12 +121,23 @@ const ERRORS = {
   server: "Что-то пошло не так на сервере. Попробуй ещё раз.",
 };
 
-export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner }) {
+export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner, initialAsk = "", z = 300 }) {
   const [aHint, aHintDone] = useHintOnce("mentor");
   const [aStep, setAStep] = React.useState(0);
   const aSteps = hintsFor("mentor");
   const uid = String(profile?.id || "anon");
-  const [store, setStore] = React.useState(() => loadStore(uid));
+  // Доп. 302: «Разобрать с Наставником» из ситуации — вопрос уходит сразу, в новом чате
+  // (текущий разговор не перемешивается с разбором; пустой чат используем как есть)
+  const [store, setStore] = React.useState(() => {
+    const st = loadStore(uid);
+    if (!initialAsk) return st;
+    const cur = st.sessions.find(s => s.id === st.activeId) || st.sessions[0];
+    if (cur && !(cur.msgs || []).length) return st;
+    const s = freshSession();
+    const next = { activeId: s.id, sessions: [s, ...st.sessions].slice(0, MAX_CHATS) };
+    saveStore(uid, next);
+    return next;
+  });
   const active = store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
   const msgs = active.msgs;
   const [showChats, setShowChats] = React.useState(false);
@@ -268,6 +279,13 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
       .finally(() => setSending(false));
   }, [input, msgs, sending, uid, updMsgs]);
 
+  const askedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!initialAsk || askedRef.current) return;
+    askedRef.current = true;
+    send(initialAsk);
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
   const clearChat = () => {
     vibrate("light");
     updMsgs([]);
@@ -315,11 +333,17 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
     certificates: "Сертификаты", guide: "Гид по приложению", onboarding: "Первая неделя", profile: "Аккаунт",
     mentor: "Наставничество", shift: "Вкладка «Смена»", team: "Вкладка «Команда»", me: "Вкладка «Я»",
     cocktails: "Открыть колоду", barlab: "Сборка руками",
-    analytics: "Аналитика", candidate: "Собеседование", staff: "Сотрудники",
+    // Доп. 310: разделы v28–v29
+    track: "Мой трек", warmup: "Разминка", week: "Чек недели", remind: "Напоминания в Telegram", myreport: "Мой отчёт",
+    // v30
+    guest: "Живой гость", radio: "Радио в дорогу", quest: "Квест смены", league: "Лига недели", pair: "Свеча на двоих", month: "Итоги месяца",
+    // v31
+    cellar: "Погреб тем", freshall: "Освежить выдохшееся", probe: "Проверка по треку",
+    analytics: "Аналитика", report: "Отчёты по сотрудникам", candidate: "Собеседование", staff: "Сотрудники",
   };
   // Разделы руководителей: сотруднику кнопку не показываем, даже если модель ошиблась
   const isBoss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
-  const BOSS_ONLY = { analytics: isBoss, candidate: isBoss, staff: !!profile?.is_admin };
+  const BOSS_ONLY = { analytics: isBoss, report: isBoss, candidate: isBoss, staff: !!profile?.is_admin };
   // Дополнение 130: карточки с картинкой в ответе. Модель ставит [[cocktail:ID]] /
   // [[dish:ID]] (id даны ей в контексте); если забыла — ищем в тексте ответа
   // точные названия коктейлей и блюд своего ресторана. Не больше двух карточек.
@@ -404,7 +428,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner 
 
   return createPortal(
     <div className="sa-screen sa-dlg"
-      style={{ ...T.screen, position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
+      style={{ ...T.screen, position: "fixed", inset: 0, zIndex: z, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
         transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
         // Сплошной фон — ровно как у основы приложения (слой #sa-scene, App.jsx). Без фона
         // экран чата, лежащий поверх приложения, становился прозрачным: сквозь него была видна

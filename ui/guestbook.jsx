@@ -5,6 +5,7 @@
 // оставляет плохих страниц — «гость просто ушёл без отзыва и вернётся».
 
 import React from "react";
+import { readGold } from "../lib/marks";
 import { hintsFor } from "../data/hints";
 import { GOLD, goldText } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -48,12 +49,13 @@ const markRead = (key) => { try { const r = loadRead(); if (!r.includes(key)) lo
 
 
 // ── Сборка страниц одной роли ──
-function buildRolePages(roleId, completed, quizDone, examResults, dates) {
+function buildRolePages(roleId, completed, quizDone, examResults, dates, gold = {}) {
   const pages = [];
   for (const m of (BM()[roleId] || [])) {
     const rv = reviewOf(m);
     if (!rv) continue;
-    if (moduleDone(m, completed, quizDone)) pages.push({ kind: "earned", key: m.id, ...rv, source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, date: dates[m.id] ? ruDate(dates[m.id]) : "" });
+    // v30 (Доп. 316): золотая тема — на странице её отзыва золотая печать
+    if (moduleDone(m, completed, quizDone)) pages.push({ kind: "earned", key: m.id, ...rv, gold: !!(gold && gold[m.id]), source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, date: dates[m.id] ? ruDate(dates[m.id]) : "" });
     else pages.push({ kind: "locked", key: m.id, source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, hint: `Пройди «${m.title}» — и этот разворот займёт гость, для которого ты это сделаешь по-настоящему.` });
   }
   const lg = LEGEND_REVIEWS[roleId];
@@ -74,6 +76,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const [idx, setIdx] = React.useState(0);
   const [dir, setDir] = React.useState("r");
   const [readList, setReadList] = React.useState(loadRead); // прочитанные страницы (живое состояние для подсветки)
+  const gold = React.useMemo(() => readGold(profile ? `_${profile.name}_${profile.surname || ""}` : ""), [profile]);
 
   // Открытие по уведомлению: листаем к заработанной странице
   React.useEffect(() => {
@@ -137,8 +140,8 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
         : [{ kind: "challenge", key: wid }];
     }
     if (tab === "builds") return [{ kind: "builds", key: "builds_page" }];
-    return buildRolePages(tab, completed, quizDone, examResults, dates);
-  }, [tab, completed, quizDone, examResults, dates, wid]);
+    return buildRolePages(tab, completed, quizDone, examResults, dates, gold);
+  }, [tab, completed, quizDone, examResults, dates, wid, gold]);
 
   // Страница считается прочитанной только когда реально показана на экране
   React.useEffect(() => {
@@ -322,6 +325,14 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                 <div style={{ ...SCRIPT, color: BROWN, fontSize: 21, textAlign: "right", marginTop: 6 }}>— {page.guest}</div>
                 <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                   <div style={{ ...MONO, color: "#7A654C", fontSize: 9, letterSpacing: 1.5, border: "1px solid rgba(122,101,72,.35)", borderRadius: 9, padding: "5px 10px", transform: "rotate(-2deg)" }}>✓ {page.source}</div>
+                  {page.kind === "earned" && page.gold ? (
+                    <div className="gb-seal" aria-label="Золотая тема" style={{ width: 54, height: 54, borderRadius: "50%", flexShrink: 0, background: "radial-gradient(circle at 34% 30%, #F6DD8C, #C99A2E 60%, #7A5612)", boxShadow: "0 4px 10px rgba(122,86,18,.45), inset 0 2px 4px rgba(255,255,255,.35), inset 0 -3px 6px rgba(0,0,0,.3)", display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-10deg)" }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(255,245,210,.55)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                        <span style={{ fontSize: 12.5, color: "#3B2A08" }}>✦</span>
+                        <span style={{ ...MONO, color: "#3B2A08", fontSize: 8.5, letterSpacing: 1 }}>ЗОЛОТО</span>
+                      </div>
+                    </div>
+                  ) : null}
                   {page.kind === "legend" && (
                     <div className="gb-seal" style={{ width: 58, height: 58, borderRadius: "50%", flexShrink: 0, background: `radial-gradient(circle at 34% 30%, #B0492F, ${WAX} 62%, #5E1F12)`, boxShadow: "0 4px 10px rgba(94,31,18,.45), inset 0 2px 4px rgba(255,255,255,.22), inset 0 -3px 6px rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <div style={{ width: 43, height: 43, borderRadius: "50%", border: "1px solid rgba(255,220,190,.4)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>

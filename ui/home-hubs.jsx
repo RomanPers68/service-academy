@@ -1,4 +1,8 @@
 import React from "react";
+import { shiftLabel } from "../lib/streak";
+import { Candle } from "./table-bits";
+import { ensureTableCss } from "./table-css";
+import { ymd } from "../lib/streak";
 import { EmptyState, useHintOnce, HintBubble } from "./widgets";
 import { LOGO_SRC_DARK } from "../assets/logo";
 import { onActivate, vibrate } from "../lib/utils";
@@ -27,6 +31,19 @@ const ICON = {
   cert: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 12.8L8 22l4-2.2L16 22l-1-9.2"/></svg>,
   roles: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg>,
   mistakes: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>,
+  // Доп. 304–305: чек недели и напоминание о смене
+  receipt: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21V3z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>,
+  // Доп. 309: отчёт по сотруднику — лист с графиком
+  report: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h7l4 4v14H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9.5 17v-3M12.5 17v-5M15.5 17v-2"/></svg>,
+  bell: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>,
+  // v30: лига недели (кубок со звездой) и свеча на двоих (две свечи)
+  league: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0V4z"/><path d="M12 13v4M8.5 21h7M9.5 17h5"/><path d="M12 5.6l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.6.8.3-1.7-1.2-1.2 1.7-.2z"/></svg>,
+  pair: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 21v-8h4v8M14 21v-8h4v8"/><path d="M8 10.5c-1.2-1-1.2-2.6 0-4 .3 1 1 1.2 1 1.2.1-1.5.8-2.5 1.2-3 .4 2 .9 3.2-.2 4.8"/><path d="M16 10.5c-1.2-1-1.2-2.6 0-4 .3 1 1 1.2 1 1.2.1-1.5.8-2.5 1.2-3 .4 2 .9 3.2-.2 4.8"/><path d="M4 21h16"/></svg>,
+  guestai: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/><path d="M18.5 3.5l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5z"/></svg>,
+  radio: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="9" width="18" height="12" rx="3"/><path d="M7 9l10-5"/><circle cx="15.5" cy="15" r="2.5"/><path d="M6.5 13.5h3M6.5 16.5h3"/></svg>,
+  month: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"/></svg>,
+  // v31: «Погреб тем» — бокал с уровнем вина
+  cellar: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12c0 6-2 11-6 13-4-2-6-7-6-13z"/><path d="M7 8.5h10"/><path d="M12 16v5M8.5 21h7"/></svg>,
 };
 
 export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps }) {
@@ -110,11 +127,14 @@ const DAYS = ["воскресенье", "понедельник", "вторни�
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 
 /** «Смена»: сегодняшняя смена из офлайн-сводки графика (sa_today_shift). */
-export function ShiftHero({ a11y, onOpen }) {
+export function ShiftHero({ a11y, onOpen, shift = null }) {
   const t = new Date();
   const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
   let label = null;
   try { const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null"); if (r && r.date === key && r.label) label = r.label; } catch (e) {}
+  // v31: сводки экрана графика нет — берём ту же смену, что видят квест и разминка (своя копия
+  // графика). Раньше здесь было «Сегодня смен нет», а квест ниже показывал «Вечер · 16:00–24:00»
+  if (!label && shift) label = shift.off ? "выходной" : (shift.label || shiftLabel(shift) || null);
   const off = label === "выходной";
   const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const go = () => { vibrate("light"); onOpen && onOpen(); };
@@ -152,6 +172,9 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
   const pool = mine ? leaderboard.filter(p => p.restaurant === mine) : leaderboard;
   const top = pool.slice(0, 3);
   const me = pool.findIndex(p => p.name === profile?.name && (p.surname || "") === (profile?.surname || ""));
+  // Доп. 311: и место во всей сети — когда заведений больше одного
+  const nets = new Set(leaderboard.map(p => p.restaurant || "")).size;
+  const meNet = mine && nets > 1 ? leaderboard.findIndex(p => p.name === profile?.name && (p.surname || "") === (profile?.surname || "")) : -1;
   const go = () => { vibrate("light"); onOpen && onOpen(); };
   if (!top.length) return (
     <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
@@ -165,7 +188,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
     <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <div style={tagStyle(a11y)}>ЛИДЕРЫ РЕСТОРАНА</div>
-        {me >= 0 && <div style={{ fontSize: 11, color: sub }}>ты — <span style={{ color: gold }}>{me + 1}-й</span></div>}
+        {me >= 0 && <div style={{ fontSize: 11, color: sub }}>ты — <span style={{ color: gold }}>{me + 1}-й</span>{meNet >= 0 ? <> · в сети <span style={{ color: gold }}>{meNet + 1}-й</span></> : null}</div>}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         {top.map((p, i) => {
@@ -187,6 +210,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
 
 /** «Я»: кольцо прогресса роли, серия дней, счётчики. */
 export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen }) {
+  ensureTableCss();   // свеча серии (Доп. 288)
   const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const pct = total ? Math.round((done / total) * 100) : 0;
   const R = 26, C = 2 * Math.PI * R;
@@ -205,7 +229,7 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
         <div style={tagStyle(a11y)}>{(roleLabel || "ТВОЙ ТРЕК").toUpperCase()}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 4 }}>{done} из {total} уроков</div>
         <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>
-          {days > 0 ? <><span style={{ color: gold }}>✦ {days} {dword}</span> подряд</> : "Начни серию — заходи каждый день"}
+          {days > 0 ? <><span className="tbv" style={{ color: gold, display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "-2px" }}><Candle s={15} lit={streak.last === ymd(new Date())} />{days} {dword}</span> подряд</> : "Начни серию — заходи каждый день"}
         </div>
       </div>
     </div>

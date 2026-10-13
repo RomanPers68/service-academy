@@ -40,20 +40,42 @@ ok("нет ключей — not_configured", r.j.ok === false && r.j.error === "
 env.OPENROUTER_API_KEY = "sk-or";
 base();
 r = await post({ token: "t", probe: true });
-ok("OpenRouter — проба: радио и разговор есть", r.j.configured === true && r.j.talk === true && r.j.provider === "openrouter", JSON.stringify(r.j));
+ok("OpenRouter — проба: радио и разговор есть", r.j.configured === true && r.j.talk === true && r.j.provider === "openrouter" && !r.j.transient, JSON.stringify(r.j));
+// v36 (ревью): корзины нет (404) — ясный ответ; хранилище не ответило (500 / сеть) — transient
+base();
+script["/storage/v1/bucket/radio-voice"] = () => new Response(JSON.stringify({ error: "Bucket not found" }), { status: 404 });
+r = await post({ token: "t", probe: true });
+ok("v36: корзины нет — радио без живых голосов (ясно), разговор есть", r.j.ok && r.j.configured === false && r.j.talk === true && !r.j.transient, JSON.stringify(r.j));
+base();
+script["/storage/v1/bucket/radio-voice"] = () => new Response("oops", { status: 503 });
+r = await post({ token: "t", probe: true });
+ok("v36: хранилище не ответило — transient (приложение спросит снова)", r.j.ok && r.j.configured === false && r.j.talk === true && r.j.transient === true, JSON.stringify(r.j));
 base();
 r = await post({ token: "t", text: "Добрый вечер, у вас свободно?", who: "guest_f", talk: true });
 const sp = calls.find((c) => c.url.includes("openrouter.ai/api/v1/audio/speech"));
 ok("разговор: звук в ответе (data:audio/mpeg)", r.j.ok && /^data:audio\/mpeg;base64,/.test(r.j.audio), JSON.stringify(r.j).slice(0, 80));
 ok("разговор: OpenRouter, модель gpt-4o-mini-tts, голос гостьи shimmer, манера", !!sp && sp.body.model === "openai/gpt-4o-mini-tts-2025-12-15" && sp.body.voice === "shimmer" && /Гостья/.test(sp.body.instructions) && sp.body.response_format === "mp3" && sp.headers.Authorization === "Bearer sk-or", JSON.stringify(sp && sp.body));
 ok("разговор: лимит посчитан, в Storage не кладём", calls.some((c) => c.url.includes("sa_tts_take") && c.body.p_chars === 29) && !calls.some((c) => c.url.includes("/storage/v1/object/radio-voice/")));
-// первая модель не найдена — запасная
+// v36: модель из секрета не найдена — запасная (полный id с датой; короткого «openai/gpt-4o-mini-tts» больше нет)
 base();
+env.OPENROUTER_TTS_MODEL = "acme/tts-x";
 let n = 0;
 script["openrouter.ai/api/v1/audio/speech"] = () => (++n === 1 ? new Response(JSON.stringify({ error: { message: "model not found" } }), { status: 404, headers: { "content-type": "application/json" } }) : new Response(new Uint8Array(200).fill(1), { headers: { "content-type": "audio/mpeg" } }));
 r = await post({ token: "t", text: "Наставник отвечает", who: "mentor", talk: true });
 const models = calls.filter((c) => c.url.includes("audio/speech")).map((c) => c.body.model);
-ok("модель не найдена — берём запасную", r.j.ok && models.join(",") === "openai/gpt-4o-mini-tts-2025-12-15,openai/gpt-4o-mini-tts", models.join(","));
+ok("модель из секрета не найдена — берём openai/gpt-4o-mini-tts-2025-12-15", r.j.ok && models.join(",") === "acme/tts-x,openai/gpt-4o-mini-tts-2025-12-15", models.join(","));
+delete env.OPENROUTER_TTS_MODEL;
+// v36: без секрета — одна модель; ошибка — с причиной от OpenRouter (её приложение покажет в скобках)
+base();
+script["openrouter.ai/api/v1/audio/speech"] = () => new Response(JSON.stringify({ error: { message: "No endpoints found matching your data policy", code: 404 } }), { status: 404, headers: { "content-type": "application/json" } });
+r = await post({ token: "t", text: "Наставник отвечает", who: "mentor", talk: true });
+const m2 = calls.filter((c) => c.url.includes("audio/speech")).map((c) => c.body.model);
+ok("v36: одна модель, причина — в detail («OpenRouter 404: No endpoints…»)", r.j.ok === false && r.j.error === "provider" && m2.join(",") === "openai/gpt-4o-mini-tts-2025-12-15" && /^OpenRouter 404: No endpoints found/.test(r.j.detail || ""), JSON.stringify(r.j));
+// v36: счётчик голосов ответил ошибкой — server и причина
+base();
+script["/rpc/sa_tts_take"] = () => new Response(JSON.stringify({ code: "42501", message: "permission denied for function sa_tts_take" }), { status: 403 });
+r = await post({ token: "t", text: "Раз", who: "guest", talk: true });
+ok("v36: счётчик с ошибкой — server и причина", r.j.ok === false && r.j.error === "server" && /permission denied/.test(r.j.detail || "") && !calls.some((c) => c.url.includes("audio/speech")), JSON.stringify(r.j));
 // ключ не принят — понятная ошибка, без перебора
 base();
 script["openrouter.ai/api/v1/audio/speech"] = () => new Response(JSON.stringify({ error: { message: "bad key" } }), { status: 401, headers: { "content-type": "application/json" } });
@@ -86,7 +108,7 @@ ok("лимит на сегодня — error: limit", r.j.ok === false && r.j.er
 base();
 script["/rpc/whoami"] = () => new Response(JSON.stringify({ ok: false }));
 r = await post({ token: "t", text: "Ещё", who: "guest", talk: true });
-ok("чужой — 401 auth", r.status === 401 && r.j.error === "auth");
+ok("чужой — 401 auth (с причиной)", r.status === 401 && r.j.error === "auth" && /вход/.test(r.j.detail || ""));
 
 // 3) есть ключ OpenAI — напрямую (как в v31)
 env.OPENAI_API_KEY = "sk-oa";

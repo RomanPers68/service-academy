@@ -1,6 +1,7 @@
 // Service Academy — radio-tts: «живые голоса» для «Радио в дорогу» (v31) и разговора голосом (v34).
 //
-// POST { token, probe: true }                 → { ok, configured, talk, provider } — есть ли голоса (без озвучки)
+// POST { token, probe: true }                 → { ok, configured, talk, provider, transient? } — есть ли голоса
+//                                                (без озвучки; transient — хранилище не ответило, спросить позже)
 // POST { token, text, who }                   → { ok, url, cached }   — фраза радио: ссылка на mp3 (кэш в Storage)
 // POST { token, text, who, talk: true }       → { ok, audio }         — v34: реплика разговора голосом —
 //                                                mp3 прямо в ответе (data:audio/mpeg;base64,…), без кэша
@@ -8,7 +9,10 @@
 // Кто озвучивает (v34):
 //   • OpenRouter — секрет OPENROUTER_API_KEY (тот же, что у ai-chat и stt; добавлять ничего не нужно).
 //     Модель — секрет OPENROUTER_TTS_MODEL, по умолчанию openai/gpt-4o-mini-tts-2025-12-15
-//     (запасная — openai/gpt-4o-mini-tts).
+//     (v36: короткий id без даты OpenRouter не принимает — убран; задан свой секрет — он первым,
+//     эта модель — запасной).
+// v36: ошибка — с причиной (detail): что ответил OpenRouter / OpenAI или счётчик голосов. Приложение
+//     показывает её в скобках в строке «Живой голос не ответил (…)», а полный текст — в Logs функции.
 //   • OpenAI напрямую — если задан секрет OPENAI_API_KEY (модель OPENAI_TTS_MODEL, по умолчанию
 //     gpt-4o-mini-tts). Есть оба ключа — OpenAI; выбрать явно: секрет TTS_PROVIDER = openrouter | openai.
 // Ключей нет — { ok:false, error:"not_configured" }: приложение молча читает голосом телефона, как раньше.
@@ -80,7 +84,9 @@ function engine(): Engine | null {
   const want = (Deno.env.get("TTS_PROVIDER") || "").toLowerCase();
   if (openai && want !== "openrouter") return { provider: "openai", key: openai, models: [Deno.env.get("OPENAI_TTS_MODEL") || "gpt-4o-mini-tts"] };
   if (or) {
-    const models = [Deno.env.get("OPENROUTER_TTS_MODEL"), "openai/gpt-4o-mini-tts-2025-12-15", "openai/gpt-4o-mini-tts"]
+    // v36: только полный id модели с датой — по документации OpenRouter короткий «openai/gpt-4o-mini-tts»
+    // неверный; раньше он стоял запасным и своей ошибкой «модель не найдена» прятал настоящую причину
+    const models = [Deno.env.get("OPENROUTER_TTS_MODEL"), "openai/gpt-4o-mini-tts-2025-12-15"]
       .filter((m, i, a): m is string => !!m && a.indexOf(m) === i);
     return { provider: "openrouter", key: or, models };
   }
@@ -94,8 +100,17 @@ const looksMp3 = (b: Uint8Array) => b.length > 64 && ((b[0] === 0x49 && b[1] ===
 
 type Synth = { ok: true; bytes: Uint8Array; model: string } | { ok: false; status: number; error: string; detail?: string };
 
+// v36: из ответа с ошибкой — само сообщение (OpenRouter и OpenAI кладут его в error.message)
+const errText = (t: string) => {
+  try { const j = JSON.parse(t); const m = j?.error?.message || j?.message || j?.error; if (m) return String(typeof m === "string" ? m : JSON.stringify(m)); } catch (_e) { /* не JSON */ }
+  return t;
+};
+
 async function synth(eng: Engine, voice: string, whoKey: string, text: string): Promise<Synth> {
-  let last: Synth = { ok: false, status: 502, error: "provider", detail: "нет модели" };
+  // v36: причина — от ПЕРВОЙ модели (основной); запасная модель её не перезаписывает
+  let first: Synth | null = null;
+  const fail = (f: Synth) => { if (!first) first = f; };
+  const who = eng.provider === "openai" ? "OpenAI" : "OpenRouter";
   for (const model of eng.models) {
     const payload: Record<string, unknown> = { model, voice, input: text, response_format: "mp3" };
     if (withManner(model)) payload.instructions = MANNER[whoKey];
@@ -104,25 +119,24 @@ async function synth(eng: Engine, voice: string, whoKey: string, text: string): 
     if (eng.provider === "openrouter") { headers["HTTP-Referer"] = "https://service-academy-16te.vercel.app"; headers["X-Title"] = "Service Academy TTS"; }
     let r: Response;
     try { r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) }); }
-    catch (e) { last = { ok: false, status: 502, error: "provider", detail: model + ": сеть — " + String((e as any)?.message || e) }; continue; }
+    catch (e) { fail({ ok: false, status: 502, error: "provider", detail: `${who}: сеть — ` + String((e as any)?.message || e).slice(0, 80) }); continue; }
     const ct = (r.headers.get("content-type") || "").toLowerCase();
     if (r.ok && !/json|text\//.test(ct)) {
       const bytes = new Uint8Array(await r.arrayBuffer());
       if (bytes.length > 64 && (/audio|octet-stream|mpeg/.test(ct) || looksMp3(bytes))) return { ok: true, bytes, model };
-      last = { ok: false, status: 502, error: "provider", detail: model + (bytes.length > 64 ? ": ответ не похож на звук (" + (ct || "без типа") + ")" : ": пустой ответ") };
+      fail({ ok: false, status: 502, error: "provider", detail: model + (bytes.length > 64 ? ": ответ не похож на звук (" + (ct || "без типа") + ")" : ": пустой ответ") });
       continue;
     }
     const t = await r.text().catch(() => "");
-    console.error("radio-tts", eng.provider, model, r.status, t.slice(0, 200));
-    const who = eng.provider === "openai" ? "OpenAI" : "OpenRouter";
+    console.error("radio-tts", eng.provider, model, r.status, t.slice(0, 300));
     const sec = eng.provider === "openai" ? "OPENAI_API_KEY" : "OPENROUTER_API_KEY";
     // ключ не принят / кредиты кончились — другая модель не поможет
     if (r.status === 401) return { ok: false, status: 502, error: "provider", detail: `${who} не принял ключ (401) — проверь секрет ${sec}` };
     if (r.status === 402) return { ok: false, status: 502, error: "provider", detail: `${who}: закончились кредиты (402)` };
     if (r.status === 429) return { ok: false, status: 502, error: "rate_limit" };
-    last = { ok: false, status: 502, error: "provider", detail: model + ": HTTP " + r.status + (t ? " — " + t.slice(0, 140) : "") };
+    fail({ ok: false, status: 502, error: "provider", detail: `${who} ${r.status}: ` + errText(t).replace(/\s+/g, " ").slice(0, 140) });
   }
-  return last;
+  return first || { ok: false, status: 502, error: "provider", detail: "нет модели озвучки" };
 }
 
 Deno.serve(async (req) => {
@@ -145,17 +159,21 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ p_token: token }),
     }).then((r) => r.json()).catch(() => null);
     const emp = who && who.ok ? who.employee || {} : null;
-    if (!emp) return json({ ok: false, error: "auth" }, 401);
+    if (!emp) return json({ ok: false, error: "auth", detail: "вход не подтвердился — перезайди в приложение" }, 401);
 
     const eng = engine();
     if (body?.probe) {
       // радио: нужен ключ и корзина этапа 25; разговор голосом — только ключ
-      let bucket = false;
+      let bucket = false, transient = false;
       if (eng) {
         const b = await fetch(`${url}/storage/v1/bucket/${BUCKET}`, { headers: keyHeaders(service) }).catch(() => null);
         bucket = !!(b && b.ok);
+        // v36 (ревью): «корзины нет» — только ясный ответ хранилища (400/404); сбой связи или сервера —
+        // transient: приложение не запомнит «живых голосов нет» до перезапуска, спросит снова
+        transient = !bucket && !(b && (b.status === 404 || b.status === 400));
+        if (transient) console.error("radio-tts probe: storage", b ? b.status : "network");
       }
-      return json({ ok: true, configured: !!eng && bucket, talk: !!eng, provider: eng ? eng.provider : null });
+      return json({ ok: true, configured: !!eng && bucket, talk: !!eng, provider: eng ? eng.provider : null, ...(transient ? { transient: true } : {}) });
     }
     if (!eng) return json({ ok: false, error: "not_configured" });
 
@@ -182,9 +200,14 @@ Deno.serve(async (req) => {
       headers: { ...keyHeaders(service), "Content-Type": "application/json" },
       body: JSON.stringify({ p_token: token, p_chars: text.length }),
     }).then(async (r) => ({ status: r.status, j: await r.json().catch(() => null) })).catch(() => null);
-    if (!take) return json({ ok: false, error: "server" }, 502);
+    if (!take) return json({ ok: false, error: "server", detail: "счётчик голосов не ответил" }, 502);
     if (take.status === 404 || (take.j && (take.j.code === "PGRST202" || take.j.code === "42883"))) return json({ ok: false, error: "not_configured", detail: "нужен этап 25 (sa_tts_take)" });
-    if (!take.j || take.j.ok !== true) return json({ ok: false, error: (take.j && take.j.error) || "server", limit: take.j && take.j.limit });
+    if (!take.j || take.j.ok !== true) {
+      // v36: причина — в ответе (по ней видно, что чинить); лимит и вход — своими кодами, как раньше
+      const code = (take.j && take.j.error) || "server";
+      if (code === "server") console.error("radio-tts sa_tts_take", take.status, JSON.stringify(take.j).slice(0, 300));
+      return json({ ok: false, error: code, limit: take.j && take.j.limit, detail: code === "server" ? "счётчик голосов: " + String((take.j && (take.j.message || take.j.code)) || "HTTP " + take.status).slice(0, 100) : undefined });
+    }
 
     const s = await synth(eng, voice, whoKey, text);
     if (s.ok === false) return json({ ok: false, error: s.error, detail: s.detail }, s.status);

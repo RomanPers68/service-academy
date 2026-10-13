@@ -203,6 +203,8 @@ html.sa-light .tbp-num.upd .st{background:#2F5A86!important;border-color:#2F5A86
 .tbp-vp{position:relative;overflow:hidden;touch-action:pan-y}
 .tbp-track{position:relative;will-change:transform}
 .tbp-side{position:absolute;top:0;left:calc(var(--k,1) * (100% - 22px));width:100%;pointer-events:none}
+/* v36 (Доп. 345): пустое место окна — невидимое, во всю высоту ленты (держит её ширину в пять страниц) */
+.tbp-gap{bottom:0;min-height:1px}
 /* v32: текущая страница — тоже отдельный блок (поля меню не «схлопываются» наружу), иначе после
    свайпа её содержимое подпрыгивало на 4 px относительно того, как она выглядела соседней */
 .tbp-cur{display:flow-root}

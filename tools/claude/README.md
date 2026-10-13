@@ -71,9 +71,16 @@ jsxlint · flexhint · dupimport · refcheck · scope (tsc, необъявлен
                           # (поддельный микрофон на WebAudio, поддельные stt / ai-chat / radio-tts): полный круг,
                           # голос телефона, лимит живых голосов, перебить, пауза, ошибки, «Назад» Telegram, гость до чека
     node e2e-v34.mjs GT   # разделы: AT AF AL AI AP AE AB LT AZ AM AV MB PB GS AN GT
+    node e2e-v36.mjs      # v36: лента трека и обложки радио у краёв — тоже в пять мест (пустые невидимые места; иначе
+                          # на iPhone слой «перескакивал» между порогами WebKit 1024/1280 px и меню пропадало);
+                          # радио с эмуляцией iPhone (голос телефона прерывает звук страницы и жмёт «паузу» Media
+                          # Session): голосом телефона — без Media Session, читает до конца; живыми голосами — Media
+                          # Session есть, без «будящей» фразы, пауза системы — строка; причина отказа живых голосов;
+                          # длинный ответ Наставника вслух — начало и «Остальное — в чате», voice: true в ai-chat
+    node e2e-v36.mjs RM   # разделы: TG RG RM RL RP TK; другой сайт — E2E_SITE=/путь (на сборке v35 RM/RL/TG падают)
 
 Функция radio-tts (v34, OpenRouter + режим разговора) проверяется под Bun без сети — поддельные
-whoami / sa_tts_take / OpenRouter: `bun tools/claude/tts-harness.ts` (16 проверок).
+whoami / sa_tts_take / OpenRouter: `bun tools/claude/tts-harness.ts` (20 проверок; v36 — причина ошибки, transient).
 
 Сервер (этапы 23–24) проверяется на локальном PostgreSQL 16 — папка `sql/` (макет Supabase:
 роли anon/authenticated, whoami, базовые таблицы, тестовые сотрудники):

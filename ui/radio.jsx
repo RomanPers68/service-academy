@@ -7,16 +7,18 @@
 // (Wake Lock); название и кнопки на экране блокировки (Media Session); «Вся дорога» — выпуски
 // подряд, вопросы в конце; после выпуска — что дальше в плейлисте; «живые голоса» с сервера
 // (функция radio-tts, по ключу; нет её — голос телефона, как раньше).
-// v32 (Доп. 336–337): голос телефона звучит и в беззвучном режиме iPhone (lib/speech.js — тихая
-// медиадорожка на время чтения), фраза не «зависает»; выпуски листаются пальцем влево-вправо
+// v32 (Доп. 336–337): фраза не «зависает»; выпуски листаются пальцем влево-вправо
 // (обложки с пластинкой, соседние видны краем), вкладки — стеклянной капсулой с бегущей
 // подсветкой, пластинка с тонармом, кто говорит — цветной меткой, фразы — делениями (тап — туда).
+// v33 (Доп. 340–341): «тихая дорожка» v32 для беззвучного режима убрана — в Telegram на iPhone она
+// обрывала голос через секунду; телефон отказался читать — радио говорит почему (код ошибки);
+// обложка возвращается на место кадрами (без «пропадания» на iPhone).
 import React from "react";
 import { tableShell, tableVars } from "./table";
 import { Ic } from "./table-bits";
 import { voiceFor, radioCounted, markRadio } from "../lib/radio";
-import { liveVoiceAvailable, liveVoicePref, setLiveVoicePref, voiceUrl, silentUrl } from "../lib/radio-voice";
-import { canSpeak as ttsOk, speakText, audioWake, audioSleep, isAppleMobile } from "../lib/speech";
+import { liveVoiceAvailable, liveVoicePref, setLiveVoicePref, voiceUrl, silentUrl, liveWhy } from "../lib/radio-voice";
+import { canSpeak as ttsOk, speakText, cancelSpeech, audioWake, audioSleep, isAppleMobile } from "../lib/speech";
 import { shuffleQuizOptions, vibrate } from "../lib/utils";
 import { ymd } from "../lib/streak";
 
@@ -45,6 +47,8 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-card{width:calc(100% - 44px);margin:0 22px}
 .rd-card.side{position:absolute;top:0;margin:0;left:calc(22px + var(--k) * (100% - 38px));pointer-events:none}
 .rd-card.side .rd-tap{visibility:hidden}
+/* v36: пустое место ленты обложек — невидимое (держит ширину ленты в пять обложек) */
+.rd-gap{position:absolute;top:0;bottom:0;min-height:1px;left:calc(22px + var(--k) * (100% - 38px));width:calc(100% - 44px);pointer-events:none}
 .rd-top{display:flex;align-items:center;gap:8px;width:100%;min-height:22px}
 .rd-kind{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font:700 9.5px/1.3 var(--font-mono);letter-spacing:1.2px;text-transform:uppercase;
   color:var(--kc);border:1px solid var(--edge-gold);border-color:color-mix(in srgb,var(--kc) 55%,transparent);background:var(--glass);background:color-mix(in srgb,var(--kc) 12%,transparent);white-space:nowrap}
@@ -101,6 +105,8 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-txt li b{font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;margin-right:6px;color:var(--gold-ink)}
 .rd-note{font-size:12.5px;line-height:1.45;color:var(--sub);margin:10px 2px 0}
 .rd-tip{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;padding:8px 11px;border-radius:12px;border:1px dashed var(--edge-gold);font-size:12.5px;line-height:1.4;color:var(--sub)}
+/* v33: голос телефона не включился — заметно, но спокойно (под кнопками, как подсказка) */
+.rd-tip.rd-err{color:var(--text)}
 .rd-q{margin:6px 0 14px}
 .rd-q h3{font-family:var(--font-display);font-size:17px;line-height:1.35;margin:0 0 10px}
 .rd-q button{display:block;width:100%;text-align:left;margin:0 0 8px;padding:12px 14px;border-radius:14px;border:1px solid var(--edge);background:var(--glass);color:var(--text);font:15px/1.4 var(--font-body);cursor:pointer}
@@ -175,6 +181,8 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
   const [liveErr, setLiveErr] = React.useState("");
   const [wake, setWake] = React.useState(false);
   const [phoneVoice, setPhoneVoice] = React.useState(false);   // v32: сейчас читает голос телефона (для подсказки на iPhone)
+  const [ttsErr, setTtsErr] = React.useState("");               // v33: голос телефона не включился — почему
+  const [sysPause, setSysPause] = React.useState(false);        // v36: живой голос поставила на паузу система (звонок, экран блокировки)
   const voices = React.useRef([]);
   const gen = React.useRef(0);
   const audio = React.useRef(null);
@@ -193,14 +201,22 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
     const load = () => { try { voices.current = window.speechSynthesis.getVoices() || []; } catch (x) {} };
     load();
     try { window.speechSynthesis.onvoiceschanged = load; } catch (x) {}
-    return () => { dead = true; gen.current++; try { window.speechSynthesis.cancel(); window.speechSynthesis.onvoiceschanged = null; } catch (x) {} try { if (audio.current) audio.current.pause(); } catch (x) {} audioSleep(0); };
+    return () => { dead = true; gen.current++; try { if (utter.current) { utter.current.cancel(); utter.current = null; } } catch (x) {} cancelSpeech(); try { window.speechSynthesis.onvoiceschanged = null; } catch (x) {} try { if (audio.current) { audio.current.onpause = null; audio.current.pause(); } } catch (x) {} audioSleep(0); };
   }, []);
+  // v33 (Доп. 341): голос телефона отменяем, только если он и правда читает (возвращает «отменили»)
   const hush = () => {
+    const was = cancelSpeech();
     try { if (utter.current) { utter.current.cancel(); utter.current = null; } } catch (x) {}
-    try { if (canSpeak()) window.speechSynthesis.cancel(); } catch (x) {}
-    try { const a = audio.current; if (a) { a.onended = null; a.onerror = null; a.pause(); } } catch (x) {}
+    try { const a = audio.current; if (a) { a.onended = null; a.onerror = null; a.onpause = null; a.pause(); } } catch (x) {}
+    return was;
   };
   const stop = () => { gen.current++; hush(); setPlaying(false); audioSleep(); };
+  // v33 (Доп. 341): что сказать, если телефон отказался читать (код ошибки — чтобы было понятно почему)
+  const ttsMsg = (err) => {
+    const code = String((err && (err.error || err.message)) || "").trim().slice(0, 40);
+    return "Голос телефона не включился" + (code ? " (" + code + ")" : "") + " — нажми «Слушать» ещё раз или открой «Текст выпуска»." +
+      (isAppleMobile() ? " На iPhone в беззвучном режиме голос телефона не звучит." : "");
+  };
   const audioEl = () => {
     if (!audio.current && typeof window !== "undefined" && typeof window.Audio === "function") { audio.current = new window.Audio(); audio.current.preload = "auto"; }
     return audio.current;
@@ -236,13 +252,17 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
     const useLive = !synthOnly && liveRef.current && !!audioEl();
     if (!useLive && !canSpeak()) return;
     const my = ++gen.current;
-    hush();
-    // v32: звук «будим» прямо по нажатию — и в беззвучном режиме iPhone голос телефона слышен
+    // v33: телефон читал — новую фразу даём чуть позже (сразу после отмены он её иногда «глотает»)
+    let lag = hush() ? 90 : 0;
     audioWake();
     setPhoneVoice(!useLive);
-    const fallback = (k, code) => {
+    setTtsErr("");
+    setSysPause(false);
+    const fallback = (k, code, detail) => {
       if (gen.current !== my) return;
-      setLiveErr(LIVE_ERR[code] != null ? LIVE_ERR[code] || "Живые голоса недоступны — дальше читает телефон." : "Живые голоса не отвечают — дальше читает телефон.");
+      // v36: почему живые голоса не ответили — коротко, в скобках (чтобы по скриншоту было видно причину)
+      const why = liveWhy(code, detail);
+      setLiveErr(LIVE_ERR[code] != null ? LIVE_ERR[code] || "Живые голоса недоступны — дальше читает телефон." : "Живые голоса не отвечают" + why + " — дальше читает телефон.");
       if (code === "not_configured") setLiveOk(false);
       liveRef.current = false;
       if (canSpeak()) speakEp(i, k, r, true); else setPlaying(false);
@@ -260,31 +280,40 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
           const a = audioEl();
           a.onended = () => { if (gen.current === my) setTimeout(() => run(k + 1), s.head ? 300 : 120); };
           a.onerror = () => fallback(k, "media");
+          // v36 (Доп. 346): звук остановила система (звонок, другое приложение, экран блокировки) —
+          // выпуск встаёт на паузу и говорит об этом, а не «играет» в тишине. Конец фразы тоже
+          // приходит «паузой» — его не считаем
+          a.onpause = () => { if (gen.current === my && !a.ended) { stop(); setSysPause(true); } };
           a.src = url;
           try { a.playbackRate = r; } catch (x) {}
           const p = a.play();
           if (p && p.catch) p.catch((err) => { if (!(err && err.name === "AbortError")) fallback(k, "media"); });
-        }, (err) => fallback(k, err && err.code));
+        }, (err) => fallback(k, err && err.code, err && err.detail));
         return;
       }
       const v = voiceFor(s.who, voices.current);
       let alive = false;
+      const dl = lag; lag = 0;
       utter.current = speakText(s.text, {
-        voice: v.voice, pitch: v.pitch, rate: v.rate * r,
+        voice: v.voice, pitch: v.pitch, rate: v.rate * r, delay: dl,
         onstart: () => { alive = true; },
         onend: () => { alive = true; if (gen.current === my) setTimeout(() => run(k + 1), s.head ? 380 : 180); },
-        onerror: () => { alive = true; if (gen.current === my) { setPlaying(false); audioSleep(); } },
+        // v33 (Доп. 341): телефон отказался читать — говорим об этом и пишем причину (раньше
+        // выпуск молча останавливался)
+        onerror: (err) => { alive = true; if (gen.current === my) { stop(); setTtsErr(ttsMsg(err)); } },
       });
       // v31 (ревью): телефон молча не начал читать (так бывает на iPhone без касания) — не висим
       setTimeout(() => {
         let speaking = false; try { speaking = !!window.speechSynthesis.speaking; } catch (x) {}
-        if (!alive && !speaking && gen.current === my) { stop(); setLiveErr("Телефон не начал читать вслух — нажми «Слушать» ещё раз или открой «Текст выпуска»."); }
-      }, 6000);
+        if (!alive && !speaking && gen.current === my) { stop(); setTtsErr("Телефон не начал читать вслух — нажми «Слушать» ещё раз или открой «Текст выпуска»."); }
+      }, 6000 + dl);
     };
     if (useLive) {
       unlock();
-      // голос телефона — запасной: «будим» и его по этому же касанию, чтобы он смог подхватить
-      try { if (canSpeak()) speakText(" ", { volume: 0, guard: false }); } catch (x) {}
+      // v36 (Доп. 346): голос телефона больше НЕ «будим» беззвучной фразой по этому касанию: на iPhone
+      // он через долю секунды забирал звук у живого голоса — <audio> вставал на паузу, радио
+      // останавливалось. Понадобится запасной голос, а телефон без касания молчит — радио скажет
+      // «нажми «Слушать» ещё раз» (через 6 с), и следующее касание запустит голос телефона
     }
     setPlaying(true);
     run(from);
@@ -294,7 +323,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
   const jump = (d) => { if (!e) return; const k = Math.max(0, Math.min(e.segs.length - 1, seg + d)); if (playing) speakFrom(k); else setSeg(k); };
   const goSeg = (k) => { if (!e) return; vibrate("light"); if (playing) speakFrom(k); else setSeg(k); };
   const speed = () => { const r = rate === 1 ? 1.25 : rate === 1.25 ? 1.5 : 1; setRate(r); if (playing) speakFrom(seg, r); };
-  const pickEp = (i) => { stop(); setEp(i); setSeg(0); setPhase("air"); setAnswers({}); };
+  const pickEp = (i) => { stop(); setTtsErr(""); setSysPause(false); setEp(i); setSeg(0); setPhase("air"); setAnswers({}); };
   const openQuiz = (i) => { stop(); setEp(i); setAnswers({}); setPhase("quiz"); };
   const playEp = (i) => { vibrate("light"); pickEp(i); setTimeout(() => speakEp(i, 0), 0); };
   const toggleRoad = () => { const v = !road; setRoad(v); roadRef.current = v; try { localStorage.setItem(ROAD_KEY, v ? "1" : "0"); } catch (x) {} vibrate("light"); };
@@ -344,23 +373,37 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
       if (l) l.release().catch(() => {});
     };
   }, [playing]);
-  // v31: название выпуска и кнопки — на экране блокировки и в шторке (Media Session)
+  // v31: название выпуска и кнопки — на экране блокировки и в шторке (Media Session).
+  // v36 (Доп. 346): только когда звучат живые голоса (<audio>). С голосом телефона Media Session больше
+  // не включаем: «играет» (playbackState) включает в WebKit звуковой сеанс страницы, а голос телефона на
+  // iPhone через ~секунду этот сеанс прерывает — и WebKit сам нажимал «пауза» (как с экрана блокировки):
+  // радио молча останавливалось на первой фразе (v32–v35). Голос телефона экран блокировки и так не показывал.
+  const msOn = liveRef.current && !(playing && phoneVoice);
   const ctl = React.useRef({});
-  ctl.current = { toggle, jump, playing };
+  ctl.current = { toggle, jump, playing, sys: () => { stop(); setSysPause(true); } };
   React.useEffect(() => {
     const ms = typeof navigator !== "undefined" ? navigator.mediaSession : null;
-    if (!ms || !e) return undefined;
+    if (!ms) return undefined;
+    const set = (a, h) => { try { ms.setActionHandler(a, h); } catch (x) {} };
+    const off = () => { ["play", "pause", "nexttrack", "previoustrack"].forEach((a) => set(a, null)); };
+    if (!msOn || !e) {
+      off();
+      try { ms.metadata = null; } catch (x) {}
+      try { ms.playbackState = "none"; } catch (x) {}
+      return undefined;
+    }
     try {
       if (typeof window.MediaMetadata === "function") ms.metadata = new window.MediaMetadata({ title: e.title, artist: "Радио в дорогу", album: e.topic, artwork: [{ src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }] });
     } catch (x) {}
-    const set = (a, h) => { try { ms.setActionHandler(a, h); } catch (x) {} };
     set("play", () => { if (!ctl.current.playing) ctl.current.toggle(); });
-    set("pause", () => { if (ctl.current.playing) ctl.current.toggle(); });
+    set("pause", () => { if (ctl.current.playing) ctl.current.sys(); });
     set("nexttrack", () => ctl.current.jump(1));
     set("previoustrack", () => ctl.current.jump(-1));
-    return () => { ["play", "pause", "nexttrack", "previoustrack"].forEach((a) => set(a, null)); };
-  }, [ep]);   // eslint-disable-line react-hooks/exhaustive-deps
-  React.useEffect(() => { try { if (navigator.mediaSession) navigator.mediaSession.playbackState = playing ? "playing" : "paused"; } catch (x) {} }, [playing]);
+    return off;
+  }, [ep, msOn]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { try { const ms = navigator.mediaSession; if (ms) ms.playbackState = msOn && e ? (playing ? "playing" : "paused") : "none"; } catch (x) {} }, [playing, msOn, !!e]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // закрыли радио — Media Session выключаем совсем
+  React.useEffect(() => () => { try { const ms = navigator.mediaSession; if (ms) { ms.playbackState = "none"; ms.metadata = null; } } catch (x) {} }, []);
 
   // ── v32 (Доп. 337): выпуски листаются пальцем; подсветка вкладки едет вместе с обложкой ──
   const stageRef = React.useRef(null), trackRef = React.useRef(null), segRef = React.useRef(null), pillRef = React.useRef(null);
@@ -373,18 +416,38 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
     pill.style.transition = anim ? "transform .32s " + EASE + ",width .32s " + EASE : "none";
     pill.style.transform = "translate3d(" + x + "px,0,0)"; pill.style.width = w + "px"; pill.style.opacity = "1";
   };
+  const xRef = React.useRef(0), backRef = React.useRef(0);   // v33: где лента сейчас и кадр её возврата
+  const stopBack = () => { if (backRef.current) { try { cancelAnimationFrame(backRef.current); } catch (x) {} backRef.current = 0; } };
   const setX = (x, anim) => {
     const tr = trackRef.current;
+    xRef.current = x;
     if (tr) { tr.style.transition = anim ? "transform .32s " + EASE : "none"; tr.style.transform = x ? "translate3d(" + x + "px,0,0)" : ""; }
     const n = x < 0 && ep + 1 < episodes.length ? ep + 1 : x > 0 && ep > 0 ? ep - 1 : ep;
     pillAt(ep, n, n !== ep ? Math.min(1, Math.abs(x) / stepW()) : 0, anim);
   };
+  // v33 (Доп. 340): обложка возвращается на место кадрами, как её ведёт палец (на iPhone CSS-переход
+  // к «без сдвига» мог стереть обложку до конца анимации — как было в треке)
+  const settleBack = () => {
+    stopBack();
+    const x0 = xRef.current;
+    if (!x0 || Math.abs(x0) < 0.5 || calm() || typeof requestAnimationFrame !== "function") { setX(0, false); return; }
+    const now = () => (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+    const t0 = now(), D = Math.min(320, 200 + Math.abs(x0) * 0.5);
+    const step = () => {
+      const p = Math.min(1, (now() - t0) / D);
+      if (p < 1) { setX(x0 * Math.pow(1 - p, 3), false); backRef.current = requestAnimationFrame(step); }
+      else { backRef.current = 0; setX(0, false); }
+    };
+    backRef.current = requestAnimationFrame(step);
+  };
   React.useLayoutEffect(() => {
+    stopBack();
+    clearTimeout(settleT.current); settle.current = 0;   // v33 (ревью): тап по вкладке во время свайпа
     setX(0, false);
     // активная вкладка — в поле зрения (если вкладок больше, чем помещается)
     try { const row = segRef.current, t = row && row.querySelectorAll(".rd-tab")[ep]; if (row && t && row.scrollWidth > row.clientWidth + 1) row.scrollTo({ left: Math.max(0, t.offsetLeft - row.clientWidth / 2 + t.offsetWidth / 2), behavior: calm() ? "auto" : "smooth" }); } catch (x) {}
   }, [ep, phase, episodes.length]);   // eslint-disable-line react-hooks/exhaustive-deps
-  React.useEffect(() => { const h = () => setX(0, false); window.addEventListener("resize", h); return () => { window.removeEventListener("resize", h); clearTimeout(settleT.current); }; }, [ep]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { const h = () => { stopBack(); setX(0, false); }; window.addEventListener("resize", h); return () => { window.removeEventListener("resize", h); clearTimeout(settleT.current); stopBack(); }; }, [ep]);   // eslint-disable-line react-hooks/exhaustive-deps
   // соседний выпуск: играло — продолжаем уже его (по тому же касанию: iOS разрешает звук только так)
   const commitTo = (i, wasPlaying) => {
     clearTimeout(settleT.current); settle.current = 0;
@@ -392,7 +455,8 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
     if (wasPlaying) setTimeout(() => speakEp(i, 0), 0);
   };
   const slideTo = (d) => {
-    const i = ep + d; if (i < 0 || i >= episodes.length) { setX(0, true); return; }
+    stopBack();
+    const i = ep + d; if (i < 0 || i >= episodes.length) { settleBack(); return; }
     vibrate("light");
     const wasPlaying = playing;
     if (wasPlaying) { stop(); audioWake(); }   // звук держим «разбуженным» до нового выпуска
@@ -401,26 +465,35 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
     setX(-d * stepW(), true);
     settleT.current = setTimeout(() => { if (settle.current === d) commitTo(i, wasPlaying); }, 340);
   };
+  const edge = (x) => (x > 0 && ep === 0) || (x < 0 && ep >= episodes.length - 1);   // у края — упругое сопротивление
   const onTS = (ev) => {
     const t = ev.touches && ev.touches[0];
-    gest.current = t && ev.touches.length === 1 && !settle.current && episodes.length > 1 ? { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: 0 } : null;
+    if (!t || ev.touches.length !== 1 || settle.current || episodes.length < 2) { const had = gest.current; gest.current = null; if (had && !settle.current) settleBack(); return; }
+    // v33: обложка ещё возвращается — ловим её там, где она сейчас (без рывка)
+    let b0 = 0;
+    if (backRef.current) { stopBack(); b0 = Math.abs(xRef.current) < 1 ? 0 : xRef.current; if (!b0) setX(0, false); }
+    gest.current = { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: b0, b0, base: edge(b0) ? b0 / 0.3 : b0 };
   };
   const onTM = (ev) => {
     const g = gest.current, t = ev.touches && ev.touches[0]; if (!g || !t) return;
     const dx = t.clientX - g.x, dy = t.clientY - g.y;
-    if (!g.axis) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) g.axis = "x"; else if (Math.abs(dy) > 10) g.axis = "y"; else return; }
+    if (!g.axis) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) g.axis = "x"; else if (Math.abs(dy) > 10) { g.axis = "y"; if (g.b0) { g.b0 = 0; settleBack(); } } else return; }
     if (g.axis !== "x") return;
-    g.dx = (dx > 0 && ep === 0) || (dx < 0 && ep >= episodes.length - 1) ? dx * 0.3 : dx;
+    const raw = g.base + dx;
+    g.dx = edge(raw) ? raw * 0.3 : raw;
     setX(g.dx, false);
   };
   const onTE = () => {
     const g = gest.current; gest.current = null;
-    if (!g || g.axis !== "x") return;
-    const v = g.dx / Math.max(1, Date.now() - g.t);
-    const far = Math.abs(g.dx) > stepW() * 0.22 || (Math.abs(v) > 0.45 && Math.abs(g.dx) > 28);
-    if (far && g.dx < 0 && ep + 1 < episodes.length) slideTo(1);
-    else if (far && g.dx > 0 && ep > 0) slideTo(-1);
-    else setX(0, true);
+    if (!g) return;
+    if (g.axis !== "x") { if (g.b0) settleBack(); return; }
+    const moved = g.dx - g.b0;
+    const v = moved / Math.max(1, Date.now() - g.t);
+    const far = Math.abs(g.dx) > stepW() * 0.22 || (Math.abs(v) > 0.45 && Math.abs(moved) > 28);
+    const dir = far ? (Math.abs(v) > 0.45 && Math.abs(moved) > 28 ? (v < 0 ? 1 : -1) : g.dx < 0 ? 1 : -1) : 0;
+    if (dir === 1 && ep + 1 < episodes.length) slideTo(1);
+    else if (dir === -1 && ep > 0) slideTo(-1);
+    else settleBack();
   };
   const tabKey = (ev) => {
     const k = ev.key; const n = k === "ArrowRight" ? ep + 1 : k === "ArrowLeft" ? ep - 1 : null;
@@ -507,6 +580,11 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
             <div className="rd-stage" ref={stageRef} onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE}>
               <div className="rd-strack" ref={trackRef}>
                 {episodes.map((x, i) => (Math.abs(i - ep) <= 1 ? cover(x, i) : null))}
+                {/* v36 (Доп. 345): пустые места по краям — лента всегда шириной в пять обложек (как трек):
+                    три обложки (≈1200 px) — между порогами WebKit на iPhone, и обложка могла пропасть на ходу */}
+                {[-2, -1, 1, 2].filter((k) => Math.abs(k) === 2 || !episodes[ep + k]).map((k) => (
+                  <i key={"gap" + k} className="rd-gap" data-gap={k} style={{ "--k": k }} aria-hidden="true" />
+                ))}
               </div>
             </div>
             {episodes.length > 1 ? <div className="rd-dots" aria-hidden="true">{episodes.map((x, i) => <i key={x.id} className={i === ep ? "on" : undefined} />)}</div> : null}
@@ -524,6 +602,10 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
             {sound && playing && phoneVoice && isAppleMobile() ? (
               <p className="rd-tip" role="note" data-radio-tip="">Не слышно? На iPhone проверь громкость и беззвучный режим — голос телефона он может глушить.</p>
             ) : null}
+            {/* v33 (Доп. 341): телефон отказался читать — сразу под кнопками, чтобы было видно */}
+            {ttsErr && !playing ? <p className="rd-tip rd-err" role="status" data-radio-err="">{ttsErr}</p> : null}
+            {/* v36 (Доп. 346): живой голос остановила система — говорим об этом, а не молчим */}
+            {sysPause && !playing && !ttsErr ? <p className="rd-tip" role="status" data-radio-paused="">Выпуск на паузе — звук прервал звонок, другое приложение или экран блокировки. Нажми «Слушать», чтобы продолжить.</p> : null}
             {sound ? (
               <div className="rd-opts">
                 {episodes.length > 1 ? (

@@ -29,6 +29,8 @@ const MAX_CHATS = 20;    // чатов в списке
 // v34 (Доп. 343): в разговоре голосом ответ прозвучит вслух — просим коротко. Подсказка уходит только
 // на сервер (в копию вопроса), в переписке её нет.
 const VOICE_HINT = "\n\n[Сотрудник говорит с тобой голосом, твой ответ прозвучит вслух: отвечай коротко — 2–4 предложения, разговорным языком, без списков, заголовков и ссылок.]";
+// v36 (Доп. 347): вслух — не больше ~45 секунд ответа; длиннее — начало и «Остальное — в чате»
+const VOICE_MAX = 600;
 
 const freshSession = () => ({
   id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -322,10 +324,12 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     const sent = withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content })), profile, learner);
     const li = sent.length - 1;
     if (li >= 0 && sent[li].role === "user") sent[li] = { ...sent[li], content: sent[li].content + VOICE_HINT };
+    // v36 (Доп. 347): voice — сервер (ai-chat v36) отвечает коротко, как в разговоре; старая версия
+    // функции флаг просто не заметит (тогда длинный ответ вслух обрежет TalkBar: maxSpeak)
     return fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      body: JSON.stringify({ token: saToken(), messages: sent }),
+      body: JSON.stringify({ token: saToken(), messages: sent, voice: true }),
     })
       .then(r => r.json())
       .then(d => {
@@ -721,7 +725,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         {/* Подсказки-чипы над полем ввода убраны по просьбе владельца (правка 157) */}
         {/* v35 (Доп. 344): разговор голосом — на месте поля полоса разговора, реплики — в этой же переписке */}
         {talk ? (
-          <TalkBar who="mentor" name="Наставник" voice="mentor" phone={{ pitch: 1, rate: 1 }}
+          <TalkBar who="mentor" name="Наставник" voice="mentor" phone={{ pitch: 1, rate: 1 }} maxSpeak={VOICE_MAX}
             ask={askVoice} onState={setTalkState} onClose={() => setTalk(false)} />
         ) : (
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 28,

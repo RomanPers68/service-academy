@@ -5,6 +5,8 @@
 // Авторизация — через вашу же функцию whoami(p_token): отвечаем только
 // реальным сотрудникам. Секреты: OPENROUTER_API_KEY (обязательный),
 // OPENROUTER_MODEL (необязательный, по умолчанию бесплатный DeepSeek).
+// v36: { voice: true } — разговор голосом: Наставник отвечает коротко, без
+// списков и заголовков (ответ прозвучит вслух).
 // ─────────────────────────────────────────────────────────────────────
 
 // <LESSON_MAP:BEGIN> — собрано tools/claude/gen-lesson-map.mjs из data/modules-*.js; руками не править
@@ -370,6 +372,17 @@ const isJwt = (k: string) => /^eyJ/.test(k || "");
 const keyHeaders = (k: string): Record<string, string> => isJwt(k) ? { apikey: k, Authorization: "Bearer " + k } : { apikey: k };
 
 // Системный промпт: кто такой ассистент и по каким стандартам он живёт.
+// v36 (Доп. 347): разговор голосом (приложение шлёт voice: true) — ответ прозвучит вслух. Этот блок —
+// последним в системной подсказке и важнее правил формата выше (шаги 1…2…3…, «до 120 слов»)
+const VOICE_MODE = [
+  ``,
+  ``,
+  `═ РЕЖИМ ГОЛОСА (важнее правил формата выше) ═`,
+  `Сотрудник говорит с тобой голосом — твой ответ прозвучит вслух. Ответь 2–4 короткими предложениями, не больше 60 слов, разговорно, как живой наставник рядом.`,
+  `Без списков, нумерации, заголовков, жирного и эмодзи. Только главное — подробности человек спросит сам. Без отступлений «кстати» про другие темы, если о них не спросили.`,
+  `Кнопку-переход ставь, только если она правда нужна, — одну, в самом конце.`,
+].join("\n");
+
 function buildSystem(emp: { name?: string; position?: string; restaurant?: string }, reglaments = "") {
   const posLabel: Record<string, string> = {
     waiter: "официант", hostess: "хостес", bartender: "бармен", manager: "менеджер",
@@ -648,7 +661,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "method" }, 405);
 
   try {
-    const { token, messages, mode, guest: guestIn, finish, stream } = await req.json();
+    const { token, messages, mode, guest: guestIn, finish, stream, voice } = await req.json();
     if (!token || !Array.isArray(messages)) return json({ ok: false, error: "bad_request" }, 400);
     const isGuest = mode === "guest" && guestIn && typeof guestIn === "object";   // v30: «Живой гость»
     let guest = isGuest ? trustedGuest(guestIn) : null;
@@ -843,8 +856,9 @@ Deno.serve(async (req) => {
                 messages: [{ role: "system", content: buildGuestSystem(emp, guest as Guest) }, ...history] })
           : {
           model: m,
-          messages: [{ role: "system", content: buildSystem(emp, reglaments) }, ...history],
-          max_tokens: 520,
+          // v36 (Доп. 347): разговор голосом — короткий ответ без разметки (он прозвучит вслух)
+          messages: [{ role: "system", content: buildSystem(emp, reglaments) + (voice ? VOICE_MODE : "") }, ...history],
+          max_tokens: voice ? 280 : 520,
           temperature: 0.6,
         }),
       });

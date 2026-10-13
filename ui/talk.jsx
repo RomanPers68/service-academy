@@ -105,7 +105,9 @@ const N = 36;   // столбиков в волне
 // чат сам); voice — живой голос (mentor | guest | guest_f), phone — { pitch, rate } для голоса телефона,
 // first — реплика собеседника в начале, actions — не читать *действия*, who — для демо и проверок,
 // onState(state) — экрану: пузырь «ты говоришь» и значок «звучит»; onClose(why) — разговор окончен.
-export function TalkBar({ who = "mentor", name, voice = "mentor", phone, first, actions = false, ask, onClose, onState }) {
+// v36: maxSpeak — вслух не больше стольких знаков ответа (длинный ответ Наставника — начало и «Остальное —
+// в чате»; весь ответ — в переписке)
+export function TalkBar({ who = "mentor", name, voice = "mentor", phone, first, actions = false, maxSpeak = 0, ask, onClose, onState }) {
   ensureCss();
   const [state, setState] = React.useState("idle");
   const [note, setNote] = React.useState("");
@@ -135,7 +137,7 @@ export function TalkBar({ who = "mentor", name, voice = "mentor", phone, first, 
   }, [state]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     const t = createTalk({
-      ask: (text) => askRef.current(text), first, voice, phone, actions,
+      ask: (text) => askRef.current(text), first, voice, phone, actions, maxSpeak,
       sttUrl: STT_URL(), ttsUrl: TTS_URL(), headers: HEADERS(), token: saToken(),
       // строка-подсказка живёт, пока человек не заговорил (или не коснулся в паузе): «Не расслышал»,
       // «отвечает голос телефона» должны успеть прочитаться

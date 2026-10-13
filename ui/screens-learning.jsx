@@ -284,8 +284,13 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     const g = geoOf(row); if (!g || !cr) return;
     [...cr.children].forEach((s, i) => { const c = g.cells[i]; if (c) s.style.left = c.cx + "px"; });
   };
+  // v33 (Доп. 340): где лента сейчас и кадр её возврата на место
+  const xRef = React.useRef(0);
+  const backRef = React.useRef(0);
+  const stopBack = () => { if (backRef.current) { try { cancelAnimationFrame(backRef.current); } catch (e) {} backRef.current = 0; } };
   const setX = (x, animate, skipInd) => {
     const el = trackRef.current; if (!el) return;
+    xRef.current = x;
     el.style.transition = animate ? "transform .32s " + EASE : "none";
     el.style.transform = x ? "translate3d(" + x + "px,0,0)" : "";
     // монета — к соседней теме ровно на ту же долю, на какую сдвинута страница
@@ -315,6 +320,23 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     }
   };
   const dist = () => Math.max(1, ((vpRef.current && vpRef.current.offsetWidth) || 360) - PEEK);
+  const setXRef = React.useRef(null); setXRef.current = setX;   // свежий setX после flushSync
+  // v33 (Доп. 340): лента возвращается на место кадрами — так же, как её ведёт палец. Раньше —
+  // CSS-переходом к «без сдвига», и на iPhone страница на это время пропадала (оставались только
+  // кружки шагов): потянул последнюю тему дальше конца — меню исчезло и вернулось через полсекунды
+  const settleBack = () => {
+    stopBack();
+    const x0 = xRef.current;
+    if (!x0 || Math.abs(x0) < 0.5 || calmMotion() || typeof requestAnimationFrame !== "function") { setX(0, false); return; }
+    const now = () => (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+    const t0 = now(), D = Math.min(320, 200 + Math.abs(x0) * 0.5);
+    const step = () => {
+      const p = Math.min(1, (now() - t0) / D);
+      if (p < 1) { setX(x0 * Math.pow(1 - p, 3), false); backRef.current = requestAnimationFrame(step); }
+      else { backRef.current = 0; setX(0, false); }
+    };
+    backRef.current = requestAnimationFrame(step);
+  };
   // высота прежней страницы — чтобы новая (короче или длиннее) не дёргала всё, что ниже, а плавно подстроилась
   const holdRef = React.useRef(0);
   const hTimer = React.useRef(0);
@@ -323,6 +345,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   // новая текущая страница уже стоит там, где закончилась анимация, — ленту в ноль до отрисовки
   const farRef = React.useRef(false);   // v32: дальний переход (тап по номеру) — монета едет плавно
   React.useLayoutEffect(() => {
+    stopBack();
     setX(0, false, true);
     syncCopy(false); syncCopy(true);
     const far = farRef.current && !calmMotion(); farRef.current = false;
@@ -339,10 +362,11 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     vp.style.transition = "height .3s cubic-bezier(.22,.8,.24,1)"; vp.style.height = to + "px";
     hTimer.current = setTimeout(() => { const v = vpRef.current; if (v) { v.style.height = ""; v.style.transition = ""; } }, 360);
   }, [pg]);   // eslint-disable-line react-hooks/exhaustive-deps
-  React.useEffect(() => () => { clearTimeout(hTimer.current); clearTimeout(settleT.current); }, []);
+  React.useEffect(() => () => { clearTimeout(hTimer.current); clearTimeout(settleT.current); stopBack(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const slide = (d) => {
     stopNudge();
-    if ((d > 0 && !nextMod) || (d < 0 && !prevMod)) { setX(0, true); return; }
+    stopBack();
+    if ((d > 0 && !nextMod) || (d < 0 && !prevMod)) { settleBack(); return; }
     if (calmMotion()) { commitStep(d); return; }
     settleRef.current = d;
     setX(-d * dist(), true);
@@ -377,7 +401,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   React.useEffect(() => {
     const st = stripRef.current; if (!st) return undefined;
     // v32: ширина поменялась — монета и тёмные цифры заново встают над своими номерами
-    const check = () => { setStripOver(st.scrollWidth > st.clientWidth + 1); requestAnimationFrame(() => { syncCopy(false); syncCopy(true); if (!settleRef.current && !gest.current) { indAt(false, pg, pg, 0, false); indAt(true, pg, pg, 0, false); } }); };
+    const check = () => { setStripOver(st.scrollWidth > st.clientWidth + 1); requestAnimationFrame(() => { syncCopy(false); syncCopy(true); if (!settleRef.current && !gest.current && !backRef.current) { indAt(false, pg, pg, 0, false); indAt(true, pg, pg, 0, false); } }); };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -395,9 +419,17 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const onTouchStart = (e) => {
     stopNudge();
     const t = e.touches && e.touches[0];
-    if (!t || e.touches.length !== 1) { gest.current = null; return; }
-    let base = 0;
-    if (settleRef.current) {
+    // второй палец: жест бросаем — и сдвинутая лента возвращается на место (v33, ревью)
+    if (!t || e.touches.length !== 1) { const had = gest.current; gest.current = null; if (had && !settleRef.current) settleBack(); return; }
+    let base = 0, b0 = 0;   // base — откуда считать палец; b0 — где лента на экране в начале жеста
+    if (backRef.current) {
+      // v33: лента ещё возвращается на место — ловим её там, где она сейчас (у края лента
+      // «упирается» втрое, поэтому и отсчёт — в тех же единицах, без рывка)
+      stopBack();
+      const cur = xRef.current;
+      if (Math.abs(cur) < 1) setX(0, false);
+      else { b0 = cur; base = (cur < 0 && !nextMod) || (cur > 0 && !prevMod) ? cur / 0.3 : cur; }
+    } else if (settleRef.current) {
       // v32: листают дальше, пока страница ещё доезжает, — не ждём конца анимации: переход
       // фиксируем сразу и продолжаем жест с того места, где лента сейчас (без рывка)
       const d = settleRef.current, el = trackRef.current;
@@ -406,9 +438,10 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
       try { flushSync(() => commitStep(d)); } catch (err) { commitStep(d); }
       base = cur + d * dist();
       if (Math.abs(base) < 1) base = 0;
-      if (base) setX(base, false);
+      if (base) (setXRef.current || setX)(base, false);   // v33 (ревью): setX уже новой страницы (соседи, монета)
+      b0 = base;
     }
-    gest.current = { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: base, base };
+    gest.current = { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, dx: b0, base, b0 };
   };
   const onTouchMove = (e) => {
     const g = gest.current, t = e.touches && e.touches[0];
@@ -416,7 +449,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     const dx = t.clientX - g.x, dy = t.clientY - g.y;
     if (!g.axis) {
       if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) g.axis = "x";
-      else if (Math.abs(dy) > 10) { g.axis = "y"; if (g.base) { g.base = 0; setX(0, true); } }
+      else if (Math.abs(dy) > 10) { g.axis = "y"; if (g.base) { g.base = 0; settleBack(); } }
       else return;
     }
     if (g.axis !== "x") return;
@@ -427,8 +460,8 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const onTouchEnd = () => {
     const g = gest.current; gest.current = null;
     if (!g) return;
-    if (g.axis !== "x") { if (g.base) setX(0, true); return; }   // перехватили на лету и отпустили — доехать
-    const moved = g.dx - g.base;
+    if (g.axis !== "x") { if (g.base) settleBack(); return; }   // перехватили на лету и отпустили — доехать
+    const moved = g.dx - (g.b0 || 0);   // сколько прошла лента за этот жест (на экране)
     const v = moved / Math.max(1, Date.now() - g.t);
     // далеко потянул — или быстро смахнул (но не случайное подрагивание пальца); у смахивания
     // направление — по движению пальца (v32: и когда страницу перехватили на лету)
@@ -436,7 +469,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     const dir = fling ? (v < 0 ? 1 : -1) : Math.abs(g.dx) > dist() * 0.22 ? (g.dx < 0 ? 1 : -1) : 0;
     if (dir === 1 && nextMod) { vibrate("light"); markSwiped(); slide(1); }
     else if (dir === -1 && prevMod) { vibrate("light"); markSwiped(); slide(-1); }
-    else setX(0, true);
+    else settleBack();
   };
   // Telegram на компьютере: два пальца по тачпаду влево/вправо — тоже листают (одна тема за жест);
   // стрелки ← → (и Home/End) на номерах — соседняя тема, как во вкладках
@@ -610,7 +643,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     if (n >= 3) return undefined;
     const t = setTimeout(() => {
       const el = trackRef.current;
-      if (!el || typeof el.animate !== "function" || settleRef.current || gest.current) return;
+      if (!el || typeof el.animate !== "function" || settleRef.current || gest.current || backRef.current) return;
       const d = pg < pages.length - 1 ? -1 : 1;
       try { localStorage.setItem("sa_track_nudge", String(n + 1)); } catch (e) {}
       try {
@@ -763,6 +796,13 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
               {win.map(({ m, k }) => (
                 <div key={m.id} data-k={k} className={k === 0 ? "tbp-cur" + (fadeId === m.id ? " tbp-fade" : "") : "tbp-side" + (k === -1 ? " prev" : k === 1 ? " next" : " far")}
                   style={k ? { "--k": k } : undefined} aria-hidden={k ? "true" : undefined} ref={k ? inertRef : liveRef}>{menuFor(m, k !== 0)}</div>
+              ))}
+              {/* v36 (Доп. 345): у первой и последней темы — пустые места окна, чтобы лента всегда была
+                  шириной в пять страниц, как посреди трека. Окно из трёх страниц (≈1250 px) — ровно между
+                  порогами WebKit на iPhone (1024 и 1280 px — смотря сколько свободной памяти): пока лента
+                  едет, слой то и дело менялся на «плиточный» и обратно — и меню пропадало до остановки */}
+              {[-2, -1, 1, 2].filter((k) => !win.some((w) => w.k === k)).map((k) => (
+                <div key={"gap" + k} className="tbp-side tbp-gap" data-gap={k} style={{ "--k": k }} aria-hidden="true" ref={inertRef} />
               ))}
               {/* Доп. 308: закладки соседних тем — их номера на видимом крае, цветом темы; тап — листнуть.
                   v32: у каждой страницы окна своя пара закладок — при листании одна гаснет, другая

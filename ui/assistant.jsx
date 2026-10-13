@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import { GOLD, RED, RADIUS } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
+import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
 import { withRefContext, rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { COCKTAILS } from "../data/cocktails";
@@ -25,6 +26,9 @@ const OLD_STORE = "sa_ai_chat_v1";
 const MAX_STORED = 60;   // реплик на чат храним на устройстве
 const MAX_SENT = 12;     // последних реплик уходит в контекст
 const MAX_CHATS = 20;    // чатов в списке
+// v34 (Доп. 343): в разговоре голосом ответ прозвучит вслух — просим коротко. Подсказка уходит только
+// на сервер (в копию вопроса), в переписке её нет.
+const VOICE_HINT = "\n\n[Сотрудник говорит с тобой голосом, твой ответ прозвучит вслух: отвечай коротко — 2–4 предложения, разговорным языком, без списков, заголовков и ссылок.]";
 
 const freshSession = () => ({
   id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -140,6 +144,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   });
   const active = store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
   const msgs = active.msgs;
+  const msgsRef = React.useRef(msgs); msgsRef.current = msgs;   // v34: разговор голосом дописывает реплики подряд
+  const activeIdRef = React.useRef(active.id); activeIdRef.current = active.id;
   const [showChats, setShowChats] = React.useState(false);
   const [delArm, setDelArm] = React.useState(null); // чат, «взведённый» на удаление
   // обновить реплики активного чата (+ заголовок и время) и сохранить
@@ -147,6 +153,17 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     setStore(st => {
       const sessions = st.sessions.map(s =>
         s.id === st.activeId ? { ...s, msgs: nextMsgs, title: titleOf(nextMsgs), updatedAt: Date.now() } : s);
+      const next = { ...st, sessions };
+      saveStore(uid, next);
+      return next;
+    });
+  }, [uid]);
+  // v34 (ревью): ответ пишем в тот чат, где задан вопрос, — даже если человек успел открыть другой
+  const updMsgsOf = React.useCallback((sid, nextMsgs) => {
+    setStore(st => {
+      if (!st.sessions.some(s => s.id === sid)) return st;   // чат успели удалить — ответ некуда класть
+      const sessions = st.sessions.map(s =>
+        s.id === sid ? { ...s, msgs: nextMsgs, title: titleOf(nextMsgs), updatedAt: Date.now() } : s);
       const next = { ...st, sessions };
       saveStore(uid, next);
       return next;
@@ -185,6 +202,10 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   const [error, setError] = React.useState(null);
   const [remaining, setRemaining] = React.useState(-1); // -1 = неизвестно/безлимит
   const [confirmClear, setConfirmClear] = React.useState(false);
+  const [talk, setTalk] = React.useState(false);                 // v34: открыт разговор голосом
+  const [talkState, setTalkState] = React.useState("idle");      // v35: что сейчас в разговоре (пузырь «ты говоришь», «звучит»)
+  const talkOk = React.useMemo(() => canTalk(), []);
+  const [micBusy, setMicBusy] = React.useState(false);           // v34: кнопка-микрофон пишет — волна ждёт
   const listRef = React.useRef(null);
   const inputRef = React.useRef(null);
   // Дополнение 129: ассистент знает меню команды с сервера, даже если сотрудник
@@ -238,7 +259,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   React.useEffect(() => {
     const el = listRef.current;
     if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
-  }, [msgs, sending, kb]);
+  }, [msgs, sending, kb, talkState]);
 
   const send = React.useCallback((textArg) => {
     const text = (textArg ?? input).trim();
@@ -248,6 +269,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     setInput("");
     if (inputRef.current) inputRef.current.style.height = "44px";
     const next = [...msgs, { role: "user", content: text, t: Date.now() }];
+    const sid = active.id;   // v34 (ревью): ответ — в этот чат
     updMsgs(next);
     setSending(true);
     fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
@@ -268,7 +290,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       .then(d => {
         if (d?.ok && d.reply) {
           const done = [...next, { role: "assistant", content: d.reply, t: Date.now() }];
-          updMsgs(done);
+          updMsgsOf(sid, done);
           vibrate("light");
           if (typeof d.remaining === "number") setRemaining(d.remaining);
         } else {
@@ -277,7 +299,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       })
       .catch(() => setError(ERRORS.network))
       .finally(() => setSending(false));
-  }, [input, msgs, sending, uid, updMsgs]);
+  }, [input, msgs, sending, uid, updMsgs, updMsgsOf, active.id]);
 
   const askedRef = React.useRef(false);
   React.useEffect(() => {
@@ -285,6 +307,51 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     askedRef.current = true;
     send(initialAsk);
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // v34 (Доп. 343): разговор голосом — вопрос и ответ ложатся в этот же чат (как будто их написали),
+  // голосу отдаём ответ без кнопок-переходов и карточек (они остаются в чате)
+  const askVoice = (text) => {
+    const q = String(text || "").trim();
+    if (!q) return Promise.resolve({ text: "" });
+    setError(null);
+    const next = [...msgsRef.current, { role: "user", content: q, t: Date.now() }];
+    const sid = activeIdRef.current;   // ответ — в этот чат, даже если потом откроют другой
+    msgsRef.current = next;
+    updMsgs(next);
+    setSending(true);
+    const sent = withRefContext(next.slice(-MAX_SENT).map(m => ({ role: m.role, content: m.content })), profile, learner);
+    const li = sent.length - 1;
+    if (li >= 0 && sent[li].role === "user") sent[li] = { ...sent[li], content: sent[li].content + VOICE_HINT };
+    return fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ token: saToken(), messages: sent }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d?.ok && d.reply) {
+          const done = [...next, { role: "assistant", content: d.reply, t: Date.now() }];
+          if (activeIdRef.current === sid) msgsRef.current = done;
+          updMsgsOf(sid, done);
+          if (typeof d.remaining === "number") setRemaining(d.remaining);
+          return { text: parseCards(parseNav(d.reply).clean).clean, end: false };
+        }
+        const e = new Error(ERRORS[d?.error] || ERRORS.server); e.code = d?.error || "server";
+        throw e;
+      })
+      .catch(e => {
+        const msg = e && e.code ? e.message : (e && e.name === "TypeError" ? ERRORS.network : ERRORS.server);
+        setError(msg);
+        const x = new Error(msg); x.code = (e && e.code) || (e && e.name === "TypeError" ? "network" : "server");
+        throw x;
+      })
+      .finally(() => setSending(false));
+  };
+  const openTalk = () => {
+    vibrate("light"); setShowChats(false); setConfirmClear(false); setDelArm(null);
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}   // клавиатура — вниз
+    setTalk(true);
+  };
 
   const clearChat = () => {
     vibrate("light");
@@ -550,7 +617,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           </div>
         )}
 
-        {msgs.length === 0 && !confirmClear && (
+        {msgs.length === 0 && !confirmClear && !talk && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {quickFor(profile?.position).map((q, i) => (
               <button key={i} className="sa-btn sa-pagein" onClick={() => send(q)}
@@ -591,8 +658,20 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
                 </>);
               })()}
             </div>
+            {/* v35: этот ответ сейчас звучит — значок рядом с пузырём */}
+            {talk && talkState === "speaking" && m.role === "assistant" && i === msgs.length - 1
+              ? <TalkSpeaking style={{ alignSelf: "flex-end", margin: "0 0 10px 9px", color: gold, flexShrink: 0 }} /> : null}
           </div>
         ))}
+
+        {/* v35: ты говоришь — твой пузырь с точками, пока фраза записывается и распознаётся */}
+        {talk && (talkState === "hearing" || talkState === "recognizing") && (
+          <div style={{ display: "flex", justifyContent: "flex-end" }} data-talk-pending="">
+            <div className="dlg-in" style={{ ...frost(true), padding: "14px 18px", borderRadius: RADIUS.lg, display: "flex" }}>
+              <TalkDots />
+            </div>
+          </div>
+        )}
 
         {sending && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
@@ -640,6 +719,11 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
       <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
         {/* Подсказки-чипы над полем ввода убраны по просьбе владельца (правка 157) */}
+        {/* v35 (Доп. 344): разговор голосом — на месте поля полоса разговора, реплики — в этой же переписке */}
+        {talk ? (
+          <TalkBar who="mentor" name="Наставник" voice="mentor" phone={{ pitch: 1, rate: 1 }}
+            ask={askVoice} onState={setTalkState} onClose={() => setTalk(false)} />
+        ) : (
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 28,
             background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
             backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
@@ -668,7 +752,12 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
             headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
             onText={t => setInput(v => (v ? v.trimEnd() + " " : "") + t)}
+            onBusy={setMicBusy}
             onError={m => { setInput(v => v); try { window.Telegram?.WebApp?.showAlert?.(m); } catch (e) { alert(m); } }} />
+          {/* v34 (Доп. 343): поле пустое — на месте «Отправить» кнопка-волна «Разговор голосом» (как в Claude) */}
+          {!input.trim() && talkOk ? (
+            <TalkButton size={44} disabled={sending || micBusy} onClick={openTalk} />
+          ) : (
           <button className="sa-btn" onClick={() => send()} disabled={sending || !input.trim()}
             style={{ width: 44, height: 44, borderRadius: 22, border: "none", cursor: "pointer", flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -676,7 +765,9 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
               boxShadow: input.trim() && !sending ? "0 4px 14px rgba(200,160,80,0.3)" : "none", transition: "all 0.2s ease" }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   , document.body);

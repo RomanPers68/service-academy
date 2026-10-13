@@ -7,7 +7,7 @@ import { vibrate } from "../lib/utils";
 // пляшут под громкость голоса; по краю за 30 секунд ползёт тонкое золотое
 // кольцо-таймер. Никакого красного — всё в цвете интерфейса.
 // onText получает распознанную фразу.
-export function MicButton({ onText, onError, a11y, sttUrl, headers, size = 44 }) {
+export function MicButton({ onText, onError, a11y, sttUrl, headers, size = 44, onBusy }) {
   const [state, setState] = React.useState("idle");   // idle | listening | processing
   const [level, setLevel] = React.useState(0);        // громкость 0..1
   const [t0, setT0] = React.useState(0);              // старт записи — для кольца-таймера
@@ -25,7 +25,7 @@ export function MicButton({ onText, onError, a11y, sttUrl, headers, size = 44 })
     vibrate("light");
     stopRef.current = startVoice({
       onText: (t) => { vibrate("success"); onText(t); },
-      onState: (st) => { if (st === "listening") setT0(Date.now()); setState(st); },
+      onState: (st) => { if (st === "listening") setT0(Date.now()); setState(st); try { onBusy && onBusy(st !== "idle"); } catch (e) {} },   // v34: пока пишет — без «разговора голосом»
       onLevel: setLevel,
       onError: (m) => { vibrate("error"); onError && onError(m); },
       sttUrl, headers,

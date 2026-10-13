@@ -12,6 +12,7 @@ import React from "react";
 import { TableCheck, TableMood, TableLine, TableEdge, tableShell, tableVars, TableSound, TABLE_MOOD_WORD } from "./table";
 import { Ic } from "./table-bits";
 import { MicButton } from "./mic";
+import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в разговоре
 import { voiceSupported } from "../lib/voice";
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../api/supabase";
 import { pickGuest, parseGuestReply, parseReceipt, mistakesForLessons, saveGuestRun, readGuestRuns, guestErrorText, CRITERIA, POS_WORD, previousRun, streamText, normPersona } from "../lib/live-guest";
@@ -122,7 +123,7 @@ const PLACE_NAME = { hall: "зал", door: "вход", bar: "бар" };
 function speak(text, female) {
   try {
     if (!("speechSynthesis" in window) || !text) return;
-    // v32 (Доп. 336): через lib/speech — слышно и в беззвучном режиме iPhone
+    // v32 (Доп. 336): через lib/speech (фраза держится до конца)
     audioWake();
     speakText(String(text).replace(/\*[^*]*\*/g, ""), { rate: 1, pitch: female ? 1.12 : 0.88, cancelBefore: true, onend: () => audioSleep(), onerror: () => audioSleep() });
   } catch (e) {}
@@ -322,6 +323,12 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const [canEdit, setCanEdit] = React.useState(false);
   const [editor, setEditor] = React.useState(false);
   const [voiceOn, setVoiceOn] = React.useState(() => { try { return localStorage.getItem("sa_guest_voice") !== "0"; } catch (e) { return true; } });
+  const [talk, setTalk] = React.useState(false);        // v34: открыт разговор голосом
+  const [talkState, setTalkState] = React.useState("idle");   // v35: что сейчас в разговоре голосом
+  const talkOk = React.useMemo(() => canTalk(), []);
+  const [micBusy, setMicBusy] = React.useState(false);  // v34: кнопка-микрофон пишет — волна ждёт
+  const msgsRef = React.useRef(msgs); msgsRef.current = msgs;     // v34: реплики голосом идут подряд
+  const endedRef = React.useRef(false); endedRef.current = ended;
   const t0 = React.useRef(0);
   const mount = React.useRef(Date.now());
   const touched = React.useRef(false);                  // человек уже выбирал гостя или начал разговор
@@ -330,7 +337,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const female = isFemale(guest.name);
   const vars = tableVars(color, a11y);
   React.useEffect(() => () => { try { stopSpeech(); } catch (e) {} }, []);
-  React.useEffect(() => { const el = bodyRef.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs.length, busy, phase, partial]);
+  React.useEffect(() => { const el = bodyRef.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs.length, busy, phase, partial, talkState]);
   // v31: свои гости заведения (этап 25). Пришли быстро, пока карточка только открылась, — гость
   // может смениться на своего; позже — войдут в следующий выбор («Другой гость»).
   React.useEffect(() => {
@@ -419,6 +426,39 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
     } finally { setBusy(false); setPartial(""); }
   };
 
+  // v34 (Доп. 343): реплика в разговоре голосом — та же, что текстом (в чат, настроение, конец визита),
+  // только гостя озвучивает экран разговора (живым голосом или голосом телефона), а не speak()
+  const talkTurn = async (text) => {
+    const said = String(text || "").trim();
+    if (!said) return { text: "" };
+    if (endedRef.current) return { text: "", end: true };
+    const list = [...msgsRef.current, { who: "me", text: said }];
+    msgsRef.current = list;
+    setMsgs(list); setBusy(true); setErr(null); setPartial("");
+    try {
+      const reply = await call(list, false, (t) => setPartial(streamText(t)));
+      const g = parseGuestReply(reply);
+      const next = [...list, { who: "guest", text: g.text || "…" }];
+      msgsRef.current = next;
+      setMsgs(next);
+      if (g.mood) setMood(g.mood);
+      setMoods((ms) => [...ms, g.mood || ms[ms.length - 1] || 3]);
+      const over = !!(g.end || next.filter((m) => m.who === "me").length >= 12);
+      if (over) { endedRef.current = true; setEnded(true); }
+      return { text: g.text || "", end: over };
+    } catch (e) {
+      const code = String((e && e.message) || "server") === "Failed to fetch" ? "network" : String((e && e.message) || "server");
+      setErr(code);
+      throw new Error(guestErrorText(code));
+    } finally { setBusy(false); setPartial(""); }
+  };
+  const openTalk = () => {
+    vibrate("light");
+    try { stopSpeech(); } catch (e) {}
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}   // клавиатура — вниз
+    setTalk(true);
+  };
+
   const finish = async () => {
     if (busy || myTurns < 2) return;
     vibrate("light");
@@ -462,7 +502,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
 
   const head = (
     <div className="tb-head"><div className="tb-col tb-top">
-      <button type="button" className="tb-x" data-sa-back={editor ? undefined : ""} aria-label="Закрыть" onClick={onClose}><Ic n="x" s={18} /></button>
+      <button type="button" className="tb-x" data-sa-back={editor || talk ? undefined : ""} aria-label="Закрыть" onClick={onClose}><Ic n="x" s={18} /></button>
       <div className="tb-host"><span className="tb-av" aria-hidden="true"><Ic n="guest" s={18} /></span>
         <span className="tb-host-t"><b>Живой гость</b><span>{phase === "card" ? "гость — ИИ · " + POS_WORD[guest.place] : guest.name + " · " + guest.line}</span></span></div>
       {phase === "card" ? <TableSound /> : <TableMood m={mood} hall />}
@@ -564,8 +604,10 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
         <MoodStrip moods={moods} />
         <div className="tb-chat" aria-live="polite">
           {msgs.map((m, i) => m.who === "guest"
-            ? <div key={i} className="lg-g tb-new"><b>{guest.name}</b>{m.text}</div>
+            ? <div key={i} className="lg-g tb-new"><b>{guest.name}{talk && talkState === "speaking" && i === msgs.length - 1 ? <TalkSpeaking style={{ marginLeft: 8, color: "var(--gold-ink)" }} /> : null}</b>{m.text}</div>
             : <div key={i} className="tb-mine tb-new">{m.text}</div>)}
+          {/* v35: ты говоришь — твой пузырь с точками, пока фраза записывается и распознаётся */}
+          {talk && (talkState === "hearing" || talkState === "recognizing") ? <div className="tb-mine tb-new" data-talk-pending=""><TalkDots /></div> : null}
           {busy && partial ? <div className="lg-gp" aria-busy="true"><b>{guest.name}</b><span>{partial}</span></div>
             : busy ? <div className="tb-typing tb-new" aria-label="Гость отвечает"><i /><i /><i /></div> : null}
           {ended ? <div className="tb-actl tb-new">Гость попросил счёт — разговор окончен</div> : null}
@@ -583,7 +625,17 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
           : left != null ? <span className="lg-left" data-left={left}>живых реплик сегодня: {left}</span> : null}
       </div></div>
       <div className="tb-foot"><div className="tb-col">
-        {ended ? (
+        {talk ? (
+          // v35 (Доп. 344): разговор голосом — полоса на месте поля; гость прощается — она закрывается сама
+          <>
+            <TalkBar who="guest" name={guest.name} voice={female ? "guest_f" : "guest"} phone={{ pitch: female ? 1.12 : 0.88, rate: 1 }} actions
+              first={myTurns === 0 ? guest.open : null} ask={talkTurn} onState={setTalkState} onClose={() => setTalk(false)} />
+            <div className="lg-bar">
+              {guest.whisper ? <button type="button" className="tb-ghost" data-whisper="" onClick={() => { if (!whisper) { vibrate("light"); setWhisper(true); } }} disabled={whisper}>{whisper ? "Шёпот взят" : "Шёпот наставника"}</button> : null}
+              <button type="button" className="tb-ghost" onClick={() => { setTalk(false); finish(); }} disabled={busy || myTurns < 2}>Рассчитать гостя</button>
+            </div>
+          </>
+        ) : ended ? (
           <button type="button" className="tb-main" onClick={finish}>Получить чек разбора</button>
         ) : (
           <>
@@ -591,8 +643,10 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
               <textarea className="lg-in" rows={1} value={input} placeholder="Что скажешь гостю?" aria-label="Твоя реплика гостю"
                 onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} disabled={busy} />
               {canVoice ? <MicButton a11y={a11y} size={46} sttUrl={`${SUPABASE_URL}/functions/v1/stt`} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
-                onText={(t) => setInput((v) => (v ? v + " " : "") + t)} onError={() => {}} /> : null}
-              <button type="button" className="lg-send" onClick={() => send()} disabled={busy || !input.trim()} aria-label="Сказать"><Ic n="send" s={18} /></button>
+                onText={(t) => setInput((v) => (v ? v + " " : "") + t)} onBusy={setMicBusy} onError={() => {}} /> : null}
+              {/* v34 (Доп. 343): поле пустое — на месте «Сказать» кнопка-волна «Разговор голосом» */}
+              {!input.trim() && talkOk ? <TalkButton size={46} disabled={busy || micBusy} onClick={openTalk} label="Разговор голосом с гостем" />
+                : <button type="button" className="lg-send" onClick={() => send()} disabled={busy || !input.trim()} aria-label="Сказать"><Ic n="send" s={18} /></button>}
             </div>
             <div className="lg-bar">
               {guest.whisper ? <button type="button" className="tb-ghost" data-whisper="" onClick={() => { if (!whisper) { vibrate("light"); setWhisper(true); } }} disabled={whisper}>{whisper ? "Шёпот взят" : "Шёпот наставника"}</button> : null}

@@ -124,7 +124,7 @@ function SayAloud({ phrase, onVoice }) {
   const [err, setErr] = React.useState("");
   const canTts = typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
   const canMic = (() => { try { return voiceSupported(); } catch (e) { return false; } })();
-  // v32 (Доп. 336): через lib/speech — слышно и в беззвучном режиме iPhone, фраза не «теряется»
+  // v32 (Доп. 336): через lib/speech — фраза не «теряется» (v33: без «тихой дорожки»)
   const speak = () => {
     try { audioWake(); speakText(phrase, { rate: 0.95, cancelBefore: true, onend: () => audioSleep(), onerror: () => audioSleep() }); } catch (e) {}
   };
@@ -316,7 +316,7 @@ function ListenBtn({ text }) {
   const [on, setOn] = React.useState(false);
   React.useEffect(() => () => { try { if (can) stopSpeech(); } catch (e) {} }, [text, can]);
   if (!can) return null;
-  // v32 (Доп. 336): «Послушать ситуацию» — через lib/speech (беззвучный режим iPhone, «зависание» фразы)
+  // v32 (Доп. 336): «Послушать ситуацию» — через lib/speech («зависание» фразы)
   const toggle = () => {
     try {
       if (on) { stopSpeech(); setOn(false); audioSleep(); return; }

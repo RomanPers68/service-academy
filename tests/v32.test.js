@@ -18,6 +18,7 @@ function fakeSynth() {
 
 describe("голос телефона (lib/speech)", () => {
   it("фраза держится до конца, конец приходит один раз", () => {
+    _resetSpeech();
     const { said } = fakeSynth();
     expect(canSpeak()).toBe(true);
     let ends = 0;
@@ -28,6 +29,7 @@ describe("голос телефона (lib/speech)", () => {
     expect(ends).toBe(1);
   });
   it("отмена — без ошибки для того, кто слушает", () => {
+    _resetSpeech();
     const { said } = fakeSynth();
     let errs = 0, ends = 0;
     speakText("Раз", { onend: () => ends++, onerror: () => errs++ });
@@ -36,6 +38,7 @@ describe("голос телефона (lib/speech)", () => {
     expect(said.length).toBe(0);
   });
   it("подстраховка: конец не пришёл — фраза считается дочитанной", async () => {
+    _resetSpeech();   // v33: сразу после отмены новая фраза ждёт 90 мс — здесь отмен не было
     const { said } = fakeSynth();
     const real = global.setTimeout; let fire = null;
     global.setTimeout = (fn, ms) => { if (ms >= 4000) { fire = fn; return 1; } return real(fn, ms); };
@@ -47,6 +50,7 @@ describe("голос телефона (lib/speech)", () => {
     expect(ends).toBe(1); expect(errs).toBe(0);
   });
   it("не начала читать и молчит — ошибка (экран покажет текст)", () => {
+    _resetSpeech();
     fakeSynth();
     const real = global.setTimeout; let fire = null;
     global.setTimeout = (fn, ms) => { if (ms >= 4000) { fire = fn; return 1; } return real(fn, ms); };
@@ -67,7 +71,9 @@ describe("голос телефона (lib/speech)", () => {
     setNav({ userAgent: "Mozilla/5.0 (Macintosh)", platform: "MacIntel", maxTouchPoints: 5 });
     expect(isAppleMobile()).toBe(true);   // iPad в режиме «как компьютер»
   });
-  it("«разбудить» звук: режим воспроизведения и тихая дорожка на iPhone; потом всё назад", () => {
+  // v33 (Доп. 341): «тихая дорожка» и Audio Session в Telegram на iPhone обрывали голос телефона —
+  // audioWake больше не играет звук и не трогает режим звука, только помечает, что звук нужен
+  it("«разбудить» звук: только отметка — без тихой дорожки и без смены режима звука (v33)", () => {
     _resetSpeech();
     const played = [];
     const session = { type: "auto" };
@@ -79,8 +85,8 @@ describe("голос телефона (lib/speech)", () => {
     global.setTimeout = (fn, ms) => { later.push(fn); return later.length; };
     try {
       audioWake();
-      expect(session.type).toBe("playback");
-      expect(played).toEqual(["blob:silence"]);
+      expect(session.type).toBe("auto");
+      expect(played).toEqual([]);
       expect(audioAwake()).toBe(true);
       audioSleep(0);
       later.forEach((f) => f());

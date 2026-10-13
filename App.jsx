@@ -1206,13 +1206,16 @@ function ServiceAcademy() {
     if (!warmLinkRef.current || !profile || !tbMod || !storageLoaded) return;
     if (warmSits.length < 2) {
       // Доп. 310: разминать пока нечего (уроки трека ещё не приехали — подождём; приехали, а
-      // заданий нет) — ссылка из напоминания не молчит, а открывает трек
-      if (role && (MODULES[role] || []).length) { warmLinkRef.current = false; navigate("home"); }
+      // заданий нет) — ссылка из напоминания не молчит, а открывает трек.
+      // v33 (Доп. 342): «приехали» — по тому же списку уроков, из которого собрана разминка
+      // (modules), а не по общему MODULES: уроки уже загрузились, а разминка ещё считалась по
+      // пустому списку — и ссылка иногда уводила в трек вместо разминки
+      if (role && modules.length) { warmLinkRef.current = false; navigate("home"); }
       return;
     }
     warmLinkRef.current = false;
     setWarmupOpen(true);
-  }, [profile, tbMod, warmSits.length, role, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile, tbMod, warmSits.length, role, storageLoaded, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Доп. 305: чек недели — что сделано за 7 дней, можно отправить команде ──
   const weekOpen = layerData(layers, "week"), setWeekOpen = layerSet.week;   // null | "last7" | "prev"

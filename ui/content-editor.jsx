@@ -23,6 +23,7 @@ import { glass as glassOf, SectionLabel, tones } from "./analytics-kit";
 import { GOLD } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
 import { splitExtras, sectionName, bySort, sectionSteps } from "../lib/custom-modules";
+import { answerTell } from "../lib/answer-tell";   // v37: верный угадывается по длине?
 
 const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -821,6 +822,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                     </div>
                   </div>))}
                 <div style={{ color: muted, fontSize: 11, paddingLeft: 2 }}>зелёный — верный ответ · ±1 — как ответ меняет настроение гостя</div>
+                {answerTell(st.options) ? <div data-len-tell="" style={{ color: TN.mid, fontSize: 11.5, lineHeight: 1.45, padding: "5px 2px 0" }}>Верный ответ заметно длиннее остальных — его угадают по длине. Сделай неверные такими же подробными: вежливо, уверенно, но с одной ошибкой.</div> : null}
               </>)}
             </div>
           ))}
@@ -923,6 +925,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               {q.options.length < 4 ? <button onClick={() => setQ(q.id, { options: [...q.options, ""] })} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, gap: 4, padding: 2 }}>{ico.plus(gold, 14)} вариант</button> : null}
               <span style={{ color: muted, fontSize: 11 }}>зелёный кружок — верный ответ</span>
             </div>
+            {answerTell(q.options, q.correct) ? <div data-len-tell="" style={{ color: TN.mid, fontSize: 11.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Верный вариант заметно длиннее остальных — его угадают по длине. Допиши неверные до той же длины: правдоподобно, но с ошибкой.</div> : null}
             <input style={{ ...input, fontSize: 13.5 }} value={q.explanation || ""} onChange={e => setQ(q.id, { explanation: e.target.value })} placeholder="Пояснение: почему верно именно так" />
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <span style={{ flexShrink: 0 }}>{ico.photo(muted)}</span>

@@ -2497,7 +2497,13 @@ function ServiceAcademy() {
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
         {screen === "lesson" && activeLesson?.type === "dialogue" && createPortal(
-          <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} inline={activeLesson.dialogue} T={T} color={activeModule?.color} onClose={completeLesson} pro={true} />
+          <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} inline={activeLesson.dialogue} T={T} color={activeModule?.color} pro={true}
+            onClose={(finished, st) => {
+              // v37: урок засчитывается, когда разговор дошёл до конца (и когда гость ушёл — как раньше).
+              // Вышел посреди разговора — стрелкой в шапке или кнопкой «Назад» Telegram — просто назад,
+              // без отметки (ревью v37: «Назад» Telegram теперь жмёт стрелку диалога и засчитывал урок)
+              if (finished === true || (st && st.done)) completeLesson(); else goBack("module");
+            }} />
         , document.body)}
         {screen === "lesson" && activeLesson?.type === "build" && createPortal(
           <Suspense fallback={<ScreenLoader T={T} />}>

@@ -9,6 +9,10 @@
 //     пробел перед знаком, дефис вместо тире
 //  5. Согласованность стандартов времени: контакт — 10 секунд,
 //     подход к столу — 2 минуты
+//  v38: тесты и практики «у стола» — верный не выдаёт себя длиной (как в банке
+//     собеседования); уроки ролей читаются из своих файлов (modules.js теперь
+//     ленивый — через него проверялась только «Хостес», а в node импорт и вовсе падал)
+//  v39: стандарты времени (п. 5) тоже ищутся в уроках ролей — в их файлах, а не в ленивом modules.js
 // Выход с кодом 1, если есть ошибки (для CI); предупреждения не валят сборку.
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -16,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const { answerTell } = await import(join(ROOT, "lib/answer-tell.js"));
 const errors = [];
 const warns = [];
 const ok = (msg) => console.log("  ✓", msg);
@@ -24,8 +29,13 @@ const ok = (msg) => console.log("  ✓", msg);
 console.log("1. Загрузка файлов данных");
 let MODULES, SPG, CAND, GLOSSARY, DIALOGUES;
 try {
-  ({ MODULES } = await import(join(ROOT, "data/modules.js")));
-  ({ SPG_MODULES: SPG } = await import(join(ROOT, "data/modules-spg.js")));
+  // v38: роли — прямо из своих файлов (data/modules.js грузит их лениво)
+  const ROLE_FILES = { seasonal: ["modules-seasonal.js", "SEASONAL_MODULES"], core: ["modules-core.js", "CORE_MODULES"],
+    manager: ["modules-manager.js", "MANAGER_MODULES"], service_manager: ["modules-service_manager.js", "SERVICE_MANAGER_MODULES"],
+    spg: ["modules-spg.js", "SPG_MODULES"], bar: ["modules-bar.js", "BAR_MODULES"] };
+  MODULES = {};
+  for (const [r, [f, name]] of Object.entries(ROLE_FILES)) MODULES[r] = (await import(join(ROOT, "data", f)))[name];
+  SPG = MODULES.spg;
   ({ CANDIDATE_QUESTIONS: CAND } = await import(join(ROOT, "data/candidate-questions.js")));
   ({ GLOSSARY } = await import(join(ROOT, "data/glossary.js")));
   ({ DIALOGUES_DATA: DIALOGUES } = await import(join(ROOT, "data/dialogues.js")));
@@ -61,6 +71,9 @@ if (MODULES) {
               errors.push(`[${rid}/${m.id}/${l.id}] вопрос без вариантов: ${String(q.q).slice(0, 50)}`);
             else if (typeof q.correct !== "number" || q.correct < 0 || q.correct >= q.options.length)
               errors.push(`[${rid}/${m.id}/${l.id}] индекс correct вне диапазона: ${q.q.slice(0, 50)}`);
+            // v38: верный не должен угадываться по длине (lib/answer-tell.js — та же подсказка, что в редакторе)
+            if (Array.isArray(q.options) && answerTell(q.options, q.correct))
+              errors.push(`[${rid}/${l.id}] верный ответ заметно длиннее остальных — переформулируй: ${String(q.q).slice(0, 50)}`);
             const key = (q.q || "").trim().toLowerCase();
             if (seen.has(key)) warns.push(`[${rid}] дубликат вопроса в ${l.id} и ${seen.get(key)}: «${q.q.slice(0, 60)}»`);
             else seen.set(key, l.id);
@@ -73,6 +86,8 @@ if (MODULES) {
                 (!Array.isArray(it.options) || typeof it.correct !== "number" ||
                  it.correct < 0 || it.correct >= it.options.length))
               errors.push(`[${rid}/${m.id}/${l.id}] практика с битым correct: ${(it.question || it.scene || "").slice(0, 50)}`);
+            if (it.genre !== "truefalse" && Array.isArray(it.options) && answerTell(it.options, it.correct))
+              errors.push(`[${rid}/${l.id}] практика: верный заметно длиннее остальных — ${(it.scene || it.start || it.question || "").slice(0, 50)}`);
           }
         }
       }
@@ -140,14 +155,17 @@ console.log("4. Типовые опечатки");
 console.log("5. Согласованность стандартов времени");
 {
   let bad = 0;
-  for (const f of ["modules.js", "modules-spg.js", "dialogues.js"]) {
+  // v39: уроки ролей живут в своих файлах (modules.js — ленивый), там урок — одна JSON-строка с «\n»
+  for (const f of ["modules-seasonal.js", "modules-core.js", "modules-manager.js", "modules-service_manager.js", "modules-bar.js", "modules-spg.js", "dialogues.js"]) {
     const lines = readFileSync(join(ROOT, "data", f), "utf-8").split("\n");
     lines.forEach((line, i) => {
-      // «первый контакт … 2 минут» или «подход … 10 секунд» — признак путаницы
-      if (/(первый|зрительный) контакт(?![^.»"]{0,60}10 секунд)[^.»"]{0,60}2 минут/i.test(line) ||
-          /подход(?![^.»"]{0,60}2 минут)[^.»"]{0,60}10 секунд/i.test(line)) {
-        warns.push(`data/${f}:${i + 1} возможная путаница стандартов времени: …${line.trim().slice(0, 90)}…`);
-        bad++;
+      for (const part of line.split("\\n")) {
+        // «первый контакт … 2 минут» или «подход … 10 секунд» — признак путаницы
+        if (/(первый|зрительный) контакт(?![^.»"]{0,60}10 секунд)[^.»"]{0,60}2 минут/i.test(part) ||
+            /подход(?![^.»"]{0,60}2 минут)[^.»"]{0,60}10 секунд/i.test(part)) {
+          warns.push(`data/${f}:${i + 1} возможная путаница стандартов времени: …${part.trim().slice(0, 90)}…`);
+          bad++;
+        }
       }
     });
   }
@@ -236,7 +254,7 @@ try {
   }
   // 6.7 Иллюстрации: каждый [img:ключ] в текстах имеет отрисовку (ILL или фото)
   {
-    const texts = ["data/reference.js", "data/modules.js", "data/modules-spg.js"]
+    const texts = ["data/reference.js", "data/modules.js", ...readdirSync(join(ROOT, "data")).filter(f => /^modules-.*\.js$/.test(f)).map(f => "data/" + f)]
       .map(f => readFileSync(join(ROOT, f), "utf-8")).join("\n");
     const usedKeys = new Set();
     for (const m of texts.matchAll(/\[img:([a-z0-9_,\s]+)\]/gi))

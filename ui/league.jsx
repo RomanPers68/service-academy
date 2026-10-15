@@ -8,12 +8,13 @@
 // итоги прошлой недели и победы, нарисованный кубок и сколько недель он у заведения.
 import React from "react";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
-import { PlaceCard } from "./screens-gamification";
+import { PlaceCard, MasterMark } from "./screens-gamification";
 import { GOLD, goldText } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { POINTS, weekPoints, weekStart } from "../lib/activity";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
+import { masterRolesOf } from "../lib/mastery";
 
 const MEDAL = ["#E8C56A", "#C9C9C9", "#C89A6E"];
 const MEDAL_LIGHT = ["#B8902E", "#7E8790", "#A0643A"];
@@ -49,6 +50,16 @@ export function cupStreak(hist = []) {
   }
   return { restaurant: r, weeks: n };
 }
+// v40: «Мастер роли ✦» у имени в лиге — роли мастера (или null). masters — mastersIndex(строки mastery_list):
+// там мастера только своего заведения, поэтому знак — только у строк своего заведения. Своя строка
+// («ты» на подиуме) — по имени из профиля.
+export function leagueMasterRoles(masters, r, profile) {
+  if (!masters || !r) return null;
+  const myRest = (profile && profile.restaurant) || "";
+  if (!myRest || (r.restaurant || "") !== myRest) return null;
+  const who = r.me && profile ? profile : r;
+  return masterRolesOf(masters, who.name, who.surname);
+}
 
 function CupArt({ size = 56, color = "#E8C56A", a11y = false }) {
   const c = a11y ? "#8A6410" : color;
@@ -64,7 +75,7 @@ function CupArt({ size = 56, color = "#E8C56A", a11y = false }) {
   );
 }
 
-export function LeagueScreen({ T, a11y, profile, activity = {}, onBack }) {
+export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters = null }) {
   const [st, setSt] = React.useState({ status: "loading" });
   const [scope, setScopeRaw] = React.useState(() => { try { return localStorage.getItem("sa_lg_scope") === "net" ? "net" : "rest"; } catch (e) { return "rest"; } });
   const [how, setHow] = React.useState(false);
@@ -167,9 +178,16 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack }) {
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 8, margin: "4px 0 14px" }} role="group" aria-label="Подиум недели">
                 {[1, 0, 2].filter((k) => podium[k]).map((k) => {
                   const r = podium[k]; const h = [74, 56, 44][k];
+                  const nameSt = { fontSize: 12.5, color: r.me ? text : sub, fontWeight: r.me ? "bold" : "normal", textAlign: "center", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+                  const nm = r.me ? "ты" : r.name + (r.surname ? " " + r.surname[0] + "." : "");
+                  const mr = leagueMasterRoles(masters, r, profile);   // v40: «Мастер роли ✦» после имени
                   return (
                     <div key={r.id} style={{ flex: "0 1 110px", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                      <div style={{ fontSize: 12.5, color: r.me ? text : sub, fontWeight: r.me ? "bold" : "normal", textAlign: "center", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.me ? "ты" : r.name + (r.surname ? " " + r.surname[0] + "." : "")}</div>
+                      {mr ? (
+                        <div style={{ ...nameSt, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
+                          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{nm}</span><MasterMark roles={mr} a11y={a11y} size={12} />
+                        </div>
+                      ) : <div style={nameSt}>{nm}</div>}
                       <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: gold }}>{ptsOf(r)}</div>
                       <div style={{ width: "100%", height: h, marginTop: 4, borderRadius: "10px 10px 4px 4px", display: "grid", placeItems: "center",
                         background: `linear-gradient(180deg, ${medal[k]}55, ${medal[k]}18)`, borderTop: `1px solid ${medal[k]}99`, borderLeft: `1px solid ${medal[k]}99`, borderRight: `1px solid ${medal[k]}99`, borderBottom: "none",
@@ -184,12 +202,15 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack }) {
               {sorted.slice(0, 100).map((r, i) => {
                 const med = medal[i];
                 const m = mv(r, i);
+                const mr = leagueMasterRoles(masters, r, profile);   // v40: «Мастер роли ✦» после имени
                 return (
                   <div key={r.id} role="listitem" style={{ ...T.modCard, marginBottom: 8, gap: 12, alignItems: "center", ...(r.me ? { boxShadow: `inset 0 0 0 1.5px ${GOLD}AA` } : null) }}>
                     <div style={{ width: 27, height: 27, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: "bold",
                       color: med || text, background: med ? med + "33" : "transparent", border: `1.5px solid ${med ? med + "99" : (T.modSub.color + "55")}` }}>{i + 1}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}><span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name} {r.surname}{r.me ? " · ты" : ""}</span>{arrow(m)}</div>
+                      <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>{mr ? (
+                        <><span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name} {r.surname}</span><MasterMark roles={mr} a11y={a11y} />{r.me ? <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>· ты</span> : null}</>
+                      ) : <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name} {r.surname}{r.me ? " · ты" : ""}</span>}{arrow(m)}</div>
                       <div style={{ color: sub, fontSize: 12.5 }}>{[POS[r.position] || "", scope === "net" || !twoScopes ? r.restaurant : "", r.days ? r.days + " " + plural(r.days, "день", "дня", "дней") : ""].filter(Boolean).join(" · ")}</div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>

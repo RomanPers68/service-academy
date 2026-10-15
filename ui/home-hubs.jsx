@@ -5,7 +5,8 @@ import { ensureTableCss } from "./table-css";
 import { ymd } from "../lib/streak";
 import { EmptyState, useHintOnce, HintBubble } from "./widgets";
 import { LOGO_SRC_DARK } from "../assets/logo";
-import { onActivate, vibrate } from "../lib/utils";
+import { onActivate, vibrate, isFemaleName } from "../lib/utils";
+import { ROLE_TITLE, masterKey } from "../lib/mastery";
 
 // ── Дополнение 133: вкладки «Смена», «Команда», «Я» ───────────────────────────
 // Один компонент-хаб: заголовок с малым фирменным знаком, подзаголовок и список
@@ -44,6 +45,8 @@ const ICON = {
   month: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"/></svg>,
   // v31: «Погреб тем» — бокал с уровнем вина
   cellar: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12c0 6-2 11-6 13-4-2-6-7-6-13z"/><path d="M7 8.5h10"/><path d="M12 16v5M8.5 21h7"/></svg>,
+  // v40: «Путь мастера» — медаль: лента и круг с маленькой звездой
+  mastery: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 2.5h3.1l1.8 6.5M6.5 2.5l2.7 7.2M17.5 2.5h-3.1l-1.8 6.5M17.5 2.5l-2.7 7.2"/><circle cx="12" cy="15" r="6"/><path d="M12 12.7l.59 1.59 1.69.07-1.33 1.05.46 1.63L12 16.1l-1.41.94.46-1.63-1.33-1.05 1.69-.07z"/></svg>,
 };
 
 export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps }) {
@@ -231,6 +234,57 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
         <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>
           {days > 0 ? <><span className="tbv" style={{ color: gold, display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "-2px" }}><Candle s={15} lit={streak.last === ymd(new Date())} />{days} {dword}</span> подряд</> : "Начни серию — заходи каждый день"}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── v40: «✦ Мастер роли» — коллега стал мастером (этап 26: mastery_list) ─────────
+// Строки сервера: [{ who: "Анна Смирнова", name, role, at, me }], новые сверху.
+const DAY_MS = 86400000;
+const dayStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
+/** «сегодня», «вчера», «3 дня назад», «неделю назад» — по календарным дням телефона. */
+export function relDay(at, now = Date.now()) {
+  const d = Math.round((dayStart(now) - dayStart(at)) / DAY_MS);
+  if (d <= 0) return "сегодня";
+  if (d === 1) return "вчера";
+  if (d === 7) return "неделю назад";
+  return d + " " + plural(d, "день", "дня", "дней") + " назад";
+}
+/** Новость для баннера: самый свежий чужой мастер за 7 дней и сколько ещё новых мастеров
+ *  (людей, а не записей: у одного человека ролей может быть несколько). Нечего показать — null. */
+export function mastersNews(rows, now = Date.now()) {
+  const whoOf = (r) => String(r.who || r.name || "").replace(/\s+/g, " ").trim();
+  const fresh = (Array.isArray(rows) ? rows : [])
+    .filter((r) => r && typeof r === "object" && !r.me && whoOf(r))
+    .map((r) => ({ r, t: Date.parse(r.at) }))
+    .filter((x) => Number.isFinite(x.t) && now - x.t <= 7 * DAY_MS && x.t - now <= DAY_MS / 2)   // полдня вперёд — часы сервера
+    .sort((a, b) => b.t - a.t);
+  if (!fresh.length) return null;
+  const top = fresh[0].r, who = whoOf(top), sp = who.indexOf(" ");
+  const name = sp < 0 ? who : who.slice(0, sp), surname = sp < 0 ? "" : who.slice(sp + 1);
+  const key = masterKey(who, "");
+  const more = new Set(fresh.map((x) => masterKey(whoOf(x.r), "")).filter((k) => k !== key)).size;
+  return { who, name, surname, female: isFemaleName(name, surname), role: top.role || "", title: ROLE_TITLE[top.role] || "", when: relDay(fresh[0].t, now), more };
+}
+
+/** v40: баннер «✦ МАСТЕР РОЛИ» — коллега стал мастером за последние 7 дней (свои записи не в счёт). */
+export function MastersBanner({ a11y, rows = [], onOpen }) {
+  const news = mastersNews(rows);
+  if (!news) return null;
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
+  const go = () => { vibrate("light"); onOpen && onOpen(); };
+  // «роли «Ядро»» не разрываем: название роли не остаётся одно на строке
+  const line = news.who + (news.female ? " стала" : " стал") + " мастером роли" + (news.title ? "\u00A0«" + news.title + "»" : "");
+  return (
+    <div className="sa-card sa-pagein" data-ms-banner="" role="button" tabIndex={0} onClick={go} {...onActivate(go)}
+      style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px", cursor: "pointer", marginBottom: 4, WebkitTapHighlightColor: "transparent" }}>
+      <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1.6, color: gold }}>✦ МАСТЕР РОЛИ</div>
+      <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: text, lineHeight: 1.3, marginTop: 4 }}>{line}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 10, rowGap: 2, marginTop: 4, fontSize: a11y ? 13 : 12.5, lineHeight: 1.4 }}>
+        <span style={{ color: sub }}>{news.when + (news.more ? " · ещё " + news.more + " " + plural(news.more, "новый мастер", "новых мастера", "новых мастеров") + " за неделю" : "")}</span>
+        <span style={{ marginLeft: "auto", color: gold, fontFamily: "Georgia, serif", fontWeight: "bold", whiteSpace: "nowrap" }}>Путь мастера ›</span>
       </div>
     </div>
   );

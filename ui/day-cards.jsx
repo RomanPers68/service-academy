@@ -182,16 +182,20 @@ const PREF_ROWS = [
   ["league", "Лига недели", "итоги недели — по понедельникам"],
   ["fresh", "Свежесть тем", "по четвергам, если темы выдыхаются"],
   ["month", "Итоги месяца", "первого числа — твой месяц в карточках"],
+  ["master", "Мастера заведения", "когда коллега становится мастером роли ✦"],   // v40, этап 26
 ];
-function NotifyPrefs({ a11y, c }) {
+// Строки для ответа notify_prefs. Вид «master» знает только этап 26: сервер этапа 25 его не присылает
+// и не принял бы (notify_set → kind) — тогда строки нет.
+export const prefRows = (p) => PREF_ROWS.filter(([k]) => k !== "master" || (!!p && p.master !== undefined));
+function NotifyPrefs({ a11y, c, onLoad }) {
   const [p, setP] = React.useState(null);
   const [busy, setBusy] = React.useState("");
   const [msg, setMsg] = React.useState("");
   React.useEffect(() => {
     let alive = true;
-    rpc("notify_prefs", { p_token: saToken() }).then((r) => { if (alive && r && r.ok) setP(r); }).catch(() => {});
+    rpc("notify_prefs", { p_token: saToken() }).then((r) => { if (alive && r && r.ok) { setP(r); if (onLoad) onLoad(r); } }).catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   if (!p) return null;
   const flip = (k) => {
     if (busy) return;
@@ -205,7 +209,7 @@ function NotifyPrefs({ a11y, c }) {
   return (
     <div data-notify-prefs="" style={{ marginTop: 14 }}>
       <div style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, color: c.gold, margin: "0 0 4px" }}>ЧТО ЕЩЁ ПРИСЫЛАТЬ</div>
-      {PREF_ROWS.map(([k, t, sub]) => {
+      {prefRows(p).map(([k, t, sub]) => {
         const on = !!p[k];
         return (
           <button key={k} type="button" role="switch" aria-checked={on} onClick={() => flip(k)} disabled={busy === k} className="sa-btn"
@@ -225,7 +229,27 @@ function NotifyPrefs({ a11y, c }) {
   );
 }
 
-export function RemindSheet({ a11y, uk = "", lead = false, shift = "", onClose, onChange }) {
+// v40: «Шаг дня» в напоминании — одной строкой и не длиннее 140 знаков, как режет сервер (этап 26)
+export function stepLine(t) {
+  const s = String(t == null ? "" : t).replace(/[\s\u0000-\u001F\u007F-\u009F]+/g, " ").trim();
+  const ch = Array.from(s);
+  return ch.length > 140 ? ch.slice(0, 139).join("").replace(/\s+$/, "") + "…" : s;
+}
+// Так выглядит сообщение бота за час до смены. step — текст «Шага дня» (v40): строка под текстом, перед кнопкой.
+export function RemindExample({ c = C(false), when = "час", shift = "", step = "" }) {
+  const st = stepLine(step);
+  return (
+    <div aria-label="Пример сообщения" style={{ padding: "10px 12px", borderRadius: "16px 16px 16px 4px", border: `1px solid ${c.line}`, background: c.bg }}>
+      <div style={{ fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, color: c.gold }}>✦ SERVICE ACADEMY</div>
+      <div style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.45, color: c.text }}>{"Через " + when + " смена: " + (shift || "Вечер · 16:00–24:00")}</div>
+      <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>Разминка до смены — 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены ✦</div>
+      {st ? <div data-remind-step="" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.45, color: c.text }}>{"Шаг дня: " + st}</div> : null}
+      <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 10, textAlign: "center", fontSize: 13, fontWeight: "bold", color: c.gold, border: `1px solid ${c.line}` }}>Разминка ✦</div>
+    </div>
+  );
+}
+
+export function RemindSheet({ a11y, uk = "", lead = false, shift = "", step = "", onClose, onChange }) {
   ensureTableCss();
   const c = C(a11y);
   const tg = typeof window !== "undefined" && window.Telegram ? window.Telegram.WebApp : null;
@@ -233,6 +257,7 @@ export function RemindSheet({ a11y, uk = "", lead = false, shift = "", onClose, 
   const [st, setSt] = React.useState({ phase: "load" });
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
+  const [has26, setHas26] = React.useState(false);   // v40: сервер знает «Путь мастера» (этап 26)
   const apply = (remind) => { saveRemindFlag(uk, remind); if (onChange) onChange(remind); };
   React.useEffect(() => {
     let alive = true;
@@ -286,13 +311,9 @@ export function RemindSheet({ a11y, uk = "", lead = false, shift = "", onClose, 
         <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>
           За {when} до смены по графику бот напишет и откроет разминку — 2 минуты, 3 задания из пройденного.{lead ? " Старшим ещё приходят запросы на подтверждение навыков в зале." : ""}
         </p>
-        {/* так выглядит сообщение */}
-        <div aria-label="Пример сообщения" style={{ padding: "10px 12px", borderRadius: "16px 16px 16px 4px", border: `1px solid ${c.line}`, background: c.bg }}>
-          <div style={{ fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, color: c.gold }}>✦ SERVICE ACADEMY</div>
-          <div style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.45, color: c.text }}>{"Через " + when + " смена: " + (shift || "Вечер · 16:00–24:00")}</div>
-          <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>Разминка до смены — 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены ✦</div>
-          <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 10, textAlign: "center", fontSize: 13, fontWeight: "bold", color: c.gold, border: `1px solid ${c.line}` }}>Разминка ✦</div>
-        </div>
+        {/* так выглядит сообщение (v40: со строкой «Шаг дня», если App его передал) */}
+        {/* v40: строку «Шаг дня» бот добавляет только с этапом 26 — его видно по виду «master» в настройках */}
+        <RemindExample c={c} when={when} shift={shift} step={has26 ? step : ""} />
         {st.phase === "load" ? note("Проверяю…") : null}
         {st.phase === "missing" ? note("Сервер ещё не готов: руководителю нужно выполнить этап 22б в Supabase.") : null}
         {st.phase === "offline" ? note("Нет связи — открой это окно, когда появится сеть.") : null}
@@ -301,7 +322,7 @@ export function RemindSheet({ a11y, uk = "", lead = false, shift = "", onClose, 
         {st.phase === "ready" && st.bot ? (on ? (
           <>
             <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.5)", color: a11y ? "#2C6B48" : "#8AD8AF", fontSize: 14, fontFamily: "Georgia, serif" }}>✓ Включено — за {when} до смены</div>
-            <NotifyPrefs a11y={a11y} c={c} />
+            <NotifyPrefs a11y={a11y} c={c} onLoad={(p) => setHas26(!!p && p.master !== undefined)} />
             <button type="button" className="sa-btn" onClick={disable} disabled={busy}
               style={{ display: "block", width: "100%", marginTop: 10, padding: 12, borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${c.line}`, color: c.text, fontSize: 14, fontWeight: "bold" }}>{busy ? "Минуту…" : "Выключить"}</button>
           </>

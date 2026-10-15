@@ -27,6 +27,18 @@ import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } 
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, goldText } from "./tokens";
+import { masterRolesOf, masterTitle } from "../lib/mastery";
+
+// v40: знак «Мастер роли ✦» у имени — в рейтинге и в лиге недели (ui/league.jsx).
+// roles — из masterRolesOf(mastersIndex(строки mastery_list), имя, фамилия); нет ролей — ничего.
+export function MasterMark({ roles, a11y = false, size = 14 }) {
+  if (!roles || !roles.length) return null;
+  const t = masterTitle(roles);
+  return (
+    <span data-master-mark="" role="img" title={t} aria-label={t}
+      style={{ display:"inline-flex", alignItems:"center", flexShrink:0, color: goldText(!!a11y), fontSize:size, lineHeight:1 }}>✦</span>
+  );
+}
 
 export function AchievementPopup({ ach, a11y, onClose }) {
   const [visible, setVisible] = React.useState(false);
@@ -265,7 +277,7 @@ export function PlaceCard({ T, tabLabel, rest, restIdx, restN, netIdx, netN, net
   );
 }
 
-export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}, onBack, onLeague }) {
+export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}, onBack, onLeague, masters = null }) {
   const [lbHint, lbHintDone] = useHintOnce("leaderboard");
   const [lbStep, setLBStep] = React.useState(0);
   const lbSteps = hintsFor("leaderboard");
@@ -376,6 +388,8 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const scope = twoScopes ? scopeRaw : "net";
   const setScope = (v) => { vibrate("light"); setScopeRaw(v); try { localStorage.setItem("sa_lb_scope", v); } catch (e) {} };
   const isMe = (p) => !!profile && p.name === profile.name && (p.surname || "") === (profile.surname || "");
+  // v40: «Мастер роли ✦» — список мастеров только своего заведения (mastery_list), поэтому знак — только у своих
+  const masterOf = (p) => (masters && myRest && p && p.restaurant === myRest ? masterRolesOf(masters, p.name, p.surname) : null);
   const byTab = leaderboard.filter(p => tabOf(p.position || "waiter") === tab);
   const restList = myRest ? byTab.filter(p => (p.restaurant || "") === myRest) : byTab;
   const filtered = scope === "rest" ? restList : byTab;
@@ -539,6 +553,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <div style={{ ...T.modTitle }}>{p.name} {shownSurname(p)}</div>
+                  <MasterMark roles={masterOf(p)} a11y={!!T.a11y} />
                   {i === myIdx && rankDelta != null && rankDelta !== 0 ? (
                     <span style={{ fontSize:9, fontFamily:"ui-monospace, Menlo, monospace", padding:"2px 7px", borderRadius:999,
                       color: rankDelta > 0 ? "#8FB890" : T.modSub.color,
@@ -567,7 +582,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
         </div>
       ) : (
         <div style={{ flex:1, padding:"12px 16px", overflowY:"auto" }}>
-          {(() => { const selAch = selected ? getAchievements(selected, leaderboard, scores) : []; return (
+          {(() => { const selAch = selected ? getAchievements(selected, leaderboard, scores) : []; const selMaster = selected ? masterOf(selected) : null; return (
           <div style={{ ...T.modCard, marginBottom:16, flexDirection:"column", alignItems:"flex-start", gap:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, width:"100%" }}>
               <div style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||GOLD}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||GOLD, fontFamily:"Georgia, serif" }}>
@@ -575,6 +590,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ ...T.modTitle }}>{selected?.name} {selected ? shownSurname(selected) : ""}</div>
+                {selMaster ? <div data-master-line="" style={{ color: goldText(!!T.a11y), fontSize: T.a11y ? 13 : 12.5, fontFamily:"Georgia, serif", lineHeight:1.35, margin:"1px 0 1px" }}>{"✦ " + masterTitle(selMaster).replace(/\s*✦$/, "")}</div> : null}
                 <div style={{ color:T.modSub.color, fontSize:12.5 }}>{selected?.restaurant}</div>
               </div>
             </div>

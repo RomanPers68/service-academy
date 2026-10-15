@@ -61,9 +61,11 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
   const creditN = rows.filter((r) => r.credit).length;
   const list = filter === "fade" ? fading : filter === "gold" ? rows.filter((r) => r.done && r.canGold).sort((a, b) => (b.gold ? 1 : 0) - (a.gold ? 1 : 0)) : rows;
   const card = { background: a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.06)", border: `1px solid ${GOLD}44`, borderRadius: 14, padding: "12px 14px", marginBottom: 12 };
+  // v40: светлая тема «Для чтения» — подписи от 13 px (тёмная — как была)
+  const small = (px) => (a11y ? Math.max(13, px) : px);
   const btn = (primary) => ({ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: primary ? "11px 16px" : "8px 12px", borderRadius: 999, cursor: "pointer",
     border: primary ? 0 : `1px solid ${GOLD}88`, background: primary ? "linear-gradient(180deg,#E4C88C,#C8A96E)" : "transparent",
-    color: primary ? "#1A1008" : (a11y ? "#5A4119" : "#D9B87C"), font: (primary ? "700 14.5px" : "700 12.5px") + " Georgia, serif", whiteSpace: "nowrap" });
+    color: primary ? "#1A1008" : (a11y ? "#5A4119" : "#D9B87C"), font: "700 " + (primary ? 14.5 : small(12.5)) + "px Georgia, serif", whiteSpace: "nowrap" });
   const status = (r) => {
     if (!r.done) return r.dn ? "пройдено " + r.dn + " из " + r.steps : "ещё не начата";
     const parts = [];
@@ -94,11 +96,11 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
               <div key={k} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 12, border: `1px solid ${GOLD}33` }}>
                 <div style={{ display: "flex", justifyContent: "center" }}><WineGlass level={lv == null ? 1 : lv} gold={lv == null} size={22} a11y={a11y} /></div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 20, fontWeight: "bold", color: text, lineHeight: 1.1, marginTop: 2 }}>{v}</div>
-                <div style={{ fontSize: 11.5, color: sub }}>{l}</div>
+                <div style={{ fontSize: small(11.5), color: sub }}>{l}</div>
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12.5, color: sub, marginTop: 10, lineHeight: 1.45 }}>Пройденная тема выдыхается, как открытое вино: бокал под номером темы пустеет. Освежил — снова полный, а следующий повтор позже{creditN ? ". По опыту засчитано: " + creditN : ""}.</div>
+          <div style={{ fontSize: small(12.5), color: sub, marginTop: 10, lineHeight: 1.45 }}>Пройденная тема выдыхается, как открытое вино: бокал под номером темы пустеет. Освежил — снова полный, а следующий повтор позже{creditN ? ". По опыту засчитано: " + creditN : ""}.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
             {fading.length && onFreshAll ? <button type="button" style={btn(true)} onClick={onFreshAll}>Освежить всё выдохшееся · {Math.min(3, fading.length) === 1 ? "1 мин" : "≈ 3 мин"}</button> : null}
             {probeCount >= 2 && onProbe ? <button type="button" style={btn(false)} onClick={onProbe}>Проверка по треку · {probeCount * 2} {plural(probeCount * 2, "задание", "задания", "заданий")}</button> : null}
@@ -107,7 +109,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
         <div role="group" aria-label="Какие темы показать" style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           {[["all", "Все"], ["fade", "Освежить" + (fading.length ? " · " + fading.length : "")], ["gold", "Золото"]].map(([id, l]) => (
             <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}
-              style={{ padding: "7px 13px", borderRadius: 999, cursor: "pointer", font: "700 12.5px Georgia, serif", border: `1px solid ${filter === id ? GOLD + "AA" : GOLD + "33"}`,
+              style={{ padding: "7px 13px", borderRadius: 999, cursor: "pointer", font: "700 " + small(12.5) + "px Georgia, serif", border: `1px solid ${filter === id ? GOLD + "AA" : GOLD + "33"}`,
                 background: filter === id ? (a11y ? "rgba(255,255,255,0.6)" : "rgba(226,186,116,0.12)") : "transparent", color: filter === id ? text : sub }}>{l}</button>
           ))}
         </div>
@@ -122,11 +124,11 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
                   aria-label={"Тема " + r.label + ": " + r.m.title + " — " + status(r)}>
                   <div style={{ position: "relative", width: 34, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
                     <WineGlass level={r.done ? (r.f ? wineLevel(r.f) : 1) : null} gold={!!r.gold} updated={!!(r.f && r.f.updated)} size={26} color={a11y ? "#8B6A30" : GOLD} a11y={a11y} />
-                    <span style={{ fontFamily: "Georgia, serif", fontSize: 11, color: sub, marginTop: -1 }}>{r.label}</span>
+                    <span style={{ fontFamily: "Georgia, serif", fontSize: small(11), color: sub, marginTop: -1 }}>{r.label}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ ...T.modTitle, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.m.title}</div>
-                    <div style={{ color: r.f && r.f.level === "faded" ? (a11y ? "#8A4B1E" : "#E0A070") : sub, fontSize: 12.5 }}>{status(r)}</div>
+                    <div style={{ color: r.f && r.f.level === "faded" ? (a11y ? "#8A4B1E" : "#E0A070") : sub, fontSize: small(12.5) }}>{status(r)}</div>
                   </div>
                 </div>
                 {a ? <button type="button" style={btn(a.primary)} onClick={() => { vibrate("light"); a.go(); }}>{a.label}</button> : null}

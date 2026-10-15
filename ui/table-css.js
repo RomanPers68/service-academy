@@ -117,22 +117,47 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-cta{flex:0 0 auto;padding:9px 15px;border-radius:999px;font-family:var(--font-body);font-size:14px;font-weight:700;color:var(--on-gold);background:linear-gradient(180deg,var(--gold-hi),var(--gold));box-shadow:0 3px 10px var(--drop),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .1s}
 .tbm-node:active .tbm-cta{transform:scale(.96)}
 .tbm-foot{display:flex;align-items:center;gap:10px;margin:2px 0 0;padding:8px 2px 9px 34px;border-top:1px dashed var(--edge-gold);font-family:var(--font-mono);font-size:10.5px;letter-spacing:.8px;color:var(--sub)}
-/* v30: свежесть темы и действия (освежить, зачёт на опыт, раунд мастера) */
-.tbm-acts{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 4px}
-.tbm-fresh{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#9C8E70;text-align:center}
+/* v30: свежесть темы и действия (освежить, зачёт на опыт, раунд мастера).
+   v40: действия — крупные плитки «значок · название · что внутри»: две — в ряд, одна — во всю
+   ширину, на узком экране (до 340 px) — друг под другом. «Погреб тем ›» — кнопка рядом со свежестью */
+.tbm-acts{display:flex;flex-direction:column;gap:10px;margin:2px -8px 10px}
+.tbm-fresh{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px;font-family:var(--font-mono);font-size:12.5px;line-height:1.35;letter-spacing:1.2px;text-transform:uppercase;color:#9C8E70;text-align:center}
 .tbm-fresh.fading{color:#C9A35C}.tbm-fresh.faded{color:#D08A6A}.tbm-fresh.upd{color:#8FB0D6}
-.tbm-actrow{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
-.tbm-act{font:600 12px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:6px 12px;border-radius:999px;cursor:pointer;
-  border:1px solid var(--role-edge,rgba(214,178,102,.5));background:transparent;color:var(--role-ink,#D9B87C)}
+.tbm-fresh-t{min-width:0}
+.tbm-fresh-t>span{white-space:nowrap}
+.tbm-actrow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.tbm-act{display:flex;align-items:center;gap:8px;min-width:0;min-height:56px;padding:9px 10px 9px 8px;border-radius:16px;cursor:pointer;text-align:left;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;border:1.5px solid var(--role-edge,rgba(214,178,102,.5));background:rgba(226,186,116,.05);color:var(--role-ink,#D9B87C);transition:transform .12s}
+.tbm-act:active:not([disabled]){transform:scale(.97)}
+.tbm-act-ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(214,178,102,.14)}
+.tbm-act-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tbm-act-t{font-size:15.5px;font-weight:700;line-height:1.2;text-wrap:balance}
+.tbm-act-s{font-size:12.5px;font-weight:500;line-height:1.3;opacity:.86;text-wrap:balance}
 .tbm-act.hot{background:var(--role-wash,rgba(214,178,102,.18));border-color:var(--role-fill,#C8A96E);color:#F3E9D2}
+.tbm-act.hot .tbm-act-ic{background:rgba(255,248,230,.14)}
 html.sa-light .tbm-act.hot{color:#2A1F0E}
 .tbm-act.gold{border-color:rgba(214,170,70,.7);color:#E8C56A}
+.tbm-act.gold .tbm-act-ic{background:rgba(232,197,106,.16)}
 .tbm-act.gold.got{background:linear-gradient(180deg,rgba(232,197,106,.22),rgba(201,154,46,.12))}
-.tbm-act[disabled]{opacity:.55;cursor:default}
-.tbm-act:focus-visible{outline:2px solid #D9B87C;outline-offset:2px}
+/* зачёт сегодня уже сдавали: плитка не нажимается, но читается (пунктир и приглушённый цвет вместо прозрачности) */
+.tbm-act[disabled]{cursor:default;border-style:dashed;border-color:var(--edge-gold);background:transparent;color:var(--sub)}
+.tbm-act[disabled] .tbm-act-ic{background:var(--track)}
+.tbm-act:focus-visible,.tbm-cellar:focus-visible{outline:2px solid #D9B87C;outline-offset:2px}
+.tbm-cellar{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:999px;border:1.5px solid var(--edge-gold);background:transparent;cursor:pointer;
+  color:var(--gold-ink);font:600 14px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:0;text-transform:none;white-space:nowrap;transition:transform .12s}
+.tbm-cellar:active{transform:scale(.97)}
+@media (max-width:340px){.tbm-actrow{grid-auto-flow:row}}
 html.sa-light .tbm-fresh{color:#6E5E40}html.sa-light .tbm-fresh.fading{color:#7A5A16}html.sa-light .tbm-fresh.faded{color:#8F3E20}html.sa-light .tbm-fresh.upd{color:#2F5A86}
+html.sa-light .tbm-act{background:rgba(255,252,244,.5)}
+html.sa-light .tbm-act.hot{background:var(--role-wash,rgba(214,178,102,.18))}
+html.sa-light .tbm-act-ic{background:rgba(139,106,48,.11)}
+html.sa-light .tbm-act.hot .tbm-act-ic{background:rgba(255,255,255,.6)}
 html.sa-light .tbm-act.gold{border-color:#A07A22;color:#6B4E0E}
+html.sa-light .tbm-act.gold .tbm-act-ic{background:rgba(201,154,46,.16)}
 html.sa-light .tbm-act.gold.got{background:linear-gradient(180deg,rgba(232,197,106,.35),rgba(201,154,46,.2))}
+html.sa-light .tbm-act[disabled]{background:transparent;color:var(--sub)}
+html.sa-light .tbm-act-s{font-size:13px;opacity:.9}
+html.sa-light .tbm-act:focus-visible,html.sa-light .tbm-cellar:focus-visible{outline-color:#7A5D2A}
 .tbm-foot span{flex:1;min-width:0}
 /* Доп. 298: стакан — цель дня */
 .glass{overflow:visible}
@@ -144,10 +169,16 @@ html.sa-light .tbm-act.gold.got{background:linear-gradient(180deg,rgba(232,197,1
 .candle.lit .glow{animation:tbGlow 2.8s ease-in-out infinite}
 @keyframes tbFlick{0%,100%{transform:scale(1) rotate(-1.5deg)}30%{transform:scale(1.06,.97) rotate(1.5deg)}55%{transform:scale(.97,1.04) rotate(-.5deg)}80%{transform:scale(1.03) rotate(1deg)}}
 @keyframes tbGlow{0%,100%{opacity:.2}50%{opacity:.34}}
-/* Доп. 297: печать раздела — когда пройдены все шаги */
-.tbm-seal{position:absolute;left:14px;top:12px;width:58px;height:58px;transform:rotate(-12deg);filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));pointer-events:none}
-.tbm-seal svg{width:58px;height:58px;display:block}
-.tbm-seal.stamp{animation:tbStamp .75s cubic-bezier(.2,1.2,.3,1) .35s both}
+/* Доп. 297: печать раздела — когда пройдены все шаги. v40: висит на верхнем левом углу меню, над
+   строкой «урок · шаги» (раньше закрывала первую букву названия). У пройденного раздела меню ниже
+   на 14 px и шапка внутри — ещё на 13 px; это зависит только от .sealed — соседняя страница трека
+   стоит так же, даже пока печать на ней не «опустилась». Поворот и «опускание» — у картинки,
+   рамка .tbm-seal — ровно по сургучу (по ней e2e и проверяет, что печать ничего не закрывает) */
+.tbm-menu.sealed{margin-top:18px;padding-top:28px}
+.tbm-seal{position:absolute;left:4px;top:-15px;width:40px;height:40px;pointer-events:none}
+.tbm-seal svg{display:block;width:46px;height:46px;margin:-3px;transform:rotate(-12deg);filter:drop-shadow(0 3px 5px rgba(0,0,0,.45))}
+.tbm-seal.stamp svg{animation:tbStamp .75s cubic-bezier(.2,1.2,.3,1) .35s both}
+html.sa-light .tbm-seal svg{filter:drop-shadow(0 3px 5px rgba(110,45,20,.32))}
 .tbm-sealnote{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;padding:4px 10px;border-radius:999px;border:1px solid rgba(150,51,31,.45);color:#C0624B;font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase}
 html.sa-light .tbm-sealnote{color:#8B3020}
 @keyframes tbStamp{0%{transform:rotate(-30deg) scale(2.3);opacity:0}55%{transform:rotate(-10deg) scale(.92);opacity:1}75%{transform:rotate(-13deg) scale(1.04)}100%{transform:rotate(-12deg) scale(1)}}
@@ -192,7 +223,6 @@ html.sa-light .tbp-ind-row span{color:#1E1407}
 .tbp-num .wl{display:block;position:relative;width:7px;height:9px;margin:-2px auto 0;box-sizing:border-box;border:1.3px solid var(--dot,var(--role,#C8A96E));border-top-width:0;border-radius:0 0 3.5px 3.5px;overflow:hidden}
 .tbp-num .wl b{position:absolute;left:0;right:0;bottom:0;background:var(--dot,var(--role,#C8A96E));transition:height .4s}
 .tbp-num.fade1 .wl,.tbp-num.fade2 .wl{filter:none;opacity:1}
-.tbm-cellar{margin-left:6px;padding:0;border:0;background:none;color:var(--gold-ink);font:700 11px var(--font-body);letter-spacing:.3px;cursor:pointer;text-transform:none}
 html.sa-light .tbp-num.gold .n{color:#8A6410;text-shadow:none}html.sa-light .tbp-num.gold .st{background:#B8902E!important;border-color:#B8902E!important}
 html.sa-light .tbp-num.upd .st{background:#2F5A86!important;border-color:#2F5A86!important}
 .tbp-view{flex:0 0 auto;width:34px;height:34px;border-radius:50%;padding:0;cursor:pointer;display:grid;place-items:center;
@@ -285,7 +315,21 @@ html.sa-light .tbp-pin-t{color:#6B5B40}
 html.sa-light .tbp-pin-t b{color:#2A1F0E}
 html.sa-light .tbp-go{background:rgba(251,246,234,.94);box-shadow:inset 0 0 0 1px rgba(139,106,48,.5),inset 0 1px 0 rgba(255,255,255,.9),0 8px 20px rgba(120,90,30,.22);color:#2A1F0E}
 html.sa-light .tbp-go .ic,html.sa-light .tbp-go .k{color:#7A5D2A}
-@media (prefers-reduced-motion: reduce){.candle.lit .fl,.candle.lit .glow,.tbm-seal.stamp,.tbp-fade,.tbp-pin,.tbp-go,.tbp-peek,.tbp-tint .a.in{animation:none!important}.tbp-ind,.tbp-ind-row,.tbp-tab{transition:none!important}}
+/* v40: светлая тема «Для чтения» — мелкий текст крупнее: подписи — от 13 px, моноширинные и
+   заглавные метки — от 11 px. Тёмная тема — как была. Не трогаем номера в ленте на узком экране
+   (12,5 px до 360 px: при 13 px между «10», «11», «12» меньше 1 px — слипаются) и номера на
+   закладках соседних тем (закладка шириной 14 px — двузначный номер крупнее 11,5 px не влезает) */
+html.sa-light .tbm-eyebrow{font-size:11px;letter-spacing:1.6px}
+html.sa-light .tbm-mk .nm{font-size:11px;letter-spacing:-.5px}
+html.sa-light .tbm-s{font-size:13px}
+html.sa-light .tbm-ck{font-size:11px;letter-spacing:.8px}
+html.sa-light .tbm-kchip{font-size:11px;letter-spacing:1px}
+html.sa-light .tbm-foot{font-size:11px;letter-spacing:.5px}
+html.sa-light .tbm-sealnote{font-size:11px;letter-spacing:1.3px}
+html.sa-light .tbp-tab{font-size:11.5px}
+html.sa-light .tbp-peek span{font-size:13px}
+html.sa-light .tbp-pin-t{font-size:13px}
+@media (prefers-reduced-motion: reduce){.candle.lit .fl,.candle.lit .glow,.tbm-seal.stamp svg,.tbp-fade,.tbp-pin,.tbp-go,.tbp-peek,.tbp-tint .a.in{animation:none!important}.tbp-ind,.tbp-ind-row,.tbp-tab{transition:none!important}}
 `;
 
 export function ensureTableCss() {

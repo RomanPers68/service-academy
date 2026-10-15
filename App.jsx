@@ -11,7 +11,7 @@ import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
-import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf } from "./ui/home-hubs";
+import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf, MastersBanner } from "./ui/home-hubs";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
 import { modeOfDay, dailyCount, dailyStreak } from "./lib/day-mode";
@@ -22,7 +22,10 @@ import { warmupPool, pickWarmup, refreshPick } from "./lib/warmup";
 import { readFresh, saveFresh, syncFresh, touchFresh, fadedList, moduleDone, INTERVALS } from "./lib/freshness";
 import { layersReducer, layerData } from "./lib/layers";
 import { useFreshMarks, useDayBrief, pairLineOf } from "./lib/use-day";
-import { readCredits, readGold, saveCredit, saveGold, creditTriedToday, markCreditTry, creditPool, goldPool, creditPassed, goldPassed, canRefresh, canCredit, GOLD_TIMER, GOLD_N, CREDIT_PASS, CREDIT_N } from "./lib/marks";
+import { readCredits, readGold, saveCredit, saveGold, creditTriedToday, markCreditTry, creditPool, goldPool, creditPassed, goldPassed, canRefresh, canCredit, canGold, GOLD_TIMER, GOLD_N, CREDIT_PASS, CREDIT_N } from "./lib/marks";
+// v40: «Путь мастера» — значки за привычки, «Мастер роли ✦», шаг дня, первая неделя в академии
+import { masteryFacts, masteryState, stepOfDay, stepLineText, readEarned, saveEarned, newlyEarned, mergeEarned, saveSummary, syncLife, readSeen, markSeen, newTools, isNewTool, mastersIndex, restoreFromCopy, TIERS, MASTER_NEED } from "./lib/mastery";
+import { MasteryHomeCard, BadgeToast } from "./ui/mastery-card";
 import { tablePool } from "./lib/table-pick";
 import { tasksFor, markQuestDone, questDays } from "./lib/quest";
 import { playlist } from "./lib/radio";
@@ -63,6 +66,7 @@ const LeagueScreen = lazy(() => retryImport(() => import("./ui/league")).then(m 
 const RadioScreen = lazy(() => retryImport(() => import("./ui/radio")).then(m => ({ default: m.RadioScreen })));   // Доп. 319
 const MonthRecap = lazy(() => retryImport(() => import("./ui/month-recap")).then(m => ({ default: m.MonthRecap })));   // Доп. 320
 const CellarScreen = lazy(() => retryImport(() => import("./ui/cellar")).then(m => ({ default: m.CellarScreen })));   // v31: «Погреб тем»
+const MasteryScreen = lazy(() => retryImport(() => import("./ui/mastery")).then(m => ({ default: m.MasteryScreen })));   // v40: «Путь мастера»
 const ScheduleScreen = lazy(() => retryImport(() => import("./ui/schedule")).then(m => ({ default: m.ScheduleScreen })));
 const BuildRunner = lazy(() => retryImport(() => import("./ui/build")).then(m => ({ default: m.BuildRunner })));
 const BarLabScreen = lazy(() => retryImport(() => import("./ui/bar-lab")).then(m => ({ default: m.BarLabScreen }))); // Доп. 218: лениво, как остальные экраны
@@ -589,6 +593,9 @@ function ServiceAcademy() {
   const ukP = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   const [activity, setActivity] = useState({});
   const [goal, setGoalState] = useState(2);
+  // v40 («Путь мастера»): тик пересчёта значков — когда запись на телефоне меняется мимо состояния
+  // (отпразднованный значок, открытый инструмент, сброс)
+  const [masteryVer, setMasteryVer] = useState(0);
   React.useEffect(() => { setActivity(readActivity(ukP)); setGoalState(readGoal(ukP)); }, [ukP]);
   const logActivity = useCallback((kind, n = 1) => {
     try {
@@ -823,7 +830,11 @@ function ServiceAcademy() {
      // Доп. 298–305: журнал дня, разминка, чек недели, печати разделов
      "sa_activity", "sa_warmup", "sa_week_seen", "sa_seal_seen",
      // v30 (Доп. 312–320): свежесть тем, зачёт на опыт, золото, живой гость, квест смены, радио, итоги месяца
-     "sa_fresh", "sa_credit", "sa_credit_try", "sa_gold", "sa_guest_runs", "sa_quest_tasks", "sa_quest_done", "sa_radio_done", "sa_recap_seen"]
+     "sa_fresh", "sa_credit", "sa_credit_try", "sa_gold", "sa_guest_runs", "sa_quest_tasks", "sa_quest_done", "sa_radio_done", "sa_recap_seen",
+     // v40 («Путь мастера»): счётчики за всё время, отпразднованные значки, итог для отчёта, шаг дня,
+     // открытые инструменты («новое»), заявка «Мастер роли» на сервер. Версию очистки не поднимаем —
+     // как и у v30: этих записей не было ни при одном прошлом сбросе
+     "sa_life", "sa_mastery", "sa_mastery_sum", "sa_step", "sa_tools_seen", "sa_master_claim"]
       .forEach(k => { try { localStorage.removeItem(k + uk); localStorage.removeItem(k); } catch (e) {} });
     // ключи с хвостом: рекорд спринта, «выучено» по волнам, повторения меню, снимок рейтинга
     try {
@@ -835,6 +846,7 @@ function ServiceAcademy() {
     setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);
     setCompletedRoles(new Set()); setExamResults({}); setStreak({ count: 0, best: 0, last: "", days: [] });
     setLoophole(null); setLoopView(null); setLoopRank(null);
+    setMasteryVer((v) => v + 1);   // v40: значки и шаг дня — заново от пустого
   }, []);
   wipeLocalProgressRef.current = wipeLocalProgress;
   // для сквозных проверок: сброс самого себя одной командой
@@ -1117,11 +1129,15 @@ function ServiceAcademy() {
         onBegin: () => { markCreditTry(ukP, mod.id, todayKey); bumpMarks(); } });
     } else if (mode === "gold") {
       const key = Date.now();
-      setSpecial({ mode, mod, sits: goldPool(mod), timer: GOLD_TIMER, key, verdict: {
+      // v40: в правилах — столько заданий, сколько на самом деле в раунде (в маленькой теме их меньше 8,
+      // и плитка темы уже показывает настоящее число)
+      const gSits = goldPool(mod);
+      const gN = gSits.length || GOLD_N;
+      setSpecial({ mode, mod, sits: gSits, timer: GOLD_TIMER, key, verdict: {
         ok: "Номер темы в треке теперь золотой, в «Книге отзывов» — печать.",
         bad: "Для золота — не больше одной ошибки. Можно сразу ещё раз." },
         intro: { title: "Раунд мастера ✦", sub: mod.title, cta: "Начать раунд",
-          lines: [GOLD_N + " заданий, на каждое " + GOLD_TIMER + " секунд — последние 5 тикают", "Без подсказок", "Одна ошибка в запасе — это запасная свеча",
+          lines: [gN + " " + pl3(gN, "задание", "задания", "заданий") + ", на каждое " + GOLD_TIMER + " секунд — последние 5 тикают", "Без подсказок", "Одна ошибка в запасе — это запасная свеча",
             "Получилось — номер темы в треке золотой, в «Книге отзывов» печать"],
           icons: ["⏱", "✕", "🕯", "✦"] } });
       // v31: рекорд заведения по теме (этап 25) — в правилах и в чеке
@@ -1347,13 +1363,14 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe"].includes(v) ? v : "";
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»
     } catch (e) { goLinkRef.current = ""; }
   }
   React.useEffect(() => {
     const g = goLinkRef.current;
     if (!g || !profile || !storageLoaded) return;
     if (["cellar", "radio", "probe"].includes(g) && !programModules.length) return;   // ждём уроки трека
+    if (g === "mastery" && role && !modules.length) return;                         // v40: значки считаются по урокам роли
     goLinkRef.current = "";
     if (g === "pair") setPairOpen(true);
     else if (g === "league") navigate("league");
@@ -1363,7 +1380,8 @@ function ServiceAcademy() {
     else if (g === "radio") openRadio();
     else if (g === "guest") openGuest();
     else if (g === "probe") { navigate("cellar"); openProbe(); }
-  }, [profile, storageLoaded, programModules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+    else if (g === "mastery") openMastery();
+  }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
   // выхода из теста). Стрелки нет — шаг назад по истории переходов.
@@ -1930,6 +1948,254 @@ function ServiceAcademy() {
     vibrate("light");
     setWelcome(false);
   };
+
+  // ══ v40: «Путь мастера» (lib/mastery.js) — значки за привычки (бронза, серебро, золото у каждого
+  //    инструмента), «Мастер роли ✦», «Шаг дня», «Первая неделя в академии». Всё считается на
+  //    телефоне из того, что приложение уже хранит; сервер (этап 26) — только мастера заведения,
+  //    приз руководителя и сообщение команде. Без этапа 26 всё, кроме этого, работает. ══
+  // счётчики за всё время сверяются с журналом дня (он держит 75 дней) — один раз при входе.
+  // Новый телефон (или очищенный Telegram): «Путь мастера» — из копии на сервере (этап 23: своя карточка
+  // report_person), если она свежее сброса руководителем (my_reset_at) — стёртое сбросом не возвращаем
+  // «чистый» ли телефон — запоминаем при первой проверке на человека: syncLife сразу пишет sa_life,
+  // и повторный проход эффекта (или двойной в StrictMode) уже не отличил бы новый телефон
+  const restoreRef = useRef({});
+  React.useEffect(() => {
+    if (!profile || !storageLoaded) return;
+    if (restoreRef.current[ukP] === undefined) {
+      let fresh = false;
+      try { fresh = localStorage.getItem("sa_life" + ukP) == null && localStorage.getItem("sa_mastery" + ukP) == null; } catch (e) {}
+      restoreRef.current[ukP] = fresh ? "fresh" : "no";
+    }
+    try { syncLife(ukP); } catch (e) {}
+    if (restoreRef.current[ukP] !== "fresh" || !saToken()) return;
+    restoreRef.current[ukP] = "asked";
+    const u = ukP;
+    Promise.all([rpc("report_person", { p_token: saToken(), p_emp: "" }), rpc("my_reset_at", { p_token: saToken() })]).then(([rp, rr]) => {
+      if (!rp || !rp.ok || !rp.data) return;
+      const d = rp.data, ms = d.learning && d.learning.mastery;
+      const resetAt = rr && rr.ok && rr.reset_at ? Date.parse(rr.reset_at) || 0 : 0;
+      const copyAt = d.learning_at ? Date.parse(d.learning_at) || 0 : 0;
+      if (resetAt && (!copyAt || resetAt >= copyAt)) return;   // копия старше сброса — стёртое не возвращаем
+      if (restoreFromCopy(u, ms)) setMasteryVer((v) => v + 1);
+    }).catch(() => {});
+  }, [profile, storageLoaded, ukP]);
+  // свои результаты тестов: в scores — рейтинг всей команды
+  const myScores = useMemo(() => (profile ? scores.filter((s) => s && s.name === profile.name && normSurname(s.surname || "") === normSurname(profile.surname || "")) : []), [scores, profile]);
+  // факты считаются, когда прогресс с телефона прочитан и уроки роли приехали (иначе «0 из 0 разделов»)
+  const mFacts = useMemo(() => {
+    // ждём уроки самой роли: свои разделы ресторана приезжают из копии раньше — по ним одним шаг дня и
+    // значки посчитались бы неверно (и запомнились бы на весь день)
+    if (!profile || !storageLoaded || (role && !modules.length)) return null;
+    // без трека (руководитель без роли) — значки инструментов и приз заведения всё равно доступны
+    try { return masteryFacts({ uk: ukP, role, modules: role ? programModules : [], completed, quizDone, scores: myScores, profile, now: new Date() }); } catch (e) { return null; }
+  }, [profile, storageLoaded, role, modules, programModules, completed, quizDone, myScores, ukP, activity, streak, marksVer, questVer, mistakeBank, schedTick, todayKey, masteryVer, screen]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const mState = useMemo(() => (mFacts ? masteryState(mFacts, role) : null), [mFacts, role]);
+  const mSeen = useMemo(() => (profile ? readSeen(ukP) : {}), [profile, ukP, masteryVer]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // «новое» не зовёт туда, где делать нечего: освежать нечего — свежесть не «новая», раунд мастера
+  // сыграть не по чему — золото тоже
+  const goldReady = useMemo(() => programModules.some((m) => canGold(m) && moduleDone(m, completed, quizDone) && !(marks.gold || {})[m.id]), [programModules, completed, quizDone, marks]);
+  const mSeenShown = useMemo(() => ({ ...mSeen, ...(fadedIds.size ? {} : { fresh: mSeen.fresh || "—" }), ...(goldReady ? {} : { gold: mSeen.gold || "—" }) }), [mSeen, fadedIds, goldReady]);
+  const mNew = useMemo(() => (mState ? newTools(mState, mSeenShown) : new Set()), [mState, mSeenShown]);
+  const mFam = (id) => (mState ? mState.families.find((f) => f.id === id) || null : null);
+  const isNewFam = (id) => !!mState && isNewTool(mFam(id), mSeenShown);
+  // Показ: значки не отнимаются — ступень не ниже отпразднованной (кроме «Трека»: он по своей роли),
+  // «Мастер роли» — если уже был (новые уроки в роли или новый телефон его не снимают)
+  const mEarned = useMemo(() => (profile ? readEarned(ukP) : null), [profile, ukP, masteryVer]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const mShown = useMemo(() => {
+    if (!mState) return null;
+    const e = mEarned || { tiers: {}, master: {} };
+    const families = mState.families.map((f) => {
+      const t = Math.min(3, (e.tiers && e.tiers[f.id]) || 0);
+      if (f.id === "track" || t <= f.tier) return f;
+      const next = t < f.tiers.length ? f.tiers[t] : null, from = f.tiers[t - 1] || 0;
+      return { ...f, tier: t, tierName: TIERS[t], next, from, left: next == null ? null : Math.max(0, next - f.value),
+        pct: next == null ? 1 : next > from ? Math.max(0, Math.min(1, (f.value - from) / (next - from))) : 0 };
+    });
+    const bronze = families.filter((f) => f.tier >= 1).length;
+    const parts = mState.master.parts.map((p) => (p.id === "bronze" ? { ...p, value: Math.min(bronze, MASTER_NEED.bronze), done: bronze >= MASTER_NEED.bronze } : p));
+    const have = parts.reduce((a, p) => a + (p.id === "bronze" ? p.value : p.done ? 1 : 0), 0);
+    const ok = mState.master.ok || parts.every((p) => p.done) || !!(role && e.master && e.master[role]);
+    return { ...mState, families, bronze, master: { ...mState.master, parts, have, ok } };
+  }, [mState, mEarned, role]);
+  // «Практика у стола» и «Живой диалог» из шага дня: в текущей теме (где следующий урок), иначе —
+  // первая непройденная, иначе любая (диалога нет нигде — «Гость недели»)
+  const lessonTarget = useCallback((type) => {
+    const has = (l) => !!l && l.type === type && (type !== "practice" || (l.situations || []).length > 0);
+    const nx = nextLessonOf(programModules, completed, quizDone);
+    if (nx && nx.mod) { const l = (nx.mod.lessons || []).find(has); if (l) return { mod: nx.mod, lesson: l }; }
+    for (const m of programModules) { const l = (m.lessons || []).find((x) => has(x) && !completed[x.id]); if (l) return { mod: m, lesson: l }; }
+    for (const m of programModules) { const l = (m.lessons || []).find(has); if (l) return { mod: m, lesson: l }; }
+    return null;
+  }, [programModules, completed, quizDone]);
+  // «Шаг дня»: выбирается при первом показе за день и до вечера не меняется (sa_step<uk>);
+  // avail — куда сейчас можно позвать (разминать нечего — шаг дня в разминку не зовёт)
+  const mStep = useMemo(() => {
+    if (!mState || !mFacts || !role) return null;
+    try {
+      const faded = fadedList(marks.fresh, freshMods, completed, quizDone);
+      const goldable = programModules.filter((m) => moduleDone(m, completed, quizDone) && canGold(m) && !(marks.gold || {})[m.id]);
+      const due = mistakeBank.filter((m) => !m.due || m.due <= Date.now()).length;
+      return stepOfDay({ state: mState, facts: mFacts, faded, goldable, next: nextLessonOf(programModules, completed, quizDone), uk: ukP, day: todayKey, role,
+        avail: { warmup: warmSits.length >= 2, practice: !!lessonTarget("practice"), mistakes: due > 0 } });
+    } catch (e) { return null; }
+  }, [mState, mFacts, ukP, todayKey, role]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // в маленькой теме раунд мастера короче 8 заданий — подпись шага как на плитке темы
+  const mStepShown = useMemo(() => {
+    if (!mStep || mStep.done || mStep.kind !== "gold" || !mStep.payload || !mStep.payload.mod) return mStep;
+    const m = programModules.find((x) => x.id === mStep.payload.mod);
+    const n = m ? goldPool(m).length : 0;
+    return n && n !== GOLD_N ? { ...mStep, sub: n + " " + pl3(n, "задание", "задания", "заданий") + " → тема золотая" } : mStep;
+  }, [mStep, programModules]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // итог для копии на сервер (отчёт руководителя, «Шаг дня» в напоминании бота) — при изменении
+  const mSumRef = useRef("");
+  React.useEffect(() => {
+    if (!mState || !profile) return;
+    try {
+      // в копию (и в напоминание бота) — шаг дня, пока он не сделан, одной строкой: «попробуй «Радио в дорогу»»
+      const sig = JSON.stringify(saveSummary(ukP, mState, mStep && !mStep.done ? { ...mStep, text: stepLineText(mStep) } : null));
+      if (sig !== mSumRef.current) { mSumRef.current = sig; scheduleLearningPush({ uk: ukP, profile }, 20000); }
+    } catch (e) {}
+  }, [mState, mStep, ukP, profile]);
+  // Праздники: через 6 с после входа (сервер успевает прислать прогресс и тесты), по одному,
+  // не поверх урока и слоёв. Первый запуск v40 — всё заработанное раньше запоминается молча.
+  // готовность: прошло 6 с и пришёл список своих уроков (или прошло 20 с — без связи он не придёт)
+  const [mT, setMT] = useState(0);
+  React.useEffect(() => {
+    setMT(0);
+    if (!profile || !storageLoaded) return undefined;
+    const a = setTimeout(() => setMT(1), 6000), b = setTimeout(() => setMT(2), 20000);
+    return () => { clearTimeout(a); clearTimeout(b); };
+  }, [profile, storageLoaded, ukP]);
+  const mReady = mT >= 2 || (mT >= 1 && customLoaded);
+  const mPending = useMemo(() => {
+    if (!mReady || !mState || !profile) return [];
+    try {
+      const earned = readEarned(ukP);
+      const news = newlyEarned(mState, earned);
+      // «Мастер роли» не прячем и при первом запуске: его празднуют всегда
+      if (earned.first) { saveEarned(ukP, mergeEarned(earned, news.filter((n) => n.kind !== "master"), todayKey)); return news.filter((n) => n.kind === "master"); }
+      return news;
+    } catch (e) { return []; }
+  }, [mReady, mState, profile, ukP, todayKey, masteryVer]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // только на спокойных экранах (вкладки, трек, рейтинг…), не посреди урока, теста, колоды или работы над ошибками
+  const mToast = mPending.length && layers.length === 0 && !welcome && !newAchievement && !celebrate && !loopView && !lessonLockMsg
+    && ["roleSelect", "home", "module", "shift", "teamHub", "me", "stats", "leaderboard", "league", "cellar", "guestbook", "guide"].includes(screen) ? mPending[0] : null;
+  const ackBadge = useCallback((it) => {
+    try { saveEarned(ukP, mergeEarned(readEarned(ukP), [it], todayKey)); } catch (e) {}
+    setMasteryVer((v) => v + 1);
+  }, [ukP, todayKey]);
+  // Мастера заведения (этап 26: mastery_list) — для экрана, рейтинга, лиги и баннера в «Команде»
+  const [masters, setMasters] = useState(null);
+  const m26Ref = useRef({ list: false, claim: false, busy: false });   // этапа 26 нет — не спрашиваем снова до перезапуска
+  const loadMasters = useCallback(() => {
+    if (!profile) return;
+    if (m26Ref.current.list) { setMasters({ status: "missing", rows: [] }); return; }
+    const ck = "sa_masters_cache" + ukP;
+    setMasters((m) => {
+      if (m && m.status === "ok") return m;
+      try { const c = JSON.parse(localStorage.getItem(ck) || "null"); if (c && Array.isArray(c.rows)) return { status: "ok", rows: c.rows, prize: c.prize || null, can_prize: !!c.can_prize, cached: true }; } catch (e) {}
+      return { status: "loading", rows: [] };
+    });
+    rpc("mastery_list", { p_token: saToken() }).then((r) => {
+      if (rpcMissing(r)) { m26Ref.current.list = true; setMasters({ status: "missing", rows: [] }); return; }
+      if (r && r.ok) {
+        const v = { status: "ok", rows: Array.isArray(r.rows) ? r.rows : [], prize: r.prize || null, can_prize: !!r.can_prize };
+        setMasters(v);
+        try { localStorage.setItem(ck, JSON.stringify({ rows: v.rows.slice(0, 60), prize: v.prize, can_prize: v.can_prize })); } catch (e) {}
+      } else setMasters((m) => (m && m.status === "ok" ? m : { status: "error", rows: [] }));
+    }).catch(() => setMasters((m) => (m && m.status === "ok" ? m : { status: "offline", rows: [] })));
+  }, [profile, ukP]);
+  React.useEffect(() => {
+    if (profile && storageLoaded && ["mastery", "teamHub", "leaderboard", "league"].includes(screen)) loadMasters();
+  }, [screen, profile, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { setMasters(null); }, [ukP]);
+  const mastersIdx = useMemo(() => (masters && masters.status === "ok" ? mastersIndex(masters.rows) : null), [masters]);
+  const setMasterPrize = useCallback((text) => rpc("mastery_prize_set", { p_token: saToken(), p_text: String(text || "") }).then((r) => {
+    if (rpcMissing(r)) return { ok: false, error: "missing" };
+    if (r && r.ok) {
+      setMasters((m) => (m ? { ...m, prize: r.prize || null } : m));
+      try { const ck = "sa_masters_cache" + ukP; const c = JSON.parse(localStorage.getItem(ck) || "null"); if (c && typeof c === "object") localStorage.setItem(ck, JSON.stringify({ ...c, prize: r.prize || null })); } catch (e) {}
+      return { ok: true, prize: r.prize || null };
+    }
+    return { ok: false, error: (r && r.error) || "error" };
+  }).catch(() => ({ ok: false, error: "offline" })), [ukP]);
+  // «Мастер роли ✦» — сообщаем серверу один раз на роль (коллегам уходит сообщение в Telegram).
+  // Нет сети или этапа 26 — попробуем при следующем входе.
+  React.useEffect(() => {
+    if (!mReady || !mState || !profile || !role) return;
+    let earnedM = {};
+    try { earnedM = readEarned(ukP).master || {}; } catch (e) { earnedM = {}; }
+    if (!mState.master.ok && !earnedM[role]) return;
+    const key = "sa_master_claim" + ukP;
+    let sent = {};
+    try { sent = JSON.parse(localStorage.getItem(key) || "{}") || {}; } catch (e) { sent = {}; }
+    if (sent[role] || m26Ref.current.claim || m26Ref.current.busy) return;
+    const need = mState.master.need || 13;
+    m26Ref.current.busy = true;
+    rpc("mastery_claim", { p_token: saToken(), p_role: role, p_have: Math.max(need, mState.master.have | 0), p_need: need }).then((r) => {
+      m26Ref.current.busy = false;
+      if (rpcMissing(r)) { m26Ref.current.claim = true; return; }
+      if (!r || !r.ok) return;
+      try { localStorage.setItem(key, JSON.stringify({ ...sent, [role]: ymd(new Date()) })); } catch (e) {}
+      if (r.new) loadMasters();
+    }).catch(() => { m26Ref.current.busy = false; });
+  }, [mReady, mState && mState.master.ok, role, profile, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Открыть «Путь мастера»: focus — значок (id семейства) или "certificate"
+  const [masteryFocus, setMasteryFocus] = useState(null);
+  const openMastery = useCallback((focus) => {
+    setMasteryFocus(focus || null);
+    try { markSeen(ukP, "mastery"); } catch (e) {}
+    setMasteryVer((v) => v + 1);
+    navigate("mastery");
+  }, [ukP, navigate]);
+  // Переходы «Пути мастера» (шаг дня, «Показать ›», первая неделя) — ключи из lib/mastery.js
+  const runMasteryGo = useCallback((go, payload) => {
+    const p = payload || {};
+    const modBy = (id) => programModules.find((m) => m.id === id) || null;
+    const seen = (id) => { try { markSeen(ukP, id); } catch (e) {} setMasteryVer((v) => v + 1); };
+    const openTarget = (t) => { setActiveModule(t.mod); openLesson(t.lesson); };
+    const home = () => navigate(role ? "home" : "roleSelect");   // без трека — выбор роли (трек без роли не открыть)
+    setMasteryFocus(null);   // вернёмся назад на «Путь мастера» — без повторно открытого листа
+    switch (go) {
+      case "refresh": { const m = p.mod ? modBy(p.mod) : null; if (m && canRefresh(m)) { openTopicRun("refresh", m); seen("fresh"); } else if (fadedIds.size) { openFreshAll(); seen("fresh"); } else navigate("cellar"); return; }
+      case "gold": { const m = p.mod ? modBy(p.mod) : null; if (m && canGold(m) && moduleDone(m, completed, quizDone)) { openTopicRun("gold", m); seen("gold"); } else navigate("cellar"); return; }
+      case "warmup": if (warmSits.length >= 2) { openWarmup(); seen("warmup"); } else home(); return;
+      case "radio": openRadio(); seen("radio"); return;
+      case "guest": openGuest(); seen("guest"); return;
+      case "mistakes": navigate("mistakes"); seen("fixes"); return;
+      case "menu": navigate("menuTrainer"); seen("decks"); return;
+      case "quest": navigate("shift"); seen("quest"); return;
+      case "mentor": navigate("mentor"); seen("hall"); return;
+      case "practice": { const t = lessonTarget("practice"); if (t) { openTarget(t); seen("table"); } else home(); return; }
+      case "dialogue": { const t = lessonTarget("dialogue"); if (t) openTarget(t); else navigate("weeklyGuest"); seen("dialogue"); return; }
+      case "mastery": openMastery(); return;
+      default: {
+        // «track»: следующий урок из шага дня — сразу он (тест, уже сданный, не открываем)
+        const m = p.mod ? modBy(p.mod) : null;
+        const l = m && p.lesson ? (m.lessons || []).find((x) => x.id === p.lesson) : null;
+        if (m && l && !(l.type === "quiz" && quizDone[l.id])) { openTarget({ mod: m, lesson: l }); return; }
+        home();
+      }
+    }
+  }, [programModules, ukP, role, completed, quizDone, fadedIds, warmSits.length, lessonTarget, openTopicRun, openFreshAll, openWarmup, openRadio, openGuest, openMastery, navigate]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // «новое» гаснет, как только инструмент открыли — откуда угодно, не только из «Пути мастера»
+  React.useEffect(() => {
+    if (!profile) return;
+    const ids = [];
+    if (radioList) ids.push("radio");
+    if (guestOpen) ids.push("guest");
+    if (warmupOpen) ids.push("warmup");
+    if (special && (special.mode === "refresh" || special.mode === "freshall")) ids.push("fresh");
+    if (special && special.mode === "gold") ids.push("gold");
+    const bySc = { menuTrainer: "decks", cocktails: "decks", barLab: "decks", mistakes: "fixes", mentor: "hall", weeklyGuest: "dialogue", shift: "quest", cellar: "cellar" }[screen];
+    if (bySc) ids.push(bySc);
+    if (screen === "lesson" && activeLesson && activeLesson.type === "dialogue") ids.push("dialogue");
+    if (screen === "lesson" && activeLesson && activeLesson.type === "practice") ids.push("table");
+    const fresh = ids.filter((id) => !mSeen[id]);
+    if (!fresh.length) return;
+    try { fresh.forEach((id) => markSeen(ukP, id)); } catch (e) {}
+    setMasteryVer((v) => v + 1);
+  }, [screen, radioList, guestOpen, warmupOpen, special, activeLesson, profile, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Контекстная подсказка: появляется в момент, когда впервые есть что повторить
   // «Дальше» под меню раздела и конец программы (Доп. 196–197) — вынесено из экрана раздела без
   // изменений: тем же пользуется листаемый трек (Доп. 307)
@@ -1965,6 +2231,9 @@ function ServiceAcademy() {
     streak: (streak && streak.count) || 0, steps: todaySteps || 0, goal: goal || 0,
     warmup: warmShow ? (warmDone === todayKey ? "done" : "open") : "",
     topics: mistakeBank.filter(m => !m.due || m.due <= Date.now()).slice(0, 3).map(m => m.lessonTitle).filter(Boolean),
+    // v40: «Путь мастера» — Наставник знает значки, шаг дня и первую неделю, ведёт кнопкой [[go:mastery]]
+    mastery: mShown ? { bronze: mShown.bronze, total: mShown.total, have: mShown.master.have, need: mShown.master.need, master: !!mShown.master.ok,
+      step: mStep && !mStep.done ? mStep.text : "", fw: { done: mShown.firstWeek.done, total: mShown.firstWeek.total, active: !!mShown.firstWeek.active } } : null,
     todayShift: (() => { try {
       const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
       const t = new Date();
@@ -2054,6 +2323,8 @@ function ServiceAcademy() {
     if (k === "cellar") { jump("cellar"); return; }
     if (k === "freshall") { if (fadedIds.size) openFreshAll(); else jump("cellar"); return; }
     if (k === "probe") { if (probeMods.length >= 2) { jump("cellar"); openProbe(); } else jump("cellar"); return; }
+    // v40: «Путь мастера»
+    if (k === "mastery") { if (!mState) { jump("me"); return; } setMasteryFocus(null); try { markSeen(ukP, "mastery"); } catch (e) {} setMasteryVer((v) => v + 1); jump("mastery"); return; }
     if (k === "report" || k === "myreport") {
       if (k === "report" && !boss) return;
       setReportSelf(k === "myreport"); jump("report"); return;
@@ -2129,6 +2400,10 @@ function ServiceAcademy() {
       {newAchievement && (
         <AchievementPopup ach={newAchievement} a11y={a11y} onClose={() => setNewAchievement(null)} />
       )}
+      {/* v40: новый значок «Пути мастера» или «Мастер роли ✦» — по одному, не поверх урока и слоёв */}
+      {mToast ? <BadgeToast a11y={a11y} item={mToast} state={mState}
+        onOpen={(it) => { ackBadge(it); openMastery(it && it.kind === "master" ? "certificate" : it && it.kind === "tier" ? it.id : null); }}
+        onClose={(it) => ackBadge(it)} /> : null}
 
       <div style={T.phone}>
         {!["profile","login"].includes(screen) && (
@@ -2201,7 +2476,7 @@ function ServiceAcademy() {
             onClose={() => setWeekOpen(null)} />
         ) : null}
         {/* Доп. 304: напоминания в Telegram */}
-        {remindOpen ? <RemindSheet a11y={a11y} uk={ukP} lead={isLead} shift={shiftText} onChange={setTgRemind} onClose={() => setRemindOpen(false)} /> : null}
+        {remindOpen ? <RemindSheet a11y={a11y} uk={ukP} lead={isLead} shift={shiftText} step={mStep && !mStep.done ? stepLineText(mStep) : ""} onChange={setTgRemind} onClose={() => setRemindOpen(false)} /> : null}
         {/* Доп. 302: «Разобрать с Наставником» — чат поверх ситуации (выше слоёв «у стола») */}
         {mentorAsk != null ? (
           <Suspense fallback={null}><AssistantScreen T={T} a11y={a11y} profile={profile} learner={assistantLearner()}
@@ -2358,6 +2633,9 @@ function ServiceAcademy() {
         {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
         {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
           dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey} /> : null}
+          /* v40: «Шаг дня» и «Путь мастера» — под карточкой трека */
+          masteryCard={profile && role && mShown ? <MasteryHomeCard a11y={a11y} step={mStepShown} state={mShown} newCount={mNew.size} style={{ margin: 0 }}
+            onStep={(s) => { if (s && !s.done) runMasteryGo(s.go, s.payload); else openMastery(); }} onOpen={() => openMastery()} /> : null}
           dayNote={profile && pairLine ? (
             /* v30 (Доп. 318): напарник уже занимался сегодня — твоя очередь; v31 — своей строкой */
             <div role="button" tabIndex={0} className="sa-pairline" onClick={() => { vibrate("light"); if (pairLine.warm && warmSits.length >= 2) openWarmup(); else setPairOpen(true); }}
@@ -2370,13 +2648,19 @@ function ServiceAcademy() {
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
           </WarmupCard> : null} /></div>}
         {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></div>}
-        {screen === "league" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} onBack={() => goBack("teamHub")} /></Suspense></div>}
+        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></div>}
+        {screen === "league" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} masters={mastersIdx} onBack={() => goBack("teamHub")} /></Suspense></div>}
         {/* v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека */}
         {screen === "cellar" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CellarScreen T={T} a11y={a11y} modules={programModules} completed={completed} quizDone={quizDone} marks={marks}
           tried={(id) => creditTriedToday(ukP, id, todayKey)} onBack={() => goBack("me")} onOpenTopic={(m) => { setActiveModule(m); navigate("module"); }}
           onRefresh={(m) => openTopicRun("refresh", m)} onGold={(m) => openTopicRun("gold", m)} onCredit={(m) => openTopicRun("credit", m)}
           onFreshAll={openFreshAll} onProbe={openProbe} probeCount={probeMods.length} /></Suspense></div>}
+        {/* v40: «Путь мастера» — значки, «Мастер роли ✦», шаг дня, первая неделя в академии, мастера заведения */}
+        {screen === "mastery" && profile && (mShown
+          ? <div style={{ paddingBottom: 88 }}><Suspense fallback={<ScreenLoader T={T} />}><MasteryScreen T={T} a11y={a11y} profile={profile} role={role} state={mShown} step={mStepShown}
+              earned={mEarned || readEarned(ukP)} seen={mSeenShown} masters={masters} focus={masteryFocus} shareUrl={APP_SHARE_URL}
+              onGo={(go, payload) => runMasteryGo(go, payload)} onPrize={setMasterPrize} onReloadMasters={loadMasters} onBack={() => goBack("me")} /></Suspense></div>
+          : <ScreenLoader T={T} />)}
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
         {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня"
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
@@ -2389,16 +2673,18 @@ function ServiceAcademy() {
           { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
           { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
           { key:"remind", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено — за час до смены зовёт на разминку" : "За час до смены — разминка в 2 минуты", onClick:() => setRemindOpen(true) },
-          { key:"lg", icon:"guestai", label:"Живой гость", sub:"Разговор с гостем-ИИ из твоего меню · чек разбора", onClick: openGuest },   // v30: Доп. 312
-          { key:"rd", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков — слушать по пути на смену", onClick: openRadio },   // Доп. 319
-          { key:"wg", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest") },
+          { key:"lg", icon:"guestai", label:"Живой гость", sub:"Разговор с гостем-ИИ из твоего меню · чек разбора", onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал
+          { key:"rd", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков — слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319
+          { key:"wg", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest"), badge: isNewFam("dialogue") ? "новое" : null },
           role === "seasonal" && { key:"ob", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },
         ]} /></div>}
         {screen === "teamHub" && profile && (() => {
           const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
           const dueM = (mistakeBank || []).filter(m => !m.due || m.due <= Date.now()).length;
           return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" hintKey={hintKey("team", staff)}
-            hintSteps={hintsFor(hintKey("team", staff))} subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />} items={[
+            hintSteps={hintsFor(hintKey("team", staff))} subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<><TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />
+              {/* v40: коллега стал мастером роли за последнюю неделю — команда видит */}
+              <MastersBanner a11y={a11y} rows={masters && masters.status === "ok" ? masters.rows : []} onOpen={() => openMastery()} /></>} items={[
             { key:"lb", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
             { key:"lg", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника · заведение, сеть и кубок", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
             { key:"mt", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },
@@ -2421,6 +2707,7 @@ function ServiceAcademy() {
           else if (dest === "radio") openRadio();
           else if (dest === "month") openRecap();
           else if (dest === "pair") setPairOpen(true);
+          else if (dest === "mastery") openMastery();   // v40
           else navigate(dest);
         }} /></Suspense>}
         {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y}
@@ -2430,6 +2717,12 @@ function ServiceAcademy() {
           hero={<MeHero a11y={a11y} streak={streak} roleLabel={ROLES.find(r => r.id === role)?.label} total={totalLessons}
             done={programModules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}
             onOpen={() => navigate("stats")} />} items={[
+          // v40: «Путь мастера» — значки и главная награда; «новое», пока не открывали
+          mShown && { key:"mastery", icon:"mastery", label:"Путь мастера",
+            sub: mShown.master.ok
+              ? "Мастер роли ✦ · " + mShown.bronze + " из " + mShown.total + " значков"
+              : mShown.bronze + " из " + mShown.total + " значков · до «Мастера роли» " + mShown.master.have + " из " + mShown.master.need,
+            badge: !mSeen.mastery ? "новое" : null, onClick:() => openMastery() },
           { key:"guide", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
           { key:"st", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
           // Доп. 306: по понедельникам — чек прошлой недели (с главной сюда, чтобы главная была лёгкой)
@@ -2446,7 +2739,8 @@ function ServiceAcademy() {
           })(),
           // v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека
           { key:"cellar", icon:"cellar", label:"Погреб тем", sub: (() => { const g = Object.keys(marks.gold || {}).length; const f = fadedIds.size; return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? " · золотых " + g : "") + " · освежить, раунд мастера, зачёт"; })(),
-            badge: fadedIds.size >= 3 ? String(fadedIds.size) : null, onClick:() => navigate("cellar") },
+            // v40: «новое» — если освежать или играть раунд мастера уже есть что, а ни разу не пробовал
+            badge: fadedIds.size >= 3 ? String(fadedIds.size) : (isNewFam("fresh") || isNewFam("gold")) && !mSeen.cellar ? "новое" : null, onClick:() => navigate("cellar") },
           { key:"myrep", icon:"report", label:"Мой отчёт", sub:"Что пройдено, где ошибаюсь, что повторить — PDF", onClick:() => { setReportSelf(true); navigate("report"); } },
           // v30 (Доп. 318): свеча на двоих
           { key:"pair", icon:"pair", label:"Свеча на двоих",

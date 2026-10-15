@@ -224,6 +224,28 @@ export const TABLE_LESSON_CSS = `
 .tb-sheet h3{margin:0 0 6px;font-family:var(--font-display);font-size:20px;font-weight:700}
 .tb-sheet p{margin:0 0 14px;color:var(--sub);font-size:14px;line-height:1.5}
 
+/* v40: светлая тема «Для чтения» — мелкий текст крупнее: подписи — от 13 px, моноширинные и
+   заглавные метки — от 11 px. Тёмная тема — как была. Чек остаётся «кассовым» (моноширинный 12,5 px) */
+html.sa-light .tb-host-t span{font-size:13px}
+html.sa-light .tb-k{font-size:11px;letter-spacing:1.2px}
+html.sa-light .tb-k span{font-size:13px}
+html.sa-light .tb-chip{font-size:11px;letter-spacing:.6px}
+html.sa-light .tb-where{font-size:11px;letter-spacing:1.2px}
+html.sa-light .tb-who,html.sa-light .tb-note .na,html.sa-light .tb-claim .na,html.sa-light .tb-peek .ey{font-size:11px;letter-spacing:1.1px}
+html.sa-light .tb-myth small{font-size:13px}
+html.sa-light .tb-autohint{font-size:13px}
+html.sa-light .tb-spare,html.sa-light .tb-spare small{font-size:11px;letter-spacing:.8px}
+html.sa-light .tb-say .mic-row span,html.sa-light .tb-heard{font-size:13px}
+/* подсказка «Проговори фразу вслух…» (без микрофона) — размер задан в ui/table.jsx прямо в разметке */
+html.sa-light .tb-say>div:not([class]){font-size:13px!important}
+html.sa-light .tb-recap h4{font-size:11px}
+html.sa-light .tb-recap .s{font-size:13px}
+html.sa-light .r-brand{font-size:11px;letter-spacing:2.6px}
+html.sa-light .r-note,html.sa-light .r-by{font-size:13px}
+html.sa-light .r-stamp{font-size:11px;letter-spacing:1.6px}
+html.sa-light .r-week small{font-size:11px;letter-spacing:0}
+html.sa-light .r-topics li button{font-size:13px}
+
 @keyframes tbPop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06);opacity:1}100%{transform:scale(1);opacity:1}}
 @keyframes tbShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 @keyframes tbUp{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}

@@ -7,9 +7,11 @@
 import React from "react";
 import { ensureTableCss } from "./table-css";
 import { Ic, Wax } from "./table-bits";
-import { MOD_SVG } from "./icons";
+import { MOD_SVG, UI_SVG } from "./icons";
 import { inkOf } from "../lib/tracks";
 import { onActivate } from "../lib/utils";
+import { GOLD_N, CREDIT_N } from "../lib/marks";
+import { practicePool, quizPool } from "../lib/table-pick";
 
 const KIND = { lesson: "урок", quiz: "тест", practice: "практика", dialogue: "живой диалог", build: "сборка" };
 const DONE_WORD = { lesson: "пройден", quiz: "сдан", practice: "сыграно", dialogue: "пройден", build: "собрано" };
@@ -32,28 +34,62 @@ function detail(l, est) {
 // «Зачёт на опыт» (не пройдена), «Раунд мастера» (пройдена, ещё не золотая). topic — что знает App:
 // { f: свежесть, credit, gold, canCredit, canGold, canRefresh, tried: зачёт сегодня уже сдавали }
 // canRefresh === false — в теме нечем освежать (одни уроки): ни свежести, ни кнопки
-function TopicActs({ topic, acts, passive }) {
+// v40: действия — крупные плитки (значок, название, что внутри), «Погреб тем ›» — кнопка.
+// n — сколько заданий в заходе: refresh (освежение берёт 3 задания «у стола»), gold, credit, quiz —
+// у темы одни вопросы теста (тогда освежают вопросы, а не ситуации)
+function TopicActs({ topic, acts, passive, n }) {
   if (!topic || !acts) return null;
   const { f, credit, gold, canCredit, canGold, canRefresh, tried, done } = topic;
   const off = passive ? -1 : undefined;
+  // в подписях плиток число не отрывается от слова, а «· 1 мин» и «→» — от того, что перед ними
+  // (неразрывные пробелы \u00A0; в aria-label и в словах, которые ищут тесты, — обычные)
+  const NB = "\u00A0";
+  const tasks = (k, nb) => k + (nb ? NB : " ") + plural(k, "задание", "задания", "заданий");
+  const tile = (key, cls, icon, title, sub, label, onClick, disabled) => (
+    <button key={key} type="button" tabIndex={off} className={"tbm-act" + cls} disabled={disabled} onClick={onClick} aria-label={label}>
+      <span className="tbm-act-ic" aria-hidden="true">{icon}</span>
+      <span className="tbm-act-tx"><span className="tbm-act-t">{title}</span><span className="tbm-act-s">{sub}</span></span>
+    </button>
+  );
   const items = [];
   if (done) {
     const hot = f && f.level !== "fresh";
-    if (acts.onRefresh && canRefresh !== false) items.push(<button key="r" type="button" tabIndex={off} className={"tbm-act" + (hot ? " hot" : "")} onClick={acts.onRefresh}>Освежить · 1 мин</button>);
-    if (acts.onGold && canGold) items.push(<button key="g" type="button" tabIndex={off} className={"tbm-act gold" + (gold ? " got" : "")} onClick={acts.onGold}>{gold ? "Золото ✦ · ещё раз" : "Раунд мастера ✦"}</button>);
+    if (acts.onRefresh && canRefresh !== false) {
+      const what = n.quiz ? plural(n.refresh, "вопрос", "вопроса", "вопросов") : plural(n.refresh, "ситуация", "ситуации", "ситуаций");
+      items.push(tile("r", hot ? " hot" : "", <Ic n="refresh" s={18} />, "Освежить", n.refresh + NB + what + NB + "· 1" + NB + "мин",
+        "Освежить · 1 мин · " + n.refresh + " " + what, acts.onRefresh));
+    }
+    if (acts.onGold && canGold) {
+      items.push(gold
+        ? tile("g", " gold got", UI_SVG.crown("currentColor", 18), "Золото" + NB + "✦" + NB + "· ещё" + NB + "раз", "побей свой рекорд", "Золото ✦ · ещё раз — побей свой рекорд", acts.onGold)
+        : tile("g", " gold", UI_SVG.crown("currentColor", 18), "Раунд мастера" + NB + "✦", tasks(n.gold, true) + NB + "→ тема золотая",
+          "Раунд мастера · " + tasks(n.gold) + " — тема станет золотой", acts.onGold));
+    }
   } else if (acts.onCredit && canCredit) {
-    items.push(<button key="c" type="button" tabIndex={off} className="tbm-act" disabled={!!tried} onClick={tried ? undefined : acts.onCredit}>{tried ? "Зачёт на опыт — завтра" : "Я это умею — зачёт на опыт"}</button>);
+    items.push(tried
+      ? tile("c", "", <Ic n="clock" s={18} />, "Зачёт на опыт", "новая попытка" + NB + "— завтра", "Зачёт на опыт — новая попытка завтра", undefined, true)
+      : tile("c", "", <Ic n="check" s={18} />, "Я это умею", "зачёт на опыт" + NB + "· " + tasks(n.credit, true), "Я это умею — зачёт на опыт · " + tasks(n.credit), acts.onCredit));
   }
   const line = done ? freshLine(f) : null;
   const marks = [credit ? "зачтено по опыту" : "", gold ? "золотая тема" : ""].filter(Boolean).join(" · ");
   if (!items.length && !line && !marks) return null;
+  // строка свежести переносится только между частями («тема свежая · ещё 6 дней · золотая тема»)
+  const parts = [line, marks].filter(Boolean).join(" · ").split(" · ");
   return (
     <div className="tbm-acts">
-      {line || marks ? <div className={"tbm-fresh" + (f && f.level !== "fresh" ? " " + f.level : "") + (f && f.updated ? " upd" : "")}>{[line, marks].filter(Boolean).join(" · ")}
-        {acts.onCellar && done ? <button type="button" className="tbm-cellar" tabIndex={off} onClick={acts.onCellar}>погреб тем ›</button> : null}</div> : null}
+      {line || marks ? <div className={"tbm-fresh" + (f && f.level !== "fresh" ? " " + f.level : "") + (f && f.updated ? " upd" : "")}>
+        <span className="tbm-fresh-t">{parts.map((p, i) => <React.Fragment key={i}>{i ? " " : null}<span>{p + (i < parts.length - 1 ? " ·" : "")}</span></React.Fragment>)}</span>
+        {acts.onCellar && done ? <button type="button" className="tbm-cellar" tabIndex={off} onClick={acts.onCellar}>Погреб тем ›</button> : null}</div> : null}
       {items.length ? <div className="tbm-actrow">{items}</div> : null}
     </div>
   );
+}
+// сколько заданий в каждом заходе — как их наберёт App (lib/marks.js): освежение — 3 задания
+// «у стола», раунд мастера — до GOLD_N, зачёт — до CREDIT_N (в маленькой теме — сколько есть)
+function topicCounts(mod) {
+  const p = practicePool(mod).length, q = quizPool(mod).length;
+  const table = p || q;
+  return { refresh: Math.max(1, Math.min(3, table)), quiz: !p, gold: Math.min(GOLD_N, p + q) || GOLD_N, credit: Math.min(CREDIT_N, p + q) || CREDIT_N };
 }
 function freshLine(f) {
   if (!f) return "";
@@ -92,6 +128,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
   if (!passive && stampRef.current === null) stampRef.current = sealed && !sealSeen();
   const stampNow = !!stampRef.current;
   const showSeal = sealed && (!passive || sealSeen());
+  const counts = React.useMemo(() => topicCounts(mod), [mod]);
   React.useEffect(() => {
     if (!sealed || passive) return;
     try { const m = JSON.parse(localStorage.getItem(SEAL_KEY) || "{}") || {}; if (!m[mod.id]) { m[mod.id] = 1; localStorage.setItem(SEAL_KEY, JSON.stringify(m)); } } catch (e) {}
@@ -105,9 +142,12 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
           <button onClick={onBack} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: a11y ? "#6B5B40" : "#A29679", fontSize: 15, fontFamily: "Georgia, serif" }}>‹ Назад</button>
         </div>
       )}
-      <div className="tbm-menu">
+      {/* v40: печать висит на верхнем левом углу меню, над строкой «урок · шаги» — место под неё
+          (.sealed) зависит только от того, пройден ли раздел: у соседней страницы оно то же,
+          даже пока сама печать ещё не «опустилась» */}
+      <div className={"tbm-menu" + (sealed ? " sealed" : "")}>
         <span className="tbm-lasse" aria-hidden="true" style={{ background: "linear-gradient(180deg,transparent 40%,rgba(0,0,0,.28))," + (deco || "#8B3020") }} />
-        {showSeal ? <span className={"tbm-seal" + (stampNow ? " stamp" : "")} aria-hidden="true"><Wax s={58} /></span> : null}
+        {showSeal ? <span className={"tbm-seal" + (stampNow ? " stamp" : "")} aria-hidden="true"><Wax s={46} /></span> : null}
         <div className="tbm-head">
           {/* v32 (Доп. 334): значок темы — в одной строке с меткой (меню компактнее, без лишней прокрутки) */}
           <div className="tbm-top">
@@ -118,7 +158,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
           {mod.subtitle ? <p className="tbm-sub">{mod.subtitle}</p> : null}
           {sealed ? <div className="tbm-sealnote" role="note">раздел пройден · печать</div> : null}
           <div className="tbm-orn" aria-hidden="true"><i /><span>✦</span><i /></div>
-          <TopicActs topic={topic ? { ...topic, done: sealed } : null} acts={acts} passive={passive} />
+          <TopicActs topic={topic ? { ...topic, done: sealed } : null} acts={acts} passive={passive} n={counts} />
         </div>
         <ol className="tbm-list" aria-label={"Шаги раздела «" + mod.title + "»"}>
           {lessons.map((l, i) => {

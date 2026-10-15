@@ -411,6 +411,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     // v31
     cellar: "Погреб тем", freshall: "Освежить выдохшееся", probe: "Проверка по треку",
     analytics: "Аналитика", report: "Отчёты по сотрудникам", candidate: "Собеседование", staff: "Сотрудники",
+    // v40: значки, «Мастер роли ✦», шаг дня, первые шаги
+    mastery: "Путь мастера",
   };
   // Разделы руководителей: сотруднику кнопку не показываем, даже если модель ошиблась
   const isBoss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));

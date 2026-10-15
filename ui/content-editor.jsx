@@ -13,9 +13,14 @@
 //   • вопросы карточками: верный — тапом, пояснение, фото, порядок ↑↓;
 //   • черновик сам сохраняется на телефоне и восстанавливается;
 //   • «Как увидит сотрудник» — карточка раздела и текст урока, как в программе.
+// v40: практика — все шесть видов, как в приложении («Что делаешь?», «Найди ошибку», «Глазами
+// гостя», «Правда или миф», «Собери правило», «Быстрое решение»), у каждого свои поля и проверки;
+// «Сыграть практику» и «Сыграть диалог» — настоящие экраны игры с черновиком, без записи прогресса;
+// у диалога — своя фраза и заголовок, когда гость уходит (guest.walk / guest.walkTitle).
 import { hintsFor } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
+import { createPortal } from "react-dom";
 import { rpc, saToken } from "../api/supabase";
 import { TRACKS, trackOf, customIcon } from "../lib/tracks";
 import { MOD_SVG, UI_SVG } from "./icons";
@@ -24,12 +29,121 @@ import { GOLD } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
 import { splitExtras, sectionName, bySort, sectionSteps } from "../lib/custom-modules";
 import { answerTell } from "../lib/answer-tell";   // v37: верный угадывается по длине?
+import { LiveDialogue, dlgWalkText, dlgGram } from "./screens-dialogue";   // v40: проба диалога — тот же экран
+import { practiceRound } from "../lib/practice-round";
+import { tfLabel } from "../lib/practice-mistake";
+import { vibrate } from "../lib/utils";
 
 const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const uid = () => Math.random().toString(36).slice(2, 9);
 const blankQ = () => ({ id: uid(), q: "", options: ["", ""], correct: 0, explanation: "", img: "" });
-const blankS = (genre = "action") => ({ id: uid(), genre, emoji: "", scene: "", question: genre === "find" ? "В чём ошибка?" : "Что делаешь?", options: ["", ""], correct: 0, win: "", fail: "" });
+
+// ── v40: шесть видов практики — те же, что играет приложение (ui/table.jsx, ui/screens-learning.jsx) ──
+// Формат каждой ситуации — как у штатных (data/modules-*.js): правда/миф — { statement, isTrue, correct,
+// question: «Это верно?», options: [«✅ Верно», «❌ Неверно»] }; «Глазами гостя» — guestThought + scene +
+// question; «Собери правило» — start, варианты — продолжения после него.
+export const GENRES = [["action", "Что делаешь?"], ["find", "Найди ошибку"], ["empathy", "Глазами гостя"],
+  ["truefalse", "Правда или миф"], ["complete", "Собери правило"], ["timer", "Быстрое решение"]];
+const GENRE_IDS = GENRES.map(g => g[0]);
+const GENRE_RU = Object.fromEntries(GENRES);
+export const SIT_Q = { action: "Что делаешь?", find: "Что не так?", empathy: "Что чувствует гость и что сделать?", timer: "Что делаешь?",
+  truefalse: "Это верно?", complete: "Выбери правильное продолжение:" };
+// вопросы «по умолчанию» (и прежний «В чём ошибка?»): при смене вида меняются сами, свой вопрос остаётся
+const SIT_Q_AUTO = new Set(["", "В чём ошибка?", ...Object.values(SIT_Q)]);
+const TF_OPTS = ["✅ Верно", "❌ Неверно"];
+// «Собери правило»: начало не обрывается на «а:», «в:», «он:» (как проверяет tests/v39 у штатных)
+const CUT_COLON = /(^|[\s,])(а|в|он|на|о|в течение)\s*:\s*$/iu;
+export const genreOfS = (x) => { const g = x && (x.genre || x.type); return GENRE_IDS.includes(g) ? g : "action"; };
+// Подсказки в карточке — по docs/ОТВЕТЫ-С-ПОДВОХОМ.md (правила 4, 8, 9)
+const GENRE_HINT = {
+  action: "Сцена из смены — сотрудник выбирает, что сделать. Мысли сотрудника пиши прямо в сцене.",
+  find: "В сцене сотрудник ошибается. Спроси, что не так, — а не «что делаешь?».",
+  empathy: "Мысли гостя — только в этом виде, и они совпадают со сценой. Вопрос — про чувства гостя и про то, что их создаёт.",
+  truefalse: "Утверждение, которое по уроку точно правда или точно миф, — без «иногда» и «зависит».",
+  complete: "Начало и любой вариант читаются как одно предложение: без вопроса в конце начала и без двоеточия после «а», «в», «он».",
+  timer: "Как «Что делаешь?», только на ответ — 12 секунд: сцена и варианты короткие.",
+};
+const SCENE_PH = {
+  action: "Сцена: «Гость пятый раз зовёт тебя, а у тебя в руках горячее…»",
+  find: "Сцена с ошибкой: «Официант ставит бокал слева от тарелки…»",
+  empathy: "Сцена: «Зал полон, официант занят большим столом и не смотрит в сторону гостя»",
+  timer: "Сцена, где решать надо сразу: «Гость поднял руку, а у тебя в руках горячее…»",
+};
+const OPT_PH = { action: "Действие", find: "Вариант", empathy: "Вариант", complete: "Продолжение", timer: "Действие" };
+const isTfOpts = (o) => Array.isArray(o) && o.length === 2 && o.every(v => String(v).trim().length <= 14) && tfLabel(o[0]).t === "Правда" && tfLabel(o[1]).t === "Миф";
+const unq = (s) => /^«[^«»]*»$/.test(s) ? s.slice(1, -1).trim() : s;   // «…» целиком — экран сам ставит ёлочки
+const blankS = (genre = "action") => ({ id: uid(), genre, emoji: "", guestThought: "", scene: "", statement: "", start: "", isTrue: null,
+  question: SIT_Q[genre], options: ["", ""], correct: 0, win: "", fail: "" });
+// Ситуация с сервера, из черновика на телефоне или от ассистента → карточка редактора. В карточке — поля
+// всех видов: сменил вид — набранное не пропадает; в сохранение идут только поля своего вида (sitOut).
+export function toDraftSit(x) {
+  const s = x || {}; const g = genreOfS(s);
+  const opts = Array.isArray(s.options) ? s.options.map(o => String(o == null ? "" : o)) : [];
+  const tfData = g === "truefalse" && isTfOpts(opts);   // правда/миф: варианты служебные, ответ — в isTrue
+  const isTrue = typeof s.isTrue === "boolean" ? s.isTrue : tfData && (s.correct === 0 || s.correct === 1) ? s.correct === 0 : null;
+  const options = tfData || !opts.length ? ["", ""] : opts.length < 2 ? [...opts, ""] : opts;
+  const correct = !tfData && Number.isInteger(s.correct) && s.correct >= 0 && s.correct < options.length ? s.correct : 0;
+  return { id: s.id || uid(), genre: g, emoji: s.emoji || "", guestThought: s.guestThought || "", scene: s.scene || "", statement: s.statement || "",
+    start: s.start || "", isTrue, question: s.question != null ? String(s.question) : SIT_Q[g], options, correct, win: s.win || "", fail: s.fail || "" };
+}
+// Смена вида: вопрос по умолчанию — на вопрос нового вида, свой — остаётся; остальное не трогаем
+export function switchGenre(x, g) {
+  const q = String((x && x.question) || "").trim();
+  return { ...x, genre: g, question: SIT_Q_AUTO.has(q) ? SIT_Q[g] : x.question };
+}
+// Карточка → ситуация для сервера и игры: только поля своего вида, в формате штатных
+export function sitOut(x) {
+  const g = genreOfS(x), t = (v) => String(v == null ? "" : v).trim();
+  const head = { kind: "situation", genre: g, emoji: t(x.emoji) }, tail = { win: t(x.win), fail: t(x.fail) };
+  if (g === "truefalse") {
+    const isTrue = x.isTrue !== false;
+    return { ...head, statement: unq(t(x.statement)), isTrue, correct: isTrue ? 0 : 1, question: SIT_Q.truefalse, options: [...TF_OPTS], ...tail };
+  }
+  const keep = (x.options || []).map((o, i) => ({ o: t(o), i })).filter(y => y.o);   // пустые варианты убираются, верный сдвигается вместе с ними
+  const options = keep.map(y => y.o), correct = Math.max(0, keep.findIndex(y => y.i === x.correct));
+  if (g === "complete") return { ...head, start: t(x.start), options, correct, question: SIT_Q.complete, ...tail };
+  return { ...head, ...(g === "empathy" ? { guestThought: unq(t(x.guestThought)) } : {}), scene: t(x.scene), question: t(x.question) || SIT_Q[g], options, correct, ...tail };
+}
+// Что не так с ситуацией — словами для «Ситуация N: …» (null — всё заполнено)
+export function sitProblem(x) {
+  const g = genreOfS(x), t = (v) => String(v == null ? "" : v).trim();
+  if (g === "truefalse") {
+    if (!t(x.statement)) return "нужно утверждение.";
+    return x.isTrue === true || x.isTrue === false ? null : "отметь, правда это или миф.";
+  }
+  if (g === "complete") {
+    const st = t(x.start);
+    if (!st) return "нужно начало правила.";
+    if (/\?\s*$/.test(st)) return "начало правила — не вопрос: начало и любой вариант читаются как одно предложение.";
+    const m = st.match(CUT_COLON);
+    if (m) return `начало правила обрывается на «${m[2]}:» — убери двоеточие, чтобы начало и вариант читались одним предложением.`;
+  } else {
+    if (g === "empathy" && !t(x.guestThought)) return "нужны мысли гостя.";
+    if (!t(x.scene)) return "нужна сцена.";
+  }
+  if ((x.options || []).filter(o => t(o)).length < 2) return "нужно хотя бы два варианта.";
+  if (!t((x.options || [])[x.correct])) return "отметь верный вариант.";
+  return null;
+}
+// Свёрнутая карточка и списки: главное поле вида и верный ответ
+const sitHead = (x) => { const g = genreOfS(x); const main = g === "truefalse" ? x.statement : g === "complete" ? x.start : g === "empathy" ? (x.guestThought || x.scene) : x.scene;
+  return ((x.emoji ? x.emoji + " " : "") + String(main || "").trim()).trim(); };
+const sitAnswer = (x) => genreOfS(x) === "truefalse" ? ((typeof x.isTrue === "boolean" ? x.isTrue : x.correct === 0) ? "Правда" : "Миф") : ((x.options || [])[x.correct] || "");
+// Проба практики (v40): то же, что App (handlePracticeChoice / handlePracticeNext) — очки, комбо, тарелки,
+// итог, — но без записи: ни «Работы над ошибками», ни активности, ни звёзд
+export function pvChoice(ps, idx) {
+  if (!ps || ps.isAnswered || ps.done) return ps;
+  const sit = (ps.situations || [])[ps.step]; if (!sit) return ps;
+  const ok = idx === sit.correct, combo = ok ? (ps.combo || 0) + 1 : 0;
+  return { ...ps, choice: idx, isAnswered: true, lives: ok ? ps.lives : ps.lives - 1, score: (ps.score || 0) + (ok ? (combo >= 2 ? 20 : 10) : 0), combo };
+}
+export function pvNext(ps) {
+  const sit = ps && (ps.situations || [])[ps.step]; if (!sit) return ps;
+  const ok = ps.choice === sit.correct, results = [...(ps.results || []), ok];
+  if (ps.step + 1 >= ps.situations.length || (ps.lives <= 0 && !ok)) return { ...ps, results, done: true, isAnswered: false };
+  return { ...ps, step: ps.step + 1, choice: null, isAnswered: false, results };
+}
 const blankLesson = () => ({ id: "", role: "seasonal", module: "", title: "", content: "", questions: [], situations: [], dialogue: null, build: null, review: null, skills: [], sort: 0 });
 const hasWork = (d) => !!(d && ((d.title || "").trim() || (d.content || "").trim() || (d.questions || []).length || (d.situations || []).length || d.dialogue || d.build || d.review || (d.skills || []).length));
 // Сборка у бара (правка 160) — одна на урок, в questions с пометкой kind: "build"
@@ -60,7 +174,7 @@ const fromServer = (l) => {
   const all = Array.isArray(l.questions) ? l.questions : [];
   return JSON.parse(JSON.stringify({ ...blankLesson(), ...l,
     questions: all.filter(q => !isSit(q) && !(q && (q.kind === "dialogue" || q.kind === "build" || q.kind === "review" || q.kind === "skill"))).map(q => ({ id: uid(), ...q })),
-    situations: all.filter(isSit).map(({ kind, ...x }) => ({ id: uid(), ...x })),
+    situations: all.filter(isSit).map(({ kind, ...x }) => toDraftSit(x)),
     dialogue: withIds(all.find(q => q && q.kind === "dialogue")), build: withBIds(all.find(q => q && q.kind === "build")) }));
 };
 // Общие части раздела (правка 161): практика, диалог, сборка и тест — одни на весь раздел,
@@ -72,7 +186,7 @@ const sectionExtras = (recs) => {
   const withIdsQ = (q) => ({ id: uid(), ...q });
   return {
     questions: parts.flatMap(x => x.quiz).map(withIdsQ),
-    situations: parts.flatMap(x => x.sits).map(withIdsQ),
+    situations: parts.flatMap(x => x.sits).map(toDraftSit),   // v40: все виды — в поля карточки
     dialogue: withIds((parts.find(x => x.dlg) || {}).dlg),
     build: withBIds((parts.find(x => x.bld) || {}).bld),
     // страница книги отзывов (правка 166)
@@ -96,6 +210,7 @@ const ico = {
   photo: (c) => (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>),
   file: (c) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg>),
   check: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>),
+  play: (c, s) => (<svg width={s || 13} height={s || 13} viewBox="0 0 24 24" fill={c} stroke={c} strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true"><path d="M7 4.8v14.4L19 12z" /></svg>),
 };
 
 // Текст урока — по тем же правилам, что рисует экран урока (ui/screens-learning.jsx):
@@ -120,13 +235,34 @@ function Rich({ text, T, color, a11y }) {
   });
 }
 
+// Живой диалог: что не так — словами (null — можно сохранять и играть)
+export function dlgProblem(dl) {
+  if (!dl) return null;
+  if (!((dl.guest && dl.guest.name) || "").trim()) return "Живой диалог: как зовут гостя?";
+  if (!dl.steps.some(st => st.type === "choice")) return "Живой диалог: нужен хотя бы один выбор.";
+  for (let i = 0; i < dl.steps.length; i++) {
+    const st = dl.steps[i];
+    if (st.type !== "choice" && !(st.text || "").trim()) return `Живой диалог, шаг ${i + 1}: пустой текст.`;
+    if (st.type === "choice") {
+      const filled = st.options.filter(o => (o.text || "").trim());
+      if (!(st.prompt || "").trim()) return `Живой диалог, шаг ${i + 1}: нужен вопрос.`;
+      if (filled.length < 2) return `Живой диалог, шаг ${i + 1}: нужно хотя бы два ответа.`;
+      if (!st.options.some(o => o.correct && (o.text || "").trim())) return `Живой диалог, шаг ${i + 1}: отметь верный ответ.`;
+    }
+  }
+  return null;
+}
+
 // Общие части раздела → список questions, как их хранит сервер (правка 161)
-function serializeExtras(draft) {
+export function serializeExtras(draft) {
   const tidy = ({ id, ...q }) => {   // пустые варианты убираются, верный сдвигается вместе с ними
     const keep = q.options.map((o, i) => ({ o: (o || "").trim(), i })).filter(x => x.o);
     return { ...q, options: keep.map(x => x.o), correct: Math.max(0, keep.findIndex(x => x.i === q.correct)) };
   };
-  const dlgOut = draft.dialogue ? [{ kind: "dialogue", tip: (draft.dialogue.tip || "").trim(), guest: { ...draft.dialogue.guest, name: draft.dialogue.guest.name.trim(), context: (draft.dialogue.guest.context || "").trim() },
+  // v40: уход гостя — своя фраза и заголовок (guest.walk / guest.walkTitle), только если написаны
+  const guestOut = (gs) => { const { walk, walkTitle, ...g } = gs || {}; const w = (walk || "").trim(), wt = (walkTitle || "").trim();
+    return { ...g, name: (g.name || "").trim(), context: (g.context || "").trim(), ...(w ? { walk: w } : {}), ...(wt ? { walkTitle: wt } : {}) }; };
+  const dlgOut = draft.dialogue ? [{ kind: "dialogue", tip: (draft.dialogue.tip || "").trim(), guest: guestOut(draft.dialogue.guest),
     steps: draft.dialogue.steps.map(st => st.type === "choice"
       ? { type: "choice", prompt: st.prompt.trim(), options: st.options.filter(o => (o.text || "").trim()).map(o => ({ text: o.text.trim(), correct: !!o.correct, feedback: (o.feedback || "").trim(), moodDelta: o.moodDelta | 0 })) }
       : { type: st.type, text: st.text.trim() }) }] : [];
@@ -135,7 +271,7 @@ function serializeExtras(draft) {
       options: st.options.filter(o => (o.t || "").trim()).map(o => o.ok ? { t: o.t.trim(), ok: true, fb: (o.fb || "").trim() } : { t: o.t.trim(), fb: (o.fb || "").trim() }) })) }] : [];
   const rvOut = draft.review && (draft.review.text || "").trim() ? [{ kind: "review", guest: (draft.review.guest || "").trim(), table: (draft.review.table || "").trim(), text: draft.review.text.trim() }] : [];
   const skOut = (draft.skills || []).filter(s => (s.label || "").trim()).map(s => ({ kind: "skill", sid: s.sid || uid(), label: s.label.trim(), hint: (s.hint || "").trim() }));
-  const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(x => ({ kind: "situation", ...tidy(x) })), ...dlgOut, ...bldOut, ...rvOut, ...skOut];
+  const questions = [...draft.questions.map(tidy), ...(draft.situations || []).map(sitOut), ...dlgOut, ...bldOut, ...rvOut, ...skOut];
   return questions;
 }
 
@@ -188,6 +324,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   }, [view]);
   const [ai, setAi] = React.useState({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
   const taRef = React.useRef(null);
+  // v40: проба — настоящий экран игры поверх редактора: { kind: "sit", lesson, mod, ps, profile } | { kind: "dlg", dialogue }
+  const [play, setPlay] = React.useState(null);
+  const [playMsg, setPlayMsg] = React.useState(null);
+  const [playBusy, setPlayBusy] = React.useState(false);
+  const tbRef = React.useRef(null);   // модуль «у стола» (ui/table.jsx) — грузится по первой пробе
+  React.useEffect(() => { setPlayMsg(null); }, [draft]);
 
   const load = React.useCallback(async () => {
     setLoading(true); setLoadErr(false);
@@ -214,12 +356,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     const forId = base.id || "new";
     if (stored && stored.forId === forId && hasWork(stored.draft)) {
       setDraft({ ...base, ...stored.draft, questions: (stored.draft.questions || []).map(q => ({ id: uid(), ...q })),
-        situations: (stored.draft.situations || []).map(x => ({ id: uid(), ...x })), dialogue: withIds(stored.draft.dialogue), build: withBIds(stored.draft.build) });
+        situations: (stored.draft.situations || []).map(toDraftSit), dialogue: withIds(stored.draft.dialogue), build: withBIds(stored.draft.build) });
       setDraftNote(`Восстановлен черновик от ${hhmm(stored.at)}`);
     } else { setDraft(base); setDraftNote(null); }
     // «было при открытии» — чтобы не перезаписывать первый урок раздела без изменений
     setBase(JSON.stringify(serializeExtras({ ...noExtras(), ...base, ...(stored && stored.forId === forId && hasWork(stored.draft) ? {} : {}) })));
-    setOpenCard({}); setShowPreview(false); setTextFull(false);
+    setOpenCard({}); setShowPreview(false); setTextFull(false); setPlay(null);
     setErr(null); setSavedAt(null); setNewSection(false); setAi({ mode: null, busy: false, err: null, material: "", pdf: null, result: null, picked: {} });
     setView("edit");
   };
@@ -235,8 +377,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     setDraft(d => { const orig = d && d.id ? lessons.find(l => l.id === d.id) : null;
       return orig ? { ...blankLesson(), ...lessonOnly(orig), ...sectionExtras(sectionRecs(lessons, orig.role || "seasonal", orig.module)) } : blankLesson(); });
   };
-  const leave = () => { setView("list"); setDraft(null); };                 // ‹ — черновик остаётся
-  const cancel = () => { writeDraft(null); setView("list"); setDraft(null); }; // «Отменить» — черновик стирается
+  const leave = () => { setPlay(null); setView("list"); setDraft(null); };                 // ‹ — черновик остаётся
+  const cancel = () => { setPlay(null); writeDraft(null); setView("list"); setDraft(null); }; // «Отменить» — черновик стирается
 
   const patch = (f) => setDraft(d => ({ ...d, ...f }));
   const toSection = (role, module) => setDraft(d => { const recs = sectionRecs(lessons, role, module);
@@ -318,11 +460,10 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   // ── Сохранение: проверки понятными словами ──
   const problems = () => {
     if (!draft.title.trim()) return "Нужно название урока.";
+    // v40: у каждого вида свои обязательные поля (sitProblem)
     for (let i = 0; i < (draft.situations || []).length; i++) {
-      const x = draft.situations[i]; const opts = x.options.filter(o => (o || "").trim());
-      if (!(x.scene || "").trim()) return `Ситуация ${i + 1}: нужна сцена.`;
-      if (opts.length < 2) return `Ситуация ${i + 1}: нужно хотя бы два варианта.`;
-      if (!(x.options[x.correct] || "").trim()) return `Ситуация ${i + 1}: отметь верный вариант.`;
+      const sp = sitProblem(draft.situations[i]);
+      if (sp) return `Ситуация ${i + 1}: ${sp}`;
     }
     if (draft.review && !(draft.review.text || "").trim() && ((draft.review.guest || "").trim() || (draft.review.table || "").trim()))
       return "Книга отзывов: напиши сам отзыв гостя.";
@@ -337,21 +478,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         if (!st.options.some(o => o.ok && (o.t || "").trim())) return `Сборка, шаг ${i + 1}: отметь верный вариант.`;
       }
     }
-    if (draft.dialogue) {
-      const dl = draft.dialogue;
-      if (!(dl.guest.name || "").trim()) return "Живой диалог: как зовут гостя?";
-      if (!dl.steps.some(st => st.type === "choice")) return "Живой диалог: нужен хотя бы один выбор.";
-      for (let i = 0; i < dl.steps.length; i++) {
-        const st = dl.steps[i];
-        if (st.type !== "choice" && !(st.text || "").trim()) return `Живой диалог, шаг ${i + 1}: пустой текст.`;
-        if (st.type === "choice") {
-          const filled = st.options.filter(o => (o.text || "").trim());
-          if (!(st.prompt || "").trim()) return `Живой диалог, шаг ${i + 1}: нужен вопрос.`;
-          if (filled.length < 2) return `Живой диалог, шаг ${i + 1}: нужно хотя бы два ответа.`;
-          if (!st.options.some(o => o.correct && (o.text || "").trim())) return `Живой диалог, шаг ${i + 1}: отметь верный ответ.`;
-        }
-      }
-    }
+    if (draft.dialogue) { const dp = dlgProblem(draft.dialogue); if (dp) return dp; }
     for (let i = 0; i < draft.questions.length; i++) {
       const q = draft.questions[i]; const opts = q.options.filter(o => (o || "").trim());
       if (!(q.q || "").trim()) return `Вопрос ${i + 1}: нужен текст вопроса.`;
@@ -424,6 +551,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     border: `1px solid ${dark ? brd : "rgba(139,106,48,0.26)"}`, color: txt,
     boxShadow: dark ? "none" : "inset 0 1px 0 rgba(255,255,255,0.95), inset 0 2px 6px rgba(120,90,30,0.05)" };
   const iconBtn = { background: "transparent", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", flexShrink: 0 };
+  const fieldLab = { color: muted, fontFamily: "monospace", fontSize: dark ? 9.5 : 11, letterSpacing: 1.4, fontWeight: "bold", margin: "2px 2px 5px" };   // v40: поле вида
   // Выбранная метка в светлой теме — тонированная в свой цвет, с чёткой рамкой (раньше —
   // тяжёлая заливка, «Новичок» становился тёмно-зелёным пятном)
   const pill = (on, c) => dark
@@ -546,6 +674,44 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const otherRecs = sectionRecs(lessons, draft.role, draft.module).filter(r => r.id !== draft.id);
   const sectionText = [...otherRecs.map(r => r.content || ""), draft.content].join("\n\n").trim();
   const secLabel = (draft.module || "").trim() || "Свой раздел";
+  // ── v40: проба — те же экраны, что у сотрудника, с черновиком; без записи прогресса, ошибок,
+  // активности и без сервера: состояние раунда — здесь же (pvChoice / pvNext), колбэки — пустые ──
+  const sitsAll = draft.situations || [];
+  const sitsOk = sitsAll.filter(x => !sitProblem(x));
+  // шаги раздела — как их соберёт приложение (lib/custom-modules.js): тот же формат, что уйдёт на сервер
+  const playSteps = (sits) => {
+    const me = { id: draft.id || "new", title: draft.title.trim() || "Этот урок", content: draft.content || "", sort: draft.sort || 0 };
+    const recs = [...otherRecs.map(r => ({ ...r, questions: [] })), me].sort(bySort);
+    recs[0] = { ...recs[0], questions: serializeExtras({ ...draft, situations: sits }) };
+    return sectionSteps(secLabel, recs, draft.role, track.color);
+  };
+  const playPractice = async () => {
+    if (playBusy) return;
+    if (!sitsOk.length) { const i = sitsAll.findIndex(x => sitProblem(x)); setPlayMsg(i >= 0 ? `Ситуация ${i + 1}: ${sitProblem(sitsAll[i])}` : "Сначала добавь ситуацию."); return; }
+    let m = tbRef.current;
+    if (!m) { setPlayBusy(true); try { m = await import("./table"); tbRef.current = m; } catch (e) { m = null; } setPlayBusy(false); }
+    if (!m || !m.TablePractice) { setPlayMsg("Не удалось открыть игру — проверь связь и попробуй ещё раз."); return; }
+    const steps = playSteps(sitsOk);
+    const lesson = steps.find(s => s.type === "practice");
+    let profile = null; try { profile = JSON.parse(localStorage.getItem("sa_profile") || "null"); } catch (e) {}
+    setPlayMsg(null);
+    setPlay({ kind: "sit", key: Date.now(), lesson, mod: { id: "cms-preview", title: secLabel, color: track.color, lessons: steps }, profile,
+      ps: { ...practiceRound(lesson.situations, []), isAnswered: false } });   // как в игре: до 6 случайных, варианты перемешаны
+  };
+  const playDialogue = () => {
+    const p = dlgProblem(draft.dialogue);
+    if (p) { setPlayMsg(p); return; }
+    const st = playSteps([]).find(s => s.type === "dialogue");   // с итоговым шагом result — как в программе
+    if (st) { setPlayMsg(null); setPlay({ kind: "dlg", key: Date.now(), dialogue: st.dialogue }); }
+  };
+  const closePlay = () => setPlay(null);
+  const setPlayPs = (v) => setPlay(p => p && p.kind === "sit" ? { ...p, ps: typeof v === "function" ? v(p.ps) : v } : p);
+  const playPick = (i) => {
+    const ps = play && play.ps; const sit = ps && !ps.isAnswered ? (ps.situations || [])[ps.step] : null;
+    if (sit) vibrate(i === sit.correct ? ((ps.combo || 0) + 1 >= 2 ? "medium" : "light") : "error");
+    setPlayPs(x => pvChoice(x, i));
+  };
+  const playNext = () => setPlayPs(x => pvNext(x));
   return (
     <div style={T.screen}>
       {header(editing ? "Изменить урок" : "Новый урок", leave)}
@@ -686,18 +852,19 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>) : null}
           {ai.result && ai.mode === "situations" ? (
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 6 }}>
-              {ai.result.situations.map((x, i) => (
-                <div key={i} onClick={() => setAi(a => ({ ...a, picked: { ...a.picked, [i]: !a.picked[i] } }))} style={{ display: "flex", gap: 9, padding: "8px 0", cursor: "pointer", borderBottom: `1px solid ${brd}` }}>
+              {ai.result.situations.map((x, i) => { const g = genreOfS(x); return (
+                <div key={i} data-ai-sit={g} onClick={() => setAi(a => ({ ...a, picked: { ...a.picked, [i]: !a.picked[i] } }))} style={{ display: "flex", gap: 9, padding: "8px 0", cursor: "pointer", borderBottom: `1px solid ${brd}` }}>
                   <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1, display: "grid", placeItems: "center",
                     border: `1.5px solid ${ai.picked[i] ? TN.good : brd}`, background: ai.picked[i] ? TN.good : "transparent" }}>{ai.picked[i] ? ico.check(dark ? "#1A1008" : "#fff") : null}</span>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ color: gold, fontFamily: "monospace", fontSize: 9, letterSpacing: 1.4, fontWeight: "bold" }}>{x.genre === "find" ? "НАЙДИ ОШИБКУ" : "ЧТО ДЕЛАЕШЬ?"}</div>
-                    <div style={{ color: txt, fontFamily: SERIF, fontSize: 13.5, lineHeight: 1.35 }}>{x.emoji ? x.emoji + " " : ""}{x.scene}</div>
-                    <div style={{ color: TN.good, fontSize: 12, marginTop: 2 }}>верно: {x.options[x.correct]}</div>
+                    <div style={{ color: gold, fontFamily: "monospace", fontSize: dark ? 9 : 11, letterSpacing: 1.4, fontWeight: "bold" }}>{GENRE_RU[g].toUpperCase()}</div>
+                    {g === "empathy" && x.guestThought ? <div style={{ color: muted, fontFamily: SERIF, fontStyle: "italic", fontSize: dark ? 12.5 : 13, lineHeight: 1.35, marginBottom: 2 }}>Мысли гостя: «{unq(String(x.guestThought).trim())}»</div> : null}
+                    <div style={{ color: txt, fontFamily: SERIF, fontSize: 13.5, lineHeight: 1.35 }}>{x.emoji ? x.emoji + " " : ""}{g === "truefalse" ? "«" + unq(String(x.statement || "").trim()) + "»" : g === "complete" ? x.start + " …" : x.scene}</div>
+                    <div style={{ color: TN.good, fontSize: dark ? 12 : 13, marginTop: 2 }}>верно: {g === "complete" ? "… " : ""}{sitAnswer(x)}</div>
                   </div>
-                </div>))}
+                </div>); })}
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <button disabled={!nPicked} onClick={() => { const add = ai.result.situations.filter((_, i) => ai.picked[i]).map(x => ({ id: uid(), ...x })); setDraft(d => ({ ...d, situations: [...(d.situations || []), ...add] })); aiClose(); }}
+                <button disabled={!nPicked} onClick={() => { const add = ai.result.situations.filter((_, i) => ai.picked[i]).map(x => toDraftSit({ ...x, id: uid() })); setDraft(d => ({ ...d, situations: [...(d.situations || []), ...add] })); aiClose(); }}
                   style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: nPicked ? 1 : 0.5 }}>Добавить выбранные ({nPicked})</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
@@ -731,40 +898,71 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {/* Практика ситуаций — между текстом и тестом, как шаги в программе (правка 158) */}
         <div ref={secRef.sit} />
         <SectionLabel a11y={a11y} right={(draft.situations || []).length ? `${draft.situations.length}` : "необязательно"}>ПРАКТИКА СИТУАЦИЙ</SectionLabel>
-        {!(draft.situations || []).length ? <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Короткие сцены из смены: выбрать верное действие или найти ошибку. В игре — до 6 случайных, со звёздами, как в штатных уроках.</div> : null}
-        {(draft.situations || []).map((x, si) => openCard.sit !== x.id
-          ? cardRow("sit", x.id, `СИТУАЦИЯ ${si + 1} · ${x.genre === "find" ? "НАЙДИ ОШИБКУ" : "ЧТО ДЕЛАЕШЬ?"}`, ((x.emoji ? x.emoji + " " : "") + (x.scene || "")).trim(), !!(x.scene || "").trim() && filled(x.options, (o, k) => k === x.correct), si, draft.situations.length, moveS)
+        {!(draft.situations || []).length ? <div style={{ color: muted, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Шесть видов, как в штатных уроках: «Что делаешь?», «Найди ошибку», «Глазами гостя», «Правда или миф», «Собери правило», «Быстрое решение». В игре — до 6 случайных, со звёздами.</div> : null}
+        {(draft.situations || []).map((x, si) => { const g = genreOfS(x); return openCard.sit !== x.id
+          ? cardRow("sit", x.id, `СИТУАЦИЯ ${si + 1} · ${GENRE_RU[g].toUpperCase()}`, sitHead(x), !sitProblem(x), si, draft.situations.length, moveS)
           : (
-          <div key={x.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
+          <div key={x.id} data-sit-card={g} style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
               <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("sit", x.id)} role="button">СИТУАЦИЯ {si + 1} ▴</span>
               <button onClick={() => moveS(si, -1)} disabled={si === 0} style={{ ...iconBtn, opacity: si === 0 ? 0.3 : 1 }} aria-label="Ситуацию выше">{ico.up(muted)}</button>
               <button onClick={() => moveS(si, 1)} disabled={si === draft.situations.length - 1} style={{ ...iconBtn, opacity: si === draft.situations.length - 1 ? 0.3 : 1 }} aria-label="Ситуацию ниже">{ico.down(muted)}</button>
               <button onClick={() => delS(x.id)} style={iconBtn} aria-label="Удалить ситуацию">{ico.trash(TN.bad, 16)}</button>
             </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-              {[["action", "Что делаешь?"], ["find", "Найди ошибку"]].map(([g, lab]) => (
-                <button key={g} onClick={() => setS(x.id, { genre: g, question: ["", "Что делаешь?", "В чём ошибка?"].includes(x.question) ? (g === "find" ? "В чём ошибка?" : "Что делаешь?") : x.question })}
-                  style={{ ...pill(x.genre === g, gold), padding: "6px 11px", fontSize: 12.5 }}>{lab}</button>))}
+            {/* v40: шесть видов; сменил вид — набранное остаётся в карточке, лишнее для вида не сохраняется */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 7, flexWrap: "wrap" }} role="group" aria-label="Вид ситуации">
+              {GENRES.map(([gg, lab]) => (
+                <button key={gg} onClick={() => { const p = switchGenre(x, gg); setS(x.id, { genre: p.genre, question: p.question }); }} aria-pressed={g === gg}
+                  style={{ ...pill(g === gg, gold), padding: "6px 11px", fontSize: dark ? 12.5 : 13 }}>{lab}</button>))}
             </div>
+            <div data-genre-hint={g} style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, margin: "0 2px 9px" }}>{GENRE_HINT[g]}</div>
             <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }} aria-label="Эмодзи сцены">
               {SIT_EMOJI.map(e => <button key={e} onClick={() => setS(x.id, { emoji: x.emoji === e ? "" : e })}
                 style={{ width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 17, background: x.emoji === e ? `${gold}22` : "transparent", border: `1px solid ${x.emoji === e ? gold : brd}` }}>{e}</button>)}
             </div>
-            <textarea style={{ ...input, minHeight: 64, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.scene} onChange={e => setS(x.id, { scene: e.target.value })}
-              placeholder={x.genre === "find" ? "Сцена с ошибкой: «Официант ставит бокал слева от тарелки…»" : "Сцена: «Гость пятый раз зовёт тебя, а у тебя в руках горячее…»"} />
-            <input style={{ ...input, marginBottom: 8 }} value={x.question} onChange={e => setS(x.id, { question: e.target.value })} placeholder="Вопрос" />
-            {x.options.map((opt, oi) => { const right = x.correct === oi; return (
-              <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-                <button onClick={() => setS(x.id, { correct: oi })} aria-label="Верный вариант" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${right ? TN.good : brd}`, background: right ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{right ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
-                <input style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setS(x.id, { options: x.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`Действие ${oi + 1}`} />
-                {x.options.length > 2 ? <button onClick={() => setS(x.id, { options: x.options.filter((_, k) => k !== oi), correct: x.correct === oi ? 0 : x.correct > oi ? x.correct - 1 : x.correct })} style={iconBtn} aria-label="Убрать вариант">{ico.trash(muted, 15)}</button> : null}
-              </div>); })}
-            {x.options.length < 4 ? <button onClick={() => setS(x.id, { options: [...x.options, ""] })} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, gap: 4, padding: 2, marginBottom: 6 }}>{ico.plus(gold, 14)} вариант</button> : null}
+            {g === "empathy" ? (<>
+              <div style={fieldLab}>МЫСЛИ ГОСТЯ</div>
+              <textarea style={{ ...input, minHeight: 52, lineHeight: 1.5, marginBottom: 8, resize: "vertical", fontStyle: "italic" }} value={x.guestThought || ""} onChange={e => setS(x.id, { guestThought: e.target.value })}
+                placeholder="От лица гостя: «Я уже десять минут сижу без меню…»" aria-label="Мысли гостя" />
+            </>) : null}
+            {g === "truefalse" ? (<>
+              <div style={fieldLab}>УТВЕРЖДЕНИЕ</div>
+              <textarea style={{ ...input, minHeight: 56, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.statement || ""} onChange={e => setS(x.id, { statement: e.target.value })}
+                placeholder="Напр. «Приборы можно выносить к столу голыми руками, если быстро»" aria-label="Утверждение" />
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }} role="group" aria-label="Правда или миф">
+                <span style={{ color: muted, fontSize: dark ? 12.5 : 13, marginRight: 2 }}>По уроку это:</span>
+                <button onClick={() => setS(x.id, { isTrue: true })} aria-pressed={x.isTrue === true} style={{ ...pill(x.isTrue === true, TN.good), padding: "6px 14px", fontSize: 13 }}>Правда</button>
+                <button onClick={() => setS(x.id, { isTrue: false })} aria-pressed={x.isTrue === false} style={{ ...pill(x.isTrue === false, TN.bad), padding: "6px 14px", fontSize: 13 }}>Миф</button>
+              </div>
+              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "0 2px 9px" }}>Сотрудник нажмёт одну из двух кнопок: «Правда — так и есть» или «Миф — так только кажется».</div>
+            </>) : g === "complete" ? (<>
+              <div style={fieldLab}>НАЧАЛО ПРАВИЛА</div>
+              <textarea style={{ ...input, minHeight: 52, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.start || ""} onChange={e => setS(x.id, { start: e.target.value })}
+                placeholder="Напр. «Если сомневаешься, подходить ли к гостю, —»" aria-label="Начало правила" />
+              <div style={fieldLab}>ПРОДОЛЖЕНИЯ</div>
+            </>) : (<>
+              <textarea style={{ ...input, minHeight: 64, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.scene || ""} onChange={e => setS(x.id, { scene: e.target.value })}
+                placeholder={SCENE_PH[g]} aria-label="Сцена" />
+              <input style={{ ...input, marginBottom: 8 }} value={x.question || ""} onChange={e => setS(x.id, { question: e.target.value })} placeholder={"Вопрос: «" + SIT_Q[g] + "»"} aria-label="Вопрос" />
+            </>)}
+            {g !== "truefalse" ? (<>
+              {x.options.map((opt, oi) => { const right = x.correct === oi; return (
+                <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+                  <button onClick={() => setS(x.id, { correct: oi })} aria-label="Верный вариант" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${right ? TN.good : brd}`, background: right ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{right ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
+                  <input style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setS(x.id, { options: x.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`${OPT_PH[g]} ${oi + 1}`} />
+                  {x.options.length > 2 ? <button onClick={() => setS(x.id, { options: x.options.filter((_, k) => k !== oi), correct: x.correct === oi ? 0 : x.correct > oi ? x.correct - 1 : x.correct })} style={iconBtn} aria-label="Убрать вариант">{ico.trash(muted, 15)}</button> : null}
+                </div>); })}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0 8px" }}>
+                {x.options.length < 4 ? <button onClick={() => setS(x.id, { options: [...x.options, ""] })} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: dark ? 12.5 : 13, gap: 4, padding: 2 }}>{ico.plus(gold, 14)} вариант</button> : null}
+                <span style={{ color: muted, fontSize: dark ? 11 : 13 }}>зелёный кружок — верный; неверные — ошибки по уроку</span>
+              </div>
+              {answerTell(x.options, x.correct) ? <div data-len-tell="sit" style={{ color: TN.mid, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Верный вариант заметно длиннее остальных — его угадают по длине. Допиши неверные до той же длины: правдоподобно, но с ошибкой.</div> : null}
+              {g === "complete" && String(x.start || "").trim() && String(x.options[x.correct] || "").trim()
+                ? <div data-reads="" style={{ color: muted, fontSize: dark ? 12 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Читается так: <span style={{ color: txt, fontFamily: SERIF }}>«{String(x.start).trim()} {String(x.options[x.correct]).trim()}»</span></div> : null}
+            </>) : null}
             <input style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Если верно — реакция: «🎯 Точно! …»" />
-            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Если мимо — подсказка: «💡 …»" />
-          </div>
-        ))}
+            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Если мимо — к любому неверному: «💡 …»" />
+          </div>); })}
         <button onClick={addS} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
 
         {/* Живой диалог — после практики, перед тестом (правка 159) */}
@@ -791,6 +989,15 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               {MOODS.map((m, k) => <button key={k} onClick={() => setGuest({ mood: k + 1 })} aria-label={`Настроение ${k + 1}`} style={{ width: 32, height: 32, borderRadius: 10, cursor: "pointer", fontSize: 16, background: draft.dialogue.guest.mood === k + 1 ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.mood === k + 1 ? gold : brd}` }}>{m}</button>)}
             </div>
             <input style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора — главная мысль, покажется в конце" />
+            {/* v40: уход гостя — своя фраза и заголовок (guest.walk / guest.walkTitle), как у штатных сценариев */}
+            {(() => { const gn = (draft.dialogue.guest.name || "").trim() || "Гость"; const gr = dlgGram(gn); return (<>
+              <div style={{ ...fieldLab, marginTop: 12 }}>ЕСЛИ ГОСТЬ УЙДЁТ · НЕОБЯЗАТЕЛЬНО</div>
+              <textarea style={{ ...input, minHeight: 48, lineHeight: 1.5, marginBottom: 8, resize: "vertical", fontSize: 13.5 }} value={draft.dialogue.guest.walk || ""} maxLength={240}
+                onChange={e => setGuest({ walk: e.target.value })} placeholder={"Что происходит: «" + dlgWalkText(gn) + "»"} aria-label="Что происходит, когда гость уходит" />
+              <input style={{ ...input, fontSize: 13.5 }} value={draft.dialogue.guest.walkTitle || ""} maxLength={60} onChange={e => setGuest({ walkTitle: e.target.value })}
+                placeholder={"Заголовок в конце: «" + gn + " " + (gr === "pl" ? "ушли" : gr === "f" ? "ушла" : "ушёл") + "»"} aria-label="Заголовок, когда гость ушёл" />
+              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "6px 2px 0" }}>Гость уходит, если после неверного ответа его настроение падает до 😠. Не заполнишь — будет то, что написано серым.</div>
+            </>); })()}
           </div>
           {draft.dialogue.steps.map((st, i) => openCard.st !== st.id
             ? cardRow("st", st.id, `${i + 1} · ${st.type === "choice" ? "ВЫБОР СОТРУДНИКА" : st.type === "guest" ? "ГОСТЬ ГОВОРИТ" : "ДЕЙСТВИЕ"}`, st.type === "choice" ? st.prompt : st.text,
@@ -980,6 +1187,17 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         </div>
         <div ref={secRef.prev} />
         <SectionLabel a11y={a11y}>КАК УВИДИТ СОТРУДНИК</SectionLabel>
+        {/* v40: проба на настоящих экранах игры — с черновиком, без записи прогресса */}
+        <div data-play-card="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
+          <div style={{ color: muted, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, marginBottom: 10 }}>Пройди практику и диалог так, как их пройдёт сотрудник, — на тех же экранах. Это проба: звёзды, ошибки и прогресс не записываются.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={playPractice} disabled={!sitsAll.length || playBusy} style={{ ...aiBtn, flex: 1, minWidth: 0, justifyContent: "center", padding: "10px 6px", fontSize: 13.5, opacity: sitsAll.length ? 1 : 0.45 }}>{ico.play(gold)} {playBusy ? "Открываю…" : "Сыграть практику"}</button>
+            <button onClick={playDialogue} disabled={!draft.dialogue} style={{ ...aiBtn, flex: 1, minWidth: 0, justifyContent: "center", padding: "10px 6px", fontSize: 13.5, opacity: draft.dialogue ? 1 : 0.45 }}>{ico.play(gold)} Сыграть диалог</button>
+          </div>
+          {!sitsAll.length && !draft.dialogue ? <div style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, marginTop: 8 }}>Добавь ситуации или диалог выше — их можно будет сыграть здесь.</div>
+            : sitsOk.length && sitsOk.length < sitsAll.length ? <div style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, marginTop: 8 }}>В пробу попадут заполненные ситуации: {sitsOk.length} из {sitsAll.length}.</div> : null}
+          {playMsg ? <div role="status" data-play-msg="" style={{ color: TN.bad, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, marginTop: 8 }}>{playMsg}</div> : null}
+        </div>
         {showPreview ? (<>
         <div style={{ ...T.modCard, margin: "0 0 10px" }}>
           <div style={{ ...T.modBar, background: track.color }} />
@@ -996,15 +1214,17 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           {draft.questions.length ? <div style={{ color: muted, fontSize: 12, marginTop: 10 }}>В конце — тест: {draft.questions.length} вопр.</div> : null}
         </div>
 
-        {(draft.situations || []).length ? (() => { const x = draft.situations[0]; return (
+        {(draft.situations || []).length ? (() => { const x = draft.situations[0]; const g = genreOfS(x); return (
           <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-              <span style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>{x.genre === "find" ? "НАЙДИ ОШИБКУ" : "ЧТО ДЕЛАЕШЬ?"}</span>
+              <span style={{ color: track.color, fontFamily: "monospace", fontSize: dark ? 10 : 11, letterSpacing: 1.6, fontWeight: "bold" }}>{GENRE_RU[g].toUpperCase()}</span>
               <span style={{ color: muted, fontSize: 11.5 }}>практика · {draft.situations.length}</span>
             </div>
-            <div style={{ color: txt, fontFamily: SERIF, fontSize: 14.5, lineHeight: 1.5, marginBottom: 8 }}>{x.emoji ? <span style={{ marginRight: 6 }}>{x.emoji}</span> : null}{x.scene || "Сцена ситуации"}</div>
-            <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14, marginBottom: 8 }}>{x.question}</div>
-            {x.options.filter(o => (o || "").trim()).map((o, k) => <div key={k} style={{ padding: "9px 12px", borderRadius: 12, marginBottom: 6, border: `1px solid ${brd}`, color: txt, fontSize: 13.5, fontFamily: SERIF }}>{o}</div>)}
+            {g === "empathy" && String(x.guestThought || "").trim() ? <div style={{ color: muted, fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5, marginBottom: 6 }}>Мысли гостя: «{unq(String(x.guestThought).trim())}»</div> : null}
+            <div style={{ color: txt, fontFamily: SERIF, fontSize: 14.5, lineHeight: 1.5, marginBottom: 8 }}>{x.emoji ? <span style={{ marginRight: 6 }}>{x.emoji}</span> : null}
+              {g === "truefalse" ? "«" + (unq(String(x.statement || "").trim()) || "Утверждение") + "»" : g === "complete" ? (String(x.start || "").trim() || "Начало правила") + " ___" : (x.scene || "Сцена ситуации")}</div>
+            <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14, marginBottom: 8 }}>{g === "truefalse" ? "Правда или миф?" : g === "complete" ? SIT_Q.complete : (x.question || SIT_Q[g])}</div>
+            {(g === "truefalse" ? ["Правда", "Миф"] : x.options.filter(o => (o || "").trim())).map((o, k) => <div key={k} style={{ padding: "9px 12px", borderRadius: 12, marginBottom: 6, border: `1px solid ${brd}`, color: txt, fontSize: 13.5, fontFamily: SERIF }}>{o}</div>)}
             <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре — до 6 случайных ситуаций, варианты перемешаны, 3 жизни и звёзды.</div>
           </div>); })() : null}
         {draft.dialogue ? (
@@ -1062,6 +1282,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           <div style={{ color: muted, fontSize: 11, textAlign: "center", marginTop: 6 }}>{savedAt ? `Черновик сохранён на телефоне · ${hhmm(savedAt)}` : "Черновик сохраняется на телефоне сам"}</div>
         </div>
       </div>
+      {/* v40: проба — настоящие экраны поверх редактора; закрыл — снова редактор, черновик на месте.
+          Практика «у стола» (ui/table.jsx) рисует себя слоем в body сама; диалог — порталом, как в App.
+          preview — без обещаний записи: «Выйти из пробы?», в чеке «Проба — результат не записывается»,
+          без серии, цели дня, Наставника и микрофона */}
+      {play && play.kind === "sit" && tbRef.current ? (() => { const TP = tbRef.current.TablePractice; return (
+        <TP key={play.key} lesson={play.lesson} mod={play.mod} color={track.color} a11y={!!a11y} practiceState={play.ps} setPracticeState={setPlayPs}
+          onPracticeChoice={playPick} onPracticeNext={playNext} onBack={closePlay} onComplete={closePlay} streak={null} profile={play.profile} preview />); })() : null}
+      {play && play.kind === "dlg" ? createPortal(<LiveDialogue key={play.key} inline={play.dialogue} T={T} color={track.color} pro onClose={closePlay} />, document.body) : null}
     </div>
   );
 }

@@ -94,6 +94,14 @@ const CSS = `
 .rp-day .w{width:5px;height:5px;border-radius:50%;background:#D9B87C}
 .rp-day .w.no{background:transparent}
 .rp-empty{font-size:13.5px;color:#A99B7E;padding:4px 0}
+.rp-master{margin:0 0 8px;font-size:14px;font-weight:700;color:#E0C285}
+.rp-ms{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 6px}
+.rp-ms span{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:5px 10px 5px 8px;border-radius:999px;border:1px solid rgba(214,178,102,.28);background:rgba(255,250,238,.04);
+  font:12.5px/1.25 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#EFE4C8}
+.rp-ms span i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.rp-ms span em{font-style:normal;color:#A99B7E}
+.rp-ms .t1 i{background:#C88A5A}.rp-ms .t2 i{background:#C7CDD6}.rp-ms .t3 i{background:#E6C677;box-shadow:0 0 6px rgba(230,198,119,.55)}
+.rp-ms .t3{border-color:rgba(230,198,119,.55)}
 .rp-foot{margin:18px 16px 0;font:12px/1.5 system-ui,sans-serif;color:#8F826A}
 html.sa-light .rp{color:#2A1F0E}
 html.sa-light .rp-h,html.sa-light .rp-rn b,html.sa-light .rp-tile .v,html.sa-light .rp-sec h3,html.sa-light .rp-q .qq,html.sa-light .rp-weak .tt b,html.sa-light .rp-mod{color:#2A1F0E}
@@ -120,6 +128,11 @@ html.sa-light .rp-flags .t{color:#8F3520}
 html.sa-light .rp-flags.ok .t{color:#28603D}
 html.sa-light .rp-bar,html.sa-light .rp-day .col{background:rgba(120,90,30,.12)}
 html.sa-light .rp-weak,html.sa-light .rp-li{border-color:rgba(150,112,40,.2)}
+html.sa-light .rp-master{color:#7A5D2A}
+html.sa-light .rp-ms span{background:rgba(255,252,244,.6);border-color:rgba(150,112,40,.3);color:#2A1F0E;font-size:13px}
+html.sa-light .rp-ms span em{color:#6B5B40}
+html.sa-light .rp-ms .t1 i{background:#A0663A}html.sa-light .rp-ms .t2 i{background:#8E96A3}html.sa-light .rp-ms .t3 i{background:#B8892E;box-shadow:none}
+html.sa-light .rp-ms .t3{border-color:rgba(150,112,40,.6)}
 `;
 let cssDone = false;
 const ensureCss = () => {
@@ -349,6 +362,25 @@ function ReportHint({ a11y, k }) {
     onNext={step >= steps.length - 1 ? null : () => setStep((v) => v + 1)} onClose={done} />;
 }
 
+// v40: «Путь мастера» в карточке — коротко: сколько значков, какие, мастер роли, чем не пользуется
+const dayMonth = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || "")) ? s.slice(8, 10) + "." + s.slice(5, 7) : "");
+export function MasteryBlock({ ms }) {
+  return (
+    <section className="rp-sec">
+      <h3>Путь мастера<span>{ms.bronze} из {ms.total} {pl(ms.total, "значка", "значков", "значков")}</span></h3>
+      {ms.master.length ? <div className="rp-master">✦ Мастер роли: {ms.master.map((r) => "«" + r.label + "»").join(", ")}</div> : null}
+      {ms.badges.length ? (
+        <div className="rp-ms" role="list" aria-label="Значки">
+          {ms.badges.map((b) => <span key={b.id} role="listitem" className={"t" + b.tier}><i aria-hidden="true" />{b.title}<em>{b.tierName}</em></span>)}
+        </div>
+      ) : <div className="rp-empty">Значков пока нет.</div>}
+      {ms.fw ? <div className="rp-li">Первые шаги пройдены<small>все семь заданий первых двух недель сделаны</small></div> : null}
+      {ms.unused.length ? <div className="rp-li">Не пользуется<small>{ms.unused.join(", ")}</small></div> : null}
+      {ms.step ? <div className="rp-li">Шаг дня{ms.step.day ? " · " + dayMonth(ms.step.day) : ""}<small>{ms.step.t}</small></div> : null}
+    </section>
+  );
+}
+
 function Tile({ l, v, s, tone }) {
   return <div className="rp-tile"><div className="l">{l}</div><div className={"v" + (tone ? " " + tone : "")}>{v}</div>{s ? <div className="s">{s}</div> : null}</div>;
 }
@@ -427,6 +459,9 @@ function PersonView({ m }) {
           {m.live.quests30 ? <div className="rp-li">Квест смены закрыт: {m.live.quests30} {pl(m.live.quests30, "раз", "раза", "раз")}<small>вместе со сменой</small></div> : null}
         </section>
       ) : null}
+
+      {/* v40: «Путь мастера» — значки по семействам, мастер роли, чем не пользуется (старая копия — блока нет) */}
+      {m.mastery ? <MasteryBlock ms={m.mastery} /> : null}
 
       <section className="rp-sec">
         <h3>Что не пройдено<span>{mt ? "осталось " + m.notDone.left + " " + pl(m.notDone.left, "шаг", "шага", "шагов") : ""}</span></h3>

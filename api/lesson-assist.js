@@ -5,8 +5,12 @@
 //   lesson    — урок из материала: текст регламента/заметок и/или PDF → { title, content }
 //   improve   — улучшить текст урока: яснее, короче, без ошибок, факты те же → { content }
 //   questions — вопросы к тесту по тексту урока → { questions: [{ q, options, correct, explanation }] }
-//   situations — «Практика ситуаций» по тексту урока (правка 158) →
-//                { situations: [{ genre, emoji, scene, question, options, correct, win, fail }] }
+//   situations — «Практика ситуаций» по тексту урока (правка 158; v40 — все шесть видов, как в приложении) →
+//                { situations: [{ genre, emoji, …поля вида, win, fail }] }:
+//                action / find / timer — scene, question, options, correct;
+//                empathy — guestThought, scene, question, options, correct;
+//                truefalse — statement, isTrue, correct, question «Это верно?», options [«✅ Верно», «❌ Неверно»];
+//                complete — start, options (продолжения), correct, question «Выбери правильное продолжение:»
 //   build      — «Сборка» напитка по рецепту (правка 160) →
 //                { build: { title, glass, tint, win, lose, steps: [{ label, q, cost, options: [{ t, ok, fb }] }] } }
 //   dialogue   — «Живой диалог» по тексту урока (правка 159) →
@@ -41,7 +45,7 @@ const STYLE = [
   "Не выдумывай фактов, цен, блюд, имён и правил, которых нет в исходном материале.",
 ].join("\n");
 
-const PROMPT = {
+export const PROMPT = {
   lesson: (role, material) => [
     `Сделай один урок для сотрудников ресторана — ${ROLE_RU[role] || "сотрудники зала"} — из материала ниже.`,
     "Объём текста урока — 150–450 слов. Название — коротко, 2–6 слов.",
@@ -93,14 +97,28 @@ const PROMPT = {
     'Ответ — строго JSON без пояснений и без ```: {"dialogue": {"tip": "…", "guest": {"name": "…", "avatar": "👔", "context": "…", "mood": 3}, "steps": [{"type": "action", "text": "…"}, {"type": "guest", "text": "…"}, {"type": "choice", "prompt": "…", "options": [{"text": "…", "correct": true, "feedback": "…", "moodDelta": 1}]}]}}',
     "\nТЕКСТ УРОКА:\n" + text,
   ].join("\n"),
+  // v40: все шесть видов практики — как в приложении и по правилам docs/ОТВЕТЫ-С-ПОДВОХОМ.md (v37–v39)
   situations: (role, text, title) => [
-    `Составь 4 ситуации для «Практики ситуаций» по уроку «${title || "без названия"}» для: ${ROLE_RU[role] || "сотрудники зала"}.`,
-    "Ситуация — короткая сцена из смены, 1–3 предложения, от второго лица («Ты…», «Гость…»), вопрос и 4 варианта действия, ровно один верный.",
-    "Неверные — правдоподобные ошибки новичка, не абсурд. Вид genre: «action» — вопрос «Что делаешь?»; «find» — в сцене сотрудник ошибается, вопрос «В чём ошибка?». Сделай 2–3 action и 1–2 find.",
-    "Все 4 варианта — примерно одной длины и одинаково уверенные: верный не должен выделяться ни длиной, ни подробностью.",
-    "win — реакция при верном ответе, одна фраза, можно начать с 🎯; fail — подсказка при ошибке, одна фраза, можно начать с 💡; emoji — один эмодзи к сцене.",
-    "Опирайся только на текст урока, ничего не выдумывай.",
-    'Ответ — строго JSON без пояснений и без ```: {"situations": [{"genre": "action", "emoji": "🔥", "scene": "…", "question": "Что делаешь?", "options": ["…","…","…","…"], "correct": 0, "win": "…", "fail": "…"}]}',
+    `Составь 6 ситуаций для «Практики ситуаций» по уроку «${title || "без названия"}» для: ${ROLE_RU[role] || "сотрудники зала"} — по одной каждого вида (genre), в таком порядке: action, find, empathy, truefalse, complete, timer. Если для вида в уроке нет материала — вместо него сделай ещё одну action.`,
+    "Виды и их поля:",
+    "— action («Что делаешь?»): scene — короткая сцена из смены, 1–3 предложения, от второго лица («Ты…», «Гость…»); question — «Что делаешь?»; options — 4 действия.",
+    "— find («Найди ошибку»): в scene сотрудник ошибается; question спрашивает, что не так («Что не так?»), а не «что делаешь?»; options — 4 варианта того, в чём ошибка.",
+    "— empathy («Глазами гостя»): guestThought — мысли гостя от первого лица, 1–2 предложения, и они совпадают со сценой (то, что гость видит и чувствует в ней); scene — что происходит; question — про чувства гостя и про то, что их создаёт или что сделать («Что чувствует гость и что сделать?»); options — 4 варианта.",
+    "— truefalse («Правда или миф»): statement — одно утверждение, которое по тексту урока однозначно верно или однозначно неверно, без «иногда» и «зависит»; isTrue — true, если верно, false — если миф. Полей scene и options у этого вида нет.",
+    "— complete («Собери правило»): start — начало правила из урока; options — 4 продолжения. start и любой вариант вместе читаются как одно грамотное предложение: start не заканчивается вопросом и не обрывается двоеточием после «а», «в», «он»; варианты продолжают фразу со строчной буквы. Поля scene у этого вида нет.",
+    "— timer («Быстрое решение»): как action, но решать надо за 12 секунд — сцена и варианты короче.",
+    "Мысли гостя (guestThought) — только в empathy; мысли сотрудника пиши прямо в сцену.",
+    "Во всех видах с вариантами ровно один верный (correct — его номер, с нуля). Неверные — правдоподобные ошибки новичка именно по теме урока: верное действие не вовремя, полуправда, соседняя цифра из урока, переложил на другого, перестарался, решил за гостя. Не абсурд и не шутка; эксперт не должен суметь защитить неверный по тексту урока: каждый неверный — ловушка, а не пустышка.",
+    "Все варианты одной ситуации — одной длины (самый длинный длиннее самого короткого не больше чем на четверть), одной формы и одинаково уверенные: верный не должен выделяться ни длиной, ни подробностью, ни тоном. Верный стоит на разных местах.",
+    "win — реакция при верном ответе, одна фраза, можно начать с 🎯; fail — подсказка при ошибке, одна фраза, можно начать с 💡, и она подходит к любому неверному варианту; emoji — один эмодзи к ситуации.",
+    "Опирайся только на текст урока, ничего не выдумывай: всё, на чём держится верный ответ, должно быть в уроке. Кавычки — «ёлочки», тире — длинное.",
+    'Ответ — строго JSON без пояснений и без ```: {"situations": ['
+      + '{"genre": "action", "emoji": "🔥", "scene": "…", "question": "Что делаешь?", "options": ["…","…","…","…"], "correct": 1, "win": "…", "fail": "…"}, '
+      + '{"genre": "find", "emoji": "🔍", "scene": "…", "question": "Что не так?", "options": ["…","…","…","…"], "correct": 3, "win": "…", "fail": "…"}, '
+      + '{"genre": "empathy", "emoji": "🎭", "guestThought": "…", "scene": "…", "question": "Что чувствует гость и что сделать?", "options": ["…","…","…","…"], "correct": 0, "win": "…", "fail": "…"}, '
+      + '{"genre": "truefalse", "emoji": "🃏", "statement": "…", "isTrue": false, "win": "…", "fail": "…"}, '
+      + '{"genre": "complete", "emoji": "🔗", "start": "…", "options": ["…","…","…","…"], "correct": 2, "win": "…", "fail": "…"}, '
+      + '{"genre": "timer", "emoji": "⚡", "scene": "…", "question": "Что делаешь?", "options": ["…","…","…","…"], "correct": 1, "win": "…", "fail": "…"}]}',
     "\nТЕКСТ УРОКА:\n" + text,
   ].join("\n"),
 };
@@ -115,6 +133,46 @@ export function parseObject(text) {
 }
 
 const cut = (s, n) => String(s == null ? "" : s).replace(/\r/g, "").slice(0, n);
+
+// v40: виды практики и их служебные поля — как у штатных ситуаций (data/modules-*.js)
+export const SIT_GENRES = ["action", "find", "empathy", "truefalse", "complete", "timer"];
+const SIT_Q = { action: "Что делаешь?", find: "Что не так?", empathy: "Что чувствует гость и что сделать?", timer: "Что делаешь?" };
+const TF_OPTIONS = ["✅ Верно", "❌ Неверно"];
+const CUT_COLON = /(^|[\s,])(а|в|он|на|о|в течение)\s*:\s*$/iu;   // «…, а:» — начало правила обрывается
+// эмодзи: не длиннее 4 знаков и без половинки суррогатной пары
+const emojiOf = (v) => { let out = ""; for (const ch of String(v == null ? "" : v).trim()) { if ((out + ch).length > 4) break; out += ch; } return out.replace(/\u200d+$/, ""); };
+const unquote = (s) => /^«[^«»]*»$/.test(s) ? s.slice(1, -1).trim() : s;
+// isTrue: true / false, «true» / «false»; нет — по correct (0 — «Верно», 1 — «Неверно»)
+const truthOf = (x) => typeof x.isTrue === "boolean" ? x.isTrue : x.isTrue === "true" ? true : x.isTrue === "false" ? false
+  : String(x.correct) === "0" ? true : String(x.correct) === "1" ? false : null;
+function sanitizeSituation(x) {
+  if (!x || typeof x !== "object") return null;
+  const genre = SIT_GENRES.includes(x.genre) ? x.genre : "action";
+  const head = { genre, emoji: emojiOf(x.emoji) }, tail = { win: cut(x.win, 240).trim(), fail: cut(x.fail, 240).trim() };
+  if (genre === "truefalse") {
+    const statement = unquote(cut(x.statement, 300).trim()), isTrue = truthOf(x);
+    if (!statement || isTrue === null) return null;
+    return { ...head, statement, isTrue, correct: isTrue ? 0 : 1, question: "Это верно?", options: [...TF_OPTIONS], ...tail };
+  }
+  // варианты: пустые убираются, верный — тот же, что назвала модель (вне списка — первый)
+  const raw = Array.isArray(x.options) ? x.options : [];
+  const rc = Number.isInteger(x.correct) ? x.correct : parseInt(x.correct, 10);
+  const keep = raw.map((v, i) => ({ v: cut(v, 200).trim(), i })).filter(y => y.v).slice(0, 4);
+  if (keep.length < 2) return null;
+  const options = keep.map(y => y.v), correct = Math.max(0, keep.findIndex(y => y.i === rc));
+  if (genre === "complete") {
+    const start = cut(x.start, 300).trim().replace(CUT_COLON, "$1$2");   // «…, а:» → «…, а»: начало и вариант — одно предложение
+    if (!start || /\?\s*$/.test(start)) return null;
+    return { ...head, start, options, correct, question: "Выбери правильное продолжение:", ...tail };
+  }
+  const scene = cut(x.scene, 400).trim();
+  if (!scene) return null;
+  const guestThought = genre === "empathy" ? unquote(cut(x.guestThought, 300).trim()) : "";
+  if (genre === "empathy" && !guestThought) return null;   // «глазами гостя» без мыслей гостя — не тот вид
+  let question = cut(x.question, 160).trim() || SIT_Q[genre];
+  if (genre === "find" && /что делаешь/i.test(question)) question = "Что не так?";   // в «найди ошибку» спрашиваем, что не так
+  return { ...head, ...(genre === "empathy" ? { guestThought } : {}), scene, question, options, correct, ...tail };
+}
 
 // Только известные поля и разумные длины — что бы модель ни прислала
 export function sanitize(mode, o) {
@@ -166,15 +224,8 @@ export function sanitize(mode, o) {
       context: cut(g.context, 300).trim(), mood: Math.max(1, Math.min(5, parseInt(g.mood, 10) || 3)) }, steps } };
   }
   if (mode === "situations") {
-    const ss = (Array.isArray(o.situations) ? o.situations : []).slice(0, 8).map(x => {
-      const options = (Array.isArray(x && x.options) ? x.options : []).map(v => cut(v, 200).trim()).filter(Boolean).slice(0, 4);
-      let correct = Number.isInteger(x && x.correct) ? x.correct : parseInt(x && x.correct, 10);
-      if (!(correct >= 0 && correct < options.length)) correct = 0;
-      const genre = x && x.genre === "find" ? "find" : "action";
-      return { genre, emoji: cut(x && x.emoji, 4).trim(), scene: cut(x && x.scene, 400).trim(),
-        question: cut(x && x.question, 160).trim() || (genre === "find" ? "В чём ошибка?" : "Что делаешь?"),
-        options, correct, win: cut(x && x.win, 240).trim(), fail: cut(x && x.fail, 240).trim() };
-    }).filter(x => x.scene && x.options.length >= 2);
+    // v40: каждый вид — только свои поля, разумные длины, ровно один верный; у правды/мифа варианты служебные
+    const ss = (Array.isArray(o.situations) ? o.situations : []).slice(0, 8).map(sanitizeSituation).filter(Boolean);
     return ss.length ? { situations: ss } : null;
   }
   const qs = (Array.isArray(o.questions) ? o.questions : []).slice(0, 8).map(q => {

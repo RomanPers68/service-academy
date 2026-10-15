@@ -13,6 +13,8 @@
 //   WeekReceipt   — «Чек недели» с отправкой команде (Доп. 305).
 // Доп. 299–300: «Подсмотреть в уроке», «Послушать», автопереход при повторе,
 // «Разобрать с Наставником», «вслух» с микрофоном, подпись наставника ресторана.
+// v40: TablePractice preview — проба из редактора контента (ui/content-editor.jsx): те же экраны,
+// но ничего не обещает записать (practiceExitText, PREVIEW_NOTE), без Наставника и микрофона.
 //
 // Модуль ленивый: грузится фоном, без него работает классический вид.
 
@@ -118,7 +120,7 @@ function Note({ ok, title, sign, children }) {
 
 // «А теперь — вслух». Доп. 300: если телефон умеет записывать голос — слушаем
 // микрофон и сверяем ключевые слова фразы; нет — как раньше, «получилось / ещё разок».
-function SayAloud({ phrase, onVoice }) {
+function SayAloud({ phrase, onVoice, a11y }) {
   const [res, setRes] = React.useState(null);
   const [heard, setHeard] = React.useState(null);
   const [err, setErr] = React.useState("");
@@ -158,7 +160,9 @@ function SayAloud({ phrase, onVoice }) {
               <span>Нажми и скажи фразу — как живому гостю. Сверю главные слова.</span>
             </div>
           ) : (
-            <div style={{ fontSize: 12.5, color: "var(--sub)", margin: "0 0 10px", lineHeight: 1.45 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
+            // v40: размер — как в CSS: в светлой теме («Для чтения», a11y) 13 px — то же, что правило
+            // html.sa-light .tb-say>div:not([class]) в ui/table-css-lesson.js; в тёмной — 12,5 px, как было
+            <div style={{ fontSize: a11y ? 13 : 12.5, color: "var(--sub)", margin: "0 0 10px", lineHeight: 1.45 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
           )}
           {err ? <p className="tb-heard">{err}</p> : null}
           <div className="row">
@@ -393,11 +397,22 @@ function peekLessons(sit, { lesson, mod, modules }) {
   return (m && m.lessons) || [];
 }
 
+// v40: проба из редактора контента (TablePractice preview) — те же экраны, что у сотрудника, но без
+// обещаний записи: выход не «ждёт 12 часов», в чеке нет серии, цели дня и «Работы над ошибками» —
+// вместо них PREVIEW_NOTE; нет «Разобрать с Наставником», «вслух» с микрофоном (запрос к серверу)
+// и переключателя на классический вид; «Продолжить» закрывает пробу (onBack), а не засчитывает практику
+export const PREVIEW_NOTE = "Проба — результат не записывается";
+export function practiceExitText(preview = false) {
+  return preview
+    ? { title: "Выйти из пробы?", text: "Ничего не сохраняется." }
+    : { title: "Выйти из практики?", text: "Раунд подождёт: вернёшься в течение 12 часов — продолжишь с этой же ситуации." };
+}
+
 // ════════════════════════════════════════════════════════════════════
 // ПРАКТИКА «у стола» — на том же состоянии, что классическая практика
 // ════════════════════════════════════════════════════════════════════
 export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, setPracticeState, onPracticeChoice, onPracticeNext, onBack, onComplete, onClassic, streak, profile,
-  replay = false, mentorName = "", goal = null, onAskMentor, inline = false }) {
+  replay = false, mentorName = "", goal = null, onAskMentor, inline = false, preview = false }) {
   const situations = ps.situations && ps.situations.length ? ps.situations : (lesson.situations || []).slice(0, 6);
   const n = situations.length;
   const step = Math.min(ps.step, Math.max(0, n - 1));
@@ -491,7 +506,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
                 <div className="r-cut" />
                 <h2 className="r-title">{ps.lives > 0 ? "Практика пройдена" : "Раунд окончен"}</h2>
                 <div className="r-name">{lesson.title}</div>
-                <div className="r-meta">звёзды {stars} из 3 · в зачёт идёт лучший раунд</div>
+                {preview ? <div className="r-meta">звёзды {stars} из 3</div> : <div className="r-meta">звёзды {stars} из 3 · в зачёт идёт лучший раунд</div>}
                 <div className="r-cut" />
                 <ul className="r-lines">
                   <Line label="Правильно" value={correct + "/" + n} />
@@ -501,11 +516,15 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
                 </ul>
                 <div className="r-total"><span>ОЧКИ</span><b>{ps.score}</b></div>
                 <div className="r-cut" />
-                <ul className="r-lines">
-                  <Line icon={<Candle s={18} lit={st.last === ymd(new Date())} />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
-                  <GoalLine goal={goal} />
-                  {wrong ? <Line icon={<Ic n="refresh" s={15} />} label="В «Работу над ошибками»" value={wrong} /> : null}
-                </ul>
+                {preview ? (
+                  <p className="r-note" data-preview=""><Ic n="eye" s={14} /><span>{PREVIEW_NOTE}</span></p>
+                ) : (
+                  <ul className="r-lines">
+                    <Line icon={<Candle s={18} lit={st.last === ymd(new Date())} />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
+                    <GoalLine goal={goal} />
+                    {wrong ? <Line icon={<Ic n="refresh" s={15} />} label="В «Работу над ошибками»" value={wrong} /> : null}
+                  </ul>
+                )}
                 <div className="r-thanks">{verdict}</div>
                 <Edge />
               </div>
@@ -527,7 +546,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
           </div>
         </div></div>
         <div className="tb-foot"><div className="tb-col">
-          <button type="button" className="tb-main" onClick={onComplete}>Продолжить</button>
+          <button type="button" className="tb-main" onClick={preview && onBack ? onBack : onComplete}>Продолжить</button>
           <button type="button" className="tb-ghost" onClick={restart}>Сыграть ещё раз</button>
         </div></div>
       </>, vars, inline);
@@ -539,6 +558,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
   if (answered && !ok) marks[step] = "bad";
   const pts = ok ? (ps.combo >= 2 ? 20 : 10) : 0;
   const noteTitle = ps.choice === -1 ? "Время вышло" : ok ? OKW[hashOf(sitKey(sit)) % OKW.length] : "Не совсем";
+  const exitTx = practiceExitText(preview);
   return shell(
     <>
       <div className="tb-head"><div className="tb-col">
@@ -562,7 +582,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
           <ListenBtn text={sitSpeech(sit)} />
           <PeekBtn onClick={openPeek} used={peekedStep === step} />
           <SoundBtn />
-          {onClassic ? <button type="button" className="tb-tool" onClick={onClassic} aria-label="Классический вид практики"><Ic n="list" s={17} /></button> : null}
+          {onClassic && !preview ? <button type="button" className="tb-tool" onClick={onClassic} aria-label="Классический вид практики"><Ic n="list" s={17} /></button> : null}
         </div>
       </div></div>
       <div className="tb-body" ref={bodyRef} onPointerDown={cancelAuto} onWheel={cancelAuto}><div className="tb-col" key={"s" + step}>
@@ -580,10 +600,10 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
                 {!ok ? <><span className="na">{g === "truefalse" ? "Ответ" : "Лучше так"}</span><p className="nb">{g === "truefalse" ? tfLabel(sit.options[sit.correct]).t : sit.options[sit.correct]}</p></> : null}
                 <p>{stripEm(ok ? sit.win : (missText(sit, ps.choice >= 0 ? sit.options[ps.choice] : "") || "Попробуй ещё раз в следующем раунде!"))}</p>
                 <p className="pts">{ok ? "+" + pts + " очков" + (ps.combo >= 2 ? " · комбо ×" + ps.combo : "") : "−1 тарелка · осталось " + Math.max(0, ps.lives)}</p>
-                {!ok ? <MentorLink onAsk={onAskMentor} sit={sit} pick={ps.choice} /> : null}
+                {!ok && !preview ? <MentorLink onAsk={onAskMentor} sit={sit} pick={ps.choice} /> : null}
               </Note>
               {!ok && ps.lives <= 0 ? <p className="tb-hint">Три тарелки разбиты — раунд окончен. Следующий раунд перемешает ситуации.</p> : null}
-              {sayPhrase ? <SayAloud phrase={unquote(sayPhrase)} /> : null}
+              {sayPhrase && !preview ? <SayAloud phrase={unquote(sayPhrase)} a11y={a11y} /> : null}
             </>
           ) : null}
         </Situation>
@@ -595,7 +615,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
         </div>
       ) : null}</div>
       {peek ? <PeekSheet data={peek.empty ? null : peek} onClose={() => setPeek(null)} /> : null}
-      {sheet ? <ExitSheet title="Выйти из практики?" text="Раунд подождёт: вернёшься в течение 12 часов — продолжишь с этой же ситуации." onStay={() => setSheet(false)} onLeave={() => { setSheet(false); onBack(); }} /> : null}
+      {sheet ? <ExitSheet title={exitTx.title} text={exitTx.text} onStay={() => setSheet(false)} onLeave={() => { setSheet(false); onBack(); }} /> : null}
     </>, vars, inline);
 }
 
@@ -1033,7 +1053,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                     {!c.ok && !strict ? <MentorLink onAsk={onAskMentor} sit={sit} pick={c.pick} /> : null}
                   </Note>
                 ) : null}
-                {c.phase === "done" && c.ok && sayPhrase ? <SayAloud phrase={sayPhrase} /> : null}
+                {c.phase === "done" && c.ok && sayPhrase ? <SayAloud phrase={sayPhrase} a11y={a11y} /> : null}
               </>
             ) : null}
           </Situation>

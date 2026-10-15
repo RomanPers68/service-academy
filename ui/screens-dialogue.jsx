@@ -243,7 +243,7 @@ const DLG_CSS = `
 html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .sa-dlg.dc *{box-sizing:border-box}
 :where(.sa-dlg.dc) button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;margin:0}
-.dc-ey{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:var(--gold-ink)}
+.dc-ey{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--gold-ink)}
 
 /* шапка */
 .dc-head{flex:0 0 auto;position:relative;z-index:4;padding:max(6px,env(safe-area-inset-top,0px)) 8px 6px;background:var(--head);border-bottom:1px solid var(--head-line)}
@@ -256,10 +256,10 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
   box-shadow:0 0 0 2px var(--mc),0 0 16px -3px var(--mc);transition:box-shadow .6s ease}
 .dc-ava::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--mc);opacity:0;pointer-events:none}
 .dc-ava.bump::after{animation:dcRing .95s ease-out}
-.dc-ava.big{width:72px;height:72px;font-size:38px;margin:0 auto 12px;box-shadow:0 0 0 2.5px var(--mc),0 0 26px -4px var(--mc)}
+.dc-ava.big{width:62px;height:62px;font-size:32px;margin:0 auto 8px;box-shadow:0 0 0 2.5px var(--mc),0 0 26px -4px var(--mc)}
 .dc-id{min-width:0;display:flex;flex-direction:column;gap:1px}
 .dc-name{font-family:'Piazzolla',Georgia,serif;font-size:16.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dc-st{font-size:12.5px;line-height:1.3;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-st{font-size:14px;line-height:1.3;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dc-st.ty{color:var(--gold-ink);font-style:italic}
 .dc-st-e{display:inline-block;animation:dcFade .4s ease}
 .dc-dots{display:inline-flex;gap:2px;margin-left:3px;vertical-align:middle}
@@ -305,15 +305,18 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .dc-typing{display:flex;gap:4px;align-items:center;padding:13px 15px}
 .dc-typing i{width:7px;height:7px;border-radius:50%;background:var(--in-meta);animation:dcBounce 1.2s infinite ease-in-out}
 .dc-typing i:nth-child(2){animation-delay:.15s}.dc-typing i:nth-child(3){animation-delay:.3s}
-.dc-svc{max-width:86%;padding:5px 12px 6px;border-radius:14px;background:var(--svc);color:var(--svc-text);font-size:13px;line-height:1.42;font-style:italic;text-align:center}
+.dc-svc{max-width:92%;padding:5px 12px 6px;border-radius:14px;background:var(--svc);color:var(--svc-text);font-size:15px;line-height:1.38;font-style:italic;text-align:center;text-wrap:pretty}
 .dc-svc.bad{color:var(--bad-ink);background:var(--bad-wash);box-shadow:inset 0 0 0 1px var(--bad-edge);font-style:normal}
-.dc-intro{width:100%;max-width:360px;margin:2px auto 6px;padding:18px 16px 14px;border-radius:22px;text-align:center;background:var(--card);border:1px solid var(--edge);
+.dc-intro{width:100%;max-width:360px;margin:2px auto 6px;padding:16px 14px 13px;border-radius:22px;text-align:center;background:var(--card);border:1px solid var(--edge);
   box-shadow:0 8px 24px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.06)}
-.dc-intro-n{margin:5px 0 6px;font-family:'Piazzolla',Georgia,serif;font-size:20px;line-height:1.2;font-weight:700}
-.dc-intro-p{margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--sub);font-style:italic}
+/* v40: карточка гостя и реплики рассказчика крупнее (в обеих темах): описание 16 px, плашки 13,5,
+   подсказка «как отвечать» — цветом подписи, а не бледным. Аватар меньше (62 px) и поля карточки уже —
+   она выросла лишь на ~13 px и с панелью ответов не уходит под шапку (e2e-v40-visual, DL) */
+.dc-intro-n{margin:4px 0 5px;font-family:'Piazzolla',Georgia,serif;font-size:21px;line-height:1.2;font-weight:700}
+.dc-intro-p{margin:0 0 10px;font-size:16px;line-height:1.42;color:var(--sub);font-style:italic;text-wrap:pretty}
 .dc-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
-.dc-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;border:1px solid var(--edge-gold);font-size:12.5px;line-height:1.3;color:var(--gold-ink);white-space:nowrap}
-.dc-howto{margin:11px 0 0;font-size:11.5px;line-height:1.45;color:var(--faint)}
+.dc-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;border:1px solid var(--edge-gold);font-size:13.5px;line-height:1.3;color:var(--gold-ink);white-space:nowrap}
+.dc-howto{margin:9px 0 0;font-size:13.5px;line-height:1.38;color:var(--sub)}
 .dc-coach{width:100%;max-width:520px;margin:0 4px;padding:9px 12px 10px;border-radius:16px;background:var(--coach);border:1px solid var(--edge);
   box-shadow:0 3px 12px rgba(0,0,0,0.18);font-size:calc(var(--fs) - 1px);line-height:1.45}
 .dc-coach.ok{border-color:var(--ok-edge);background-image:linear-gradient(var(--ok-wash),var(--ok-wash))}
@@ -351,7 +354,7 @@ html.sa-light .dc-review,.sa-dlg.dc.lt .dc-review{box-shadow:0 0 0 1px rgba(139,
 .dc-beads i{width:7px;height:7px;border-radius:50%;background:var(--track)}
 .dc-beads i.ok{background:var(--ok)}.dc-beads i.bad{background:var(--bad)}
 .dc-beads i.cur{background:none;box-shadow:inset 0 0 0 1.5px var(--gold)}
-.dc-kb-n{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;color:var(--sub);letter-spacing:.6px;white-space:nowrap}
+.dc-kb-n{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;color:var(--sub);letter-spacing:.6px;white-space:nowrap}
 .dc-q{margin:0 4px 10px;font-family:'Piazzolla',Georgia,serif;font-size:calc(var(--fs) + 2px);font-weight:700;line-height:1.3;color:var(--text)}
 .dc-opts{display:flex;flex-direction:column;gap:8px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:1px 0 2px}
 .dc-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 9px 11px 14px;border-radius:16px;border:1px solid var(--opt-edge);background:var(--opt);

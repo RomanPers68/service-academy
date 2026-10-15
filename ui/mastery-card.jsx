@@ -5,7 +5,9 @@
 //                           (рассвет) и «Мастера роли» (печать с ✦);
 //   Medal                 — медаль: металл ступени, значок тёмным по металлу, блик, кольцо пути до
 //                           следующей ступени; ступени нет — силуэт с пунктиром;
-//   MasteryHomeCard       — «Шаг дня» и строка пути под карточкой «Твой трек»;
+//   MasteryHomeCard       — «Шаг дня» и строка пути карточкой (v40; с v41 главная её не показывает);
+//   StepLine, masteryChip — v41: «Шаг дня» строкой в карточке трека и чип «Путь мастера» (звёздочка
+//                           в кольце) в строке роли — главная снова минималистичная;
 //   BadgeToast            — новый значок (плашка снизу, над вкладками) и «Мастер роли ✦» (окно по центру).
 // Грузится сразу с главной — держим маленьким: только React, lib/mastery.js, lib/utils.js, ui/tokens.js.
 import React from "react";
@@ -280,6 +282,72 @@ export function MasteryHomeCard({ a11y, step, state, newCount = 0, onStep, onOpe
       ) : null}
     </div>
   );
+}
+
+// ── v41 (Доп. 354): главная снова минималистичная ────────────────────────────
+// Отзыв владельца: «новая функция немного рушит изначальный минимализм». На главной одно главное
+// действие — карточка трека. «Шаг дня» — строкой внутри неё (как «разминка 2 мин», Доп. 306), без второй
+// большой кнопки: значок и золотая надпись «ШАГ ДНЯ», под ними дело и круглая стрелка справа; сделал —
+// строка уходит. «Путь мастера» — чип рядом со свечой и стаканом: звёздочка ✦ в кольце, которое
+// заполняется по мере значков; новое — точкой. Вид выбран владельцем из четырёх («Б · Строка с подписью»,
+// «Звёздочка в кольце»). MasteryHomeCard остался (его разметку проверяют тесты и слот RoleSelect), но
+// главная его больше не показывает.
+const StepArrow = ({ c }) => (
+  <span aria-hidden="true" data-ms-line-go="" style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", boxSizing: "border-box",
+    border: "1px solid " + c.gold + "77", background: "radial-gradient(circle at 35% 30%, " + c.gold + "22, transparent 70%)" }}>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gold} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
+  </span>);
+export function StepLine({ a11y, step, onStep }) {
+  ensureMsCardCss();
+  if (!step || step.done || !step.text) return null;
+  const c = msPal(a11y);
+  const go = () => { vibrate("light"); onStep && onStep(step); };
+  // последнее слово — вместе с предпоследним: строка не кончается одиноким «дня»»
+  const text = msTie(step.text).replace(/\s+(\S+)$/, "\u00A0$1");
+  return (
+    <div role="button" tabIndex={0} className="ms-zone" data-ms-line="" onClick={go} {...onActivate(go)}
+      aria-label={"Шаг дня: " + step.text + (step.sub ? ". " + step.sub : "")}
+      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 13px 9px", borderTop: "1px solid " + c.line }}>
+      {/* «чуть-чуть компактнее»: значок — в строке надписи (как у часов разминки, слева), дело — во всю ширину,
+          короткое встаёт в одну строку; длинное — две, на узком экране (меньше 360 px) — три, без многоточия */}
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ ...msEye(a11y), color: c.gold, display: "flex", alignItems: "center", gap: 7 }}>
+          <FamIcon id={stepIcon(step)} size={15} color={c.gold} strokeWidth={1.9} />Шаг дня
+        </span>
+        <span className="ms-clamp ms-c3" style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.25, color: c.text, marginTop: 2 }}>{text}</span>
+      </span>
+      <StepArrow c={c} />
+    </div>
+  );
+}
+
+// Кольцо чипа: тонкий круг, дуга металла по мере пути и золотая звёздочка ✦ в центре
+function ChipRing({ c, pct, a11y }) {
+  const R = 7.6, CC = 2 * Math.PI * R, p = Math.max(0, Math.min(1, Number(pct) || 0));
+  return (
+    <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden="true" data-ms-ring={Math.round(p * 100)} style={{ display: "block", flexShrink: 0 }}>
+      <circle cx="9.5" cy="9.5" r={R} fill="none" stroke={c.faint} strokeWidth="1.8" />
+      {p > 0 ? <circle cx="9.5" cy="9.5" r={R} fill="none" stroke={tierColor(3, a11y)} strokeWidth="1.8" strokeLinecap="round" strokeDasharray={r2(CC * p) + " " + r2(CC)} transform="rotate(-90 9.5 9.5)" /> : null}
+      <path d={star4(9.5, 9.5, 4.2, 0.3)} fill={c.gold} />
+    </svg>);
+}
+// Чип «Путь мастера» для строки роли (DayChips рисует его тем же видом, что свечу и стакан):
+// звёздочка в кольце и «9/14» (значков из 14); у новичка — «2/7» «Первых шагов»; у мастера кольцо полное.
+export function masteryChip(state, newCount = 0, a11y = false) {
+  if (!state) return null;
+  const c = msPal(a11y);
+  const fw = state.firstWeek, ms = state.master;
+  const firstWeek = !!(fw && fw.active);
+  const badges = state.bronze || 0, total = state.total || FAMILIES.length;
+  const have = (ms && ms.have) || 0, need = (ms && ms.need) || 13;
+  const fd = (fw && fw.done) || 0, ft = (fw && fw.total) || 7;
+  const pct = firstWeek ? fd / ft : ms && ms.ok ? 1 : badges / total;
+  const icon = <ChipRing c={c} a11y={a11y} pct={pct} />;
+  const text = firstWeek ? fd + "/" + ft : badges + "/" + total;
+  const aria = (firstWeek ? "Первые шаги в академии: " + fd + " из " + ft
+    : ms && ms.ok ? "Путь мастера: мастер роли ✦, " + badges + " из " + total + " значков"
+    : "Путь мастера: " + badges + " из " + total + " значков, до мастера роли " + have + " из " + need) + (newCount > 0 ? ", есть новое" : "");
+  return { icon, text, aria, dot: newCount > 0 };
 }
 
 // ── Праздник: новый значок и «Мастер роли ✦» ─────────────────────────────────

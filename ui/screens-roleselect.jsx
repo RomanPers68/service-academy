@@ -75,7 +75,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null }) {
+export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
@@ -223,9 +223,14 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                     {ROLE_SVG[role] ? ROLE_SVG[role](RC, 12) : null}
                     <span style={{ fontSize:12, color:RC, fontWeight:"bold" }}>{roleObj.label}</span>
                   </span>
+                  {/* v41: подпись роли — целиком или никак (раньше «Сезонный …» с многоточием, когда рядом
+                      три значка: свеча, стакан и «Путь мастера»). Не влезла — уходит на вторую строку
+                      невидимой обёртки: перед ней пустой элемент нулевой ширины, высота — одна строка. */}
                   {roleObj.sublabel ? (
-                    <span style={{ fontSize:11, color:T.modSub.color, minWidth:0, overflow:"hidden",
-                      textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{roleObj.sublabel}</span>
+                    <span data-role-sub="" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", flex:"1 1 0", minWidth:0, height:16, overflow:"hidden" }}>
+                      <i aria-hidden="true" style={{ width:0, height:16 }} />
+                      <span style={{ fontSize:11, lineHeight:"16px", color:T.modSub.color, whiteSpace:"nowrap" }}>{roleObj.sublabel}</span>
+                    </span>
                   ) : null}
                   {dayStrip ? <span style={{ marginLeft:"auto", display:"inline-flex", flexShrink:0 }}>{dayStrip}</span> : null}
                 </div>
@@ -274,8 +279,9 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                     ) : null}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
+                    {/* v41: до трёх строк — на узком экране «Как выглядеть…» больше не обрывается многоточием */}
                     <div style={{ color: gold ? GOLD : T.modTitle.color, fontSize:16, fontFamily:"Georgia, serif",
-                      lineHeight:1.25, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{title}</div>
+                      lineHeight:1.25, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical" }}>{title}</div>
                     <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:3, lineHeight:1.4 }}>{sub}</div>
                   </div>
                   {/* Кнопка по размеру задачи: не во всю ширину (так карточка
@@ -288,6 +294,8 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                 </div>
                 {/* Доп. 306: в день смены — нижняя строка этой же карточки «разминка 2 мин» (из App) */}
                 {warmupCard ? <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>{warmupCard}</div> : null}
+                {/* v41 (Доп. 354): «Шаг дня» — тонкой строкой этой же карточки (из App), а не второй карточкой с кнопкой */}
+                {stepLine ? <div data-step-slot="" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>{stepLine}</div> : null}
               </div>
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}
               {masteryCard ? <div data-mastery-slot="" style={{ marginTop:9 }}>{masteryCard}</div> : null}

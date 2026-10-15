@@ -18,8 +18,10 @@ describe("v40: App.jsx — «Путь мастера» подключён", () =
     for (const k of ["sa_life", "sa_mastery", "sa_mastery_sum", "sa_step", "sa_tools_seen", "sa_master_claim"]) expect(list.includes('"' + k + '"'), k).toBe(true);
     expect(app).toMatch(/const WIPE_VERSION = 3;/);
   });
-  it("главная — карточка шага дня в слоте под треком; «Я» — пункт «Путь мастера» первым; экран лениво", () => {
-    expect(app).toMatch(/masteryCard=\{profile && role && mShown \? <MasteryHomeCard/);
+  it("главная — шаг дня и путь мастера (v41: строкой в карточке трека и чипом); «Я» — пункт «Путь мастера» первым; экран лениво", () => {
+    // v41 (Доп. 354): карточка MasteryHomeCard под треком «рушила минимализм» — теперь строка и чип
+    expect(app).toMatch(/stepLine=\{profile && role && mShown && mStepShown && !mStepShown\.done/);
+    expect(app).toMatch(/mastery=\{role && mShown \? masteryChip\(mShown, mNew\.size, a11y\) : null\}/);
     expect(app).toMatch(/const MasteryScreen = lazy\(\(\) => retryImport\(\(\) => import\("\.\/ui\/mastery"\)\)/);
     expect(app).toMatch(/screen === "mastery" && profile/);
     const me = app.slice(app.indexOf('{screen === "me" && profile'), app.indexOf('{screen === "offline"'));
@@ -67,8 +69,8 @@ describe("v40: App.jsx — «Путь мастера» подключён", () =
     expect(app).not.toMatch(/GOLD_N \+ " заданий, на каждое "/);
     expect(app).toMatch(/gN \+ " " \+ pl3\(gN, "задание", "задания", "заданий"\) \+ ", на каждое "/);
   });
-  it("метка сборки — v40", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v40</);
+  it("метка сборки — v40 или новее (v41 — Доп. 354)", () => {
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d</);
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 353 — «Путь мастера»/);
   });
 });
@@ -219,7 +221,7 @@ describe("v40 (после ревью): новый телефон, шаг дня 
     expect(fx).toMatch(/if \(f\.id === "track" \|\| t <= f\.tier\) return f;/);
     expect(fx).toMatch(/!!\(role && e\.master && e\.master\[role\]\)/);
     expect(app).toMatch(/\.\.\.\(fadedIds\.size \? \{\} : \{ fresh: mSeen\.fresh \|\| "—" \}\), \.\.\.\(goldReady \? \{\} : \{ gold: mSeen\.gold \|\| "—" \}\)/);
-    expect(app).toMatch(/masteryCard=\{profile && role && mShown \? <MasteryHomeCard a11y=\{a11y\} step=\{mStepShown\} state=\{mShown\}/);
+    expect(app).toMatch(/<StepLine a11y=\{a11y\} step=\{mStepShown\} onStep=\{\(s\) => runMasteryGo\(s\.go, s\.payload\)\} \/>/);   // v41
   });
   it("App: ждём уроки самой роли (свои разделы приезжают раньше); этапа 26 нет — не спрашиваем снова", () => {
     expect(app).toMatch(/if \(!profile \|\| !storageLoaded \|\| \(role && !modules\.length\)\) return null;/);

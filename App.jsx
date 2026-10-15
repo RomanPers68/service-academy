@@ -25,7 +25,7 @@ import { useFreshMarks, useDayBrief, pairLineOf } from "./lib/use-day";
 import { readCredits, readGold, saveCredit, saveGold, creditTriedToday, markCreditTry, creditPool, goldPool, creditPassed, goldPassed, canRefresh, canCredit, canGold, GOLD_TIMER, GOLD_N, CREDIT_PASS, CREDIT_N } from "./lib/marks";
 // v40: «Путь мастера» — значки за привычки, «Мастер роли ✦», шаг дня, первая неделя в академии
 import { masteryFacts, masteryState, stepOfDay, stepLineText, readEarned, saveEarned, newlyEarned, mergeEarned, saveSummary, syncLife, readSeen, markSeen, newTools, isNewTool, mastersIndex, restoreFromCopy, TIERS, MASTER_NEED } from "./lib/mastery";
-import { MasteryHomeCard, BadgeToast } from "./ui/mastery-card";
+import { BadgeToast, StepLine, masteryChip } from "./ui/mastery-card";
 import { tablePool } from "./lib/table-pick";
 import { tasksFor, markQuestDone, questDays } from "./lib/quest";
 import { playlist } from "./lib/radio";
@@ -2632,10 +2632,15 @@ function ServiceAcademy() {
         /></div>}
         {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
         {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
-          dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey} /> : null}
-          /* v40: «Шаг дня» и «Путь мастера» — под карточкой трека */
-          masteryCard={profile && role && mShown ? <MasteryHomeCard a11y={a11y} step={mStepShown} state={mShown} newCount={mNew.size} style={{ margin: 0 }}
-            onStep={(s) => { if (s && !s.done) runMasteryGo(s.go, s.payload); else openMastery(); }} onOpen={() => openMastery()} /> : null}
+          dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
+            /* v41 (Доп. 354): «Путь мастера» — чипом рядом со свечой и стаканом, а не карточкой под треком */
+            mastery={role && mShown ? masteryChip(mShown, mNew.size, a11y) : null} onMastery={() => openMastery()} /> : null}
+          /* v41 (Доп. 354): «Шаг дня» — тонкой строкой в карточке трека, без второй большой кнопки (v40 —
+             карточкой MasteryHomeCard под треком: «рушит изначальный минимализм»). Строки нет, если шаг сделан,
+             если он и есть следующий урок трека (это и так «Дальше») или разминка, когда строка разминки уже есть. */
+          stepLine={profile && role && mShown && mStepShown && !mStepShown.done && mStepShown.kind !== "next" && mStepShown.kind !== "track"
+            && !(mStepShown.go === "warmup" && warmShow && warmDone !== todayKey)
+            ? <StepLine a11y={a11y} step={mStepShown} onStep={(s) => runMasteryGo(s.go, s.payload)} /> : null}
           dayNote={profile && pairLine ? (
             /* v30 (Доп. 318): напарник уже занимался сегодня — твоя очередь; v31 — своей строкой */
             <div role="button" tabIndex={0} className="sa-pairline" onClick={() => { vibrate("light"); if (pairLine.warm && warmSits.length >= 2) openWarmup(); else setPairOpen(true); }}

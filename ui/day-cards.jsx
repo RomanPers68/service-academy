@@ -1,6 +1,6 @@
 // ui/day-cards.jsx — ритм дня на главной (Доп. 298, 301, 302, 306):
 //   DayChips    — свеча серии и стакан «цель дня» маленькими значками в строке роли
-//                 (тап по стакану — выбрать цель 1–3 шага); DayStrip — то же крупно;
+//                 (тап по стакану — выбрать цель 1–3 шага), v41 — и чип «Путь мастера»; DayStrip — то же крупно;
 //   WarmupCard  — «Разминка до смены» в день смены по графику (compact — тонкая строка
 //                 под главной карточкой, после разминки пропадает);
 //   WeekCard    — «Чек недели готов» (по понедельникам);
@@ -48,7 +48,9 @@ export function DayStrip({ a11y, streak, steps = 0, goal = 2, onGoal, today }) {
 }
 
 // Доп. 306: главная без лишнего ряда — свеча и стакан маленькими значками в строке роли
-export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today }) {
+// v41 (Доп. 354): третий чип — «Путь мастера» (mastery = masteryChip() из ui/mastery-card.jsx:
+// { icon, text, aria, dot }); тап — экран значков, новое — точкой. Раньше путь был карточкой под треком.
+export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mastery = null, onMastery }) {
   ensureTableCss();
   const c = C(a11y);
   const [open, setOpen] = React.useState(false);
@@ -56,7 +58,9 @@ export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today }) {
   const n = (streak && streak.count) || 0;
   const reached = steps >= goal;
   const pick = (g) => { vibrate("light"); setOpen(false); onGoal && onGoal(g); };
-  const chip = { display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px 3px 6px", borderRadius: 999, border: `1px solid ${c.line}`, background: c.bg, fontFamily: "Georgia, serif", fontSize: 12, color: c.text, lineHeight: 1.2, whiteSpace: "nowrap" };
+  // v41: в светлой теме «Для чтения» — 13 px, как остальной мелкий текст (в тёмной — 12, как было)
+  const chip = { display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px 3px 6px", borderRadius: 999, border: `1px solid ${c.line}`, background: c.bg, fontFamily: "Georgia, serif", fontSize: a11y ? 13 : 12, color: c.text, lineHeight: 1.2, whiteSpace: "nowrap" };
+  const goMastery = () => { vibrate("light"); onMastery && onMastery(); };
   return (
     <span className="tbv" style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
       <span style={chip} title={lit ? "Серия: сегодня занимался — свеча горит" : "Серия: пройди шаг — и свеча загорится"} aria-label={"Серия " + n + " " + plural(n, "день", "дня", "дней") + (lit ? ", сегодня свеча горит" : "")}>
@@ -66,6 +70,14 @@ export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today }) {
         style={{ ...chip, cursor: "pointer", borderColor: reached ? "rgba(93,187,138,0.5)" : c.line }}>
         <Glass s={15} pct={Math.min(1, steps / goal)} />{Math.min(steps, goal)}/{goal}{reached ? " ✓" : ""}
       </span>
+      {mastery ? (
+        <span role="button" tabIndex={0} data-ms-chip="" onClick={goMastery} {...onActivate(goMastery)} aria-label={mastery.aria} title="Путь мастера"
+          style={{ ...chip, cursor: "pointer", position: "relative" }}>
+          {mastery.icon}{mastery.text}
+          {mastery.dot ? <span data-ms-chip-new="" aria-hidden="true" style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", boxSizing: "border-box",
+            background: c.gold, border: `1.5px solid ${a11y ? "#F3EAD6" : "#17120A"}` }} /> : null}
+        </span>
+      ) : null}
       {open ? createPortal(<GoalSheet a11y={a11y} goal={goal} onPick={pick} onClose={() => setOpen(false)} />, document.body) : null}
     </span>
   );

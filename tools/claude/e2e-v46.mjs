@@ -642,11 +642,14 @@ if (want("AUDIT")) {
 
 if (want("MONTHS")) {
   const { ctx, page, errors } = await openSched({ profile: RA });
-  await page.locator("button", { hasText: /^›$/ }).first().click(); await sleep(1800);
+  { const m = page.locator('[data-month-arrow][aria-label="Следующий месяц"]'); if (await m.count()) await m.click(); else await page.locator("button", { hasText: /^›$/ }).first().click(); await sleep(1800); }
   const g1 = await bossGeo(page);
   ok("MONTHS: будущий месяц — «весь месяц»", g1.attn && /весь месяц/i.test(g1.attn.label), g1.attn && g1.attn.label);
-  await page.locator("button", { hasText: /^‹$/ }).last().click(); await sleep(1800);
-  await page.locator("button", { hasText: /^‹$/ }).last().click(); await sleep(1800);
+  // v49: у недели появились свои «‹ ›» — месяц листаем стрелкой в шапке (с v48)
+  const prevMonth = async () => { const m = page.locator('[data-month-arrow][aria-label="Предыдущий месяц"]');
+    if (await m.count()) await m.click(); else await page.locator("button", { hasText: /^‹$/ }).last().click(); await sleep(1800); };
+  await prevMonth();
+  await prevMonth();
   const g2 = await bossGeo(page);
   ok("MONTHS: прошлый месяц — дыр и «не смогу» в карточке нет (поправлять нечего)", !g2.attn || !g2.attn.rows.some((x) => x.k === "hole" || x.k === "conflict"), JSON.stringify(g2.attn && g2.attn.rows.map((x) => x.k)));
   ok("MONTHS: без ошибок", errors.length === 0, errors.slice(0, 2).join(" | "));

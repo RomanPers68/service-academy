@@ -350,6 +350,21 @@ export const injectStyles = () => {
       box-shadow:inset 0 0 18px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10),
                  0 2px 8px rgba(0,0,0,0.45)}
     .sa-schedgrid tr:first-child th.sa-schednm{z-index:5}
+    /* v49: неделя — во всю высоту. Своей прокрутки у таблицы нет (семь дней влезают в ширину), страница листается
+       одна, а строка с числами прилипает к верху экрана. На самых узких экранах колонка имён чуть уже, чтобы неделя
+       не вылезала за карточку. Месяц — по-прежнему коробкой с прокруткой вбок. */
+    .sa-schedgrid.sa-wk{max-height:none;overflow:visible}
+    /* ширины колонок — по шапке (имя 92, дни по 26), остаток делится между колонками: длинное имя уходит в многоточие,
+       а не раздвигает неделю за край карточки */
+    .sa-schedgrid.sa-wk table{table-layout:fixed;width:100%;min-width:0}
+    .sa-schedgrid.sa-wk tr:first-child th{top:env(safe-area-inset-top,0px)}
+    .sa-schedgrid.sa-wk tr:first-child th:first-child{border-top-left-radius:12px}
+    .sa-schedgrid.sa-wk tr:first-child th:last-child{border-top-right-radius:12px}
+    @media (max-width:335px){
+      .sa-schedgrid.sa-wk td.sa-schednm,.sa-schedgrid.sa-wk th.sa-schednm{width:75px!important;min-width:0!important;max-width:none!important}
+      .sa-schedgrid.sa-wk td.sa-schednm:not(.sa-schedgrp){font-size:11.5px!important}
+      .sa-schedgrid.sa-wk td,.sa-schedgrid.sa-wk th{min-width:0!important}
+    }
     /* липкая колонка имён: плотная, иначе строки просвечивают */
     .sa-schednm{position:sticky;left:0;z-index:3;text-align:left;
       background:linear-gradient(100deg,rgba(226,186,116,0.10),rgba(25,19,9,0.985) 58%),#191309;

@@ -466,8 +466,8 @@ if (want("CASES")) {
   g = await personGeo(page);
   ok("CASES: постоянный выходной — «постоянный выходной: пн»", g && /постоянный выходной: пн/.test(g.wishes), g && g.wishes);
   await page.mouse.click(196, 40); await sleep(400);
-  // «весь месяц»: имя нажимается и в широкой таблице
-  await page.locator("button", { hasText: /^весь месяц$/ }).click(); await sleep(700);
+  // «весь месяц»: имя нажимается и в широкой таблице (v49: переключатель «неделя / месяц» в заголовке карточки)
+  await page.locator("[data-sched-weekmode] button", { hasText: "месяц" }).click(); await sleep(700);
   await openPerson(page, 11);
   g = await personGeo(page);
   ok("CASES: в режиме «весь месяц» имя тоже открывает карточку", g && g.name === "Соколов Дмитрий", g && g.name);
@@ -482,6 +482,8 @@ if (want("NOTE")) for (const light of [false, true]) {
   const day = FX.today;   // текущая неделя на экране всегда включает сегодня
   await page.evaluate((day) => { const b = [...document.querySelectorAll(".sa-schedgrid tr:first-child th b")].find((x) => x.textContent.trim() === String(day)); b.click(); }, day);
   await sleep(600);
+  // v49: тап по числу открывает день по часам; заметка — строкой в нём
+  if (await page.locator("[data-day-note]").count()) { await page.locator("[data-day-note]").click(); await sleep(500); }
   const v = await inView(page, "[data-note-sheet]");
   ok(nm + ": тап по числу — окошко «Заметка ко дню» на экране (раньше — за краем, над таблицей)", v && v.ok, JSON.stringify(v));
   await page.locator("[data-note-sheet] input").fill("Инвентаризация"); await sleep(200);
@@ -490,6 +492,7 @@ if (want("NOTE")) for (const light of [false, true]) {
   const dot = await page.evaluate((day) => { const b = [...document.querySelectorAll(".sa-schedgrid tr:first-child th b")].find((x) => x.textContent.trim() === String(day)); return !!(b && b.parentElement.querySelector("span")); }, day);
   const bar = await page.evaluate(() => document.querySelector("[data-savebar]") ? document.querySelector("[data-savebar]").innerText.replace(/\s+/g, " ").trim() : null);
   ok(nm + ": «Готово» — окошко закрылось, у числа точка заметки, плашка «Сохранить»", !(await page.locator("[data-note-sheet]").count()) && dot && /не сохранен/.test(bar || ""), JSON.stringify([dot, bar]));
+  if (await page.locator("[data-boss-day]").count()) { await page.mouse.click(196, 20); await sleep(400); }
   ok(nm + ": без ошибок", errors.length === 0, errors.slice(0, 2).join(" | "));
   await ctx.close();
 }

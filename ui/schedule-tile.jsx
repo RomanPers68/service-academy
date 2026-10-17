@@ -60,27 +60,30 @@ function When({ sh, p, fallback }) {
   return <div data-when="none" style={base}>{sh && sh.raw ? "Сегодня: " + sh.raw : fallback}</div>;
 }
 
-// Листок отрывного календаря: красная планка, два кольца, сегодняшнее число; снизу — край следующего листка
-function CalendarPage({ day, p, a11y, off }) {
-  const ring = { position: "absolute", top: -3, width: 3, height: 7, borderRadius: 2, background: `linear-gradient(180deg, ${p.goldHi}, ${p.goldLo})`, boxShadow: a11y ? "0 1px 1px rgba(90,60,20,0.25)" : "0 1px 1px rgba(0,0,0,0.45)" };
+// Листок отрывного календаря: красная планка, два кольца, сегодняшнее число; снизу — край следующего листка.
+// v46: размер задаётся (w × h) — крупный листок у ближайшей смены в графике сотрудника; 31 × 34 — как на плитке.
+export function CalendarPage({ day, p, a11y, off, w = 31, h = 34 }) {
+  const k = w / 31, r = (x) => +(x * k).toFixed(2);
+  const ring = { position: "absolute", top: r(-3), width: r(3), height: r(7), borderRadius: 2, background: `linear-gradient(180deg, ${p.goldHi}, ${p.goldLo})`, boxShadow: a11y ? "0 1px 1px rgba(90,60,20,0.25)" : "0 1px 1px rgba(0,0,0,0.45)" };
   return (
-    <span aria-hidden="true" data-sched-page="" style={{ position: "relative", display: "block", width: 31, height: 34, flexShrink: 0 }}>
-      <span style={{ position: "absolute", left: 2.5, right: 2.5, bottom: -3, height: 8, borderRadius: "0 0 6px 6px", border: `1px solid ${a11y ? "rgba(139,106,48,0.30)" : "rgba(217,184,124,0.24)"}`, borderTop: "none",
+    <span aria-hidden="true" data-sched-page="" style={{ position: "relative", display: "block", width: w, height: h, flexShrink: 0 }}>
+      <span style={{ position: "absolute", left: r(2.5), right: r(2.5), bottom: r(-3), height: r(8), borderRadius: `0 0 ${r(6)}px ${r(6)}px`, border: `1px solid ${a11y ? "rgba(139,106,48,0.30)" : "rgba(217,184,124,0.24)"}`, borderTop: "none",
         background: a11y ? "#F3E8CF" : "rgba(255,240,205,0.06)" }} />
-      <span style={{ position: "absolute", inset: 0, borderRadius: 7, overflow: "hidden", display: "flex", flexDirection: "column", border: `1px solid ${a11y ? "rgba(139,106,48,0.45)" : "rgba(217,184,124,0.45)"}`,
+      <span style={{ position: "absolute", inset: 0, borderRadius: r(7), overflow: "hidden", display: "flex", flexDirection: "column", border: `1px solid ${a11y ? "rgba(139,106,48,0.45)" : "rgba(217,184,124,0.45)"}`,
         background: a11y ? "#FFFCF4" : "linear-gradient(180deg, rgba(255,240,205,0.13), rgba(255,240,205,0.05))",
         boxShadow: a11y ? "0 2px 6px rgba(120,85,25,0.16)" : "0 3px 8px rgba(0,0,0,0.42)" }}>
-        <span style={{ height: 9, flexShrink: 0, background: "linear-gradient(180deg, #C2533A, #8A3220)", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.22)" }} />
-        <span data-sched-day="" style={{ flex: 1, display: "grid", placeItems: "center", fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: 16, lineHeight: 1, color: off ? p.sub : p.gold }}>{day}</span>
+        <span style={{ height: Math.round(h * 0.265), flexShrink: 0, background: "linear-gradient(180deg, #C2533A, #8A3220)", boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.22)" }} />
+        <span data-sched-day="" style={{ flex: 1, display: "grid", placeItems: "center", fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: Math.round(h * 0.47), lineHeight: 1, color: off ? p.sub : p.gold }}>{day}</span>
       </span>
-      <i style={{ ...ring, left: 7.5 }} />
-      <i style={{ ...ring, right: 7.5 }} />
+      <i style={{ ...ring, left: r(7.5) }} />
+      <i style={{ ...ring, right: r(7.5) }} />
     </span>
   );
 }
 
 // Нить суток по нижнему краю плитки: смена — золотым отрезком, «сейчас» — светлой риской
-function DayThread({ sh, h, p, a11y }) {
+// (v46: та же нить — у ближайшей смены в графике сотрудника)
+export function DayThread({ sh, h, p, a11y }) {
   const pct = (x) => +Math.max(0, Math.min(100, (x / 24) * 100)).toFixed(2);
   const on = shiftNow(sh, h);
   return (

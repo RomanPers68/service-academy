@@ -29,7 +29,7 @@ import { BadgeToast, StepLine, masteryChip } from "./ui/mastery-card";
 import { tablePool } from "./lib/table-pick";
 import { tasksFor, markQuestDone, questDays } from "./lib/quest";
 import { playlist } from "./lib/radio";
-import { readGuestRuns } from "./lib/live-guest";
+import { readGuestRuns, guestSub } from "./lib/live-guest";
 import { recapMonth, monthRecap, MONTH } from "./lib/month-recap";
 import { Candle } from "./ui/table-bits";
 import { DayChips, WarmupCard, RemindSheet, readRemindFlag, inTelegramApp } from "./ui/day-cards";
@@ -2678,7 +2678,7 @@ function ServiceAcademy() {
           { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
           { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
           { key:"remind", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено — за час до смены зовёт на разминку" : "За час до смены — разминка в 2 минуты", onClick:() => setRemindOpen(true) },
-          { key:"lg", icon:"guestai", label:"Живой гость", sub:"Разговор с гостем-ИИ из твоего меню · чек разбора", onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал
+          { key:"lg", icon:"guestai", label:"Живой гость", sub: guestSub(role, profile?.position), onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал; v42: подпись — по роли
           { key:"rd", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков — слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319
           { key:"wg", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest"), badge: isNewFam("dialogue") ? "новое" : null },
           role === "seasonal" && { key:"ob", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },

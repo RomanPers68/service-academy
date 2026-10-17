@@ -628,6 +628,15 @@ const bumpRun = (id) => { try { const r = readRuns(); r[id] = (r[id] || 0) + 1; 
 const REACT_OK = ["Гость кивает", "За столом довольны", "Гость улыбается", "Гость благодарит взглядом"];
 const REACT_BAD = ["Гость хмурится", "За столом повисла пауза", "Гость переглядывается со спутником", "Гость вздыхает"];
 const REVIEWS_HI = ["Обслужили как в хорошем ресторане — вернёмся.", "Всё чётко и по-человечески. Спасибо!", "Видно, что здесь знают своё дело.", "Было спокойно и внимательно — то, что нужно."];
+// v42 (Доп. 355): гость по сценарию у входа и у менеджера — свои слова: хостес гостя не рассчитывает
+const REVIEWS_PLACE = {
+  door: ["Встретили тепло и быстро нашли нам стол — приятно.", "Сразу почувствовали, что нам здесь рады. Спасибо!", "Всё объяснили честно и без суеты — вернёмся."],
+  manager: ["Разобрались спокойно и по-человечески. Спасибо!", "Вопрос решили быстро и без споров — вернёмся.", "Видно, что здесь умеют признавать ошибки."],
+};
+const GUEST_MODE_PLACE = {
+  door: { done: "Встреча окончена", exitT: "Гость уйдёт без помощи — можно встретить нового." },
+  manager: { done: "Разговор окончен", exitT: "Гость останется без решения — можно встретить нового." },
+};
 const SR_DAYS = [1, 3, 7, 30];   // как в App: 1 → 3 → 7 → 30 дней
 
 export function checkSituations(lesson, mod) {
@@ -669,7 +678,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
   const [started, setStarted] = React.useState(!intro);
   const begunRef = React.useRef(false);
   const warm = mode === "warmup";
-  const M = MODE[mode] || null;
+  const M = mode === "guest" && guest && GUEST_MODE_PLACE[guest.place] ? { ...MODE.guest, ...GUEST_MODE_PLACE[guest.place] } : MODE[mode] || null;
   const listMode = warm || !!M;                      // задания приходят готовым списком
   const strict = mode === "credit" || mode === "gold" || mode === "probe";
   const keyId = listMode ? mode + ":" + ((mod && mod.id) || "") : (lesson && lesson.id) || "";
@@ -824,7 +833,8 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
     const pb = mode === "gold" && record && record.mine && record.mine.sec ? record.mine : null;
     const best = mode === "gold" && record && record.best && record.best.sec ? record.best : null;
     const note = verdict && (passed ? verdict.ok : verdict.bad);
-    const review = mode === "guest" && mood >= 4 ? REVIEWS_HI[hashOf(name) % REVIEWS_HI.length] : null;
+    const revs = (guest && REVIEWS_PLACE[guest.place]) || REVIEWS_HI;
+    const review = mode === "guest" && mood >= 4 ? revs[hashOf(name) % revs.length] : null;
     return shell(
       <>
         <div className="tb-head"><div className="tb-col tb-top">

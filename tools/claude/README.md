@@ -94,6 +94,10 @@ jsxlint · flexhint · dupimport · refcheck · scope (tsc, необъявлен
                           # SHOT — снимки главной «было / стало» (E2E_SITE=<сборка v40> SHOT_NAME=home-v40)
     npm run check:content # v41: п. 7 «Оборванные фразы» — фраза кончается предлогом, союзом, «во время»,
                           # «вместо», «который» или «было где / чем / куда» (как «…чтоб малышу было где.»)
+    node e2e-v42.mjs DOOR PHONE MGR   # v42: «Живой гость» знает роль — хостес у входа (без заказа и аперитива),
+                          # звонок на стойку, проводы, менеджер, бармен, официант как раньше; пункты чека по роли,
+                          # трек в ai-chat; старый ai-chat: пункты официанта, подсказка, «Другой гость» как в v41.
+                          # Разделы: TILE DOOR PHONE EXIT EARLY OLD MGR BAR HALL BAD SCRIPT EDIT SHOT
 
 Функция radio-tts (v34, OpenRouter + режим разговора) проверяется под Bun без сети — поддельные
 whoami / sa_tts_take / OpenRouter: `bun tools/claude/tts-harness.ts` (20 проверок; v36 — причина ошибки, transient).

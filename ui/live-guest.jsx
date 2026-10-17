@@ -8,6 +8,8 @@
 // v31: стол сверху на карточке; крупное живое настроение и линия настроения в чеке; «шёпот
 // наставника» (одна подсказка за разговор); ответы гостя потоком; «осталось реплик» видно всегда;
 // «ещё раз с этим гостем» и «было/стало»; свои гости заведения — их пишет руководитель (этап 25).
+// v42 (Доп. 355): гость знает роль — на карточке сказано, кто ты в этой сцене (хостес, официант, бармен,
+// менеджер); кнопки, конец разговора и пункты чека — по роли; в ai-chat уходит трек (track).
 import React from "react";
 import { TableCheck, TableMood, TableLine, TableEdge, tableShell, tableVars, TableSound, TABLE_MOOD_WORD } from "./table";
 import { Ic } from "./table-bits";
@@ -15,7 +17,7 @@ import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в разговоре
 import { voiceSupported } from "../lib/voice";
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../api/supabase";
-import { pickGuest, parseGuestReply, parseReceipt, mistakesForLessons, saveGuestRun, readGuestRuns, guestErrorText, CRITERIA, POS_WORD, previousRun, streamText, normPersona } from "../lib/live-guest";
+import { pickGuest, parseGuestReply, parseReceipt, mistakesForLessons, saveGuestRun, readGuestRuns, guestErrorText, CRITERIA, POS_WORD, previousRun, streamText, normPersona, placeUi, receiptKind, placeOf, NEW_IN_V42 } from "../lib/live-guest";
 import { tablePool } from "../lib/table-pick";
 import { pickWarmup } from "../lib/warmup";
 import { MODULES_INDEX } from "../data/modules-index";
@@ -31,10 +33,12 @@ const CSS = `
 .lg-card h2{margin:10px 0 2px;font-family:var(--font-display);font-size:24px;line-height:1.15;color:var(--paper-ink)}
 .lg-card .ag{font-size:13px;color:var(--paper-sub);font-style:italic}
 .lg-card p{margin:8px 0 0;font-size:14.5px;line-height:1.5}
+.lg-card p.nt{font-size:13.5px;color:var(--paper-sub);font-style:italic}
 .lg-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .lg-tags span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--paper-line);color:var(--paper-sub)}
 .lg-tags span.own{border-color:#B08A3E;color:#7A5A1E}
 .lg-note{margin:0 0 12px;font-size:13.5px;line-height:1.5;color:var(--sub)}
+.lg-role{margin:0 0 8px;font-size:14px;line-height:1.45;color:var(--text)}
 .lg-opt{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:14px;color:var(--text)}
 .lg-opt input{width:18px;height:18px;accent-color:#C8A96E}
 .lg-g,.lg-gp{align-self:flex-start;max-width:88%;padding:10px 13px;border-radius:16px;border-bottom-left-radius:5px;background:var(--glass-2);border:1px solid var(--edge);font-size:15px;line-height:1.45}
@@ -149,13 +153,28 @@ function TableTop({ guest }) {
       </svg>
     );
   }
+  // v42: звонок на стойку хостес — стойка с телефоном, у двери никого
+  if (guest.place === "door" && guest.phone) {
+    return (
+      <svg className="lg-top" viewBox="0 0 160 84" role="img" aria-label="Стойка хостес, звонит гость">
+        <path className="tt-frame" d="M100 78V12h40v66" />
+        <rect className="tt-desk" x="8" y="54" width="48" height="20" rx="4" />
+        <text className="tt-cap" x="32" y="67" textAnchor="middle">ХОСТЕС</text>
+        <path className="tt-desk" d="M22 52l3-8h14l3 8z" />
+        <path className="tt-frame" d="M19 41c2-7 24-7 26 0" />
+        <rect className="tt-me" x="15" y="39" width="8" height="4.5" rx="2" />
+        <rect className="tt-me" x="41" y="39" width="8" height="4.5" rx="2" />
+        <path className="tt-frame" d="M52 33c2 1.5 3 3.5 3 6M56 29c3.5 2.5 5 6 5 10" opacity=".6" />
+      </svg>
+    );
+  }
   if (guest.place === "door") {
     const n = Math.min(seats, 6);
     return (
       <svg className="lg-top" viewBox="0 0 160 84" role="img" aria-label={"Вход, гостей: " + seats}>
         <path className="tt-frame" d="M100 78V12h40v66" />
         <path className="tt-frame" d="M100 12l16 8v58" opacity=".5" />
-        <rect className="tt-desk" x="12" y="54" width="40" height="20" rx="4" />
+        <rect className="tt-desk" x="8" y="54" width="48" height="20" rx="4" />
         <text className="tt-cap" x="32" y="67" textAnchor="middle">ХОСТЕС</text>
         {Array.from({ length: n }, (_, i) => <circle key={i} cx={80 - (i % 3) * 15} cy={30 + Math.floor(i / 3) * 18} r={6.5} className={i === 0 ? "tt-me" : "tt-seat on"} />)}
       </svg>
@@ -304,7 +323,9 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const { dishes, drinks } = menu;
   const runsRef = React.useRef(readGuestRuns(uk));
   const ownRef = React.useRef([]);
-  const pick = React.useCallback((seed, prefer = "") => pickGuest({ role, position: profile && profile.position, dishes, drinks, seed, lastId: (runsRef.current.slice(-1)[0] || {}).p || "", extra: ownRef.current, prefer }), [role, profile, dishes, drinks]);
+  // v42: сервер ai-chat ещё старый (не знает новых гостей) — до конца сеанса гости как в v41
+  const legacyRef = React.useRef((() => { try { return sessionStorage.getItem("sa_guest_legacy") === "1"; } catch (e) { return false; } })());
+  const pick = React.useCallback((seed, prefer = "") => pickGuest({ role, position: profile && profile.position, dishes, drinks, seed, lastId: (runsRef.current.slice(-1)[0] || {}).p || "", extra: ownRef.current, prefer, legacy: legacyRef.current }), [role, profile, dishes, drinks]);
   const [guest, setGuest] = React.useState(() => pick(Date.now()));
   const [phase, setPhase] = React.useState("card");     // card | talk | eval | receipt | script
   const [msgs, setMsgs] = React.useState([]);           // { who: "guest"|"me", text }
@@ -325,6 +346,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const [voiceOn, setVoiceOn] = React.useState(() => { try { return localStorage.getItem("sa_guest_voice") !== "0"; } catch (e) { return true; } });
   const [talk, setTalk] = React.useState(false);        // v34: открыт разговор голосом
   const [talkState, setTalkState] = React.useState("idle");   // v35: что сейчас в разговоре голосом
+  const [oldAi, setOldAi] = React.useState(false);      // v42: ответ пришёл без метки версии — ai-chat на сервере до v42
   const talkOk = React.useMemo(() => canTalk(), []);
   const [micBusy, setMicBusy] = React.useState(false);  // v34: кнопка-микрофон пишет — волна ждёт
   const msgsRef = React.useRef(msgs); msgsRef.current = msgs;     // v34: реплики голосом идут подряд
@@ -335,6 +357,8 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const bodyRef = React.useRef(null);
   const doneRef = React.useRef(false);
   const female = isFemale(guest.name);
+  const ui = placeUi(guest);                            // v42: слова экрана по роли
+  const ownHere = own.filter((r) => r && r.place === placeOf(role, profile && profile.position)).length;   // v42: свои гости этого места
   const vars = tableVars(color, a11y);
   React.useEffect(() => () => { try { stopSpeech(); } catch (e) {} }, []);
   React.useEffect(() => { const el = bodyRef.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs.length, busy, phase, partial, talkState]);
@@ -357,13 +381,14 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   const payload = () => ({ id: guest.id, name: guest.name, age: guest.age, who: guest.who, occasion: guest.occasion, hidden: guest.hidden, mood: guest.mood,
     place: guest.place, table: guest.table, menu: guest.menu, stop: guest.stop });
   // история для модели: гость — assistant, сотрудник — user; первое сообщение — от сотрудника (так требуют модели)
-  const history = (list) => [{ role: "user", content: "*подходит к гостю*" }, ...list.map((m) => ({ role: m.who === "guest" ? "assistant" : "user", content: m.text }))];
+  const history = (list) => [{ role: "user", content: guest.phone ? "*снимает трубку на стойке хостес*" : "*подходит к гостю*" }, ...list.map((m) => ({ role: m.who === "guest" ? "assistant" : "user", content: m.text }))];
   // v31: реплика гостя — потоком (onPart получает текст по мере готовности). Старый сервер
   // отвечает целиком (JSON) — читаем как раньше.
   const call = async (list, finish, onPart) => {
     const r = await fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
       method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      body: JSON.stringify({ token: saToken(), mode: "guest", guest: payload(), finish: !!finish, stream: !finish && !!onPart, messages: history(list) }),
+      // v42: track — трек сотрудника: сервер берёт уроки на повтор из него (роль — по месту гостя)
+      body: JSON.stringify({ token: saToken(), mode: "guest", guest: payload(), track: role || "", finish: !!finish, stream: !finish && !!onPart, messages: history(list) }),
     });
     const ct = (r.headers && r.headers.get && r.headers.get("content-type")) || "";
     if (/event-stream/i.test(ct) && r.body && r.body.getReader) {
@@ -382,6 +407,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
           if (!j) continue;
           if (typeof j.t === "string") { text += j.t; if (onPart) onPart(text); }
           if (typeof j.remaining === "number" && j.remaining >= 0) setLeft(j.remaining);
+          if (j.done) setOldAi(!(Number(j.v) >= 42));
           if (j.error) bad = j.error;
         }
       }
@@ -390,6 +416,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
     }
     let d = null; try { d = await r.json(); } catch (e) { d = null; }
     if (d && typeof d.remaining === "number" && d.remaining >= 0) setLeft(d.remaining);
+    if (d && d.ok) setOldAi(!(Number(d.v) >= 42));
     if (!d || !d.ok || !d.reply) throw new Error((d && d.error) || "server");
     return d.reply;
   };
@@ -403,8 +430,17 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
     if (voiceOn) speak(g.open, isFemale(g.name));
   };
   const another = () => { vibrate("light"); touched.current = true; setGuest(pick(Date.now())); setErr(null); };
+  // v42: старый ai-chat не знает нового гостя — дальше в этом сеансе гости как в v41; «Другой гость» — сразу к карточке
+  const noteBad = (code) => {
+    if (code !== "bad_guest" || guest.custom || !NEW_IN_V42.has(guest.id)) return;
+    legacyRef.current = true;
+    try { sessionStorage.setItem("sa_guest_legacy", "1"); } catch (e) {}
+  };
+  const anotherAfterErr = () => { vibrate("light"); try { stopSpeech(); } catch (e) {} setTalk(false); setGuest(pick(Date.now())); setMsgs([]); setErr(null); setEnded(false); setPhase("card"); };
   const playOwn = (id) => { touched.current = true; const g = pick(Date.now(), id); setGuest(g); setEditor(false); setErr(null); setPhase("card"); };
   const myTurns = msgs.filter((m) => m.who === "me").length;
+  // v42: у входа и у менеджера гость может проститься уже после первой реплики — чек доступен и тогда
+  const canFinish = myTurns >= 2 || (ended && myTurns >= 1);
 
   const send = async (textArg) => {
     const text = String(textArg != null ? textArg : input).trim();
@@ -422,7 +458,8 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
       if (voiceOn) speak(g.text, female);
       if (g.end || next.filter((m) => m.who === "me").length >= 12) setEnded(true);
     } catch (e) {
-      setErr(String((e && e.message) || "server") === "Failed to fetch" ? "network" : String((e && e.message) || "server"));
+      const code = String((e && e.message) || "server") === "Failed to fetch" ? "network" : String((e && e.message) || "server");
+      noteBad(code); setErr(code);
     } finally { setBusy(false); setPartial(""); }
   };
 
@@ -448,7 +485,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
       return { text: g.text || "", end: over };
     } catch (e) {
       const code = String((e && e.message) || "server") === "Failed to fetch" ? "network" : String((e && e.message) || "server");
-      setErr(code);
+      noteBad(code); setErr(code);
       throw new Error(guestErrorText(code));
     } finally { setBusy(false); setPartial(""); }
   };
@@ -460,13 +497,13 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   };
 
   const finish = async () => {
-    if (busy || myTurns < 2) return;
+    if (busy || !canFinish) return;
     vibrate("light");
     try { stopSpeech(); } catch (e) {}
     setPhase("eval"); setErr(null);
     try {
       const reply = await call(msgs, true);
-      const rc = parseReceipt(reply, knownLesson);
+      const rc = parseReceipt(reply, knownLesson, receiptKind(guest));
       if (!rc) throw new Error("receipt");
       setReceipt(rc); setPhase("receipt");
       if (!doneRef.current) {
@@ -491,7 +528,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   if (phase === "script") {
     return (
       <TableCheck mode="guest" situations={scriptSits} modules={track && track.length ? track : modules} color={color} a11y={a11y} profile={profile} mistakeBank={mistakeBank}
-        guest={{ name: guest.name, table: guest.table, line: guest.name + " · " + guest.line }} onMistakes={onMistakes} onActivity={(k) => onActivity && onActivity(k)}
+        guest={{ name: guest.name, table: guest.table, line: guest.name + " · " + guest.line, place: guest.place }} onMistakes={onMistakes} onActivity={(k) => onActivity && onActivity(k)}
         onFinish={(res) => {
           runsRef.current = saveGuestRun(uk, { d: ymd(new Date()), s: Math.max(1, Math.min(5, Math.round((res.firstOk / Math.max(1, res.total)) * 5))), p: guest.id, ai: false });
           try { onActivity && onActivity("guest"); onTouch && onTouch(); } catch (e) {}
@@ -515,27 +552,30 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
         {head}
         <div className="tb-body"><div className="tb-col">
           <div className="lg-card" role="group" aria-label={"Карточка гостя: " + guest.name}>
-            <div className="ey"><span>{guest.place === "hall" ? "СТОЛ " + guest.table : guest.place === "bar" ? "БАРНАЯ СТОЙКА" : "ВХОД"}</span><span>{new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span></div>
+            <div className="ey"><span>{ui.eye}</span><span>{new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span></div>
             <h2>{guest.name}</h2>
             <div className="ag">{guest.age} · {guest.occasion}</div>
             <p>{guest.who}.</p>
+            {guest.note ? <p className="nt" data-guest-note="">{guest.note}.</p> : null}
             <div className="lg-tags">{guest.tags.map((t) => <span key={t}>{t}</span>)}{guest.custom ? <span className="own">✦ гость заведения</span> : null}</div>
             <TableTop guest={guest} />
           </div>
-          <p className="lg-note">Говори как в зале — голосом или текстом. Гость ведёт себя как настоящий: заметит заботу и ошибки. Он может что-то держать в голове и не сказать, пока не спросишь. В конце — чек разбора от Наставника.</p>
+          {/* v42: кто ты в этой сцене — гость и чек разбора ждут именно этого */}
+          <p className="lg-role" data-guest-role={guest.place}>{ui.role}</p>
+          <p className="lg-note">Говори как на смене — голосом или текстом. Гость ведёт себя как настоящий: заметит заботу и ошибки. Он может что-то держать в голове и не сказать, пока не спросишь. В конце — чек разбора от Наставника.</p>
           <label className="lg-opt"><input type="checkbox" checked={voiceOn} onChange={(e) => setVoice(e.target.checked)} />Озвучивать гостя</label>
           {canEdit ? <div className="lg-own">Гости заведения: {own.length}<button type="button" onClick={() => setEditor(true)} data-persona-open="">{own.length ? "Изменить" : "Добавить своих"}</button></div>
-            : own.length ? <p className="lg-own">В подборке есть гости вашего заведения: {own.length}</p> : null}
+            : ownHere ? <p className="lg-own">В подборке есть гости вашего заведения: {ownHere}</p> : null}
           {err ? <div className="lg-err" role="alert">{guestErrorText(err)}</div> : null}
         </div></div>
         <div className="tb-foot"><div className="tb-col">
-          <button type="button" className="tb-main" onClick={() => start()}>{guest.place === "hall" ? "Подойти к столу" : guest.place === "bar" ? "Подойти к гостю" : "Встретить гостя"}</button>
+          <button type="button" className="tb-main" onClick={() => start()}>{ui.go}</button>
           <div className="lg-bar">
             <button type="button" className="tb-ghost" onClick={another}>Другой гость</button>
             <button type="button" className="tb-ghost" onClick={() => { vibrate("light"); setPhase("script"); }}>По сценарию</button>
           </div>
         </div></div>
-        {editor ? <PersonaEditor rows={own} myPlace={guest.place} onClose={() => setEditor(false)} onPlay={playOwn}
+        {editor ? <PersonaEditor rows={own} myPlace={guest.place === "manager" ? "hall" : guest.place} onClose={() => setEditor(false)} onPlay={playOwn}
           onSaved={(row) => { const rows = own.some((x) => x.id === row.id) ? own.map((x) => (x.id === row.id ? row : x)) : own.concat([row]); ownRef.current = rows; setOwn(rows); }}
           onDeleted={(id) => { const rows = own.filter((x) => x.id !== id); ownRef.current = rows; setOwn(rows); if (guest.id === id) setGuest(pick(Date.now())); }} /> : null}
       </>, vars, inline);
@@ -559,14 +599,14 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
           <div className="tb-res"><div className="tb-rslot"><div className="tb-rslot-in">
             <div className="tb-receipt" role="group" aria-label="Чек разбора">
               <div className="r-brand">✦ SERVICE ACADEMY ✦</div>
-              <div className="r-place">{(profile && profile.restaurant) || "Service Academy"} · {guest.place === "hall" ? "стол " + guest.table : guest.place === "bar" ? "бар" : "вход"}</div>
+              <div className="r-place">{(profile && profile.restaurant) || "Service Academy"} · {ui.where}</div>
               <div className="r-cut" />
               <h2 className="r-title">Чек разбора</h2>
               <div className="r-name">{guest.name} · {guest.tags.join(" · ")}</div>
               <div className="r-meta">разговор {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")} · реплик {myTurns} · гость {TABLE_MOOD_WORD[mood]}{whisper ? " · с шёпотом наставника" : ""}</div>
               <div className="r-cut" />
               <ul className="r-lines lg-crit">
-                {CRITERIA.map(([k, label]) => <TableLine key={k} label={label} value={stars(rc.scores[k])} />)}
+                {(rc.crit || CRITERIA).map(([k, label]) => <TableLine key={k} label={label} value={stars(rc.scores[k])} />)}
               </ul>
               <div className="r-total"><span>ИТОГ</span><b>{rc.score} / 5</b></div>
               {prev ? <div className="lg-was" data-was=""><span>{prev.same ? "В ПРОШЛЫЙ РАЗ С ЭТИМ ГОСТЕМ" : "ПРОШЛЫЙ РАЗГОВОР"}</span><b>{prev.s} / 5 → {rc.score} / 5 {rc.score > prev.s ? "▲" : rc.score < prev.s ? "▼" : "="}</b></div> : null}
@@ -610,17 +650,20 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
           {talk && (talkState === "hearing" || talkState === "recognizing") ? <div className="tb-mine tb-new" data-talk-pending=""><TalkDots /></div> : null}
           {busy && partial ? <div className="lg-gp" aria-busy="true"><b>{guest.name}</b><span>{partial}</span></div>
             : busy ? <div className="tb-typing tb-new" aria-label="Гость отвечает"><i /><i /><i /></div> : null}
-          {ended ? <div className="tb-actl tb-new">Гость попросил счёт — разговор окончен</div> : null}
+          {ended ? <div className="tb-actl tb-new">{ui.ended}</div> : null}
         </div>
         {whisper && guest.whisper ? <div className="lg-whisper" role="note"><b><Ic n="mentor" s={13} />ШЁПОТ НАСТАВНИКА</b>{guest.whisper}</div> : null}
         {err ? (
           <div className="lg-err" role="alert">{guestErrorText(err)}
             <div className="lg-bar">
+              {err === "bad_guest" ? <button type="button" className="tb-ghost" data-guest-other="" onClick={anotherAfterErr}>Другой гость</button> : null}
               <button type="button" className="tb-ghost" onClick={() => setPhase("script")}>Гость по сценарию</button>
-              {myTurns >= 2 ? <button type="button" className="tb-ghost" onClick={finish}>Чек разбора</button> : null}
+              {canFinish ? <button type="button" className="tb-ghost" onClick={finish}>Чек разбора</button> : null}
             </div>
           </div>
         ) : null}
+        {/* v42: роли знает только обновлённый ai-chat — без него гость у входа ведёт себя как с официантом */}
+        {oldAi && guest.place !== "hall" ? <p className="lg-note" data-old-ai="">ИИ-гость на сервере ещё прежней версии — может вести себя как с официантом. Руководителю: обновить функцию ai-chat.</p> : null}
         {left != null && left <= 6 ? <p className="lg-note">Живых реплик на сегодня осталось: {left}</p>
           : left != null ? <span className="lg-left" data-left={left}>живых реплик сегодня: {left}</span> : null}
       </div></div>
@@ -632,7 +675,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
               first={myTurns === 0 ? guest.open : null} ask={talkTurn} onState={setTalkState} onClose={() => setTalk(false)} />
             <div className="lg-bar">
               {guest.whisper ? <button type="button" className="tb-ghost" data-whisper="" onClick={() => { if (!whisper) { vibrate("light"); setWhisper(true); } }} disabled={whisper}>{whisper ? "Шёпот взят" : "Шёпот наставника"}</button> : null}
-              <button type="button" className="tb-ghost" onClick={() => { setTalk(false); finish(); }} disabled={busy || myTurns < 2}>Рассчитать гостя</button>
+              <button type="button" className="tb-ghost" onClick={() => { setTalk(false); finish(); }} disabled={busy || !canFinish}>{ui.finish}</button>
             </div>
           </>
         ) : ended ? (
@@ -650,7 +693,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
             </div>
             <div className="lg-bar">
               {guest.whisper ? <button type="button" className="tb-ghost" data-whisper="" onClick={() => { if (!whisper) { vibrate("light"); setWhisper(true); } }} disabled={whisper}>{whisper ? "Шёпот взят" : "Шёпот наставника"}</button> : null}
-              <button type="button" className="tb-ghost" onClick={finish} disabled={busy || myTurns < 2}>Рассчитать гостя</button>
+              <button type="button" className="tb-ghost" onClick={finish} disabled={busy || !canFinish}>{ui.finish}</button>
             </div>
           </>
         )}

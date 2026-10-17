@@ -18,6 +18,7 @@ import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituati
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
+import { ScheduleTile } from "./schedule-tile";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
@@ -332,23 +333,14 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
         {/* ═══ «График смен» и «Книга отзывов» ═══
             v44 (Доп. 357): две плитки в один ряд (раньше — две карточки во всю ширину, одна под другой). На узком
             экране, когда плитке меньше 150 px, ряд переносится — плитки встают друг под другом.
-            График: ближайшая смена (из сводки sa_today_shift) или что в нём делать; вся плитка — кнопка.
+            График: смена сегодня (из сводки sa_today_shift) или что в нём делать; вся плитка — кнопка.
+            v45 (Доп. 358): плитка графика — ui/schedule-tile.jsx: листок календаря с сегодняшним числом, «Вечер ·
+            17:00–24:00» (время золотом) и золотая нить суток по нижнему краю, как у книги.
             Книга отзывов (Доп. 185: витрина вернулась на главную — она про человека, а не про раздел): страницы,
             ранг, печати, ляссе, золотая нить прогресса и бейдж непрочитанных — как были; монограмма и
             «Личная · имя» ушли из плитки ради места (имя и так в приветствии). */}
         {(() => {
           const mgr = !!profile?.is_admin;
-          const subS = (() => {
-            // Живая подпись из офлайн-сводки: смена сегодня
-            try {
-              const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
-              const t = new Date();
-              const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
-              // время смены не рвётся по тире: «Сегодня: Вечер · / 17:00–24:00», а не «17:00– / 24:00»
-              if (r && r.date === key && r.label) return r.label === "выходной" ? "Сегодня выходной ✦" : "Сегодня: " + String(r.label).replace(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/g, "$1\u2060–\u2060$2");
-            } catch (e) {}
-            return mgr ? "Составить, проверить и опубликовать" : "Смены, время и старший смены";
-          })();
           const bs = onGuestBook && profile ? bookStats(MODULES, completed, quizDone, examResults) : null;
           const unread = bs ? countUnreadPages(completed, quizDone, examResults) : 0;
           const glass = a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)";
@@ -356,16 +348,8 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           const tile = { flex:"1 1 150px", minWidth:0, boxSizing:"border-box", position:"relative", borderRadius:14, cursor:"pointer", background: saInner(a11y), boxShadow: glass };
           return (
             <div data-home-tiles="" style={{ display:"flex", flexWrap:"wrap", gap:8, padding:"0 14px 8px" }}>
-              <div className="sa-card sa-glass" data-tile="schedule" onClick={() => onSchedule && onSchedule()} {...onActivate(() => onSchedule && onSchedule())}
-                style={{ ...tile, border:`1px solid ${saFrame(a11y, "mid")}`, padding:"8px 10px", display:"flex", alignItems:"center", gap:9 }}>
-                <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, background:"rgba(200,169,110,0.13)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  {UI_SVG.calendar ? UI_SVG.calendar(GOLD, 16) : <span style={{ fontSize: 14 }}>🗓</span>}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13.5, lineHeight:1.25, color: a11y ? "#2A1F0E" : CREAM, whiteSpace:"nowrap" }}>{mgr ? "График смен" : "Мой график"}</div>
-                  <div style={{ fontSize: a11y ? 11 : 10.5, lineHeight:1.3, color: a11y ? "#6B5B40" : "#A09080", marginTop:2 }}>{subS}</div>
-                </div>
-              </div>
+              <ScheduleTile a11y={a11y} mgr={mgr} tile={tile} frame={saFrame(a11y, "mid")}
+                onOpen={() => onSchedule && onSchedule()} act={onActivate(() => onSchedule && onSchedule())} />
               {bs ? (
                 <div data-tile="book" onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ ...tile, border:`1px solid ${saFrame(a11y, "full")}` }}>
                   {unread > 0 && (

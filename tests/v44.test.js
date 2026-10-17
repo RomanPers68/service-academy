@@ -120,8 +120,9 @@ describe("v44: «График смен» и «Книга отзывов» — п
     expect(count(html, /data-tile="/g)).toBe(2);
     expect(html).toMatch(/data-tile="schedule"[^>]*style="flex:1 1 150px;min-width:0/);
     expect(html).not.toContain("ОТКРЫТЬ ›");
-    // время смены не рвётся по тире
-    expect(html).toContain("Сегодня: Вечер · 17:00⁠–⁠24:00");
+    // время смены не рвётся по тире (v45, Доп. 358: подпись «Вечер · 17:00–24:00», время — неразрывным золотом)
+    expect(html).toMatch(/data-when-time=""[^>]*white-space:nowrap[^>]*>.*?17:00–24:00/);
+    expect(html).toContain('aria-label="Мой график. Сегодня: Вечер, 17:00–24:00"');
     expect(text(html)).toContain("Мой график");
     delete store.sa_today_shift;
   });
@@ -166,7 +167,7 @@ describe("v44: «Пульс недели», табличка и полка — �
 
 describe("v44: метка сборки и CHANGES", () => {
   it("«сборка v44», «Дополнение 357»", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch("· сборка v44");
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d</);   // v45 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 357 — /);
   });
 });

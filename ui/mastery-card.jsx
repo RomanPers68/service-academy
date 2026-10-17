@@ -333,6 +333,8 @@ function ChipRing({ c, pct, a11y }) {
 }
 // Чип «Путь мастера» для строки роли (DayChips рисует его тем же видом, что свечу и стакан):
 // звёздочка в кольце и «9/14» (значков из 14); у новичка — «2/7» «Первых шагов»; у мастера кольцо полное.
+// v43 (Доп. 356): табличка на главной рисует венок сама — ей нужны и числа: pct, have, total,
+// mode ("first" — «Первые шаги», "master" — мастер роли, "path" — путь).
 export function masteryChip(state, newCount = 0, a11y = false) {
   if (!state) return null;
   const c = msPal(a11y);
@@ -347,7 +349,8 @@ export function masteryChip(state, newCount = 0, a11y = false) {
   const aria = (firstWeek ? "Первые шаги в академии: " + fd + " из " + ft
     : ms && ms.ok ? "Путь мастера: мастер роли ✦, " + badges + " из " + total + " значков"
     : "Путь мастера: " + badges + " из " + total + " значков, до мастера роли " + have + " из " + need) + (newCount > 0 ? ", есть новое" : "");
-  return { icon, text, aria, dot: newCount > 0 };
+  return { icon, text, aria, dot: newCount > 0, pct, have: firstWeek ? fd : badges, total: firstWeek ? ft : total,
+    mode: firstWeek ? "first" : ms && ms.ok ? "master" : "path" };
 }
 
 // ── Праздник: новый значок и «Мастер роли ✦» ─────────────────────────────────

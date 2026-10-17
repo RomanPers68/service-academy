@@ -152,20 +152,14 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                   }
                 } catch (e) {} return null; })()}
               </div>
-              {/* Доп. 298, 306: ритм дня — свеча серии и стакан «цель дня» (из App). Есть трек —
-                  значки стоят в строке роли над главной карточкой; трека нет — здесь, под
-                  заведением (v32: раньше стояли отдельной строкой без полей и вылезали за край) */}
-              {!role && dayStrip ? (
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:7, flexShrink:0 }}>
-                  <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap" }}>{profile.restaurant}</div>
-                  <div data-day-chips="" style={{ display:"inline-flex" }}>{dayStrip}</div>
-                </div>
-              ) : (
-                <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
-              )}
+              <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
             </div>
           );
         })()}
+        {/* Доп. 298, 306: ритм дня (из App). v43 (Доп. 356): табличка во всю ширину под приветствием —
+            пламя серии, бокал «цель дня» и венок «Путь мастера» в медальонах, с трека и без. До v43 значки
+            стояли в строке роли (без трека — под заведением) и были «мелкие и невзрачные». */}
+        {profile && dayStrip ? <div data-day-chips="" style={{ padding:"0 14px 12px" }}>{dayStrip}</div> : null}
 
         {/* v31: строка напарника; без трека — с теми же полями, что у карточек ниже */}
         {!role && dayNote ? <div style={{ padding:"0 10px" }}>{dayNote}</div> : null}
@@ -225,16 +219,16 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                   </span>
                   {/* v41: подпись роли — целиком или никак (раньше «Сезонный …» с многоточием, когда рядом
                       три значка: свеча, стакан и «Путь мастера»). Не влезла — уходит на вторую строку
-                      невидимой обёртки: перед ней пустой элемент нулевой ширины, высота — одна строка. */}
+                      невидимой обёртки: перед ней пустой элемент нулевой ширины, высота — одна строка.
+                      v43: значки ушли в табличку под приветствием — подпись снова видна целиком. */}
                   {roleObj.sublabel ? (
                     <span data-role-sub="" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", flex:"1 1 0", minWidth:0, height:16, overflow:"hidden" }}>
                       <i aria-hidden="true" style={{ width:0, height:16 }} />
                       <span style={{ fontSize:11, lineHeight:"16px", color:T.modSub.color, whiteSpace:"nowrap" }}>{roleObj.sublabel}</span>
                     </span>
                   ) : null}
-                  {dayStrip ? <span style={{ marginLeft:"auto", display:"inline-flex", flexShrink:0 }}>{dayStrip}</span> : null}
                 </div>
-              ) : dayStrip}
+              ) : null}
               {/* v31: строка напарника — отдельной строкой под чипами (раньше уезжала за край экрана) */}
               {dayNote}
               <div ref={refTrack} onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",

@@ -32,7 +32,7 @@ import { lessonCards } from "../lib/lesson-cards";
 import { missText } from "../lib/practice-mistake";
 import { ensureTableCss } from "./table-css";
 import { ModuleMenu } from "./module-menu";
-import { Candle, Glass } from "./table-bits";
+import { Flame, Wine } from "./day-emblems";   // v43: вместо свечи и стакана из ./table-bits
 import { ymd } from "../lib/streak";
 import { topicShade, inkOnColor } from "../lib/topic-tint";
 import { topicFreshness, freshLabel, wineLevel } from "../lib/freshness";
@@ -733,7 +733,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const showNext = !!nextFor && !!pageMod && (!pageNext || (pageDone && pageNext.mod && pageNext.mod.id !== pageMod.id));
   return (
     <div style={T.screen} className="sa-screen tbp-root">
-      {/* Шапка: роль (и «Сменить»), поиск; под ней — прогресс трека, свеча и стакан */}
+      {/* Шапка: роль (и «Сменить»), поиск; под ней — прогресс трека, пламя серии и бокал цели (v43; было — свеча и стакан) */}
       <div style={{ padding: "34px 14px 4px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ ...T.homeRoleBadge, background: role.color + "22", borderColor: role.color + "66", minWidth: 0, flex: "0 1 auto", overflow: "hidden" }}>
@@ -754,13 +754,14 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           {streak && streak.count > 0 ? (
             // Доп. 288: свеча серии — горит, когда сегодня уже занимался; выходной по графику её не гасит
             <span className="tbv" title={streak.last === ymd(new Date()) ? "Сегодня занимался — свеча горит" : "Пройди урок — и свеча загорится"} style={chip}>
-              <Candle s={15} lit={streak.last === ymd(new Date())} />{streak.count}
+              {/* v43 (Доп. 356): пламя и бокал — как в табличке на главной */}
+              <Flame s={16} lit={streak.last === ymd(new Date())} a11y={a11y} />{streak.count}
             </span>
           ) : null}
           {dayGoal && dayGoal.goal ? (
             // Доп. 298: стакан «цель дня» — сколько шагов сегодня из цели
             <span className="tbv" title={"Цель дня: " + Math.min(dayGoal.steps || 0, dayGoal.goal) + " из " + dayGoal.goal} style={chip}>
-              <Glass s={15} pct={Math.min(1, (dayGoal.steps || 0) / dayGoal.goal)} />{Math.min(dayGoal.steps || 0, dayGoal.goal)}/{dayGoal.goal}
+              <Wine s={16} pct={Math.min(1, (dayGoal.steps || 0) / dayGoal.goal)} a11y={a11y} />{Math.min(dayGoal.steps || 0, dayGoal.goal)}/{dayGoal.goal}
             </span>
           ) : null}
         </div>

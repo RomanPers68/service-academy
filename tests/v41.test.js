@@ -185,10 +185,16 @@ describe("v41: «Путь мастера» — чипом в строке рол
     expect(base).not.toContain("data-ms-chip");
     expect(base).toContain("Цель дня: 0 из 2");
   });
-  it("чипы в светлой теме — 13 px (в тёмной — 12, как было)", () => {
+  it("чипы в светлой теме — 13 px (в тёмной — 12, как было); v43 — табличка: цифры 20 px, подписи в светлой теме 11 px", () => {
+    // v43 (Доп. 356): чипы стали табличкой с медальонами (tests/v43.test.js). Мелкого текста 12–13 px в ней нет:
+    // цифры — 20 px, подписи — метки, в светлой теме «Для чтения» от 11 px (как метки в v40)
     const st = { count: 1, last: "", days: [] };
-    expect(R(h(DayChips, { a11y: true, streak: st, steps: 0, goal: 2, onGoal: noop, today: "x" }))).toMatch(/font-size:13px/);
-    expect(R(h(DayChips, { a11y: false, streak: st, steps: 0, goal: 2, onGoal: noop, today: "x" }))).toMatch(/font-size:12px/);
+    const lt = R(h(DayChips, { a11y: true, streak: st, steps: 0, goal: 2, onGoal: noop, today: "x" }));
+    const dk = R(h(DayChips, { a11y: false, streak: st, steps: 0, goal: 2, onGoal: noop, today: "x" }));
+    expect(lt).toMatch(/class="tbv sa-dp lt"/);
+    expect(dk).toMatch(/class="tbv sa-dp"/);
+    for (const html of [lt, dk]) expect(html).toMatch(/font-size:20px/);
+    expect(readFileSync("ui/day-cards.jsx", "utf8")).toMatch(/\.sa-dp\.lt \.sa-dp-cap\{font-size:11px;/);
   });
 });
 

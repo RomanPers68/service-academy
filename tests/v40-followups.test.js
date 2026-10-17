@@ -22,8 +22,9 @@ const noop = () => {};
 const h = React.createElement;
 const R = (el) => renderToString(el).replace(/<!-- -->/g, "").replace(/\u00A0/g, " ");
 const read = (p) => readFileSync(p, "utf8");   // от корня проекта
-// для сравнения двух рисовок: id свечи/стакана (счётчик в ui/table-bits.jsx) и время на чеке
-const norm = (s) => s.replace(/\b(tbgl|tbfl|tbwax)\d+/g, "$1#").replace(/\d\d\.\d\d · \d\d:\d\d/g, "дд.мм · чч:мм");
+// для сравнения двух рисовок: id свечи/стакана (счётчик в ui/table-bits.jsx) и время на чеке;
+// v43: и id пламени, бокала и медальона (счётчик в ui/day-emblems.jsx, «de…»)
+const norm = (s) => s.replace(/\b(tbgl|tbfl|tbwax|de(?:fl|fc|fg|fd|wc|wl|wr|ll|mr|me|mh))\d+/g, "$1#").replace(/\d\d\.\d\d · \d\d:\d\d/g, "дд.мм · чч:мм");
 
 // ── практика «у стола»: раздел из двух ситуаций; у первой верный ответ — фраза гостю (будет «вслух») ──
 const SITS = [

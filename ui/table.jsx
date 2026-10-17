@@ -22,7 +22,9 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { ensureTableCss } from "./table-css";
 import { ensureLessonCss } from "./table-css-lesson";
-import { Ic, Candle, Glass, SitIcon, plural } from "./table-bits";
+import { Ic, Candle, SitIcon, plural } from "./table-bits";
+// v43 (Доп. 356): в строках «Серия» и «Цель дня» — пламя и бокал, как на главной; чек — бумага, палитра светлая
+import { Flame, Wine } from "./day-emblems";
 import { MicButton } from "./mic";
 import { voiceSupported } from "../lib/voice";
 import { SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
@@ -388,7 +390,7 @@ const signOf = (name) => (name ? name + ", наставник" : "наставн
 function GoalLine({ goal }) {
   if (!goal || !goal.goal) return null;
   const st = Math.max(0, goal.steps || 0);
-  return <Line icon={<Glass pct={Math.min(1, st / goal.goal)} s={18} />} label="Цель дня" value={Math.min(st, goal.goal) + " / " + goal.goal + (st >= goal.goal ? " ✓" : "")} />;
+  return <Line icon={<Wine pct={Math.min(1, st / goal.goal)} s={19} a11y />} label="Цель дня" value={Math.min(st, goal.goal) + " / " + goal.goal + (st >= goal.goal ? " ✓" : "")} />;
 }
 // какие текстовые уроки смотреть для «Подсмотреть»: свой урок, раздел ситуации или раздел практики
 function peekLessons(sit, { lesson, mod, modules }) {
@@ -520,7 +522,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
                   <p className="r-note" data-preview=""><Ic n="eye" s={14} /><span>{PREVIEW_NOTE}</span></p>
                 ) : (
                   <ul className="r-lines">
-                    <Line icon={<Candle s={18} lit={st.last === ymd(new Date())} />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
+                    <Line icon={<Flame s={19} lit={st.last === ymd(new Date())} a11y />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
                     <GoalLine goal={goal} />
                     {wrong ? <Line icon={<Ic n="refresh" s={15} />} label="В «Работу над ошибками»" value={wrong} /> : null}
                   </ul>
@@ -930,7 +932,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 </ul>
                 <div className="r-cut" />
                 <ul className="r-lines">
-                  <Line icon={<Candle s={18} lit={st.last === today} />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
+                  <Line icon={<Flame s={19} lit={st.last === today} a11y />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
                   <GoalLine goal={goal} />
                   {wrongN ? <Line icon={<Ic n="refresh" s={15} />} label="В «Работу над ошибками»" value={wrongN} /> : null}
                 </ul>
@@ -1167,8 +1169,8 @@ export function WeekReceipt({ a11y, profile, streak, summary, goal = 2, prev = f
               <div className="r-total"><span>ДНЕЙ В ДЕЛЕ</span><b>{sum.activeDays} / 7</b></div>
               <div className="r-cut" />
               <ul className="r-lines">
-                <Line icon={<Candle s={18} lit={st.last === ymd(new Date())} />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
-                <Line icon={<Glass s={18} pct={goalDays / 7} />} label={"Цель дня (" + goal + " " + plural(goal, "шаг", "шага", "шагов") + ")"} value={goalDays + " из 7"} />
+                <Line icon={<Flame s={19} lit={st.last === ymd(new Date())} a11y />} label="Серия" value={(st.count || 0) + " " + plural(st.count || 0, "день", "дня", "дней")} />
+                <Line icon={<Wine s={19} pct={goalDays / 7} a11y />} label={"Цель дня (" + goal + " " + plural(goal, "шаг", "шага", "шагов") + ")"} value={goalDays + " из 7"} />
                 {/* v30 (Доп. 314): дни, когда смена закрыла квест */}
                 {questN ? <Line icon={<Ic n="team" s={16} />} label="Квест смены закрыт" value={questN + " " + plural(questN, "раз", "раза", "раз")} /> : null}
               </ul>

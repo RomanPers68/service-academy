@@ -1,6 +1,7 @@
-// ui/day-cards.jsx — ритм дня на главной (Доп. 298, 301, 302, 306):
-//   DayChips    — свеча серии и стакан «цель дня» маленькими значками в строке роли
-//                 (тап по стакану — выбрать цель 1–3 шага), v41 — и чип «Путь мастера»; DayStrip — то же крупно;
+// ui/day-cards.jsx — ритм дня на главной (Доп. 298, 301, 302, 306, 356):
+//   DayChips    — v43: табличка под приветствием — пламя серии, бокал «цель дня» (тап — выбрать цель
+//                 1–3 шага) и венок «Путь мастера» в медальонах (до v43 — маленькие чипы в строке роли);
+//                 DayStrip — свеча и стакан крупно (прежний вид, сейчас не используется);
 //   WarmupCard  — «Разминка до смены» в день смены по графику (compact — тонкая строка
 //                 под главной карточкой, после разминки пропадает);
 //   WeekCard    — «Чек недели готов» (по понедельникам);
@@ -9,6 +10,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { ensureTableCss } from "./table-css";
 import { Candle, Glass, Ic, plural } from "./table-bits";
+import { Flame, Wine, Laurel, Medal, Val, palette, nextStreakTier } from "./day-emblems";
 import { onActivate, vibrate } from "../lib/utils";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 
@@ -50,36 +52,83 @@ export function DayStrip({ a11y, streak, steps = 0, goal = 2, onGoal, today }) {
 // Доп. 306: главная без лишнего ряда — свеча и стакан маленькими значками в строке роли
 // v41 (Доп. 354): третий чип — «Путь мастера» (mastery = masteryChip() из ui/mastery-card.jsx:
 // { icon, text, aria, dot }); тап — экран значков, новое — точкой. Раньше путь был карточкой под треком.
+// v43 (Доп. 356): чипы стали табличкой под приветствием — три медальона с подписями: пламя (серия),
+// бокал (цель дня), лавровый венок («Путь мастера»). Отзыв владельца: «мелко и невзрачно», «не нравятся
+// сами иконки». Ободок медальона — прогресс: у пламени — до следующей вехи серии (3, 7, 30 дней, как
+// у значка «Свеча»), у бокала — цель дня, у венка — значки. Нажатия — как были: бокал — выбрать цель,
+// венок — «Путь мастера». Размеры — CSS-переменными: на узком экране (меньше 375 px) медальоны меньше,
+// подписи короче («цель», «мастер»); на широком (430 px, тёмная тема) — длиннее: «дней подряд», «первые шаги».
+// Цель выполнена — цифра зелёным и искра над бокалом (подпись та же: длинная не влезла бы в ячейку).
+const DP_CSS = `
+.sa-dp{display:flex;align-items:stretch;border-radius:16px;--dp-m:34px;--dp-i:20px;--dp-l:26px}
+.sa-dp-cell{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 5px;position:relative;cursor:pointer;border-radius:14px;-webkit-tap-highlight-color:transparent}
+.sa-dp-cell.st{cursor:default}
+.sa-dp-cell[role=button]:active{background:rgba(214,178,102,.10)}
+.sa-dp-cell:focus-visible{outline:2px solid rgba(214,178,102,.7);outline-offset:-3px}
+.sa-dp-txt{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.sa-dp-cap{display:block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;margin-top:5px;white-space:nowrap;line-height:1}
+.sa-dp.lt .sa-dp-cap{font-size:11px;letter-spacing:.3px}
+.sa-dp-sep{width:1px;align-self:stretch;margin:9px 0;flex-shrink:0}
+.sa-dp-w{display:none}
+@media (min-width:430px){.sa-dp:not(.lt) .sa-dp-w{display:inline}.sa-dp:not(.lt) .sa-dp-n{display:none}}
+@media (max-width:374px){.sa-dp{--dp-m:28px;--dp-i:17px;--dp-l:22px}.sa-dp-cell{gap:5px;padding:10px 3px}.sa-dp-x{display:none}}
+`;
+function ensureDayPanelCss() {
+  if (typeof document === "undefined" || !document.head || !document.createElement) return;
+  if (document.getElementById && document.getElementById("sa-day-panel-css")) return;
+  const st = document.createElement("style");
+  st.id = "sa-day-panel-css"; st.textContent = DP_CSS;
+  document.head.appendChild(st);
+}
 export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mastery = null, onMastery }) {
-  ensureTableCss();
-  const c = C(a11y);
+  ensureTableCss(); ensureDayPanelCss();
+  const p = palette(a11y);
   const [open, setOpen] = React.useState(false);
   const lit = !!(streak && streak.last && streak.last === today);
   const n = (streak && streak.count) || 0;
   const reached = steps >= goal;
+  const sx = Math.min(steps, goal), gp = goal ? Math.min(1, steps / goal) : 0;
   const pick = (g) => { vibrate("light"); setOpen(false); onGoal && onGoal(g); };
-  // v41: в светлой теме «Для чтения» — 13 px, как остальной мелкий текст (в тёмной — 12, как было)
-  const chip = { display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px 3px 6px", borderRadius: 999, border: `1px solid ${c.line}`, background: c.bg, fontFamily: "Georgia, serif", fontSize: a11y ? 13 : 12, color: c.text, lineHeight: 1.2, whiteSpace: "nowrap" };
   const goMastery = () => { vibrate("light"); onMastery && onMastery(); };
+  const openGoal = () => setOpen(true);
+  const sep = <i className="sa-dp-sep" aria-hidden="true" style={{ background: "linear-gradient(180deg,transparent," + p.panelLine + ",transparent)" }} />;
+  const cap = { color: p.sub };
+  // «Путь мастера»: числа — из masteryChip (v43); у старого вызова без них — из текста «9/14»
+  const mm = mastery ? (() => {
+    const t = String(mastery.text || "").split("/");
+    const have = mastery.have != null ? mastery.have : Number(t[0]) || 0, total = mastery.total != null ? mastery.total : Number(t[1]) || 14;
+    return { have, total, pct: mastery.pct != null ? mastery.pct : (total ? have / total : 0), mode: mastery.mode || "path" };
+  })() : null;
+  const M = "var(--dp-m,34px)", I = "var(--dp-i,20px)", L = "var(--dp-l,26px)";
   return (
-    <span className="tbv" style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-      <span style={chip} title={lit ? "Серия: сегодня занимался — свеча горит" : "Серия: пройди шаг — и свеча загорится"} aria-label={"Серия " + n + " " + plural(n, "день", "дня", "дней") + (lit ? ", сегодня свеча горит" : "")}>
-        <Candle s={15} lit={lit} />{n}
+    <div className={"tbv sa-dp" + (a11y ? " lt" : "")} data-day-panel=""
+      style={{ background: p.panel, border: "1px solid " + p.panelLine, borderTopColor: p.panelTop, boxShadow: p.shadow }}>
+      <span role="img" className="sa-dp-cell st" data-dp-cell="streak" title={lit ? "Серия: сегодня занимался — свеча горит" : "Серия: пройди шаг — и свеча загорится"}
+        aria-label={"Серия " + n + " " + plural(n, "день", "дня", "дней") + (lit ? ", сегодня свеча горит" : "")}>
+        <Medal s={M} pct={Math.min(1, n / nextStreakTier(n))} glow={lit} a11y={a11y}><Flame s={I} lit={lit} a11y={a11y} /></Medal>
+        <span className="sa-dp-txt" aria-hidden="true"><Val main={n} a11y={a11y} />
+          <span className="sa-dp-cap" style={cap}>{plural(n, "день", "дня", "дней")}<span className="sa-dp-w"> подряд</span></span></span>
       </span>
-      <span role="button" tabIndex={0} onClick={() => setOpen(true)} {...onActivate(() => setOpen(true))} aria-label={"Цель дня: " + Math.min(steps, goal) + " из " + goal + ". Изменить цель"}
-        style={{ ...chip, cursor: "pointer", borderColor: reached ? "rgba(93,187,138,0.5)" : c.line }}>
-        <Glass s={15} pct={Math.min(1, steps / goal)} />{Math.min(steps, goal)}/{goal}{reached ? " ✓" : ""}
+      {sep}
+      <span role="button" tabIndex={0} className="sa-dp-cell" data-dp-cell="goal" onClick={openGoal} {...onActivate(openGoal)} aria-label={"Цель дня: " + sx + " из " + goal + ". Изменить цель"}>
+        <Medal s={M} pct={gp} a11y={a11y}><Wine s={I} pct={gp} a11y={a11y} /></Medal>
+        <span className="sa-dp-txt" aria-hidden="true"><Val main={sx} of={goal} a11y={a11y} color={reached ? p.green : undefined} />
+          <span className="sa-dp-cap" style={cap}>цель<span className="sa-dp-x"> дня</span></span></span>
       </span>
-      {mastery ? (
-        <span role="button" tabIndex={0} data-ms-chip="" onClick={goMastery} {...onActivate(goMastery)} aria-label={mastery.aria} title="Путь мастера"
-          style={{ ...chip, cursor: "pointer", position: "relative" }}>
-          {mastery.icon}{mastery.text}
-          {mastery.dot ? <span data-ms-chip-new="" aria-hidden="true" style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", boxSizing: "border-box",
-            background: c.gold, border: `1.5px solid ${a11y ? "#F3EAD6" : "#17120A"}` }} /> : null}
+      {mm ? (<>
+        {sep}
+        <span role="button" tabIndex={0} className="sa-dp-cell" data-dp-cell="mastery" data-ms-chip="" onClick={goMastery} {...onActivate(goMastery)} aria-label={mastery.aria} title="Путь мастера">
+          <Medal s={M} pct={mm.pct} a11y={a11y}><Laurel s={L} have={mm.have} total={mm.total} a11y={a11y} /></Medal>
+          <span className="sa-dp-txt" aria-hidden="true"><Val main={mm.have} of={mm.total} a11y={a11y} />
+            <span className="sa-dp-cap" style={cap}>{mm.mode === "first"
+              ? <><span className="sa-dp-w">первые шаги</span><span className="sa-dp-n">старт</span></>
+              : mm.mode === "master" ? <>мастер<span className="sa-dp-x"> ✦</span></> : plural(mm.total, "значок", "значка", "значков")}</span></span>
+          {mastery.dot ? <span data-ms-chip-new="" aria-hidden="true" style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: "50%", boxSizing: "border-box",
+            background: p.goldHi, border: "1.5px solid " + p.dotEdge }} /> : null}
         </span>
-      ) : null}
+      </>) : null}
       {open ? createPortal(<GoalSheet a11y={a11y} goal={goal} onPick={pick} onClose={() => setOpen(false)} />, document.body) : null}
-    </span>
+    </div>
   );
 }
 
@@ -95,10 +144,10 @@ function GoalSheet({ a11y, goal, onPick, onClose }) {
       <div role="dialog" aria-modal="true" aria-label="Цель дня" onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "18px 18px calc(18px + env(safe-area-inset-bottom,0px))", borderRadius: "22px 22px 0 0", backgroundColor: a11y ? "#F6EEDC" : "#1E170C", backgroundImage: "var(--sheet-bg,none)", border: "1px solid var(--sheet-edge," + c.line + ")", borderTop: "1px solid var(--sheet-top," + c.line + ")", borderBottom: 0, boxShadow: "var(--sheet-shadow,none)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <Glass s={26} pct={0.6} />
+          <Wine s={30} pct={0.6} a11y={a11y} />
           <h3 style={{ margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Цель дня</h3>
         </div>
-        <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>Сколько шагов в день: урок, практика, тест или разминка до смены. Стакан наполняется — на главной и в чеках.</p>
+        <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>Сколько шагов в день: урок, практика, тест или разминка до смены. Бокал наполняется с каждым шагом — на главной, в шапке трека и в чеках.</p>
         {GOALS.map((x) => (
           <button key={x.g} type="button" className="sa-btn" onClick={() => onPick(x.g)}
             style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", margin: "0 0 8px", padding: "12px 14px", borderRadius: 14, cursor: "pointer",

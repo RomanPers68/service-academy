@@ -209,20 +209,27 @@ describe("v41: главная — строка шага в карточке тр
     return R(h(RoleSelect, { T: T4, a11y: false, profile, role: "seasonal", onSelect: noop, onContinueLesson: noop, customByRole: { seasonal: [mod] }, ...extra }));
   };
   it("строка — внутри карточки трека (после «Начать», до «Мой график»), клики не уходят в карточку", async () => {
+    // v44 (Доп. 357): «Шаг дня» — плашкой в ряду внизу карточки (ряд останавливает клики), карточка закрывается после ряда
     const html = await render({ stepLine: line });
-    const at = html.indexOf('<div data-step-slot=""><div data-test-line="">Шаг дня · Освежи тему</div></div>');
+    const slot = '<div data-step-slot="" style="flex:1 1 0;min-width:0;display:flex"><div data-test-line="">Шаг дня · Освежи тему</div></div>';
+    const at = html.indexOf(slot);
     expect(at).toBeGreaterThan(0);
     expect(html.indexOf(">Начать</div>")).toBeLessThan(at);
     expect(at).toBeLessThan(html.indexOf("Мой график"));
-    // сразу после строки закрывается карточка трека, а за ней — обёртка трека
-    expect(html.slice(at + '<div data-step-slot=""><div data-test-line="">Шаг дня · Освежи тему</div></div>'.length).startsWith("</div></div>")).toBe(true);
+    const row = html.lastIndexOf('<div data-day-pills=""', at);
+    expect(row).toBeGreaterThan(html.indexOf(">Начать</div>"));
+    // сразу после ряда закрывается карточка трека, а за ней — обёртка трека
+    expect(html.slice(at + slot.length).startsWith("</div></div></div>")).toBe(true);
     const base = await render({});
     expect(base).not.toContain("data-step-slot");
+    expect(base).not.toContain("data-day-pills");
     expect(await render({ stepLine: null })).toBe(base);
   });
   it("подпись роли — целиком или никак: обёртка в одну строку с невидимым элементом нулевой ширины", async () => {
+    // v44 (Доп. 357): роль — строкой под именем в приветствии; подпись целиком (без многоточия), не влезла рядом —
+    // переносится второй строкой (flex-wrap), а не обрезается
     const html = await render({});
-    expect(html).toMatch(/<span data-role-sub="" style="display:flex;flex-wrap:wrap;align-items:center;flex:1 1 0;min-width:0;height:16px;overflow:hidden"><i aria-hidden="true" style="width:0;height:16px"><\/i><span style="font-size:11px;line-height:16px;color:#aaa;white-space:nowrap">Сезонный сотрудник<\/span><\/span>/);
+    expect(html).toMatch(/<span data-role-line="" style="display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;margin-top:3px;font-family:Georgia, serif;font-size:12px;line-height:16px;color:#[0-9A-Fa-f]{6}"><span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap">.*?<b>Новичок<\/b><\/span><span data-role-sub="" style="color:#aaa;font-size:11px;white-space:nowrap">Сезонный сотрудник<\/span><\/span>/);
     expect(html).not.toMatch(/text-overflow:ellipsis;white-space:nowrap">Сезонный/);
   });
   it("название шага трека — до трёх строк (на узком экране не обрывается многоточием)", async () => {

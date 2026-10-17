@@ -222,10 +222,10 @@ describe("v43: табличка на главной (DayChips)", () => {
     const lt = chips({ a11y: true });
     expect(lt).toContain('class="tbv sa-dp lt"');
     expect(lt).toContain(palette(true).panel);
-    expect(lt).toContain("width:var(--dp-m,34px)");
+    expect(lt).toContain("width:var(--dp-m,32px)");   // v44: плотнее
     const src = readFileSync("ui/day-cards.jsx", "utf8");
-    expect(src).toMatch(/\.sa-dp\{display:flex;align-items:stretch;border-radius:16px;--dp-m:34px;--dp-i:20px;--dp-l:26px\}/);
-    expect(src).toMatch(/@media \(max-width:374px\)\{\.sa-dp\{--dp-m:28px;--dp-i:17px;--dp-l:22px\}\.sa-dp-cell\{gap:5px;padding:10px 3px\}\.sa-dp-x\{display:none\}\}/);
+    expect(src).toMatch(/\.sa-dp\{display:flex;align-items:stretch;border-radius:16px;--dp-m:32px;--dp-i:19px;--dp-l:25px\}/);   // v44: плотнее
+    expect(src).toMatch(/@media \(max-width:374px\)\{\.sa-dp\{--dp-m:28px;--dp-i:17px;--dp-l:22px\}\.sa-dp-cell\{gap:5px;padding:7px 3px\}\.sa-dp-x\{display:none\}\}/);
     expect(src).toMatch(/@media \(min-width:430px\)\{\.sa-dp:not\(\.lt\) \.sa-dp-w\{display:inline\}\.sa-dp:not\(\.lt\) \.sa-dp-n\{display:none\}\}/);
     expect(src).toMatch(/\.sa-dp\.lt \.sa-dp-cap\{font-size:11px;letter-spacing:\.3px\}/);
   });
@@ -247,20 +247,22 @@ describe("v43: место таблички — под приветствием, 
     const { RoleSelect } = await import("../ui/screens-roleselect");
     return R(h(RoleSelect, { T: T4, a11y: false, profile, role: "seasonal", onSelect: noop, onContinueLesson: noop, customByRole: { seasonal: [mod] }, dayStrip: strip, ...extra }));
   };
-  it("с треком: табличка — сразу после приветствия, до строки роли; в строке роли значков нет", async () => {
+  it("с треком: табличка — сразу после приветствия (v44: роль — строкой в нём), до карточки трека", async () => {
     const html = await render({});
-    const at = html.indexOf('<div data-day-chips="" style="padding:0 14px 12px"><div data-test-strip="">ТАБЛИЧКА</div></div>');
+    const at = html.indexOf('<div data-day-chips="" style="padding:0 14px 8px"><div data-test-strip="">ТАБЛИЧКА</div></div>');
     expect(at).toBeGreaterThan(0);
     expect(html.indexOf("Два моря, Океан")).toBeLessThan(at);
-    expect(at).toBeLessThan(html.indexOf("data-role-sub"));
+    expect(html.indexOf("data-role-line")).toBeLessThan(at);
+    expect(at).toBeLessThan(html.indexOf("Встреча гостя"));
     expect(count(html, /data-test-strip/g)).toBe(1);
-    // строка роли: чип и подпись целиком (v41), без значков справа
-    expect(html).toMatch(/<span data-role-sub="" style="display:flex;flex-wrap:wrap;align-items:center;flex:1 1 0;min-width:0;height:16px;overflow:hidden"><i aria-hidden="true" style="width:0;height:16px"><\/i><span style="font-size:11px;line-height:16px;color:#aaa;white-space:nowrap">Сезонный сотрудник<\/span><\/span><\/div>/);
+    // строка роли под именем: роль и подпись целиком (v41/v44), значков рядом нет
+    expect(html).toMatch(/<span data-role-sub="" style="color:#aaa;font-size:11px;white-space:nowrap">Сезонный сотрудник<\/span><\/span><\/div>/);
   });
   it("без трека — там же, под приветствием (не под названием заведения); без профиля — нет", async () => {
     const html = await render({ role: null });
-    expect(html).toContain('<div data-day-chips="" style="padding:0 14px 12px"><div data-test-strip="">ТАБЛИЧКА</div></div>');
+    expect(html).toContain('<div data-day-chips="" style="padding:0 14px 8px"><div data-test-strip="">ТАБЛИЧКА</div></div>');
     expect(html).not.toMatch(/flex-direction:column;align-items:flex-end;gap:7px/);
+    expect(html).not.toContain("data-role-line");
     expect(await render({ profile: null, role: null })).not.toContain("data-test-strip");
   });
 });
@@ -326,7 +328,7 @@ describe("v43: гид, метка сборки и CHANGES", () => {
     expect(all.map((x) => x.title + " " + x.text).join("\n")).not.toMatch(/стакан/i);
   });
   it("«сборка v43», «Дополнение 356»", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch("· сборка v43");
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d</);   // v44: номер сборки растёт
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 356 — /);
   });
 });

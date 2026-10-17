@@ -138,28 +138,40 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
         {profile && (() => {
           const h = new Date().getHours();
           const hello = h < 6 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
+          // v44 (Доп. 357): «хорошей смены ✦» — справа под заведением (раньше — второй строкой слева, лишняя высота)
+          const wish = (() => { try {
+            const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
+            const t = new Date();
+            const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+            return !!(r && r.date === key && r.label && r.label !== "выходной");
+          } catch (e) { return false; } })();
+          // v44: роль — строкой под именем (раньше — отдельный ряд с чипом над карточкой трека). Подпись роли —
+          // целиком или никак, как в v41: не влезла рядом — переносится второй строкой, без многоточия.
+          const roleObj = role ? ROLES.find(r => r.id === role) : null;
+          const RCg = roleObj ? (inkOf(roleObj.color, a11y) || (a11y ? "#4E7A58" : "#8FB890")) : null;
           return (
-            <div style={{ padding:"2px 20px 12px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
+            <div style={{ padding:"2px 20px 8px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
               <div style={{ color: T.modTitle.color, fontSize:18, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: goldText(a11y) }}>{profile.name}</span>
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
-                {(() => { try {
-                  const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
-                  const t = new Date();
-                  const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
-                  if (r && r.date === key && r.label && r.label !== "выходной") {
-                    return <span style={{ display:"block", fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic" }}>Хорошей смены ✦</span>;
-                  }
-                } catch (e) {} return null; })()}
+                {roleObj ? (
+                  <span data-role-line="" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6, marginTop:3, fontFamily:"Georgia, serif", fontSize:12, lineHeight:"16px", color:RCg }}>
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap" }}>{ROLE_SVG[role] ? ROLE_SVG[role](RCg, 13) : null}<b>{roleObj.label}</b></span>
+                    {roleObj.sublabel ? <span data-role-sub="" style={{ color: T.modSub.color, fontSize:11, whiteSpace:"nowrap" }}>{roleObj.sublabel}</span> : null}
+                  </span>
+                ) : null}
               </div>
-              <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>{profile.restaurant}</div>
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
+                <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap" }}>{profile.restaurant}</div>
+                {wish ? <div data-shift-wish="" style={{ fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic", whiteSpace:"nowrap" }}>хорошей смены ✦</div> : null}
+              </div>
             </div>
           );
         })()}
         {/* Доп. 298, 306: ритм дня (из App). v43 (Доп. 356): табличка во всю ширину под приветствием —
             пламя серии, бокал «цель дня» и венок «Путь мастера» в медальонах, с трека и без. До v43 значки
-            стояли в строке роли (без трека — под заведением) и были «мелкие и невзрачные». */}
-        {profile && dayStrip ? <div data-day-chips="" style={{ padding:"0 14px 12px" }}>{dayStrip}</div> : null}
+            стояли в строке роли (без трека — под заведением) и были «мелкие и невзрачные». v44: плотнее. */}
+        {profile && dayStrip ? <div data-day-chips="" style={{ padding:"0 14px 8px" }}>{dayStrip}</div> : null}
 
         {/* v31: строка напарника; без трека — с теми же полями, что у карточек ниже */}
         {!role && dayNote ? <div style={{ padding:"0 10px" }}>{dayNote}</div> : null}
@@ -208,27 +220,8 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           return (
             <div style={{ padding:"0 14px 9px" }}>
               {/* Роль чипом. После перестройки она пряталась только в заголовке
-                  карточки, и на экране её было не видно. */}
-              {roleObj ? (
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, minWidth:0 }}>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:6, flexShrink:0,
-                    padding:"4px 11px", borderRadius:999,
-                    background:`${RC}22`, border:`1px solid ${RC}66` }}>
-                    {ROLE_SVG[role] ? ROLE_SVG[role](RC, 12) : null}
-                    <span style={{ fontSize:12, color:RC, fontWeight:"bold" }}>{roleObj.label}</span>
-                  </span>
-                  {/* v41: подпись роли — целиком или никак (раньше «Сезонный …» с многоточием, когда рядом
-                      три значка: свеча, стакан и «Путь мастера»). Не влезла — уходит на вторую строку
-                      невидимой обёртки: перед ней пустой элемент нулевой ширины, высота — одна строка.
-                      v43: значки ушли в табличку под приветствием — подпись снова видна целиком. */}
-                  {roleObj.sublabel ? (
-                    <span data-role-sub="" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", flex:"1 1 0", minWidth:0, height:16, overflow:"hidden" }}>
-                      <i aria-hidden="true" style={{ width:0, height:16 }} />
-                      <span style={{ fontSize:11, lineHeight:"16px", color:T.modSub.color, whiteSpace:"nowrap" }}>{roleObj.sublabel}</span>
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
+                  карточки, и на экране её было не видно. v44 (Доп. 357): роль — строкой под именем в
+                  приветствии (там же видна), отдельного ряда над карточкой больше нет. */}
               {/* v31: строка напарника — отдельной строкой под чипами (раньше уезжала за край экрана) */}
               {dayNote}
               <div ref={refTrack} onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
@@ -242,7 +235,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                 boxShadow: a11y
                   ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(120,85,25,0.14)"
                   : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13), 0 5px 16px rgba(0,0,0,0.45)" }}>
-                <div style={{ borderRadius:14.5, padding:"12px 13px", background:"transparent",
+                <div style={{ borderRadius:14.5, padding:"9px 13px", background:"transparent",
                   display:"flex", alignItems:"center", gap:12 }}>
                   {/* Иконка роли с кольцом прогресса вокруг и значком типа шага.
                       Раньше это были три отдельные штуки: кружок с иконкой слева,
@@ -286,10 +279,23 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                     {cta.charAt(0) + cta.slice(1).toLowerCase()}
                   </div>
                 </div>
-                {/* Доп. 306: в день смены — нижняя строка этой же карточки «разминка 2 мин» (из App) */}
-                {warmupCard ? <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>{warmupCard}</div> : null}
-                {/* v41 (Доп. 354): «Шаг дня» — тонкой строкой этой же карточки (из App), а не второй карточкой с кнопкой */}
-                {stepLine ? <div data-step-slot="" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>{stepLine}</div> : null}
+                {/* Доп. 306: в день смены — «разминка 2 мин» (из App); v41 (Доп. 354): «Шаг дня» — строкой этой же
+                    карточки. v44 (Доп. 357): обе — плашками рядом внизу карточки (раньше — две строки во всю ширину);
+                    одна — во всю ширину. Подсказка «Напоминать в Telegram» разминки — строкой под плашками. */}
+                {(() => {
+                  const stop = (e) => e.stopPropagation();
+                  const pill = (el) => (React.isValidElement(el) && typeof el.type === "function" ? React.cloneElement(el, { pill: true }) : el);
+                  const warm = warmupCard && !(warmupCard.props && warmupCard.props.done) ? warmupCard : null;
+                  const hint = warm && warm.props ? warm.props.children : null;
+                  if (!warm && !stepLine) return null;
+                  return (<>
+                    <div data-day-pills="" onClick={stop} onKeyDown={stop} style={{ display:"flex", gap:8, padding:"0 9px 9px", alignItems:"stretch" }}>
+                      {warm ? pill(warm) : null}
+                      {stepLine ? <div data-step-slot="" style={{ flex:"1 1 0", minWidth:0, display:"flex" }}>{pill(stepLine)}</div> : null}
+                    </div>
+                    {hint ? <div onClick={stop} onKeyDown={stop} style={{ padding:"0 13px 9px", marginTop:-3 }}>{hint}</div> : null}
+                  </>);
+                })()}
               </div>
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}
               {masteryCard ? <div data-mastery-slot="" style={{ marginTop:9 }}>{masteryCard}</div> : null}
@@ -312,99 +318,86 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
           const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
           const ppl = Object.keys(by).length;
           return (
-            <div style={{ margin:"0 14px 10px", padding:"9px 13px", borderRadius:12, fontSize:11,
-              color: T.modSub.color, background:"rgba(200,169,110,0.06)",
-              border:"1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
-              <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:"#C8A96E" }}>пульс недели</span>
+            // v44 (Доп. 357): плотнее; в светлой теме — тёмное золото (раньше #C8A96E на кремовом почти не читался)
+            <div data-pulse="" style={{ margin:"0 14px 8px", padding:"6px 12px", borderRadius:12, fontSize:11, lineHeight:1.4,
+              color: T.modSub.color, background: a11y ? "rgba(255,250,238,0.55)" : "rgba(200,169,110,0.06)",
+              border: a11y ? "1px solid rgba(150,112,40,0.3)" : "1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
+              <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color: a11y ? "#7A5D2A" : "#C8A96E" }}>пульс недели</span>
               {" "}· {wk.length} {wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов"} · {ppl} чел в игре
-              {top ? <> · лидер: <span style={{ color:"#C8A96E" }}>{top[0].trim()}</span></> : null}
+              {top ? <> · лидер: <span style={{ color: a11y ? "#7A5D2A" : "#C8A96E" }}>{top[0].trim()}</span></> : null}
             </div>
           );
         })()}
 
-        {/* ═══ Карточка «График»: ближайшая смена или где горит ═══ */}
+        {/* ═══ «График смен» и «Книга отзывов» ═══
+            v44 (Доп. 357): две плитки в один ряд (раньше — две карточки во всю ширину, одна под другой). На узком
+            экране, когда плитке меньше 150 px, ряд переносится — плитки встают друг под другом.
+            График: ближайшая смена (из сводки sa_today_shift) или что в нём делать; вся плитка — кнопка.
+            Книга отзывов (Доп. 185: витрина вернулась на главную — она про человека, а не про раздел): страницы,
+            ранг, печати, ляссе, золотая нить прогресса и бейдж непрочитанных — как были; монограмма и
+            «Личная · имя» ушли из плитки ради места (имя и так в приветствии). */}
         {(() => {
           const mgr = !!profile?.is_admin;
+          const subS = (() => {
+            // Живая подпись из офлайн-сводки: смена сегодня
+            try {
+              const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
+              const t = new Date();
+              const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+              // время смены не рвётся по тире: «Сегодня: Вечер · / 17:00–24:00», а не «17:00– / 24:00»
+              if (r && r.date === key && r.label) return r.label === "выходной" ? "Сегодня выходной ✦" : "Сегодня: " + String(r.label).replace(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/g, "$1\u2060–\u2060$2");
+            } catch (e) {}
+            return mgr ? "Составить, проверить и опубликовать" : "Смены, время и старший смены";
+          })();
+          const bs = onGuestBook && profile ? bookStats(MODULES, completed, quizDone, examResults) : null;
+          const unread = bs ? countUnreadPages(completed, quizDone, examResults) : 0;
+          const glass = a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)";
+          // border-box: основа 150 px — вместе с полями и рамкой, иначе плитка с полями шире соседки и ряд переносится раньше
+          const tile = { flex:"1 1 150px", minWidth:0, boxSizing:"border-box", position:"relative", borderRadius:14, cursor:"pointer", background: saInner(a11y), boxShadow: glass };
           return (
-            <div style={{ padding: "0 14px 9px" }}>
-            <div className="sa-card sa-glass" onClick={() => onSchedule && onSchedule()}
-              {...onActivate(() => onSchedule && onSchedule())}
-              style={{
-                borderRadius: 14, padding: "12px 13px", cursor: "pointer",
-                background: saInner(a11y), border: `1px solid ${saFrame(a11y, "mid")}`,
-                boxShadow: a11y
-                  ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
-                  : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)",
-              }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                  background: "rgba(200,169,110,0.13)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {UI_SVG.calendar ? UI_SVG.calendar(GOLD, 20) : <span style={{ fontSize: 16 }}>🗓</span>}
+            <div data-home-tiles="" style={{ display:"flex", flexWrap:"wrap", gap:8, padding:"0 14px 8px" }}>
+              <div className="sa-card sa-glass" data-tile="schedule" onClick={() => onSchedule && onSchedule()} {...onActivate(() => onSchedule && onSchedule())}
+                style={{ ...tile, border:`1px solid ${saFrame(a11y, "mid")}`, padding:"8px 10px", display:"flex", alignItems:"center", gap:9 }}>
+                <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, background:"rgba(200,169,110,0.13)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {UI_SVG.calendar ? UI_SVG.calendar(GOLD, 16) : <span style={{ fontSize: 14 }}>🗓</span>}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, color: a11y ? "#2A1F0E" : CREAM }}>
-                    {mgr ? "График смен" : "Мой график"}
-                  </div>
-                  <div style={{ fontSize: 11, color: a11y ? "#6B5B40" : "#A09080", marginTop: 2 }}>
-                    {(() => {
-                      // Живая подпись из офлайн-сводки: смена сегодня
-                      try {
-                        const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
-                        const t = new Date();
-                        const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
-                        if (r && r.date === key && r.label) {
-                          return r.label === "выходной" ? "Сегодня выходной ✦" : "Сегодня: " + r.label;
-                        }
-                      } catch (e) {}
-                      return mgr ? "Составить, проверить и опубликовать" : "Смены, время и старший смены";
-                    })()}
-                  </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13.5, lineHeight:1.25, color: a11y ? "#2A1F0E" : CREAM, whiteSpace:"nowrap" }}>{mgr ? "График смен" : "Мой график"}</div>
+                  <div style={{ fontSize: a11y ? 11 : 10.5, lineHeight:1.3, color: a11y ? "#6B5B40" : "#A09080", marginTop:2 }}>{subS}</div>
                 </div>
-                <div style={{ fontFamily: "monospace", flexShrink: 0, fontSize: 9, letterSpacing: 1.4,
-                  color: "#1A1008", background: GOLD, borderRadius: 12, padding: "6px 11px" }}>ОТКРЫТЬ ›</div>
               </div>
-            </div>
-            </div>
-          );
-        })()}
-
-        {/* ═══ Книга отзывов — слим-витрина: монограмма, печати, золотая нить ═══ */}
-        {/* Доп. 185: витрина Книги отзывов возвращена на главную — она про человека, а не про раздел */}
-        {onGuestBook && profile && (() => {
-          const bs = bookStats(MODULES, completed, quizDone, examResults);
-          const unread = countUnreadPages(completed, quizDone, examResults);
-          return (
-            <div style={{ padding:"0 14px 9px" }}>
-              <div onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ position:"relative", borderRadius:14, background: saInner(a11y), border: `1px solid ${saFrame(a11y, "full")}`, boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 14px rgba(120,85,25,0.2)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 6px 18px rgba(0,0,0,0.45)", cursor:"pointer" }}>
-                {unread > 0 && (
-                  <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #7A5D2A 100%)",
-                    color:"#1A1008", fontSize:9, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
-                    border: a11y ? "1.5px solid #F5EFE2" : "1.5px solid #1A1008",
-                    boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
-                )}
-                <div style={{ overflow:"hidden", position:"relative", background: "transparent", borderRadius:12.5 }}>
-                  {/* ляссе */}
-                  <div style={{ position:"absolute", right:16, top:0, width:7, height:20, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />
-                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px 8px" }}>
-                    <div style={{ width:30, height:30, borderRadius:"50%", flexShrink:0, border:`1.2px solid ${GOLD}88`, background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)", display:"flex", alignItems:"center", justifyContent:"center", color: a11y ? "#7A5D2A" : GOLD, fontSize:14, fontFamily:"Georgia, serif" }}>{(profile.name || "?")[0]}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-                        <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
-                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9 }}>{bs.pages}/{bs.total}</span>
+              {bs ? (
+                <div data-tile="book" onClick={onGuestBook} {...onActivate(onGuestBook)} style={{ ...tile, border:`1px solid ${saFrame(a11y, "full")}` }}>
+                  {unread > 0 && (
+                    <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #7A5D2A 100%)",
+                      color:"#1A1008", fontSize: a11y ? 11 : 9, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
+                      border: a11y ? "1.5px solid #F5EFE2" : "1.5px solid #1A1008",
+                      boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
+                  )}
+                  <div style={{ overflow:"hidden", position:"relative", borderRadius:12.5, height:"100%", display:"flex", flexDirection:"column" }}>
+                    {/* ляссе */}
+                    <div style={{ position:"absolute", right:12, top:0, width:6, height:16, background:"linear-gradient(180deg, #8B3020, #5E1F12)", clipPath:"polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }} />
+                    <div style={{ flex:1, minWidth:0, padding:"8px 10px 7px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                      {/* узкая плитка (светлая тема, крупнее метки): счёт страниц и печати переносятся строкой ниже */}
+                      <div style={{ display:"flex", flexWrap:"wrap", alignItems:"baseline", columnGap:5, minWidth:0, paddingRight:12 }}>
+                        <span style={{ color: T.modTitle.color, fontSize:13.5, lineHeight:1.25, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
+                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 9, whiteSpace:"nowrap" }}>{bs.pages}/{bs.total}</span>
                       </div>
-                      <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:2, marginTop:2, textTransform:"uppercase", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>ЛИЧНАЯ · {profile.name} · {bs.rank.label}</div>
+                      <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6, rowGap:3, marginTop:3, minWidth:0 }}>
+                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 9, letterSpacing: a11y ? 0.6 : 1.2, textTransform:"uppercase", whiteSpace:"nowrap" }}>{bs.rank.label}</span>
+                        <span style={{ display:"flex", gap:2, alignItems:"center", minWidth:0 }}>
+                          {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display:"flex", gap:2.5, alignItems:"center", paddingRight:10, flexShrink:0 }}>
-                      {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
+                    <div style={{ height:2.5, background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.45)" }}>
+                      <div style={{ width:`${bs.total ? Math.round((bs.pages / bs.total) * 100) : 0}%`, height:"100%", background:`linear-gradient(90deg, ${GOLD_SOFT}, ${GOLD})`, boxShadow:`0 0 6px ${GOLD}88` }} />
                     </div>
-                  </div>
-                  <div style={{ height:2.5, background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.45)" }}>
-                    <div style={{ width:`${bs.total ? Math.round((bs.pages / bs.total) * 100) : 0}%`, height:"100%", background:`linear-gradient(90deg, ${GOLD_SOFT}, ${GOLD})`, boxShadow:`0 0 6px ${GOLD}88` }} />
                   </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           );
         })()}
@@ -507,7 +500,8 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
               // Замер в браузере: при кружках 40 px «Справочник» вылезал на 9 px
               // (390 px) и на 7 px (360 px). Кружки 38 / 34 px, отступы ужаты.
               const narrow = typeof window !== "undefined" && window.innerWidth < 380;
-              const ring = narrow ? 34 : 38;
+              // v44 (Доп. 357): плотнее — кружки 36 / 34 px, SOS 42 / 40 px, поля капсулы 6 px
+              const ring = narrow ? 34 : 36;
               const sos = visibleTiles.find(t => t.red);
               // Свой цвет каждому инструменту: однородный серый ряд глаз
               // пропускает, а цветной узор замечает боковым зрением.
@@ -522,7 +516,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                 // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
                 <div ref={refTools} className={homeHint && hintsReady && homeStep === 1 ? "sa-pulse" : undefined}
                   style={{ display:"flex", alignItems:"center", gap:6,
-                  margin:"0 14px 9px", padding: narrow ? "10px 10px" : "10px 12px", borderRadius:999,
+                  margin:"0 14px 8px", padding: narrow ? "6px 9px" : "6px 10px", borderRadius:999,
                   background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
                   boxShadow: a11y
                     ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
@@ -584,7 +578,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
                     <span style={{ width:1, height:34, flexShrink:0, alignSelf:"center",
                       background: saFrame(a11y, "mid"), margin:"0 2px" }} />
                     <div onClick={sos.onClick} {...onActivate(sos.onClick)} title="Срочная помощь"
-                      style={{ flexShrink:0, width: narrow ? 42 : 46, height: narrow ? 42 : 46, borderRadius:"50%", cursor:"pointer",
+                      style={{ flexShrink:0, width: narrow ? 40 : 42, height: narrow ? 40 : 42, borderRadius:"50%", cursor:"pointer",
                         display:"grid", placeItems:"center", alignSelf:"center",
                         WebkitTapHighlightColor:"transparent",
                         background: a11y ? "rgba(255,240,240,0.8)" : "rgba(224,120,120,0.14)",

@@ -59,19 +59,20 @@ export function DayStrip({ a11y, streak, steps = 0, goal = 2, onGoal, today }) {
 // венок — «Путь мастера». Размеры — CSS-переменными: на узком экране (меньше 375 px) медальоны меньше,
 // подписи короче («цель», «мастер»); на широком (430 px, тёмная тема) — длиннее: «дней подряд», «первые шаги».
 // Цель выполнена — цифра зелёным и искра над бокалом (подпись та же: длинная не влезла бы в ячейку).
+// v44 (Доп. 357): «более плотнее» — медальоны 32 px (на узком 28), поля ячеек 7 px.
 const DP_CSS = `
-.sa-dp{display:flex;align-items:stretch;border-radius:16px;--dp-m:34px;--dp-i:20px;--dp-l:26px}
-.sa-dp-cell{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 5px;position:relative;cursor:pointer;border-radius:14px;-webkit-tap-highlight-color:transparent}
+.sa-dp{display:flex;align-items:stretch;border-radius:16px;--dp-m:32px;--dp-i:19px;--dp-l:25px}
+.sa-dp-cell{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 5px;position:relative;cursor:pointer;border-radius:14px;-webkit-tap-highlight-color:transparent}
 .sa-dp-cell.st{cursor:default}
 .sa-dp-cell[role=button]:active{background:rgba(214,178,102,.10)}
 .sa-dp-cell:focus-visible{outline:2px solid rgba(214,178,102,.7);outline-offset:-3px}
 .sa-dp-txt{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
-.sa-dp-cap{display:block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;margin-top:5px;white-space:nowrap;line-height:1}
+.sa-dp-cap{display:block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;margin-top:4px;white-space:nowrap;line-height:1}
 .sa-dp.lt .sa-dp-cap{font-size:11px;letter-spacing:.3px}
-.sa-dp-sep{width:1px;align-self:stretch;margin:9px 0;flex-shrink:0}
+.sa-dp-sep{width:1px;align-self:stretch;margin:8px 0;flex-shrink:0}
 .sa-dp-w{display:none}
 @media (min-width:430px){.sa-dp:not(.lt) .sa-dp-w{display:inline}.sa-dp:not(.lt) .sa-dp-n{display:none}}
-@media (max-width:374px){.sa-dp{--dp-m:28px;--dp-i:17px;--dp-l:22px}.sa-dp-cell{gap:5px;padding:10px 3px}.sa-dp-x{display:none}}
+@media (max-width:374px){.sa-dp{--dp-m:28px;--dp-i:17px;--dp-l:22px}.sa-dp-cell{gap:5px;padding:7px 3px}.sa-dp-x{display:none}}
 `;
 function ensureDayPanelCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;
@@ -99,7 +100,7 @@ export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mas
     const have = mastery.have != null ? mastery.have : Number(t[0]) || 0, total = mastery.total != null ? mastery.total : Number(t[1]) || 14;
     return { have, total, pct: mastery.pct != null ? mastery.pct : (total ? have / total : 0), mode: mastery.mode || "path" };
   })() : null;
-  const M = "var(--dp-m,34px)", I = "var(--dp-i,20px)", L = "var(--dp-l,26px)";
+  const M = "var(--dp-m,32px)", I = "var(--dp-i,19px)", L = "var(--dp-l,25px)";
   return (
     <div className={"tbv sa-dp" + (a11y ? " lt" : "")} data-day-panel=""
       style={{ background: p.panel, border: "1px solid " + p.panelLine, borderTopColor: p.panelTop, boxShadow: p.shadow }}>
@@ -164,9 +165,28 @@ function GoalSheet({ a11y, goal, onPick, onClose }) {
   );
 }
 
-export function WarmupCard({ a11y, shift, known = true, done, onStart, compact = false, children, what = "ситуации" }) {
+export function WarmupCard({ a11y, shift, known = true, done, onStart, compact = false, children, what = "ситуации", pill = false }) {
   ensureTableCss();
   const c = C(a11y);
+  if (compact && pill) {
+    // v44 (Доп. 357): плашка внизу карточки трека, рядом с «Шагом дня»: «РАЗМИНКА» и «2 мин · вечер»
+    // (время смены — на плитке «График смен»); подсказку «Напоминать в Telegram» RoleSelect ставит под плашками
+    if (done) return null;
+    const when = "2 мин" + (shift ? " · " + String(shift).split("·")[0].trim().toLowerCase() : known ? " · сегодня смена" : " · перед сменой");
+    return (
+      <div className="tbv" role="button" tabIndex={0} onClick={onStart} {...onActivate(onStart)} data-tb-warmup="" data-pill="warmup"
+        aria-label={"Разминка до смены: " + when + ". Начать"}
+        style={{ flex: "1 1 0", minWidth: 0, display: "flex", alignItems: "center", gap: 8, padding: "7px 9px 7px 10px", borderRadius: 12, cursor: "pointer",
+          border: "1px solid " + c.line, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,240,205,0.05)" }}>
+        <span style={{ color: c.gold, display: "inline-flex", flexShrink: 0 }}><Ic n="clock" s={16} /></span>
+        <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true">
+          <span style={{ display: "block", fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace", fontSize: a11y ? 11 : 9.5, letterSpacing: 1, textTransform: "uppercase", color: c.gold, lineHeight: 1.3 }}>Разминка</span>
+          <span style={{ display: "block", fontSize: 12.5, color: c.text, lineHeight: 1.3, marginTop: 1 }}>{when}</span>
+        </span>
+        <span aria-hidden="true" style={{ color: c.gold, fontSize: 15, lineHeight: 1, flexShrink: 0 }}>›</span>
+      </div>
+    );
+  }
   if (compact) {
     // Доп. 306: нижняя строка главной карточки (её часть, а не отдельная карточка);
     // сделал разминку — строка уходит

@@ -297,13 +297,29 @@ const StepArrow = ({ c }) => (
     border: "1px solid " + c.gold + "77", background: "radial-gradient(circle at 35% 30%, " + c.gold + "22, transparent 70%)" }}>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.gold} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
   </span>);
-export function StepLine({ a11y, step, onStep }) {
+export function StepLine({ a11y, step, onStep, pill = false }) {
   ensureMsCardCss();
   if (!step || step.done || !step.text) return null;
   const c = msPal(a11y);
   const go = () => { vibrate("light"); onStep && onStep(step); };
   // последнее слово — вместе с предпоследним: строка не кончается одиноким «дня»»
   const text = msTie(step.text).replace(/\s+(\S+)$/, "\u00A0$1");
+  // v44 (Доп. 357): плашкой внизу карточки трека, рядом с разминкой: «ШАГ ДНЯ» и дело (без «Попробуй:» — места
+  // мало, приставку говорит значок); длинное — до трёх строк, без многоточия; вся плашка — кнопка
+  if (pill) return (
+    <div role="button" tabIndex={0} className="ms-zone" data-ms-line="" data-pill="step" onClick={go} {...onActivate(go)}
+      aria-label={"Шаг дня: " + step.text + (step.sub ? ". " + step.sub : "")}
+      style={{ flex: "1 1 0", minWidth: 0, display: "flex", alignItems: "center", gap: 8, padding: "7px 9px 7px 10px", borderRadius: 12, cursor: "pointer",
+        border: "1px solid " + c.line, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,240,205,0.05)" }}>
+      <span style={{ flexShrink: 0, display: "inline-flex" }}><FamIcon id={stepIcon(step)} size={16} color={c.gold} strokeWidth={1.9} /></span>
+      <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true">
+        <span style={{ ...msEye(a11y), fontSize: a11y ? 11 : 9.5, letterSpacing: 1, color: c.gold, display: "block" }}>Шаг дня</span>
+        {/* в узкой плашке слова переносятся свободно (без неразрывной склейки последних слов, как в строке) */}
+        <span className="ms-clamp ms-c3" style={{ fontFamily: BODY, fontSize: 12.5, lineHeight: 1.3, color: c.text, marginTop: 1 }}>{String(step.text).replace(/^Попробуй:\s*/, "").replace(/^./, (x) => x.toUpperCase())}</span>
+      </span>
+      <span aria-hidden="true" style={{ color: c.gold, fontSize: 15, lineHeight: 1, flexShrink: 0 }}>›</span>
+    </div>
+  );
   return (
     <div role="button" tabIndex={0} className="ms-zone" data-ms-line="" onClick={go} {...onActivate(go)}
       aria-label={"Шаг дня: " + step.text + (step.sub ? ". " + step.sub : "")}

@@ -283,6 +283,19 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   const below = box.top + box.h + 150 < vh;          // помещается ли под целью
   const left = Math.max(pad, Math.min(box.left + box.w / 2 - W / 2, vw - W - pad));
   const cx = box.left + box.w / 2 - left;            // центр цели внутри пузыря
+  // v50 (Доп. 363): высокая узкая цель у левого края (меню слева в горизонтали и на компьютере) —
+  // пузырь справа от неё, хвостик смотрит влево, на середину цели
+  const side = box.h > box.w * 1.6 && box.left + box.w < vw * 0.3 && box.left + box.w + 16 + W + pad <= vw;
+  const cyT = box.top + box.h / 2;
+  const sTop = Math.max(pad, Math.min(cyT - 60, vh - 230));
+  const sideTail = (
+    <svg width="22" height="11" viewBox="0 0 22 11" style={{ position:"absolute", left:-15.5,
+      top: Math.max(14, Math.min(cyT - sTop, 200)) - 5.5, overflow:"visible", transform:"rotate(-90deg)" }}>
+      <path d="M0 11 L11 1 L22 11 Z" fill={fill} />
+      <path d="M0 11 L11 1 L22 11" fill="none" stroke={edge} strokeWidth="1" strokeLinejoin="round" />
+      <path d="M1 11 L21 11" stroke={fill} strokeWidth="2.5" />
+    </svg>
+  );
   const tail = (
     <svg width="22" height="11" viewBox="0 0 22 11" style={{ position:"absolute",
       left: Math.max(12, Math.min(cx - 11, W - 34)),
@@ -314,10 +327,16 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
           и всплывает уже на месте. Плавный переезд на большом расстоянии
           читается как полёт постороннего объекта — подсветке скользить
           уместно, она связывает старую цель с новой, а пузырю нет. */}
+      {side ? (
+        <div key={step} className="sa-hintin" data-hint-side="" style={{ position:"fixed", width:W, left: box.left + box.w + 16, top: sTop }}>
+          {sideTail}{body}
+        </div>
+      ) : (
       <div key={step} className="sa-hintin" style={{ position:"fixed", width:W, left,
         [below ? "top" : "bottom"]: below ? box.top + box.h + 14 : vh - box.top + 14 }}>
         {tail}{body}
       </div>
+      )}
     </div>,
     document.body
   );

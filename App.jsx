@@ -35,7 +35,8 @@ import { Candle } from "./ui/table-bits";
 import { DayChips, WarmupCard, RemindSheet, readRemindFlag, inTelegramApp } from "./ui/day-cards";
 import { syncMySchedule } from "./lib/schedule-sync";
 import { practiceQuestionTexts, mistakeFromSituation } from "./lib/practice-mistake";
-import { LiquidTabBar } from "./ui/tabbar";
+import { LiquidTabBar, NavRail } from "./ui/tabbar";
+import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";   // v50 (Доп. 363): горизонталь и компьютер
 import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
 import { GLOSSARY } from "./data/glossary";
@@ -535,6 +536,22 @@ function ServiceAcademy() {
     window.addEventListener("online", on); window.addEventListener("offline", off);
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
+  // v50 (Доп. 363): телефон лёжа и компьютер. Шире 600 px — меню слева вместо нижней панели, колонка
+  // экрана шире и по центру свободного места; главная — в две колонки, когда хватает места. Портрет не
+  // меняется. Классы на <html> и переменные --sa-rail / --sa-colw читают правила в ui/css.js.
+  const vp = useViewport();
+  const NAV_SCREENS = ["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"];
+  const navOn = NAV_SCREENS.includes(screen) && !!profile;
+  const railOn = vp.wide && navOn;
+  const colW = colWidthOf(vp, screen, railOn, vp.safe);
+  const homeCols = screen === "roleSelect" && homeTwoCols(vp, railOn, vp.safe);
+  React.useLayoutEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("sa-wide", vp.wide); el.classList.toggle("sa-short", vp.short);
+    el.classList.toggle("sa-desk", vp.desk); el.classList.toggle("sa-railon", railOn);
+    el.style.setProperty("--sa-rail", railOn ? `calc(${RAIL_W}px + env(safe-area-inset-left, 0px))` : "env(safe-area-inset-left, 0px)");
+    el.style.setProperty("--sa-colw", colW + "px");
+  }, [vp.wide, vp.short, vp.desk, railOn, colW]);
   const offlineHelp = { key:"offline", icon:"mistakes", label:"Без сети", sub: online ? "Как открывать приложение без связи" : "Сейчас без связи — работаем на сохранённом", onClick:() => navigate("offline") }; // Доп. 170: открыть Колоду меню на блюде (карточка в ответе Наставника)
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());
@@ -1908,7 +1925,10 @@ function ServiceAcademy() {
     }, {})
   ).map(p => ({ ...p, avg: Math.round(p.sum / p.total) })).sort((a, b) => b.avg - a.avg), [scores]);
 
-  const T = a11y ? A : S;
+  // v50 (Доп. 363): телефон лёжа — шапки экранов ниже: сверху нет строки состояния, а высоты экрана мало
+  const T0 = a11y ? A : S;
+  const T = useMemo(() => (vp.short ? { ...T0, modHead: { ...T0.modHead, padding: "14px 18px 12px" },
+    lessHead: { ...T0.lessHead, padding: "12px 18px 10px" }, homeHead: { ...T0.homeHead, padding: "14px 18px 8px" } } : T0), [T0, vp.short]);
 
   // Тяжёлые данные (СПГ-модули, живые диалоги) догружаются после первой
   // отрисовки — старт приложения их не ждёт. Тик состояния перерисовывает
@@ -2405,7 +2425,7 @@ function ServiceAcademy() {
         onOpen={(it) => { ackBadge(it); openMastery(it && it.kind === "master" ? "certificate" : it && it.kind === "tier" ? it.id : null); }}
         onClose={(it) => ackBadge(it)} /> : null}
 
-      <div style={T.phone}>
+      <div style={T.phone} className="sa-col">
         {!["profile","login"].includes(screen) && (
           <div style={T.a11yBar}>
             <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
@@ -2631,7 +2651,7 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom:88}}><RoleSelect learnOnly hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
+        {screen === "roleSelect" && <div style={{paddingBottom: vp.wide ? 24 : 88}}><RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short} hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
           dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
             /* v41 (Доп. 354): «Путь мастера» — чипом рядом со свечой и стаканом, а не карточкой под треком */
             mastery={role && mShown ? masteryChip(mShown, mNew.size, a11y) : null} onMastery={() => openMastery()} /> : null}
@@ -2839,7 +2859,7 @@ function ServiceAcademy() {
         {welcome && <WelcomeIntro T={T} a11y={a11y} isAdmin={!!profile?.is_admin} canHire={!!profile?.is_admin || ["manager","senior"].includes(profile?.position)} onClose={closeWelcome} />}
         {/* Контекстная подсказка о повторении — над навбаром, показывается один раз */}
         {mistakeHint && !welcome && (
-          <div className="sa-hintin" style={{ position: "fixed", left: 16, right: 16, bottom: 104, zIndex: 400,
+          <div className="sa-hintin" style={{ position: "fixed", left: 16, right: 16, bottom: vp.wide ? 24 : 104, zIndex: 400,
               maxWidth: 420, margin: "0 auto", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 16,
               opacity: hintLeaving ? 0 : 1, transform: hintLeaving ? "translateY(14px)" : undefined,
               transition: "opacity .24s ease, transform .24s ease",
@@ -2860,7 +2880,8 @@ function ServiceAcademy() {
         )}
 
         {/* Плавающий AI-ассистент — главный вход во флагманскую фичу */}
-        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"].includes(screen) && profile && !welcome && !mistakeHint && (
+        {/* v50: в широкой раскладке кнопка Наставника — в меню слева (NavRail), не над содержимым */}
+        {navOn && !vp.wide && !welcome && !mistakeHint && (
           <AiFab a11y={a11y} screen={screen} onClick={() => navigate("assistant")} />
         )}
 
@@ -2872,20 +2893,20 @@ function ServiceAcademy() {
           </div>
         )}
         {/* Доп. 133: четыре вкладки. Экран внутри раздела подсвечивает свою вкладку. */}
-        {["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"].includes(screen) && profile && (
-          <LiquidTabBar
-            a11y={a11y}
-            activeId={({ roleSelect:"roleSelect", home:"roleSelect", module:"roleSelect", glossary:"roleSelect", daily:"shift", shift:"shift",
-                         leaderboard:"teamHub", team:"teamHub", playerDetail:"teamHub", teamHub:"teamHub", stats:"me", me:"me" })[screen] || screen}
-            onTab={(id) => { if (screen !== id) vibrate("light"); navigate(id); }}
-            tabs={[
-              { id:"roleSelect", icon:"home",  label:"Учусь" },
-              { id:"shift",      icon:"daily", label:"Смена" },
-              { id:"teamHub",    icon:"team",  label:"Команда" },
-              { id:"me",         icon:"stats", label:"Я" },
-            ]}
-          />
-        )}
+        {navOn && (() => {
+          const activeId = ({ roleSelect:"roleSelect", home:"roleSelect", module:"roleSelect", glossary:"roleSelect", daily:"shift", shift:"shift",
+                         leaderboard:"teamHub", team:"teamHub", playerDetail:"teamHub", teamHub:"teamHub", stats:"me", me:"me" })[screen] || screen;
+          const tabs = [
+            { id:"roleSelect", icon:"home",  label:"Учусь" },
+            { id:"shift",      icon:"daily", label:"Смена" },
+            { id:"teamHub",    icon:"team",  label:"Команда" },
+            { id:"me",         icon:"stats", label:"Я" },
+          ];
+          // v50 (Доп. 363): шире 600 px — меню слева (телефон лёжа, планшет, компьютер); в портрете — как было
+          return vp.wide
+            ? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate("assistant")} />
+            : <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate("light"); navigate(id); }} tabs={tabs} />;
+        })()}
       </div>
     </div>
   );

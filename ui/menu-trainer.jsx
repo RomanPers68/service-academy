@@ -236,7 +236,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v49</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v50</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -1172,7 +1172,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         {/* запас снизу: последнее поле можно поднять выше полосы кнопок */}
         <div aria-hidden="true" style={{ height: 160 }} />
         {/* липкие кнопки — под рукой; пока печатаешь — уезжают вниз, чтобы не закрывать поле */}
-        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", zIndex: 30,
+        <div className="sa-colbar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", zIndex: 30,
           transform: typingMenu ? "translateY(120%)" : "none", transition: "transform .25s ease",
           background: a11y ? "rgba(245,238,222,0.92)" : "rgba(21,17,11,0.92)", borderTop: `1px solid ${gold}33`, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <div style={{ display: "flex", gap: 10 }}>

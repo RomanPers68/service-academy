@@ -389,6 +389,19 @@ html.sa-light .dc-review,.sa-dlg.dc.lt .dc-review{box-shadow:0 0 0 1px rgba(139,
 @keyframes dcBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 @keyframes dcBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}
 @media (prefers-reduced-motion: reduce){.sa-dlg.dc,.sa-dlg.dc *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* v50 (Доп. 363): телефон лёжа — переписка слева, ответы справа во всю высоту. Снизу панель ответов закрывала
+   бы почти весь низкий экран вместе с репликами гостя. Панель стоит на месте всегда (между вопросами — пустая),
+   чтобы переписка не меняла ширину на каждом ответе; запасное поле под панель ленте не нужно (layoutChat). */
+@media (min-width:700px) and (max-height:540px){
+  .sa-dlg.dc .dc-chat{right:min(44%,400px)}
+  .sa-dlg.dc .dc-down{right:calc(min(44%,400px) + 12px)}
+  .sa-dlg.dc .dc-feed{padding-left:max(12px,env(safe-area-inset-left,0px))}
+  .sa-dlg.dc .dc-pane{top:0;left:auto;width:min(44%,400px);transform:none}
+  .sa-dlg.dc .dc-pane-box{height:100%;max-width:none;margin:0;border-radius:0;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:10px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) 12px;box-shadow:inset 1px 0 0 var(--pane-line)}
+  .sa-dlg.dc .dc-kb{max-height:none;flex:1 1 auto;min-height:0}
+  .sa-dlg.dc .dc-opts{flex:1 1 auto;min-height:0}
+}
 `;
 
 // Прежние ключевые кадры — их по-прежнему берут Наставник (.dlg-in) и награды (achIconPulse),
@@ -717,7 +730,9 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
       if (g.open) reserve = g.extra;                             // панель ушла — её место остаётся полем
       reserve = Math.max(0, reserve - (inner - g.inner));        // новые реплики занимают поле
     }
-    const extra = open ? Math.max(0, bh + 14 - base) : reserve;
+    // v50: телефон лёжа — панель стоит сбоку от ленты и не закрывает реплики: запасное поле под неё не нужно
+    const covers = !!(box && box.getBoundingClientRect().left < el.getBoundingClientRect().right - 1);
+    const extra = open && covers ? Math.max(0, bh + 14 - base) : open ? 0 : reserve;
     sp.style.height = extra + "px";
     if (wrapRef.current) wrapRef.current.style.setProperty("--dc-padb", (base + extra) + "px");
     if (stickRef.current) el.scrollTop = el.scrollHeight;   // к последней реплике (браузер сам ограничит)

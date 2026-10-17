@@ -239,7 +239,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
           </>}
           {msg && <div style={{ fontSize: 12.5, color: /✓/.test(msg) ? "#5DBB8A" : "#E07878", marginTop: 10 }}>{msg}</div>}
         </div>
-        <div style={{ position: "fixed", left: 0, right: 0, bottom: "calc(64px + env(safe-area-inset-bottom, 0px))", padding: "10px 16px 12px", background: a11y ? "rgba(250,242,222,0.96)" : "rgba(24,19,9,0.96)", borderTop: `1px solid ${gold}33`, display: "flex", gap: 10, zIndex: 20 }}>
+        <div className="sa-colbar" style={{ position: "fixed", left: 0, right: 0, bottom: "calc(64px + env(safe-area-inset-bottom, 0px))", padding: "10px 16px 12px", background: a11y ? "rgba(250,242,222,0.96)" : "rgba(24,19,9,0.96)", borderTop: `1px solid ${gold}33`, display: "flex", gap: 10, zIndex: 20 }}>
           <button className="sa-btn" onClick={() => setForm(null)} style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}66`, color: text }}>Отмена</button>
           <button className="sa-btn" onClick={save} disabled={busy} style={{ ...T.doneBtn, flex: 1.6, background: gold, opacity: busy ? 0.55 : 1 }}>{busy ? "Сохраняю…" : form.id ? "Сохранить — увидят все" : "Добавить в Колоду"}</button>
         </div>

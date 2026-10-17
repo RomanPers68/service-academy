@@ -138,7 +138,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
     <div className="tbm" style={vars}>
       {/* Доп. 307: в листаемом треке меню — страница, кнопки «Назад» у него нет */}
       {embedded ? null : (
-        <div style={{ padding: "44px 18px 8px" }}>
+        <div className="sa-tophead" style={{ padding: "44px 18px 8px" }}>
           <button onClick={onBack} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: a11y ? "#6B5B40" : "#A29679", fontSize: 15, fontFamily: "Georgia, serif" }}>‹ Назад</button>
         </div>
       )}

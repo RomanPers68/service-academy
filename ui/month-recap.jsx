@@ -307,7 +307,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   };
   const canFiles = (() => { try { return !!(typeof navigator !== "undefined" && navigator.canShare && typeof File !== "undefined" && navigator.canShare({ files: [new File([""], "a.png", { type: "image/png" })] })); } catch (e) { return false; } })();
   const el = (
-    <div className="mr tbv" role="dialog" aria-modal="true" aria-label={"Итоги месяца: " + r.title}>
+    <div className="mr tbv sa-layer" style={{ "--sa-layerw": "520px" }} role="dialog" aria-modal="true" aria-label={"Итоги месяца: " + r.title}>
       <div className="mr-bg" style={{ background: (a11y ? BG_L : BG)[i % BG.length] }} />
       <div className="mr-top">
         <div className="mr-bars" aria-hidden="true">{cards.map((c, k) => <i key={c.k} className={k < i ? "done" : k === i ? "run" + (hold || last ? " hold" : "") : undefined}><b style={k === i ? { animationDuration: SHOW + "ms" } : undefined} /></i>)}</div>

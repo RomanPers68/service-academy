@@ -207,6 +207,9 @@ export const injectStyles = () => {
        старых клиентах disableVerticalSwipes отсутствует). Контейнерный
        скролл она не трогает — работает на любой версии клиента. */
     html, body { height: 100%; overflow: hidden !important; touch-action: pan-y; }
+    /* Доп. 363: iPhone при повороте сам «подгоняет» шрифт (text autosizing) и после возврата
+       в портрет оставляет его крупнее — запись владельца. Размер текста задаём только мы. */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     #root { height: 100%; overflow-y: auto; overflow-x: hidden;
       -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; }
     #root { scrollbar-width: none; }
@@ -886,8 +889,92 @@ export const injectStyles = () => {
     html.sa-light .sa-bld-fstage.bad .sa-bld-fbar{background:linear-gradient(90deg,rgba(139,48,32,0.25),#8B3020)}
     html.sa-light .sa-bld-fstage.now .sa-bld-fring{border-color:#7A5D2A}
     html.sa-light .sa-bld-fstage.now .sa-bld-fnm{color:#7A5D2A}
+
+    /* ═══ v50 (Доп. 363): телефон лёжа и компьютер ═══
+       Классы на <html> ставит App (ui/viewport.js): sa-wide — шире 600 px, sa-short — ниже 540 px (телефон лёжа),
+       sa-desk — компьютер, sa-railon — видно меню слева. --sa-rail — правый край меню (без меню — вырез экрана),
+       --sa-colw — какой ширины хочет быть колонка экрана. Портрет (без sa-wide) эти правила не трогают. */
+    /* у body остаётся поле браузера 8 px — портрет с ним и сверстан; в широкой раскладке поле снимаем, чтобы
+       колонка стояла ровно по центру и не вылезала за край */
+    html.sa-wide body { margin: 0 !important; }
+    html.sa-wide {
+      --sa-colx: max(calc(var(--sa-rail, 0px) + 12px), calc((100vw - var(--sa-colw, 640px)) / 2));
+      --sa-colr: min(var(--sa-colw, 640px), calc(100vw - var(--sa-rail, 0px) - env(safe-area-inset-right, 0px) - 24px));
+    }
+    /* Колонка экрана: по центру свободного места справа от меню; тесно — прижата к меню с полем 12 px */
+    html.sa-wide .sa-col { width: var(--sa-colr) !important; max-width: none !important; flex-shrink: 0;
+      margin-left: var(--sa-colx) !important; margin-right: auto !important; }
+    /* Слои порталом в body, привязанные к колонке: шапка-закладка и «Дальше» в треке, всплывашка значка */
+    html.sa-wide .tbp-pin { left: calc(var(--sa-colx) + var(--sa-colr) / 2) !important; max-width: var(--sa-colr) !important; }
+    html.sa-wide .tbp-go { left: calc(var(--sa-colx) + 14px) !important; bottom: calc(max(env(safe-area-inset-bottom, 0px), 8px) + 16px) !important; }
+    html.sa-wide .ms-toast-pos { left: var(--sa-colx) !important; right: auto !important; width: var(--sa-colr);
+      bottom: calc(max(env(safe-area-inset-bottom, 0px), 8px) + 16px) !important; }
+    /* Меню слева: подсветка под мышью (на сенсоре её нет) */
+    @media (hover: hover) and (pointer: fine) {
+      .sa-railitem { transition: background .2s ease; }
+      .sa-railitem:hover { background: rgba(214,178,102,0.08); }
+      html.sa-light .sa-railitem:hover { background: rgba(139,106,48,0.08); }
+    }
+    /* Главная в две колонки: слева шапка дня (логотип, приветствие, ритм дня, трек, плитки, инструменты),
+       справа треки и анонсы. Шапка занимает все строки сетки, последняя строка — 1fr: она забирает
+       разницу высот, и между карточками справа не появляются пустоты. */
+    html.sa-wide .sa-home2 { display: grid !important; grid-template-columns: minmax(310px, 440px) minmax(300px, 1fr);
+      grid-template-rows: repeat(12, auto) 1fr; column-gap: clamp(20px, 2.5vw, 32px); align-items: start; }
+    html.sa-wide .sa-home2 > * { grid-column: 2; min-width: 0; }
+    html.sa-wide .sa-home2 > :first-child { grid-column: 1; grid-row: 1 / -1; }
+    /* График (свой слой на весь экран): колонкой по центру; от 700 px — в две колонки. У руководителя слева
+       «Требует внимания», кнопки, «Сегодня» и разделы, справа карточка «Смены» с таблицей; у сотрудника слева
+       карточка смены и медальоны, справа календарь месяца. Строки сетки — как у главной (последняя 1fr). */
+    html.sa-wide .sa-schedcol { width: min(var(--sa-schedw, 680px), calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 24px));
+      margin: 0 auto; flex-shrink: 0; }
+    html.sa-wide .sa-schedbody { display: flex; flex-direction: column; }
+    html.sa-wide .sa-schedcol.sa-two { --sa-schedw: 1480px; }
+    /* месяц в две колонки — таблица тянется по ширине карточки: на компьютере 31 день помещается без прокрутки
+       вбок; где места меньше (не уже 92 + 31 × 26 px) — прежняя прокрутка */
+    html.sa-wide .sa-two .sa-schedgrid:not(.sa-wk) table { table-layout: fixed; width: 100%; min-width: 898px; }
+    html.sa-wide .sa-two .sa-schedgrid:not(.sa-wk) th.sa-schednm { width: 92px; }
+    /* левая колонка — 38 % (не меньше 340 и не больше 430 px): на телефоне лёжа правой хватает на неделю */
+    html.sa-wide .sa-two .sa-schedbody { display: grid; grid-template-columns: minmax(340px, min(430px, 38%)) minmax(0, 1fr);
+      grid-template-rows: repeat(40, auto) 1fr; align-items: start; }
+    html.sa-wide .sa-two .sa-schedbody > * { grid-column: 1; min-width: 0; }
+    html.sa-wide .sa-two .sa-schedbody > [data-sched-tabs] { grid-column: 1 / -1; grid-row: 1; }
+    html.sa-wide .sa-two .sa-schedbody > [data-sched-gridcard] { grid-column: 2; grid-row: 2 / -1; }
+    html.sa-wide .sa-two .sa-schedbody > [data-sched-month] { grid-column: 2; grid-row: 1 / -1; }
+    /* «Сохранить» руководителя в две колонки — плашкой внизу по центру (липкая в сетке прилипла бы к своей строке) */
+    html.sa-wide .sa-two [data-savebar] { position: fixed !important; left: 0; right: 0; width: min(560px, calc(100vw - 32px));
+      bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important; margin: 0 auto !important; }
+    /* Полосы кнопок внизу (редакторы урока, меню, коктейля): фон во всю ширину, кнопки — по колонке */
+    html.sa-wide .sa-colbar { padding-left: max(16px, var(--sa-colx)) !important;
+      padding-right: max(16px, calc(100vw - var(--sa-colx) - var(--sa-colr))) !important; }
+    /* Слои на весь экран (Наставник, итоги месяца): на компьютере — панелью по центру, вокруг — притемнение.
+       Прозрачный ::before ловит нажатия мимо панели, чтобы они не уходили в экран под слоем. */
+    @media (min-width: 900px) {
+      html.sa-wide .sa-layer { left: calc((100vw - min(var(--sa-layerw, 760px), calc(100vw - 48px))) / 2) !important; right: auto !important;
+        width: min(var(--sa-layerw, 760px), calc(100vw - 48px)) !important;
+        box-shadow: 0 0 0 1px rgba(214,178,102,0.16), 0 24px 80px rgba(0,0,0,0.55), 0 0 0 100vmax rgba(10,8,4,0.8) !important; }
+      html.sa-light.sa-wide .sa-layer { box-shadow: 0 0 0 1px rgba(139,106,48,0.28), 0 24px 80px rgba(70,50,15,0.25), 0 0 0 100vmax rgba(70,52,22,0.5) !important; }
+      html.sa-wide .sa-layer::before { content: ""; position: fixed; inset: 0; z-index: -1; }
+    }
+    /* Телефон лёжа: у слоёв «у стола» (разминка, радио, живой гость, чек недели…) шапка и полоса кнопок ниже —
+       сверху нет строки состояния, а высоты экрана мало */
+    html.sa-short .tb-head { padding-top: max(10px, env(safe-area-inset-top, 0px)); }
+    html.sa-short .tb-foot { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+    html.sa-short .tb-main { min-height: 44px; }
+    html.sa-short .sa-tophead { padding-top: 14px !important; }
   `;
   document.head.appendChild(style);
+
+  // v50 (Доп. 363): на компьютере колесо мыши над горизонтальной лентой (чипы разделов, вкладки) листает её вбок.
+  // Только если лента правда прокручивается вбок и не умеет вниз; у края ленты колесо снова листает страницу.
+  document.addEventListener("wheel", e => {
+    if (e.ctrlKey || !e.deltaY || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    const el = e.target && e.target.closest && e.target.closest(".sa-hscroll");
+    if (!el || el.scrollWidth <= el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) return;
+    const max = el.scrollWidth - el.clientWidth;
+    if ((e.deltaY < 0 && el.scrollLeft <= 0) || (e.deltaY > 0 && el.scrollLeft >= max - 1)) return;
+    el.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
 
   // Блокируем горизонтальный свайп через JS (кроме лент с классом sa-hscroll)
   let startX = 0, startY = 0, inHScroll = false;

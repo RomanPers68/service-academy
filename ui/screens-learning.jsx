@@ -1562,7 +1562,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     return (
       <div style={{ ...T.screen }} className="sa-screen">
         {/* ── ШАПКа ── */}
-        <div style={{ padding:"44px 18px 10px", background:"transparent" }}>
+        <div className="sa-tophead" style={{ padding:"44px 18px 10px", background:"transparent" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
             <button style={T.backBtn2} onClick={onBack}>‹</button>
             <div style={{ display:"flex", gap:2 }}>

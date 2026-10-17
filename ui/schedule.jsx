@@ -23,6 +23,7 @@ import { CalendarPage } from "./schedule-tile";
 import { palette } from "./day-emblems";
 import { ACCENT_SERIF } from "./styles";
 import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText } from "../lib/schedule-attn";
+import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон лёжа и компьютер
 
 const mono = "ui-monospace, Menlo, monospace";
 const serif = "Georgia, serif";
@@ -415,6 +416,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // (та же формула, что у собеседования кандидатов — canHire в App).
   const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
   const now = new Date();
+  // v50 (Доп. 363): шире 600 px — график колонкой по центру; от 700 px (телефон лёжа, планшет, компьютер) — в две
+  // колонки: у руководителя таблица справа, у сотрудника календарь справа. Портрет — как был.
+  const vpS = useViewport();
+  const twoCols = vpS.wide && vpS.w >= 700;
   const [Y, setY] = React.useState(now.getFullYear());
   const [M, setM] = React.useState(now.getMonth());
   const [cfg, setCfg] = React.useState(null);       // настройки заведения
@@ -438,6 +443,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
   // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
   const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
+  // v50 (Доп. 363): на компьютере в две колонки месяц помещается целиком — подпись не обещает прокрутку вбок
+  const [monthFits, setMonthFits] = React.useState(false);
+  React.useLayoutEffect(() => {
+    if (weekIdx != null) return;
+    const g = document.querySelector(".sa-schedgrid");
+    const fits = !!(g && g.scrollWidth > 0 && g.scrollWidth <= g.clientWidth + 1);
+    setMonthFits((p) => (p === fits ? p : fits));
+  });
   const [genKey, setGenKey] = React.useState(0);        // смена номера перезапускает анимацию
   const [shot, setShot] = React.useState(null);         // готовая картинка: {url, blob, name}
   const [shotBusy, setShotBusy] = React.useState(false);
@@ -1484,7 +1497,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #14110A 0%, #1C1509 50%, #14110A 100%)",
       overflowY:"auto", WebkitOverflowScrolling:"touch", overscrollBehavior:"contain",
     }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"44px 18px 4px" }}>
+      {(() => { const head = (<>
+      <div style={{ display:"flex", alignItems:"center", gap:10, padding: vpS.short ? "14px 18px 4px" : "44px 18px 4px" }}>
         <button className="sa-btn" style={{ background:"transparent", border:"none", color:GOLD,
           fontSize:25, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
           onClick={onBack} aria-label="Назад">‹</button>
@@ -1505,7 +1519,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           Офлайн-копия от {new Date(offlineAt).toLocaleString("ru-RU", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} — свежесть проверь при связи
         </div>
       ) : null}
-      {kids}
+      </>);
+      // v50: в широкой раскладке — колонка по центру (sa-schedcol); в две колонки — сетка sa-two (ui/css.js)
+      return vpS.wide
+        ? <div className={"sa-schedcol" + (opts.two ? " sa-two" : "")}>{head}<div className="sa-schedbody">{kids}</div></div>
+        : <>{head}{kids}</>; })()}
       <div style={{ height:24 }} />
     </div>
   );
@@ -3017,7 +3035,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             prev: prevPay[me.id] || 0, shifts: n, peaks, avg: n > 0 ? Math.max(1, Math.round(h / n)) : 12 });
           return <MonthMedals a11y={a11y} cells={cells} note={note} payMain={po ? <NumUp v={po.sum} /> : null} />;
         })()}
-        <div style={card}>
+        <div style={card} data-sched-month="">
           <div style={eyebrow}><span>мой месяц</span>
             {/* v46: месяц календарём (по умолчанию) или прежним списком — выбор помнит устройство */}
             <span data-sched-viewtoggle="" style={{ display:"inline-flex", padding:3, gap:2, borderRadius:999, flexShrink:0,
@@ -3725,7 +3743,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           </div>
         ) : null}
       </>)}
-    </>, { arrows: true });
+    </>, { arrows: true, two: twoCols && !!me });
   }
 
   // ── Вид менеджера: таблица ────────────────────────────────────────
@@ -3828,7 +3846,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   };
 
   return shell(<>
-    <div style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
+    <div data-sched-tabs="" style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
       background: a11y ? "rgba(120,90,30,0.10)" : "rgba(0,0,0,0.3)",
       border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)"}`, borderRadius:999 }}>
       {[["plan","График"],["setup","Настройки"]].map(([k, t]) => (
@@ -4924,7 +4942,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           {swap
             ? (swapSel ? "Теперь тапни вторую клетку — смены поменяются местами" : "Обмен: тапни первую клетку")
             : weekIdx == null
-            ? "Весь месяц: таблица листается вбок. Тап по полоске — неделя, она влезает без прокрутки"
+            ? (monthFits ? "Весь месяц — целиком. Тап по полоске — неделя крупнее" : "Весь месяц: таблица листается вбок. Тап по полоске — неделя, она влезает без прокрутки")
             : ""}
         </div>
         {/* Легенда по запросу: на экране она стояла каждый день и вытесняла
@@ -5306,5 +5324,5 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       );
     })() : null}
     </>}
-  </>, { arrows: tab !== "setup" });   // v48: месяц в шапке один раз, стрелки рядом — как у сотрудника
+  </>, { arrows: tab !== "setup", two: twoCols && tab !== "setup" });   // v48: месяц в шапке один раз, стрелки рядом — как у сотрудника; v50: от 700 px — таблица справа
 }

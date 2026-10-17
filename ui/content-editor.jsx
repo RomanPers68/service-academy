@@ -1271,7 +1271,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>);
         })()}
         {/* «Сохранить» — закреплена внизу; пока печатаешь — уезжает, чтобы не закрывать поле (правка 162) */}
-        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "8px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
+        <div className="sa-colbar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "8px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
           transform: typingEd ? "translateY(120%)" : "none", transition: "transform .25s ease",
           background: dark ? "rgba(21,17,11,0.94)" : "rgba(245,238,222,0.94)", borderTop: `1px solid ${gold}33`, WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}>
           {err && <div style={{ color: TN.bad, fontSize: 12.5, marginBottom: 6, textAlign: "center", lineHeight: 1.4 }}>{err}</div>}

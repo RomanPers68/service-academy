@@ -245,7 +245,7 @@ describe("v41: главная — строка шага в карточке тр
 
 describe("v41: метка сборки и запись в CHANGES", () => {
   it("«сборка v41», «Дополнение 354»", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d</);   // v42: номер сборки растёт
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}</);   // v42: номер сборки растёт
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 354 — /);
   });
 });

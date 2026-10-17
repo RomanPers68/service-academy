@@ -120,7 +120,12 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
           style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div>
           <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>ГИД ПО ПРИЛОЖЕНИЮ</div>
-      {/* Человек закрыл подсказку, а через месяц забыл, как устроен раздел.
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>Что где и зачем</div>
+        </div>
+      </div>
+      {/* v50 (Доп. 363): блок стоял внутри заголовка (между «ГИД ПО ПРИЛОЖЕНИЮ» и «Что где и зачем») и
+          наезжал на стрелку «Назад» и название — теперь он под заголовком.
+          Человек закрыл подсказку, а через месяц забыл, как устроен раздел.
           Раньше вернуть их можно было только подняв версию — то есть сразу
           всем. Здесь каждый решает за себя. */}
       <div onClick={() => { const n = resetHints(); setReset(n); vibrate("light"); }}
@@ -134,9 +139,6 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
           {reset === null
             ? "Короткие объяснения снова появятся при входе в разделы"
             : "Открой любой раздел — подсказка встретит там же, где и в первый раз"}
-        </div>
-      </div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>Что где и зачем</div>
         </div>
       </div>
       <div style={{ padding: "4px 16px 100px" }}>

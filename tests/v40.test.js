@@ -70,7 +70,7 @@ describe("v40: App.jsx — «Путь мастера» подключён", () =
     expect(app).toMatch(/gN \+ " " \+ pl3\(gN, "задание", "задания", "заданий"\) \+ ", на каждое "/);
   });
   it("метка сборки — v40 или новее (v41 — Доп. 354)", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d</);
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}</);
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 353 — «Путь мастера»/);
   });
 });

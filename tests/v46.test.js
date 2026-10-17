@@ -232,7 +232,7 @@ describe("v46: календарь месяца и лист дня у сотру�
   it("шапка сотрудника — месяц один раз, стрелки рядом; «Отметить период»: первый тап — начало", () => {
     expect(src).toContain("const shell = (kids, opts = {}) => (");
     expect(src).toContain('{opts.arrows ? [[-1, "‹", "Предыдущий месяц"], [1, "›", "Следующий месяц"]].map(');
-    expect(src).toContain("</>, { arrows: true });");
+    expect(src).toMatch(/<\/>, \{ arrows: true(, two: twoCols && !!me)? \}\);/);   // v50: + две колонки от 700 px
     const staffAt = src.indexOf("  if (!isAdmin) {"), mgrAt = src.indexOf("  // ── Вид менеджера: таблица");
     expect(src.slice(staffAt, mgrAt)).not.toContain("{monthNav}");
     expect(src).toContain("if (wishRange.from && wishRange.to == null && d !== wishRange.from) { setWishAsk({ from: wishRange.from, to: d }); setWishRange(null); }");
@@ -295,7 +295,7 @@ describe("v46: в графике (исходник)", () => {
     expect(hints).toContain("Выходные и отпуск отмечай прямо в календаре");
     expect(hints).toContain("плашка с этой кнопкой появится внизу");
     expect(src).toContain("Передумал — «↩» рядом с «Заполнить черновик» вернёт как было.");
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d<\/span>/);   // v47 — следующая метка
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v47 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 359 — график: карточка смены и медальоны у персонала");
   });
 });

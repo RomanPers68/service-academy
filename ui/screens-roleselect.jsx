@@ -76,7 +76,7 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null }) {
   const isAdmin = !!profile?.is_admin;
   const [openGroup, setOpenGroup] = React.useState(null);
   // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
@@ -116,7 +116,9 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
   // Добавляем разблокированные через прохождение
   const effectiveUnlocked = new Set([...baseUnlocked, ...completedRoles]);
   return (
-    <div style={T.screen} className="sa-screen">
+    // v50 (Доп. 363): широкий экран — две колонки (sa-home2, правила в ui/css.js): слева шапка дня, справа треки.
+    // Телефон лёжа — логотип меньше, чтобы под ним сразу было видно день.
+    <div style={T.screen} className={"sa-screen" + (wideCols ? " sa-home2" : "")}>
       <div style={{ ...T.roleHeader, position:"relative", overflow:"hidden" }}>
         {/* Доп. 146: свет по времени суток — утром теплее и светлее, вечером глубже и золотистее */}
         {(() => {
@@ -131,9 +133,9 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
             <div style={{ position:"absolute", top:100, right:-60, width:190, height:190, borderRadius:"50%", background:`radial-gradient(circle, ${al(L.b, 0.13 * L.k)} 0%, transparent 70%)`, pointerEvents:"none", transition:"background 1.2s" }} />
           </>);
         })()}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"20px 24px 10px" }}>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : "20px 24px 10px" }}>
           <img src={LOGO_SRC_DARK /* тёмная версия читается на обеих темах;
-                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" style={{ width:198, height:158, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" style={{ width: short ? 118 : 198, height: short ? 94 : 158, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         </div>
         {/* ═══ Приветствие по часам (профиль-карточка переехала в «Профиль») ═══ */}
         {profile && (() => {
@@ -466,7 +468,7 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
 
               const last = homeStep >= steps.length - 1;
               return (
-                <HintBubble a11y={a11y} text={steps[homeStep]}
+                <HintBubble a11y={a11y} text={wide && homeStep === 2 ? String(steps[homeStep] || "").replace(/^Внизу/, "Слева") : steps[homeStep]}
                   arrow={homeStep === 0 ? "up" : "down"}
                   anchorRef={homeStep === 0 ? refTrack : homeStep === 1 ? refTools : null}
                   anchorId={homeStep === 2 ? "sa-tabbar" : null}
@@ -483,7 +485,8 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
               // Четыре инструмента и раскрытая подпись должны помещаться рядом с SOS.
               // Замер в браузере: при кружках 40 px «Справочник» вылезал на 9 px
               // (390 px) и на 7 px (360 px). Кружки 38 / 34 px, отступы ужаты.
-              const narrow = typeof window !== "undefined" && window.innerWidth < 380;
+              // v50: в две колонки левая колонка уже экрана — 340–440 px; уже 380 она при колонке меньше 728 px
+              const narrow = typeof window !== "undefined" && (window.innerWidth < 380 || (wideCols && wideColW > 0 && wideColW < 728));
               // v44 (Доп. 357): плотнее — кружки 36 / 34 px, SOS 42 / 40 px, поля капсулы 6 px
               const ring = narrow ? 34 : 36;
               const sos = visibleTiles.find(t => t.red);
@@ -591,11 +594,19 @@ export function RoleSelect({ learnOnly = false, hintsReady = true, onSelect, T, 
 
 
 
-        <div style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
-        </div>
+        {!wideCols ? (
+          <div style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
+          </div>
+        ) : null}
       </div>
 
+      {/* v50: в две колонки заголовок треков — над правой колонкой */}
+      {wideCols ? (
+        <div data-home2-title="" style={{ padding:"14px 14px 8px", display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
+        </div>
+      ) : null}
       <div style={T.roleList} className="sa-stagger">
         {(() => {
           // Профессия = одна плитка. Ступени раскрываются на месте, без нового экрана.

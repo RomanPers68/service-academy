@@ -664,7 +664,7 @@ function Shell({ title, onClose, accent, T, children }) {
       background: T.a11y ? "#E8DEC8" : "linear-gradient(160deg,#1A1008 0%,#1A1008 50%,#1A1008 100%)",
       overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "44px 18px 4px" }}>
+      <div className="sa-tophead" style={{ display: "flex", alignItems: "center", gap: 10, padding: "44px 18px 4px" }}>
         <button className="sa-btn" style={{
           background: "transparent", border: "none", color: accent, fontSize: 25,
           cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: serif,

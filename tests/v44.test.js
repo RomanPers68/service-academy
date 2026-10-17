@@ -167,7 +167,7 @@ describe("v44: «Пульс недели», табличка и полка — �
 
 describe("v44: метка сборки и CHANGES", () => {
   it("«сборка v44», «Дополнение 357»", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d</);   // v45 — следующая метка
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}</);   // v45 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 357 — /);
   });
 });

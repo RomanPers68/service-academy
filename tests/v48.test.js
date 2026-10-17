@@ -111,12 +111,12 @@ describe("v48: «Факт часов» и заметка ко дню — на в
     expect(src).toMatch(/\.\.\.ghostInk, padding:"9px 11px", fontSize:12\.5 \}\} className="sa-btn" onClick=\{\(\) => setDayEdit\(null\)\}>Готово/);
   });
   it("шапка: месяц один раз, стрелки рядом на вкладке «График»; строки «‹ месяц · N дней ›» под вкладками нет", () => {
-    expect(src).toContain('</>, { arrows: tab !== "setup" });');
+    expect(src).toMatch(/<\/>, \{ arrows: tab !== "setup"(, two: twoCols && tab !== "setup")? \}\);/);   // v50: + две колонки от 700 px
     expect(src).not.toMatch(/\{tab === "setup" \? setupView\(\) : <>\s*\{monthNav\}/);
   });
   it("подсказка руководителя — про тап по имени; метка сборки — v48; CHANGES — «Дополнение 361»", () => {
     expect(readFileSync("data/hints.js", "utf8")).toContain("Тап по имени — карточка человека: часы, заработок и весь его месяц");   // v49: дальше — «тап по числу — день по часам»
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d<\/span>/);   // v49 — следующая метка
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v49 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 361 — график: карточка сотрудника по тапу на имя");
   });
 });

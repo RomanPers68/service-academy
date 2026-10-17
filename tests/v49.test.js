@@ -127,7 +127,7 @@ describe("v49: месяц полоской, неделя во всю высот�
 describe("v49: подсказки, метка, CHANGES", () => {
   it("подсказка руководителя — про тап по числу; метка сборки — v49; CHANGES — «Дополнение 362»", () => {
     expect(readFileSync("data/hints.js", "utf8")).toContain("тап по числу — день по часам.");
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toContain("· сборка v49</span>");
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v50 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 362 — график руководителя: месяц полоской, день по часам, подсказки в листе смены (v49)");
   });
 });

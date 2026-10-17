@@ -246,7 +246,8 @@ describe("v46: календарь месяца и лист дня у сотру�
 
 describe("v46: в графике (исходник)", () => {
   it("сотрудник: карточка смены и медальоны первыми; мост «чек-лист / повтор» переехал в карточку; смены словами", () => {
-    expect(src).toContain('import { ShiftHero, NoShiftHero, MonthMedals, nextShift, staffMonthCells } from "./schedule-hero";');
+    // v48: к импорту добавились подписи медальонов для карточки сотрудника у руководителя
+    expect(src).toMatch(/import \{ ShiftHero, NoShiftHero, MonthMedals, nextShift, staffMonthCells(, personMonthCells)? \} from "\.\/schedule-hero";/);
     expect(src).toMatch(/<ShiftHero a11y=\{a11y\} card=\{card\} d=\{nd\}/);
     expect(src).toContain("onChecklist={kT && onChecklist ? onChecklist : null}");
     expect(src).toContain("due={(kT || kN) && dueCount > 0 && onMistakes ? { n: dueCount, onMistakes } : null}");

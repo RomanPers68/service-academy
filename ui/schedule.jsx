@@ -18,7 +18,7 @@ import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS } from "./tokens";
 // v46 (Доп. 359): верх графика сотрудника — ближайшая смена карточкой и медальоны месяца; у руководителя —
 // «Требует внимания» наверху и плашка «Сохранить» внизу
-import { ShiftHero, NoShiftHero, MonthMedals, nextShift, staffMonthCells } from "./schedule-hero";
+import { ShiftHero, NoShiftHero, MonthMedals, nextShift, staffMonthCells, personMonthCells } from "./schedule-hero";
 import { CalendarPage } from "./schedule-tile";
 import { palette } from "./day-emblems";
 import { ACCENT_SERIF } from "./styles";
@@ -463,6 +463,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [swap, setSwap] = React.useState(false);       // режим обмена сменами (менеджер)
   const [replAsk, setReplAsk] = React.useState(null);   // { id, d } — по какой смене ищем замену
   const [fillAsk, setFillAsk] = React.useState(null);   // v46: { d, pos } — кто может закрыть дыру
+  const [personSheet, setPersonSheet] = React.useState(null); // v48: id сотрудника — карточка по тапу на имя в таблице
   // v46: что лежит на сервере (после загрузки и «Сохранить») — плашка внизу считает изменения от него
   const savedRef = React.useRef(null);
   const [posFilter, setPosFilter] = React.useState(""); // Доп. 257: показывать одну позицию
@@ -2623,7 +2624,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         {staffAll.map((sf, i) => { const openE = openEmp === sf.id;
           if (empFilter && !((sf.name + " " + sf.pos).toLowerCase().includes(empFilter.toLowerCase()))) return null;
           return (
-          <div key={sf.id} className="sa-schedemp" style={{ padding:10, borderRadius:12, marginBottom:6 }}>
+          <div key={sf.id} className="sa-schedemp" data-emp={sf.id} style={{ padding:10, borderRadius:12, marginBottom:6 }}>
             {/* Свёрнутая строка: обзор без простыни из десяти полей на человека */}
             <div onClick={() => { vibrate("light"); setOpenEmp(openE ? 0 : sf.id); }}
               {...onActivate(() => setOpenEmp(openE ? 0 : sf.id))}
@@ -3783,6 +3784,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // мягкая заливка, тонкая грань в пол-пикселя и свечение изнутри, та же
   // «морозная» рецептура, что у карточек. Шапка получает шапочку с бликом
   // и скруглением, последняя строка — донышко, чтобы столбец был закрыт.
+  // v48: лист снизу (карточка сотрудника) и окошко сверху (факт часов, заметка ко дню) — тот же «морозный лёд»,
+  // что у листа смены. Окошко с полем ввода — сверху: клавиатура его не закрывает.
+  const sheetBox = { width:"calc(100% - 24px)", maxWidth:440, margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))", boxSizing:"border-box",
+    borderRadius:18, padding:16, maxHeight:"86vh", overflowY:"auto",
+    background: a11y ? "linear-gradient(180deg,rgba(255,252,244,0.99),rgba(248,240,220,0.99))" : "linear-gradient(180deg,rgba(38,29,15,0.985),rgba(22,17,8,0.99))",
+    border:`1px solid ${a11y ? "rgba(150,112,40,0.34)" : "rgba(145,108,40,0.34)"}`,
+    borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.45)" : "rgba(210,168,65,0.38)"}`,
+    boxShadow: a11y
+      ? "inset 0 0 26px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 -6px 26px rgba(90,66,20,0.16)"
+      : "inset 0 0 22px rgba(255,248,230,0.055), inset 0 1px 0 rgba(255,255,255,0.10), 0 -6px 26px rgba(0,0,0,0.5)" };
+  const dialogBox = { ...sheetBox, margin:"calc(70px + env(safe-area-inset-top, 0px)) 12px 0", maxHeight:"70vh" };
+  const veil = (top) => ({ position:"fixed", inset:0, zIndex: top ? 62 : 60, background:"rgba(0,0,0,0.45)", display:"flex",
+    alignItems: top ? "flex-start" : "flex-end", justifyContent:"center" });
   const todayCol = (role) => {
     const edge = a11y ? "rgba(175,135,50,0.42)" : "rgba(214,178,102,0.38)";
     const glow = a11y ? "inset 0 0 14px rgba(255,255,255,0.45)"
@@ -3822,7 +3836,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       ))}
     </div>
     {tab === "setup" ? setupView() : <>
-    {monthNav}
+    {/* v48: строка «‹ Октябрь 2026 · 31 дней ›» уехала в шапку — месяц написан один раз, стрелки рядом (как у сотрудника) */}
     {/* v46 (Доп. 359): «Требует внимания» — наверху. Раньше дыры и замечания жили в свёрнутой секции
         «Проверка и зарплата» в самом низу, «не смогу выйти» под стоящей сменой — там же, строкой, а обмены —
         отдельной карточкой под кнопками. Теперь одна карточка: «не смогу» под сменой (кнопка «Кто вместо?»),
@@ -3909,6 +3923,101 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         редкие и опасные действия — за «Ещё». Логика кнопок не менялась. */}
     {/* Доп. 256: «Кто вместо?» — кто может взять смену и почему не могут остальные */}
     {/* Палитра смен: один тап по клетке — один выбор, вместо перебора по кругу */}
+    {/* v48 (Доп. 361): тап по имени в таблице — карточка сотрудника. Весь месяц человека на одном экране: часы до
+        нормы, заработок и смены медальонами (как у сотрудника), его календарь с пожеланиями, «не смогу» и отпуском,
+        звонок и переход в его настройки. Тап по дню — лист смены поверх карточки, как в таблице. Раньше имя не
+        нажималось, а это лежало в разных местах: часы — в таблице, телефон — в «Отработано по людям», пожелания —
+        точками в клетках, ставка — в «Проверке и зарплате». */}
+    {personSheet && (() => {
+      const s = staff.find(x => String(x.id) === String(personSheet));
+      if (!s) return null;
+      const h = hoursOf(s), en = effNorm(s), n = shiftsOf(s), po = payOf(s), mode = s.rateMode || "hour";
+      let peaks = 0;
+      for (let d = 1; d <= DAYS; d++) if (shiftOf(plan[s.id]?.[d]) && lvlOf(d) === 3) peaks++;
+      const { cells, note } = personMonthCells({ hours: h, norm: en, vac: en !== s.norm, pay: po ? { sum: po.sum, mode, note: po.note } : null,
+        prev: prevPay[s.id] || 0, shifts: n, peaks, avg: n > 0 ? Math.max(1, Math.round(h / n)) : 12 });
+      const todayD = (now.getFullYear() === Y && now.getMonth() === M) ? now.getDate() : 0;
+      const rateT = !(s.rate > 0) ? "ставка не задана" : mode === "month" ? `оклад ${s.rate.toLocaleString("ru-RU")} ₽`
+        : mode === "shift" ? `${s.rate.toLocaleString("ru-RU")} ₽ за смену` : `${s.rate} ₽/ч`;
+      const normT = en !== s.norm ? `норма ${en} ч с отпуском` : `норма ${s.norm || 0} ч`;
+      const wl = [], hl = [], used = new Set();
+      for (let d = 1; d <= DAYS; d++) { if (wishOf(s.id, d)) wl.push(d); if (hardOf(s.id, d)) hl.push(d); const kk = plan[s.id]?.[d]; if (shiftOf(kk)) used.add(kk); }
+      const vr = vacsOf(s).filter(r => r[1] >= 1 && r[0] <= DAYS).map(r => `${Math.max(1, r[0])}–${Math.min(DAYS, r[1])}`);
+      const offW = (s.off || []).map(i => DOWL[i]);
+      const cellBg = a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.025)", cellBd = a11y ? "rgba(150,112,40,0.25)" : "rgba(145,108,40,0.22)";
+      const waveC = a11y ? "#3C6E8F" : "#9CC7E0";
+      const lg = { display:"inline-flex", alignItems:"center", gap:4 };
+      const toSetup = () => {
+        setPersonSheet(null); setTab("setup"); setOpenSec(5); setOpenEmp(s.id); vibrate("light");
+        setTimeout(() => { try { const el = document.querySelector('[data-emp="' + s.id + '"]'); if (el) el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }, 140);
+      };
+      return (
+        <div onClick={() => setPersonSheet(null)} style={veil(false)}>
+          <div data-person-sheet={s.id} onClick={e => e.stopPropagation()} className="sa-fadein" style={sheetBox}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <span aria-hidden="true" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center", fontFamily:serif, fontSize:15, color:P.text,
+                border:`1.5px solid ${GOLD}`, boxShadow:"0 0 0 3px rgba(214,178,102,0.12)",
+                background: a11y ? "linear-gradient(180deg,rgba(214,178,102,0.30),rgba(214,178,102,0.12))" : "linear-gradient(180deg,rgba(214,178,102,0.24),rgba(214,178,102,0.08))" }}>{initialsOf(s.name)}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>{MONTHS_N[M].toUpperCase()} {Y}</div>
+                <div data-person-name="" style={{ fontFamily:serif, fontSize:18, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
+                <div data-person-sub="" style={{ fontSize:12, color:P.sub, lineHeight:1.4 }}>{posName(s.pos)} · {rateT} · {normT}</div>
+              </div>
+              {s.phone ? <CallName who={s} label={s.name} color={P.acc} round /> : null}
+            </div>
+            <MonthMedals a11y={a11y} cells={cells} note={note} payMain={po ? <NumUp v={po.sum} /> : null} style={{ margin:"12px 0 0" }} compact />
+            <div data-person-cal="" style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4, marginTop:12 }}>
+              {DOWL.map((w, wi) => <div key={w} style={{ fontFamily:mono, fontSize: a11y ? 11 : 9, color: wi >= 5 ? P.acc : P.sub, textAlign:"center", paddingBottom:2 }}>{w}</div>)}
+              {Array.from({ length: dow(1) }, (_, i) => <div key={"e" + i} />)}
+              {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
+                const kk = plan[s.id]?.[d], sh = shiftOf(kk), col = sh ? colorOf(kk) : null;
+                const past = todayD && d < todayD, isT = d === todayD;
+                const wish = wishOf(s.id, d), hd = hardOf(s.id, d), vac = onVac(s, d), off = !sh && !vac && isDayOff(s, d);
+                const fg = sh && col ? (a11y ? col.fgL : col.fg) : P.text;
+                const to = sh ? (sh.to > 24 ? sh.to - 24 : sh.to) : 0;
+                const what = sh ? `${sh.name} ${sh.from}:00–${to}:00` : vac ? "отпуск" : wish ? "просит выходной" : hd ? "не сможет выйти" : off ? "постоянный выходной" : "выходной";
+                // смена стоит, а человек просил выходной или отметил «не смогу» — точка в углу, как в таблице
+                const clash = sh && (wish || hd);
+                return (
+                  <button key={d} className="sa-btn" data-person-day={d} data-person-k={kk || ""} onClick={() => { setPick({ id: s.id, d }); vibrate("light"); }}
+                    aria-label={`${d} ${MONTHS_R[M]}, ${DOWF[dow(d)]}: ${what}${clash ? (hd ? ", отметил «не смогу»" : ", просил выходной") : ""}${isT ? ", сегодня" : ""}`}
+                    style={{ position:"relative", height:40, padding:0, borderRadius:10, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1,
+                      opacity: past ? 0.45 : 1,
+                      background: sh && col ? (a11y ? col.bgL : col.bg) : cellBg,
+                      border:`1px solid ${isT ? GOLD : sh && col ? (a11y ? col.bdL : col.bd) : cellBd}`,
+                      boxShadow: isT ? "0 0 0 2px rgba(214,178,102,0.25), 0 0 12px rgba(214,178,102,0.35)" : "none" }}>
+                    <span style={{ fontFamily:serif, fontSize:13, lineHeight:1, color: holOf(d) && !sh ? P.warn : fg, fontWeight: isT ? "bold" : "normal" }}>{d}</span>
+                    {sh ? <span style={{ fontFamily:mono, fontSize: a11y ? 9.5 : 8.5, lineHeight:1.1, color: fg, opacity:0.9 }}>{sh.from}–{to}</span>
+                      : wish ? <IcoSun size={11} color={P.acc} /> : hd ? <IcoBan size={11} color={P.warn} />
+                      : vac ? <IcoWave size={11} color={waveC} /> : off ? <span style={{ fontSize:10, lineHeight:1, color:P.sub }}>✕</span> : <span style={{ height:11 }} />}
+                    {clash ? <i data-person-clash="" style={{ position:"absolute", top:3, right:3, width:6, height:6, borderRadius:3, background: hd ? P.warn : GOLD }} /> : null}
+                  </button>
+                );
+              })}
+            </div>
+            {used.size ? (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"6px 11px", marginTop:10, fontSize: a11y ? 11 : 10, color:P.sub, alignItems:"center" }}>
+                {(cfg.shifts || []).filter(s2 => used.has(s2.k)).map(s2 => { const c2 = colorOf(s2.k);
+                  return <span key={s2.k} style={lg}><i style={{ width:10, height:10, borderRadius:3, display:"inline-block", background: a11y ? c2.bgL : c2.bg, border:`1px solid ${a11y ? c2.bdL : c2.bd}` }} />{s2.name}</span>; })}
+              </div>
+            ) : null}
+            <div data-person-wishes="" style={{ display:"flex", flexWrap:"wrap", gap:"4px 12px", marginTop:10, paddingTop:10, fontSize:12.5, color:P.text, lineHeight:1.5,
+              borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+              {wl.length ? <span style={lg}><IcoSun size={12} color={P.acc} />просит выходной: {wl.join(", ")}</span> : null}
+              {hl.length ? <span style={lg}><IcoBan size={12} color={P.warn} />не сможет: {hl.join(", ")}</span> : null}
+              {vr.length ? <span style={lg}><IcoWave size={12} color={waveC} />отпуск: {vr.join(", ")}</span> : null}
+              {offW.length ? <span style={lg}><span style={{ color:P.sub }}>✕</span>постоянный выходной: {offW.join(", ")}</span> : null}
+              {!wl.length && !hl.length && !vr.length && !offW.length ? <span style={{ color:P.sub }}>Пожеланий на этот месяц нет</span> : null}
+            </div>
+            <div style={{ display:"flex", gap:8, marginTop:12 }}>
+              <button className="sa-btn" data-person-setup="" onClick={toSetup} style={{ ...ghostInk, flex:1, padding:"10px 8px", fontSize:12.5 }}>Настройки сотрудника ›</button>
+              <button className="sa-btn" onClick={() => setPersonSheet(null)} style={{ ...ghostInk, flex:"0 0 auto", padding:"10px 16px", fontSize:12.5 }}>Закрыть</button>
+            </div>
+            <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", textAlign:"center", marginTop:8 }}>Тап по дню — поставить смену, как в таблице</div>
+          </div>
+        </div>
+      );
+    })()}
     {pick && (() => {
       const who = staff.find(x => String(x.id) === String(pick.id)); const d = pick.d;
       if (!who) return null;
@@ -4198,8 +4307,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         });
         setDirty(true);
       };
+      // v48: окошком сверху, поверх экрана. Раньше — карточкой над таблицей: из листа смены (внизу таблицы) она
+      // открывалась за краем экрана, и казалось, что «Факт часов» не нажимается.
       return (
-        <div style={{ ...card, marginTop:10 }}>
+        <div onClick={() => setFactEdit(null)} style={veil(true)}>
+        <div data-fact-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={dialogBox}>
+          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc, marginBottom:4 }}>ФАКТ ЧАСОВ · {DOWL[dow(factEdit.d)].toUpperCase()} · {factEdit.d} {MONTHS_R[M].toUpperCase()}</div>
           <div style={{ fontSize:14, color:P.text, marginBottom:8 }}>
             <b>{fs.name}</b> · {factEdit.d} {MONTHS_R[M]} · смена {sh.name} ({planH} ч по плану)
           </div>
@@ -4208,32 +4321,38 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <Num inp={inp} v={val} min={0} max={24} set={setFact} />
             </Field>
             {typeof cur === "number" ? (
-              <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
+              <button style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
                 onClick={() => { setFact(null); vibrate("light"); }}>Вернуть по плану</button>
             ) : null}
-            <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
+            <button style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
               onClick={() => setFactEdit(null)}>Готово</button>
           </div>
           <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
             Часы и зарплата пересчитаются сразу. Не забудь «Сохранить», чтобы факт увидели все.
           </div>
         </div>
+        </div>
       );
     })() : null}
     {/* Обмены, ждущие решения, — с v46 в карточке «Требует внимания» наверху (те же «Подтвердить / отклонить»). */}
+    {/* v48: заметка ко дню — окошком сверху по тапу на число в шапке таблицы. Раньше карточка открывалась над
+        таблицей, за краем экрана, — тап по числу выглядел так, будто ничего не произошло. */}
     {dayEdit ? (
-      <div style={{ ...card, marginTop:10 }}>
+      <div onClick={() => setDayEdit(null)} style={veil(true)}>
+      <div data-note-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={dialogBox}>
+        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc, marginBottom:4 }}>{DOWL[dow(dayEdit)].toUpperCase()} · {dayEdit} {MONTHS_R[M].toUpperCase()}</div>
         <div style={{ fontSize:14, color:P.text, marginBottom:8 }}>
           Заметка ко дню <b>{dayEdit} {MONTHS_R[M]}</b> — увидит вся команда
         </div>
         <Text inp={inp} v={days[dayEdit]?.note || ""} maxLength={80} style={{ width:"100%" }}
           set={val => { setDays(dd => ({ ...dd, [dayEdit]: { ...(dd[dayEdit] || {}), note: val || undefined } })); setDirty(true); }} />
         <div style={{ display:"flex", gap:8, marginTop:8 }}>
-          <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
+          <button style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
         </div>
         <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
           Банкет, инвентаризация, проверка — короткая строка у даты. Не забудь «Сохранить».
         </div>
+      </div>
       </div>
     ) : null}
     {confirmClear ? (
@@ -4699,7 +4818,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       const h = hoursOf(s), pct = Math.min(100, Math.round(h / (en || 1) * 100));
                       return (
                         <tr key={s.id} className={ri % 2 ? "sa-schedzeb" : ""}>
-                          <td className="sa-schednm" title={s.name} style={{ fontFamily:serif, fontSize:12.5, padding:"0 8px",
+                          {/* v48: тап по имени — карточка сотрудника (часы, заработок, его месяц, звонок) */}
+                          <td className="sa-schednm" title={s.name} data-person-open={s.id} aria-label={"Карточка: " + s.name}
+                            onClick={() => { setPersonSheet(s.id); vibrate("light"); }} {...onActivate(() => setPersonSheet(s.id))}
+                            style={{ fontFamily:serif, fontSize:12.5, padding:"0 8px", cursor:"pointer",
                             textAlign:"left", color:P.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                             {shortName(s.name)}
                             <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2 }}>
@@ -4966,5 +5088,5 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       );
     })() : null}
     </>}
-  </>);
+  </>, { arrows: tab !== "setup" });   // v48: месяц в шапке один раз, стрелки рядом — как у сотрудника
 }

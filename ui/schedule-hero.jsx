@@ -68,6 +68,22 @@ export function staffMonthCells({ hours, norm, vac, pay, prev, shifts, peaks, av
   return { cells, note };
 }
 
+// v48: те же три медальона — в карточке сотрудника у руководителя. Подписи — для руководителя: сколько не хватает
+// до нормы или сколько сверх, как посчитан заработок; расчёт с прошлым месяцем — строкой под табличкой.
+export function personMonthCells({ hours, norm, vac, pay, prev, shifts, peaks, avg }) {
+  const lack = norm > 0 && hours < norm ? norm - hours : 0, over = norm > 0 && hours > norm ? hours - norm : 0;
+  const cells = [{
+    key: "hours", pct: norm > 0 ? Math.min(1, hours / norm) : 0, main: hours, of: norm > 0 ? norm : null, cap: "часов",
+    sub: over ? `+${over} ч сверх нормы` : norm > 0 && hours >= norm ? "норма закрыта ✦"
+      : lack ? `до нормы ${lack} ч ≈ ${Math.ceil(lack / Math.max(1, avg || 12))} см.` : "",
+    sub2: vac ? "отпуск учтён" : "",
+  }];
+  if (pay) cells.push({ key: "pay", main: rub(pay.sum), cap: pay.mode === "month" ? "оклад" : "≈ за месяц",
+    sub: pay.mode === "month" ? "в месяц" : String(pay.note || "").replace(/ /g, " "), sub2: "" });
+  cells.push({ key: "shifts", main: shifts, cap: plural(shifts, "смена", "смены", "смен"), sub: peaks > 0 ? `из них ${peaks} ${plural(peaks, "пиковая", "пиковые", "пиковых")}` : "в графике", sub2: "" });
+  return { cells, note: prev > 0 ? `прошлый месяц ≈ ${rub(prev)} ₽` : "" };
+}
+
 const ICONS = {
   hours: (c) => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>,
   pay: (c) => <span style={{ fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: 16, lineHeight: 1, color: c }}>₽</span>,
@@ -75,16 +91,18 @@ const ICONS = {
 };
 
 // Итоги месяца тремя медальонами (без ставки — двумя). payMain — узел с числом (в графике — с «досчётом»)
-export function MonthMedals({ a11y, cells, note, payMain }) {
-  const p = palette(a11y);
+// style — v48: в карточке сотрудника табличка стоит без внешних отступов; compact — там же: медальон и цифры
+// чуть мельче, чтобы «128/160» влезало в ячейку и на узком экране (лист уже карточки графика)
+export function MonthMedals({ a11y, cells, note, payMain, style, compact }) {
+  const p = palette(a11y), ms = compact ? 30 : 34, dz = compact ? 2 : 0;
   return (
-    <div data-sched-medals="" style={{ margin: "12px 14px 0", flexShrink: 0 }}>
+    <div data-sched-medals="" style={{ margin: "12px 14px 0", flexShrink: 0, ...(style || {}) }}>
       <div style={{ display: "flex", alignItems: "stretch", borderRadius: 16, border: `1px solid ${p.panelLine}`, borderTop: `1px solid ${p.panelTop}`, background: p.panel, boxShadow: p.shadow }}>
         {cells.map((x, i) => (
           <div key={x.key} data-medal-cell={x.key} style={{ flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 4px 9px", borderLeft: i ? `1px solid ${p.panelLine}` : "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
-              <Medal s={34} pct={x.pct || 0} a11y={a11y}>{ICONS[x.key](p.gold)}</Medal>
-              {x.key === "pay" && payMain ? <Val main={payMain} a11y={a11y} big={cells.length > 2 ? 17 : 19} /> : <Val main={x.main} of={x.of} a11y={a11y} big={x.key === "pay" ? (cells.length > 2 ? 17 : 19) : 20} />}
+              <Medal s={ms} pct={x.pct || 0} a11y={a11y}>{ICONS[x.key](p.gold)}</Medal>
+              {x.key === "pay" && payMain ? <Val main={payMain} a11y={a11y} big={(cells.length > 2 ? 17 : 19) - dz} /> : <Val main={x.main} of={x.of} a11y={a11y} big={(x.key === "pay" ? (cells.length > 2 ? 17 : 19) : 20) - dz} />}
             </div>
             <div style={{ fontFamily: mono, fontSize: a11y ? 11 : 9, letterSpacing: a11y ? 0.4 : 1, textTransform: "uppercase", color: p.sub }}>{x.cap}</div>
             {x.sub ? <div data-medal-sub="" style={{ fontSize: a11y ? 11.5 : 10.5, lineHeight: 1.25, color: p.gold, textAlign: "center" }}>{x.sub}</div> : null}

@@ -67,8 +67,10 @@ export function CalendarPage({ day, p, a11y, off, w = 31, h = 34 }) {
   const ring = { position: "absolute", top: r(-3), width: r(3), height: r(7), borderRadius: 2, background: `linear-gradient(180deg, ${p.goldHi}, ${p.goldLo})`, boxShadow: a11y ? "0 1px 1px rgba(90,60,20,0.25)" : "0 1px 1px rgba(0,0,0,0.45)" };
   return (
     <span aria-hidden="true" data-sched-page="" style={{ position: "relative", display: "block", width: w, height: h, flexShrink: 0 }}>
-      <span style={{ position: "absolute", left: r(2.5), right: r(2.5), bottom: r(-3), height: r(8), borderRadius: `0 0 ${r(6)}px ${r(6)}px`, border: `1px solid ${a11y ? "rgba(139,106,48,0.30)" : "rgba(217,184,124,0.24)"}`, borderTop: "none",
-        background: a11y ? "#F3E8CF" : "rgba(255,240,205,0.06)" }} />
+      {/* v47: край следующего листка виден только ПОД листком. В тёмной теме листок полупрозрачный, и верх
+          подложки (5 px) просвечивал сквозь него светлой полосой по низу числа — обрезаем его. */}
+      <span data-page-under="" style={{ position: "absolute", left: r(2.5), right: r(2.5), bottom: r(-3), height: r(8), borderRadius: `0 0 ${r(6)}px ${r(6)}px`, border: `1px solid ${a11y ? "rgba(139,106,48,0.30)" : "rgba(217,184,124,0.24)"}`, borderTop: "none",
+        background: a11y ? "#F3E8CF" : "rgba(255,240,205,0.06)", clipPath: `inset(${r(5)}px 0 0 0)`, WebkitClipPath: `inset(${r(5)}px 0 0 0)` }} />
       <span style={{ position: "absolute", inset: 0, borderRadius: r(7), overflow: "hidden", display: "flex", flexDirection: "column", border: `1px solid ${a11y ? "rgba(139,106,48,0.45)" : "rgba(217,184,124,0.45)"}`,
         background: a11y ? "#FFFCF4" : "linear-gradient(180deg, rgba(255,240,205,0.13), rgba(255,240,205,0.05))",
         boxShadow: a11y ? "0 2px 6px rgba(120,85,25,0.16)" : "0 3px 8px rgba(0,0,0,0.42)" }}>

@@ -294,7 +294,7 @@ describe("v46: в графике (исходник)", () => {
     expect(hints).toContain("Выходные и отпуск отмечай прямо в календаре");
     expect(hints).toContain("плашка с этой кнопкой появится внизу");
     expect(src).toContain("Передумал — «↩» рядом с «Заполнить черновик» вернёт как было.");
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toContain("· сборка v46</span>");
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v4\d<\/span>/);   // v47 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 359 — график: карточка смены и медальоны у персонала");
   });
 });

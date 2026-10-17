@@ -315,6 +315,9 @@ function buildFx() {
   plan[9] = { ...(plan[9] || {}), [T0]: "В" };
   const offerDay = Math.min(DAYS, T0 + 5);
   plan[9][offerDay] = ""; plan[10] = { ...(plan[10] || {}), [offerDay]: "Д" };
+  // обмен «Соколов → Новиков» через два дня: у Соколова в этот день смена, Новиков свободен — при любой дате прогона
+  const swapDay = Math.min(DAYS, T0 + 2);
+  plan[11] = { ...(plan[11] || {}), [swapDay]: "Д" }; plan[16] = { ...(plan[16] || {}), [swapDay]: "" };
   return { mkey, today: T0, DAYS, dow, cfg, plan, offerDay,
     days: { [Math.min(DAYS, T0 + 7)]: { note: "Банкет · 40 гостей" } }, facts: {},
     wishes: [...Object.entries(wishes).flatMap(([s, ds]) => ds.map((d) => ({ staff_id: +s, day: d, kind: "off" }))), ...Object.entries(hardOff).flatMap(([s, ds]) => ds.map((d) => ({ staff_id: +s, day: d, kind: "hard" })))],

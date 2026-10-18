@@ -92,17 +92,23 @@ export function StreakCard({ streak, a11y }) {
   );
 }
 
+// v56 (Доп. 369): запись настроя — и здесь, и в карточке «Как прошла смена?» на главной (lib/now-card.js)
+export const moodKey = (day) => "sa_mood_" + day;
+export function readMood(day) { try { return localStorage.getItem(moodKey(day)); } catch (e) { return null; } }
+export function recordMood(m, day) {
+  try { localStorage.setItem(moodKey(day), String(m)); } catch(e) {}
+  try { rpc("save_mood", { p_token: saToken(), p_mood: m, p_day: day }); } catch(e) {}
+  try { navigator.vibrate && navigator.vibrate(14); } catch(e) {}
+}
+
 export function MoodCheckCard({ a11y }) {
   const C = moodPalette(a11y);
   const serif = "Georgia, 'Times New Roman', serif";
   const today = _moodYmd(new Date());
-  const key = "sa_mood_" + today;
-  const [picked, setPicked] = React.useState(() => { try { return localStorage.getItem(key); } catch(e) { return null; } });
+  const [picked, setPicked] = React.useState(() => readMood(today));
   const choose = (m) => {
     setPicked(String(m));
-    try { localStorage.setItem(key, String(m)); } catch(e) {}
-    try { rpc("save_mood", { p_token: saToken(), p_mood: m, p_day: today }); } catch(e) {}
-    try { navigator.vibrate && navigator.vibrate(14); } catch(e) {}
+    recordMood(m, today);
   };
   if (picked) {
     const f = MOOD_FACES[(parseInt(picked,10)||3)-1] || MOOD_FACES[2];

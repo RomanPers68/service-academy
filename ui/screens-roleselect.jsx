@@ -24,7 +24,8 @@ import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { hintsFor, hintKey } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
-import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
+import { MoodCheckCard, TeamMoodCard, moodPalette, MOOD_FACES } from "./mood-cards";
+import { moodTier, MOOD_REPLY } from "../lib/now-card";   // v56 (Доп. 369): «что сейчас»
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor, goldText } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
 
@@ -76,8 +77,82 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null }) {
+// v56 (Доп. 369): карточка «что сейчас» — на месте карточки трека, тем же «морозным льдом» (lib/now-card.js):
+// до смены — разминка, на смене — ошибки или SOS, после смены — «как прошла?» (те же пять лиц, что «Как настрой
+// сегодня?»), после перерыва — «С возвращением». Трек не пропадает — строкой «Дальше …» внизу карточки.
+const MOOD_TITLE = { good: "Хорошая смена ✦", ok: "Ровная смена", hard: "Тяжёлая смена — бывает" };
+function NowCard({ refEl, ctx, a11y, T, next, onNext, on, onMood, onReplyDone }) {
+  const gold = a11y ? "#7A5D2A" : GOLD;
+  const tappable = ctx.action !== "mood";
+  const act = () => {
+    if (!on) return;
+    vibrate("light");
+    if (ctx.action === "warmup") on.warmup();
+    else if (ctx.action === "mistakes") on.mistakes();
+    else if (ctx.action === "sos") on.sos();
+    else if (ctx.action === "ask") { on.ask(ctx.ask); if (onReplyDone) onReplyDone(); }
+  };
+  const stopThen = (fn) => (e) => { if (e && e.stopPropagation) e.stopPropagation(); fn(); };
+  const goNext = () => { vibrate("light"); if (onNext) onNext(); };
+  const later = () => { if (onReplyDone) onReplyDone(); };
+  return (
+    <div ref={refEl} data-now-card={ctx.mode} onClick={tappable ? act : undefined} {...(tappable ? onActivate(act) : {})}
+      style={{ borderRadius:18, cursor: tappable ? "pointer" : "default",
+        background: a11y ? "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))" : "linear-gradient(180deg,rgba(214,178,102,0.17),rgba(214,178,102,0.05))",
+        border:`1px solid ${a11y ? "rgba(150,112,40,0.42)" : "rgba(214,178,102,0.4)"}`,
+        borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.58)" : "rgba(226,190,120,0.46)"}`,
+        boxShadow: a11y
+          ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(120,85,25,0.14)"
+          : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13), 0 5px 16px rgba(0,0,0,0.45)" }}>
+      <div style={{ padding:"10px 13px 9px", display:"flex", alignItems:"center", gap:12 }}>
+        <div aria-hidden="true" style={{ width:48, height:48, flexShrink:0, borderRadius:"50%", display:"grid", placeItems:"center",
+          border:`1.5px solid ${a11y ? "rgba(122,93,42,0.45)" : "rgba(214,178,102,0.45)"}`, background: a11y ? "rgba(255,250,238,0.6)" : "rgba(214,178,102,0.08)" }}>
+          {UI_SVG[ctx.icon] ? UI_SVG[ctx.icon](gold, 22) : null}
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div data-now-tag="" style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.2, color: goldText(a11y), marginBottom:3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ctx.tag}</div>
+          <div data-now-title="" style={{ color: T.modTitle.color, fontSize:16, fontFamily:"Georgia, serif", lineHeight:1.25 }}>{ctx.title}</div>
+          <div style={{ color: T.modSub.color, fontSize:12, marginTop:3, lineHeight:1.4 }}>{ctx.sub}</div>
+        </div>
+        {ctx.cta ? (
+          <div style={{ flexShrink:0, padding:"9px 15px", borderRadius:999, fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold", color:"#1A1008",
+            background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>{ctx.cta}</div>
+        ) : null}
+      </div>
+      {ctx.action === "mood" ? (
+        <div data-now-moods="" style={{ display:"flex", justifyContent:"space-between", padding:"0 8px 10px" }}>
+          {MOOD_FACES.map((m) => (
+            <button key={m.lvl} type="button" className="sa-btn" aria-label={m.l} onClick={stopThen(() => { if (onMood) onMood(m.lvl); })}
+              style={{ flex:1, minWidth:0, background:"transparent", border:0, padding:"4px 0", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+              {faceIcon(m.lvl, gold, 30)}
+              <span style={{ fontSize:11, color: T.modSub.color, whiteSpace:"nowrap" }}>{m.l}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {ctx.mode === "reply" ? (
+        <div style={{ padding:"0 13px 10px", marginTop:-3 }}>
+          <span role="button" tabIndex={0} data-now-later="" onClick={stopThen(later)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); later(); } }}
+            style={{ fontSize:12.5, color: T.modSub.color, textDecoration:"underline", textUnderlineOffset:3, cursor:"pointer" }}>Не сейчас</span>
+        </div>
+      ) : null}
+      {next ? (
+        <div data-now-next="" role="button" tabIndex={0} onClick={stopThen(goNext)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); goNext(); } }}
+          style={{ display:"flex", alignItems:"center", gap:8, margin:"0 9px 9px", padding:"8px 11px", borderRadius:12, cursor:"pointer",
+            background: a11y ? "rgba(255,250,238,0.55)" : "rgba(255,250,238,0.04)", border:`1px solid ${a11y ? "rgba(139,106,48,0.22)" : "rgba(255,255,255,0.08)"}` }}>
+          <span style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.1, color: T.modSub.color, whiteSpace:"nowrap" }}>{next.done ? "ТРЕК" : "ДАЛЬШЕ"}</span>
+          <span style={{ flex:1, minWidth:0, fontSize:13, color: T.modTitle.color, fontFamily:"Georgia, serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{next.title}</span>
+          <span aria-hidden="true" style={{ color: gold, fontSize:16 }}>›</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false }) {
   const isAdmin = !!profile?.is_admin;
+  // v56 (Доп. 369): ответ на «как прошла смена» — пока человек не решил, разбирать ли с Наставником
+  const [moodReply, setMoodReply] = React.useState(null);
   const [openGroup, setOpenGroup] = React.useState(null);
   // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
   // он открывает инструмент, а не раскрывает подпись: иначе каждое обращение
@@ -133,14 +208,16 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             <div style={{ position:"absolute", top:100, right:-60, width:190, height:190, borderRadius:"50%", background:`radial-gradient(circle, ${al(L.b, 0.13 * L.k)} 0%, transparent 70%)`, pointerEvents:"none", transition:"background 1.2s" }} />
           </>);
         })()}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : "20px 24px 10px" }}>
+        {/* v56 (Доп. 369): логотип на четверть меньше (198 → 152 px) — первым на экране «что сделать», а не знак */}
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : "16px 24px 8px" }}>
           <img src={LOGO_SRC_DARK /* тёмная версия читается на обеих темах;
-                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" style={{ width: short ? 118 : 198, height: short ? 94 : 158, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" style={{ width: short ? 118 : 152, height: short ? 94 : 121, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         </div>
         {/* ═══ Приветствие по часам (профиль-карточка переехала в «Профиль») ═══ */}
         {profile && (() => {
           const h = new Date().getHours();
-          const hello = h < 6 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
+          // v56 (Доп. 369): после перерыва в занятиях (3+ дня) — «С возвращением» вместо приветствия по часам
+          const hello = nowCard && nowCard.mode === "back" ? "С возвращением" : h < 6 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
           // v44 (Доп. 357): «хорошей смены ✦» — справа под заведением (раньше — второй строкой слева, лишняя высота)
           const wish = (() => { try {
             const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
@@ -220,6 +297,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           }
           else if (dueM > 0 && onMistakes) { const _d10 = dueM % 10, _d100 = dueM % 100; const _q = (_d10 === 1 && _d100 !== 11) ? "вопрос вернулся" : (_d10 >= 2 && _d10 <= 4 && (_d100 < 12 || _d100 > 14)) ? "вопроса вернулись" : "вопросов вернулись"; title = "Трек пройден · закрепи"; sub = `${dueM} ${_q} на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
           else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
+          // v56 (Доп. 369): «что сейчас» — действие по времени и смене (App, lib/now-card.js); трек — строкой «Дальше»
+          // внизу карточки. Самый первый день (App: firstDay) — «сейчас» нет: одно главное действие, первый урок.
+          const tier = moodReply ? moodTier(moodReply) : null;
+          const ctx = tier ? { mode: "reply", tag: "СМЕНА ПОЗАДИ ✓", title: MOOD_TITLE[tier], sub: MOOD_REPLY[tier].text, cta: MOOD_REPLY[tier].cta, action: "ask", ask: MOOD_REPLY[tier].ask, icon: "moon" }
+            : (nowCard && !firstDay ? nowCard : null);
           return (
             <div style={{ padding:"0 14px 9px" }}>
               {/* Роль чипом. После перестройки она пряталась только в заголовке
@@ -227,6 +309,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                   приветствии (там же видна), отдельного ряда над карточкой больше нет. */}
               {/* v31: строка напарника — отдельной строкой под чипами (раньше уезжала за край экрана) */}
               {dayNote}
+              {ctx ? (
+                <NowCard refEl={refTrack} ctx={ctx} a11y={a11y} T={T} on={nowOn}
+                  next={next ? { title: (kind ? kind.charAt(0) + kind.slice(1).toLowerCase() + " · " : "") + title } : null} onNext={go}
+                  onMood={(lvl) => { setMoodReply(lvl); if (nowOn) nowOn.mood(lvl); }} onReplyDone={() => setMoodReply(null)} />
+              ) : (
               <div ref={refTrack} onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
                 // Тот же «морозный лёд», но ярче остальных карточек: это
                 // единственное действие, ради которого экран открывают.
@@ -288,18 +375,23 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 {(() => {
                   const stop = (e) => e.stopPropagation();
                   const pill = (el) => (React.isValidElement(el) && typeof el.type === "function" ? React.cloneElement(el, { pill: true }) : el);
-                  const warm = warmupCard && !(warmupCard.props && warmupCard.props.done) ? warmupCard : null;
+                  // v56 (Доп. 369): в самый первый день (App: firstDay — ничего не пройдено ни в одном треке) — без плашек
+                  // «Разминка» и «Шаг дня»: главное действие одно — первый урок; разминка о том, чего ещё не учил,
+                  // и «сдай первый тест» — путали. Сменил трек — плашки на месте.
+                  const warm = !firstDay && warmupCard && !(warmupCard.props && warmupCard.props.done) ? warmupCard : null;
+                  const step = !firstDay ? stepLine : null;
                   const hint = warm && warm.props ? warm.props.children : null;
-                  if (!warm && !stepLine) return null;
+                  if (!warm && !step) return null;
                   return (<>
                     <div data-day-pills="" onClick={stop} onKeyDown={stop} style={{ display:"flex", gap:8, padding:"0 9px 9px", alignItems:"stretch" }}>
                       {warm ? pill(warm) : null}
-                      {stepLine ? <div data-step-slot="" style={{ flex:"1 1 0", minWidth:0, display:"flex" }}>{pill(stepLine)}</div> : null}
+                      {step ? <div data-step-slot="" style={{ flex:"1 1 0", minWidth:0, display:"flex" }}>{pill(step)}</div> : null}
                     </div>
                     {hint ? <div onClick={stop} onKeyDown={stop} style={{ padding:"0 13px 9px", marginTop:-3 }}>{hint}</div> : null}
                   </>);
                 })()}
               </div>
+              )}
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}
               {masteryCard ? <div data-mastery-slot="" style={{ marginTop:9 }}>{masteryCard}</div> : null}
             </div>

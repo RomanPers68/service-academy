@@ -81,10 +81,27 @@ function ensureDayPanelCss() {
   st.id = "sa-day-panel-css"; st.textContent = DP_CSS;
   document.head.appendChild(st);
 }
-export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mastery = null, onMastery }) {
+export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mastery = null, onMastery, firstDay = false }) {
   ensureTableCss(); ensureDayPanelCss();
   const p = palette(a11y);
   const [open, setOpen] = React.useState(false);
+  // v56 (Доп. 369): самый первый день — вместо трёх нулей («0 дней · 0/2 · 0/7») одна строка: серия, цель дня и
+  // значки начнутся с первого урока. После первого шага — табличка как была.
+  if (firstDay) {
+    return (
+      <div className={"tbv sa-dp" + (a11y ? " lt" : "")} data-day-panel="" data-first-day=""
+        style={{ background: p.panel, border: "1px solid " + p.panelLine, borderTopColor: p.panelTop, boxShadow: p.shadow }}>
+        <span role="img" className="sa-dp-cell st" aria-label="Первый день: серия, цель дня и значки начнутся с первого урока"
+          style={{ justifyContent: "flex-start", gap: 11, padding: "8px 13px" }}>
+          <Medal s="var(--dp-m,32px)" pct={0} a11y={a11y}><Flame s="var(--dp-i,19px)" lit={false} a11y={a11y} /></Medal>
+          <span className="sa-dp-txt" aria-hidden="true">
+            <Val main="Первый день" a11y={a11y} big={17} />
+            <span style={{ fontSize: a11y ? 13 : 12, color: p.sub, marginTop: 4, lineHeight: 1.35 }}>серия, цель дня и значки — с первого урока</span>
+          </span>
+        </span>
+      </div>
+    );
+  }
   const lit = !!(streak && streak.last && streak.last === today);
   const n = (streak && streak.count) || 0;
   const reached = steps >= goal;

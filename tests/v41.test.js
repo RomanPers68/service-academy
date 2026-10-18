@@ -208,16 +208,18 @@ describe("v41: главная — строка шага в карточке тр
     const { RoleSelect } = await import("../ui/screens-roleselect");
     return R(h(RoleSelect, { T: T4, a11y: false, profile, role: "seasonal", onSelect: noop, onContinueLesson: noop, customByRole: { seasonal: [mod] }, ...extra }));
   };
-  it("строка — внутри карточки трека (после «Начать», до «Мой график»), клики не уходят в карточку", async () => {
+  it("строка — внутри карточки трека (после «Дальше», до «Мой график»), клики не уходят в карточку", async () => {
     // v44 (Доп. 357): «Шаг дня» — плашкой в ряду внизу карточки (ряд останавливает клики), карточка закрывается после ряда
-    const html = await render({ stepLine: line });
+    // v56 (Доп. 369): в самый первый день (firstDay из App) плашек нет — здесь первый урок пройден, кнопка — «Дальше»
+    const html = await render({ stepLine: line, completed: { "cms-l-1": true } });
     const slot = '<div data-step-slot="" style="flex:1 1 0;min-width:0;display:flex"><div data-test-line="">Шаг дня · Освежи тему</div></div>';
     const at = html.indexOf(slot);
     expect(at).toBeGreaterThan(0);
-    expect(html.indexOf(">Начать</div>")).toBeLessThan(at);
+    expect(html.indexOf(">Дальше</div>")).toBeGreaterThan(0);
+    expect(html.indexOf(">Дальше</div>")).toBeLessThan(at);
     expect(at).toBeLessThan(html.indexOf("Мой график"));
     const row = html.lastIndexOf('<div data-day-pills=""', at);
-    expect(row).toBeGreaterThan(html.indexOf(">Начать</div>"));
+    expect(row).toBeGreaterThan(html.indexOf(">Дальше</div>"));
     // сразу после ряда закрывается карточка трека, а за ней — обёртка трека
     expect(html.slice(at + slot.length).startsWith("</div></div></div>")).toBe(true);
     const base = await render({});

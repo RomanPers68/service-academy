@@ -146,7 +146,8 @@ describe("v50: главная в две колонки", () => {
     expect(css).toContain("html.sa-wide .sa-home2 > :first-child { grid-column: 1; grid-row: 1 / -1; }");
   });
   it("телефон лёжа — логотип меньше (118×94 вместо 198×158); узкая левая колонка — плотнее ряд инструментов", () => {
-    expect(rs).toContain('width: short ? 118 : 198, height: short ? 94 : 158');
+    // v56 (Доп. 369): стоя логотип на четверть меньше — 152×121 (было 198×158); лёжа — как был, 118×94
+    expect(rs).toMatch(/width: short \? 118 : (198|152), height: short \? 94 : (158|121)/);
     expect(rs).toContain("(window.innerWidth < 380 || (wideCols && wideColW > 0 && wideColW < 728))");
     expect(app).toContain("<RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short}");
   });

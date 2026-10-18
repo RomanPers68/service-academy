@@ -236,6 +236,12 @@ export const UI_SVG = {
       <path d="M12 3a6 6 0 0 0-3.6 10.8c.8.6 1.3 1.4 1.5 2.2h4.2c.2-.8.7-1.6 1.5-2.2A6 6 0 0 0 12 3z" /><path d="M9.5 19h5" /><path d="M10.5 21.5h3" />
     </svg>
   ),
+  // v56 (Доп. 369): «до смены» в карточке «что сейчас» на главной
+  clock: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.6 1.8" /><path d="M9.5 2.8h5" /><path d="M18.6 5.6l1.5 1.5" />
+    </svg>
+  ),
 };
 // Иконки должностей
 export const POS_SVG = { waiter: UI_SVG.cloche, hostess: (c,s)=>ROLE_SVG.spg(c,s), bartender: (c,s)=>ROLE_SVG.bar(c,s), manager: (c,s)=>ROLE_SVG.manager(c,s), senior: (c,s)=>ROLE_SVG.service_manager(c,s) };

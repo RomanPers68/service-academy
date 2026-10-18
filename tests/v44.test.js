@@ -90,21 +90,28 @@ describe("v44: разминка и «Шаг дня» — плашками вни
     expect(p).toContain('class="ms-clamp ms-c3"');
     expect(R(step())).toContain("Шаг дня");             // строка прежнего вида осталась
   });
+  // v56 (Доп. 369): в самый первый день (firstDay из App) плашек нет — одно главное действие; здесь — день второй:
+  // первый урок пройден, кнопка трека — «Дальше» (tests/v56.test.js)
+  const mod2 = { ...mod, lessons: [...mod.lessons, { id: "cms-l-2", type: "lesson", title: "Урок: проводка к столу", content: "Текст" }] };
+  const going = { customByRole: { seasonal: [mod2] }, completed: { "cms-l-1": true } };
   it("обе — рядом в одном ряду карточки; разминка сделана — шаг во всю ширину; ничего — ряда нет", async () => {
-    const both = await render({ warmupCard: warm(), stepLine: step() });
+    const both = await render({ ...going, warmupCard: warm(), stepLine: step() });
     const row = both.indexOf('<div data-day-pills="" style="display:flex;gap:8px;padding:0 9px 9px;align-items:stretch">');
-    expect(row).toBeGreaterThan(both.indexOf(">Начать</div>"));
+    expect(row).toBeGreaterThan(both.indexOf(">Дальше</div>"));
+    expect(both.indexOf(">Дальше</div>")).toBeGreaterThan(0);
     expect(both.indexOf('data-pill="warmup"')).toBeGreaterThan(row);
     expect(both.indexOf('data-pill="step"')).toBeGreaterThan(both.indexOf('data-pill="warmup"'));
-    const onlyStep = await render({ warmupCard: warm({ done: true }), stepLine: step() });
+    const onlyStep = await render({ ...going, warmupCard: warm({ done: true }), stepLine: step() });
     expect(onlyStep).not.toContain('data-pill="warmup"');
     expect(onlyStep).toContain('data-pill="step"');
-    const none = await render({ warmupCard: warm({ done: true }) });
+    const none = await render({ ...going, warmupCard: warm({ done: true }) });
     expect(none).not.toContain("data-day-pills");
+    // v56: самый первый день (App передаёт firstDay) — плашек нет совсем
+    expect(await render({ firstDay: true, warmupCard: warm(), stepLine: step() })).not.toContain("data-day-pills");
   });
   it("подсказка «Напоминать в Telegram» разминки — строкой под плашками", async () => {
     const hint = h("div", { "data-test-hint": "" }, "Напоминать в Telegram за час до смены ›");
-    const html = await render({ warmupCard: h(WarmupCard, { compact: true, a11y: false, shift: "Вечер · 17:00–24:00", known: true, done: false, onStart: noop }, hint), stepLine: step() });
+    const html = await render({ ...going, warmupCard: h(WarmupCard, { compact: true, a11y: false, shift: "Вечер · 17:00–24:00", known: true, done: false, onStart: noop }, hint), stepLine: step() });
     const row = html.indexOf("data-day-pills");
     const at = html.indexOf('data-test-hint=""');
     expect(at).toBeGreaterThan(row);

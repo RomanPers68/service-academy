@@ -17,6 +17,7 @@ import { OfflineScreen } from "./ui/offline";
 import { modeOfDay, dailyCount, dailyStreak } from "./lib/day-mode";
 import { nextStreak, dayOffFromSchedule, myShiftOn, shiftLabel, ymd } from "./lib/streak";
 import { readActivity, bumpActivity, stepsOn, readGoal, saveGoal, weekSummary, ACTIVITY_EVENT } from "./lib/activity";
+import { nowMode, nowCardText, daysAway, dayDiff } from "./lib/now-card";   // v56 (Доп. 369): «что сейчас» на главной
 import { pushLearning, scheduleLearningPush, scheduleDayPush, cancelDayPush } from "./lib/learning-sync";
 import { warmupPool, pickWarmup, refreshPick } from "./lib/warmup";
 import { readFresh, saveFresh, syncFresh, touchFresh, fadedList, moduleDone, INTERVALS } from "./lib/freshness";
@@ -419,7 +420,7 @@ import { NewPageBanner } from "./ui/guestbook-lite";
 import { weeklyDialogueIdFrom, weeklyLessonId } from "./data/reviews";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
-import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./ui/mood-cards";
+import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette, readMood, recordMood } from "./ui/mood-cards";
 import { BG_DARK, CREAM, GOLD, GOLD_LOGO, SAND, toolColor } from "./ui/tokens";
 import { hintsFor, hintKey } from "./data/hints";
 import {
@@ -1258,6 +1259,39 @@ function ServiceAcademy() {
   const topicActs = useMemo(() => ({ refresh: (m) => openTopicRun("refresh", m), credit: (m) => openTopicRun("credit", m), gold: (m) => openTopicRun("gold", m),
     tried: (id) => creditTriedToday(ukP, id, todayKey), cellar: () => navigate("cellar") }), [openTopicRun, ukP, todayKey, marksVer]);   // eslint-disable-line react-hooks/exhaustive-deps
   const openWarmup = useCallback(() => { vibrate("light"); loadTable(); setWarmupOpen(true); }, []);
+  // ── v56 (Доп. 369): «что сейчас» — главная подсказывает одно действие по времени и смене (lib/now-card.js):
+  // до смены — разминка, на смене — в перерыв ошибки или SOS, после смены — «как прошла?», после перерыва в
+  // занятиях — «С возвращением». Часы обновляются раз в минуту, пока приложение открыто.
+  // «как прошла смена» — та же шкала и та же запись, что «Как настрой сегодня?» (ui/mood-cards.jsx): уже ответил сегодня —
+  // не спрашиваем; ответ уходит в пульс команды руководителю (save_mood)
+  const [shiftMood, setShiftMood] = useState(null);
+  React.useEffect(() => { setShiftMood(readMood(todayKey)); }, [todayKey, screen]);
+  const saveShiftMood = useCallback((lvl) => { recordMood(lvl, todayKey); setShiftMood(String(lvl)); }, [todayKey]);
+  // когда заходил в приложение в прошлый раз: «С возвращением» — только если и не заходил 3+ дня (не просто не учился);
+  // в день возвращения приветствие держится до вечера (sa_back_day)
+  const [openAway, setOpenAway] = useState(0);
+  React.useEffect(() => {
+    if (!profile || !ukP) return;
+    let prev = null, back = null;
+    try { prev = localStorage.getItem("sa_last_open" + ukP); back = localStorage.getItem("sa_back_day" + ukP); } catch (e) {}
+    let gap = prev ? dayDiff(prev, todayKey) : 99;
+    if (back === todayKey) gap = 99;
+    else if (gap >= 3) { try { localStorage.setItem("sa_back_day" + ukP, todayKey); } catch (e) {} }
+    try { localStorage.setItem("sa_last_open" + ukP, todayKey); } catch (e) {}
+    setOpenAway(gap);
+  }, [ukP, todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const [nowTick, setNowTick] = useState(0);
+  React.useEffect(() => { const t = setInterval(() => setNowTick((x) => x + 1), 60000); return () => clearInterval(t); }, []);
+  const dueNow = mistakeBank.filter((m) => !m.due || m.due <= Date.now()).length;
+  // самый первый день: ничего не пройдено ни в одном треке, серии нет, сегодня ни шага — одно главное действие
+  // (первый урок), табличка дня — «Первый день». Сменил трек — это не первый день: плашки и «сейчас» остаются.
+  const firstDay = !Object.keys(completed || {}).length && !Object.keys(quizDone || {}).length && !(streak && streak.count) && !todaySteps;
+  const nowCtx = useMemo(() => (profile && role ? nowMode({ now: new Date(), shift: shiftToday, started: !firstDay, warmReady: warmSits.length >= 2, warmDone: warmDone === todayKey,
+    due: dueNow, away: daysAway(activity, todayKey), openAway, stepsToday: todaySteps, mood: shiftMood }) : null),
+    [profile, role, shiftToday, firstDay, warmSits, warmDone, todayKey, dueNow, activity, openAway, todaySteps, shiftMood, nowTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const nowCard = nowCtx ? { ...nowCtx, ...nowCardText(nowCtx, { warmN: warmSits.length, warmWhat: warmSits.some((x) => x.genre !== "quiz") ? "ситуации" : "вопроса" }) } : null;
+  // обработчики — отдельно: ответ «как прошла смена» показывается и после того, как карточка «сейчас» уже ушла
+  const nowOn = { warmup: openWarmup, mistakes: () => navigate("mistakes"), sos: () => navigate("sos"), mood: saveShiftMood, ask: (q) => askMentor(q) };   // askMentor и navigate объявлены ниже — зовём при нажатии
   // Доп. 304: напоминание из Telegram (?go=warmup или startapp=go_warmup) открывает разминку сразу
   const warmLinkRef = useRef(null);
   if (warmLinkRef.current === null) {
@@ -2711,6 +2745,7 @@ function ServiceAcademy() {
         {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
         {screen === "roleSelect" && <div className={vp.wide ? "sa-tabpad sa-tabpad-w" : "sa-tabpad"}><RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short} hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
           dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
+            firstDay={firstDay}
             /* v41 (Доп. 354): «Путь мастера» — чипом рядом со свечой и стаканом, а не карточкой под треком */
             mastery={role && mShown ? masteryChip(mShown, mNew.size, a11y) : null} onMastery={() => openMastery()} /> : null}
           /* v41 (Доп. 354): «Шаг дня» — тонкой строкой в карточке трека, без второй большой кнопки (v40 —
@@ -2726,6 +2761,7 @@ function ServiceAcademy() {
               style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 4px 9px", padding: "7px 11px", borderRadius: 12, fontSize: 12.5, cursor: "pointer",
                 color: a11y ? "#6B4E1A" : "#D9B87C", border: `1px solid ${a11y ? "rgba(139,106,48,0.32)" : "rgba(214,178,102,0.28)"}`, background: a11y ? "rgba(255,250,238,0.5)" : "rgba(214,178,102,0.06)" }}>
               <Candle s={16} lit /><span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
+          nowCard={nowCard} nowOn={nowOn} firstDay={firstDay}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
           warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}

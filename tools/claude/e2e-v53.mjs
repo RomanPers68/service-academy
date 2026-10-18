@@ -454,13 +454,14 @@ const newLesson = async (p) => {
 };
 // где полоска разделов, где край прокрутки, где заголовок раздела
 const navGeo = (page, label) => page.evaluate((label) => {
-  const nl = document.querySelector("[data-navlabel]"), nav = document.querySelector("[data-ednav]") || (nl ? nl.closest("button").parentElement : null), root = document.getElementById("root");
+  // v54: полоска уехала вверх — сверху её копия [data-ednav-pin] (position: fixed); меряем ту, что на виду
+  const nl = document.querySelector("[data-navlabel]"), nav = document.querySelector("[data-ednav-pin]") || document.querySelector("[data-ednav]") || (nl ? nl.closest("button").parentElement : null), root = document.getElementById("root");
   const lab = label ? [...document.querySelectorAll("div, span")].find((e) => e.childElementCount === 0 && e.textContent.trim() === label) : null;
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { t: Math.round(b.top), b: Math.round(b.bottom) }; };
   return { nav: r(nav), root: r(root), lab: r(lab), st: root.scrollTop, ih: innerHeight, on: document.documentElement.classList.contains("sa-edon"),
     over: root.scrollWidth - root.clientWidth, appX: getComputedStyle(root.firstElementChild).overflowX };
 }, label || null);
-const stuck = (g) => !!g.nav && Math.abs(g.nav.t - Math.max(0, g.root.t)) <= 1;
+const stuck = (g) => !!g.nav && g.nav.t >= -1 && g.nav.t <= Math.max(0, g.root.t) + 1;   // v54: копия — у самого верха окна
 const jumpTo = async (page, btn, label) => {
   await page.locator("button:has([data-navlabel])", { hasText: btn }).first().click(); await sleep(500);
   return navGeo(page, label);
@@ -475,7 +476,8 @@ for (const [tag, o0] of [["PORT", { w: 393, h: 852 }], ["LIGHT", { w: 393, h: 85
   await newLesson(p);
   await p.evaluate(() => { document.getElementById("root").scrollTop = 0; }); await sleep(300);
   g = await navGeo(p);
-  ok(tag + ": урок открыт — обрезка без прокрутки (clip), полоска на своём месте под шапкой", g.on && g.appX === "clip" && !!g.nav && g.nav.t > 60 && !g.over, JSON.stringify(g));
+  // v54: обрезка без прокрутки нужна только липкому предпросмотру в две панели — на телефоне её нет
+  ok(tag + ": урок открыт — полоска на своём месте под шапкой", !!g.nav && g.nav.t > 60 && !g.over, JSON.stringify(g));
   await p.evaluate(() => { document.getElementById("root").scrollTop = 1200; }); await sleep(400);
   g = await navGeo(p);
   ok(tag + ": прокрутил форму — полоска разделов прилипла к верхнему краю", stuck(g) && g.st > 600, JSON.stringify({ nav: g.nav, root: g.root, st: g.st }));
@@ -486,7 +488,7 @@ for (const [tag, o0] of [["PORT", { w: 393, h: 852 }], ["LIGHT", { w: 393, h: 85
   }
   await p.locator('button[aria-label="Назад"]').first().click(); await sleep(800);
   g = await navGeo(p);
-  ok(tag + ": вышел из урока — обрезка снова прежняя", !g.on && g.appX === "hidden", JSON.stringify({ on: g.on, appX: g.appX }));
+  ok(tag + ": вышел из урока — обрезка прежняя, копии полоски нет", !g.on && g.appX === "hidden" && !(await p.locator("[data-ednav-pin]").count()), JSON.stringify({ on: g.on, appX: g.appX }));
   await nav(p, "home");
   g = await navGeo(p);
   ok(tag + ": другие экраны — как было", !g.on && g.appX === "hidden" && !g.over, JSON.stringify({ on: g.on, appX: g.appX }));

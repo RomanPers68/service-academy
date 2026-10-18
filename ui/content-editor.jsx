@@ -322,15 +322,34 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const pvRef = React.useRef(null);
   const edWrap = (cls, ref, kids) => (two ? <div className={cls} ref={ref} data-ed2={cls}>{kids}</div> : kids);
   // обёртки экрана режут край по горизонтали (overflow-x: hidden) и потому сами считаются «прокруткой» —
-  // липкие полоска разделов и предпросмотр к ним не прилипают. Пока открыт урок — обрезка без прокрутки (clip).
-  // v53 (Доп. 366): в любой раскладке, не только в две панели — на телефоне полоска «Урок · Практика · …»
-  // снова прилипает сверху, как задумано в правке 162
+  // липкий предпросмотр в две панели к ним не прилипает: там обрезка без прокрутки (clip, класс sa-edon).
+  // v54 (Доп. 367): полоска разделов «Урок · Практика · …» больше не position: sticky — на iPhone липкое внутри
+  // прокрутки приложения дрожало (запись владельца, v53). Уехала вверх — сверху встаёт её копия в слое поверх
+  // экрана (position: fixed не дрожит), как прилипшие номера тем в треке (Доп. 308)
   const edOpen = view === "edit";
   React.useLayoutEffect(() => {
-    if (!edOpen || typeof document === "undefined") return undefined;
+    if (!two || typeof document === "undefined") return undefined;
     const el = document.documentElement; el.classList.add("sa-edon");
     return () => { el.classList.remove("sa-edon"); };
-  }, [edOpen]);
+  }, [two]);
+  const navRef = React.useRef(null);
+  const [navPin, setNavPin] = React.useState(null);   // { left, width } — копия полоски сверху, пока сама уехала
+  React.useEffect(() => {
+    const el = navRef.current;
+    if (!edOpen || !el || typeof IntersectionObserver === "undefined") { setNavPin(null); return undefined; }
+    const box = () => { const b = el.getBoundingClientRect(); return { left: Math.round(b.left), width: Math.round(b.width) }; };
+    const io = new IntersectionObserver((ents) => {
+      const en = ents[ents.length - 1]; if (!en) return;
+      const b = en.boundingClientRect;
+      // верх полоски ушёл под край прокрутки (или вся она выше экрана) — показываем копию
+      const up = en.isIntersecting ? en.intersectionRect.top > b.top + 0.5 : b.top < 0;
+      setNavPin(up ? box() : null);
+    }, { threshold: [0, 1] });
+    io.observe(el);
+    const onR = () => setNavPin((p) => (p ? box() : p));
+    window.addEventListener("resize", onR);
+    return () => { io.disconnect(); window.removeEventListener("resize", onR); };
+  }, [edOpen, two]);
   const secRef = { lesson: React.useRef(null), sit: React.useRef(null), dlg: React.useRef(null), bld: React.useRef(null), q: React.useRef(null), prev: React.useRef(null) };
   const toggleCard = (sec, id) => setOpenCard(o => ({ ...o, [sec]: o[sec] === id ? null : id }));
   const jump = (k) => {
@@ -340,7 +359,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       pv.classList.remove("sa-ed2-flash"); void pv.offsetWidth; pv.classList.add("sa-ed2-flash"); return;
     }
     const el = secRef[k] && secRef[k].current; if (!el) return;
-    el.scrollIntoView({ block: "start" }); const r = document.getElementById("root"); if (r) r.scrollTop -= 58 + ((vpE.safe && vpE.safe.t) || 0); };   // под прилипшую полоску
+    el.scrollIntoView({ block: "start" }); const r = document.getElementById("root"); if (r) r.scrollTop -= 58 + ((vpE.safe && vpE.safe.t) || 0); };   // под копию полоски сверху
   React.useEffect(() => {
     if (view !== "edit") return;
     const isField = (el) => !!(el && /^(TEXTAREA|INPUT)$/.test(el.tagName) && el.type !== "file");
@@ -698,6 +717,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const navItems = [["lesson", "Урок"], ["sit", "Практика" + ((draft.situations || []).length ? " " + draft.situations.length : "")],
     ["dlg", "Диалог" + (draft.dialogue ? " " + draft.dialogue.steps.length : "")], ...(draft.role === "bar" || draft.build ? [["bld", "Сборка" + (draft.build ? " " + draft.build.steps.length : "")]] : []),
     ["q", "Тест" + (draft.questions.length ? " " + draft.questions.length : "")], ["prev", "Просмотр"]];
+  // полоска разделов — одна разметка для неё самой и для её копии сверху (v54)
+  const navBg = { background: dark ? "rgba(23,18,9,0.94)" : "rgba(242,233,212,0.94)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${brd}` };
+  const navRow = navItems.map(([k, l]) => { const m = l.match(/^(\S+)(?: (\d+))?$/) || [l, l, ""]; return (
+    <button key={k} onClick={() => jump(k)} style={{ ...aiBtn, flex: "1 1 0", minWidth: 0, padding: "5px 0", flexDirection: "column", gap: 0, justifyContent: "center", lineHeight: 1.15, borderRadius: 10 }}>
+      <span data-navlabel="1" style={{ fontSize: 10.5, letterSpacing: -0.2, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m[1]}</span>
+      <span style={{ fontSize: 10, color: muted, fontFamily: "monospace" }}>{m[2] || "·"}</span>
+    </button>); });
   const otherRecs = sectionRecs(lessons, draft.role, draft.module).filter(r => r.id !== draft.id);
   const sectionText = [...otherRecs.map(r => r.content || ""), draft.content].join("\n\n").trim();
   const secLabel = (draft.module || "").trim() || "Свой раздел";
@@ -746,14 +772,11 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {edWrap("sa-ed2-f", null, <>
         {/* навигатор по разделам — закреплён сверху при прокрутке (правка 162) */}
         {/* все метки — в одну строку без прокрутки (правка 164: у бара «Просмотр» уезжал за край) */}
-        <div data-ednav="" style={{ position: "sticky", top: "env(safe-area-inset-top, 0px)", zIndex: 6, margin: "0 -16px 6px", padding: "7px 8px", display: "flex", gap: 3,
-          background: dark ? "rgba(23,18,9,0.94)" : "rgba(242,233,212,0.94)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${brd}` }}>
-          {navItems.map(([k, l]) => { const m = l.match(/^(\S+)(?: (\d+))?$/) || [l, l, ""]; return (
-            <button key={k} onClick={() => jump(k)} style={{ ...aiBtn, flex: "1 1 0", minWidth: 0, padding: "5px 0", flexDirection: "column", gap: 0, justifyContent: "center", lineHeight: 1.15, borderRadius: 10 }}>
-              <span data-navlabel="1" style={{ fontSize: 10.5, letterSpacing: -0.2, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m[1]}</span>
-              <span style={{ fontSize: 10, color: muted, fontFamily: "monospace" }}>{m[2] || "·"}</span>
-            </button>); })}
+        <div data-ednav="" ref={navRef} style={{ position: "relative", zIndex: 6, margin: "0 -16px 6px", padding: "7px 8px", display: "flex", gap: 3, ...navBg }}>
+          {navRow}
         </div>
+        {navPin && typeof document !== "undefined" ? createPortal(
+          <div data-ednav-pin="" className="sa-ednav-pin" style={{ left: navPin.left, width: navPin.width, ...navBg }}>{navRow}</div>, document.body) : null}
         {draftNote ? (
           <div style={{ ...G({ padding: "9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, color: muted, fontSize: 12.5 }}>
             <span style={{ flex: 1 }}>{draftNote}</span>

@@ -10,6 +10,7 @@ import { CocktailArt, VesselArt } from "./cocktail-art";
 import { report as reportAch } from "../lib/achievements";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
+import { useViewport, useColumn } from "./viewport";   // v54 (Доп. 367): телефон лёжа — сцена слева, полки справа
 
 // ── Дополнение 208: «Сборка руками» — тренажёр, от которого не оторваться ─────
 // Станция внизу: стекло · лёд · ингредиенты · инструмент · гарниш. Тап — действие,
@@ -410,6 +411,12 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
 // ── Игровой экран одного коктейля ──────────────────────────────────────────────
 function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, onFinish }) {
   const text = T.modTitle.color, sub = T.modSub.color;
+  // v54 (Доп. 367): телефон лёжа (низкий экран) — сборка в две колонки: слева сцена, справа режим со счётом и
+  // станция с полками. Сверху сцена занимала почти весь экран, полки — ниже, и бокал уезжал из кадра, пока
+  // выбираешь. Колонка шире, шейкер и бокал — столбиком, доска — полная, с советом. Стоя страница почти не
+  // листается — сцена и так в кадре («липкой» её не делаем: на iPhone липкое внутри прокрутки приложения дрожит)
+  const lying = useViewport().short;
+  useColumn(lying ? 820 : 0);
   const sc = React.useMemo(() => buildScenario(c, COCKTAILS), [c]); // обманки — из классики (достаточно)
   const [done, setDone] = React.useState([]);
   const [msg, setMsg] = React.useState(null); // { ok, text }
@@ -423,7 +430,8 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
   const [jig, setJig] = React.useState(null); // Доп. 220: джиггер на сцене
   const [lift, setLift] = React.useState(null); // Доп. 224: «рука бармена» — какая бутылка сейчас в руке
   const [frostOn, setFrostOn] = React.useState(false); // Доп. 225: иней после шейка/стира
-  const narrow = useNarrow();
+  const narrowW = useNarrow();   // Доп. 231: узкий телефон — сцена столбиком, доска компактнее
+  const narrow = narrowW || lying;   // v54: лёжа сцена в половине ширины — тоже столбиком; доска — полная, с советом (narrowW)
   // Доп. 234: станция с вкладками — одна полка на экране; сделанное сворачивается
   const [tab, setTab] = React.useState("glass");
   const TABS = [["glass", "Стекло"], ["ice", "Лёд"], ["ing", "Бутылки"], ["tool", "Инструмент"], ["garnish", "Гарниш"]];
@@ -506,14 +514,14 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
     <div style={T.screen} className="sa-screen">
       <LabStyle />
       {Head(c.name, onExit)}
-      <div style={{ padding: "0 16px 110px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, letterSpacing: 1.4, fontFamily: "monospace", color: sub, marginBottom: 8 }}>
+      <div className="sa-labbody" style={{ padding: "0 16px 110px" }}>
+        <div data-labmode="" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, letterSpacing: 1.4, fontFamily: "monospace", color: sub, marginBottom: 8 }}>
           <span>{mode === "hint" ? "С ПОДСКАЗКОЙ" : "ПО ПАМЯТИ ✦"}{rush ? ` · ЗАКАЗ ${rush.i + 1}/${rush.orders.length}` : ""}</span>
           <span>{rush ? `${elapsed} с` : `${done.length}/${sc.steps.length}`}{mistakes ? ` · ошибок ${mistakes}` : ""}</span>
         </div>
         {/* Доп. 220: Час пик — заказы выезжают чеками из принтера на стойке */}
         {rush && (
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 10, overflow: "hidden", height: 54 }}>
+          <div data-labrush="" style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 10, overflow: "hidden", height: 54 }}>
             {rush.orders.map((o, i) => { const cur = i === rush.i, past = i < rush.i; return (
               <div key={o.id + i} className={cur ? "sa-lab-in" : ""} style={{ flexShrink: 0, width: cur ? 150 : 96, padding: cur ? "8px 10px" : "6px 8px", background: past ? "#cfc6ad" : "#F0E8D8", color: "#2A1F0E", fontFamily: "ui-monospace, Menlo, monospace", fontSize: cur ? 12 : 10, lineHeight: 1.25, borderRadius: "2px 2px 6px 6px", boxShadow: "0 4px 10px rgba(0,0,0,.35)", opacity: past ? 0.5 : cur ? 1 : 0.75, transform: cur ? "rotate(-1.5deg)" : "translateY(10px) rotate(1deg)", animation: cur ? "saLabTicket .45s cubic-bezier(.2,1.2,.3,1)" : "none", borderTop: "2px dashed rgba(0,0,0,.25)" }}>
                 <div style={{ fontSize: 9, letterSpacing: 1.2, opacity: 0.6 }}>ЗАКАЗ №{i + 1}{past ? " · ГОТОВ" : cur ? " · В РАБОТЕ" : ""}</div>
@@ -523,7 +531,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         )}
         {/* шаги — точки, заполняются по мере сборки */}
         {/* Доп. 233: сцена прилипает к верху — полки прокручиваются под ней, анимация всегда в кадре */}
-        <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px", padding: "6px 16px 10px", background: a11y ? "linear-gradient(180deg, rgba(250,242,222,0.98) 85%, rgba(250,242,222,0))" : "linear-gradient(180deg, rgba(24,19,9,0.98) 85%, rgba(24,19,9,0))" }}>
+        <div data-labscene="" style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px", padding: "6px 16px 10px", background: a11y ? "linear-gradient(180deg, rgba(250,242,222,0.98) 85%, rgba(250,242,222,0))" : "linear-gradient(180deg, rgba(24,19,9,0.98) 85%, rgba(24,19,9,0))" }}>
         {/* Доп. 225: цепочка шагов — значки в порядке сборки; по памяти — только счёт, без подсказки видов */}
         <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 10, flexWrap: "wrap" }}>
           {sc.steps.map((s, i) => { const isDone = done.includes(i); const cur = !finished && expected && expected.i === i; const dim = a11y ? "rgba(139,106,48,0.35)" : "rgba(214,178,102,0.28)";
@@ -571,25 +579,25 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
                 {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>}
               </div>
             ) : msg ? (
-              <div className="sa-fadein" style={{ padding: narrow ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2E211A,#1A160F)", border: narrow ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
+              <div className="sa-fadein" style={{ padding: narrowW ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2E211A,#1A160F)", border: narrowW ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
                 <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(255,180,170,.7)", fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "memory" ? "вылил" : "не то"}</div>
-                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", cursive', fontSize: narrow ? 14 : 15, color: "rgba(255,200,190,.95)", lineHeight: 1.35, marginTop: 2 }}>{msg.text}</div>
+                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", cursive', fontSize: narrowW ? 14 : 15, color: "rgba(255,200,190,.95)", lineHeight: 1.35, marginTop: 2 }}>{msg.text}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "hint" ? "продолжай — нужное подсвечено" : "заново, с пустого бокала"}</div>
               </div>
             ) : pending ? (
               <div className="sa-fadein">
                 <div style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ДЖИГГЕР · {pending.toUpperCase()}</div>
-                <div className="sa-hscroll" style={{ display: "flex", flexWrap: narrow ? "nowrap" : "wrap", overflowX: narrow ? "auto" : "visible", gap: 4, paddingBottom: narrow ? 4 : 0 }}>
+                <div className="sa-hscroll" style={{ display: "flex", flexWrap: narrowW ? "nowrap" : "wrap", overflowX: narrowW ? "auto" : "visible", gap: 4, paddingBottom: narrowW ? 4 : 0 }}>
                   {jiggerFor(c).map(a => { const st = sc.steps.find(s => s.kind === "ing" && s.name === pending); return <span key={a} style={chip(hint(st) && Number(st.amount) === a, { padding: "6px 9px", fontSize: 12.5 })} onClick={() => { const n = pending; setPending(null); act({ kind: "ing", name: n, amount: a }); }}>{a}</span>; })}
                   <span style={chip(false, { padding: "6px 9px", fontSize: 12.5, color: sub })} onClick={() => setPending(null)}>✕</span>
                 </div>
                 <div style={{ fontSize: 11, color: sub, marginTop: 6 }}>мл</div>
               </div>
             ) : mode === "hint" && expected ? (
-              <div style={{ padding: narrow ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: narrow ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: "none", display: narrow ? "flex" : "block", alignItems: "baseline", gap: 10 }}>
+              <div style={{ padding: narrowW ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: narrowW ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: "none", display: narrowW ? "flex" : "block", alignItems: "baseline", gap: 10 }}>
                 <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', flexShrink: 0 }}>теперь</div>
-                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: narrow ? 15 : 16, color: "rgba(255,255,255,.92)", marginTop: narrow ? 0 : 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)", minWidth: 0 }}>{expected.s.label}</div>
-                {c.tip && !narrow && <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
+                <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: narrowW ? 15 : 16, color: "rgba(255,255,255,.92)", marginTop: narrowW ? 0 : 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)", minWidth: 0 }}>{expected.s.label}</div>
+                {c.tip && !narrowW && <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
               </div>
             ) : (
               <div style={{ fontSize: 14, color: sub, lineHeight: 1.5 }}>{pending ? `Сколько ${pending.toLowerCase()}?` : "Тапай по станции: стекло → лёд или ингредиенты → инструмент → гарниш."}</div>
@@ -623,7 +631,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
             ? shelf(sc.station.tools.map((t, k) => <Item key={"t" + t} icon={<ToolIcon id={t} gold={gold} />} label={TOOLS[t]} on={expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "tool", id: t })} />))
             : (!garnishStep ? doneLine("Без гарниша") : garnishDone ? doneLine(`Гарниш — ${GARNISH_RU[c.garnish]}`) : !restDone ? doneLine("Гарниш — в самом конце, когда напиток собран") : shelf(sc.station.garnishes.map((g, k) => <Item key={"ga" + g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "garnish", id: g })} />)));
           return (
-            <div style={{ marginTop: 12 }}>
+            <div data-labstation="" style={{ marginTop: 12 }}>
               <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8 }}>
                 {TABS.map(([key, label]) => { const on = tab === key; const doneMark = key === "glass" ? glassDone : key === "ice" ? iceAllDone : key === "ing" ? allIngsDone : key === "garnish" ? (!!garnishDone || !garnishStep) : false;
                   return <span key={key} onClick={() => { setTab(key); vibrate("light"); }} {...onActivate(() => setTab(key))} style={{ padding: "7px 13px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, border: `1px solid ${on ? gold : gold + "44"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : doneMark ? gold : sub }}>{label}{doneMark ? " ✓" : ""}</span>; })}

@@ -11,12 +11,13 @@ const rd = (f) => readFileSync(f, "utf8");
 
 describe("v53: полоска разделов в редакторе урока прилипает", () => {
   const ed = rd("ui/content-editor.jsx"), css = rd("ui/css.js");
-  it("пока открыт урок (в любой раскладке) — класс sa-edon на <html>; вышел из урока — снят", () => {
+  it("класс sa-edon на <html> — пока нужен липкому (v54: только в две панели); вышел из урока — снят", () => {
     expect(ed).toContain("const edOpen = view === \"edit\";");
-    expect(ed).toContain("if (!edOpen || typeof document === \"undefined\") return undefined;");
+    // v54 (Доп. 367): полоска разделов больше не sticky (на iPhone дрожала) — clip нужен лишь предпросмотру в две панели
+    expect(ed).toContain("if (!two || typeof document === \"undefined\") return undefined;");
     expect(ed).toContain("const el = document.documentElement; el.classList.add(\"sa-edon\");");
     expect(ed).toContain("return () => { el.classList.remove(\"sa-edon\"); };");
-    expect(ed).toContain("}, [edOpen]);");
+    expect(ed).toContain("}, [two]);");
     expect(ed).not.toContain("sa-ed2on");
   });
   it("обёртки экрана в уроке — обрезка без прокрутки (overflow-x: clip), только пока открыт урок", () => {
@@ -26,9 +27,10 @@ describe("v53: полоска разделов в редакторе урока 
     // у остальных экранов обёртки прежние
     expect(rd("ui/styles.js")).toContain("screen: { display:\"flex\", flexDirection:\"column\", minHeight:\"100vh\", background:\"transparent\", overflowX:\"hidden\" },");
   });
-  it("полоска прилипает под вырез сверху (env), тап по разделу — заголовок под полоской", () => {
-    expect(ed).toContain("<div data-ednav=\"\" style={{ position: \"sticky\", top: \"env(safe-area-inset-top, 0px)\", zIndex: 6,");
-    expect(ed).toContain("if (r) r.scrollTop -= 58 + ((vpE.safe && vpE.safe.t) || 0); };   // под прилипшую полоску");
+  it("полоска видна сверху при прокрутке, тап по разделу — заголовок под ней", () => {
+    // v54: полоска на месте — position: relative; уехала вверх — сверху её копия (position: fixed), см. tests/v54.test.js
+    expect(ed).toContain("<div data-ednav=\"\" ref={navRef} style={{ position: \"relative\", zIndex: 6,");
+    expect(ed).toContain("if (r) r.scrollTop -= 58 + ((vpE.safe && vpE.safe.t) || 0); };   // под копию полоски сверху");
   });
   it("в две панели (v52) всё по-прежнему: предпросмотр прилипает, «Просмотр» подсвечивает", () => {
     expect(css).toContain("html.sa-wide .sa-ed2-pv { position: sticky; top: 10px;");
@@ -38,7 +40,7 @@ describe("v53: полоска разделов в редакторе урока 
 
 describe("v53: метка и журнал", () => {
   it("метка сборки — v53; CHANGES — «Дополнение 366»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v53</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v54 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 366 — редактор урока: полоска разделов прилипает и на телефоне (v53)");
   });
 });

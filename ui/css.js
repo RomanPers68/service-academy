@@ -1024,10 +1024,26 @@ export const injectStyles = () => {
 
     /* ═══ v53 (Доп. 366): редактор урока — липкое липнет ═══
        Обёртки экрана (T.app, T.screen) режут край по горизонтали overflow-x: hidden — из-за этого они сами
-       считаются «прокруткой», и position: sticky внутри них не прилипает (листается же #root). Пока открыт урок
-       (класс sa-edon от редактора) — обрезка без прокрутки: полоска «Урок · Практика · …» прилипает сверху на
-       телефоне (правка 162), в две панели — ещё и предпросмотр. Старый iOS (до 16) clip не знает — там как раньше. */
+       считаются «прокруткой», и position: sticky внутри них не прилипает (листается же #root). С класса sa-edon
+       обёртки обрезают край без прокрутки. v54 (Доп. 367): класс — только в две панели (липкий предпросмотр);
+       полоска разделов на телефоне дрожала как sticky — теперь вместо неё копия сверху (.sa-ednav-pin). */
     html.sa-edon #root > div, html.sa-edon .sa-edscreen { overflow-x: clip !important; }
+
+    /* ═══ v54 (Доп. 367): «Сборка руками» лёжа — сцена слева, полки справа; полоска редактора урока — копией сверху ═══
+       Телефон лёжа (sa-short): сверху сцена (шейкер, бокал, доска) занимала почти весь низкий экран, полки были ниже,
+       и бокал уезжал из кадра, пока выбираешь. Теперь две колонки: сцена слева, справа над полками — режим и счёт;
+       чеки «Часа пик» — над обеими колонками. */
+    html.sa-short .sa-labbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-areas: "rush rush" "scene mode" "scene station"; column-gap: 16px; align-items: start;
+      padding-bottom: 24px !important; }   /* снизу запас не нужен: полки — справа наверху; страница почти не листается */
+    html.sa-short .sa-labbody > [data-labmode] { grid-area: mode; }
+    html.sa-short .sa-labbody > [data-labrush] { grid-area: rush; }
+    html.sa-short .sa-labbody > [data-labscene] { grid-area: scene; margin: 0 !important; padding: 0 0 10px !important; background: none !important; }
+    html.sa-short .sa-labbody > [data-labstation] { grid-area: station; margin-top: 0 !important; min-width: 0; }
+    /* Полоска разделов редактора урока уехала вверх — сверху её копия в слое поверх экрана (fixed не дрожит на
+       iPhone, в отличие от position: sticky внутри прокрутки приложения); место и ширину задаёт редактор */
+    .sa-ednav-pin { position: fixed; top: 0; z-index: 330; box-sizing: border-box; display: flex; gap: 3px;
+      padding: calc(env(safe-area-inset-top, 0px) + 7px) 8px 7px; }
   `;
   document.head.appendChild(style);
 

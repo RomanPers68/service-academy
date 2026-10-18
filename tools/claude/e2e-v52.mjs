@@ -586,7 +586,8 @@ if (want("EDITOR")) {
     const pv = document.querySelector('[data-ed2="sa-ed2-pv"]'), nav = document.querySelector("[data-navlabel]");
     const btn = (re) => !![...document.querySelectorAll("button")].find((x) => re.test(x.textContent));
     return { f: b('[data-ed2="sa-ed2-f"]'), pv: b('[data-ed2="sa-ed2-pv"]'), on: document.documentElement.classList.contains("sa-edon"), col: b(".sa-col"),
-      nav: nav ? Math.round(nav.closest('div[style*="sticky"]').getBoundingClientRect().top) : null, pvText: pv ? pv.innerText.replace(/\s+/g, " ") : "",
+      // v54: полоска уехала вверх — сверху её копия [data-ednav-pin]; до v54 — сама полоска (sticky)
+      nav: (() => { const n = document.querySelector("[data-ednav-pin]") || document.querySelector("[data-ednav]") || (nav && nav.closest('div[style*="sticky"]')); return n ? Math.round(n.getBoundingClientRect().top) : null; })(), pvText: pv ? pv.innerText.replace(/\s+/g, " ") : "",
       show: btn(/Показать, как увидит сотрудник/), hide: btn(/Скрыть предпросмотр/), flash: pv ? pv.classList.contains("sa-ed2-flash") : false, over: document.getElementById("root").scrollWidth - document.getElementById("root").clientWidth };
   });
   let e = await E();
@@ -603,7 +604,8 @@ if (want("EDITOR")) {
   e = await E();
   ok("EDITOR: в самом конце формы предпросмотр по-прежнему прилип сверху", !!e.pv && e.pv.t >= 0 && e.pv.t <= 40, JSON.stringify({ pv: e.pv && e.pv.t }));
   await p.evaluate(() => { document.getElementById("root").scrollTop = 800; }); await sleep(400);
-  await p.locator("button", { hasText: "Просмотр" }).first().click(); await sleep(200);
+  // v54: полоска уехала вверх — на виду её копия сверху: жмём там (сама полоска — за краем, клик по ней прокрутил бы наверх)
+  await ((await p.locator("[data-ednav-pin]").count()) ? p.locator("[data-ednav-pin] button", { hasText: "Просмотр" }) : p.locator("button", { hasText: "Просмотр" })).first().click(); await sleep(200);
   e = await E();
   ok("EDITOR: «Просмотр» в полоске — предпросмотр подсвечен, форма осталась на месте", e.flash && await p.evaluate(() => document.getElementById("root").scrollTop) >= 700, JSON.stringify({ flash: e.flash }));
   await p.locator('button[aria-label="Назад"]').first().click(); await sleep(800);

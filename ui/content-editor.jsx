@@ -26,6 +26,7 @@ import { TRACKS, trackOf, customIcon } from "../lib/tracks";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { glass as glassOf, SectionLabel, tones } from "./analytics-kit";
 import { GOLD } from "./tokens";
+import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { COCKTAILS } from "../data/cocktails";
 import { splitExtras, sectionName, bySort, sectionSteps } from "../lib/custom-modules";
 import { answerTell } from "../lib/answer-tell";   // v37: верный угадывается по длине?
@@ -638,7 +639,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {header("Редактор контента", onBack)}
         <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "12px 16px 44px" }}>
           <div style={{ color: muted, fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>Свои уроки под твой ресторан — сотрудники увидят их в своём треке рядом со штатными.</div>
-          {loading ? <div style={{ textAlign: "center", padding: "40px 0", color: muted }}>Загрузка…</div>
+          {loading ? <SkelCards a11y={!!T.a11y} rows={3} h={74} style={{ padding: "12px 0" }} />
           : loadErr ? <div style={{ textAlign: "center", padding: "40px 0", color: muted }}>Не удалось загрузить. <span onClick={load} style={{ color: gold, cursor: "pointer" }}>Повторить</span></div>
           : groups.length === 0 ? (
             <div style={{ ...G({ padding: "34px 22px", marginTop: 12 }), textAlign: "center" }}>

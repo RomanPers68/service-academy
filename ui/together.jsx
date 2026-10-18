@@ -15,6 +15,7 @@ import { Candle, Ic } from "./table-bits";
 import { ensureTableCss } from "./table-css";
 import { frostOf } from "./home-hubs";
 import { vibrate, onActivate } from "../lib/utils";
+import { SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { taskProgress, goalLine, plural, GOAL_WORDS } from "../lib/quest";
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
@@ -441,7 +442,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
     <div className="tg-scrim tbv" onClick={onClose}>
       <div className="tg-sheet" role="dialog" aria-modal="true" aria-label="Свеча на двоих" onClick={(e) => e.stopPropagation()}>
         <div className="tg-tag">СВЕЧА НА ДВОИХ</div>
-        {st.status === "loading" ? <div className="tg-sub" style={{ marginTop: 8 }}>Загружаю…</div> : null}
+        {st.status === "loading" ? <SkelLines a11y={a11y} widths={["74%", "52%"]} style={{ marginTop: 10 }} /> : null}
         {st.status === "missing" ? <div className="tg-sub" style={{ marginTop: 8 }}>Свеча на двоих включится, когда руководитель обновит сервер (этап 24 в Supabase).</div> : null}
         {st.status === "offline" || st.status === "error" ? <div className="tg-sub" style={{ marginTop: 8 }}>Нет связи с сервером — попробуй чуть позже.</div> : null}
         {pair ? (

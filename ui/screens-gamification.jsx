@@ -15,6 +15,7 @@ import { MODULES, programOf, programAll } from "../data/modules";
 import { MODULES_INDEX } from "../data/modules-index";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
+import { SkelCards, SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
@@ -514,7 +515,8 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
             <div onClick={() => setShowRec(v => !v)} {...onActivate(() => setShowRec(v => !v))} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
               <div>
                 <div style={{ fontSize:11, letterSpacing:1.6, color: goldText(!!T.a11y), fontFamily:"monospace" }}>РЕКОРДЫ КОМАНДЫ</div>
-                <div style={{ fontSize:12.5, color:T.modSub.color, marginTop:2 }}>{records ? Object.values(records).flat().length ? `Лидеры по ${Object.values(records).filter(l => l.length).length} дисциплинам` : "Пока пусто — первый рекорд твой" : recErr ? "Нужен stage14 на сервере" : "Загружаю…"}{myBadges.length ? ` · твоих ачивок ${myBadges.length}` : ""}</div>
+                {!records && !recErr ? <SkelLines a11y={!!T.a11y} widths={["58%"]} h={10} style={{ marginTop:6 }} />
+                : <div style={{ fontSize:12.5, color:T.modSub.color, marginTop:2 }}>{records ? Object.values(records).flat().length ? `Лидеры по ${Object.values(records).filter(l => l.length).length} дисциплинам` : "Пока пусто — первый рекорд твой" : "Нужен stage14 на сервере"}{myBadges.length ? ` · твоих ачивок ${myBadges.length}` : ""}</div>}
               </div>
               <span style={{ color:GOLD, fontSize:18, transform: showRec ? "rotate(90deg)" : "none", transition:"transform .2s" }}>›</span>
             </div>
@@ -898,7 +900,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 80px" }}>
         {loading ? (
-          <div style={{ textAlign:"center", color: T.modSub?.color || BROWN, padding:"40px 0" }}>Загрузка...</div>
+          <SkelCards a11y={!!T.a11y} rows={4} h={70} style={{ padding:"6px 0" }} />
         ) : (
           <>
             {/* Общая сводка */}

@@ -453,7 +453,8 @@ if (want("PORT")) for (const light of [false, true]) {
   for (const s of ["roleSelect", "shift", "me"]) {
     await nav(p, s); const g = await lay(p);
     ok(`${tag} ${s}: портрет — без широкой раскладки, нижняя панель внизу, меню слева нет`, !g.wide && !g.rail && g.bar && g.bar.b > 852 - 80 && g.bar.w > 360, JSON.stringify(g.bar));
-    ok(`${tag} ${s}: колонка — как в v49 (поле body 8 px, 377 из 393) и плавающая кнопка Наставника`, g.col && g.col.l === 8 && g.col.w === 377 && g.fab && !g.railAi, JSON.stringify(g.col));
+    // v55 (Доп. 368): поля браузера у body убраны и в портрете — колонка во всю ширину (0, 393); раньше 8 px и 377
+    ok(`${tag} ${s}: колонка — во всю ширину (v55: без полей body; до v55 — 8 px и 377 из 393) и плавающая кнопка Наставника`, g.col && ((g.col.l === 0 && g.col.w === 393) || (g.col.l === 8 && g.col.w === 377)) && g.fab && !g.railAi, JSON.stringify(g.col));
   }
   await shot(p, "port-home" + (light ? "-light" : ""));
   ok(tag + ": без ошибок", !o.errors.length, o.errors.join(" | "));
@@ -643,7 +644,7 @@ if (want("ROTATE")) {
   ok("ROTATE: повернули — меню слева, панели нет, колонка справа от меню", g.wide && g.rail && !g.bar && g.col.l >= g.rail.r + 12, JSON.stringify({ rail: g.rail, col: g.col }));
   await p.setViewportSize({ width: 393, height: 852 }); await sleep(1300); g = await lay(p);
   const f1 = await fs();
-  ok("ROTATE: вернули — снова портрет: панель внизу, колонка как была (8 px поле, 377), классов широкой раскладки нет", !g.wide && !g.short && !g.railon && g.bar && !g.rail && g.col.l === 8 && g.col.w === 377, JSON.stringify(g.col));
+  ok("ROTATE: вернули — снова портрет: панель внизу, колонка как была (v55: во всю ширину; до v55 — 8 px поле, 377), классов широкой раскладки нет", !g.wide && !g.short && !g.railon && g.bar && !g.rail && ((g.col.l === 0 && g.col.w === 393) || (g.col.l === 8 && g.col.w === 377)), JSON.stringify(g.col));
   ok("ROTATE: размер текста после поворота тот же", f0 && f0 === f1, f0 + " → " + f1);
   ok("ROTATE: без ошибок", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();

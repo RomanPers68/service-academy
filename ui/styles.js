@@ -12,7 +12,11 @@ export const ACCENT_SERIF = "'Piazzolla', Georgia, serif";
 export const S = {
   app: { display:"flex", justifyContent:"center", minHeight:"100vh", background:`radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, ${BG_DARK} 0%, #1C1509 50%, #14110A 100%)`, fontFamily:"Georgia, serif", overflowX:"hidden" },
   phone: { width:"100%", maxWidth:430, background:"transparent", minHeight:"100vh" },
-  screen: { display:"flex", flexDirection:"column", minHeight:"100vh", background:"transparent", overflowX:"hidden" },
+  // v55 (Доп. 368): экран занимает ровно видимую высоту — минус верхняя строка «✦ SA» (--sa-top, меряет App),
+  // отступ под нижнюю панель у обёртки (--sa-padb, класс sa-tabpad) и запас под кнопку AI (--sa-fab, css.js).
+  // Раньше любой экран листался на 43 px («Поиск», «Лига», «Рейтинг» — на 131), даже когда всё помещалось:
+  // палец ловил «болтанку».
+  screen: { display:"flex", flexDirection:"column", minHeight:"calc(100vh - var(--sa-top, 0px) - var(--sa-padb, 0px) - var(--sa-fab, 0px))", background:"transparent", overflowX:"hidden" },
 
   a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.08)" },
   a11yLabel: { color:"#A09080", fontSize:11, fontFamily:"monospace", letterSpacing:1 },
@@ -68,7 +72,8 @@ export const S = {
   lessTitle: { color:CREAM, fontSize:14, marginBottom:2, fontWeight:"600" },
   lessArrow: { color:"#3E3428", fontSize:16 },
 
-  lessHead: { display:"flex", alignItems:"center", gap:10, padding:"44px 18px 14px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.10)" },
+  // v55 (Доп. 368): сверху 14 px вместо 44 — над заголовком экрана была пустая полоса под верхней строкой «✦ SA»
+  lessHead: { display:"flex", alignItems:"center", gap:10, padding:"14px 18px 14px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.10)" },
   backBtn2: { background:"none", border:"none", color:MUTED_3, fontSize:26, cursor:"pointer", padding:0, lineHeight:1 },
   lessHeadTitle: { color:CREAM, fontSize:15, fontWeight:"bold", flex:1, lineHeight:1.3, fontFamily:ACCENT_SERIF },
   lessBody: { flex:1, padding:"18px 18px 44px", overflowY:"auto", background:"transparent" },

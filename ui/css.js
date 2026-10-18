@@ -1044,6 +1044,21 @@ export const injectStyles = () => {
        iPhone, в отличие от position: sticky внутри прокрутки приложения); место и ширину задаёт редактор */
     .sa-ednav-pin { position: fixed; top: 0; z-index: 330; box-sizing: border-box; display: flex; gap: 3px;
       padding: calc(env(safe-area-inset-top, 0px) + 7px) 8px 7px; }
+
+    /* ═══ v55 (Доп. 368): быстро и твёрдо — экраны стоят на месте ═══
+       Раньше любой экран листался на 43 px, даже когда всё помещалось («Поиск», «Лига», «Рейтинг» — на 131):
+       минимальная высота экрана была 100vh, а сверху ещё строка «✦ SA», снизу — отступ под панель вкладок.
+       Теперь экран вычитает их (ui/styles.js, screen): --sa-top — высота верхней строки (меряет App),
+       --sa-padb — отступ обёртки под панель вкладок, --sa-fab — запас под кнопку AI. */
+    body { margin: 0; }   /* было 8 px полей браузера по краям: в портрете экран был на 16 px уже и обрезался снизу */
+    .sa-tabpad { padding-bottom: 88px; --sa-padb: 88px; }   /* отступ под панель вкладок — как был */
+    /* в портрете на экранах без панели вкладок (Аналитика, SOS, Меню…) 88 px внизу были пустым хвостом */
+    html:not(.sa-wide):not(.sa-navon) .sa-tabpad { padding-bottom: 24px; --sa-padb: 24px; }
+    .sa-tabpad.sa-tabpad-w { padding-bottom: 24px; --sa-padb: 24px; }
+    /* Кнопка AI остаётся, где была (низ справа, над панелью вкладок); снизу экрана — запас под неё:
+       последние карточки поднимаются выше кнопки и не прячутся под ней. */
+    html.sa-fabon { --sa-fab: calc(104px + env(safe-area-inset-bottom, 0px)); }
+    html.sa-fabon .sa-col { padding-bottom: var(--sa-fab); box-sizing: border-box; }
   `;
   document.head.appendChild(style);
 

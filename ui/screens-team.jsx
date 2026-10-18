@@ -15,6 +15,7 @@ import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
+import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
@@ -558,7 +559,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         <input style={{ ...inputStyle, marginBottom:16 }} placeholder="Поиск по имени или ресторану..."
           value={search} onChange={e => setSearch(e.target.value)} />
 
-        {list === null && <div style={{ color:T.modSub.color, fontSize:12.5, textAlign:"center", padding:"30px 0" }}>Загружаем команду...</div>}
+        {list === null && <SkelCards a11y={!!T.a11y} rows={4} h={64} label="Загружаем команду…" style={{ padding:"4px 0 16px" }} />}
 
         {loadError && (
           <div style={{ textAlign:"center", padding:"20px 0" }}>

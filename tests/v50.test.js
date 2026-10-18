@@ -91,7 +91,9 @@ describe("v50: меню слева (NavRail)", () => {
     expect(app).toContain('const NAV_SCREENS = ["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"];');
     expect(app).toContain("? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate(\"assistant\")} />");
     expect(app).toContain(": <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate(\"light\"); navigate(id); }} tabs={tabs} />;");
-    expect(app).toContain("{navOn && !vp.wide && !welcome && !mistakeHint && (");
+    // v55 (Доп. 368): условие плавающей кнопки вынесено в fabOn — по нему же ставится запас снизу (sa-fabon)
+    expect(app).toContain("const fabOn = navOn && !vp.wide && !welcome && !mistakeHint;");
+    expect(app).toContain("{fabOn && (");
     expect(app).toContain('bottom: vp.wide ? 24 : 104');
   });
   it("подсказка главного: «Слева четыре вкладки», пузырь — справа от меню", () => {

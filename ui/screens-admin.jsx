@@ -15,6 +15,7 @@ import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
+import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
@@ -316,7 +317,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
         ) : (
           <>
             {list === null ? (
-              <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px" }}>Загружаю…</div>
+              <SkelCards a11y={a11y} rows={3} h={58} style={{ padding:"6px 0" }} />
             ) : list.length === 0 ? (
               <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Сейчас на онбординге никого нет. Когда новичок начнёт путь — он появится здесь.</div>
             ) : list.map((h,i)=>{ const tot=h.total||ONB_TOTAL; const p=Math.round(((h.checked||0)/tot)*100); const ini=((h.name||"?")[0]||"")+((h.surname||"")[0]||""); return (
@@ -652,7 +653,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         {view === "people" ? (<>
           <SectionLabel a11y={a11y} right="90 дней">КТО И ГДЕ ОШИБАЕТСЯ</SectionLabel>
           <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px", lineHeight:1.45 }}>Видны: {peopleScope}. Нажми на человека — раскроются вопросы.</div>
-          {people === "loading" && note("Загружаю…")}
+          {people === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {people === "off" && note(offText("сотрудники и их ошибки"))}
           {Array.isArray(people) && peopleList.length === 0 && note("Ошибок за 90 дней нет — или команда ещё не проходила тесты.")}
           {peopleList.map((p, i) => {
@@ -708,7 +709,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
               <div style={{ color:muted, fontSize:12, lineHeight:1.45, marginTop:2 }}>Вышел до конца теста, чтобы стереть ошибки. Сам получает ачивку с разбором, коллеги её не видят.</div>
             </div>
           </div>
-          {retries === "loading" && note("Загружаю…")}
+          {retries === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {retries === "off" && note(offText("те, кто нашёл лазейку"))}
           {Array.isArray(retries) && retryPeople.length === 0 && note("Пока никто не нашёл лазейку — все сдают тесты с первого захода.")}
           {retryPeople.some(p => p.keys) ? (<>
@@ -760,7 +761,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         </>) : view === "questions" ? (<>
           <SectionLabel a11y={a11y} right="30 дней">ЧАЩЕ ВСЕГО МИМО</SectionLabel>
           <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px" }}>Каждый вопрос — готовая тема для брифинга.</div>
-          {hardQ === "loading" && note("Загружаю…")}
+          {hardQ === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {hardQ === "off" && note(srvErr && (srvErr.code || srvErr.message) && srvErr.code !== "PGRST202"
             ? offText("вопросы")   // настоящая ошибка сервера — её текст
             : "Серверная часть ещё не включена — примени supabase-stage7-quiz-analytics.sql, и здесь появятся вопросы с наибольшим процентом ошибок.")}

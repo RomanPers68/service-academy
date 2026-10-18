@@ -17,6 +17,7 @@ import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "..
 import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
+import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
@@ -240,7 +241,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v54</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v55</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -371,7 +372,7 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
           <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase/supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. docs/UPGRADE_NOTES.md) — и здесь появится картина по каждому сотруднику.</div>
         </div>
       )}
-      {!err && rows === null && <div style={{ textAlign: "center", padding: "44px", color: T.modSub.color }}>Загружаю…</div>}
+      {!err && rows === null && <SkelCards a11y={!!T.a11y} rows={4} h={60} style={{ padding: "16px 16px 24px" }} />}
       {!err && rows && !rows.length && (
         <div style={{ textAlign: "center", padding: "44px 24px", color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>Пока никто не открывал новинки. Скажи команде на брифинге: «Зайдите в приложение — выучите новые позиции» 😉</div>
       )}

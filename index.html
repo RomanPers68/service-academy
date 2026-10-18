@@ -16,6 +16,10 @@
     <meta name="theme-color" content="#171208" />
     <!-- Доп. 363: без автоподгонки шрифта iOS — иначе после поворота телефона текст остаётся крупнее -->
     <style>html{-webkit-text-size-adjust:100%;text-size-adjust:100%}</style>
+    <!-- v55 (Доп. 368): соединение с сервером открываем заранее, пока грузится приложение, —
+         первые запросы после показа уходят без рукопожатия (DNS, TCP, TLS). Адрес — из api/supabase.js -->
+    <link rel="preconnect" href="https://gvxhgdynjuaisswplroh.supabase.co" crossorigin>
+    <link rel="dns-prefetch" href="https://gvxhgdynjuaisswplroh.supabase.co">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
       // Telegram-инициализация: развернуть мини-апп на весь экран и отдать

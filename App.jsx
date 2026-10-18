@@ -699,7 +699,7 @@ function ServiceAcademy() {
     return () => { window.removeEventListener("online", onOnline); clearInterval(iv); };
   }, []);
 
-  // Загрузка из хранилища: сессия → whoami → профиль
+  // Загрузка из хранилища: сессия → профиль телефона (v55: whoami — фоном, после показа) → прогресс
   React.useEffect(() => {
     // Таймаут — если что-то зависнет, показываем экран входа
     const fallback = setTimeout(() => {
@@ -716,8 +716,32 @@ function ServiceAcademy() {
       }
     };
 
+    // v55 (Доп. 368): сверка входа с сервером — фоном, уже после показа приложения.
+    // Тот же разбор ответа, что был при старте: вход подтверждён — свежий профиль; сессия
+    // отозвана (сброс кода / деактивация) — на вход; нет сети — работаем с профилем телефона.
+    const verifyLater = (token, cached) => {
+      rpc("whoami", { p_token: token }).then((res) => {
+        if (res && res.ok && res.employee) {
+          const emp = res.employee;
+          const prof = { id: emp.id, name: emp.name, surname: normSurname(emp.surname || ""), restaurant: emp.restaurant, position: emp.position, is_admin: !!emp.is_admin };
+          const fresh = JSON.stringify(prof);
+          if (fresh === JSON.stringify(cached)) return;   // ничего не поменялось — экран не трогаем
+          let saved = false;
+          try { localStorage.setItem("sa_profile", fresh); saved = localStorage.getItem("sa_profile") === fresh; } catch(e) {}
+          // Поменяли имя или фамилию — прогресс на телефоне лежит под другими личными ключами:
+          // перечитываем приложение начисто (один раз — профиль уже сохранён свежим)
+          if (saved && (prof.name !== cached.name || (prof.surname || "") !== (cached.surname || ""))) { try { window.location.reload(); } catch(e) {} return; }
+          setProfile(prof);   // ресторан, должность, права — сразу
+        } else if (res && res.ok === false) {
+          try { localStorage.removeItem("sa_session_token"); } catch(e) {}
+          setProfile(null); setScreen("login");
+        }
+      }).catch(() => {});
+    };
+
     (async () => {
       let p = null;
+      let verify = null;
       try {
         let token = null;
         try { token = localStorage.getItem("sa_session_token"); } catch(e) {}
@@ -726,24 +750,30 @@ function ServiceAcademy() {
         let cached = null;
         try { const c = localStorage.getItem("sa_profile"); if (c) cached = JSON.parse(c); } catch(e) {}
 
-        let res = null;
-        try { res = await rpc("whoami", { p_token: token }); } catch(e) { res = null; }
-
-        if (res && res.ok) {
-          const emp = res.employee;
-          const prof = { id: emp.id, name: emp.name, surname: normSurname(emp.surname || ""), restaurant: emp.restaurant, position: emp.position, is_admin: !!emp.is_admin };
-          try { localStorage.setItem("sa_profile", JSON.stringify(prof)); } catch(e) {}
-          setProfile(prof);
-          p = { value: JSON.stringify(prof) };
-        } else if (res && res.ok === false) {
-          // Сессия отозвана (сброс кода / деактивация) — на вход
-          try { localStorage.removeItem("sa_session_token"); } catch(e) {}
-          clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return;
-        } else if (cached) {
-          // Сеть недоступна — работаем с кэшем профиля (офлайн-режим)
+        if (cached && typeof cached === "object" && cached.id && cached.name) {
+          // v55 (Доп. 368): быстрый старт — профиль уже на телефоне, открываемся сразу,
+          // а сервер подтверждает вход фоном (verifyLater). Раньше старт ждал ответа whoami:
+          // на мобильной сети новое соединение — это DNS, TCP, TLS и сам запрос, секунда и больше.
           setProfile(cached);
           p = { value: JSON.stringify(cached) };
-        } else { clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return; }
+          verify = { token, cached };
+        } else {
+          // Первый вход на этом телефоне (профиля ещё нет) — ждём сервер, как раньше
+          let res = null;
+          try { res = await rpc("whoami", { p_token: token }); } catch(e) { res = null; }
+
+          if (res && res.ok) {
+            const emp = res.employee;
+            const prof = { id: emp.id, name: emp.name, surname: normSurname(emp.surname || ""), restaurant: emp.restaurant, position: emp.position, is_admin: !!emp.is_admin };
+            try { localStorage.setItem("sa_profile", JSON.stringify(prof)); } catch(e) {}
+            setProfile(prof);
+            p = { value: JSON.stringify(prof) };
+          } else if (res && res.ok === false) {
+            // Сессия отозвана (сброс кода / деактивация) — на вход
+            try { localStorage.removeItem("sa_session_token"); } catch(e) {}
+            clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return;
+          } else { clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return; }
+        }
       } catch(e) { clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return; }
       try { const s = await storageGet("sa_scores"); if (s) { const saved = JSON.parse(s.value); setScores(prev => { const ids = new Set(saved.map(x => x.id)); return [...prev.filter(x => !ids.has(x.id)), ...saved]; }); } } catch(e) {}
       // Сданные тесты — сначала с телефона (личный ключ), потом сервер уточнит (my_state ниже).
@@ -768,6 +798,7 @@ function ServiceAcademy() {
       try { const uk6 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const ex = await storageGet("sa_exam"+uk6); if (ex) { const obj = JSON.parse(ex.value); if (obj && typeof obj === "object" && !Array.isArray(obj)) setExamResults(obj); } } catch(e) {}
       clearTimeout(fallback);
       setStorageLoaded(true);
+      if (verify) verifyLater(verify.token, verify.cached);   // v55: сервер подтверждает вход уже после показа
     })();
   }, []);
 
@@ -2408,6 +2439,30 @@ function ServiceAcademy() {
     return () => { if (warm) clearTimeout(warm); };
   }, []);
 
+  // v55 (Доп. 368): экраны «твёрдые» — не листаются, если всё помещается.
+  // Высота верхней строки «✦ SA · Для чтения» → --sa-top: экран вычитает её из своей минимальной высоты
+  // (ui/styles.js, screen). Кнопка AI на экране → класс sa-fabon: снизу запас под кнопку (владелец: «Кнопка AI
+  // пусть останется как есть, просто сделай отступ») — последние карточки поднимаются выше неё.
+  const saBarRef = useRef(null);
+  const barOn = storageLoaded && !["profile", "login"].includes(screen);
+  const fabOn = navOn && !vp.wide && !welcome && !mistakeHint;
+  const tabsOn = navOn && !vp.wide;   // внизу панель вкладок (в портрете): обёртке экрана нужен отступ под неё
+  React.useLayoutEffect(() => {
+    const root = document.documentElement;
+    const el = saBarRef.current;
+    const set = () => root.style.setProperty("--sa-top", (el ? Math.round(el.getBoundingClientRect().height) : 0) + "px");
+    set();
+    let ro = null;
+    try { if (el && typeof ResizeObserver === "function") { ro = new ResizeObserver(set); ro.observe(el); } } catch (e) {}
+    return () => { if (ro) ro.disconnect(); };
+  }, [barOn, a11y]);
+  React.useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("sa-fabon", fabOn);
+    root.classList.toggle("sa-navon", tabsOn);
+    return () => { root.classList.remove("sa-fabon"); root.classList.remove("sa-navon"); };
+  }, [fabOn, tabsOn]);
+
   if (!storageLoaded) return (
     <div style={{ ...T.app, alignItems:'center', justifyContent:'center' }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:18 }}>
@@ -2430,7 +2485,7 @@ function ServiceAcademy() {
 
       <div style={T.phone} className="sa-col">
         {!["profile","login"].includes(screen) && (
-          <div style={T.a11yBar}>
+          <div style={T.a11yBar} ref={saBarRef}>
             <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
             <button style={{ ...T.a11yBtn,
               // Капелька-канон (рецепт AI-кнопки): золото вместо светофора
@@ -2550,15 +2605,15 @@ function ServiceAcademy() {
         </Suspense>}
         {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} />}
         {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => navigate(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
-        {screen === "checklist" && <div style={{paddingBottom:88}}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "onboarding" && <div style={{paddingBottom:88}}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "report" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={customLessons} startSelf={reportSelf}
+        {screen === "checklist" && <div className="sa-tabpad"><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "onboarding" && <div className="sa-tabpad"><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={customLessons} startSelf={reportSelf}
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
-        {screen === "analytics" && <div style={{paddingBottom:88}}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></div>}
+        {screen === "analytics" && <div className="sa-tabpad"><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
         {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
-        {screen === "stats" && <div style={{paddingBottom:88}}><StatsScreen T={T} a11y={a11y} profile={profile} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+        {screen === "stats" && <div className="sa-tabpad"><StatsScreen T={T} a11y={a11y} profile={profile} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
             // Удаление сотрудника из «Управления данными»: находим его id в
             // списке доступа по имени, себя удалить нельзя. Серверная функция
@@ -2654,7 +2709,7 @@ function ServiceAcademy() {
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></div>}
         {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
-        {screen === "roleSelect" && <div style={{paddingBottom: vp.wide ? 24 : 88}}><RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short} hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
+        {screen === "roleSelect" && <div className={vp.wide ? "sa-tabpad sa-tabpad-w" : "sa-tabpad"}><RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short} hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
           dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
             /* v41 (Доп. 354): «Путь мастера» — чипом рядом со свечой и стаканом, а не карточкой под треком */
             mastery={role && mShown ? masteryChip(mShown, mNew.size, a11y) : null} onMastery={() => openMastery()} /> : null}
@@ -2675,22 +2730,22 @@ function ServiceAcademy() {
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
           </WarmupCard> : null} /></div>}
-        {screen === "glossary" && <div style={{paddingBottom:88}}><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div style={{paddingBottom:88}}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></div>}
-        {screen === "league" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} masters={mastersIdx} onBack={() => goBack("teamHub")} /></Suspense></div>}
+        {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
+        {screen === "leaderboard" && <div className="sa-tabpad"><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></div>}
+        {screen === "league" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} masters={mastersIdx} onBack={() => goBack("teamHub")} /></Suspense></div>}
         {/* v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека */}
-        {screen === "cellar" && profile && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CellarScreen T={T} a11y={a11y} modules={programModules} completed={completed} quizDone={quizDone} marks={marks}
+        {screen === "cellar" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CellarScreen T={T} a11y={a11y} modules={programModules} completed={completed} quizDone={quizDone} marks={marks}
           tried={(id) => creditTriedToday(ukP, id, todayKey)} onBack={() => goBack("me")} onOpenTopic={(m) => { setActiveModule(m); navigate("module"); }}
           onRefresh={(m) => openTopicRun("refresh", m)} onGold={(m) => openTopicRun("gold", m)} onCredit={(m) => openTopicRun("credit", m)}
           onFreshAll={openFreshAll} onProbe={openProbe} probeCount={probeMods.length} /></Suspense></div>}
         {/* v40: «Путь мастера» — значки, «Мастер роли ✦», шаг дня, первая неделя в академии, мастера заведения */}
         {screen === "mastery" && profile && (mShown
-          ? <div style={{ paddingBottom: 88 }}><Suspense fallback={<ScreenLoader T={T} />}><MasteryScreen T={T} a11y={a11y} profile={profile} role={role} state={mShown} step={mStepShown}
+          ? <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MasteryScreen T={T} a11y={a11y} profile={profile} role={role} state={mShown} step={mStepShown}
               earned={mEarned || readEarned(ukP)} seen={mSeenShown} masters={masters} focus={masteryFocus} shareUrl={APP_SHARE_URL}
               onGo={(go, payload) => runMasteryGo(go, payload)} onPrize={setMasterPrize} onReloadMasters={loadMasters} onBack={() => goBack("me")} /></Suspense></div>
           : <ScreenLoader T={T} />)}
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
-        {screen === "shift" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня"
+        {screen === "shift" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня"
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
           hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} onOpen={() => navigate("schedule")} />
             {/* v30 (Доп. 314): квест смены и твоя часть */}
@@ -2709,7 +2764,7 @@ function ServiceAcademy() {
         {screen === "teamHub" && profile && (() => {
           const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
           const dueM = (mistakeBank || []).filter(m => !m.due || m.due <= Date.now()).length;
-          return <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y} title="Команда" hintKey={hintKey("team", staff)}
+          return <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Команда" hintKey={hintKey("team", staff)}
             hintSteps={hintsFor(hintKey("team", staff))} subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<><TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />
               {/* v40: коллега стал мастером роли за последнюю неделю — команда видит */}
               <MastersBanner a11y={a11y} rows={masters && masters.status === "ok" ? masters.rows : []} onOpen={() => openMastery()} /></>} items={[
@@ -2738,7 +2793,7 @@ function ServiceAcademy() {
           else if (dest === "mastery") openMastery();   // v40
           else navigate(dest);
         }} /></Suspense>}
-        {screen === "me" && profile && <div style={{paddingBottom:88}}><HubScreen T={T} a11y={a11y}
+        {screen === "me" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y}
           hintKey="me"
           hintSteps={hintsFor("me")}
           title={profile.name} subtitle={profile.restaurant || "Service Academy"}
@@ -2788,16 +2843,16 @@ function ServiceAcademy() {
         {/* Экран трека — когда модули роли приехали (правка 163): при первом входе с нового устройства и на медленной сети он открывался раньше и падал */}
         {/* Доп. 307: трек и раздел — один экран: меню темы, темы листаются свайпом. Раздел из чужой
             роли (открыт через Наставника) — прежним отдельным экраном ниже */}
-        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div style={{paddingBottom:88}}><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
+        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div className="sa-tabpad"><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
           focusId={activeModule ? activeModule.id : null} pagerOnly={screen === "module"} onPage={setActiveModule}
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
-        {screen === "search" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
-        {screen === "menuTrainer" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
-        {screen === "cocktails" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
+        {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
+        {screen === "menuTrainer" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
+        {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
-        {screen === "sos" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => goBack()} /></Suspense></div>}
+        {screen === "sos" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => goBack()} /></Suspense></div>}
         {lessonLockMsg && (
           <div onClick={() => setLessonLockMsg(null)} style={{ position: "fixed", inset: 0, zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(0,0,0,0.45)" }}>
             <div onClick={e => e.stopPropagation()} style={{ maxWidth: 340, borderRadius: 20, padding: "22px 20px", textAlign: "center",
@@ -2813,8 +2868,8 @@ function ServiceAcademy() {
         )}
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile}
           learner={assistantLearner()} onBack={() => goBack()} onNavigate={(dest) => assistantNavigate(dest, false)} /></Suspense>}
-        {screen === "mentor" && <div style={{paddingBottom:88}}><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} onInbox={setHallInbox} extraSkills={customSkills} /></Suspense></div>}
-        {screen === "module" && !(inPages(activeModule) && MODULES[role]) && <div style={{paddingBottom:88}}><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}
+        {screen === "mentor" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} onInbox={setHallInbox} extraSkills={customSkills} /></Suspense></div>}
+        {screen === "module" && !(inPages(activeModule) && MODULES[role]) && <div className="sa-tabpad"><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}
           next={moduleNextFor(activeModule)} onNext={moduleOnNext} finish={moduleFinishFor()} /></div>}
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
@@ -2884,7 +2939,7 @@ function ServiceAcademy() {
 
         {/* Плавающий AI-ассистент — главный вход во флагманскую фичу */}
         {/* v50: в широкой раскладке кнопка Наставника — в меню слева (NavRail), не над содержимым */}
-        {navOn && !vp.wide && !welcome && !mistakeHint && (
+        {fabOn && (
           <AiFab a11y={a11y} screen={screen} onClick={() => navigate("assistant")} />
         )}
 

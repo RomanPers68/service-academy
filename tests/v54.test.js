@@ -53,7 +53,9 @@ describe("v54: «Сборка руками» лёжа — две колонки"
     expect(css).toContain("padding-bottom: 24px !important; }");
     expect(css).toContain("html.sa-short .sa-labbody > [data-labscene] { grid-area: scene; margin: 0 !important; padding: 0 0 10px !important; background: none !important; }");
     expect(css).toContain("html.sa-short .sa-labbody > [data-labstation] { grid-area: station; margin-top: 0 !important; min-width: 0; }");
-    const start = css.indexOf("/* ═══ v54 (Доп. 367)"), block = css.slice(start, css.indexOf("`;", start));
+    // блок v54 — до следующего блока (v55, Доп. 368) или до конца стилей
+    const start = css.indexOf("/* ═══ v54 (Доп. 367)"), next = css.indexOf("/* ═══ v55", start);
+    const block = css.slice(start, next > 0 ? next : css.indexOf("`;", start));
     const rules = block.split("\n").map((l) => l.trim()).filter((l) => /^html\./.test(l));
     expect(rules.length).toBeGreaterThanOrEqual(5);
     for (const r of rules) expect(r).toMatch(/^html\.sa-short /);
@@ -62,7 +64,7 @@ describe("v54: «Сборка руками» лёжа — две колонки"
 
 describe("v54: метка и журнал", () => {
   it("метка сборки — v54; CHANGES — «Дополнение 367»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v54</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v55 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 367 — полоска редактора не дрожит; «Сборка руками» лёжа — сцена и полки рядом (v54)");
   });
 });

@@ -25,7 +25,8 @@ describe("v53: полоска разделов в редакторе урока 
     expect(css).toContain("html.sa-edon #root > div, html.sa-edon .sa-edscreen { overflow-x: clip !important; }");
     expect(css).not.toContain("sa-ed2on");
     // у остальных экранов обёртки прежние
-    expect(rd("ui/styles.js")).toContain("screen: { display:\"flex\", flexDirection:\"column\", minHeight:\"100vh\", background:\"transparent\", overflowX:\"hidden\" },");
+    // v55 (Доп. 368): минимальная высота экрана — за вычетом верхней строки и отступов (tests/v55.test.js)
+    expect(rd("ui/styles.js")).toMatch(/screen: \{ display:"flex", flexDirection:"column", minHeight:"[^"]+", background:"transparent", overflowX:"hidden" \},/);
   });
   it("полоска видна сверху при прокрутке, тап по разделу — заголовок под ней", () => {
     // v54: полоска на месте — position: relative; уехала вверх — сверху её копия (position: fixed), см. tests/v54.test.js

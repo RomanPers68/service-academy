@@ -472,7 +472,7 @@ if (want("PORT")) {
     await nav(p, s);
     const G = await g52(p, sel);
     const grid = await p.evaluate((sel) => { const el = document.querySelector(sel); return el ? getComputedStyle(el).display : null; }, sel);
-    ok("PORT " + s + ": портрет — без широкой раскладки, колонка не просится шире, разметка прежняя", !/sa-wide/.test(G.cls) && G.req === "" && grid !== "grid" && !G.over && G.col.w === 377,
+    ok("PORT " + s + ": портрет — без широкой раскладки, колонка не просится шире, разметка прежняя", !/sa-wide/.test(G.cls) && G.req === "" && grid !== "grid" && !G.over && (G.col.w === 377 || G.col.w === 393),   // v55: без полей body — 393
       JSON.stringify({ req: G.req, grid, over: G.over, col: G.col && G.col.w }));
   }
   await nav(p, "guestbook");

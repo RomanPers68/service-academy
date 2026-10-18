@@ -322,12 +322,15 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const pvRef = React.useRef(null);
   const edWrap = (cls, ref, kids) => (two ? <div className={cls} ref={ref} data-ed2={cls}>{kids}</div> : kids);
   // обёртки экрана режут край по горизонтали (overflow-x: hidden) и потому сами считаются «прокруткой» —
-  // липкие полоска разделов и предпросмотр к ним не прилипают. В две панели — обрезка без прокрутки (clip)
+  // липкие полоска разделов и предпросмотр к ним не прилипают. Пока открыт урок — обрезка без прокрутки (clip).
+  // v53 (Доп. 366): в любой раскладке, не только в две панели — на телефоне полоска «Урок · Практика · …»
+  // снова прилипает сверху, как задумано в правке 162
+  const edOpen = view === "edit";
   React.useLayoutEffect(() => {
-    if (!two || typeof document === "undefined") return undefined;
-    const el = document.documentElement; el.classList.add("sa-ed2on");
-    return () => { el.classList.remove("sa-ed2on"); };
-  }, [two]);
+    if (!edOpen || typeof document === "undefined") return undefined;
+    const el = document.documentElement; el.classList.add("sa-edon");
+    return () => { el.classList.remove("sa-edon"); };
+  }, [edOpen]);
   const secRef = { lesson: React.useRef(null), sit: React.useRef(null), dlg: React.useRef(null), bld: React.useRef(null), q: React.useRef(null), prev: React.useRef(null) };
   const toggleCard = (sec, id) => setOpenCard(o => ({ ...o, [sec]: o[sec] === id ? null : id }));
   const jump = (k) => {
@@ -337,7 +340,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       pv.classList.remove("sa-ed2-flash"); void pv.offsetWidth; pv.classList.add("sa-ed2-flash"); return;
     }
     const el = secRef[k] && secRef[k].current; if (!el) return;
-    el.scrollIntoView({ block: "start" }); const r = document.getElementById("root"); if (r) r.scrollTop -= 58; };
+    el.scrollIntoView({ block: "start" }); const r = document.getElementById("root"); if (r) r.scrollTop -= 58 + ((vpE.safe && vpE.safe.t) || 0); };   // под прилипшую полоску
   React.useEffect(() => {
     if (view !== "edit") return;
     const isField = (el) => !!(el && /^(TEXTAREA|INPUT)$/.test(el.tagName) && el.type !== "file");
@@ -737,13 +740,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   };
   const playNext = () => setPlayPs(x => pvNext(x));
   return (
-    <div style={T.screen} className={two ? "sa-edscreen" : undefined}>
+    <div style={T.screen} className="sa-edscreen">
       {header(editing ? "Изменить урок" : "Новый урок", leave)}
       <div style={{ ...T.lessBody, flex: 1, overflowY: "visible", padding: "0 16px 150px" }} className={two ? "sa-ed2" : undefined}>
         {edWrap("sa-ed2-f", null, <>
         {/* навигатор по разделам — закреплён сверху при прокрутке (правка 162) */}
         {/* все метки — в одну строку без прокрутки (правка 164: у бара «Просмотр» уезжал за край) */}
-        <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px 6px", padding: "7px 8px", display: "flex", gap: 3,
+        <div data-ednav="" style={{ position: "sticky", top: "env(safe-area-inset-top, 0px)", zIndex: 6, margin: "0 -16px 6px", padding: "7px 8px", display: "flex", gap: 3,
           background: dark ? "rgba(23,18,9,0.94)" : "rgba(242,233,212,0.94)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${brd}` }}>
           {navItems.map(([k, l]) => { const m = l.match(/^(\S+)(?: (\d+))?$/) || [l, l, ""]; return (
             <button key={k} onClick={() => jump(k)} style={{ ...aiBtn, flex: "1 1 0", minWidth: 0, padding: "5px 0", flexDirection: "column", gap: 0, justifyContent: "center", lineHeight: 1.15, borderRadius: 10 }}>

@@ -1016,12 +1016,18 @@ export const injectStyles = () => {
     /* поле под формой — внутри сетки: предпросмотру есть куда прилипать до самого конца формы */
     html.sa-wide .sa-ed2 { padding-bottom: 0 !important; }
     html.sa-wide .sa-ed2-f { padding-bottom: 150px; }
-    html.sa-ed2on #root > div, html.sa-ed2on .sa-edscreen { overflow-x: clip !important; }
     html.sa-wide .sa-ed2-pv { position: sticky; top: 10px; min-width: 0; max-height: calc(100vh - 110px); overflow-y: auto;
       margin-top: 8px; padding: 0 6px 130px; box-sizing: border-box; border-radius: 18px; scrollbar-width: thin; }
     html.sa-wide .sa-ed2-pv > :first-child + * { margin-top: 4px; }
     .sa-ed2-flash { animation: saEd2Flash 1s ease-out; }
     @keyframes saEd2Flash { 0% { box-shadow: 0 0 0 2px rgba(214,178,102,0.75); } 100% { box-shadow: 0 0 0 2px rgba(214,178,102,0); } }
+
+    /* ═══ v53 (Доп. 366): редактор урока — липкое липнет ═══
+       Обёртки экрана (T.app, T.screen) режут край по горизонтали overflow-x: hidden — из-за этого они сами
+       считаются «прокруткой», и position: sticky внутри них не прилипает (листается же #root). Пока открыт урок
+       (класс sa-edon от редактора) — обрезка без прокрутки: полоска «Урок · Практика · …» прилипает сверху на
+       телефоне (правка 162), в две панели — ещё и предпросмотр. Старый iOS (до 16) clip не знает — там как раньше. */
+    html.sa-edon #root > div, html.sa-edon .sa-edscreen { overflow-x: clip !important; }
   `;
   document.head.appendChild(style);
 

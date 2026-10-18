@@ -144,32 +144,34 @@ describe("v52: редактор урока в две панели", () => {
     expect(css).toContain("html.sa-wide .sa-ed2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 410px); column-gap: 28px; align-items: start; }");
     expect(css).toContain("html.sa-wide .sa-ed2-pv { position: sticky; top: 10px; min-width: 0; max-height: calc(100vh - 110px); overflow-y: auto;");
     expect(css).toContain("margin-top: 8px; padding: 0 6px 130px; box-sizing: border-box; border-radius: 18px; scrollbar-width: thin; }");
-    expect(css).toContain("html.sa-ed2on #root > div, html.sa-ed2on .sa-edscreen { overflow-x: clip !important; }");
+    // v53 (Доп. 366): обрезка без прокрутки — пока открыт урок в любой раскладке (класс sa-edon), см. tests/v53.test.js
+    expect(css).toContain("html.sa-edon #root > div, html.sa-edon .sa-edscreen { overflow-x: clip !important; }");
     expect(css).toContain("html.sa-wide .sa-ed2 { padding-bottom: 0 !important; }");
     expect(css).toContain("html.sa-wide .sa-ed2-f { padding-bottom: 150px; }");
-    expect(ed).toContain("const el = document.documentElement; el.classList.add(\"sa-ed2on\");");
-    expect(ed).toContain("return () => { el.classList.remove(\"sa-ed2on\"); };");
-    expect(ed).toContain("<div style={T.screen} className={two ? \"sa-edscreen\" : undefined}>");
+    expect(ed).toContain("const el = document.documentElement; el.classList.add(\"sa-edon\");");
+    expect(ed).toContain("return () => { el.classList.remove(\"sa-edon\"); };");
+    expect(ed).toContain("<div style={T.screen} className=\"sa-edscreen\">");
   });
 });
 
 describe("v52: портрет не трогаем", () => {
-  it("все новые правила — только в широкой раскладке (sa-wide / sa-desk / sa-ed2on)", () => {
+  it("все новые правила — только в широкой раскладке (sa-wide / sa-desk)", () => {
     const css = rd("ui/css.js");
-    const block = css.slice(css.indexOf("/* ═══ v52 (Доп. 365)"), css.indexOf("`;", css.indexOf("/* ═══ v52 (Доп. 365)")));
+    const start = css.indexOf("/* ═══ v52 (Доп. 365)"), v53 = css.indexOf("/* ═══ v53 (Доп. 366)", start);   // v53 — свой блок следом
+    const block = css.slice(start, v53 > 0 ? v53 : css.indexOf("`;", start));
     const rules = block.split("\n").map((l) => l.trim()).filter((l) => /^[.a-z@][^{]*\{/.test(l) && !l.startsWith("@keyframes") && !l.startsWith("/*"));
     expect(rules.length).toBeGreaterThan(20);
     for (const r of rules) {
       const sel = r.startsWith("@media") ? r.slice(r.indexOf("{") + 1) : r;
       if (/^\.sa-ed2-flash/.test(sel.trim())) continue;   // класс ставится только в две панели
-      expect(sel.trim()).toMatch(/^html\.sa-(wide|desk|ed2on)/);
+      expect(sel.trim()).toMatch(/^html\.sa-(wide|desk)/);
     }
   });
 });
 
 describe("v52: метка и журнал", () => {
   it("метка сборки — v52; CHANGES — «Дополнение 365»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v52</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v53 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 365 — компьютер: остальные экраны используют ширину (v52)");
   });
 });

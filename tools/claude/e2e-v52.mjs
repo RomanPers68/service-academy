@@ -482,9 +482,10 @@ if (want("PORT")) {
   await o.ctx.close();
   const q = await openW({ w: 393, h: 852, rpcs: cmsRpcs }); const pq = q.page;
   await nav(pq, "contentEditor"); await newLesson(pq);
-  const ed = await pq.evaluate(() => ({ two: !!document.querySelector("[data-ed2]"), on: document.documentElement.classList.contains("sa-ed2on"),
+  // v53: обрезка без прокрутки (sa-edon) — пока открыт урок и на телефоне: полоска разделов прилипает (e2e-v53)
+  const ed = await pq.evaluate(() => ({ two: !!document.querySelector("[data-ed2]"),
     show: !![...document.querySelectorAll("button")].find((b) => /Показать, как увидит сотрудник/.test(b.textContent)) }));
-  ok("PORT: редактор урока — одной колонкой, предпросмотр по кнопке, как раньше", !ed.two && !ed.on && ed.show, JSON.stringify(ed));
+  ok("PORT: редактор урока — одной колонкой, предпросмотр по кнопке, как раньше", !ed.two && ed.show, JSON.stringify(ed));
   ok("PORT: без ошибок", !o.errors.length && !q.errors.length, o.errors.concat(q.errors).join(" | "));
   await q.ctx.close();
 }
@@ -584,7 +585,7 @@ if (want("EDITOR")) {
     const b = (q) => { const e = document.querySelector(q); if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; };
     const pv = document.querySelector('[data-ed2="sa-ed2-pv"]'), nav = document.querySelector("[data-navlabel]");
     const btn = (re) => !![...document.querySelectorAll("button")].find((x) => re.test(x.textContent));
-    return { f: b('[data-ed2="sa-ed2-f"]'), pv: b('[data-ed2="sa-ed2-pv"]'), on: document.documentElement.classList.contains("sa-ed2on"), col: b(".sa-col"),
+    return { f: b('[data-ed2="sa-ed2-f"]'), pv: b('[data-ed2="sa-ed2-pv"]'), on: document.documentElement.classList.contains("sa-edon"), col: b(".sa-col"),
       nav: nav ? Math.round(nav.closest('div[style*="sticky"]').getBoundingClientRect().top) : null, pvText: pv ? pv.innerText.replace(/\s+/g, " ") : "",
       show: btn(/Показать, как увидит сотрудник/), hide: btn(/Скрыть предпросмотр/), flash: pv ? pv.classList.contains("sa-ed2-flash") : false, over: document.getElementById("root").scrollWidth - document.getElementById("root").clientWidth };
   });

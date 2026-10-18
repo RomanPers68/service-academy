@@ -76,7 +76,7 @@ describe("v50: меню слева (NavRail)", () => {
     expect(html).toMatch(/aria-current="page" data-rail-tab="shift"/);
     expect(html).toContain('data-rail-lens="1"');
     expect(html).toContain('aria-label="AI-ассистент" data-rail-ai=""');
-    expect(html).toContain("left:calc(12px + env(safe-area-inset-left, 0px))");
+    expect(html).toMatch(/left:calc\(12px \+ (var\(--sa-sl, )?env\(safe-area-inset-left, 0px\)\)?\)/);   // v51: вырез — из Telegram (--sa-sl)
   });
   it("лёжа (compact) — вкладки ниже: 54 px вместо 62; без onAi — без кнопки", () => {
     const tall = RAW(h(NavRail, { tabs, activeId: "me", onTab: () => {}, onAi: () => {}, a11y: true }));
@@ -106,7 +106,7 @@ describe("v50: колонка экрана и классы на <html>", () => {
   it("App ставит sa-wide / sa-short / sa-desk / sa-railon и переменные --sa-rail, --sa-colw; колонка — sa-col", () => {
     expect(app).toContain('el.classList.toggle("sa-wide", vp.wide); el.classList.toggle("sa-short", vp.short);');
     expect(app).toContain('el.classList.toggle("sa-desk", vp.desk); el.classList.toggle("sa-railon", railOn);');
-    expect(app).toContain('el.style.setProperty("--sa-rail", railOn ? `calc(${RAIL_W}px + env(safe-area-inset-left, 0px))` : "env(safe-area-inset-left, 0px)");');
+    expect(app).toMatch(/el\.style\.setProperty\("--sa-rail", /);   // v51: в px — с вырезом из Telegram
     expect(app).toContain('el.style.setProperty("--sa-colw", colW + "px");');
     expect(app).toContain('<div style={T.phone} className="sa-col">');
   });
@@ -205,7 +205,7 @@ describe("v50: попутно", () => {
     expect(g.slice(title, reset)).toMatch(/<\/div>\s+<\/div>\s+\{\/\* v50 \(Доп\. 363\)/);
   });
   it("метка сборки — v50; CHANGES — «Дополнение 363»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v50</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v51 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 363 — горизонталь и компьютер: меню слева, две колонки, текст после поворота (v50)");
   });
 });

@@ -22,7 +22,13 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
     const m = () => { if (barRef.current) setBarW(barRef.current.clientWidth); };
     m();
     window.addEventListener("resize", m);
-    return () => window.removeEventListener("resize", m);
+    // v51 (Доп. 364): после поворота телефона панель появлялась, пока экран ещё был горизонтальным, и
+    // запоминала его ширину — линза становилась в две вкладки, а на «Я» уезжала за край (запись владельца).
+    // Панель перемеряет себя сама, как только меняется её ширина, и ещё раз, когда поворот закончится.
+    let ro = null;
+    try { if (typeof ResizeObserver === "function" && barRef.current) { ro = new ResizeObserver(m); ro.observe(barRef.current); } } catch (e) {}
+    const t1 = setTimeout(m, 300), t2 = setTimeout(m, 900);
+    return () => { window.removeEventListener("resize", m); if (ro) ro.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const [dragX, setDragX] = useState(null); // x центра линзы, пока её тянут пальцем
@@ -48,6 +54,7 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
     return (e.clientX != null ? e.clientX : 0) - r.left;
   };
   const onDown = (e) => {
+    if (barRef.current && barRef.current.clientWidth !== barW) setBarW(barRef.current.clientWidth);   // v51
     if (!cellW) return;
     setPressed(true);
     drag.current = { x0: evX(e), moved: false, last: null };
@@ -178,8 +185,9 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact }) {
     setAiNew(false); vibrate("light"); onAi();
   };
   return (
+    // v51: слева — с учётом выреза из Telegram (--sa-sl ставит App): лёжа меню уходило под Dynamic Island
     <nav id="sa-tabbar" data-nav-rail="" aria-label="Разделы" style={{ position:"fixed", zIndex:200, top:"50%", width:W,
-      left:"calc(12px + env(safe-area-inset-left, 0px))", transform:"translateY(-50%)" }}>
+      left:"calc(12px + var(--sa-sl, env(safe-area-inset-left, 0px)))", transform:"translateY(-50%)" }}>
       {/* совсем низкий экран (клавиатура лёжа) — пилюля не выше экрана, вкладки листаются */}
       <div className="sa-railpill" style={{ position:"relative", padding:PAD, borderRadius:W / 2, display:"flex", flexDirection:"column", alignItems:"stretch",
         maxHeight:"calc(100vh - 16px)", overflowY:"auto", scrollbarWidth:"none",

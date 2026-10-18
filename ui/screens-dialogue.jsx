@@ -395,10 +395,10 @@ html.sa-light .dc-review,.sa-dlg.dc.lt .dc-review{box-shadow:0 0 0 1px rgba(139,
 @media (min-width:700px) and (max-height:540px){
   .sa-dlg.dc .dc-chat{right:min(44%,400px)}
   .sa-dlg.dc .dc-down{right:calc(min(44%,400px) + 12px)}
-  .sa-dlg.dc .dc-feed{padding-left:max(12px,env(safe-area-inset-left,0px))}
+  .sa-dlg.dc .dc-feed{padding-left:max(12px,var(--sa-sl,env(safe-area-inset-left,0px)))}
   .sa-dlg.dc .dc-pane{top:0;left:auto;width:min(44%,400px);transform:none}
   .sa-dlg.dc .dc-pane-box{height:100%;max-width:none;margin:0;border-radius:0;display:flex;flex-direction:column;justify-content:flex-end;
-    padding:10px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) 12px;box-shadow:inset 1px 0 0 var(--pane-line)}
+    padding:10px max(12px,var(--sa-sr,env(safe-area-inset-right,0px))) calc(10px + var(--sa-sb,env(safe-area-inset-bottom,0px))) 12px;box-shadow:inset 1px 0 0 var(--pane-line)}
   .sa-dlg.dc .dc-kb{max-height:none;flex:1 1 auto;min-height:0}
   .sa-dlg.dc .dc-opts{flex:1 1 auto;min-height:0}
 }

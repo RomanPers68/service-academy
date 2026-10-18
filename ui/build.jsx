@@ -659,7 +659,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
 function Shell({ title, onClose, accent, T, children }) {
   const a11y = !!T.a11y;
   return (
-    <div className="sa-bld-buildwrap" style={{
+    <div className="sa-bld-buildwrap sa-safex" style={{
       position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column",
       background: T.a11y ? "#E8DEC8" : "linear-gradient(160deg,#1A1008 0%,#1A1008 50%,#1A1008 100%)",
       overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",

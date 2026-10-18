@@ -43,19 +43,42 @@ export function colWidthOf(lay, screen, rail, safe) {
   return COL_W;
 }
 
-// Вырезы экрана (чёлка/«остров» в горизонтали) — замер через env()
+// Вырезы экрана (чёлка / Dynamic Island в горизонтали). v51 (Доп. 364): Telegram на iPhone лёжа растягивает
+// окно под «остров», а env() без viewport-fit=cover там 0 — меню слева уезжало под «остров» (запись владельца).
+// Telegram сообщает вырезы сам (WebApp.safeAreaInset, Bot API 8.0) — берём больший из двух замеров. Старый
+// Telegram ничего не сообщает: iPhone с вырезом лёжа, окно во всю длину экрана — запас 50 px с обеих сторон.
 export function safeInsets() {
-  if (typeof document === "undefined" || !document.body) return { t: 0, r: 0, b: 0, l: 0 };
+  const z = { t: 0, r: 0, b: 0, l: 0 };
+  if (typeof document === "undefined" || !document.body) return z;
+  let e = z;
   try {
     const d = document.createElement("div");
     d.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;"
       + "padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)";
     document.body.appendChild(d);
     const cs = getComputedStyle(d);
-    const r = { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+    e = { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
     d.remove();
-    return r;
-  } catch (e) { return { t: 0, r: 0, b: 0, l: 0 }; }
+  } catch (er) {}
+  let g = z;
+  try {
+    const s = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.safeAreaInset;
+    if (s && typeof s === "object") g = { t: Number(s.top) || 0, r: Number(s.right) || 0, b: Number(s.bottom) || 0, l: Number(s.left) || 0 };
+  } catch (er) {}
+  const r = { t: Math.max(e.t, g.t), r: Math.max(e.r, g.r), b: Math.max(e.b, g.b), l: Math.max(e.l, g.l) };
+  if (!r.l && !r.r && notchedFullWidth()) { r.l = 50; r.r = 50; }
+  return r;
+}
+
+// iPhone с вырезом (длинная сторона экрана от 812 pt; у SE её нет), лежит, окно — во всю длину экрана:
+// значит, вырез внутри окна, а про него никто не сказал
+export function notchedFullWidth(nav, scr, w, h) {
+  try {
+    const ua = String((nav || navigator).userAgent || "");
+    const S = scr || screen, W = w != null ? w : window.innerWidth, H = h != null ? h : window.innerHeight;
+    const long = Math.max(Number(S.width) || 0, Number(S.height) || 0);
+    return /iPhone/.test(ua) && W > H && long >= 812 && W >= long - 2;
+  } catch (er) { return false; }
 }
 
 const read = () => {
@@ -83,8 +106,16 @@ export function useViewport() {
     };
     window.addEventListener("resize", on);
     window.addEventListener("orientationchange", on);
+    // v51: Telegram сообщает вырезы и новую высоту окна своими событиями — иногда позже, чем resize
+    const tg = typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp;
+    const TG_EV = ["safeAreaChanged", "contentSafeAreaChanged", "viewportChanged"];
+    try { if (tg && tg.onEvent) TG_EV.forEach((ev) => tg.onEvent(ev, on)); } catch (er) {}
     upd();
-    return () => { window.removeEventListener("resize", on); window.removeEventListener("orientationchange", on); cancelAnimationFrame(raf); clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); };
+    return () => {
+      window.removeEventListener("resize", on); window.removeEventListener("orientationchange", on);
+      try { if (tg && tg.offEvent) TG_EV.forEach((ev) => tg.offEvent(ev, on)); } catch (er) {}
+      cancelAnimationFrame(raf); clearTimeout(t0); clearTimeout(t1); clearTimeout(t2);
+    };
   }, []);
   return v;
 }

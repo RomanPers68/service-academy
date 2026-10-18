@@ -549,9 +549,12 @@ function ServiceAcademy() {
     const el = document.documentElement;
     el.classList.toggle("sa-wide", vp.wide); el.classList.toggle("sa-short", vp.short);
     el.classList.toggle("sa-desk", vp.desk); el.classList.toggle("sa-railon", railOn);
-    el.style.setProperty("--sa-rail", railOn ? `calc(${RAIL_W}px + env(safe-area-inset-left, 0px))` : "env(safe-area-inset-left, 0px)");
+    // v51 (Доп. 364): вырезы экрана — из замера env() и из Telegram (у него окно лёжа идёт под «остров»)
+    el.style.setProperty("--sa-sl", vp.safe.l + "px"); el.style.setProperty("--sa-sr", vp.safe.r + "px");
+    el.style.setProperty("--sa-sb", vp.safe.b + "px");
+    el.style.setProperty("--sa-rail", (railOn ? RAIL_W + vp.safe.l : vp.safe.l) + "px");
     el.style.setProperty("--sa-colw", colW + "px");
-  }, [vp.wide, vp.short, vp.desk, railOn, colW]);
+  }, [vp.wide, vp.short, vp.desk, railOn, colW, vp.safe.l, vp.safe.r, vp.safe.b]);
   const offlineHelp = { key:"offline", icon:"mistakes", label:"Без сети", sub: online ? "Как открывать приложение без связи" : "Сейчас без связи — работаем на сохранённом", onClick:() => navigate("offline") }; // Доп. 170: открыть Колоду меню на блюде (карточка в ответе Наставника)
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());

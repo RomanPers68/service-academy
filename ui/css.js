@@ -899,16 +899,16 @@ export const injectStyles = () => {
     html.sa-wide body { margin: 0 !important; }
     html.sa-wide {
       --sa-colx: max(calc(var(--sa-rail, 0px) + 12px), calc((100vw - var(--sa-colw, 640px)) / 2));
-      --sa-colr: min(var(--sa-colw, 640px), calc(100vw - var(--sa-rail, 0px) - env(safe-area-inset-right, 0px) - 24px));
+      --sa-colr: min(var(--sa-colw, 640px), calc(100vw - var(--sa-rail, 0px) - var(--sa-sr, env(safe-area-inset-right, 0px)) - 24px));
     }
     /* Колонка экрана: по центру свободного места справа от меню; тесно — прижата к меню с полем 12 px */
     html.sa-wide .sa-col { width: var(--sa-colr) !important; max-width: none !important; flex-shrink: 0;
       margin-left: var(--sa-colx) !important; margin-right: auto !important; }
     /* Слои порталом в body, привязанные к колонке: шапка-закладка и «Дальше» в треке, всплывашка значка */
     html.sa-wide .tbp-pin { left: calc(var(--sa-colx) + var(--sa-colr) / 2) !important; max-width: var(--sa-colr) !important; }
-    html.sa-wide .tbp-go { left: calc(var(--sa-colx) + 14px) !important; bottom: calc(max(env(safe-area-inset-bottom, 0px), 8px) + 16px) !important; }
+    html.sa-wide .tbp-go { left: calc(var(--sa-colx) + 14px) !important; bottom: calc(max(var(--sa-sb, env(safe-area-inset-bottom, 0px)), 8px) + 16px) !important; }
     html.sa-wide .ms-toast-pos { left: var(--sa-colx) !important; right: auto !important; width: var(--sa-colr);
-      bottom: calc(max(env(safe-area-inset-bottom, 0px), 8px) + 16px) !important; }
+      bottom: calc(max(var(--sa-sb, env(safe-area-inset-bottom, 0px)), 8px) + 16px) !important; }
     /* Меню слева: подсветка под мышью (на сенсоре её нет) */
     @media (hover: hover) and (pointer: fine) {
       .sa-railitem { transition: background .2s ease; }
@@ -925,7 +925,10 @@ export const injectStyles = () => {
     /* График (свой слой на весь экран): колонкой по центру; от 700 px — в две колонки. У руководителя слева
        «Требует внимания», кнопки, «Сегодня» и разделы, справа карточка «Смены» с таблицей; у сотрудника слева
        карточка смены и медальоны, справа календарь месяца. Строки сетки — как у главной (последняя 1fr). */
-    html.sa-wide .sa-schedcol { width: min(var(--sa-schedw, 680px), calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 24px));
+    /* v51: вырезы экрана (--sa-sl / --sa-sr — из Telegram и env()) — отступом у самого слоя, колонка — по центру
+       оставшегося места: лёжа «остров» не закрывает ни шапку, ни таблицу */
+    html.sa-wide .sa-schedwrap, html.sa-wide .sa-safex { padding-left: var(--sa-sl, 0px) !important; padding-right: var(--sa-sr, 0px) !important; box-sizing: border-box; }
+    html.sa-wide .sa-schedcol { width: min(var(--sa-schedw, 680px), calc(100% - 24px));
       margin: 0 auto; flex-shrink: 0; }
     html.sa-wide .sa-schedbody { display: flex; flex-direction: column; }
     html.sa-wide .sa-schedcol.sa-two { --sa-schedw: 1480px; }
@@ -942,7 +945,7 @@ export const injectStyles = () => {
     html.sa-wide .sa-two .sa-schedbody > [data-sched-month] { grid-column: 2; grid-row: 1 / -1; }
     /* «Сохранить» руководителя в две колонки — плашкой внизу по центру (липкая в сетке прилипла бы к своей строке) */
     html.sa-wide .sa-two [data-savebar] { position: fixed !important; left: 0; right: 0; width: min(560px, calc(100vw - 32px));
-      bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important; margin: 0 auto !important; }
+      bottom: calc(14px + var(--sa-sb, env(safe-area-inset-bottom, 0px))) !important; margin: 0 auto !important; }
     /* Полосы кнопок внизу (редакторы урока, меню, коктейля): фон во всю ширину, кнопки — по колонке */
     html.sa-wide .sa-colbar { padding-left: max(16px, var(--sa-colx)) !important;
       padding-right: max(16px, calc(100vw - var(--sa-colx) - var(--sa-colr))) !important; }
@@ -955,10 +958,15 @@ export const injectStyles = () => {
       html.sa-light.sa-wide .sa-layer { box-shadow: 0 0 0 1px rgba(139,106,48,0.28), 0 24px 80px rgba(70,50,15,0.25), 0 0 0 100vmax rgba(70,52,22,0.5) !important; }
       html.sa-wide .sa-layer::before { content: ""; position: fixed; inset: 0; z-index: -1; }
     }
+    /* v51: уже 900 px (телефон лёжа) эти слои — во весь экран: отступ от выреза, чтобы «‹» и поле ввода
+       не уходили под «остров» */
+    @media (max-width: 899.98px) {
+      html.sa-wide .sa-layer { padding-left: var(--sa-sl, 0px) !important; padding-right: var(--sa-sr, 0px) !important; }
+    }
     /* Телефон лёжа: у слоёв «у стола» (разминка, радио, живой гость, чек недели…) шапка и полоса кнопок ниже —
        сверху нет строки состояния, а высоты экрана мало */
     html.sa-short .tb-head { padding-top: max(10px, env(safe-area-inset-top, 0px)); }
-    html.sa-short .tb-foot { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+    html.sa-short .tb-foot { padding-top: 8px; padding-bottom: calc(8px + var(--sa-sb, env(safe-area-inset-bottom, 0px))); }
     html.sa-short .tb-main { min-height: 44px; }
     html.sa-short .sa-tophead { padding-top: 14px !important; }
   `;

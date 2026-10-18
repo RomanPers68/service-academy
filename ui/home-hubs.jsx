@@ -7,6 +7,7 @@ import { EmptyState, useHintOnce, HintBubble } from "./widgets";
 import { LOGO_SRC_DARK } from "../assets/logo";
 import { onActivate, vibrate, isFemaleName } from "../lib/utils";
 import { ROLE_TITLE, masterKey } from "../lib/mastery";
+import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
 
 // ── Дополнение 133: вкладки «Смена», «Команда», «Я» ───────────────────────────
 // Один компонент-хаб: заголовок с малым фирменным знаком, подзаголовок и список
@@ -55,6 +56,10 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
   // сотрудника и руководителя.
   const [hint, hintDone] = useHintOnce(hintKey || "hub", !!hintKey && !!(hintSteps || []).length);
   const [hstep, setHstep] = React.useState(0);
+  // v52: широкий экран — колонка до 1080 px: слева то, что происходит сегодня (смена, квест, лидеры, прогресс),
+  // справа разделы плитками в две-три колонки. Портрет — прежний список.
+  const wide = useViewport().wide;
+  useColumn(wide ? 1080 : 0);
   const gold = a11y ? "#7A5D2A" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
   const sub = T.modSub?.color || (a11y ? "#6B5B40" : "#9C8760");
@@ -75,9 +80,8 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           {subtitle && <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{subtitle}</div>}
         </div>
       </div>
-      <div style={{ padding: "6px 16px 100px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {hero}
-        {hint && (hintSteps || []).length ? (() => {
+      {(() => {
+        const hintEl = hint && (hintSteps || []).length ? (() => {
           const last = hstep >= hintSteps.length - 1;
           return (
             <HintBubble a11y={a11y} text={hintSteps[hstep]} arrow="up"
@@ -85,8 +89,8 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
               onNext={last ? null : () => setHstep(v => v + 1)}
               onClose={hintDone} style={{ margin:"4px 0 8px" }} />
           );
-        })() : null}
-        {items.filter(Boolean).map((it, idx) => {
+        })() : null;
+        const tiles = items.filter(Boolean).map((it, idx) => {
           const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };
           return (
@@ -104,9 +108,21 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
                 : <span style={{ color: c, fontSize: 21, opacity: 0.7, flexShrink: 0 }}>›</span>}
             </div>
           );
-        })}
-        {footer}
-      </div>
+        });
+        return wide ? (
+          <div className="sa-hub2" data-hub2="">
+            <div className="sa-hub2-l">{hero}{hintEl}</div>
+            <div className="sa-hub2-r"><div className="sa-hubtiles">{tiles}</div>{footer}</div>
+          </div>
+        ) : (
+          <div style={{ padding: "6px 16px 100px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {hero}
+            {hintEl}
+            {tiles}
+            {footer}
+          </div>
+        );
+      })()}
     </div>
   );
 }

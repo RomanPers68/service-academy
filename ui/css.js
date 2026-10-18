@@ -898,8 +898,9 @@ export const injectStyles = () => {
        колонка стояла ровно по центру и не вылезала за край */
     html.sa-wide body { margin: 0 !important; }
     html.sa-wide {
-      --sa-colx: max(calc(var(--sa-rail, 0px) + 12px), calc((100vw - var(--sa-colw, 640px)) / 2));
-      --sa-colr: min(var(--sa-colw, 640px), calc(100vw - var(--sa-rail, 0px) - var(--sa-sr, env(safe-area-inset-right, 0px)) - 24px));
+      --sa-colwant: var(--sa-colw-req, var(--sa-colw, 640px));   /* v52: экран может попросить свою ширину */
+      --sa-colx: max(calc(var(--sa-rail, 0px) + 12px), calc((100vw - var(--sa-colwant)) / 2));
+      --sa-colr: min(var(--sa-colwant), calc(100vw - var(--sa-rail, 0px) - var(--sa-sr, env(safe-area-inset-right, 0px)) - 24px));
     }
     /* Колонка экрана: по центру свободного места справа от меню; тесно — прижата к меню с полем 12 px */
     html.sa-wide .sa-col { width: var(--sa-colr) !important; max-width: none !important; flex-shrink: 0;
@@ -969,6 +970,58 @@ export const injectStyles = () => {
     html.sa-short .tb-foot { padding-top: 8px; padding-bottom: calc(8px + var(--sa-sb, env(safe-area-inset-bottom, 0px))); }
     html.sa-short .tb-main { min-height: 44px; }
     html.sa-short .sa-tophead { padding-top: 14px !important; }
+
+    /* ═══ v52 (Доп. 365): компьютер — остальные экраны используют ширину ═══
+       sa-g2 — карточки сеткой в две-три колонки; sa-2c — две независимые колонки (половина списка слева, половина
+       справа: раскрытая карточка растит только свою колонку; уже 760 px — одна под другой). Только в широкой раскладке. */
+    html.sa-wide .sa-g2 { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+      gap: 10px 12px !important; align-items: stretch; align-content: start; }
+    html.sa-wide .sa-g2 > * { margin: 0 !important; min-width: 0; }
+    html.sa-wide .sa-g2 > [data-span] { grid-column: 1 / -1; }
+    html.sa-wide .sa-2c { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+    html.sa-wide .sa-2c > * { min-width: 0; }
+    html.sa-wide .sa-2cg { row-gap: 10px; }
+    @media (min-width: 760px) { html.sa-wide .sa-2c { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; } }
+    /* Вкладки «Смена», «Команда», «Я»: слева «сегодня» (смена, квест, лидеры, прогресс), справа разделы плитками.
+       Уже 1024 px экрана — «сегодня» сверху, плитки под ним. */
+    html.sa-wide .sa-hub2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 6px 16px 40px; align-items: start; }
+    @media (min-width: 1024px) { html.sa-wide .sa-hub2 { grid-template-columns: minmax(330px, 400px) minmax(0, 1fr); column-gap: 22px; } }
+    html.sa-wide .sa-hub2-l, html.sa-wide .sa-hub2-r { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    html.sa-wide .sa-hubtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px 12px; align-content: start; }
+    /* Книга отзывов: колонка шире; где хватает высоты — и сама книга крупнее (zoom — пропорции страницы
+       и почерк те же, только больше). Ступени по высоте окна — чтобы книга с листанием помещалась без прокрутки */
+    @media (min-height: 860px) { html.sa-wide:not(.sa-short) .sa-gbbook { zoom: 1.1; } }
+    @media (min-height: 940px) { html.sa-wide:not(.sa-short) .sa-gbbook { zoom: 1.18; } }
+    @media (min-height: 1020px) { html.sa-wide:not(.sa-short) .sa-gbbook { zoom: 1.28; } }
+    /* Трек и меню раздела на компьютере: колонка шире, шрифт меню крупнее — читается с расстояния вытянутой руки */
+    html.sa-desk .tbm-title { font-size: 25px; }
+    html.sa-desk .tbm-sub { font-size: 14.5px; }
+    html.sa-desk .tbm-eyebrow { font-size: 11.5px; }
+    html.sa-desk .tbm-list > li { --my: 18px; }
+    html.sa-desk .tbm-list > li.cur { --my: 37px; }
+    html.sa-desk .tbm-node { min-height: 44px; }
+    html.sa-desk .tbm-t { font-size: 17px; }
+    html.sa-desk .tbm-s { font-size: 13px; }
+    html.sa-desk .tbm-m { font-size: 12px; }
+    html.sa-desk .tbm-ct { font-size: 19px; }
+    html.sa-desk .tbm-cs { font-size: 14px; }
+    html.sa-desk .tbm-ck { font-size: 11px; }
+    html.sa-desk .tbm-cta { font-size: 15px; padding: 10px 18px; }
+    html.sa-desk .tbm-foot { font-size: 11.5px; }
+    /* Редактор урока на компьютере: форма слева, справа — как увидит сотрудник (шириной с телефон, листается сам).
+       Высота — до полосы «Отменить / Сохранить урок»; поле снизу — чтобы конец предпросмотра можно было
+       докрутить над полосой, даже пока он ещё не прилип наверху */
+    html.sa-wide .sa-ed2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 410px); column-gap: 28px; align-items: start; }
+    html.sa-wide .sa-ed2-f { min-width: 0; }
+    /* поле под формой — внутри сетки: предпросмотру есть куда прилипать до самого конца формы */
+    html.sa-wide .sa-ed2 { padding-bottom: 0 !important; }
+    html.sa-wide .sa-ed2-f { padding-bottom: 150px; }
+    html.sa-ed2on #root > div, html.sa-ed2on .sa-edscreen { overflow-x: clip !important; }
+    html.sa-wide .sa-ed2-pv { position: sticky; top: 10px; min-width: 0; max-height: calc(100vh - 110px); overflow-y: auto;
+      margin-top: 8px; padding: 0 6px 130px; box-sizing: border-box; border-radius: 18px; scrollbar-width: thin; }
+    html.sa-wide .sa-ed2-pv > :first-child + * { margin-top: 4px; }
+    .sa-ed2-flash { animation: saEd2Flash 1s ease-out; }
+    @keyframes saEd2Flash { 0% { box-shadow: 0 0 0 2px rgba(214,178,102,0.75); } 100% { box-shadow: 0 0 0 2px rgba(214,178,102,0); } }
   `;
   document.head.appendChild(style);
 

@@ -33,6 +33,7 @@ import { LiveDialogue, dlgWalkText, dlgGram } from "./screens-dialogue";   // v4
 import { practiceRound } from "../lib/practice-round";
 import { tfLabel } from "../lib/practice-mistake";
 import { vibrate } from "../lib/utils";
+import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): редактор в две панели на компьютере
 
 const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -275,6 +276,9 @@ export function serializeExtras(draft) {
   return questions;
 }
 
+// v52 (Доп. 365): от этой ширины (без вырезов и полей) редактор урока — в две панели
+export const ED2_MIN = 1000;
+
 export function ContentEditorScreen({ T, a11y, onBack }) {
   // Подсказка экрана — один раз при первом входе (правка 171)
   const [ceHint, ceHintDone] = useHintOnce("contentEditor");
@@ -310,9 +314,29 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const [textFull, setTextFull] = React.useState(false);
   const [textTall, setTextTall] = React.useState(false);
   const [typingEd, setTypingEd] = React.useState(false);
+  // v52 (Доп. 365): широкий экран — список уроков в две колонки; компьютер — редактор в две панели:
+  // форма слева, справа — как урок увидит сотрудник (предпросмотр открыт всегда, листается сам по себе)
+  const vpE = useViewport();
+  const two = vpE.wide && view === "edit" && vpE.w - vpE.safe.l - vpE.safe.r - 24 >= ED2_MIN;
+  useColumn(two ? 1200 : vpE.wide && view === "list" ? 940 : 0);
+  const pvRef = React.useRef(null);
+  const edWrap = (cls, ref, kids) => (two ? <div className={cls} ref={ref} data-ed2={cls}>{kids}</div> : kids);
+  // обёртки экрана режут край по горизонтали (overflow-x: hidden) и потому сами считаются «прокруткой» —
+  // липкие полоска разделов и предпросмотр к ним не прилипают. В две панели — обрезка без прокрутки (clip)
+  React.useLayoutEffect(() => {
+    if (!two || typeof document === "undefined") return undefined;
+    const el = document.documentElement; el.classList.add("sa-ed2on");
+    return () => { el.classList.remove("sa-ed2on"); };
+  }, [two]);
   const secRef = { lesson: React.useRef(null), sit: React.useRef(null), dlg: React.useRef(null), bld: React.useRef(null), q: React.useRef(null), prev: React.useRef(null) };
   const toggleCard = (sec, id) => setOpenCard(o => ({ ...o, [sec]: o[sec] === id ? null : id }));
-  const jump = (k) => { const el = secRef[k] && secRef[k].current; if (!el) return;
+  const jump = (k) => {
+    const pv = pvRef.current;
+    if (k === "prev" && two && pv) {   // предпросмотр и так на экране — к его началу, с подсветкой
+      try { pv.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { pv.scrollTop = 0; }
+      pv.classList.remove("sa-ed2-flash"); void pv.offsetWidth; pv.classList.add("sa-ed2-flash"); return;
+    }
+    const el = secRef[k] && secRef[k].current; if (!el) return;
     el.scrollIntoView({ block: "start" }); const r = document.getElementById("root"); if (r) r.scrollTop -= 58; };
   React.useEffect(() => {
     if (view !== "edit") return;
@@ -603,7 +627,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           ) : groups.map(({ t, mine, secs }) => (
             <div key={t.id}>
               <SectionLabel a11y={a11y} right={`${mine.length} ${mine.length === 1 ? "урок" : mine.length < 5 ? "урока" : "уроков"}`}>{t.label.toUpperCase()}</SectionLabel>
-              {secs.map(([name, ls]) => {
+              <div className="sa-g2">{secs.map(([name, ls]) => {
                 const ic = customIcon(name);
                 return (
                   <div key={name} style={G({ padding: "12px 12px 6px", marginBottom: 10, borderLeft: `3px solid ${t.color}` })}>
@@ -637,7 +661,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                     })}
                     <button onClick={() => startNewIn(t.id, name)} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 13, gap: 5, padding: "8px 0 6px 44px" }}>{ico.plus(gold, 14)} Урок в раздел</button>
                   </div>);
-              })}
+              })}</div>
             </div>
           ))}
           {err && <div style={{ color: TN.bad, fontSize: 12.5, margin: "6px 0 10px", textAlign: "center" }}>{err}</div>}
@@ -713,9 +737,10 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   };
   const playNext = () => setPlayPs(x => pvNext(x));
   return (
-    <div style={T.screen}>
+    <div style={T.screen} className={two ? "sa-edscreen" : undefined}>
       {header(editing ? "Изменить урок" : "Новый урок", leave)}
-      <div style={{ ...T.lessBody, flex: 1, overflowY: "visible", padding: "0 16px 150px" }}>
+      <div style={{ ...T.lessBody, flex: 1, overflowY: "visible", padding: "0 16px 150px" }} className={two ? "sa-ed2" : undefined}>
+        {edWrap("sa-ed2-f", null, <>
         {/* навигатор по разделам — закреплён сверху при прокрутке (правка 162) */}
         {/* все метки — в одну строку без прокрутки (правка 164: у бара «Просмотр» уезжал за край) */}
         <div style={{ position: "sticky", top: 0, zIndex: 6, margin: "0 -16px 6px", padding: "7px 8px", display: "flex", gap: 3,
@@ -1185,6 +1210,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           ))}
           {(draft.skills || []).length < 8 ? <button onClick={() => setDraft(d => ({ ...d, skills: [...(d.skills || []), { id: uid(), sid: uid(), label: "", hint: "" }] }))} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить навык</button> : null}
         </div>
+        </>)}
+        {edWrap("sa-ed2-pv", pvRef, <>
         <div ref={secRef.prev} />
         <SectionLabel a11y={a11y}>КАК УВИДИТ СОТРУДНИК</SectionLabel>
         {/* v40: проба на настоящих экранах игры — с черновиком, без записи прогресса */}
@@ -1198,7 +1225,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             : sitsOk.length && sitsOk.length < sitsAll.length ? <div style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, marginTop: 8 }}>В пробу попадут заполненные ситуации: {sitsOk.length} из {sitsAll.length}.</div> : null}
           {playMsg ? <div role="status" data-play-msg="" style={{ color: TN.bad, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, marginTop: 8 }}>{playMsg}</div> : null}
         </div>
-        {showPreview ? (<>
+        {showPreview || two ? (<>
         <div style={{ ...T.modCard, margin: "0 0 10px" }}>
           <div style={{ ...T.modBar, background: track.color }} />
           <div style={{ ...T.modIcon, display: "flex", alignItems: "center", justifyContent: "center" }}>{MOD_SVG[secIcon] ? MOD_SVG[secIcon](track.color, 28) : null}</div>
@@ -1255,7 +1282,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: muted, fontSize: 12 }}>{(GLASSES.find(g => g[0] === draft.build.glass) || ["", ""])[1]} · шагов: {draft.build.steps.length} · бокал наполняется по ходу, звёзды за чистую сборку</div>
             </div>
           </div>) : null}
-          <button onClick={() => setShowPreview(false)} style={{ ...ghost, marginBottom: 12 }}>Скрыть предпросмотр ▴</button>
+          {two ? null : <button onClick={() => setShowPreview(false)} style={{ ...ghost, marginBottom: 12 }}>Скрыть предпросмотр ▴</button>}
         </>) : <button onClick={() => setShowPreview(true)} style={{ ...ghost, marginBottom: 12 }}>Показать, как увидит сотрудник ▾</button>}
         {(() => {
           const extrasQ = [...draft.questions, ...(draft.situations || []).map(x => ({ kind: "situation", ...x })), ...(draft.dialogue ? [{ kind: "dialogue", ...draft.dialogue }] : []), ...(draft.build ? [{ kind: "build", ...draft.build }] : [])];
@@ -1270,6 +1297,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <span style={{ width: 18, color: muted }}>{i + 1}</span><span>{st.title}</span></div>)}
             </div>);
         })()}
+        </>)}
         {/* «Сохранить» — закреплена внизу; пока печатаешь — уезжает, чтобы не закрывать поле (правка 162) */}
         <div className="sa-colbar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "8px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
           transform: typingEd ? "translateY(120%)" : "none", transition: "transform .25s ease",

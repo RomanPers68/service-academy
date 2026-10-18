@@ -11,6 +11,7 @@ import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFER
 import { SearchScreen } from "./search";
 import { onActivate } from "../lib/utils";
 import { GOLD, GREEN, RED } from "./tokens";
+import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): курсы и главы — в две колонки на широком экране
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -102,7 +103,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
         <span style={{ color: T.modSub.color, fontSize: 14 }}>Найти главу: гренадин, капучино, декантация…</span>
       </div>
     </div>
-    <div style={{ ...T.modList, paddingTop: 8 }}>
+    <div className="sa-g2" style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
         <div key={c.id} onClick={c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
           <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
@@ -130,7 +131,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
       <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>{course.subtitle}</div>
     </div>
     <div style={T.secTitle}>ПРОГРАММА</div>
-    <div style={T.lessList}>
+    <div className="sa-g2" style={T.lessList}>
       {course.lessons.map((l, i) => {
         const isQuiz = l.type === "quiz";
         return (<div key={l.id} style={T.lessCard} onClick={() => openLesson(l)} {...onActivate(() => openLesson(l))} aria-label={l.title}>
@@ -234,6 +235,9 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
   const course = COURSES[courseId] || REFERENCE_COURSE;
   const lessons = course.lessons;
   const [view, setView] = R.useState(startIdx >= 0 ? "read" : "hub");
+  // v52: список курсов и программа курса — шире, карточками в две колонки; глава и фото-тест — прежней колонкой
+  const wide = useWide();
+  useColumn(wide && (view === "hub" || view === "course") ? 900 : 0);
   const [idx, setIdx] = R.useState(startIdx >= 0 ? startIdx : 0);
   const lesson = lessons[idx];
   const openCourse = (cid) => { setCourseId(cid); setIdx(0); setView("course"); };

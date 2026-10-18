@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
+import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): сертификаты — карточками в две колонки на широком экране
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES, programOf } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
@@ -218,6 +219,8 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
   // Страничная подсказка: правило про весь экран, а не про одну кнопку
   const [ceHint, ceHintDone] = useHintOnce("certificates");
   const ceSteps = hintsFor("certificates");
+  const wide = useWide();
+  useColumn(wide ? 900 : 0);
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
@@ -227,7 +230,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
       {ceHint && ceSteps.length ? (
         <HintBubble a11y={a11y} text={ceSteps[0]} arrow="up" step={1} total={1} onClose={ceHintDone} />
       ) : null}
-      <div style={{ ...T.lessBody, padding:"14px 16px 40px", display:"flex", flexDirection:"column", gap:12 }}>
+      <div className="sa-g2" style={{ ...T.lessBody, padding:"14px 16px 40px", display:"flex", flexDirection:"column", gap:12 }}>
         {_CERT_ROLE_ORDER.map(id => {
           const r = ROLES.find(x => x.id === id);
           if (!r) return null;
@@ -277,7 +280,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
             </div>
           );
         })}
-        <div style={{ ...T.para, textAlign:"center", opacity:0.5, fontSize:12.5, marginTop:8 }}>Сдай экзамен на роль, чтобы получить сертификат.</div>
+        <div data-span="" style={{ ...T.para, textAlign:"center", opacity:0.5, fontSize:12.5, marginTop:8 }}>Сдай экзамен на роль, чтобы получить сертификат.</div>
       </div>
     </div>
   );

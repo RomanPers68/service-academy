@@ -571,10 +571,13 @@ if (want("DESK")) for (const light of [false, true]) {
   ok(`${tag}: главная в две колонки — слева 440 px, справа треки`, home.two && home.lw === 440 && home.rl >= home.ar + 20, JSON.stringify(home));
   ok(`${tag}: колонка главной — 1120 px по центру`, g.col && g.col.w === 1120 && Math.abs(g.col.l - 160) <= 1, JSON.stringify(g.col));
   if (!light) await shot(p, "desk-home");
-  await nav(p, "shift"); g = await lay(p);
+  // v52: «Смена» на компьютере — шире (плитки); обычный экран — «Мой прогресс»
+  await nav(p, "stats"); g = await lay(p);
   ok(`${tag}: обычный экран — колонка 640 px по центру экрана`, g.col && g.col.w === 640 && Math.abs(g.col.l - 400) <= 1, JSON.stringify(g.col));
-  // колесо над лентой чипов глоссария листает её вбок
+  // колесо над лентой чипов глоссария листает её вбок. v52: в колонке 980 px разделы помещаются целиком —
+  // ленту для проверки сужаем до 320 px
   await nav(p, "glossary");
+  await p.evaluate(() => { const el = document.querySelector(".sa-hscroll"); if (el) el.style.maxWidth = "320px"; }); await sleep(200);
   const wh = await p.evaluate(() => { const el = [...document.querySelectorAll(".sa-hscroll")].find((x) => x.scrollWidth > x.clientWidth + 1 && x.scrollHeight <= x.clientHeight + 1); if (!el) return null; el.setAttribute("data-wheel-test", "1"); return { sw: el.scrollWidth, cw: el.clientWidth }; });
   if (wh) { const box = await p.locator("[data-wheel-test]").boundingBox(); await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await p.mouse.wheel(0, 240); await sleep(400);
     const sl = await p.evaluate(() => document.querySelector("[data-wheel-test]").scrollLeft); ok(`${tag}: колесо мыши над лентой разделов глоссария листает её вбок`, sl > 0, String(sl)); }

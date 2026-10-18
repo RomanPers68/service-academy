@@ -33,6 +33,7 @@ import { missText } from "../lib/practice-mistake";
 import { ensureTableCss } from "./table-css";
 import { ModuleMenu } from "./module-menu";
 import { Flame, Wine } from "./day-emblems";   // v43: вместо свечи и стакана из ./table-bits
+import { useWide, useColumn, splitAt } from "./viewport";   // v52 (Доп. 365): трек шире, глоссарий в две колонки на широком экране
 import { ymd } from "../lib/streak";
 import { topicShade, inkOnColor } from "../lib/topic-tint";
 import { topicFreshness, freshLabel, wineLevel } from "../lib/freshness";
@@ -193,6 +194,10 @@ const PASSIVE_ACTS = { onRefresh: NOOP, onCredit: NOOP, onGold: NOOP, onCellar: 
 export function HomeScreen({ role, modules = [], completed, quizDone = {}, progress, doneCount, totalLessons, onModule, onChangeRole, T, streak = { count: 0, best: 0, last: "", days: [] }, a11y, profile, onChecklist, onOnboarding, onAnalytics, mistakeBank = [], onMistakes, customModules = [], onSearch, dayGoal = null,
   focusId = null, onPage, onLesson, nextFor, onNext, finish, onBookPage, pagerOnly = false, marks = null, topicActs = null }) {
   ensureTableCss();   // стили свечи серии (Доп. 288) и листаемого трека (Доп. 307)
+  // v52 (Доп. 365): на широком экране трек шире (на компьютере и шрифт меню крупнее — ui/css.js),
+  // список тем — карточками в две колонки
+  const wideScr = useWide();
+  useColumn(wideScr ? 820 : 0);
   // Сколько минут осталось до конца программы (по незавершённым разделам)
   const leftMins = React.useMemo(() =>
     [...modules, ...customModules].reduce((s, m) =>
@@ -934,7 +939,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
       })()}
       <div style={{ ...T.secTitle, display: "flex", alignItems: "center", gap: 8 }}><span style={{ flex: 1 }}>Программа обучения</span>
         <button type="button" className="sa-btn" onClick={() => switchView("pager")} aria-label="Листать темы по одной" style={{ textTransform: "none", letterSpacing: 0.4, fontFamily: "Georgia, serif", fontSize: 12, padding: "4px 10px", borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${role.color}77`, color: inkOf(role.color, a11y) }}>листать ›</button></div>
-      <div style={T.modList} className="sa-stagger">
+      <div style={T.modList} className="sa-stagger sa-g2">
         {pages.map((m, mi) => {
           const lessonsDone = m.lessons.filter(l => l.type !== "quiz" && l.type !== "result" && completed[l.id]).length;
           const quizzesDone = m.lessons.filter(l => l.type === "quiz" && quizDone[l.id]).length;
@@ -1021,6 +1026,7 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
   // тест под сургучом, текущий шаг — карточка. Прежняя информация вся на месте
   // (см. ui/module-menu.jsx); код формата «у стола» начинает грузиться фоном уже здесь.
   React.useEffect(() => { loadTable(); }, []);
+  useColumn(useWide() ? 820 : 0);   // v52 (Доп. 365): меню раздела — как страница трека
   return (
     <div style={T.screen} className="sa-slide-r">
       <ModuleMenu mod={mod} completed={completed} quizDone={quizDone} onLesson={onLesson} onBack={onBack} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins} />
@@ -1811,6 +1817,9 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
       g.def.toLowerCase().includes(search.toLowerCase());
     return matchText && (!favOnly || isSaved(g.term)) && (cat === "Все" || g.cat === cat);
   });
+  // v52: широкий экран — колонка до 980 px, термины раздела — двумя независимыми колонками, заголовок раздела — во всю ширину
+  const wide = useWide();
+  useColumn(wide ? 980 : 0);
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
@@ -1856,7 +1865,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
         {filtered.length === 0 && (
           <div style={{ ...T.para, textAlign:"center", opacity:0.5 }}>Ничего не найдено</div>
         )}
-        {filtered.map((g, i) => {
+        {(() => { const list = filtered.map((g, i) => {
           // Заголовок раздела — перед первым термином каждой категории
           const showCat = g.cat && (i === 0 || filtered[i - 1].cat !== g.cat);
           const catHeader = showCat && (
@@ -1869,10 +1878,8 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           const entry = saved[k] || {};
           const fav = !!entry.fav;
           const note = entry.note || "";
-          return (
-          <React.Fragment key={i}>
-          {catHeader}
-          <div style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
+          const card = (
+          <div key={"t" + i} style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, width:"100%" }}>
               <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, flex:1 }}>{g.term}</div>
               <button onClick={() => onToggleFav(k)} aria-label={fav ? "Убрать из избранного" : "В избранное"} title={fav ? "Убрать из избранного" : "В избранное"}
@@ -1915,9 +1922,21 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
               </button>
             )}
           </div>
-          </React.Fragment>
           );
-        })}
+          // прикидка высоты карточки — чтобы колонки на широком экране вышли ровными. Заметки не учитываем:
+          // иначе, пока печатаешь заметку, разрез мог сдвинуться и карточка перепрыгнула бы в другую колонку
+          return { i, header: catHeader || null, card, w: 84 + String(g.def || "").length * 0.5 };
+        });
+          if (!wide) return list.map((x) => <React.Fragment key={x.i}>{x.header}{x.card}</React.Fragment>);
+          // широкий экран: заголовок раздела — во всю ширину, термины раздела — в две независимые колонки
+          // (раскрыл заметку — растёт только своя колонка, карточки не перепрыгивают)
+          const groups = [];
+          list.forEach((x) => { if (x.header || !groups.length) groups.push({ header: x.header, items: [] }); groups[groups.length - 1].items.push(x); });
+          return <div data-gloss-cols="">{groups.map((gr, gi) => { const h = splitAt(gr.items.map((x) => x.w)); return (
+            <React.Fragment key={gi}>{gr.header}
+              <div className="sa-2c"><div>{gr.items.slice(0, h).map((x) => x.card)}</div><div>{gr.items.slice(h).map((x) => x.card)}</div></div>
+            </React.Fragment>); })}</div>;
+        })()}
         <div style={{ ...T.para, textAlign:"center", opacity:0.4, fontSize:12.5, marginTop:8 }}>{GLOSSARY.length} терминов</div>
       </div>
     </div>

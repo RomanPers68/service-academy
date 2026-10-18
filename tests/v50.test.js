@@ -111,7 +111,9 @@ describe("v50: колонка экрана и классы на <html>", () => {
     expect(app).toContain('<div style={T.phone} className="sa-col">');
   });
   it("стили: колонка по центру свободного места справа от меню; слои порталом — по колонке; правила только с sa-wide", () => {
-    expect(css).toContain("--sa-colx: max(calc(var(--sa-rail, 0px) + 12px), calc((100vw - var(--sa-colw, 640px)) / 2));");
+    // v52: ширину колонки экран может попросить сам (--sa-colw-req) — формула та же, через --sa-colwant
+    expect(css).toContain("--sa-colwant: var(--sa-colw-req, var(--sa-colw, 640px));");
+    expect(css).toContain("--sa-colx: max(calc(var(--sa-rail, 0px) + 12px), calc((100vw - var(--sa-colwant)) / 2));");
     expect(css).toContain("html.sa-wide .sa-col { width: var(--sa-colr) !important; max-width: none !important; flex-shrink: 0;");
     expect(css).toContain("html.sa-wide .tbp-pin { left: calc(var(--sa-colx) + var(--sa-colr) / 2) !important;");
     expect(css).toContain("html.sa-wide .ms-toast-pos { left: var(--sa-colx) !important;");

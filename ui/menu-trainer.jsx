@@ -21,6 +21,7 @@ import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
 import { TimerBar, LiquidSegment } from "./widgets";
+import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): тренировки меню — плитками в две колонки на широком экране
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
 const HIDE_SAMPLES_KEY = "sa_menu_hide_samples"; // { [restaurant]: true|false } (нет ключа — авто: скрыты, если есть меню команды)
@@ -86,6 +87,9 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   const [restaurant, setRestaurant] = React.useState(() =>
     RESTAURANTS.includes(profile?.restaurant) ? profile.restaurant : null);
   const [mode, setMode] = React.useState(null); // null | "cards" | "quiz" | "60sec" | "edit" | "team"
+  // v52: широкий экран — список тренировок плитками в две колонки (колонка до 900 px); сами тренировки — прежней колонкой
+  const wide = useWide();
+  useColumn(wide && !mode ? 900 : 0);
   const [custom, setCustom] = React.useState(loadCustom);
   const [hideSamples, setHideSamples] = React.useState(loadHide);
   const [hiddenIds, setHiddenIds] = React.useState(() => loadJson(HIDDEN_IDS_KEY)); // Доп. 154
@@ -236,7 +240,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v51</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v52</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -261,9 +265,9 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
 
       <div style={{ ...T.secTitle }}>Тренировка</div>
-      <div style={{ padding: "0 14px" }}>
+      <div className="sa-g2" style={{ padding: "0 14px" }}>
         {newDishes.length > 0 && (
-          <div className="sa-card" style={{ ...T.modCard, margin: "0 0 12px", border: `1px solid ${learned ? green : gold}${learned ? "77" : "AA"}` }}
+          <div className="sa-card" data-span="" style={{ ...T.modCard, margin: "0 0 12px", border: `1px solid ${learned ? green : gold}${learned ? "77" : "AA"}` }}
             onClick={startNew} {...onActivate(startNew)}>
             <div style={{ ...T.modBar, background: learned ? green : gold }} />
             <div style={{ ...iconBox, background: learned ? "rgba(93,187,138,0.14)" : iconBox.background }}>{learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20)}</div>

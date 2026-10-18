@@ -28,6 +28,7 @@ import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, goldText } from "./tokens";
 import { masterRolesOf, masterTitle } from "../lib/mastery";
+import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): рейтинг шире, сотрудники — в две колонки
 
 // v40: знак «Мастер роли ✦» у имени — в рейтинге и в лиге недели (ui/league.jsx).
 // roles — из masterRolesOf(mastersIndex(строки mastery_list), имя, фамилия); нет ролей — ничего.
@@ -321,6 +322,9 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   const [tab, setTab] = React.useState(visibleTabs[0]?.id || "waiter");
   const [detailTab, setDetailTab] = React.useState(false);
   const [selected, setSelected] = React.useState(null);
+  // v52: широкий экран — колонка до 900 px, сотрудники карточками в две колонки (1-е и 2-е место — рядом)
+  const wide = useWide();
+  useColumn(wide && !detailTab ? 900 : 0);
   const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
   const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
 
@@ -544,7 +548,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               <div style={{ marginBottom:12, display:"flex", justifyContent:"center" }}>{UI_SVG.inbox(GOLD, 40)}</div>
               <div>Пока нет результатов</div>
             </div>
-          ) : filtered.map((p, i) => {
+          ) : (() => { const rows = filtered.map((p, i) => {
             const ach = getAchievements(p, leaderboard, scores);
             return (
             <div key={i} onClick={() => { setSelected(p); setDetailTab(true); }} {...onActivate(() => { setSelected(p); setDetailTab(true); })}
@@ -578,7 +582,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               </div>
             </div>
             );
-          })}
+          }); return wide ? <div className="sa-g2" data-lb-cols="">{rows}</div> : rows; })()}
         </div>
       ) : (
         <div style={{ flex:1, padding:"12px 16px", overflowY:"auto" }}>

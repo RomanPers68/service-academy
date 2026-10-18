@@ -119,3 +119,36 @@ export function useViewport() {
   }, []);
   return v;
 }
+
+// v52 (Доп. 365): экран сам просит ширину колонки на широком экране (карточки в две-три колонки, редактор с
+// предпросмотром). Переменная --sa-colw-req живёт, пока экран открыт; правила ui/css.js берут её вместо
+// ширины, которую ставит App, и сами ужимают до свободного места. В портрете она ни на что не влияет.
+export function useColumn(w) {
+  React.useLayoutEffect(() => {
+    if (!w || typeof document === "undefined") return undefined;
+    const el = document.documentElement;
+    el.style.setProperty("--sa-colw-req", Math.round(w) + "px");
+    return () => { el.style.removeProperty("--sa-colw-req"); };
+  }, [w]);
+}
+
+// Широкая раскладка — для экранов, которым нужно только «да/нет»
+export function useWide() {
+  return useViewport().wide;
+}
+
+// Где разрезать список на две колонки, чтобы они вышли примерно равной высоты (веса — прикидка высоты
+// карточек). Колонки независимые: раскрылась карточка (SOS, заметка в глоссарии) — растёт только её колонка,
+// соседние карточки не перепрыгивают в другую. При равенстве левая колонка — не короче правой.
+export function splitAt(weights) {
+  const w = (weights || []).map((x) => Math.max(0, Number(x) || 0));
+  if (w.length < 2) return w.length;
+  const total = w.reduce((a, b) => a + b, 0);
+  let acc = 0, best = 1, bestD = Infinity;
+  for (let i = 1; i < w.length; i++) {
+    acc += w[i - 1];
+    const d = Math.abs(total - 2 * acc);
+    if (d <= bestD) { bestD = d; best = i; }
+  }
+  return best;
+}

@@ -16,6 +16,7 @@ import { COCKTAILS } from "../data/cocktails";
 import { MODULES } from "../data/modules";
 import { useContentVersion } from "../lib/use-content";
 import { ROLES } from "../data/roles";
+import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): книга шире и крупнее на широком экране
 import {
   MODULE_REVIEWS, reviewOf, bookModules, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
   moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
@@ -71,6 +72,9 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates, gold = 
 export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, practiceStars = {}, onBack, onWeekly, focusId }) {
   const [gbHint, gbHintDone] = useHintOnce("guestbook");
   const [gbStep, setGBStep] = React.useState(0);
+  // v52 (Доп. 365): на широком экране книга шире, а где окно высокое — ещё и крупнее (ui/css.js, .sa-gbbook)
+  const wide = useWide();
+  useColumn(wide ? 820 : 0);
   const gbSteps = hintsFor("guestbook");
   const [tab, setTab] = React.useState(role && BM()[role] ? role : "seasonal");
   const [idx, setIdx] = React.useState(0);
@@ -230,7 +234,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       </div>
 
       {/* Книга */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 16px 6px" }}>
+      <div className="sa-gbbook" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 16px 6px" }}>
         <div style={{ position: "relative" }} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
           {/* стопка страниц позади */}
           <div style={{ position: "absolute", inset: "8px -5px -7px -5px", borderRadius: 14, background: "#E8DEC8", transform: "rotate(-1.1deg)", opacity: .45 }} />

@@ -10,6 +10,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD, GREEN, RED } from "./tokens";
 import { UI_SVG, MARKER_RE } from "./icons";
+import { useWide, useColumn, splitAt } from "./viewport";   // v52 (Доп. 365): карточки SOS — в две колонки на широком экране
 
 // Красный акцент SOS: в тёмной теме мягкий, в светлой — глубже (читаемость на крем-фоне)
 const sosRed = (a11y) => (a11y ? "#A33A2A" : "#E07878");
@@ -149,6 +150,9 @@ export function SOSScreen({ T, a11y, onBack }) {
   const text = a11y ? "#2e211a" : "#F5EFE2";
   const sub = T.modSub?.color || "#9A8C74";
   const [open, setOpen] = React.useState(null);
+  // v52: широкий экран — колонка до 900 px, карточки двумя независимыми колонками: раскрытая растёт в своей
+  const wide = useWide();
+  useColumn(wide ? 900 : 0);
 
   const toggle = (id) => { vibrate("light"); setOpen(open === id ? null : id); };
 
@@ -192,8 +196,7 @@ export function SOSScreen({ T, a11y, onBack }) {
         </div>
 
         {/* ── Карточки-аккордеон ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {SOS_CARDS.map((c) => {
+        {(() => { const cards = SOS_CARDS.map((c) => {
             const isOpen = open === c.id;
             return (
               <div key={c.id} style={{ ...glass(T, a11y, isOpen), overflow: "hidden" }}>
@@ -236,8 +239,14 @@ export function SOSScreen({ T, a11y, onBack }) {
                 )}
               </div>
             );
-          })}
-        </div>
+          });
+          const colSt = { display: "flex", flexDirection: "column", gap: 10 };
+          if (!wide) return <div style={colSt}>{cards}</div>;
+          // широкий экран: слева — здоровье (подавился, аллергия, сердце, ожог), справа — ситуации в зале;
+          // колонки независимые — раскрытая карточка не сдвигает соседние в другую колонку
+          const h = splitAt(cards.map(() => 1));
+          return <div className="sa-2c sa-2cg" data-sos-cols=""><div style={colSt}>{cards.slice(0, h)}</div><div style={colSt}>{cards.slice(h)}</div></div>;
+        })()}
 
         {/* ── Подпись-принцип, как везде в приложении ── */}
         <div style={{ margin: "18px 2px 0", padding: "8px 14px", borderLeft: `2px solid ${a11y ? "rgba(160,56,40,0.35)" : "rgba(224,120,120,0.35)"}` }}>

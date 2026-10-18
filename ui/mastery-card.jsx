@@ -14,6 +14,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { FAMILIES, TIERS, TIERS_OF, ROLE_TITLE, familyCount } from "../lib/mastery";
 import { vibrate, onActivate } from "../lib/utils";
+import { sfx } from "../lib/sfx";   // v57 (Доп. 370)
 import { GOLD } from "./tokens";
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
@@ -381,7 +382,7 @@ const burst = (list, sm) => (
 );
 // праздничная отдача — только после первого касания страницы: иначе Chrome пишет в консоль ошибку
 // (navigator.vibrate без жеста пользователя), а Telegram отдаёт отдачу и так
-const buzz = () => { try { if (typeof navigator !== "undefined" && navigator.userActivation && !navigator.userActivation.hasBeenActive) return; } catch (e) {} vibrate("success"); };
+const buzz = () => { try { if (typeof navigator !== "undefined" && navigator.userActivation && !navigator.userActivation.hasBeenActive) return; } catch (e) {} vibrate("success"); sfx("done"); };   // v57: и колокольчик
 const XIcon = ({ color }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
 
 export function BadgeToast({ a11y, item, state, onOpen, onClose, inline = false }) {

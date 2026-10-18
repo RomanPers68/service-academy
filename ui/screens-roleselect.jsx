@@ -96,7 +96,7 @@ function NowCard({ refEl, ctx, a11y, T, next, onNext, on, onMood, onReplyDone })
   const goNext = () => { vibrate("light"); if (onNext) onNext(); };
   const later = () => { if (onReplyDone) onReplyDone(); };
   return (
-    <div ref={refEl} data-now-card={ctx.mode} onClick={tappable ? act : undefined} {...(tappable ? onActivate(act) : {})}
+    <div ref={refEl} data-now-card={ctx.mode} className="sa-fadein" onClick={tappable ? act : undefined} {...(tappable ? onActivate(act) : {})}
       style={{ borderRadius:18, cursor: tappable ? "pointer" : "default",
         background: a11y ? "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))" : "linear-gradient(180deg,rgba(214,178,102,0.17),rgba(214,178,102,0.05))",
         border:`1px solid ${a11y ? "rgba(150,112,40,0.42)" : "rgba(214,178,102,0.4)"}`,
@@ -310,7 +310,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               {/* v31: строка напарника — отдельной строкой под чипами (раньше уезжала за край экрана) */}
               {dayNote}
               {ctx ? (
-                <NowCard refEl={refTrack} ctx={ctx} a11y={a11y} T={T} on={nowOn}
+                <NowCard key={ctx.mode} refEl={refTrack} ctx={ctx} a11y={a11y} T={T} on={nowOn}
                   next={next ? { title: (kind ? kind.charAt(0) + kind.slice(1).toLowerCase() + " · " : "") + title } : null} onNext={go}
                   onMood={(lvl) => { setMoodReply(lvl); if (nowOn) nowOn.mood(lvl); }} onReplyDone={() => setMoodReply(null)} />
               ) : (

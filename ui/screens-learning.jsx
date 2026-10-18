@@ -14,6 +14,7 @@ import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
+import { sfx } from "../lib/sfx";   // v57 (Доп. 370): звуки ответов
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
@@ -132,7 +133,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
     );
   }
 
-  const answer = (i) => { if (pick !== null) return; setPick(i); vibrate(i === q.correct ? "light" : "error"); };
+  const answer = (i) => { if (pick !== null) return; setPick(i); vibrate(i === q.correct ? "light" : "error"); sfx(i === q.correct ? "ok" : "bad"); };   // v57: и звук
   const next = () => {
     const wasCorrect = pick === q.correct;
     setPick(null);
@@ -167,8 +168,9 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
         {q.options.map((opt, i) => {
           let st = { ...T.quizOpt, cursor: pick === null ? "pointer" : "default" };
           if (pick !== null) {
-            if (i === q.correct) st = { ...st, background: "rgba(93,187,138,0.15)", border: "1px solid #5DBB8A" };
-            else if (i === pick) st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878" };
+            // v57: и верхняя кромка — иначе у ответа оставалась светлая полоска сверху (React предупреждал о border + borderTop)
+            if (i === q.correct) st = { ...st, background: "rgba(93,187,138,0.15)", border: "1px solid #5DBB8A", borderTop: "1px solid #5DBB8A" };
+            else if (i === pick) st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878", borderTop: "1px solid #E07878" };
             else st = { ...st, opacity: 0.5 };
           }
           return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
@@ -1292,6 +1294,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       <span role="button" tabIndex={0} onClick={() => { setCardDir("l"); setCardIdx(0); setResumeFrom(0); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCardDir("l"); setCardIdx(0); setResumeFrom(0); } }} style={{ color: inkOf(color, !!T.a11y), fontWeight: "bold", cursor: "pointer", whiteSpace: "nowrap" }}>С начала</span>
     </div>
   ) : null;
+  // v57 (Доп. 370): тест сдан — тихий колокольчик и отдача (выключатели — «Аккаунт» → «Настройки»)
+  const quizPassed = lesson.type === "quiz" && quizState && quizState.done && !quizState.blocked
+    && (quizState.answers || []).filter((a) => a.isCorrect).length >= (lesson.questions || []).length * 0.7;
+  React.useEffect(() => { if (quizPassed) { sfx("done"); vibrate("success"); } }, [quizPassed]);
   const checkLayer = checkOpen && tb ? (
     <tb.TableCheck lesson={lesson} mod={mod} modules={modules} color={color} a11y={!!T.a11y} profile={profile} streak={streak} next={next} mistakeBank={mistakeBank}
       replay={replay} mentorName={mentorName} goal={goal} onAskMentor={onAskMentor} onActivity={onActivity}
@@ -1778,8 +1784,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             // Подсветка ровно как в «Работе над ошибками» — единый язык ответов
             let st = { ...T.quizOpt, cursor: reveal === null ? "pointer" : "default", transition:"background 0.2s, opacity 0.2s" };
             if (reveal !== null) {
-              if (i === q.correct) st = { ...st, background:"rgba(93,187,138,0.15)", border:"1px solid #5DBB8A" };
-              else if (i === reveal) st = { ...st, background:"rgba(224,120,120,0.15)", border:"1px solid #E07878" };
+              // v57: и верхняя кромка — иначе у ответа оставалась светлая полоска сверху (border + borderTop)
+              if (i === q.correct) st = { ...st, background:"rgba(93,187,138,0.15)", border:"1px solid #5DBB8A", borderTop:"1px solid #5DBB8A" };
+              else if (i === reveal) st = { ...st, background:"rgba(224,120,120,0.15)", border:"1px solid #E07878", borderTop:"1px solid #E07878" };
               else st = { ...st, opacity: 0.5 };
             }
             const pickIt = () => {
@@ -1788,6 +1795,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               setReveal(i);
               pendingPick.current = i;
               vibrate(ok ? "light" : "error");
+              sfx(ok ? "ok" : "bad");   // v57 (Доп. 370): тихий звук ответа, как в практике (выключатель — «Аккаунт» → «Настройки»)
               // Верный — короткая пауза держит темп; неверный — длиннее,
               // чтобы глаз успел увидеть правильный вариант.
               revealTimer.current = setTimeout(() => { pendingPick.current = null; revealTimer.current = null; setReveal(null); onQuiz(i); }, ok ? 600 : 1400);

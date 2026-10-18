@@ -306,3 +306,45 @@ export function MastersBanner({ a11y, rows = [], onOpen }) {
   );
 }
 
+
+// ── v57 (Доп. 370): «Жизнь команды» — события коллег своего заведения за две недели (lib/team-feed.js):
+// сданные тесты, мастера роли, рекорды тренажёров и печати Сборки, «спасибо команде». Пусто — карточки нет.
+const FEED_ICON = {
+  test: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>),
+  master: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill={c}><path d="M12 2.5l2.1 6.4 6.4 2.1-6.4 2.1L12 19.5l-2.1-6.4-6.4-2.1 6.4-2.1z" /></svg>),
+  record: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z" /></svg>),
+  thanks: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>),
+};
+export function TeamFeed({ a11y, items = [], now = Date.now(), first = 3 }) {
+  const [open, setOpen] = React.useState(false);
+  if (!Array.isArray(items) || !items.length) return null;
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
+  const line = a11y ? "rgba(139,106,48,0.18)" : "rgba(255,255,255,0.07)";
+  const shown = open ? items : items.slice(0, first);
+  const toggle = () => { vibrate("light"); setOpen((v) => !v); };
+  return (
+    <div className="sa-card sa-pagein" data-team-feed="" style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 4px", marginBottom: 4 }}>
+      <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1.6, color: gold, marginBottom: 2 }}>ЖИЗНЬ КОМАНДЫ</div>
+      {shown.map((it, i) => (
+        <div key={i} data-feed-item={it.kind} className={i >= first ? "sa-fadein" : undefined}
+          style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderTop: i ? "1px solid " + line : "none" }}>
+          <span aria-hidden="true" style={{ width: 24, height: 24, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center",
+            border: "1px solid " + (a11y ? "rgba(122,93,42,0.4)" : "rgba(214,178,102,0.4)"), background: a11y ? "rgba(255,250,238,0.6)" : "rgba(214,178,102,0.07)" }}>
+            {(FEED_ICON[it.kind] || FEED_ICON.test)(gold)}
+          </span>
+          <div style={{ flex: 1, minWidth: 0, fontFamily: "Georgia, serif", fontSize: a11y ? 14.5 : 13.5, lineHeight: 1.4, color: text }}>
+            <b style={{ color: it.me ? gold : text }}>{it.who}</b> {it.text}
+          </div>
+          <span style={{ flexShrink: 0, fontSize: a11y ? 12.5 : 11.5, color: sub, whiteSpace: "nowrap", marginTop: 2 }}>{relDay(it.at, now)}</span>
+        </div>
+      ))}
+      {items.length > first ? (
+        <button type="button" className="sa-btn" data-feed-more="" onClick={toggle} aria-expanded={open}
+          style={{ display: "block", width: "100%", padding: "8px 0 10px", border: 0, borderTop: "1px solid " + line, background: "transparent", cursor: "pointer",
+            color: gold, fontFamily: "Georgia, serif", fontSize: a11y ? 14 : 13, fontWeight: "bold", textAlign: "left" }}>
+          {open ? "Свернуть" : "Ещё " + (items.length - first) + " ›"}
+        </button>
+      ) : <div style={{ height: 6 }} />}
+    </div>
+  );
+}

@@ -16,6 +16,7 @@ import { MODULES_INDEX } from "../data/modules-index";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { SkelCards, SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
+import { sfx } from "../lib/sfx";   // v57 (Доп. 370): звуки
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
@@ -48,6 +49,7 @@ export function AchievementPopup({ ach, a11y, onClose }) {
 
   React.useEffect(() => {
     setTimeout(() => setVisible(true), 20);
+    sfx("done");   // v57 (Доп. 370): тихий колокольчик (выключатель — «Аккаунт» → «Настройки»)
     const t = setTimeout(() => handleClose(), 4000);
     return () => clearTimeout(t);
   }, []);

@@ -148,7 +148,7 @@ describe("v56: главная", () => {
 
 describe("v56: метка и журнал", () => {
   it("метка сборки — v56; CHANGES — «Дополнение 369»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v56</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v57 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 369 — главная: «что сейчас» по смене, «С возвращением», первый день без нулей (v56)");
   });
 });

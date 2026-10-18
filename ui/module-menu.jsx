@@ -9,7 +9,8 @@ import { ensureTableCss } from "./table-css";
 import { Ic, Wax } from "./table-bits";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { inkOf } from "../lib/tracks";
-import { onActivate } from "../lib/utils";
+import { onActivate, vibrate } from "../lib/utils";
+import { sfx } from "../lib/sfx";   // v57 (Доп. 370)
 import { GOLD_N, CREDIT_N } from "../lib/marks";
 import { practicePool, quizPool } from "../lib/table-pick";
 
@@ -133,6 +134,8 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
     if (!sealed || passive) return;
     try { const m = JSON.parse(localStorage.getItem(SEAL_KEY) || "{}") || {}; if (!m[mod.id]) { m[mod.id] = 1; localStorage.setItem(SEAL_KEY, JSON.stringify(m)); } } catch (e) {}
   }, [sealed, mod.id, passive]);
+  // v57 (Доп. 370): печать опускается — тихий колокольчик и отдача (один раз, вместе с анимацией)
+  React.useEffect(() => { if (stampNow) { const t = setTimeout(() => { sfx("done"); vibrate("success"); }, 380); return () => clearTimeout(t); } return undefined; }, [stampNow]);
 
   return (
     <div className="tbm" style={vars}>

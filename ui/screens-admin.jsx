@@ -16,7 +16,7 @@ import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam, hapticsOn } from "../lib/utils";
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
@@ -106,7 +106,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
     rpc("checklist_check", { p_token: saToken(), p_kind: tab, p_checked: cur, p_total: items.length, p_day: today })
       .then(d => { if (d && d.ok && d.done_at) setTodayLog(prev => ({ ...prev, [tab]: { ...(prev[tab]||{}), checked: cur, done_at: d.done_at } })); })
       .catch(()=>{});
-    try { navigator.vibrate && navigator.vibrate(10); } catch(e){}
+    try { hapticsOn() && navigator.vibrate && navigator.vibrate(10); } catch(e){}   // v57: выключатель вибрации
   };
 
   const startEdit = () => { setDraft(itemsFor(tab).map(x => ({...x}))); setEdit(true); };
@@ -255,7 +255,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
     const cur = checked.includes(id) ? checked.filter(x=>x!==id) : [...checked, id];
     setChecked(cur);
     rpc("onboarding_check", { p_token: saToken(), p_checked: cur, p_total: total }).then(d => { if (d && d.ok) setDoneAt(!!d.done_at); }).catch(()=>{});
-    try { navigator.vibrate && navigator.vibrate(10); } catch(e){}
+    try { hapticsOn() && navigator.vibrate && navigator.vibrate(10); } catch(e){}   // v57: выключатель вибрации
   };
 
   const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";

@@ -12,7 +12,8 @@ import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam, hapticsOn, setHaptics } from "../lib/utils";
+import { sfx, sfxOn, setSfx } from "../lib/sfx";   // v57 (Доп. 370): настройки звука
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
@@ -750,7 +751,39 @@ function MentorPinBlock({ T, gold }) {
   );
 }
 
-export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) {
+// v57 (Доп. 370): настройки в одном месте — тема «Для чтения», звуки, вибрация. Раньше тема была только в шапке,
+// звук — только в шапке урока «у стола», а вибрацию выключить было нельзя. Шапка и урок — как были.
+function AccountSettings({ T, a11y, onA11y }) {
+  const [snd, setSnd] = React.useState(sfxOn);
+  const [hap, setHap] = React.useState(hapticsOn);
+  const gold = a11y ? "#7A5D2A" : GOLD;
+  const line = a11y ? "rgba(139,106,48,0.18)" : "rgba(255,255,255,0.08)";
+  const row = (key, title, sub, on, flip, first) => (
+    <div key={key} data-set={key} role="switch" aria-checked={on} aria-label={title} tabIndex={0} onClick={flip}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } }}
+      style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 2px", borderTop: first ? "none" : "1px solid " + line, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ ...T.modTitle, whiteSpace:"normal" }}>{title}</div>
+        <div style={{ ...T.modSub, whiteSpace:"normal", marginTop:2 }}>{sub}</div>
+      </div>
+      <span aria-hidden="true" style={{ position:"relative", width:46, height:28, borderRadius:14, flexShrink:0, transition:"background .2s",
+        background: on ? gold : (a11y ? "rgba(139,106,48,0.22)" : "rgba(255,255,255,0.14)") }}>
+        <span style={{ position:"absolute", top:3, left: on ? 21 : 3, width:22, height:22, borderRadius:"50%", transition:"left .2s",
+          background: on ? "#FFF8E8" : (a11y ? "#FFFDF6" : "#CFC3AA"), boxShadow:"0 1px 3px rgba(0,0,0,0.35)" }} />
+      </span>
+    </div>
+  );
+  return (
+    <div data-settings="" style={{ ...T.modCard, display:"block", padding:"4px 14px", marginBottom:16 }}>
+      <div style={{ fontFamily:"monospace", fontSize: a11y ? 11.5 : 10.5, letterSpacing:1.6, color: gold, padding:"10px 2px 2px" }}>НАСТРОЙКИ</div>
+      {row("theme", "Для чтения", "светлый фон и текст крупнее — удобно днём и для глаз", !!a11y, () => { vibrate("light"); if (onA11y) onA11y(!a11y); }, true)}
+      {row("sound", "Звуки", "тихий звон за верный ответ, колокольчик за печать и значок", snd, () => { const v = !snd; setSfx(v); setSnd(v); if (v) sfx("ok"); })}
+      {row("haptics", "Вибрация", "лёгкая отдача при нажатиях и ответах", hap, () => { const v = !hap; setHaptics(v); setHap(v); if (v) vibrate("light"); })}
+    </div>
+  );
+}
+
+export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a11y = false, onA11y = null }) {
   const [confirmOut, setConfirmOut] = React.useState(false);
   const [acHint, acHintDone] = useHintOnce("profile");
   const acSteps = hintsFor("profile");
@@ -766,7 +799,8 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
         <HintBubble a11y={!!T.a11y} text={acSteps[0]} arrow="up" anchorRef={acRefCard}
           step={1} total={1} onClose={acHintDone} />
       ) : null}
-      <div style={{ flex:1, padding:"20px 18px 40px" }}>
+      {/* v57: снизу 24 (было 40) — с настройками экран помещается целиком, не «болтается» */}
+      <div style={{ flex:1, padding:"20px 18px 24px" }}>
         <div ref={acRefCard} style={{ ...T.modCard, gap:12, marginBottom:12 }}>
           <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
             <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
@@ -788,6 +822,9 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard }) 
         <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, padding:"0 4px", marginBottom:20 }}>
           Данные профиля привязаны к твоему коду доступа. Если что-то указано неверно — обратись к администратору.
         </div>
+
+        {/* ═══ v57 (Доп. 370): настройки — тема, звуки, вибрация ═══ */}
+        <AccountSettings T={T} a11y={a11y} onA11y={onA11y} />
 
         {/* ═══ PIN наставника — только руководящий состав. Этим PIN заверяются допуски. ═══ */}
         {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && (() => {

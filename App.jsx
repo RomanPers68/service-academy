@@ -11,7 +11,9 @@ import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
-import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf, MastersBanner } from "./ui/home-hubs";
+import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf, MastersBanner, TeamFeed } from "./ui/home-hubs";
+import { buildFeed, quizTitles } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
+import { MODULES_INDEX } from "./data/modules-index";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
 import { modeOfDay, dailyCount, dailyStreak } from "./lib/day-mode";
@@ -2198,6 +2200,29 @@ function ServiceAcademy() {
   }, [screen, profile, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => { setMasters(null); }, [ukP]);
   const mastersIdx = useMemo(() => (masters && masters.status === "ok" ? mastersIndex(masters.rows) : null), [masters]);
+  // ── v57 (Доп. 370): «Жизнь команды» на вкладке «Команда» (lib/team-feed.js): рекорды и печати — team_achievements
+  // (подгружаются на вкладке, копия на телефоне — лента видна сразу), тесты — team_scores, мастера — mastery_list,
+  // «спасибо команде» — квест дня из day_brief. Новых функций на сервере нет.
+  const [teamAch, setTeamAch] = useState([]);
+  React.useEffect(() => {
+    if (!ukP) { setTeamAch([]); return; }
+    try { const v = JSON.parse(localStorage.getItem("sa_team_ach" + ukP) || "null"); setTeamAch(Array.isArray(v) ? v : []); } catch (e) { setTeamAch([]); }
+  }, [ukP]);
+  React.useEffect(() => {
+    if (screen !== "teamHub" || !profile || !storageLoaded) return undefined;
+    let alive = true;
+    rpc("team_achievements", { p_token: saToken() }).then((res) => {
+      if (!alive || !res || !res.ok || !Array.isArray(res.rows)) return;
+      setTeamAch(res.rows);
+      try { localStorage.setItem("sa_team_ach" + ukP, JSON.stringify(res.rows.slice(0, 200))); } catch (e) {}
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [screen, profile, storageLoaded, ukP]);
+  const feedTitleOf = useMemo(() => quizTitles(MODULES_INDEX, customModules), [customModules]);
+  const teamFeed = useMemo(() => (screen === "teamHub" && profile ? buildFeed({ now: Date.now(), me: profile, restaurant: profile.restaurant,
+    masters: masters && masters.status === "ok" ? masters.rows : [], scores, achievements: teamAch,
+    thanks: brief && brief.quest && Array.isArray(brief.quest.thanks) ? brief.quest.thanks : [], titleOf: feedTitleOf }) : []),
+    [screen, profile, masters, scores, teamAch, brief, feedTitleOf]);
   const setMasterPrize = useCallback((text) => rpc("mastery_prize_set", { p_token: saToken(), p_text: String(text || "") }).then((r) => {
     if (rpcMissing(r)) return { ok: false, error: "missing" };
     if (r && r.ok) {
@@ -2645,7 +2670,7 @@ function ServiceAcademy() {
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
         {screen === "analytics" && <div className="sa-tabpad"><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
-        {screen === "profile" && <AccountScreen profile={profile} T={T} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
+        {screen === "profile" && <AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div className="sa-tabpad"><StatsScreen T={T} a11y={a11y} profile={profile} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
@@ -2803,7 +2828,9 @@ function ServiceAcademy() {
           return <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Команда" hintKey={hintKey("team", staff)}
             hintSteps={hintsFor(hintKey("team", staff))} subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<><TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />
               {/* v40: коллега стал мастером роли за последнюю неделю — команда видит */}
-              <MastersBanner a11y={a11y} rows={masters && masters.status === "ok" ? masters.rows : []} onOpen={() => openMastery()} /></>} items={[
+              <MastersBanner a11y={a11y} rows={masters && masters.status === "ok" ? masters.rows : []} onOpen={() => openMastery()} />
+              {/* v57 (Доп. 370): «Жизнь команды» — тесты, мастера, рекорды и «спасибо» коллег за две недели */}
+              <TeamFeed a11y={a11y} items={teamFeed} /></>} items={[
             { key:"lb", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
             { key:"lg", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника · заведение, сеть и кубок", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
             { key:"mt", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },

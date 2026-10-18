@@ -4,7 +4,7 @@
 import React from "react";
 import { faceIcon, flameIcon, trophyIcon } from "./icons-extra";
 import { rpc, saToken } from "../api/supabase";
-import { vibrate } from "../lib/utils";
+import { vibrate, hapticsOn } from "../lib/utils";
 import { BROWN, GOLD, GREEN, GREEN_DARK, INK } from "./tokens";
 
 export function moodPalette(a11y) {
@@ -98,7 +98,7 @@ export function readMood(day) { try { return localStorage.getItem(moodKey(day));
 export function recordMood(m, day) {
   try { localStorage.setItem(moodKey(day), String(m)); } catch(e) {}
   try { rpc("save_mood", { p_token: saToken(), p_mood: m, p_day: day }); } catch(e) {}
-  try { navigator.vibrate && navigator.vibrate(14); } catch(e) {}
+  try { hapticsOn() && navigator.vibrate && navigator.vibrate(14); } catch(e) {}   // v57: выключатель вибрации
 }
 
 export function MoodCheckCard({ a11y }) {

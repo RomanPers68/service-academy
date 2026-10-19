@@ -17,11 +17,12 @@ import { frostOf } from "./home-hubs";
 import { vibrate, onActivate } from "../lib/utils";
 import { SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { taskProgress, goalLine, plural, GOAL_WORDS } from "../lib/quest";
+import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
 const BODY = "Georgia,'Times New Roman',serif";
 const CSS = `
-.tg-tag{font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:1.6px;color:#D2A85A}
+.tg-tag{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:1.6px;color:#D2A85A}
 html.sa-light .tg-tag{color:#7A5D2A}
 .tg-h{font-family:Georgia,serif;font-size:19px;line-height:1.2;color:#EFE4C8;margin:6px 0 2px}
 html.sa-light .tg-h{color:#2A1F0E}
@@ -53,13 +54,13 @@ html.sa-light .tg-bar.ok{color:#2F6B45}
 .tg-people{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
 .tg-p{display:inline-flex;align-items:center;gap:6px;padding:4px 9px 4px 4px;border-radius:999px;border:1px solid rgba(214,178,102,.28);font-size:12px;color:#CFC2A4}
 html.sa-light .tg-p{border-color:rgba(139,106,48,.3);color:#4A3B22}
-.tg-p .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 10px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E)}
+.tg-p .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 10.5px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E)}
 .tg-p.me{border-color:#C8A96E}
 .tg-p .d{color:#D9B87C;font-weight:700}
 html.sa-light .tg-p .d{color:#7A5D2A}
 .tg-who{display:flex;align-items:center;gap:8px;width:100%;margin:6px 0 0;padding:5px 2px;border:0;background:none;color:inherit;font:12.5px ${BODY};cursor:pointer;text-align:left}
 .tg-who .avs{display:flex}
-.tg-who .avs span{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 10px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E);box-shadow:0 0 0 2px #1E170C;margin-left:-5px}
+.tg-who .avs span{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 10.5px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E);box-shadow:0 0 0 2px #1E170C;margin-left:-5px}
 html.sa-light .tg-who .avs span{box-shadow:0 0 0 2px #F6EEDC}
 .tg-who .avs span:first-child{margin-left:0}
 .tg-who .t{flex:1;min-width:0;color:#CFC2A4}
@@ -109,7 +110,7 @@ html.sa-light .tg-sheet{background-color:#F6EEDC;color:#2A1F0E}
 html.sa-light .tg-two>div{color:#4A3B22}
 .tg-glow{position:absolute;left:50%;top:-6px;width:150px;height:96px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 55%,rgba(248,210,122,.42),rgba(226,135,58,.16) 45%,transparent 70%);pointer-events:none;animation:tgGlow 2.8s ease-in-out infinite}
 @keyframes tgGlow{0%,100%{opacity:.75;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
-.tg-bridge{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:1.6px;color:#E8C56A;white-space:nowrap}
+.tg-bridge{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:1.6px;color:#E8C56A;white-space:nowrap}
 html.sa-light .tg-bridge{color:#8A6410}
 .tg-big{text-align:center;font-family:Georgia,serif;font-size:30px;line-height:1.1;margin-top:6px}
 .tg-big small{display:block;font:12.5px ${BODY};color:#A8966F;margin-top:2px}
@@ -236,7 +237,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
     if (call.busy) return;
     vibrate("light"); setCall({ busy: true, msg: "" });
     rpc("quest_call", { p_token: saToken() }).then((r) => {
-      if (rpcMissing(r)) { setCall({ busy: false, msg: "Позвать в Telegram можно после этапа 25 на сервере." }); return; }
+      if (rpcMissing(r)) { setCall({ busy: false, msg: "Позвать в Telegram получится, когда владелец обновит сервер." }); return; }
       if (r && r.ok) {
         const n = r.sent || 0;
         setCall({ busy: false, msg: n ? "Позвали " + n + " " + plural(n, "человека", "человек", "человек") + " — сообщение в Telegram ✦" + (r.no_tg ? " · без Telegram: " + r.no_tg : "")
@@ -245,7 +246,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
         return;
       }
       const e = r && r.error;
-      setCall({ busy: false, msg: e === "no_bot" ? "Бот ещё не подключён (этап 22б и токен бота)." : e === "forbidden" ? "Звать может старший смены." : "Не получилось — попробуй ещё раз." });
+      setCall({ busy: false, msg: e === "no_bot" ? "Напоминания в Telegram ещё не подключены — скажи владельцу." : e === "forbidden" ? "Звать может старший смены." : "Не получилось — попробуй ещё раз." });
     }).catch(() => setCall({ busy: false, msg: "Нет связи — попробуй ещё раз." }));
   };
   // v32 (Доп. 335): три шкалы — в одну строку (подпись и счёт над тонкой полосой)
@@ -332,7 +333,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
       ) : q.status === "loading" ? (
         <div className="tg-sub" style={{ marginTop: 6 }}>Смотрю, кто сегодня в смене…</div>
       ) : (
-        <div className="tg-sub" style={{ marginTop: 6 }}>{q.status === "missing" ? (lead ? "Общий квест смены включится после этапа 24 на сервере. Пока — личные задания." : "Твои задания на сегодня") : "Общий квест не загрузился — личные задания работают и так."}</div>
+        <div className="tg-sub" style={{ marginTop: 6 }}>{q.status === "missing" ? (lead ? "Общий квест смены включится, когда владелец обновит сервер. Пока — личные задания." : "Твои задания на сегодня") : "Общий квест не загрузился — личные задания работают и так."}</div>
       )}
       {tasks.length ? (
         <>
@@ -443,7 +444,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
       <div className="tg-sheet" role="dialog" aria-modal="true" aria-label="Свеча на двоих" onClick={(e) => e.stopPropagation()}>
         <div className="tg-tag">СВЕЧА НА ДВОИХ</div>
         {st.status === "loading" ? <SkelLines a11y={a11y} widths={["74%", "52%"]} style={{ marginTop: 10 }} /> : null}
-        {st.status === "missing" ? <div className="tg-sub" style={{ marginTop: 8 }}>Свеча на двоих включится, когда руководитель обновит сервер (этап 24 в Supabase).</div> : null}
+        {st.status === "missing" ? <div className="tg-sub" style={{ marginTop: 8 }}>{serverMissing({ what: "«Свеча на двоих»", admin: !!(profile && profile.is_admin), sql: "supabase-stage24-together.sql" })}</div> : null}
         {st.status === "offline" || st.status === "error" ? <div className="tg-sub" style={{ marginTop: 8 }}>Нет связи с сервером — попробуй чуть позже.</div> : null}
         {pair ? (
           <>

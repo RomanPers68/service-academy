@@ -135,7 +135,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
             <span style={{ ...pill(mode === "deck"), border: "none", padding: "6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
             <span style={{ ...pill(mode === "quiz"), border: "none", padding: "6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
           </div>
-          <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9, color: sub, whiteSpace: "nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
+          <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: sub, whiteSpace: "nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
           <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и разделы">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
           <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
         </div>
@@ -167,7 +167,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "Georgia, serif" }}>{x.name}{x.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                       <div style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(x.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
-                      {(x.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{x.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 999, border: `1px solid ${(red || "#B8352A")}77`, color: red || "#B8352A" }}>{allergenLabel(a)}</span>)}</div>}
+                      {(x.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{x.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "1px 6px", borderRadius: 999, border: `1px solid ${(red || "#B8352A")}77`, color: red || "#B8352A" }}>{allergenLabel(a)}</span>)}</div>}
                     </div>
                     <span style={{ fontSize: 11, color: known ? (green || "#5DBB8A") : sub, flexShrink: 0 }}>{known ? "знаю ✓" : x.stop ? "" : "к повтору"}</span>
                   </div>
@@ -191,7 +191,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
               style={{ cursor: "pointer", willChange: "transform, opacity", touchAction: "pan-y" }}>
               <div className={"sa-ck-inner" + (settled ? " sa-ck-settled" : "")} style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
                 <div className="sa-ck-face sa-ck-front" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
-                  {d.stop && <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red || "#B8352A", color: "#fff", fontSize: 9, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div>}
+                  {d.stop && <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red || "#B8352A", color: "#fff", fontSize: 10.5, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div>}
                   <div style={{ position: "relative" }}>
                     <DishPhoto src={d.img} h={a11y ? 270 : 230} />
                     {d.img && <span onClick={(e) => { e.stopPropagation(); setZoom(d.img); vibrate("light"); }} aria-label="Фото на весь экран"
@@ -237,7 +237,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
-                <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9, color: sub, letterSpacing: 1.5, whiteSpace: "nowrap" }}>СВАЙП · ЛИСТАТЬ</span>
+                <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: sub, letterSpacing: 1.5, whiteSpace: "nowrap" }}>СВАЙП · ЛИСТАТЬ</span>
                 <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
               </div>
             )}

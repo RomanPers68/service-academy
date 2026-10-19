@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
+import { serverStage } from "../lib/server-text";   // v58 (Доп. 371)
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
@@ -150,7 +151,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
       const res = await rpc("admin_issue_permanent_code", { p_token: token, p_employee_id: selected.id });
       if (res && res.ok) { vibrate("heavy"); setIssued({ code: res.code, emp: selected, permanent: true }); setConfirm(null); setView("code"); loadList(); }
       else if (res && res.error === "forbidden") { vibrate("error"); setActionError("Постоянный код может выдать только владелец."); }
-      else if (res && res.message && /admin_issue_permanent_code/.test(res.message)) { vibrate("error"); setActionError("На сервере нет функции постоянных кодов — примени supabase-stage13-permanent-codes.sql."); }
+      else if (res && res.message && /admin_issue_permanent_code/.test(res.message)) { vibrate("error"); setActionError(serverStage({ admin: !!profile?.is_admin, sql: "supabase-stage13-permanent-codes.sql" })); }   // v58: по-человечески
       else { vibrate("error"); setActionError("Не получилось. Попробуй ещё раз."); }
     } catch(e) { vibrate("error"); setActionError("Нет связи. Попробуй ещё раз."); }
     setBusy(false);
@@ -396,7 +397,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
                 {selected.name} {selected.surname}
-                {isSelf && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
+                {isSelf && <span style={{ marginLeft:8, fontSize:10.5, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
               </div>
               <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:2 }}>{selected.restaurant} · {POS_LABELS[selected.position] || selected.position}</div>
             </div>
@@ -591,7 +592,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color:T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {e.name} {e.surname}
-                        {e.is_admin && <span style={{ marginLeft:6, fontSize:9, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+                        {e.is_admin && <span style={{ marginLeft:6, fontSize:10.5, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
                       </div>
                       <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>
                         {POS_LABELS[e.position] || e.position} · {ago(e.last_seen_at)}
@@ -810,7 +811,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
               {profile?.name} {profile?.surname}
-              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:9, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:10.5, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
             </div>
             <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:4, display:"flex", alignItems:"center", gap:4 }}>
               {UI_SVG.building("#C8A96E", 12)}<span>{profile?.restaurant}</span>

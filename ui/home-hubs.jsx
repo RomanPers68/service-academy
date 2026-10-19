@@ -135,7 +135,7 @@ export const frostOf = (a11y) => ({
     ? "inset 0 0 26px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(120,85,25,0.14)"
     : "inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.45)",
 });
-const tagStyle = (a11y) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9, letterSpacing: 1.6, color: a11y ? "#7A5D2A" : "#D2A85A" });
+const tagStyle = (a11y) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.6, color: a11y ? "#7A5D2A" : "#D2A85A" });
 
 /** Скелет карточки — пока данные едут (мерцание из css: .sa-skel). */
 export function SkeletonCard({ a11y, h = 74, style }) {
@@ -213,10 +213,11 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
         {top.map((p, i) => {
           const ini = `${(p.name || "?")[0]}${(p.surname || "")[0] || ""}`.toUpperCase();
           return (
-            <div key={i} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 12.5, color: a11y ? "#2A1F0E" : "#1a160f", background: medal[i], boxShadow: `0 0 0 2px ${medal[i]}55` }}>{ini}</div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+            /* v58 (Доп. 371): медальон над именем — имени достаётся вся ширина ячейки, «Ангели…» больше нет */
+            <div key={i} data-leader="" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, textAlign: "center" }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 12.5, color: a11y ? "#2A1F0E" : "#1a160f", background: medal[i], boxShadow: `0 0 0 2px ${medal[i]}55` }}>{ini}</div>
+              <div style={{ minWidth: 0, maxWidth: "100%" }}>
+                <div data-leader-name="" style={{ fontSize: 12.5, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.2 }}>{p.name}</div>
                 <div style={{ fontSize: 11, color: sub }}>{p.avg}%</div>
               </div>
             </div>

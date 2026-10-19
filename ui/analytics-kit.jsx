@@ -135,13 +135,13 @@ export function ExitTrack({ answered = 0, total = 0, a11y }) {
 export function MissPlate({ q, picked, right, times, a11y }) {
   const T = tones(a11y);
   const text = a11y ? "#2A2113" : "#EFE4C8", muted = a11y ? "#5E4E30" : "#BFAE8A";
-  const tag = (t, c) => <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.3, color: c, fontWeight: "bold", marginRight: 6 }}>{t}</span>;
+  const tag = (t, c) => <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.3, color: c, fontWeight: "bold", marginRight: 6 }}>{t}</span>;
   return (
     <div style={{ background: a11y ? "rgba(255,255,255,0.6)" : "rgba(255,236,190,0.04)", border: `1px solid ${a11y ? "rgba(107,78,20,0.18)" : "rgba(214,178,102,0.16)"}`,
       borderRadius: 13, padding: "10px 11px", marginTop: 7, boxShadow: a11y ? "inset 0 1px 0 rgba(255,255,255,0.9)" : "inset 0 1px 0 rgba(255,236,190,0.07)" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <span style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", marginTop: 1,
-          border: `1px solid ${T.bad}88`, color: T.bad, fontSize: 10 }}>✕</span>
+          border: `1px solid ${T.bad}88`, color: T.bad, fontSize: 10.5 }}>✕</span>
         <div style={{ color: text, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold", lineHeight: 1.4, flex: 1, minWidth: 0 }}>{q}</div>
         {times > 1 ? <span style={{ color: T.bad, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 12.5, flexShrink: 0 }}>×{times}</span> : null}
       </div>
@@ -160,7 +160,7 @@ export function SectionLabel({ children, a11y, right }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 2px 8px" }}>
       <span style={{ height: 1, width: 14, background: `linear-gradient(90deg, transparent, ${c})` }} />
-      <span style={{ color: c, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.8, fontWeight: "bold", whiteSpace: "nowrap" }}>{children}</span>
+      <span style={{ color: c, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, fontWeight: "bold", whiteSpace: "nowrap" }}>{children}</span>
       <span style={{ height: 1, flex: 1, background: `linear-gradient(90deg, ${c}, transparent)`, opacity: 0.5 }} />
       {right ? <span style={{ color: a11y ? "#5E4E30" : "#BFAE8A", fontSize: 11 }}>{right}</span> : null}
     </div>

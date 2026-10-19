@@ -314,7 +314,7 @@ export function StepLine({ a11y, step, onStep, pill = false }) {
         border: "1px solid " + c.line, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,240,205,0.05)" }}>
       <span style={{ flexShrink: 0, display: "inline-flex" }}><FamIcon id={stepIcon(step)} size={16} color={c.gold} strokeWidth={1.9} /></span>
       <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true">
-        <span style={{ ...msEye(a11y), fontSize: a11y ? 11 : 9.5, letterSpacing: 1, color: c.gold, display: "block" }}>Шаг дня</span>
+        <span style={{ ...msEye(a11y), fontSize: a11y ? 11 : 10.5, letterSpacing: 1, color: c.gold, display: "block" }}>Шаг дня</span>
         {/* в узкой плашке слова переносятся свободно (без неразрывной склейки последних слов, как в строке) */}
         <span className="ms-clamp ms-c3" style={{ fontFamily: BODY, fontSize: 12.5, lineHeight: 1.3, color: c.text, marginTop: 1 }}>{String(step.text).replace(/^Попробуй:\s*/, "").replace(/^./, (x) => x.toUpperCase())}</span>
       </span>

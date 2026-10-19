@@ -322,10 +322,10 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .dc-coach.ok{border-color:var(--ok-edge);background-image:linear-gradient(var(--ok-wash),var(--ok-wash))}
 .dc-coach.bad{border-color:var(--bad-edge);background-image:linear-gradient(var(--bad-wash),var(--bad-wash))}
 .dc-coach.tip{border-color:var(--edge-gold)}
-.dc-coach-h{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-ink)}
+.dc-coach-h{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-ink)}
 .dc-coach-av{width:20px;height:20px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold);font-size:11px;letter-spacing:0}
 .dc-coach-h i{font-family:Georgia,serif;font-style:italic;text-transform:none;letter-spacing:0;font-size:12px;color:var(--faint)}
-.dc-verdict{margin-left:auto;padding:2px 8px;border-radius:999px;font-style:normal;font-size:10px;letter-spacing:.8px;white-space:nowrap}
+.dc-verdict{margin-left:auto;padding:2px 8px;border-radius:999px;font-style:normal;font-size:10.5px;letter-spacing:.8px;white-space:nowrap}
 .dc-coach.ok .dc-verdict{color:var(--ok-ink);background:var(--ok-wash);box-shadow:inset 0 0 0 1px var(--ok-edge)}
 .dc-coach.bad .dc-verdict{color:var(--bad-ink);background:var(--bad-wash);box-shadow:inset 0 0 0 1px var(--bad-edge)}
 .dc-coach p{margin:0;color:var(--text)}

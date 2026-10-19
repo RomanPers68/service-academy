@@ -225,7 +225,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   const iconBox = { width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
   return (
     <div style={T.screen} className="sa-screen">
-      {Head(restaurant)}
+      {/* v58 (Доп. 371): заголовок «Меню» — название ресторана и так в выбранной вкладке ниже (было дважды подряд) */}
+      {Head("Меню")}
       {mHint && mSteps.length ? (
         <HintBubble a11y={a11y} text={mSteps[mStep]} arrow="up"
           step={mStep + 1} total={mSteps.length}
@@ -241,7 +242,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v57</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v58</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -273,7 +274,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={{ ...T.modBar, background: learned ? green : gold }} />
             <div style={{ ...iconBox, background: learned ? "rgba(93,187,138,0.14)" : iconBox.background }}>{learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>Новые позиции{!learned && <span style={{ fontSize: 9, letterSpacing: 1.5, fontFamily: "monospace", color: "#1A1008", background: gold, borderRadius: 6, padding: "2px 6px" }}>NEW</span>}</div>
+              <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>Новые позиции{!learned && <span style={{ fontSize: 10.5, letterSpacing: 1.5, fontFamily: "monospace", color: "#1A1008", background: gold, borderRadius: 6, padding: "2px 6px" }}>NEW</span>}</div>
               <div style={{ ...T.modSub, whiteSpace: "normal" }}>{learned ? `Выучено ✓ · ${newDishes.length} блюд — повтори при желании` : `${newDishes.length} блюд · выучи к смене`}</div>
             </div>
             <div style={T.modArrow}>›</div>
@@ -290,7 +291,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
               <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Режим дня — попробуй «Наоборот» внутри: " : md.key === "know-menu" ? "Режим дня — «Знаю?»: " : "") + m.sub : m.sub}</div>
               {isDay && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                 <span style={{ display: "inline-flex", gap: 2 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 6, height: 6, borderRadius: 3, background: k < dayCount ? (dayDone ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${dayDone ? "#5DBB8A" : gold + "88"}` }} />)}</span>
-                <span style={{ fontSize: 9, letterSpacing: 1.4, fontFamily: "monospace", color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "ПЯТЬ ЕСТЬ ✓" : "РЕЖИМ ДНЯ"}{dayStreak > 1 ? ` · СЕРИЯ ${dayStreak}` : ""}</span>
+                <span style={{ fontSize: 10.5, letterSpacing: 1.4, fontFamily: "monospace", color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "ПЯТЬ ЕСТЬ ✓" : "РЕЖИМ ДНЯ"}{dayStreak > 1 ? ` · СЕРИЯ ${dayStreak}` : ""}</span>
               </div>}
             </div>
             <div style={T.modArrow}>›</div>
@@ -423,7 +424,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
           {/* Доп. 180: низ как в колодах — капсулы, счётчик одной строкой между ними */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
             <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
-            <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9, color: sub, letterSpacing: 1, whiteSpace: "nowrap" }}>{i + 1} / {flat.length}</span>
+            <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: sub, letterSpacing: 1, whiteSpace: "nowrap" }}>{i + 1} / {flat.length}</span>
             <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
           </div>
           <button className="sa-btn" onClick={() => setOpen(null)} style={{ ...pill(false), width: "100%", marginTop: 10, padding: "11px", textAlign: "center", fontSize: 12.5, color: sub }}>К списку</button>
@@ -457,7 +458,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                   <div style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
-                  {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{allergenLabel(a)}</span>)}</div>}
+                  {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{allergenLabel(a)}</span>)}</div>}
                 </div>
                 <span style={{ color: gold, opacity: 0.7 }}>›</span>
               </div>
@@ -473,7 +474,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
 function DishBack({ d, T, gold }) {
   const Row = ({ label, children }) => (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 9, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 14, lineHeight: 1.5, color: T.para?.color }}>{children}</div>
     </div>
   );
@@ -487,16 +488,16 @@ function DishBack({ d, T, gold }) {
         const cell = (label, v) => (
           <div style={{ flex: 1, textAlign: "center" }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.para?.color, lineHeight: 1.1 }}>{g(v)}<span style={{ fontSize: 11, opacity: 0.6 }}> г</span></div>
-            <div style={{ fontSize: 9, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>{label}</div>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>{label}</div>
           </div>
         );
         return (
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 9, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 4 }}>ПИЩЕВАЯ ЦЕННОСТЬ</div>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 4 }}>ПИЩЕВАЯ ЦЕННОСТЬ</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${gold}33` }}>
               <div style={{ textAlign: "center", minWidth: 76 }}>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: gold, lineHeight: 1 }}>{n.kcal}</div>
-                <div style={{ fontSize: 9, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>ККАЛ · {n.out ? `ПОРЦИЯ ${n.out} Г` : (n.unit || "ПОРЦИЯ").toUpperCase()}</div>
+                <div style={{ fontSize: 10.5, letterSpacing: 1.2, color: T.modSub?.color, fontFamily: "monospace", marginTop: 2 }}>ККАЛ · {n.out ? `ПОРЦИЯ ${n.out} Г` : (n.unit || "ПОРЦИЯ").toUpperCase()}</div>
               </div>
               <div style={{ width: 1, alignSelf: "stretch", background: `${gold}26` }} />
               {cell("БЕЛКИ", n.p)}{cell("ЖИРЫ", n.f)}{cell("УГЛЕВОДЫ", n.c)}
@@ -724,7 +725,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
 
           {phase === "compare" && (
             <div>
-              <div style={{ fontSize: 9, letterSpacing: 1.5, color: green, fontFamily: "monospace", marginBottom: 4 }}>ЭТАЛОННОЕ ОПИСАНИЕ</div>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: green, fontFamily: "monospace", marginBottom: 4 }}>ЭТАЛОННОЕ ОПИСАНИЕ</div>
               <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 12, fontStyle: "italic", color: T.para?.color }}>{dish.desc || "Эталон не задан — добавь описание в редакторе меню."}</div>
               <DishBack d={{ ...dish, desc: "" }} T={T} gold={gold} />
               <div style={{ color: T.modSub.color, fontSize: 12.5, lineHeight: 1.55, marginTop: 4 }}>
@@ -768,7 +769,7 @@ function PreviewCard({ d, T, gold, red, glass }) {
   const text = T.modTitle.color;
   return (
     <div className="sa-card" onClick={() => setBack(b => !b)} style={{ ...glass(T), padding: "18px 18px 16px", minHeight: 300, cursor: "pointer", position: "relative", overflow: "hidden" }}>
-      {d.stop && <div style={{ position: "absolute", top: 14, right: -34, transform: "rotate(35deg)", background: red, color: "#fff", fontSize: 9, letterSpacing: 1.5, padding: "4px 40px" }}>СЕГОДНЯ НЕТ</div>}
+      {d.stop && <div style={{ position: "absolute", top: 14, right: -34, transform: "rotate(35deg)", background: red, color: "#fff", fontSize: 10.5, letterSpacing: 1.5, padding: "4px 40px" }}>СЕГОДНЯ НЕТ</div>}
       {!back ? (<>
         <DishPhoto src={d.img} h={190} />
         <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
@@ -1158,7 +1159,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             const own = String(form.kcal ?? "").trim() !== "";
             return (
               <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 9, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КБЖУ НА ПОРЦИЮ</div>
+                <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КБЖУ НА ПОРЦИЮ</div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {cell("out", "г", 58)}{cell("kcal", "ккал", 66)}{cell("prot", "Б", 52)}{cell("fat", "Ж", 52)}{cell("carb", "У", 52)}
                 </div>

@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
+import { serverMissing, serverError } from "../lib/server-text";   // v58 (Доп. 371): сервер не ответил — по-человечески
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES, MODULES_INDEX } from "../data/modules";
 import { cmsTitleMap } from "../lib/custom-modules";
@@ -487,11 +488,11 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
   // Почему сервер не отдал отчёт. PGRST202 — функция в базе есть, а сервер API её
   // ещё не видит (не перечитал список): лечится одной строкой в SQL Editor.
   const [srvErr, setSrvErr] = React.useState(null);
-  const offText = (what) => {
+  // v58 (Доп. 371): человеческий текст; скрипт и код ошибки — только владельцу (lib/server-text.js)
+  const offText = (what, sql = "supabase-stage15-quiz-retries.sql") => {   // sql: скрипт этапа — в подсказке владельцу (admin)
     const code = srvErr && srvErr.code;
-    if (code === "PGRST202") return "Сервер ещё не видит новые функции. В Supabase → SQL Editor выполни одну строку: notify pgrst, 'reload schema'; — и открой этот экран заново.";
-    if (srvErr && srvErr.message) return `Сервер ответил ошибкой: ${srvErr.message}${code ? ` (${code})` : ""}. Пришли этот текст разработчику.`;
-    return `Серверная часть ещё не включена — примени supabase-stage15-quiz-retries.sql, и здесь появятся ${what}.`;
+    if (code === "PGRST202" || (srvErr && srvErr.message)) return serverError({ code, message: srvErr && srvErr.message, admin: !!profile?.is_admin });
+    return serverMissing({ what, many: true, admin: !!profile?.is_admin, sql });
   };
   const [openWho, setOpenWho] = React.useState(null);
   React.useEffect(() => {
@@ -615,7 +616,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <Ring pct={dg.avg} size={64} tone={dg.lessons ? toneOfScore(dg.avg) : "gold"} a11y={a11y} label={dg.lessons ? `${dg.avg}%` : "—"} />
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:9.5, letterSpacing:1.8, fontWeight:"bold" }}>СРЕДНИЙ РЕЗУЛЬТАТ · НЕДЕЛЯ</div>
+            <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:10.5, letterSpacing:1.8, fontWeight:"bold" }}>СРЕДНИЙ РЕЗУЛЬТАТ · НЕДЕЛЯ</div>
             {delta != null ? (
               // Разница в пунктах, не в процентах: было 68%, стало 77% — это +9
               <div style={{ fontFamily:serif, fontSize:19, fontWeight:"bold", marginTop:4, color: delta > 0 ? TN.good : delta < 0 ? TN.bad : C.text }}>
@@ -631,7 +632,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
       {/* Рестораны — тем, кто видит больше одного (админ, руководящий состав) */}
       {allScope && rests.length > 1 ? (
         <div style={G({ margin:"0 14px 12px", padding:"12px 14px" })}>
-          <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:9.5, letterSpacing:1.8, fontWeight:"bold", marginBottom:8 }}>РЕСТОРАНЫ · СРЕДНИЙ РЕЗУЛЬТАТ</div>
+          <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:10.5, letterSpacing:1.8, fontWeight:"bold", marginBottom:8 }}>РЕСТОРАНЫ · СРЕДНИЙ РЕЗУЛЬТАТ</div>
           {rests.map((r, i) => (
             <div key={i} style={{ marginBottom: i < rests.length - 1 ? 9 : 0 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
@@ -704,7 +705,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                 background: a11y ? "radial-gradient(circle at 35% 30%, #FFF8E8, #EADBB8)" : "radial-gradient(circle at 35% 30%, #4A3A20, #1E160A)" }}>{Icon.key(TN.gold, 21)}</span>
             </span>
             <div style={{ minWidth:0 }}>
-              <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:9.5, letterSpacing:1.8, fontWeight:"bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
+              <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:10.5, letterSpacing:1.8, fontWeight:"bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
               <div style={{ color:C.text, fontFamily:serif, fontSize:16.5, fontWeight:"bold" }}>«Находчивая жопка»</div>
               <div style={{ color:muted, fontSize:12, lineHeight:1.45, marginTop:2 }}>Вышел до конца теста, чтобы стереть ошибки. Сам получает ачивку с разбором, коллеги её не видят.</div>
             </div>
@@ -764,7 +765,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           {hardQ === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {hardQ === "off" && note(srvErr && (srvErr.code || srvErr.message) && srvErr.code !== "PGRST202"
             ? offText("вопросы")   // настоящая ошибка сервера — её текст
-            : "Серверная часть ещё не включена — примени supabase-stage7-quiz-analytics.sql, и здесь появятся вопросы с наибольшим процентом ошибок.")}
+            : serverMissing({ what: "вопросы с наибольшим процентом ошибок", many: true, admin: !!profile?.is_admin, sql: "supabase-stage7-quiz-analytics.sql" }))}
           {Array.isArray(hardQ) && hardQ.length === 0 && note("Пока нет трудных вопросов — данных мало (нужно минимум 3 ответа на вопрос) или команда отвечает без ошибок.")}
           {Array.isArray(hardQ) && hardQ.map((q, i) => { const tone = toneOfFail(q.fail_pct); const tt = indexTitle[q.lesson_id] || titleById[q.lesson_id]; return (
             <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>

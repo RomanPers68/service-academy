@@ -84,7 +84,7 @@ export function StreakCard({ streak, a11y }) {
         {week.map((d, i) => (
           <div key={i} style={{ textAlign:"center" }}>
             <div style={dot(d.st)}>{d.st === "done" ? "✓" : d.st === "today" ? "•" : ""}</div>
-            <div style={{ marginTop:4, fontSize:9, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
+            <div style={{ marginTop:4, fontSize:10.5, color:d.isToday?C.gold:C.dim, fontWeight:d.isToday?"bold":"normal" }}>{d.lbl}</div>
           </div>
         ))}
       </div>
@@ -132,7 +132,7 @@ export function MoodCheckCard({ a11y }) {
         {MOOD_FACES.map((m, i) => (
           <div key={i} onClick={() => choose(i+1)} style={{ flex:1, textAlign:"center", cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
             <div style={{ display:"flex", justifyContent:"center" }}>{faceIcon(m.lvl, C.gold, 31)}</div>
-            <div style={{ marginTop:6, fontSize:9, color:C.dim }}>{m.l}</div>
+            <div style={{ marginTop:6, fontSize:10.5, color:C.dim }}>{m.l}</div>
           </div>
         ))}
       </div>

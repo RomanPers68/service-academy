@@ -140,7 +140,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
           </div>
           <div style={{ ...T.lessInfo, display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ ...T.lessTitle, marginBottom: 2, color: isQuiz ? gold : T.lessTitle.color }}>{l.title}</div>
-            <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
+            <div style={{ fontSize: 10.5, letterSpacing: 1, fontFamily: "monospace", color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
           </div>
           <div style={T.lessArrow}>›</div>
         </div>);

@@ -50,14 +50,14 @@ export const S = {
   progBar: { height:4, background:"#2A2418", borderRadius:2, overflow:"hidden", marginBottom:6 },
   progFill: { height:"100%", borderRadius:2, transition:"width 0.6s cubic-bezier(0.4,0,0.2,1)" },
   progSub: { color:MUTED_2, fontSize:11 },
-  secTitle: { color:MUTED_2, fontSize:9, letterSpacing:4, padding:"14px 20px 6px", fontFamily:"monospace", textTransform:"uppercase" },
+  secTitle: { color:MUTED_2, fontSize:10.5, letterSpacing:4, padding:"10px 20px 4px", fontFamily:"monospace", textTransform:"uppercase" },   // v58: метка 10,5 px (была 9), отступы на 6 px плотнее — экран «Меню» по-прежнему помещается целиком
 
   modList: { padding:"0 14px 32px", display:"flex", flexDirection:"column", gap:8 },
   modCard: { background:"rgba(226,186,116,0.11)", border:"1px solid rgba(214,178,102,0.28)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 20px rgba(0,0,0,0.35)", borderRadius:20, padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", position:"relative", overflow:"hidden" },
   modBar: { position:"absolute", left:0, top:0, bottom:0, width:3 },
   modIcon: { fontSize:22, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:10, flexShrink:0 },
   modInfo: { flex:1 },
-  modTag: { fontSize:9, letterSpacing:2, fontFamily:"monospace", marginBottom:2, textTransform:"uppercase" },
+  modTag: { fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:2, textTransform:"uppercase" },
   modTitle: { color:CREAM, fontSize:15, fontWeight:"bold", marginBottom:1, fontFamily:ACCENT_SERIF },
   modSub: { color:MUTED_3, fontSize:12 },
   modRight: { display:"flex", flexDirection:"column", alignItems:"center", gap:2 },
@@ -93,7 +93,7 @@ export const S = {
   doneBtn: { width:"100%", padding:"14px", border:"1px solid rgba(255,255,255,0.2)", borderRadius:16, color:"#fff", fontSize:15, fontWeight:"bold", cursor:"pointer", marginTop:24, fontFamily:"Georgia, serif", letterSpacing:0.3, boxShadow:"0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15)" },
 
   quizWrap: { flex:1, padding:"16px 18px 36px" },
-  quizProgress: { color:MUTED_3, fontSize:10, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
+  quizProgress: { color:MUTED_3, fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
   quizQ: { color:CREAM, fontSize:15, lineHeight:1.75, marginBottom:18, fontWeight:"bold", whiteSpace:"pre-wrap" },
   quizOpt: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
   explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 12px 12px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.10) inset" },

@@ -492,11 +492,15 @@ if (want("LAND")) {
   await o.ctx.close();
   // живой диалог: переписка слева, ответы справа
   { const d = await openW({ w: 844, h: 390 }); await nav(d.page, "weeklyGuest", 3200);
+    // v58: гость недели меняется по неделям — у иного первые реплики печатаются дольше; ждём варианты ответа до 10 с
+    await d.page.waitForSelector("[data-dlg-reply]", { timeout: 10000 }).catch(() => {}); await sleep(300);
     const dg = await d.page.evaluate(() => { const r = (s) => { const el = document.querySelector(s); if (!el) return null; const b = el.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), b: Math.round(b.bottom) }; };
       const opts = [...document.querySelectorAll("[data-dlg-reply]")].map((x) => { const b = x.getBoundingClientRect(); return { t: Math.round(b.top), b: Math.round(b.bottom) }; });
-      return { chat: r(".dc-chat"), pane: r(".dc-pane-box"), opts, ih: innerHeight }; });
+      const box = document.querySelector(".dc-opts"); const scrollable = !!box && /auto|scroll/.test(getComputedStyle(box).overflowY) && box.getBoundingClientRect().bottom <= innerHeight + 1;
+      return { chat: r(".dc-chat"), pane: r(".dc-pane-box"), opts, ih: innerHeight, scrollable }; });
     ok("LAND: живой диалог — переписка слева, ответы справа, не перекрываются", dg.chat && dg.pane && dg.pane.l >= dg.chat.r - 1 && dg.pane.t <= 80 && dg.pane.b >= 389, JSON.stringify(dg));
-    ok("LAND: варианты ответа видны целиком", dg.opts.length >= 2 && dg.opts.every((x) => x.t >= 0 && x.b <= dg.ih), JSON.stringify(dg.opts));
+    // v58: у длинного гостя недели варианты листаются внутри своей колонки (.dc-opts) — первые видны, остальные докручиваются
+    ok("LAND: варианты ответа видны целиком (или листаются в своей колонке)", dg.opts.length >= 2 && (dg.opts.every((x) => x.t >= 0 && x.b <= dg.ih) || (dg.scrollable && dg.opts[0].t >= 0 && dg.opts[0].b <= dg.ih)), JSON.stringify(dg.opts) + " scrollable=" + dg.scrollable);
     await shot(d.page, "land-dialogue");
     await d.page.locator("[data-dlg-reply]").first().click(); await sleep(3500);
     const after = await d.page.evaluate(() => { const sp = document.querySelector(".dc-spacer"); return { sp: sp ? parseFloat(sp.style.height) || 0 : -1, out: document.querySelectorAll(".dc-out").length }; });

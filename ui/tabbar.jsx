@@ -116,7 +116,8 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
                   opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
                   {NAV_ICONS[tab.icon](lit ? accent : dim)}
                 </div>
-                <div style={{ fontSize:9, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
+                {/* v58 (Доп. 371): подписи вкладок 11 px (были 9 — мельче всего на экране) */}
+                <div style={{ fontSize:11, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
                   whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
                   color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
                   transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
@@ -225,7 +226,7 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact }) {
                 opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
                 {NAV_ICONS[tab.icon](lit ? accent : dim)}
               </div>
-              <div style={{ fontSize:10, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold", whiteSpace:"nowrap",
+              <div style={{ fontSize:11, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold", whiteSpace:"nowrap",
                 color: lit ? accent : dim, opacity: lit ? 1 : 0.8, transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
             </div>
           );

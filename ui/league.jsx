@@ -15,6 +15,7 @@ import { POINTS, weekPoints, weekStart } from "../lib/activity";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { masterRolesOf } from "../lib/mastery";
+import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371): без «этап 24» у сотрудника
 
 const MEDAL = ["#E8C56A", "#C9C9C9", "#C89A6E"];
 const MEDAL_LIGHT = ["#B8902E", "#7E8790", "#A0643A"];
@@ -158,7 +159,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
           ) : null}
         </div>
         {st.status === "loading" ? <div style={{ color: sub, fontSize: 13.5, padding: "10px 2px" }}>Загружаю лигу…</div> : null}
-        {st.status === "missing" ? <div style={{ ...card, color: sub, fontSize: 13.5 }}>Общая лига появится, когда руководитель обновит сервер (этап 24 в Supabase). Свои очки уже считаются.</div> : null}
+        {st.status === "missing" ? <div style={{ ...card, color: sub, fontSize: 13.5 }}>{serverMissing({ what: "общая лига", admin: !!(profile && profile.is_admin), sql: "supabase-stage24-together.sql" })} Свои очки уже считаются.</div> : null}
         {st.status === "offline" || st.status === "error" ? (
           <div style={{ ...card, color: sub, fontSize: 13.5 }}>Нет связи с сервером. <button type="button" onClick={load} style={{ border: 0, background: "none", color: gold, font: "700 13px Georgia, serif", cursor: "pointer" }}>Ещё раз</button></div>
         ) : null}

@@ -156,7 +156,7 @@ describe("v40: стили", () => {
     // тёмная — прежние размеры
     expect(TABLE_CSS).toMatch(/\.tbm-eyebrow\{font-family:var\(--font-mono\);font-size:10\.5px/);
     expect(TABLE_CSS).toMatch(/\.tbm-s\{[^}]*font-size:12px/);
-    expect(TABLE_LESSON_CSS).toMatch(/\.tb-who\{[^}]*font-size:9\.5px/);
+    expect(TABLE_LESSON_CSS).toMatch(/\.tb-who\{[^}]*font-size:10\.5px/);   // v58: метки не мельче 10,5 px (было 9,5)
     // «пройден» от руки (.tbm-m.tbm-hand) светлые правила не задевают
     expect(TABLE_CSS).not.toMatch(/html\.sa-light \.tbm-m\{/);
   });

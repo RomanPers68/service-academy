@@ -99,7 +99,7 @@ function partValue(p, state) {
   if (p.id === "streak") { const s = ((state && state.families) || []).find((f) => f && f.id === "streak"); return "лучшая: " + Math.min(p.need || 14, Math.max(p.value || 0, (s && s.value) || 0)) + " из " + (p.need || 14); }
   return p.value + " из " + p.need;
 }
-const PRIZE_ERR = { offline: "Нет связи — попробуй ещё раз", missing: "Сервер ещё не обновлён — нужен этап 26 в Supabase", forbidden: "Назначать приз может только руководитель заведения" };
+const PRIZE_ERR = { offline: "Нет связи — попробуй ещё раз", missing: "Сервер ещё не обновлён — скажи владельцу (приз — этап 26)", forbidden: "Назначать приз может только руководитель заведения" };
 
 // кольцо «Мастера роли»: 13 долей — роль, золото, серия и десять бронз
 function MasterRing({ have, need, a11y, c }) {

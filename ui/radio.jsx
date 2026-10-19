@@ -34,7 +34,7 @@ const CSS = `
 html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),rgba(246,234,206,.95));box-shadow:inset 0 0 0 1px rgba(139,106,48,.45),0 3px 8px rgba(120,85,25,.16)}
 .rd-tab{position:relative;z-index:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 9px 7px;border-radius:13px;border:0;background:transparent;
   color:var(--sub);font:700 12.5px var(--font-body);cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;transition:color .2s}
-.rd-tab small{font-family:var(--font-mono);font-size:9px;letter-spacing:.8px;color:var(--kc,var(--gold-ink));font-weight:400;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.rd-tab small{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.8px;color:var(--kc,var(--gold-ink));font-weight:400;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .rd-tab span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rd-tab.on{color:var(--text)}
 .rd-tab i{font-style:normal;color:var(--ok-ink,#5DBB8A);margin-left:4px}
@@ -50,7 +50,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 /* v36: пустое место ленты обложек — невидимое (держит ширину ленты в пять обложек) */
 .rd-gap{position:absolute;top:0;bottom:0;min-height:1px;left:calc(22px + var(--k) * (100% - 38px));width:calc(100% - 44px);pointer-events:none}
 .rd-top{display:flex;align-items:center;gap:8px;width:100%;min-height:22px}
-.rd-kind{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font:700 9.5px/1.3 var(--font-mono);letter-spacing:1.2px;text-transform:uppercase;
+.rd-kind{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font:700 10.5px/1.3 var(--font-mono);letter-spacing:1.2px;text-transform:uppercase;
   color:var(--kc);border:1px solid var(--edge-gold);border-color:color-mix(in srgb,var(--kc) 55%,transparent);background:var(--glass);background:color-mix(in srgb,var(--kc) 12%,transparent);white-space:nowrap}
 .rd-mins{font:11px var(--font-mono);letter-spacing:.6px;color:var(--sub);white-space:nowrap}
 .rd-heard{margin-left:auto;font:700 11px var(--font-body);color:var(--ok-ink,#5DBB8A);white-space:nowrap}
@@ -72,7 +72,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-bars.on i{animation:rdBar .9s ease-in-out infinite;opacity:1}
 .rd-bars.on i:nth-child(2){animation-delay:.12s}.rd-bars.on i:nth-child(3){animation-delay:.24s}.rd-bars.on i:nth-child(4){animation-delay:.36s}.rd-bars.on i:nth-child(5){animation-delay:.48s}
 @keyframes rdBar{0%,100%{height:5px}50%{height:18px}}
-.rd-who{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:3px 10px 3px 8px;border-radius:999px;font:700 10px/1.3 var(--font-mono);letter-spacing:1.6px;
+.rd-who{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:3px 10px 3px 8px;border-radius:999px;font:700 10.5px/1.3 var(--font-mono);letter-spacing:1.6px;
   color:var(--wc);border:1px solid var(--edge-gold);border-color:color-mix(in srgb,var(--wc) 50%,transparent);background:var(--glass);background:color-mix(in srgb,var(--wc) 11%,transparent)}
 .rd-who svg{flex:0 0 auto}
 .rd-now{font-family:var(--font-display);font-size:18.5px;line-height:1.36;margin:8px 0 0;min-height:76px;text-wrap:balance;display:flex;align-items:center;justify-content:center}
@@ -102,7 +102,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-txt{margin:14px 0 0;padding:0;list-style:none}
 .rd-txt li{padding:6px 2px;font-size:14px;line-height:1.45;color:var(--sub);border-bottom:1px dashed var(--edge)}
 .rd-txt li.cur{color:var(--text)}
-.rd-txt li b{font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;margin-right:6px;color:var(--gold-ink)}
+.rd-txt li b{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;margin-right:6px;color:var(--gold-ink)}
 .rd-note{font-size:12.5px;line-height:1.45;color:var(--sub);margin:10px 2px 0}
 .rd-tip{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;padding:8px 11px;border-radius:12px;border:1px dashed var(--edge-gold);font-size:12.5px;line-height:1.4;color:var(--sub)}
 /* v33: голос телефона не включился — заметно, но спокойно (под кнопками, как подсказка) */

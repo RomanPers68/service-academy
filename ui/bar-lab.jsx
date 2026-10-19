@@ -122,7 +122,7 @@ function Jigger({ amount, color, gold }) {
         <path d="M4 2h26l-10 20 10 20H4l10-20z" fill="rgba(220,220,230,0.12)" stroke={gold} strokeWidth="1.5" />
         <path d="M6 30h22" stroke={gold} strokeWidth="0.8" opacity="0.6" />
       </svg>
-      <div style={{ position: "absolute", top: -12, left: 0, right: 0, textAlign: "center", fontSize: 9, letterSpacing: 1, color: gold, fontFamily: "monospace" }}>{amount} мл</div>
+      <div style={{ position: "absolute", top: -12, left: 0, right: 0, textAlign: "center", fontSize: 10.5, letterSpacing: 1, color: gold, fontFamily: "monospace" }}>{amount} мл</div>
     </div>
   );
 }
@@ -179,7 +179,7 @@ function Bottle({ color, label, on, dim, ghost, gold, a11y, onClick, delay = 0, 
           <text x="22" y={sh.label[1] + sh.label[3] * 0.72} textAnchor="middle" fontSize={Math.min(5.2, (sh.label[2] - 3) / Math.max(4, short.length) * 1.9)} fontFamily="Georgia, serif" fill="#2A1F0E">{short.length > 14 ? short.slice(0, 13) + "…" : short}</text>
           <path d={`M${sh.liq[0] + 2} ${sh.liq[1] + 4} v${sh.liq[3] - 8}`} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinecap="round" />
         </svg>
-        {dim && <div style={{ position: "absolute", right: -2, top: -2, width: 16, height: 16, borderRadius: 9, background: "#5DBB8A", color: "#fff", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
+        {dim && <div style={{ position: "absolute", right: -2, top: -2, width: 18, height: 18, borderRadius: 9, background: "#5DBB8A", color: "#fff", fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
       </div>
       <div style={{ fontSize: 11, lineHeight: 1.2, color: on ? gold : text, height: 27, overflow: "hidden" }}>{label}</div>
     </div>
@@ -523,8 +523,8 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         {rush && (
           <div data-labrush="" style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 10, overflow: "hidden", height: 54 }}>
             {rush.orders.map((o, i) => { const cur = i === rush.i, past = i < rush.i; return (
-              <div key={o.id + i} className={cur ? "sa-lab-in" : ""} style={{ flexShrink: 0, width: cur ? 150 : 96, padding: cur ? "8px 10px" : "6px 8px", background: past ? "#cfc6ad" : "#F0E8D8", color: "#2A1F0E", fontFamily: "ui-monospace, Menlo, monospace", fontSize: cur ? 12 : 10, lineHeight: 1.25, borderRadius: "2px 2px 6px 6px", boxShadow: "0 4px 10px rgba(0,0,0,.35)", opacity: past ? 0.5 : cur ? 1 : 0.75, transform: cur ? "rotate(-1.5deg)" : "translateY(10px) rotate(1deg)", animation: cur ? "saLabTicket .45s cubic-bezier(.2,1.2,.3,1)" : "none", borderTop: "2px dashed rgba(0,0,0,.25)" }}>
-                <div style={{ fontSize: 9, letterSpacing: 1.2, opacity: 0.6 }}>ЗАКАЗ №{i + 1}{past ? " · ГОТОВ" : cur ? " · В РАБОТЕ" : ""}</div>
+              <div key={o.id + i} className={cur ? "sa-lab-in" : ""} style={{ flexShrink: 0, width: cur ? 150 : 96, padding: cur ? "8px 10px" : "6px 8px", background: past ? "#cfc6ad" : "#F0E8D8", color: "#2A1F0E", fontFamily: "ui-monospace, Menlo, monospace", fontSize: cur ? 12 : 10.5, lineHeight: 1.25, borderRadius: "2px 2px 6px 6px", boxShadow: "0 4px 10px rgba(0,0,0,.35)", opacity: past ? 0.5 : cur ? 1 : 0.75, transform: cur ? "rotate(-1.5deg)" : "translateY(10px) rotate(1deg)", animation: cur ? "saLabTicket .45s cubic-bezier(.2,1.2,.3,1)" : "none", borderTop: "2px dashed rgba(0,0,0,.25)" }}>
+                <div style={{ fontSize: 10.5, letterSpacing: 1.2, opacity: 0.6 }}>ЗАКАЗ №{i + 1}{past ? " · ГОТОВ" : cur ? " · В РАБОТЕ" : ""}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: cur ? 14 : 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.name}</div>
               </div>); })}
           </div>
@@ -538,7 +538,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
             const glyph = mode === "memory" && !isDone ? "·" : s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? (TOOL_ICON[s.id] || "•") : s.kind === "garnish" ? "✿" : "●";
             const col = isDone ? gold : cur ? gold : dim;
             return <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-              <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: s.kind === "ing" ? 9 : 11, color: s.kind === "ing" && (isDone || (cur && mode === "hint")) ? ING_COLOR(s.name) : col, border: `1px solid ${isDone ? gold : cur ? gold : dim}`, background: isDone ? "rgba(214,178,102,0.16)" : "transparent", animation: cur && mode === "hint" ? "saLabPulse 1.2s ease-in-out infinite" : "none" }}>{glyph}</span>
+              <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: s.kind === "ing" ? 10.5 : 11, color: s.kind === "ing" && (isDone || (cur && mode === "hint")) ? ING_COLOR(s.name) : col, border: `1px solid ${isDone ? gold : cur ? gold : dim}`, background: isDone ? "rgba(214,178,102,0.16)" : "transparent", animation: cur && mode === "hint" ? "saLabPulse 1.2s ease-in-out infinite" : "none" }}>{glyph}</span>
               {i < sc.steps.length - 1 && <span style={{ width: 6, height: 1, background: isDone ? gold : dim }} />}
             </span>; })}
         </div>
@@ -580,7 +580,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               </div>
             ) : msg ? (
               <div className="sa-fadein" style={{ padding: narrowW ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2E211A,#1A160F)", border: narrowW ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
-                <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(255,180,170,.7)", fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "memory" ? "вылил" : "не то"}</div>
+                <div style={{ fontSize: 10.5, letterSpacing: 2, color: "rgba(255,180,170,.7)", fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "memory" ? "вылил" : "не то"}</div>
                 <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", cursive', fontSize: narrowW ? 14 : 15, color: "rgba(255,200,190,.95)", lineHeight: 1.35, marginTop: 2 }}>{msg.text}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "hint" ? "продолжай — нужное подсвечено" : "заново, с пустого бокала"}</div>
               </div>
@@ -595,7 +595,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               </div>
             ) : mode === "hint" && expected ? (
               <div style={{ padding: narrowW ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#1f2a22,#15201a)", border: narrowW ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.4)", transform: "none", display: narrowW ? "flex" : "block", alignItems: "baseline", gap: 10 }}>
-                <div style={{ fontSize: 9, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', flexShrink: 0 }}>теперь</div>
+                <div style={{ fontSize: 10.5, letterSpacing: 2, color: "rgba(255,255,255,.55)", fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', flexShrink: 0 }}>теперь</div>
                 <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', fontSize: narrowW ? 15 : 16, color: "rgba(255,255,255,.92)", marginTop: narrowW ? 0 : 2, lineHeight: 1.3, textShadow: "0 0 1px rgba(255,255,255,.4)", minWidth: 0 }}>{expected.s.label}</div>
                 {c.tip && !narrowW && <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{c.tip}</div>}
               </div>
@@ -679,7 +679,7 @@ function StationPrep({ T, a11y, gold, frost, Head, onExit, uk }) {
       <div style={{ padding: "0 16px 100px" }}>
         <div style={{ ...frost, borderRadius: 18, padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            {PREP.map((p, i) => <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 9, letterSpacing: 1, fontFamily: "monospace", color: donePhases.has(i) && PREP[i].items.every(it => placed.includes(it.id)) ? "#5DBB8A" : i === curPhase ? gold : sub, borderBottom: `2px solid ${i === curPhase ? gold : "transparent"}`, paddingBottom: 4 }}>{p.phase.toUpperCase()}</div>)}
+            {PREP.map((p, i) => <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 10.5, letterSpacing: 1, fontFamily: "monospace", color: donePhases.has(i) && PREP[i].items.every(it => placed.includes(it.id)) ? "#5DBB8A" : i === curPhase ? gold : sub, borderBottom: `2px solid ${i === curPhase ? gold : "transparent"}`, paddingBottom: 4 }}>{p.phase.toUpperCase()}</div>)}
           </div>
           {finished ? (
             <div className="sa-fadein">

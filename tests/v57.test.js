@@ -123,7 +123,7 @@ describe("v57: звуки, вибрация, настройки", () => {
 
 describe("v57: метка и журнал", () => {
   it("метка сборки — v57; CHANGES — «Дополнение 370»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v57</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d+<\/span>/);
     expect(rd("CHANGES.md")).toContain("# Дополнение 370 — «Жизнь команды», звуки и вибрация, настройки в «Аккаунте» (v57)");
   });
 });

@@ -65,7 +65,11 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
   const small = (px) => (a11y ? Math.max(13, px) : px);
   const btn = (primary) => ({ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: primary ? "11px 16px" : "8px 12px", borderRadius: 999, cursor: "pointer",
     border: primary ? 0 : `1px solid ${GOLD}88`, background: primary ? "linear-gradient(180deg,#E4C88C,#C8A96E)" : "transparent",
-    color: primary ? "#1A1008" : (a11y ? "#5A4119" : "#D9B87C"), font: "700 " + (primary ? 14.5 : small(12.5)) + "px Georgia, serif", whiteSpace: "nowrap" });
+    color: primary ? "#1A1008" : (a11y ? "#5A4119" : "#D9B87C"), font: "700 " + (primary ? 14.5 : small(12.5)) + "px/1.2 Georgia, serif", whiteSpace: "nowrap" });
+  // v58 (Доп. 371): кнопка в строке темы компактнее — «Зачёт на опыт» и «Раунд мастера ✦» в две строки (≤ 96 px),
+  // чтобы название темы не обрезалось («Психология перв…»); само название — до двух строк
+  const rowBtn = (primary) => ({ ...btn(primary), whiteSpace: primary ? "nowrap" : "normal", textAlign: "center", maxWidth: primary ? undefined : 96, padding: primary ? "11px 16px" : "7px 12px", flexShrink: 0 });
+  const title2 = { ...T.modTitle, fontSize: 15, lineHeight: 1.25, display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", wordBreak: "break-word" };
   const status = (r) => {
     if (!r.done) return r.dn ? "пройдено " + r.dn + " из " + r.steps : "ещё не начата";
     const parts = [];
@@ -127,11 +131,11 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
                     <span style={{ fontFamily: "Georgia, serif", fontSize: small(11), color: sub, marginTop: -1 }}>{r.label}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ ...T.modTitle, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.m.title}</div>
+                    <div data-cellar-title="" style={title2}>{r.m.title}</div>
                     <div style={{ color: r.f && r.f.level === "faded" ? (a11y ? "#8A4B1E" : "#E0A070") : sub, fontSize: small(12.5) }}>{status(r)}</div>
                   </div>
                 </div>
-                {a ? <button type="button" style={btn(a.primary)} onClick={() => { vibrate("light"); a.go(); }}>{a.label}</button> : null}
+                {a ? <button type="button" data-cellar-action="" style={rowBtn(a.primary)} onClick={() => { vibrate("light"); a.go(); }}>{a.label}</button> : null}
               </div>
             );
           })}

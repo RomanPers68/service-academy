@@ -104,9 +104,9 @@ export function MonthMedals({ a11y, cells, note, payMain, style, compact }) {
               <Medal s={ms} pct={x.pct || 0} a11y={a11y}>{ICONS[x.key](p.gold)}</Medal>
               {x.key === "pay" && payMain ? <Val main={payMain} a11y={a11y} big={(cells.length > 2 ? 17 : 19) - dz} /> : <Val main={x.main} of={x.of} a11y={a11y} big={(x.key === "pay" ? (cells.length > 2 ? 17 : 19) : 20) - dz} />}
             </div>
-            <div style={{ fontFamily: mono, fontSize: a11y ? 11 : 9, letterSpacing: a11y ? 0.4 : 1, textTransform: "uppercase", color: p.sub }}>{x.cap}</div>
+            <div style={{ fontFamily: mono, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 0.4 : 1, textTransform: "uppercase", color: p.sub }}>{x.cap}</div>
             {x.sub ? <div data-medal-sub="" style={{ fontSize: a11y ? 11.5 : 10.5, lineHeight: 1.25, color: p.gold, textAlign: "center" }}>{x.sub}</div> : null}
-            {x.sub2 ? <div style={{ fontSize: a11y ? 11 : 10, lineHeight: 1.25, color: p.sub, textAlign: "center" }}>{x.sub2}</div> : null}
+            {x.sub2 ? <div style={{ fontSize: a11y ? 11 : 10.5, lineHeight: 1.25, color: p.sub, textAlign: "center" }}>{x.sub2}</div> : null}
           </div>
         ))}
       </div>
@@ -126,7 +126,7 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
   const st = shiftStatus(sh, isToday, nowH);
   const to = sh.to > 24 ? sh.to - 24 : sh.to;
   const len = endOf(sh) - sh.from;
-  const eyebrow = { fontFamily: mono, fontSize: a11y ? 11 : 9, letterSpacing: a11y ? 1 : 2.4, textTransform: "uppercase" };
+  const eyebrow = { fontFamily: mono, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 1 : 2.4, textTransform: "uppercase" };
   const pill = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 999, fontFamily: serif, fontSize: 12.5, cursor: "pointer", WebkitTapHighlightColor: "transparent", whiteSpace: "nowrap" };
   const gold = { ...pill, fontWeight: "bold", color: "#1A1008", background: "linear-gradient(180deg,#E4C88C,#C8A96E)" };
   const ghost = { ...pill, color: p.gold, border: `1px solid ${a11y ? "rgba(139,106,48,0.45)" : "rgba(200,169,110,0.45)"}`, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,250,238,0.03)" };
@@ -155,7 +155,7 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
             {String(lead).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...eyebrow, fontSize: a11y ? 10.5 : 8.5, color: p.sub }}>старший смены</div>
+            <div style={{ ...eyebrow, fontSize: a11y ? 10.5 : 10.5, color: p.sub }}>старший смены</div>
             <div style={{ fontFamily: serif, fontSize: 14, marginTop: 2, color: p.text }}>{leadNode || lead}</div>
           </div>
           {callNode || null}
@@ -183,7 +183,7 @@ export function NoShiftHero({ a11y, card, todayD }) {
     <div data-sched-hero="" data-hero-status="none" style={{ ...card, flexShrink: 0, display: "flex", alignItems: "center", gap: 14 }}>
       <CalendarPage day={todayD} p={p} a11y={a11y} off w={40} h={44} />
       <div>
-        <div style={{ fontFamily: mono, fontSize: a11y ? 11 : 9, letterSpacing: a11y ? 1 : 2.4, textTransform: "uppercase", color: p.sub }}>ближайшая смена</div>
+        <div style={{ fontFamily: mono, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 1 : 2.4, textTransform: "uppercase", color: p.sub }}>ближайшая смена</div>
         <div style={{ fontSize: 14, color: p.sub, marginTop: 3 }}>в этом месяце смен больше нет</div>
       </div>
     </div>

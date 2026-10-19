@@ -454,6 +454,9 @@ const ago6 = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return y
 const TODAY6 = ymd6(new Date());
 const recent = { "sa_activity{uk}": { [ago6(1)]: { st: 2, l: 2 } }, "sa_last_open{uk}": ago6(1) };
 const cacheWith = (k) => ({ ...SCHED_CACHE, plan: { s1: { [new Date().getDate()]: k }, s2: { 1: "Д" } }, ts: Date.now() });
+// v58: сервер (schedule_load) отвечает тем же, что и копия на телефоне — иначе смена из FX (вечер) перекрывала кэш,
+// и сценарии «после утренней смены» зависели от того, успел ли ответить сервер
+const fxWith = (k) => { const fx = clone(FX); fx.plan[9] = { ...(fx.plan[9] || {}), [FX.today]: k }; return fx; };
 const nowInfo = (p) => p.evaluate(() => {
   const c = document.querySelector("[data-now-card]");
   const logo = document.querySelector("[data-home-logo]"); const lb = logo ? logo.getBoundingClientRect() : null;
@@ -489,7 +492,10 @@ if (want("ROLE")) {
   await o.page.evaluate(() => window.__saNav("roleSelect")); await sleep(1500);
   const g = await nowInfo(o.page);
   const t = await o.page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
-  ok("ROLE: новый трек у опытного сотрудника — не «первый день»: табличка дня на месте, карточка «сейчас» (до дневной смены 2 ч)", !g.first && g.mode === "before" && /ДАЛЬШЕ/.test(g.text), JSON.stringify(g));
+  // v58: смены Романа в сетке — генератор 2/2 по дням месяца: в его выходной карточки «сейчас» нет (и не должно быть)
+  const romanDay = ((FX.plan[1] || {})[FX.today] || "") === "Д";
+  ok("ROLE: новый трек у опытного сотрудника — не «первый день»: табличка дня на месте" + (romanDay ? ", карточка «сейчас» (до дневной смены 2 ч)" : " (сегодня у Романа выходной — «сейчас» нет)"),
+    !g.first && (romanDay ? g.mode === "before" && /ДАЛЬШЕ/.test(g.text) : g.mode === null && g.pills), JSON.stringify(g));
   await o.ctx.close();
 }
 {
@@ -544,7 +550,7 @@ if (want("DURING")) {
 
 if (want("AFTER")) {
   const calls = [];
-  const o = await openHome({ calls, storage: { __role: "seasonal", "sa_completed{uk}": DONE6, ...recent, "sa_sched_cache_main_{mkey}": cacheWith("У") }, fixedTime: at(19, 30) });
+  const o = await openHome({ calls, storage: { __role: "seasonal", "sa_completed{uk}": DONE6, ...recent, "sa_sched_cache_main_{mkey}": cacheWith("У") }, fixedTime: at(19, 30), rpcs: schedRpcs(fxWith("У"), calls) });
   let g = await nowInfo(o.page);
   const faces = await o.page.locator("[data-now-moods] button").count();
   ok("AFTER: после утренней смены (до 18:00), в 19:30 — «Как прошла смена?», пять лиц", g.mode === "after" && /Как прошла смена/.test(g.text) && faces === 5, JSON.stringify(g));
@@ -560,7 +566,7 @@ if (want("AFTER")) {
   ok("AFTER: «Рассказать» — Наставник с готовым вопросом про смену", /хорошая смена/i.test(chat) && /Наставник/.test(chat), chat.slice(0, 160));
   await o.ctx.close();
   // «Не сейчас» — карточка трека; на списке трека «Как настрой сегодня?» уже «записан»
-  const q = await openHome({ storage: { __role: "seasonal", "sa_completed{uk}": DONE6, ...recent, "sa_sched_cache_main_{mkey}": cacheWith("У") }, fixedTime: at(19, 30) });
+  const q = await openHome({ storage: { __role: "seasonal", "sa_completed{uk}": DONE6, ...recent, "sa_sched_cache_main_{mkey}": cacheWith("У") }, fixedTime: at(19, 30) , rpcs: schedRpcs(fxWith("У"), null) });
   await q.page.locator('[data-now-moods] button[aria-label="Тяжело"]').click(); await sleep(700);
   g = await nowInfo(q.page);
   ok("AFTER: «Тяжело» — «бывает», разбор спокойно", g.mode === "reply" && /Тяжёлая смена/.test(g.text) && /Разобрать/.test(g.text), g.text);

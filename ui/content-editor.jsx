@@ -598,7 +598,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     border: `1px solid ${dark ? brd : "rgba(139,106,48,0.26)"}`, color: txt,
     boxShadow: dark ? "none" : "inset 0 1px 0 rgba(255,255,255,0.95), inset 0 2px 6px rgba(120,90,30,0.05)" };
   const iconBtn = { background: "transparent", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", flexShrink: 0 };
-  const fieldLab = { color: muted, fontFamily: "monospace", fontSize: dark ? 9.5 : 11, letterSpacing: 1.4, fontWeight: "bold", margin: "2px 2px 5px" };   // v40: поле вида
+  const fieldLab = { color: muted, fontFamily: "monospace", fontSize: dark ? 10.5 : 11, letterSpacing: 1.4, fontWeight: "bold", margin: "2px 2px 5px" };   // v40: поле вида
   // Выбранная метка в светлой теме — тонированная в свой цвет, с чёткой рамкой (раньше —
   // тяжёлая заливка, «Новичок» становился тёмно-зелёным пятном)
   const pill = (on, c) => dark
@@ -706,7 +706,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     <div key={id} data-card={sec} onClick={() => toggleCard(sec, id)} role="button" aria-label={label + " — раскрыть"}
       style={{ ...G({ padding: "9px 10px 9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: gold, fontFamily: "monospace", fontSize: 9.5, letterSpacing: 1.4, fontWeight: "bold" }}>{label}</div>
+        <div style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.4, fontWeight: "bold" }}>{label}</div>
         <div style={{ color: text ? txt : muted, fontFamily: SERIF, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{text || "не заполнено"}</div>
       </div>
       <span title={ok ? "заполнено" : "не заполнено"} style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 11, fontWeight: "bold",
@@ -723,7 +723,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const navRow = navItems.map(([k, l]) => { const m = l.match(/^(\S+)(?: (\d+))?$/) || [l, l, ""]; return (
     <button key={k} onClick={() => jump(k)} style={{ ...aiBtn, flex: "1 1 0", minWidth: 0, padding: "5px 0", flexDirection: "column", gap: 0, justifyContent: "center", lineHeight: 1.15, borderRadius: 10 }}>
       <span data-navlabel="1" style={{ fontSize: 10.5, letterSpacing: -0.2, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m[1]}</span>
-      <span style={{ fontSize: 10, color: muted, fontFamily: "monospace" }}>{m[2] || "·"}</span>
+      <span style={{ fontSize: 10.5, color: muted, fontFamily: "monospace" }}>{m[2] || "·"}</span>
     </button>); });
   const otherRecs = sectionRecs(lessons, draft.role, draft.module).filter(r => r.id !== draft.id);
   const sectionText = [...otherRecs.map(r => r.content || ""), draft.content].join("\n\n").trim();
@@ -819,7 +819,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <div style={G({ padding: "12px 12px", marginTop: 10 })}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             {UI_SVG.sparkle ? UI_SVG.sparkle(gold, 17) : null}
-            <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.8, fontWeight: "bold" }}>АССИСТЕНТ</span>
+            <span style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, fontWeight: "bold" }}>АССИСТЕНТ</span>
             <span style={{ color: muted, fontSize: 11.5 }}>· всё черновиком, сохраняешь ты</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -895,7 +895,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>) : null}
           {ai.result && ai.mode === "improve" ? (
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
-              <div style={{ color: gold, fontFamily: "monospace", fontSize: 9.5, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 6 }}>СТАЛО</div>
+              <div style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 6 }}>СТАЛО</div>
               <div style={{ maxHeight: 260, overflowY: "auto" }}><Rich text={ai.result.content} T={T} color={track.color} a11y={a11y} /></div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={() => { patch({ content: ai.result.content }); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Принять</button>
@@ -909,7 +909,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                   <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1, display: "grid", placeItems: "center",
                     border: `1.5px solid ${ai.picked[i] ? TN.good : brd}`, background: ai.picked[i] ? TN.good : "transparent" }}>{ai.picked[i] ? ico.check(dark ? "#1A1008" : "#fff") : null}</span>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ color: gold, fontFamily: "monospace", fontSize: dark ? 9 : 11, letterSpacing: 1.4, fontWeight: "bold" }}>{GENRE_RU[g].toUpperCase()}</div>
+                    <div style={{ color: gold, fontFamily: "monospace", fontSize: dark ? 10.5 : 11, letterSpacing: 1.4, fontWeight: "bold" }}>{GENRE_RU[g].toUpperCase()}</div>
                     {g === "empathy" && x.guestThought ? <div style={{ color: muted, fontFamily: SERIF, fontStyle: "italic", fontSize: dark ? 12.5 : 13, lineHeight: 1.35, marginBottom: 2 }}>Мысли гостя: «{unq(String(x.guestThought).trim())}»</div> : null}
                     <div style={{ color: txt, fontFamily: SERIF, fontSize: 13.5, lineHeight: 1.35 }}>{x.emoji ? x.emoji + " " : ""}{g === "truefalse" ? "«" + unq(String(x.statement || "").trim()) + "»" : g === "complete" ? x.start + " …" : x.scene}</div>
                     <div style={{ color: TN.good, fontSize: dark ? 12 : 13, marginTop: 2 }}>верно: {g === "complete" ? "… " : ""}{sitAnswer(x)}</div>
@@ -942,7 +942,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
 
         {/* Общие части раздела (правка 161): одни на весь раздел, сотрудник проходит их после всех уроков */}
         <div style={{ margin: "22px 0 4px", padding: "12px 14px", borderRadius: 14, border: `1px solid ${track.color}66`, background: `${track.color}12` }}>
-          <div style={{ color: dark ? track.color : track.ink, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>РАЗДЕЛ «{secLabel.toUpperCase()}» — ДЛЯ ВСЕХ УРОКОВ</div>
+          <div style={{ color: dark ? track.color : track.ink, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold" }}>РАЗДЕЛ «{secLabel.toUpperCase()}» — ДЛЯ ВСЕХ УРОКОВ</div>
           <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginTop: 4 }}>
             Практика, диалог{draft.role === "bar" ? ", сборка" : ""} и тест — общие для раздела: сотрудник проходит их после всех уроков.{otherRecs.length ? ` В разделе ещё ${otherRecs.length} ${otherRecs.length === 1 ? "урок" : otherRecs.length < 5 ? "урока" : "уроков"} — ассистент учтёт их текст.` : ""}
           </div>
@@ -956,7 +956,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           : (
           <div key={x.id} data-sit-card={g} style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
-              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("sit", x.id)} role="button">СИТУАЦИЯ {si + 1} ▴</span>
+              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("sit", x.id)} role="button">СИТУАЦИЯ {si + 1} ▴</span>
               <button onClick={() => moveS(si, -1)} disabled={si === 0} style={{ ...iconBtn, opacity: si === 0 ? 0.3 : 1 }} aria-label="Ситуацию выше">{ico.up(muted)}</button>
               <button onClick={() => moveS(si, 1)} disabled={si === draft.situations.length - 1} style={{ ...iconBtn, opacity: si === draft.situations.length - 1 ? 0.3 : 1 }} aria-label="Ситуацию ниже">{ico.down(muted)}</button>
               <button onClick={() => delS(x.id)} style={iconBtn} aria-label="Удалить ситуацию">{ico.trash(TN.bad, 16)}</button>
@@ -1030,7 +1030,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           </div>
         ) : (<>
           <div style={G({ padding: "12px 12px", marginBottom: 10 })}>
-            <div style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 8 }}>ГОСТЬ</div>
+            <div style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 8 }}>ГОСТЬ</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }} aria-label="Аватар гостя">
               {GUEST_AVATARS.map(a => <button key={a} onClick={() => setGuest({ avatar: a })} style={{ width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 17, background: draft.dialogue.guest.avatar === a ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.avatar === a ? gold : brd}` }}>{a}</button>)}
             </div>
@@ -1057,7 +1057,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             : (
             <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8, borderLeft: `3px solid ${st.type === "choice" ? gold : st.type === "guest" ? track.color : brd}` })}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
-                <span style={{ color: st.type === "choice" ? gold : muted, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("st", st.id)} role="button">{i + 1} · {st.type === "choice" ? "ВЫБОР СОТРУДНИКА" : st.type === "guest" ? "ГОСТЬ ГОВОРИТ" : "ДЕЙСТВИЕ"} ▴</span>
+                <span style={{ color: st.type === "choice" ? gold : muted, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("st", st.id)} role="button">{i + 1} · {st.type === "choice" ? "ВЫБОР СОТРУДНИКА" : st.type === "guest" ? "ГОСТЬ ГОВОРИТ" : "ДЕЙСТВИЕ"} ▴</span>
                 <button onClick={() => moveStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг выше">{ico.up(muted)}</button>
                 <button onClick={() => moveStep(i, 1)} disabled={i === draft.dialogue.steps.length - 1} style={{ ...iconBtn, opacity: i === draft.dialogue.steps.length - 1 ? 0.3 : 1 }} aria-label="Шаг ниже">{ico.down(muted)}</button>
                 <button onClick={() => delStep(st.id)} style={iconBtn} aria-label="Удалить шаг">{ico.trash(TN.bad, 16)}</button>
@@ -1117,7 +1117,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           </div>
         ) : (<>
           <div style={G({ padding: "12px 12px", marginBottom: 10 })}>
-            <div style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 8 }}>НАПИТОК</div>
+            <div style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 8 }}>НАПИТОК</div>
             <input style={{ ...input, marginBottom: 8 }} value={draft.build.title} onChange={e => setBld(b => ({ ...b, title: e.target.value }))} placeholder="Название: «Негрони»" />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {GLASSES.map(([g, lab]) => <button key={g} onClick={() => setBld(b => ({ ...b, glass: g }))} style={{ ...pill(draft.build.glass === g, gold), padding: "6px 11px", fontSize: 12.5 }}>{lab}</button>)}
@@ -1134,7 +1134,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             : (
             <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8, borderLeft: `3px solid ${draft.build.tint}` })}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
-                <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("bst", st.id)} role="button">ШАГ {i + 1} ▴</span>
+                <span style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.4, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("bst", st.id)} role="button">ШАГ {i + 1} ▴</span>
                 <button onClick={() => moveBStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг сборки выше">{ico.up(muted)}</button>
                 <button onClick={() => moveBStep(i, 1)} disabled={i === draft.build.steps.length - 1} style={{ ...iconBtn, opacity: i === draft.build.steps.length - 1 ? 0.3 : 1 }} aria-label="Шаг сборки ниже">{ico.down(muted)}</button>
                 <button onClick={() => setBld(b => ({ ...b, steps: b.steps.filter(x => x.id !== st.id) }))} style={iconBtn} aria-label="Удалить шаг сборки">{ico.trash(TN.bad, 16)}</button>
@@ -1168,7 +1168,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           : (
           <div key={q.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
-              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("q", q.id)} role="button">ВОПРОС {qi + 1} ▴</span>
+              <span style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold", flex: 1 }} onClick={() => toggleCard("q", q.id)} role="button">ВОПРОС {qi + 1} ▴</span>
               <button onClick={() => moveQ(qi, -1)} disabled={qi === 0} style={{ ...iconBtn, opacity: qi === 0 ? 0.3 : 1 }} aria-label="Выше">{ico.up(muted)}</button>
               <button onClick={() => moveQ(qi, 1)} disabled={qi === draft.questions.length - 1} style={{ ...iconBtn, opacity: qi === draft.questions.length - 1 ? 0.3 : 1 }} aria-label="Ниже">{ico.down(muted)}</button>
               <button onClick={() => delQ(q.id)} style={iconBtn} aria-label="Удалить вопрос">{ico.trash(TN.bad, 16)}</button>
@@ -1271,7 +1271,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {(draft.situations || []).length ? (() => { const x = draft.situations[0]; const g = genreOfS(x); return (
           <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-              <span style={{ color: track.color, fontFamily: "monospace", fontSize: dark ? 10 : 11, letterSpacing: 1.6, fontWeight: "bold" }}>{GENRE_RU[g].toUpperCase()}</span>
+              <span style={{ color: track.color, fontFamily: "monospace", fontSize: dark ? 10.5 : 11, letterSpacing: 1.6, fontWeight: "bold" }}>{GENRE_RU[g].toUpperCase()}</span>
               <span style={{ color: muted, fontSize: 11.5 }}>практика · {draft.situations.length}</span>
             </div>
             {g === "empathy" && String(x.guestThought || "").trim() ? <div style={{ color: muted, fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5, marginBottom: 6 }}>Мысли гостя: «{unq(String(x.guestThought).trim())}»</div> : null}
@@ -1284,7 +1284,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {draft.dialogue ? (
           <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-              <span style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>ЖИВОЙ ДИАЛОГ</span>
+              <span style={{ color: track.color, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold" }}>ЖИВОЙ ДИАЛОГ</span>
               <span style={{ fontSize: 16 }}>{MOODS[(draft.dialogue.guest.mood || 3) - 1]}</span>
             </div>
             <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14.5 }}>{draft.dialogue.guest.avatar} {draft.dialogue.guest.name || "Гость"}</div>
@@ -1304,7 +1304,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <span style={{ width: 34, height: 46, borderRadius: draft.build.glass === "coupe" || draft.build.glass === "wine" ? "4px 4px 16px 16px" : 6, flexShrink: 0,
               background: `linear-gradient(180deg, transparent 22%, ${draft.build.tint}cc 22%)`, border: `2px solid ${brd}` }} />
             <div style={{ minWidth: 0 }}>
-              <div style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold" }}>СБОРКА</div>
+              <div style={{ color: track.color, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold" }}>СБОРКА</div>
               <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14.5 }}>{draft.build.title || "Напиток"}</div>
               <div style={{ color: muted, fontSize: 12 }}>{(GLASSES.find(g => g[0] === draft.build.glass) || ["", ""])[1]} · шагов: {draft.build.steps.length} · бокал наполняется по ходу, звёзды за чистую сборку</div>
             </div>
@@ -1319,7 +1319,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           const order = sectionSteps(secLabel, recs, draft.role, track.color);
           return (
             <div style={G({ padding: "12px 14px", marginBottom: 16 })}>
-              <div style={{ color: track.color, fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 6 }}>ПОРЯДОК ШАГОВ РАЗДЕЛА</div>
+              <div style={{ color: track.color, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, fontWeight: "bold", marginBottom: 6 }}>ПОРЯДОК ШАГОВ РАЗДЕЛА</div>
               {order.map((st, i) => <div key={i} style={{ display: "flex", gap: 8, padding: "3px 0", color: st.id === "cms-l-" + (draft.id || "new") ? txt : muted, fontWeight: st.id === "cms-l-" + (draft.id || "new") ? "bold" : "normal", fontSize: 13, fontFamily: SERIF }}>
                 <span style={{ width: 18, color: muted }}>{i + 1}</span><span>{st.title}</span></div>)}
             </div>);

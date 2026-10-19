@@ -13,6 +13,7 @@ import { ROLE_SKILLS } from "../data/skills";
 import { buildCustomModules } from "../lib/custom-modules";
 import { personModel, teamModel, listRow, stepIndex, trackTotals, pl, shortDate } from "../lib/report-model";
 import { onActivate, vibrate } from "../lib/utils";
+import { serverMissing, serverStage } from "../lib/server-text";   // v58 (Доп. 371): без «этап 23» у руководителя без прав владельца
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 
@@ -20,7 +21,7 @@ const CSS = `
 .rp{min-height:100%;padding:0 0 28px;color:#EFE4C8;font-family:Georgia,serif}
 .rp-top{display:flex;align-items:center;gap:8px;padding:14px 14px 4px}
 .rp-back{background:none;border:0;padding:0 6px;cursor:pointer;color:#D9B87C;font:25px/1 Georgia,serif}
-.rp-ey{font:700 9.5px/1.2 ui-monospace,Menlo,monospace;letter-spacing:1.8px;text-transform:uppercase;color:#D9B87C}
+.rp-ey{font:700 10.5px/1.2 ui-monospace,Menlo,monospace;letter-spacing:1.8px;text-transform:uppercase;color:#D9B87C}
 .rp-h{margin:2px 0 0;font-size:21px;line-height:1.2;font-weight:700;color:#F3E9D2}
 .rp-sub{font-size:12.5px;color:#A99B7E;margin-top:2px}
 .rp-card{margin:10px 14px 0;padding:13px 14px;border-radius:16px;border:1px solid rgba(214,178,102,.28);background:rgba(255,250,238,.04)}
@@ -90,7 +91,7 @@ const CSS = `
 .rp-day{display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end}
 .rp-day .col{width:100%;border-radius:4px;background:rgba(255,250,238,.06);position:relative;height:62px;display:flex;align-items:flex-end;overflow:hidden}
 .rp-day .col i{display:block;width:100%;border-radius:4px}
-.rp-day .d{font:10px/1 system-ui,sans-serif;color:#A99B7E}
+.rp-day .d{font:10.5px/1 system-ui,sans-serif;color:#A99B7E}
 .rp-day .w{width:5px;height:5px;border-radius:50%;background:#D9B87C}
 .rp-day .w.no{background:transparent}
 .rp-empty{font-size:13.5px;color:#A99B7E;padding:4px 0}
@@ -145,12 +146,12 @@ const STATUS = { hall: ["в зале ✓", "ok"], pin: ["по PIN ✓", "ok"], p
 const KIND = { lesson: "урок", quiz: "тест", practice: "практика", dialogue: "диалог", build: "сборка" };
 
 // Файл — в браузере сразу, в Telegram — через билет и /api/report (там нельзя скачать из памяти)
-async function deliver({ kind, payload, make, name, mime }) {
+async function deliver({ kind, payload, make, name, mime, admin = false }) {
   const tg = typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp;
   const inTg = !!(tg && tg.initData);
   if (inTg) {
     const r = await rpc("report_ticket", { p_token: saToken(), p_kind: kind, p_payload: payload });
-    if (rpcMissing(r)) throw new Error("Сервер не обновлён — нужен этап 23 (supabase-stage23-reports.sql)");
+    if (rpcMissing(r)) throw new Error(serverStage({ admin, sql: "supabase-stage23-reports.sql" }));   // v58: по-человечески
     if (!r || !r.ok || !r.ticket) throw new Error(r && r.error === "too_big" ? "Отчёт слишком большой для одного файла" : "Сервер не выдал билет на файл");
     const url = window.location.origin + "/api/report?t=" + r.ticket;
     if (typeof tg.downloadFile === "function") {
@@ -228,16 +229,16 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
       let res;
       if (what === "person_pdf" || what === "person_xlsx") {
         const m = person.model; if (!m) throw new Error("Карточка ещё не загрузилась");
-        if (what === "person_pdf") res = await deliver({ kind: what, payload: m, name: fileName(m.full, "pdf"), mime: "application/pdf", make: async () => (await import("../lib/report-pdf.js")).personPdf(m) });
-        else res = await deliver({ kind: what, payload: m, name: fileName(m.full, "xlsx"), mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", make: async () => (await import("../lib/report-xlsx.js")).personXlsx(m) });
+        if (what === "person_pdf") res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: m, name: fileName(m.full, "pdf"), mime: "application/pdf", make: async () => (await import("../lib/report-pdf.js")).personPdf(m) });
+        else res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: m, name: fileName(m.full, "xlsx"), mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", make: async () => (await import("../lib/report-xlsx.js")).personXlsx(m) });
       } else {
         const r = await rpc("report_team", { p_token: saToken() });
-        if (rpcMissing(r)) throw new Error("Сервер не обновлён — нужен этап 23 (supabase-stage23-reports.sql)");
+        if (rpcMissing(r)) throw new Error(serverStage({ admin: !!(profile && profile.is_admin), sql: "supabase-stage23-reports.sql" }));
         if (!r || !r.ok) throw new Error(r && r.error === "forbidden" ? "Отчёт по команде — только руководителю" : "Сервер не отдал данные команды");
         const team = teamModel(r, ctx);
         const label = team.scopeLabel || "команда";
-        if (what === "team_xlsx") res = await deliver({ kind: what, payload: team, name: fileName("команда " + label, "xlsx"), mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", make: async () => (await import("../lib/report-xlsx.js")).teamXlsx(team) });
-        else res = await deliver({ kind: what, payload: team, name: fileName("команда " + label, "pdf"), mime: "application/pdf", make: async () => (await import("../lib/report-pdf.js")).teamPdf(team) });
+        if (what === "team_xlsx") res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: team, name: fileName("команда " + label, "xlsx"), mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", make: async () => (await import("../lib/report-xlsx.js")).teamXlsx(team) });
+        else res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: team, name: fileName("команда " + label, "pdf"), mime: "application/pdf", make: async () => (await import("../lib/report-pdf.js")).teamPdf(team) });
       }
       vibrate("success");
       say(res === "tg" ? "Файл уходит в Telegram — подтверди сохранение, если спросит" : res === "cancel" ? "Скачивание отменено" : "Готово — файл скачан");
@@ -255,7 +256,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
   const rests = React.useMemo(() => [...new Set(list.rows.map((r) => r.restaurant).filter(Boolean))], [list.rows]);
   const attN = list.rows.filter((r) => r.attention).length;
 
-  const problem = (st) => st === "missing" ? "Сервер ещё не умеет отчёты: владельцу нужно применить supabase-stage23-reports.sql (этап 23)."
+  const problem = (st) => st === "missing" ? serverMissing({ what: "отчёты", many: true, admin: !!(profile && profile.is_admin), sql: "supabase-stage23-reports.sql" })
     : st === "auth" ? "Сессия не найдена — войди заново." : st === "forbidden" ? "Эта карточка тебе не видна: руководитель видит своих сотрудников." : st === "offline" ? "Нет связи с сервером — попробуй ещё раз." : "Сервер ответил ошибкой — попробуй позже.";
 
   // ── Карточка сотрудника ──

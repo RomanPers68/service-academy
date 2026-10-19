@@ -516,7 +516,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         <button style={T.backBtn2} onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
           Наставник
-          <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI</span>
+          <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI</span>
         </div>
         <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
           <button className="sa-btn" style={miniBtn} aria-label="Список чатов"
@@ -717,7 +717,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           </div>
         )}
         {msgs.length > 0 && !sending && (
-          <div style={{ color: sub, fontSize: 9, textAlign: "center", opacity: 0.7, fontFamily: "monospace", letterSpacing: 1, padding: "4px 0" }}>
+          <div style={{ color: sub, fontSize: 10.5, textAlign: "center", opacity: 0.7, fontFamily: "monospace", letterSpacing: 1, padding: "4px 0" }}>
             ИИ МОЖЕТ ОШИБАТЬСЯ · СТАНДАРТЫ РЕСТОРАНА ГЛАВНЕЕ
           </div>
         )}

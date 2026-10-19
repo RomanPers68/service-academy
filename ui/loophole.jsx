@@ -148,7 +148,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
       style={on ? { filter: a11y ? "none" : "drop-shadow(0 0 3px rgba(214,178,102,0.45))" } : undefined}>
       <circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 19 4M16 7l2.5 2.5M14 9l2 2" />
     </svg>);
-  const tag = (t, c) => <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.4, color: c, fontWeight: "bold", marginRight: 6 }}>{t}</span>;
+  const tag = (t, c) => <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.4, color: c, fontWeight: "bold", marginRight: 6 }}>{t}</span>;
   const ring = narrow ? 60 : 68;
   const n = rec.n || 1; const W = loopWords(n, female);
   return (
@@ -185,7 +185,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ height: 1, width: 16, background: `linear-gradient(90deg, transparent, ${C.gold})` }} />
-              <span style={{ color: C.gold, fontFamily: "monospace", fontSize: 10, letterSpacing: 2, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</span>
+              <span style={{ color: C.gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 2, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</span>
             </div>
             <div style={{ fontFamily: serif, fontSize: narrow ? 20 : 22, fontWeight: "bold", lineHeight: 1.15, marginTop: 5,
               background: C.title, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", textShadow: "none" }}>«Находчивая жопка»</div>
@@ -195,7 +195,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
             color: C.ink, fontFamily: serif, fontWeight: "bold", fontSize: 14, letterSpacing: 2.6, background: a11y ? "rgba(168,57,42,0.05)" : "rgba(210,85,63,0.06)",
             transform: "rotate(-11deg)", opacity: 0, animation: "laStamp .45s cubic-bezier(.2,1.4,.4,1) .55s forwards",
             textShadow: a11y ? "none" : "0 0 1px rgba(210,85,63,0.6)", pointerEvents: "none" }}>
-            {W.stampTop ? <span style={{ fontSize: 9, letterSpacing: 2.4 }}>{W.stampTop}</span> : null}
+            {W.stampTop ? <span style={{ fontSize: 10.5, letterSpacing: 2.4 }}>{W.stampTop}</span> : null}
             <span>{W.stamp}</span>
           </div>
         </div>
@@ -219,7 +219,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
             <div style={{ background: C.plate, border: `1px solid ${C.gold}55`, borderRadius: 14, padding: "11px 12px", margin: "2px 0 12px",
               boxShadow: a11y ? "inset 0 1px 0 rgba(255,255,255,0.9)" : "inset 0 1px 0 rgba(255,236,190,0.10), 0 0 18px rgba(214,178,102,0.06)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ color: C.gold, fontFamily: "monospace", fontSize: 9.5, letterSpacing: 1.8, fontWeight: "bold" }}>ТАЙНЫЙ ЗАЧЁТ КЛЮЧЕЙ</span>
+                <span style={{ color: C.gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, fontWeight: "bold" }}>ТАЙНЫЙ ЗАЧЁТ КЛЮЧЕЙ</span>
                 <span style={{ color: C.muted, fontSize: 11.5 }}>{rank.place}-е место из {Math.max(rank.players, rank.place)}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 4, margin: "9px 0 8px", flexWrap: "wrap" }}>
@@ -325,7 +325,7 @@ export function LoopholeBanner({ a11y, n = 1, female = false, onOpen, onHide }) 
           {numBadge(n, a11y)}
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ color: gold, fontFamily: "monospace", fontSize: 9.5, letterSpacing: 1.8, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
+          <div style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
           <div style={{ color: text, fontFamily: serif, fontSize: 15.5, fontWeight: "bold", lineHeight: 1.25, marginTop: 2 }}>Тапни, чтобы посмотреть</div>
           <div style={{ color: muted, fontFamily: serif, fontStyle: "italic", fontSize: 12.5, marginTop: 1 }}>{loopWords(n, female).teaser}</div>
         </div>

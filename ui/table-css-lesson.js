@@ -27,7 +27,7 @@ export const TABLE_LESSON_CSS = `
 .tb-plate.just{animation:tbShake .45s}
 .tb-row2{display:flex;align-items:center;gap:8px;margin-top:9px}
 .tb-prog{flex:1;min-width:0}
-.tb-k{display:flex;align-items:baseline;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;color:var(--sub);text-transform:uppercase;white-space:nowrap}
+.tb-k{display:flex;align-items:baseline;gap:8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;color:var(--sub);text-transform:uppercase;white-space:nowrap}
 .tb-k b{flex:0 0 auto;font-weight:400;color:var(--gold-ink)}
 .tb-k span{min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-body);font-style:italic;font-size:12.5px;letter-spacing:0;text-transform:none}
 .tb-beads{position:relative;height:12px;margin-top:7px}
@@ -53,13 +53,13 @@ export const TABLE_LESSON_CSS = `
 
 /* ── сцена ── */
 .tb-scene-row{display:flex;align-items:center;gap:8px;margin:4px 0 9px}
-.tb-where{font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--edge-gold);color:var(--gold-ink);white-space:nowrap}
+.tb-where{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--edge-gold);color:var(--gold-ink);white-space:nowrap}
 .tb-where.role{border-color:var(--role-edge,var(--edge-gold));color:var(--role-ink,var(--gold-ink))}
 .tb-scene{display:flex;gap:12px;align-items:flex-start;margin:0 0 12px;padding:12px 14px;border-radius:16px;border:1px solid var(--edge);background:var(--glass);box-shadow:inset 0 0 16px var(--inner)}
 .tb-scene .em{flex:0 0 auto;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;color:#7A5A1E;background:var(--plate);box-shadow:inset 0 0 0 4px rgba(0,0,0,.05),0 2px 6px var(--drop)}
 .tb-scene p{margin:0;font-size:15px;line-height:1.5;flex:1;min-width:0}
 .tb-thought{max-width:92%;margin:0 0 10px;padding:10px 14px;border-radius:20px;border:1.5px dashed var(--edge-gold);font-style:italic;font-size:14.5px;line-height:1.45}
-.tb-who{display:block;font-style:normal;font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-ink);margin-bottom:3px}
+.tb-who{display:block;font-style:normal;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-ink);margin-bottom:3px}
 .tb-q{font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.3;margin:4px 0 12px;text-wrap:balance}
 .tb-second{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 12px;border-radius:12px;border:1px dashed var(--edge-gold);font-size:13px;line-height:1.35;color:var(--sub)}
 .tb-second .tb-ic{color:var(--gold-ink)}
@@ -90,7 +90,7 @@ export const TABLE_LESSON_CSS = `
 .tb-note .nt{font-family:var(--font-hand);font-size:24px;line-height:1.1;margin:0 0 6px;color:#2E2010}
 .tb-note .nt.ok{color:#2C6B48} .tb-note .nt.bad{color:#8B3A2E}
 .tb-note p{margin:0 0 7px;font-size:14px;line-height:1.5}
-.tb-note .na{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--paper-sub);margin:0 0 2px}
+.tb-note .na{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--paper-sub);margin:0 0 2px}
 .tb-note .nb{font-weight:700}
 .tb-note .pts{font-family:var(--font-mono);font-size:11px;letter-spacing:.8px;color:var(--paper-sub);margin:2px 0 0}
 .tb-note .sign{font-family:var(--font-hand);font-size:18px;color:var(--paper-sub);text-align:right;margin:2px 0 0}
@@ -105,7 +105,7 @@ export const TABLE_LESSON_CSS = `
 .tb-say .res{font-size:13px;font-weight:700;color:var(--ok-ink)} .tb-say .res.again{color:var(--gold-ink)}
 /* правда или миф */
 .tb-claim{margin:0 0 14px;padding:14px 16px;border-radius:16px;border:1px solid var(--edge);background:var(--glass);font-style:italic;font-size:16px;line-height:1.5}
-.tb-claim .na{display:block;font-style:normal;font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--role-ink,var(--gold-ink));margin-bottom:5px}
+.tb-claim .na{display:block;font-style:normal;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--role-ink,var(--gold-ink));margin-bottom:5px}
 .tb-myth{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 6px}
 .tb-myth button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:15px 8px;border-radius:16px;border:1px solid var(--edge-gold);background:var(--glass-2);font-family:var(--font-display);font-size:19px;font-weight:700;color:var(--text)}
 .tb-myth small{font-family:var(--font-body);font-size:12px;font-weight:400;color:var(--sub)}
@@ -160,17 +160,17 @@ export const TABLE_LESSON_CSS = `
 .r-goldseal{position:absolute;right:12px;bottom:16px;width:58px;height:58px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transform:rotate(-12deg);
   background:radial-gradient(circle at 34% 30%,#F6DD8C,#C99A2E 58%,#7A5612);box-shadow:0 4px 10px rgba(122,86,18,.45),inset 0 2px 4px rgba(255,255,255,.35),inset 0 -3px 6px rgba(0,0,0,.3);color:#3B2A08;animation:tbPop .6s .5s both}
 .r-goldseal span{font-size:16px;line-height:1}
-.r-goldseal small{font-family:var(--font-mono);font-size:8.5px;letter-spacing:1.4px}
+.r-goldseal small{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px}
 .r-stamp{width:max-content;max-width:100%;margin:10px auto 0;padding:5px 12px;border:1.5px solid #9A3B25;border-radius:6px;color:#9A3B25;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.8px;transform:rotate(-3deg)}
 .r-week{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:12px 0 2px;text-align:center}
 .r-week>span{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
-.r-week small{font-size:10px;letter-spacing:.4px;color:var(--paper-sub)}
+.r-week small{font-size:10.5px;letter-spacing:.4px;color:var(--paper-sub)}
 .r-week i{display:block;width:6px;height:6px;margin:6px 0;border-radius:50%;background:var(--paper-line)}
 .r-week b{font-size:11px;min-height:16px;font-variant-numeric:tabular-nums}
 .r-week .fr .tb-ic{color:#3E5C80;margin:1px 0}
 /* Доп. 299: подсмотреть в уроке, послушать, автопереход, наставник */
 .tb-peek{max-height:62vh;overflow-y:auto;margin:0 -2px 12px;padding:14px 16px 10px;border-radius:4px;background:var(--paper);color:var(--paper-ink);box-shadow:0 6px 16px var(--drop)}
-.tb-peek .ey{font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--paper-sub);margin:0 0 4px}
+.tb-peek .ey{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--paper-sub);margin:0 0 4px}
 .tb-peek h4{margin:0 0 8px;font-family:var(--font-display);font-size:17px;line-height:1.25;color:#2A1F0E}
 .tb-peek p{margin:0 0 6px;font-size:14px;line-height:1.5}
 .tb-peek p.b{font-weight:700;margin-top:8px}
@@ -191,8 +191,8 @@ export const TABLE_LESSON_CSS = `
 .tb-intro li>span:first-child{flex:0 0 22px;text-align:center;color:var(--gold-ink);font-size:15px}
 .tb-intro-n{margin:10px 0 0;font-size:13px;line-height:1.45;color:var(--sub);font-style:italic}
 /* v31: «запасная свеча» в раунде мастера — одна ошибка в запасе */
-.tb-spare{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:1px;color:var(--gold-ink);text-transform:uppercase}
-.tb-spare small{font-size:9.5px}
+.tb-spare{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;color:var(--gold-ink);text-transform:uppercase}
+.tb-spare small{font-size:10.5px}
 .tb-spare.out{color:var(--sub)}
 /* v31: строки чека «какие темы освежены / что можно сдать на опыт» */
 .r-topics{margin:8px 0 2px;padding:0;list-style:none}

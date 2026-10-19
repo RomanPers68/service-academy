@@ -256,7 +256,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
               <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <div style={{ ...T.modTitle, color: rec ? green : T.modTitle.color }}>{s.label}</div>
                 <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.45 }}>{s.hint}</div>
-                {rec && <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ marginLeft: 6, fontSize: 9, letterSpacing: 1, color: green, border: `1px solid ${green}66`, borderRadius: 6, padding: "1px 6px", fontFamily: "monospace", verticalAlign: "1px" }}>{rec.hall ? "В ЗАЛЕ ✓" : "PIN ✓"}</span>}</div>}
+                {rec && <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ marginLeft: 6, fontSize: 10.5, letterSpacing: 1, color: green, border: `1px solid ${green}66`, borderRadius: 6, padding: "1px 6px", fontFamily: "monospace", verticalAlign: "1px" }}>{rec.hall ? "В ЗАЛЕ ✓" : "PIN ✓"}</span>}</div>}
                 {!rec && reqs[s.id] && reqs[s.id].status === "pending" ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 6, fontSize: 11.5, color: gold }}>
                     <span>⏳ Ждёт старшего — подтвердит в зале</span>
@@ -287,7 +287,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
               {reqs[modal.id] && reqs[modal.id].status === "pending" ? (
                 <div style={{ fontSize: 13, color: gold }}>⏳ Запрос уже у старшего — ждём</div>
               ) : hall === "missing" ? (
-                <div style={{ fontSize: 12.5, color: T.modSub.color }}>Заработает после обновления сервера (этап 22) — пока по PIN ниже.</div>
+                <div style={{ fontSize: 12.5, color: T.modSub.color }}>Заработает, когда владелец обновит сервер — пока по PIN ниже.</div>
               ) : (
                 <button className="sa-btn" disabled={busy} onClick={() => askHall(modal)}
                   style={{ width: "100%", padding: "11px 14px", borderRadius: 999, border: `1px solid ${gold}`, background: "transparent", color: textColor, fontSize: 14, fontWeight: "bold", cursor: "pointer" }}>{busy ? "Отправляю…" : "Отправить старшему ›"}</button>

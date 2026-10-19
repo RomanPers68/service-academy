@@ -13,6 +13,7 @@ import { Candle, Glass, Ic, plural } from "./table-bits";
 import { Flame, Wine, Laurel, Medal, Val, palette, nextStreakTier } from "./day-emblems";
 import { onActivate, vibrate } from "../lib/utils";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
 
 const C = (a11y) => (a11y
   ? { text: "#2A1F0E", sub: "#6B5B40", gold: "#7A5D2A", line: "rgba(150,112,40,0.30)", bg: "rgba(250,242,222,0.62)", card: "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))", top: "rgba(175,135,50,0.58)" }
@@ -67,7 +68,7 @@ const DP_CSS = `
 .sa-dp-cell[role=button]:active{background:rgba(214,178,102,.10)}
 .sa-dp-cell:focus-visible{outline:2px solid rgba(214,178,102,.7);outline-offset:-3px}
 .sa-dp-txt{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
-.sa-dp-cap{display:block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;margin-top:4px;white-space:nowrap;line-height:1}
+.sa-dp-cap{display:block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;margin-top:4px;white-space:nowrap;line-height:1}
 .sa-dp.lt .sa-dp-cap{font-size:11px;letter-spacing:.3px}
 .sa-dp-sep{width:1px;align-self:stretch;margin:8px 0;flex-shrink:0}
 .sa-dp-w{display:none}
@@ -197,7 +198,7 @@ export function WarmupCard({ a11y, shift, known = true, done, onStart, compact =
           border: "1px solid " + c.line, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,240,205,0.05)" }}>
         <span style={{ color: c.gold, display: "inline-flex", flexShrink: 0 }}><Ic n="clock" s={16} /></span>
         <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true">
-          <span style={{ display: "block", fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace", fontSize: a11y ? 11 : 9.5, letterSpacing: 1, textTransform: "uppercase", color: c.gold, lineHeight: 1.3 }}>Разминка</span>
+          <span style={{ display: "block", fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1, textTransform: "uppercase", color: c.gold, lineHeight: 1.3 }}>Разминка</span>
           <span style={{ display: "block", fontSize: 12.5, color: c.text, lineHeight: 1.3, marginTop: 1 }}>{when}</span>
         </span>
         <span aria-hidden="true" style={{ color: c.gold, fontSize: 15, lineHeight: 1, flexShrink: 0 }}>›</span>
@@ -238,7 +239,7 @@ export function WarmupCard({ a11y, shift, known = true, done, onStart, compact =
           boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95)" : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13)" }}>
         <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", color: c.gold, border: `1.5px solid ${c.line}` }}><Ic n="clock" s={22} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "monospace", fontSize: 9.5, letterSpacing: 1.6, color: c.gold, textTransform: "uppercase" }}>Разминка до смены</div>
+          <div style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, color: c.gold, textTransform: "uppercase" }}>Разминка до смены</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, lineHeight: 1.25, marginTop: 2 }}>2 минуты — 3 {what}</div>
           <div style={{ fontSize: 11.5, color: c.sub, marginTop: 2, lineHeight: 1.35 }}>{shift ? "Сегодня: " + shift : known ? "Сегодня смена по графику" : "Перед сменой — освежить главное"} · из того, что уже прошёл</div>
         </div>
@@ -338,7 +339,7 @@ export function RemindExample({ c = C(false), when = "час", shift = "", step 
   const st = stepLine(step);
   return (
     <div aria-label="Пример сообщения" style={{ padding: "10px 12px", borderRadius: "16px 16px 16px 4px", border: `1px solid ${c.line}`, background: c.bg }}>
-      <div style={{ fontFamily: "monospace", fontSize: 10, letterSpacing: 1.6, color: c.gold }}>✦ SERVICE ACADEMY</div>
+      <div style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, color: c.gold }}>✦ SERVICE ACADEMY</div>
       <div style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.45, color: c.text }}>{"Через " + when + " смена: " + (shift || "Вечер · 16:00–24:00")}</div>
       <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>Разминка до смены — 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены ✦</div>
       {st ? <div data-remind-step="" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.45, color: c.text }}>{"Шаг дня: " + st}</div> : null}
@@ -347,7 +348,7 @@ export function RemindExample({ c = C(false), when = "час", shift = "", step 
   );
 }
 
-export function RemindSheet({ a11y, uk = "", lead = false, shift = "", step = "", onClose, onChange }) {
+export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange }) {
   ensureTableCss();
   const c = C(a11y);
   const tg = typeof window !== "undefined" && window.Telegram ? window.Telegram.WebApp : null;
@@ -413,10 +414,10 @@ export function RemindSheet({ a11y, uk = "", lead = false, shift = "", step = ""
         {/* v40: строку «Шаг дня» бот добавляет только с этапом 26 — его видно по виду «master» в настройках */}
         <RemindExample c={c} when={when} shift={shift} step={has26 ? step : ""} />
         {st.phase === "load" ? note("Проверяю…") : null}
-        {st.phase === "missing" ? note("Сервер ещё не готов: руководителю нужно выполнить этап 22б в Supabase.") : null}
+        {st.phase === "missing" ? note(serverMissing({ what: "напоминания", many: true, admin, sql: "supabase-stage22b-telegram-reminders.sql" })) : null}   /* v58 (Доп. 371) */
         {st.phase === "offline" ? note("Нет связи — открой это окно, когда появится сеть.") : null}
         {st.phase === "error" ? note(st.text) : null}
-        {st.phase === "ready" && !st.bot ? note("Бот ещё не подключён на сервере — скажи руководителю.") : null}
+        {st.phase === "ready" && !st.bot ? note(admin ? "Бот ещё не подключён: нужен токен бота в настройках Supabase (этап 22б)." : "Бот ещё не подключён на сервере — скажи владельцу.") : null}
         {st.phase === "ready" && st.bot ? (on ? (
           <>
             <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.5)", color: a11y ? "#2C6B48" : "#8AD8AF", fontSize: 14, fontFamily: "Georgia, serif" }}>✓ Включено — за {when} до смены</div>

@@ -149,7 +149,7 @@ function NowCard({ refEl, ctx, a11y, T, next, onNext, on, onMood, onReplyDone })
   );
 }
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false }) {
   const isAdmin = !!profile?.is_admin;
   // v56 (Доп. 369): ответ на «как прошла смена» — пока человек не решил, разбирать ли с Наставником
   const [moodReply, setMoodReply] = React.useState(null);
@@ -170,6 +170,10 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // Цели подсказки главного экрана: карточка трека и лента инструментов.
   const refTrack = React.useRef(null);
   const refTools = React.useRef(null);
+  // v58 (Доп. 371): «сменить» у трека, подставленного по должности, — к списку треков ниже
+  const refTracks = React.useRef(null);
+  const toTracks = () => { const el = refTracks.current; if (!el) return;
+    try { el.scrollIntoView({ behavior: calmMotion() ? "auto" : "smooth", block: "start" }); } catch (e) { el.scrollIntoView(); } };
   React.useEffect(() => {
     if (calmMotion()) return;                 // без движения — подписи статичны
     const t = setInterval(() => setToolSpot(v => v + 1), 4000);
@@ -238,11 +242,18 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                   <span data-role-line="" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6, marginTop:3, fontFamily:"Georgia, serif", fontSize:12, lineHeight:"16px", color:RCg }}>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap" }}>{ROLE_SVG[role] ? ROLE_SVG[role](RCg, 13) : null}<b>{roleObj.label}</b></span>
                     {roleObj.sublabel ? <span data-role-sub="" style={{ color: T.modSub.color, fontSize:11, whiteSpace:"nowrap" }}>{roleObj.sublabel}</span> : null}
+                    {/* v58 (Доп. 371): трек подставлен по должности из профиля — выбирать самой не нужно, «сменить» рядом */}
+                    {roleAuto ? (
+                      <span data-role-auto="" style={{ color: T.modSub.color, fontSize:11, whiteSpace:"nowrap" }}>
+                        по должности · <button type="button" data-role-change="" onClick={toTracks} style={{ background:"none", border:"none", padding:"2px 0", margin:0,
+                          font:"inherit", color: goldText(a11y), textDecoration:"underline", textUnderlineOffset:2, cursor:"pointer" }}>сменить</button>
+                      </span>
+                    ) : null}
                   </span>
                 ) : null}
               </div>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
-                <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap" }}>{profile.restaurant}</div>
+                <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:10.5, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap" }}>{profile.restaurant}</div>
                 {wish ? <div data-shift-wish="" style={{ fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic", whiteSpace:"nowrap" }}>хорошей смены ✦</div> : null}
               </div>
             </div>
@@ -349,7 +360,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                     </span>
                     {kind ? (
                       <span style={{ position:"absolute", bottom:-4, left:"50%", transform:"translateX(-50%)",
-                        fontFamily:"monospace", fontSize:8, letterSpacing:1.1, whiteSpace:"nowrap",
+                        fontFamily:"monospace", fontSize:10.5, letterSpacing:1.1, whiteSpace:"nowrap",
                         color:RC, padding:"1px 6px", borderRadius:999,
                         background: a11y ? "#F7F0E0" : "#1A1409",
                         border:`1px solid ${RC}66` }}>{kind}</span>
@@ -417,7 +428,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             <div data-pulse="" style={{ margin:"0 14px 8px", padding:"6px 12px", borderRadius:12, fontSize:11, lineHeight:1.4,
               color: T.modSub.color, background: a11y ? "rgba(255,250,238,0.55)" : "rgba(200,169,110,0.06)",
               border: a11y ? "1px solid rgba(150,112,40,0.3)" : "1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
-              <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color: a11y ? "#7A5D2A" : "#C8A96E" }}>пульс недели</span>
+              <span style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.5, textTransform:"uppercase", color: a11y ? "#7A5D2A" : "#C8A96E" }}>пульс недели</span>
               {" "}· {wk.length} {wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов"} · {ppl} чел в игре
               {top ? <> · лидер: <span style={{ color: a11y ? "#7A5D2A" : "#C8A96E" }}>{top[0].trim()}</span></> : null}
             </div>
@@ -450,7 +461,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                     <div style={{ position:"absolute", top:-6, right:10, zIndex:2, minWidth:18, height:18, borderRadius:9, padding:"0 5px",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       background:"linear-gradient(135deg, #E8C983 0%, #C8A96E 55%, #7A5D2A 100%)",
-                      color:"#1A1008", fontSize: a11y ? 11 : 9, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
+                      color:"#1A1008", fontSize: a11y ? 11 : 10.5, fontWeight:"bold", fontFamily:"Georgia, serif", lineHeight:1,
                       border: a11y ? "1.5px solid #F5EFE2" : "1.5px solid #1A1008",
                       boxShadow:"0 2px 8px rgba(0,0,0,0.35), 0 0 10px rgba(200,169,110,0.45)" }}>{unread}</div>
                   )}
@@ -461,10 +472,10 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                       {/* узкая плитка (светлая тема, крупнее метки): счёт страниц и печати переносятся строкой ниже */}
                       <div style={{ display:"flex", flexWrap:"wrap", alignItems:"baseline", columnGap:5, minWidth:0, paddingRight:12 }}>
                         <span style={{ color: T.modTitle.color, fontSize:13.5, lineHeight:1.25, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap" }}>Книга отзывов</span>
-                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 9, whiteSpace:"nowrap" }}>{bs.pages}/{bs.total}</span>
+                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 10.5, whiteSpace:"nowrap" }}>{bs.pages}/{bs.total}</span>
                       </div>
                       <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6, rowGap:3, marginTop:3, minWidth:0 }}>
-                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 9, letterSpacing: a11y ? 0.6 : 1.2, textTransform:"uppercase", whiteSpace:"nowrap" }}>{bs.rank.label}</span>
+                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 0.6 : 1.2, textTransform:"uppercase", whiteSpace:"nowrap" }}>{bs.rank.label}</span>
                         <span style={{ display:"flex", gap:2, alignItems:"center", minWidth:0 }}>
                           {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
                         </span>
@@ -634,7 +645,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                             ) : null}
                           </span>
                           <span style={{ display:"inline-block", overflow:"hidden", whiteSpace:"nowrap",
-                            fontSize: narrow ? 10 : 10.5, color:Cc.text,
+                            fontSize: narrow ? 10.5 : 10.5, color:Cc.text,
                             maxWidth: on ? 96 : 0, opacity: on ? 1 : 0,
                             marginLeft: on ? 5 : 0, marginRight: on ? 5 : 0,
                             // Смена подписи — по очереди: сначала закрывается старая,
@@ -687,7 +698,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
 
 
         {!wideCols ? (
-          <div style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8 }}>
+          <div ref={refTracks} data-tracks-title="" style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8, scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
             <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
           </div>
         ) : null}
@@ -695,7 +706,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
 
       {/* v50: в две колонки заголовок треков — над правой колонкой */}
       {wideCols ? (
-        <div data-home2-title="" style={{ padding:"14px 14px 8px", display:"flex", alignItems:"center", gap:8 }}>
+        <div ref={refTracks} data-home2-title="" data-tracks-title="" style={{ padding:"14px 14px 8px", display:"flex", alignItems:"center", gap:8, scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
           <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
         </div>
       ) : null}
@@ -761,7 +772,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 <div style={T.roleInfo}>
                   <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                     <div style={{ ...T.roleLabel, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color }}>{r.label}</div>
-                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
                   </div>
                   <div style={T.roleSublabel}>{r.sublabel}</div>
                   {isUnlocked
@@ -871,9 +882,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:2, opacity:0.85 }}>{s.sub}</div>
             </div>
             {active ? (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#7A5D2A" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"3px 8px" }}>НОВОЕ</div>
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:10.5, letterSpacing:2, color: a11y ? "#7A5D2A" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"3px 8px" }}>НОВОЕ</div>
             ) : (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:9, letterSpacing:2, color: a11y ? "#7A5D2A" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:10.5, letterSpacing:2, color: a11y ? "#7A5D2A" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
             )}
           </div>
           );

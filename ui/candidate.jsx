@@ -929,7 +929,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 <div style={{ ...glass, marginBottom: 12 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
                     Вердикт ИИ
-                    <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span>
+                    <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span>
                   </div>
                   <div style={{ ...T.modSub, color: sub, lineHeight: 1.6, marginBottom: aiVerdict.strengths?.length || aiVerdict.growth?.length || aiVerdict.risks?.length ? 10 : 0 }}>{aiVerdict.verdict}</div>
                   {aiVerdict.strengths?.length > 0 && (

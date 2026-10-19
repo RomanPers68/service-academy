@@ -224,7 +224,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
           <path d="M12 14c0-2 3-2.5 3-5a3 3 0 0 0-6 0"/></svg>
       </span>
       <span style={{ flex:1, minWidth:0 }}>
-        <span style={{ display:"block", fontFamily:"monospace", fontSize:8,
+        <span style={{ display:"block", fontFamily:"monospace", fontSize:10.5,
           letterSpacing:1.8, textTransform:"uppercase", marginBottom:3,
           // 8 px на кремовом фоне золото давало 3,4:1 (страничный) и 4,25:1 (с подсветкой)
           color: a11y ? "#6B4E14" : gold }}>подсказка</span>
@@ -247,7 +247,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
         padding:"6px 13px", borderRadius:999 }}>{onNext ? "Дальше" : "Понятно"}</span>
       <span onClick={onClose} title="Больше не показывать"
         style={{ position:"absolute", top:5, right:6, width:18, height:18, borderRadius:"50%",
-          display:"grid", placeItems:"center", fontSize:10, color:sub, cursor:"pointer",
+          display:"grid", placeItems:"center", fontSize:10.5, color:sub, cursor:"pointer",
           border:`1px solid ${edge}` }}>✕</span>
     </div>
   );
@@ -453,7 +453,8 @@ export function LiquidSegment({
   const [rect, setRect] = React.useState(null);
   const [dragX, setDragX] = React.useState(null); // x центра линзы при перетаскивании
   const drag = React.useRef(null);
-  const dragEndAt = React.useRef(0);
+  const dragEndAt = React.useRef(0);          // v58: «только что выбрали указателем» — клик-хвост кнопки не нужен (флаг, а не время: часы могут стоять)
+  const pickTimer = React.useRef(null);
   const acc = accent || (a11y ? "#6B4E1A" : GOLD);
   const dim = muted || (a11y ? "#5C3D10" : "#7A654C");
   const canDrag = !scroll; // в скролл-лентах горизонтальный жест — это прокрутка
@@ -500,8 +501,10 @@ export function LiquidSegment({
   const onUp = (e) => {
     if (!drag.current) return;
     const info = drag.current; drag.current = null;
-    if (!info.moved) return; // обычный тап обработает onClick кнопки
-    dragEndAt.current = Date.now();
+    // v58 (Доп. 371): тап без движения тоже выбираем здесь. Раньше его ждал onClick кнопки — пальцем это работало,
+    // а мышью на компьютере нет: захват указателя дорожкой уводит click с кнопки на дорожку, и вкладка не переключалась.
+    dragEndAt.current = 1;
+    clearTimeout(pickTimer.current); pickTimer.current = setTimeout(() => { dragEndAt.current = 0; }, 350);
     setDragX(null);
     const it = items[nearestIdx(evX(e))];
     if (it && it.id !== activeId) onSelect(it.id);
@@ -511,8 +514,28 @@ export function LiquidSegment({
   const litId = dragX !== null && items.length ? items[nearestIdx(dragX)].id : activeId;
   const lens = (dragX !== null && rect) ? { ...rect, left: dragX - rect.width / 2 } : rect;
   const spring = "cubic-bezier(0.3,1.3,0.45,1)";
+  // v58 (Доп. 371): лента с прокруткой — у края намёк «листай» (тень и ›), пока справа есть ещё вкладки;
+  // выбранная вкладка подъезжает в видимую часть
+  const [more, setMore] = React.useState(false);
+  const checkMore = React.useCallback(() => {
+    const el = trackRef.current; if (!el || !scroll) return;
+    setMore(el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
+  }, [scroll]);
+  React.useLayoutEffect(() => { checkMore(); }, [checkMore, items.length, rect]);
+  React.useEffect(() => {
+    if (!scroll) return;
+    const el = trackRef.current; if (!el) return;
+    el.addEventListener("scroll", checkMore, { passive: true });
+    window.addEventListener("resize", checkMore);
+    return () => { el.removeEventListener("scroll", checkMore); window.removeEventListener("resize", checkMore); };
+  }, [scroll, checkMore]);
+  React.useEffect(() => {
+    if (!scroll) return;
+    const el = itemRefs.current[activeId]; if (!el || !el.scrollIntoView) return;
+    try { el.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {}
+  }, [scroll, activeId]);
 
-  return (
+  const track = (
     <div ref={trackRef}
       className={(scroll || canDrag) ? "sa-hscroll" : undefined}
       onPointerDown={canDrag ? onDown : undefined}
@@ -564,7 +587,7 @@ export function LiquidSegment({
         return (
           <button key={it.id} ref={el => { itemRefs.current[it.id] = el; }}
             onClick={() => {
-              if (Date.now() - dragEndAt.current < 300) return; // клик-«хвост» после перетаскивания
+              if (dragEndAt.current) return; // клик-«хвост» после тапа или перетаскивания — выбор уже сделан в onUp
               if (it.id !== activeId) onSelect(it.id);
             }}
             style={{
@@ -582,6 +605,19 @@ export function LiquidSegment({
           </button>
         );
       })}
+    </div>
+  );
+  if (!scroll) return track;
+  return (
+    <div style={{ position: "relative" }}>
+      {track}
+      {more ? (
+        <div aria-hidden data-seg-more="" style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 44, borderRadius: "0 14px 14px 0", pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 8,
+          background: a11y ? "linear-gradient(90deg, rgba(232,222,200,0), rgba(232,222,200,0.96))" : "linear-gradient(90deg, rgba(26,20,10,0), rgba(26,20,10,0.94))" }}>
+          <span style={{ color: acc, fontSize: 16, lineHeight: 1, fontFamily: "Georgia, serif" }}>›</span>
+        </div>
+      ) : null}
     </div>
   );
 }

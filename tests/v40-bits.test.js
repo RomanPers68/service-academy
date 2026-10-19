@@ -257,7 +257,7 @@ describe("v40: напоминания — «Мастера заведения» 
     expect(R(h(RemindExample, { when: "час", step: "   " }))).not.toContain("Шаг дня");
     // RemindSheet передаёт шаг в пример (сам лист — портал, на сервере не рисуется)
     const src = readFileSync("ui/day-cards.jsx", "utf8");
-    expect(src).toContain('export function RemindSheet({ a11y, uk = "", lead = false, shift = "", step = "", onClose, onChange })');
+    expect(src).toMatch(/export function RemindSheet\(\{ a11y, uk = "", lead = false, (admin = false, )?shift = "", step = "", onClose, onChange \}\)/);   // v58: admin — подсказка про SQL только владельцу
     // строку «Шаг дня» бот добавляет только с этапом 26 — пример показывает её, когда сервер знает вид «master»
     expect(src).toContain("<RemindExample c={c} when={when} shift={shift} step={has26 ? step : \"\"} />");
     expect(src).toContain("onLoad={(p) => setHas26(!!p && p.master !== undefined)}");

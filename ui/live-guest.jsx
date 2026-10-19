@@ -42,7 +42,7 @@ const CSS = `
 .lg-opt{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:14px;color:var(--text)}
 .lg-opt input{width:18px;height:18px;accent-color:#C8A96E}
 .lg-g,.lg-gp{align-self:flex-start;max-width:88%;padding:10px 13px;border-radius:16px;border-bottom-left-radius:5px;background:var(--glass-2);border:1px solid var(--edge);font-size:15px;line-height:1.45}
-.lg-g b,.lg-gp b{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--sub);margin-bottom:2px;font-weight:400}
+.lg-g b,.lg-gp b{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--sub);margin-bottom:2px;font-weight:400}
 .lg-gp span::after{content:"▍";margin-left:1px;opacity:.6;animation:tbBlink 1s infinite}
 .lg-row{display:flex;align-items:flex-end;gap:8px}
 .lg-in{flex:1;min-width:0;min-height:46px;max-height:120px;resize:none;box-sizing:border-box;padding:12px 14px;border-radius:22px;border:1px solid var(--edge);background:var(--glass);color:var(--text);font:15px/1.35 var(--font-body)}
@@ -79,7 +79,7 @@ const CSS = `
 .lg-mood.bump{animation:lgBump .55s cubic-bezier(.3,1.4,.5,1)}
 @keyframes lgBump{0%{transform:scale(1)}40%{transform:scale(1.035)}100%{transform:scale(1)}}
 .lg-whisper{margin:0 0 12px;padding:10px 12px;border-radius:14px;border:1px dashed var(--edge-gold);background:rgba(200,169,110,.08);font-size:14px;line-height:1.45}
-.lg-whisper b{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;letter-spacing:1.6px;color:var(--gold-ink);font-weight:400;margin-bottom:3px}
+.lg-whisper b{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.6px;color:var(--gold-ink);font-weight:400;margin-bottom:3px}
 .lg-left{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;padding:4px 10px;border-radius:999px;border:1px solid var(--edge);font-size:12px;color:var(--sub)}
 .lg-line{display:block;width:100%;height:auto;margin:6px 0 2px}
 .lg-line path{fill:none;stroke:#8B6A30;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
@@ -252,7 +252,7 @@ function PersonaEditor({ rows, myPlace, onClose, onSaved, onDeleted, onPlay }) {
     rpc("guest_persona_save", { p_token: saToken(), p_data: data }).then((r) => {
       setBusy(false);
       if (r && r.ok && r.row) { onSaved(r.row); setForm(null); vibrate("success"); return; }
-      setMsg(rpcMissing(r) ? "На сервере нет этапа 25 — свои гости появятся после него." : ED_ERR[(r && r.error) || ""] || "Не сохранилось — проверь связь.");
+      setMsg(rpcMissing(r) ? "Свои гости появятся, когда владелец обновит сервер." : ED_ERR[(r && r.error) || ""] || "Не сохранилось — проверь связь.");
     }, () => { setBusy(false); setMsg("Не сохранилось — проверь связь."); });
   };
   const remove = (id) => {

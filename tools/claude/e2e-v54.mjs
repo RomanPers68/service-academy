@@ -521,11 +521,13 @@ const labGeo = (page) => page.evaluate(() => {
   return { sc: r("[data-labscene]"), st: r("[data-labstation]"), md: r("[data-labmode]"), rush: r("[data-labrush]"), ih: innerHeight, iw: innerWidth,
     disp: body ? getComputedStyle(body).display : null, max: document.getElementById("root").scrollHeight - document.getElementById("root").clientHeight,
     count: (([...document.querySelectorAll(".sa-labbody span")].map((e) => e.textContent).find((t) => /^\d+\/\d+/.test(t || "")) || "").match(/^(\d+)\//) || [])[1],
-    tip: !!document.querySelector("[data-labscene]") && /оттеняет/.test(document.querySelector("[data-labscene]").innerText) };
+    // v58: коктейль дня меняется по дате — совет есть, если на доске «теперь …» и под ним третья строка (c.tip)
+    tip: (() => { const sc = document.querySelector("[data-labscene]"); if (!sc) return false; const el = [...sc.querySelectorAll("div")].find((d) => d.children.length === 0 && d.textContent.trim() === "теперь"); return !!(el && el.parentElement && el.parentElement.children.length >= 3); })() };
 });
 const toPlay = async (p) => {
   await nav(p, "barLab", 1500);
-  await p.locator("text=Птица джунглей").first().click(); await sleep(1300);
+  // v58: коктейль дня меняется по дате — жмём карточку «КОКТЕЙЛЬ ДНЯ», а не имя
+  await p.locator("text=КОКТЕЙЛЬ ДНЯ").first().click(); await sleep(1300);
   await p.locator("text=С подсказкой").first().click(); await sleep(1600);
 };
 const toBottom = (p) => p.evaluate(() => { const r = document.getElementById("root"); r.scrollTop = r.scrollHeight; });
@@ -549,7 +551,9 @@ for (const [tag, o0] of [["LAND", { w: 844, h: 390 }], ["SE", { w: 667, h: 375 }
   await toBottom(p); await sleep(400); g = await labGeo(p);
   ok(tag + ": пролистал до конца — сцена и полки в кадре целиком", g.sc.t >= -1 && g.sc.b <= g.ih + 1 && g.st.b <= g.ih, JSON.stringify(g));
   const c0 = g.count;
-  await p.locator("[data-labstation]").locator("text=Рокс").last().click(); await sleep(900);
+  // v58: коктейль дня меняется по дате — какой бокал нужен, говорит подсказка «теперь …» на доске
+  const wantGlass = await p.evaluate(() => { const el = [...document.querySelectorAll("div")].find((d) => d.children.length === 0 && d.textContent.trim() === "теперь"); const nx = el && el.nextElementSibling; return nx ? nx.textContent.trim() : "Рокс"; });
+  await p.locator("[data-labstation]").locator("text=" + wantGlass).last().click(); await sleep(900);
   ok(tag + ": тап по полке справа — шаг засчитан", Number((await labGeo(p)).count) === Number(c0) + 1);
   if (tag === "TG") { const z = await inZone(p, 62, 62); ok("TG: ничего не заходит под вырезы", !z.length, z.join(" | ")); }
   await shot(p, tag.toLowerCase() + "-lab-two");

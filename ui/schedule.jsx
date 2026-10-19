@@ -3526,7 +3526,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           style={{ ...act2, opacity: wLate ? .5 : 1, borderColor: hardOf(me.id, d) ? P.warn : act2.borderColor, color: hardOf(me.id, d) ? P.warn : ink }}>
                           <IcoBan size={13} color={P.warn} dy={-2} /> {hardOf(me.id, d) ? "Снять «не смогу»" : <>Не смогу выйти{(() => { const c = hardCapacity(d, me); return c.maxHard ? ` · мест: ${c.left}` : ""; })()}</>}</button>
                       ) : (
-                        <div style={{ flex:"1 1 100%", fontSize:11, color:P.sub, fontStyle:"italic" }}>«Не смогу выйти» появится после обновления сервера (schedule-wishes-v2.sql)</div>
+                        <div style={{ flex:"1 1 100%", fontSize:11, color:P.sub, fontStyle:"italic" }}>«Не смогу выйти» появится, когда владелец обновит сервер{profile && profile.is_admin ? " (schedule-wishes-v2.sql)" : ""}</div>
                       )}
                       {wLate ? <div style={{ flex:"1 1 100%", fontSize:11, color:P.warn }}>Пожелания на этот месяц принимались до {wDl} числа</div> : null}
                       {wishNote && wishNote.d === d ? <div style={{ flex:"1 1 100%", fontSize:11, color:P.warn, lineHeight:1.5 }}>{wishNote.text}</div> : null}

@@ -78,7 +78,7 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-eyebrow{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase}
 .tbm-title{font-family:var(--font-display);font-size:21.5px;font-weight:700;line-height:1.15;margin:6px 0 3px;text-wrap:balance;color:var(--text)}
 .tbm-sub{margin:0;color:var(--sub);font-style:italic;font-size:13px;line-height:1.3;text-wrap:balance}
-.tbm-orn{display:flex;align-items:center;gap:10px;max-width:180px;margin:9px auto 5px;color:var(--gold-ink);font-size:10px;line-height:1}
+.tbm-orn{display:flex;align-items:center;gap:10px;max-width:180px;margin:9px auto 5px;color:var(--gold-ink);font-size:10.5px;line-height:1}
 .tbm-orn i{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--edge-gold))}
 .tbm-orn i:last-child{background:linear-gradient(90deg,var(--edge-gold),transparent)}
 .tbm-list{list-style:none;margin:0;padding:0}
@@ -90,8 +90,8 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-list>li.pd::before,.tbm-list>li.sd::after{background:var(--gold)}
 .tbm-list>li.cur{--my:34px}
 .tbm-node{position:relative;display:block;width:100%;min-height:40px;padding:7px 2px 8px 34px;border:0;background:none;text-align:left;color:var(--text)}
-.tbm-mk{position:absolute;left:3px;top:calc(var(--my) - 9px);width:18px;height:18px;border-radius:50%;display:grid;place-items:center;z-index:1;background:var(--mk-bg);box-shadow:inset 0 0 0 1.5px var(--edge-gold);color:var(--gold-ink)}
-.tbm-mk .nm{font:600 9.5px/1 var(--font-mono);letter-spacing:-.3px;color:var(--gold-ink)}
+.tbm-mk{position:absolute;left:2px;top:calc(var(--my) - 10px);width:20px;height:20px;border-radius:50%;display:grid;place-items:center;z-index:1;background:var(--mk-bg);box-shadow:inset 0 0 0 1.5px var(--edge-gold);color:var(--gold-ink)}
+.tbm-mk .nm{font:600 10.5px/1 var(--font-mono);letter-spacing:-.3px;color:var(--gold-ink)}
 .tbm-node.done .tbm-mk{background:var(--gold);box-shadow:none;color:var(--on-gold)}
 .tbm-cur .tbm-mk{background:var(--role-fill,var(--gold));box-shadow:0 0 0 4px var(--role-wash,rgba(214,178,102,.25))}
 .tbm-cur .tbm-mk::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:1.5px solid var(--role-edge,var(--edge-gold));animation:tbHalo 2.6s ease-in-out infinite}
@@ -110,8 +110,8 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-list>li.final>.tbm-node{padding-top:10px}
 .tbm-card{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:18px;background:var(--cur-bg);border:1px solid var(--cur-edge);border-top-color:var(--cur-top);box-shadow:var(--cur-shadow)}
 .tbm-cc{flex:1;min-width:0}
-.tbm-ck{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--sub);white-space:nowrap;overflow:hidden}
-.tbm-kchip{font-family:var(--font-mono);font-size:9px;letter-spacing:1.2px;padding:2px 7px;border-radius:999px;border:1px solid var(--role-edge,var(--edge-gold));color:var(--role-ink,var(--gold-ink));background:var(--chip-bg)}
+.tbm-ck{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;color:var(--sub);white-space:nowrap;overflow:hidden}
+.tbm-kchip{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.2px;padding:2px 7px;border-radius:999px;border:1px solid var(--role-edge,var(--edge-gold));color:var(--role-ink,var(--gold-ink));background:var(--chip-bg)}
 .tbm-ct{display:block;margin:4px 0 1px;font-family:var(--font-display);font-size:17px;font-weight:700;line-height:1.22;color:var(--text);text-wrap:balance}
 .tbm-cs{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.35;color:var(--sub)}
 .tbm-cta{flex:0 0 auto;padding:9px 15px;border-radius:999px;font-family:var(--font-body);font-size:14px;font-weight:700;color:var(--on-gold);background:linear-gradient(180deg,var(--gold-hi),var(--gold));box-shadow:0 3px 10px var(--drop),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .1s}
@@ -179,7 +179,7 @@ html.sa-light .tbm-act:focus-visible,html.sa-light .tbm-cellar:focus-visible{out
 .tbm-seal svg{display:block;width:46px;height:46px;margin:-3px;transform:rotate(-12deg);filter:drop-shadow(0 3px 5px rgba(0,0,0,.45))}
 .tbm-seal.stamp svg{animation:tbStamp .75s cubic-bezier(.2,1.2,.3,1) .35s both}
 html.sa-light .tbm-seal svg{filter:drop-shadow(0 3px 5px rgba(110,45,20,.32))}
-.tbm-sealnote{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;padding:4px 10px;border-radius:999px;border:1px solid rgba(150,51,31,.45);color:#C0624B;font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase}
+.tbm-sealnote{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;padding:4px 10px;border-radius:999px;border:1px solid rgba(150,51,31,.45);color:#C0624B;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase}
 html.sa-light .tbm-sealnote{color:#8B3020}
 @keyframes tbStamp{0%{transform:rotate(-30deg) scale(2.3);opacity:0}55%{transform:rotate(-10deg) scale(.92);opacity:1}75%{transform:rotate(-13deg) scale(1.04)}100%{transform:rotate(-12deg) scale(1)}}
 /* Доп. 307: трек — меню тем, листаются за пальцем; номера тем — оглавление, как страницы меню */

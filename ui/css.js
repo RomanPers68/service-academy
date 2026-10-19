@@ -162,7 +162,7 @@ export const injectStyles = () => {
       border:2px solid rgba(200,169,110,0.85);border-top-color:rgba(226,186,116,1);
       box-shadow:inset 0 0 8px rgba(255,248,230,0.10),inset 0 1px 0 rgba(255,255,255,0.16),
                  0 2px 6px rgba(0,0,0,0.45);
-      font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#C8A96E}
+      font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#C8A96E}
     .sa-step.done .sa-stepnum{background:linear-gradient(160deg,#7FD3A6,#4AA377);
       border-color:#5DBB8A;border-top-color:#8FE0B4;color:#0d2318;
       box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 6px rgba(0,0,0,0.35)}
@@ -425,7 +425,7 @@ export const injectStyles = () => {
       border-top:1px solid rgba(210,168,65,0.3);
       box-shadow:inset 0 0 14px rgba(255,248,230,0.05),inset 0 1px 0 rgba(255,255,255,0.10)}
     .sa-schedno{flex:0 0 22px;height:22px;border-radius:50%;display:grid;place-items:center;
-      font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#C8A96E;
+      font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#C8A96E;
       border:1.5px solid rgba(200,169,110,0.7);border-top-color:rgba(226,186,116,0.95);
       background:linear-gradient(160deg,rgba(226,186,116,0.18),rgba(20,17,10,0.96) 62%);
       box-shadow:inset 0 0 10px rgba(255,248,230,0.08),inset 0 1px 0 rgba(255,255,255,0.16),

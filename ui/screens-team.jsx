@@ -26,7 +26,8 @@ import { hintsFor } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
-import { APP_SHARE_URL, POS_LABELS } from "./screens-gamification";
+import { APP_SHARE_URL } from "./screens-gamification";
+import { POS_LABELS, positionLabel } from "../data/positions";
 
 export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const [view, setView] = React.useState("list");        // list | add | card | code
@@ -592,7 +593,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color:T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {e.name} {e.surname}
-                        {e.is_admin && <span style={{ marginLeft:6, fontSize:10.5, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+                        {e.is_admin && <span style={{ marginLeft:6, fontSize:10.5, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>ВЛАДЕЛЕЦ</span>}
                       </div>
                       <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>
                         {POS_LABELS[e.position] || e.position} · {ago(e.last_seen_at)}
@@ -654,7 +655,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
       } else {
         vibrate("error");
         setError(res && res.error === "disabled"
-          ? "Доступ отключён. Обратись к администратору."
+          ? "Доступ отключён. Обратись к руководителю."
           : "Код не подходит или уже использован. Проверь и попробуй ещё раз.");
       }
     } catch(e) {
@@ -672,7 +673,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         Вход по приглашению
       </div>
       <div style={{ color:"#9A8C74", fontSize:12.5, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:24 }}>
-        Введи код доступа — его выдаёт администратор. Дальше вход автоматический — код больше не понадобится.
+        Введи код доступа — его выдаёт руководитель. Дальше вход автоматический — код больше не понадобится.
       </div>
       <input
         value={code}
@@ -703,7 +704,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         {busy ? "Проверяем..." : "Войти"}
       </button>
       <div style={{ color:MUTED_2, fontSize:11, marginTop:20, textAlign:"center", lineHeight:1.7 }}>
-        Нет кода? Спроси у администратора —<br/>он создаст тебя в системе за минуту.
+        Нет кода? Спроси у руководителя —<br/>он создаст тебя в системе за минуту.
       </div>
     </div>
   );
@@ -754,7 +755,7 @@ function MentorPinBlock({ T, gold }) {
 
 // v57 (Доп. 370): настройки в одном месте — тема «Для чтения», звуки, вибрация. Раньше тема была только в шапке,
 // звук — только в шапке урока «у стола», а вибрацию выключить было нельзя. Шапка и урок — как были.
-function AccountSettings({ T, a11y, onA11y }) {
+function AccountSettings({ T, a11y, onA11y, themeAuto = false, onThemeAuto = null }) {
   const [snd, setSnd] = React.useState(sfxOn);
   const [hap, setHap] = React.useState(hapticsOn);
   const gold = a11y ? "#7A5D2A" : GOLD;
@@ -762,7 +763,7 @@ function AccountSettings({ T, a11y, onA11y }) {
   const row = (key, title, sub, on, flip, first) => (
     <div key={key} data-set={key} role="switch" aria-checked={on} aria-label={title} tabIndex={0} onClick={flip}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } }}
-      style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 2px", borderTop: first ? "none" : "1px solid " + line, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+      style={{ display:"flex", alignItems:"center", gap:12, padding:"9px 2px", borderTop: first ? "none" : "1px solid " + line, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ ...T.modTitle, whiteSpace:"normal" }}>{title}</div>
         <div style={{ ...T.modSub, whiteSpace:"normal", marginTop:2 }}>{sub}</div>
@@ -775,21 +776,23 @@ function AccountSettings({ T, a11y, onA11y }) {
     </div>
   );
   return (
-    <div data-settings="" style={{ ...T.modCard, display:"block", padding:"4px 14px", marginBottom:16 }}>
-      <div style={{ fontFamily:"monospace", fontSize: a11y ? 11.5 : 10.5, letterSpacing:1.6, color: gold, padding:"10px 2px 2px" }}>НАСТРОЙКИ</div>
+    <div data-settings="" style={{ ...T.modCard, display:"block", padding:"4px 14px", marginBottom:12 }}>
+      <div style={{ fontFamily:"monospace", fontSize: a11y ? 11.5 : 10.5, letterSpacing:1.6, color: gold, padding:"8px 2px 0" }}>НАСТРОЙКИ</div>
       {row("theme", "Для чтения", "светлый фон и текст крупнее — удобно днём и для глаз", !!a11y, () => { vibrate("light"); if (onA11y) onA11y(!a11y); }, true)}
+      {/* v59 (Доп. 372): тема по системе — светлая у телефона или Telegram включает «Для чтения» сама */}
+      {onThemeAuto ? row("auto", "Тема как в системе", "светлая тема телефона или Telegram включит «Для чтения», тёмная — выключит", !!themeAuto, () => { vibrate("light"); onThemeAuto(!themeAuto); }) : null}
       {row("sound", "Звуки", "тихий звон за верный ответ, колокольчик за печать и значок", snd, () => { const v = !snd; setSfx(v); setSnd(v); if (v) sfx("ok"); })}
       {row("haptics", "Вибрация", "лёгкая отдача при нажатиях и ответах", hap, () => { const v = !hap; setHaptics(v); setHap(v); if (v) vibrate("light"); })}
     </div>
   );
 }
 
-export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a11y = false, onA11y = null }) {
+export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a11y = false, onA11y = null, themeAuto = false, onThemeAuto = null }) {
   const [confirmOut, setConfirmOut] = React.useState(false);
   const [acHint, acHintDone] = useHintOnce("profile");
   const acSteps = hintsFor("profile");
   const acRefCard = React.useRef(null);   // карточка с именем
-  const posLabel = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав" }[profile?.position] || profile?.position;
+  const posLabel = positionLabel(profile?.position);   // v59: один словарь должностей
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
@@ -800,8 +803,8 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
         <HintBubble a11y={!!T.a11y} text={acSteps[0]} arrow="up" anchorRef={acRefCard}
           step={1} total={1} onClose={acHintDone} />
       ) : null}
-      {/* v57: снизу 24 (было 40) — с настройками экран помещается целиком, не «болтается» */}
-      <div style={{ flex:1, padding:"20px 18px 24px" }}>
+      {/* v57: снизу 24 (было 40); v59: ещё плотнее (16/20, заметка и карточки ближе) — с четвёртой настройкой экран по-прежнему помещается целиком */}
+      <div style={{ flex:1, padding:"16px 18px 20px" }}>
         <div ref={acRefCard} style={{ ...T.modCard, gap:12, marginBottom:12 }}>
           <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
             <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
@@ -811,7 +814,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
               {profile?.name} {profile?.surname}
-              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:10.5, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>АДМИН</span>}
+              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:10.5, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ВЛАДЕЛЕЦ</span>}
             </div>
             <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:4, display:"flex", alignItems:"center", gap:4 }}>
               {UI_SVG.building("#C8A96E", 12)}<span>{profile?.restaurant}</span>
@@ -820,12 +823,12 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
           </div>
         </div>
 
-        <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, padding:"0 4px", marginBottom:20 }}>
-          Данные профиля привязаны к твоему коду доступа. Если что-то указано неверно — обратись к администратору.
+        <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.55, padding:"0 4px", marginBottom:12 }}>
+          Данные профиля привязаны к твоему коду доступа. Если что-то указано неверно — обратись к руководителю.
         </div>
 
         {/* ═══ v57 (Доп. 370): настройки — тема, звуки, вибрация ═══ */}
-        <AccountSettings T={T} a11y={a11y} onA11y={onA11y} />
+        <AccountSettings T={T} a11y={a11y} onA11y={onA11y} themeAuto={themeAuto} onThemeAuto={onThemeAuto} />
 
         {/* ═══ PIN наставника — только руководящий состав. Этим PIN заверяются допуски. ═══ */}
         {(["manager","senior"].includes(profile?.position) || profile?.is_admin) && (() => {
@@ -835,7 +838,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
 
         {/* ═══ Карта обучения — печатный документ для личного дела ═══ */}
         {onTrainingCard && (
-          <div className="sa-card" style={{ ...T.modCard, marginBottom:20, cursor:"pointer" }}
+          <div className="sa-card" style={{ ...T.modCard, marginBottom:12, cursor:"pointer" }}
             onClick={onTrainingCard} {...onActivate(onTrainingCard)}>
             <div style={{ ...T.modBar, background: GOLD }} />
             <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,169,110,0.13)" }}>

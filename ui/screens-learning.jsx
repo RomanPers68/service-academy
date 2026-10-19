@@ -84,6 +84,8 @@ function writeCardPos(uk, id, v) {
   } catch (e) {}
 }
 
+// v59 (Доп. 372): склонение по числу — «1 вопрос», «2 вопроса», «5 вопросов»
+const plural3 = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many; };
 export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack, noTests = false }) {
   const gold = a11y ? "#7A5D2A" : GOLD;
   const [mkHint, mkHintDone] = useHintOnce("mistakes");
@@ -141,7 +143,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
           <div style={{ ...T.bold, marginBottom: 6 }}>{waiting > 0 ? "Всё повторено по расписанию" : "Ошибок нет"}</div>
           <div style={{ fontSize: 14, lineHeight: 1.6 }}>
             {waiting > 0
-              ? `${waiting} вопрос(ов) закрепляются по интервалам 1 → 3 → 7 → 30 дней. Следующее повторение — ${nextStr}.`
+              ? `${waiting} ${plural3(waiting, "вопрос закрепляется", "вопроса закрепляются", "вопросов закрепляются")} по интервалам 1 → 3 → 7 → 30 дней. Следующее повторение — ${nextStr}.`   // v59: склонение по числу
               : "Заваленные в тестах вопросы будут попадать сюда — прорешаешь их ещё раз и закрепишь."}
           </div>
         </div>

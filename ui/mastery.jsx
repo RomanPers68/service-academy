@@ -7,6 +7,7 @@
 // Всё считает lib/mastery.js; экран только показывает и ведёт в инструмент (onGo).
 import React from "react";
 import { createPortal } from "react-dom";
+import { MONTH_SHORT, MONTH_GEN } from "../lib/dates";
 import { FAMILIES, TIERS, TIERS_OF, ROLE_TITLE, MASTER_NEED, familyCount, isNewTool, plural } from "../lib/mastery";
 import { Medal, FamIcon, tierColor, tierText, msPal, msSmall, msEye, msPrimary, msTie, ensureMsCardCss } from "./mastery-card";
 import { vibrate } from "../lib/utils";
@@ -16,8 +17,7 @@ import { masterImage, masterShareText, masterDate, MASTER_PARTS } from "../lib/m
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
 const BODY = "Georgia,'Times New Roman',serif";
-const MON = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
-const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const MON = MONTH_SHORT, MONTHS = MONTH_GEN;   // v59: один словарь дат (lib/dates.js)
 
 const CSS = `
 .ms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}

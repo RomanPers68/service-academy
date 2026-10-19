@@ -58,8 +58,18 @@ if ("serviceWorker" in navigator) {
       setInterval(() => reg.update().catch(() => {}), 10 * 60 * 1000);   // раз в десять минут, пока приложение открыто
     }).catch(() => {});
     let reloaded = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => { if (!reloaded) { reloaded = true; window.location.reload(); } });
+    // v59 (Доп. 372): новый воркер взял управление. В первые секунды после открытия — перезагрузка, как раньше
+    // (ничего не прервём). Позже — не дёргаем человека посреди теста: показываем тост «Готова новая версия · Обновить».
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloaded) return; reloaded = true;
+      if (performance.now() < 5000) window.location.reload(); else announceUpdate();
+    });
   });
+}
+
+// v59 (Доп. 372): обновление готово — приложение покажет тост (ui/update-toast.jsx), перезагрузка по кнопке
+function announceUpdate() {
+  try { window.__saUpdateReady = true; window.dispatchEvent(new CustomEvent("sa-update-ready")); } catch (e) {}
 }
 
 // Доп. 279: Telegram держит страницу в памяти сутками, и «обновить» приходилось жать руками.
@@ -74,7 +84,7 @@ if ("serviceWorker" in navigator) {
       return (src.find(x => /\/assets\/index-/.test(x)) || perf[0] || "").split("/").pop();
     } catch (e) { return ""; }
   };
-  const check = async () => {
+  const check = async (reason) => {
     if (document.visibilityState === "hidden") return;
     const last = Number(sessionStorage.getItem(KEY) || 0);
     if (Date.now() - last < 60000) return;                 // не чаще раза в минуту
@@ -88,10 +98,11 @@ if ("serviceWorker" in navigator) {
         try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (e) {}
         try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.update())); } catch (e) {}
       }
-      window.location.reload();
+      // v59: при открытии — перезагрузка сразу (ничего не прервём); вернулся из другого приложения — тост «Обновить»
+      if (reason === "load") window.location.reload(); else announceUpdate();
     } catch (e) {}
   };
-  window.addEventListener("load", () => setTimeout(check, 1200));
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
+  window.addEventListener("load", () => setTimeout(() => check("load"), 1200));
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check("visible"); });
 })();
 

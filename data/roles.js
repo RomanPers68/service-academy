@@ -11,3 +11,9 @@ export const ROLES = [
   { id: "service_manager", mm: "idea", label: "Сервис-менеджер", sublabel: "Следующая ступень", icon: "🏛️", color: "#7B8FAB", dark: "#1a1e2e", desc: "Архитектор сервиса — школа, методика, культура, развитие" },
   { id: "bar", mm: "wave", label: "Бар", sublabel: "Бармен", icon: "🍸", color: "#C8A96E", dark: "#3e3020", desc: "От новичка за баром до старшего бармена" },
 ];
+
+// v59 (Доп. 372): производные словари — один источник названий и цветов ролей для статистики, «Пути мастера»,
+// карточки сотрудника и ленты (раньше копии в четырёх местах, и в одной хостес звалась «СПГ»)
+export const ROLE_LABEL = Object.fromEntries(ROLES.map((r) => [r.id, r.label]));
+export const ROLE_COLOR = Object.fromEntries(ROLES.map((r) => [r.id, r.color]));
+export const roleLabel = (id) => ROLE_LABEL[id] || id || "";

@@ -139,7 +139,7 @@ describe("v50: главная в две колонки", () => {
   it("sa-home2: слева шапка дня, справа треки; заголовок треков — над правой колонкой", () => {
     expect(rs).toContain('<div style={T.screen} className={"sa-screen" + (wideCols ? " sa-home2" : "")}>');
     expect(rs).toContain('data-home2-title=""');
-    expect(rs).toMatch(/\{!wideCols \? \(\s+<div (ref=\{refTracks\} data-tracks-title="" )?style=\{\{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8/);   // v58: якорь «сменить»
+    expect(rs).toMatch(/\{!wideCols \? \(\s+(role \? \(\s+<button[^]*?\) : \(\s+)?<div (ref=\{refTracks\} data-tracks-title="" )?style=\{\{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8/);   // v58: якорь «сменить»; v59: с треком — кнопка-переключатель
     expect(css).toContain("html.sa-wide .sa-home2 { display: grid !important; grid-template-columns: minmax(310px, 440px) minmax(300px, 1fr);");
     expect(css).toContain("column-gap: clamp(20px, 2.5vw, 32px); align-items: start; }");
     expect(css).toContain("grid-template-rows: repeat(12, auto) 1fr;");

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase, rpcMissing } from "./api/supabase";
+import { rpc, saToken, rpcSync, flushQueue, rpcMissing } from "./api/supabase";   // v59: открытый ключ и прямой клиент таблиц приложению больше не нужны
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
 import { setCustomProgram } from "./data/modules";
@@ -21,6 +21,8 @@ import { nextStreak, dayOffFromSchedule, myShiftOn, shiftLabel, ymd } from "./li
 import { readActivity, bumpActivity, stepsOn, readGoal, saveGoal, weekSummary, ACTIVITY_EVENT } from "./lib/activity";
 import { nowMode, nowCardText, daysAway, dayDiff } from "./lib/now-card";   // v56 (Доп. 369): «что сейчас» на главной
 import { trackForPosition } from "./lib/position-track";   // v58 (Доп. 371): трек по должности
+import { themeAutoOn, setThemeAuto, systemLight, watchSystemTheme } from "./lib/theme";   // v59 (Доп. 372): тема как в системе
+import { UpdateToast } from "./ui/update-toast";   // v59 (Доп. 372)
 import { pushLearning, scheduleLearningPush, scheduleDayPush, cancelDayPush } from "./lib/learning-sync";
 import { warmupPool, pickWarmup, refreshPick } from "./lib/warmup";
 import { readFresh, saveFresh, syncFresh, touchFresh, fadedList, moduleDone, INTERVALS } from "./lib/freshness";
@@ -132,7 +134,7 @@ const WELCOME_AI_CARD = {
     </svg>
   ),
   title: "Наставник всегда рядом",
-  text: "Стеклянная кнопка в правом нижнем углу — AI-наставник. Он знает Справочник и меню твоего ресторана: спроси про жалобу гостя, состав блюда или аллергены — ответит как старший коллега и кнопкой отведёт в нужный раздел.",
+  text: "Стеклянная кнопка «AI» внизу справа (на компьютере — в меню слева) — наставник. Он знает Справочник и меню твоего ресторана: спроси про жалобу гостя, состав блюда или аллергены — ответит как старший коллега и кнопкой отведёт в нужный раздел.",
 };
 
 // Новые фичи большого обновления — карточки для всех
@@ -523,6 +525,9 @@ function ServiceAcademy() {
   const [roleAuto, setRoleAuto] = useState(false);
   const roleAutoRef = useRef(false); roleAutoRef.current = roleAuto;
   const [roleChecked, setRoleChecked] = useState(false);   // my_state ответил: выбранной раньше роли на сервере нет — или есть
+  // v59 (Доп. 372): «Сменить» из шапки трека — главная открывается с развёрнутым списком треков (иначе он свёрнут)
+  const [tracksWanted, setTracksWanted] = useState(false);
+  useEffect(() => { if (screen !== "roleSelect" && tracksWanted) setTracksWanted(false); }, [screen, tracksWanted]);
   const [activeModule, setActiveModule] = useState(null);
   const [activeLesson, setActiveLesson] = useState(null);
   const [refStart, setRefStart] = useState(null);
@@ -571,7 +576,12 @@ function ServiceAcademy() {
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
   const [practiceState, setPracticeState] = useState({ step: 0, choice: null, isAnswered: false, results: [], done: false, lives: 3, score: 0, combo: 0, situations: [], flash: null, usedIds: [] });
   const [gameKey, setGameKey] = useState(0);
-  const [a11y, setA11y] = useState(() => { try { return localStorage.getItem("sa_a11y") === "1"; } catch (e) { return false; } });
+  // v59 (Доп. 372): «Тема как в системе» — светлая тема телефона/Telegram включает «Для чтения» (lib/theme.js)
+  const [themeAuto, setThemeAutoState] = useState(() => themeAutoOn());
+  const [a11y, setA11yState] = useState(() => { try { return themeAutoOn() ? systemLight() : localStorage.getItem("sa_a11y") === "1"; } catch (e) { return false; } });
+  const setA11y = useCallback((v) => { setA11yState(v); setThemeAuto(false); setThemeAutoState(false); }, []);   // выбор руками снимает автоматику
+  const setAutoTheme = useCallback((on) => { setThemeAuto(on); setThemeAutoState(on); if (on) setA11yState(systemLight()); }, []);
+  useEffect(() => { if (!themeAuto) return undefined; return watchSystemTheme((light) => setA11yState(light)); }, [themeAuto]);
   const [streak, setStreak] = useState({ count: 0, best: 0, last: "", days: [] });
   const [mistakeBank, setMistakeBank] = useState([]); // #5/#6 — заваленные вопросы для повтора
   const [customLessons, setCustomLessons] = useState([]);
@@ -793,7 +803,11 @@ function ServiceAcademy() {
       try { const ukQ = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; if (ukQ) { const qd = await storageGet("sa_quiz_done" + ukQ); if (qd) { const obj = JSON.parse(qd.value); if (obj && typeof obj === "object" && !Array.isArray(obj)) setQuizDone(obj); } } } catch(e) {}
       try { const uk2 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const cr = await storageGet("sa_completed_roles"+uk2) || await storageGet("sa_completed_roles"); if (cr) setCompletedRoles(new Set(JSON.parse(cr.value))); } catch(e) {}
       try { const uk3 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const sc = await storageGet("sa_completed"+uk3) || await storageGet("sa_completed"); if (sc) setCompleted(JSON.parse(sc.value)); } catch(e) {}
-      try { const lr = await storageGet("sa_last_role"); if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
+      // v59 (Доп. 372): роль — личный ключ (sa_last_role<uk>), как уроки и ошибки: на общем планшете следующий человек
+      // не получал бы роль предыдущего. Старый общий ключ не читаем (мог быть чужим) — роль придёт с сервера (my_state)
+      // или подставится по должности; общий ключ подчищаем.
+      try { const ukR = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const lr = ukR ? await storageGet("sa_last_role" + ukR) : null; if (lr) setRole(JSON.parse(lr.value)); } catch(e) {}
+      try { localStorage.removeItem("sa_last_role"); } catch(e) {}
       try { const ps = await storageGet("sa_practice_stars"); if (ps) setPracticeStars(JSON.parse(ps.value)); } catch(e) {}
       try { const uk4 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const st = await storageGet("sa_streak"+uk4); if (st) setStreak(JSON.parse(st.value)); } catch(e) {}
       // Банк ошибок — персональный ключ. Раньше был общий "sa_mistakes":
@@ -813,20 +827,12 @@ function ServiceAcademy() {
   }, []);
 
   // Список сотрудников для «Управления данными» (этап 21): по токену и только руководителю —
-  // сети все, ресторана свои. Раньше список всей сети грузился у каждого по открытому ключу.
-  // Пока на сервере нет этапа 21 (функции нет) — читаем по-старому, ничего не пропадает.
+  // сети все, ресторана свои. v59 (Доп. 372): запасное чтение таблицы profiles открытым ключом убрано —
+  // этап 21 давно на сервере, а таблицы закрыты (21б); без функции список просто пуст.
   React.useEffect(() => {
     if (!profile) return;
-    const legacy = () => {
-      const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
-      fetch(`${SUPABASE_URL}/rest/v1/profiles?select=name,surname,restaurant,position,last_role`, { headers: h })
-        .then(r => r.json()).then(data => {
-          if (Array.isArray(data) && data.length > 0) setAllProfiles(data);
-        }).catch(() => {});
-    };
     rpc("team_profiles", { p_token: saToken() }).then(res => {
       if (res && res.ok && Array.isArray(res.rows)) { if (res.rows.length > 0) setAllProfiles(res.rows); }
-      else if (rpcMissing(res)) legacy();
     }).catch(() => {});
   }, [profile]);
 
@@ -866,8 +872,7 @@ function ServiceAcademy() {
       }
     };
     rpc("team_scores", { p_token: saToken() }).then(res => {
-      if (res && res.ok && Array.isArray(res.rows)) applyScores(res.rows);
-      else if (rpcMissing(res)) supabase.from("scores").select("*").then(({ data }) => applyScores(data)).catch(() => {});
+      if (res && res.ok && Array.isArray(res.rows)) applyScores(res.rows);   // v59: без запасного чтения таблицы scores открытым ключом
     }).catch(() => {});
   }, [profile]);
 
@@ -934,55 +939,8 @@ function ServiceAcademy() {
     }).catch(() => {});
   }, [profile]);
 
-  // Прогресс напрямую из таблиц — так приложение читало его до этапа 21. Нужно, только
-  // пока на сервере нет этапа 21: my_state старый (без звёзд и ролей) или его нет вовсе.
-  // После шага 21б таблицы закрыты, и сюда приложение уже не ходит.
-  const loadLegacyProgress = useCallback((prof, parts) => {
-    const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
-    const get = (path) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h }).then(r => r.json());
-    const uid = encodeURIComponent(prof.id);
-    const uk = `_${prof.name}_${prof.surname || ""}`;
-    if (parts.lessons) get(`progress?user_id=eq.${uid}`).then(data => {
-      if (!Array.isArray(data) || data.length === 0) return; // ошибка или пусто — не обнуляем
-      // id всех уроков всех ролей — из лёгкого индекса, ленивая загрузка ролей не влияет (Доп. 132)
-      const allValidIds = new Set(allLessonIds());
-      const merged = {};
-      data.forEach(row => { if (allValidIds.has(row.lesson_id)) merged[row.lesson_id] = true; });
-      setCompleted(merged);
-      try { localStorage.setItem("sa_completed" + uk, JSON.stringify(merged)); } catch (e) {}
-    }).catch(() => {});
-    if (parts.quiz) get(`quiz_done?user_id=eq.${uid}`).then(data => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const done = {};
-      data.forEach(row => { if (row.quiz_id) done[row.quiz_id] = true; });
-      setQuizDone(done);
-      try { localStorage.setItem("sa_quiz_done" + uk, JSON.stringify(done)); } catch (e) {}
-    }).catch(() => {});
-    if (parts.lastRole) get(`profiles?user_id=eq.${uid}&select=last_role`).then(data => {
-      if ((roleRef.current && !roleAutoRef.current) || !Array.isArray(data) || !data.length || !data[0].last_role) return;
-      const wasAuto = roleAutoRef.current;   // v58: трек по должности уступает выбранному раньше
-      setRole(data[0].last_role); setRoleAuto(false);
-      try { localStorage.setItem("sa_last_role", JSON.stringify(data[0].last_role)); } catch (e) {}
-      if (!wasAuto) setScreen("home");
-    }).catch(() => {});
-    if (parts.stars) get(`practice_stars?user_id=eq.${uid}`).then(data => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const starsObj = {};
-      data.forEach(row => { starsObj[row.lesson_id] = row.stars; });
-      const userKey = `${prof.name}|${prof.surname || ""}`;
-      setPracticeStars(prev => {
-        const updated = { ...prev, [userKey]: starsObj };
-        try { localStorage.setItem("sa_practice_stars", JSON.stringify(updated)); } catch (e) {}
-        return updated;
-      });
-    }).catch(() => {});
-    if (parts.roles) get(`completed_roles?user_id=eq.${uid}`).then(data => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const roles = new Set(data.map(row => row.role));
-      setCompletedRoles(roles);
-      try { localStorage.setItem("sa_completed_roles" + uk, JSON.stringify([...roles])); } catch (e) {}
-    }).catch(() => {});
-  }, []);
+  // v59 (Доп. 372): loadLegacyProgress (прогресс напрямую из таблиц открытым ключом, до этапа 21) удалён:
+  // этап 21 на сервере, таблицы закрыты (21б) — единственный источник прогресса теперь my_state.
 
   // Точный ответ сервера по токену (этап 20в, расширен в этапе 21): сданные тесты,
   // пройденные уроки, а теперь и звёзды практики, пройденные роли и последняя роль.
@@ -994,7 +952,6 @@ function ServiceAcademy() {
     const uk = `_${profile.name}_${profile.surname || ""}`;
     setRoleChecked(false);
     rpc("my_state", { p_token: saToken() }).then(res => {
-      if (rpcMissing(res)) { loadLegacyProgress(profile, { lessons: true, quiz: true, stars: true, roles: true, lastRole: true }); return; }
       if (!res || !res.ok || !Array.isArray(res.quiz) || !Array.isArray(res.lessons)) return;
       const done = {}; res.quiz.forEach(id => { if (id) done[id] = true; });
       const comp = {}; res.lessons.forEach(id => { if (id) comp[id] = true; });
@@ -1004,7 +961,7 @@ function ServiceAcademy() {
       // а на общем телефоне не достаются следующему сотруднику
       try { localStorage.setItem("sa_quiz_done" + uk, JSON.stringify(done)); } catch (e) {}
       try { localStorage.setItem("sa_completed" + uk, JSON.stringify(comp)); } catch (e) {}
-      if (res.stars === undefined) { loadLegacyProgress(profile, { stars: true, roles: true, lastRole: true }); return; }
+      if (res.stars === undefined) return;   // my_state без звёзд и ролей (до этапа 21) — дальше нечего читать
       if (res.stars && typeof res.stars === "object" && Object.keys(res.stars).length) {
         const userKey = `${profile.name}|${profile.surname || ""}`;
         setPracticeStars(prev => {
@@ -1023,11 +980,11 @@ function ServiceAcademy() {
         // без перехода: человек уже на главной, карточка трека просто сменится
         const wasAuto = roleAutoRef.current;
         setRole(res.last_role); setRoleAuto(false);
-        try { localStorage.setItem("sa_last_role", JSON.stringify(res.last_role)); } catch (e) {}
+        try { localStorage.setItem("sa_last_role" + uk, JSON.stringify(res.last_role)); } catch (e) {}
         if (!wasAuto) setScreen("home");
       }
     }).catch(() => {}).then(() => setRoleChecked(true));   // v58: сервер ответил (или нет) про роль — трек по должности можно запоминать
-  }, [profile, storageLoaded, loadLegacyProgress]);
+  }, [profile, storageLoaded]);
 
   // v58 (Доп. 371): трек по должности. Роль не выбрана ни на телефоне, ни (пока) на сервере — подставляем трек
   // должности из профиля: официанту «Новичок», хостес «Хостес», бармену «Бар». На главной под именем —
@@ -1046,9 +1003,9 @@ function ServiceAcademy() {
     if (!roleAuto || !role || !profile || !roleChecked) return;
     if (screen !== "home" && screen !== "module" && screen !== "lesson") return;
     setRoleAuto(false);
-    try { localStorage.setItem("sa_last_role", JSON.stringify(role)); } catch (e) {}
+    try { localStorage.setItem("sa_last_role" + ukP, JSON.stringify(role)); } catch (e) {}
     rpcSync("save_last_role", { p_token: saToken(), p_role: role });
-  }, [roleAuto, role, screen, profile, roleChecked]);
+  }, [roleAuto, role, screen, profile, roleChecked, ukP]);
 
   // Доп. 303: подпись в записках у стола — настоящий наставник ресторана (старший или
   // менеджер, по имени). Этап 22: my_mentors. Нет этапа или сети — «наставник», как было.
@@ -1564,7 +1521,7 @@ function ServiceAcademy() {
   }, []);
   const selectRole = useCallback((r) => {
     setRole(r); setRoleAuto(false);   // v58: выбран самим — уже не «по должности»
-    try { localStorage.setItem("sa_last_role", JSON.stringify(r)); } catch(e) {}
+    try { localStorage.setItem("sa_last_role" + (profile ? `_${profile.name}_${profile.surname || ""}` : ""), JSON.stringify(r)); } catch(e) {}
     // Сохраняем выбранную роль в Supabase
     if (profile) {
       rpcSync("save_last_role", { p_token: saToken(), p_role: r });
@@ -2703,7 +2660,7 @@ function ServiceAcademy() {
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
         {screen === "analytics" && <div className="sa-tabpad"><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
-        {screen === "profile" && <AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
+        {screen === "profile" && <AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} themeAuto={themeAuto} onThemeAuto={setAutoTheme} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
         {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
         {screen === "stats" && <div className="sa-tabpad"><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
@@ -2765,7 +2722,7 @@ function ServiceAcademy() {
               setQuizDone({});
               setCompletedRoles(new Set());
               setRole(null); setRoleAuto(false);
-              try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); localStorage.removeItem("sa_last_role"); } catch(e) {}
+              try { const uk = `_${name}_${surname||""}`; localStorage.removeItem("sa_completed"+uk); localStorage.removeItem("sa_completed_roles"+uk); localStorage.removeItem("sa_last_role" + uk); } catch(e) {}
               try { localStorage.removeItem("sa_quiz_done"); localStorage.removeItem("sa_quiz_done" + `_${name}_${surname||""}`); } catch(e) {}
               try { localStorage.removeItem("sa_scores"); } catch(e) {}
               try { localStorage.removeItem("sa_practice_stars"); } catch(e) {}
@@ -2819,7 +2776,7 @@ function ServiceAcademy() {
               style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 4px 9px", padding: "7px 11px", borderRadius: 12, fontSize: 12.5, cursor: "pointer",
                 color: a11y ? "#6B4E1A" : "#D9B87C", border: `1px solid ${a11y ? "rgba(139,106,48,0.32)" : "rgba(214,178,102,0.28)"}`, background: a11y ? "rgba(255,250,238,0.5)" : "rgba(214,178,102,0.06)" }}>
               <Candle s={16} lit /><span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
-          nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
+          nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
           warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
@@ -2843,7 +2800,7 @@ function ServiceAcademy() {
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
           hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} onOpen={() => navigate("schedule")} />
             {/* v30 (Доп. 314): квест смены и твоя часть */}
-            <Suspense fallback={null}><QuestCard a11y={a11y} tasks={questTasks} todayRec={activity[todayKey] || {}} tick={questTick} lead={isLead} shift={shiftText}
+            <Suspense fallback={null}><QuestCard a11y={a11y} tasks={questTasks} todayRec={activity[todayKey] || {}} tick={questTick} lead={isLead} shift={shiftText} off={!!(shiftToday && shiftToday.off)}
               data={briefStatus === "ok" ? (brief && brief.quest) || { ok: false } : briefStatus === "pending" ? null : undefined} onReload={() => refreshDay(true)}
               onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
           { key:"sch", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
@@ -2939,7 +2896,7 @@ function ServiceAcademy() {
         {/* Экран трека — когда модули роли приехали (правка 163): при первом входе с нового устройства и на медленной сети он открывался раньше и падал */}
         {/* Доп. 307: трек и раздел — один экран: меню темы, темы листаются свайпом. Раздел из чужой
             роли (открыт через Наставника) — прежним отдельным экраном ниже */}
-        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div className="sa-tabpad"><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => navigate("roleSelect")} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
+        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div className="sa-tabpad"><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => { setTracksWanted(true); navigate("roleSelect"); }} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
           focusId={activeModule ? activeModule.id : null} pagerOnly={screen === "module"} onPage={setActiveModule}
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
@@ -3035,6 +2992,7 @@ function ServiceAcademy() {
 
         {/* Плавающий AI-ассистент — главный вход во флагманскую фичу */}
         {/* v50: в широкой раскладке кнопка Наставника — в меню слева (NavRail), не над содержимым */}
+        {profile ? <UpdateToast a11y={a11y} /> : null}   {/* v59 (Доп. 372): «Готова новая версия · Обновить» вместо перезагрузки посреди работы */}
         {fabOn && (
           <AiFab a11y={a11y} screen={screen} onClick={() => navigate("assistant")} />
         )}

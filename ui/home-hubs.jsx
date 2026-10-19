@@ -5,6 +5,7 @@ import { ensureTableCss } from "./table-css";
 import { ymd } from "../lib/streak";
 import { EmptyState, useHintOnce, HintBubble } from "./widgets";
 import { LOGO_SRC_DARK } from "../assets/logo";
+import { WEEKDAY, MONTH_GEN } from "../lib/dates";
 import { onActivate, vibrate, isFemaleName } from "../lib/utils";
 import { ROLE_TITLE, masterKey } from "../lib/mastery";
 import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
@@ -142,8 +143,7 @@ export function SkeletonCard({ a11y, h = 74, style }) {
   return <div className="sa-skel" aria-hidden="true" style={{ height: h, borderRadius: 18, border: a11y ? "1px solid rgba(139,106,48,0.18)" : "1px solid rgba(255,255,255,0.07)", ...style }} />;
 }
 
-const DAYS = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const DAYS = WEEKDAY, MONTHS = MONTH_GEN;   // v59: один словарь дат (lib/dates.js)
 
 /** «Смена»: сегодняшняя смена из офлайн-сводки графика (sa_today_shift). */
 export function ShiftHero({ a11y, onOpen, shift = null }) {

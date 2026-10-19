@@ -149,7 +149,7 @@ function NowCard({ refEl, ctx, a11y, T, next, onNext, on, onMood, onReplyDone })
   );
 }
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false }) {
   const isAdmin = !!profile?.is_admin;
   // v56 (Доп. 369): ответ на «как прошла смена» — пока человек не решил, разбирать ли с Наставником
   const [moodReply, setMoodReply] = React.useState(null);
@@ -172,8 +172,17 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   const refTools = React.useRef(null);
   // v58 (Доп. 371): «сменить» у трека, подставленного по должности, — к списку треков ниже
   const refTracks = React.useRef(null);
-  const toTracks = () => { const el = refTracks.current; if (!el) return;
+  // v59 (Доп. 372): трек выбран — список треков на телефоне свёрнут в строку «Треки обучения · ещё N ›»: три
+  // большие карточки под главной были нужны только для выбора. На широком экране список — правая колонка, как был.
+  const [listOpen, setListOpen] = React.useState(!!tracksOpen);
+  React.useEffect(() => { if (tracksOpen) setListOpen(true); }, [tracksOpen]);
+  const showList = !role || wideCols || listOpen;
+  const scrollTracks = () => { const el = refTracks.current; if (!el) return;
     try { el.scrollIntoView({ behavior: calmMotion() ? "auto" : "smooth", block: "start" }); } catch (e) { el.scrollIntoView(); } };
+  // свёрнутый список сначала раскрывается (ниже появляется высота), и только потом заголовок едет к верху
+  const wantScroll = React.useRef(false);
+  const toTracks = () => { if (showList) { scrollTracks(); return; } wantScroll.current = true; setListOpen(true); };
+  React.useEffect(() => { if (listOpen && wantScroll.current) { wantScroll.current = false; const id = requestAnimationFrame(() => requestAnimationFrame(scrollTracks)); return () => cancelAnimationFrame(id); } return undefined; }, [listOpen]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (calmMotion()) return;                 // без движения — подписи статичны
     const t = setInterval(() => setToolSpot(v => v + 1), 4000);
@@ -698,9 +707,20 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
 
 
         {!wideCols ? (
-          <div ref={refTracks} data-tracks-title="" style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8, scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
-            <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
-          </div>
+          role ? (
+            <button type="button" ref={refTracks} data-tracks-title="" data-tracks-toggle={listOpen ? "open" : "closed"} aria-expanded={listOpen}
+              onClick={() => { vibrate("light"); setListOpen((v) => !v); }}
+              style={{ width:"100%", background:"none", border:"none", padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8, cursor:"pointer", textAlign:"left", scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
+              <div style={{ ...T.roleSubtitle }}>Треки обучения</div>
+              <div style={{ flex:1, height:1, background:"linear-gradient(to right, #D2A85A33, transparent)" }} />
+              <div style={{ fontFamily:"Georgia, serif", fontSize:12.5, color: T.modSub.color, whiteSpace:"nowrap" }}>{listOpen ? "Свернуть" : "ещё " + Math.max(0, ROLES.length - 1)}</div>
+              <span aria-hidden style={{ color: goldText(a11y), fontSize:16, lineHeight:1, transform: listOpen ? "rotate(90deg)" : "none", transition:"transform .2s" }}>›</span>
+            </button>
+          ) : (
+            <div ref={refTracks} data-tracks-title="" style={{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8, scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
+              <div style={{ ...T.roleSubtitle }}>Выбери свою роль</div>
+            </div>
+          )
         ) : null}
       </div>
 
@@ -710,7 +730,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           <div style={{ ...T.roleSubtitle }}>{role ? "Треки обучения" : "Выбери свою роль"}</div>
         </div>
       ) : null}
-      <div style={T.roleList} className="sa-stagger">
+      {showList ? (<>
+      <div style={T.roleList} className="sa-stagger" data-tracks-list="">
         {(() => {
           // Профессия = одна плитка. Ступени раскрываются на месте, без нового экрана.
           const listGap = (T.roleList && T.roleList.gap) || 8;
@@ -896,6 +917,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           «Сервис — это не обслуживание, а забота»
         </span>
       </div>
+      </>) : null}
 
       <div style={{ padding:"0 14px 20px", display:"flex", flexDirection:"column", gap:8 }}>
 

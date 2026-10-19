@@ -36,10 +36,10 @@ describe("v58: трек по должности (неудобство 3)", () =>
     expect(app).toContain("    if (roleRef.current && !roleAutoRef.current) return;\n    const t = trackForPosition(profile);");
     // сервер: last_role перекрывает подставленный трек без перехода на экран (человек уже на главной)
     expect(app).toContain("if (res.last_role && (!roleRef.current || roleAutoRef.current)) {");
-    expect(app).toContain("        setRole(res.last_role); setRoleAuto(false);\n        try { localStorage.setItem(\"sa_last_role\", JSON.stringify(res.last_role)); } catch (e) {}\n        if (!wasAuto) setScreen(\"home\");");
+    expect(app).toMatch(/        setRole\(res\.last_role\); setRoleAuto\(false\);\n        try \{ localStorage\.setItem\("sa_last_role"( \+ uk)?, JSON\.stringify\(res\.last_role\)\); \} catch \(e\) \{\}\n        if \(!wasAuto\) setScreen\("home"\);/);   // v59: ключ личный
     // принят: открыл программу или урок — сохраняем, но только после ответа сервера про роль (roleChecked)
     expect(app).toContain("    if (!roleAuto || !role || !profile || !roleChecked) return;\n    if (screen !== \"home\" && screen !== \"module\" && screen !== \"lesson\") return;");
-    expect(app).toContain('rpcSync("save_last_role", { p_token: saToken(), p_role: role });\n  }, [roleAuto, role, screen, profile, roleChecked]);');
+    expect(app).toMatch(/rpcSync\("save_last_role", \{ p_token: saToken\(\), p_role: role \}\);\n  \}, \[roleAuto, role, screen, profile, roleChecked(, ukP)?\]\);/);   // v59: ключ роли личный
     // выбрал сам / вышел / сброс — флаг снимается
     expect(app).toContain("setRole(r); setRoleAuto(false);");
     expect(app).toContain("setRole(null); setRoleAuto(false);\n    setScreen(\"login\");");
@@ -47,9 +47,9 @@ describe("v58: трек по должности (неудобство 3)", () =>
   });
   it("главная: «по должности · сменить» под ролью; «сменить» ведёт к списку треков", () => {
     const rs = rd("ui/screens-roleselect.jsx");
-    expect(rs).toContain("nowCard = null, nowOn = null, firstDay = false, roleAuto = false }) {");
+    expect(rs).toMatch(/nowCard = null, nowOn = null, firstDay = false, roleAuto = false(, tracksOpen = false)? \}\) \{/);
     expect(rs).toContain('по должности · <button type="button" data-role-change="" onClick={toTracks}');
-    expect(rs).toContain('<div ref={refTracks} data-tracks-title="" style={{ padding:"0 14px 8px"');
+    expect(rs).toMatch(/<(div|button type="button") ref=\{refTracks\} data-tracks-title=""/);
     expect(rs).toContain('<div ref={refTracks} data-home2-title="" data-tracks-title=""');
   });
 });
@@ -206,7 +206,7 @@ describe("v58: надписи «для разработчика» — по-че�
 
 describe("v58: метка и журнал", () => {
   it("метка сборки — v58; CHANGES — «Дополнение 371»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v58</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d+<\/span>/);
     expect(rd("CHANGES.md")).toContain("# Дополнение 371 — неудобства из аудита: приветствие, трек по должности, пустые экраны, мелкий текст, надписи «для разработчика» (v58)");
   });
 });

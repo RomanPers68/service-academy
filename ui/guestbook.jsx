@@ -214,7 +214,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
             <div style={{ ...T.modTitle, fontSize: 16 }}>{stats.rank.label}</div>
             <div style={{ ...T.modSub, marginTop: 2 }}>
               {stats.pages} стр. · {stats.seals} {stats.seals === 1 ? "печать" : stats.seals >= 2 && stats.seals <= 4 ? "печати" : "печатей"}
-              {stats.next ? ` · до «${stats.next.label}» — ${stats.next.min - stats.score}` : " · высшее звание"}
+              {stats.next ? ` · до «${stats.next.label}»\u00a0—\u00a0${stats.next.min - stats.score}`   /* v59: «— N» не рвётся на новую строку */ : " · высшее звание"}
             </div>
           </div>
           <div style={{ ...MONO, color: goldText(a11y), fontSize: 10.5, letterSpacing: 1, flexShrink: 0 }}>{stats.pages}/{stats.total}</div>

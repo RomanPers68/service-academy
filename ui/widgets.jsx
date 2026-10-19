@@ -54,11 +54,28 @@ export function EmptyState({ a11y, icon, title, hint, action, onAction }) {
  *  Пульсация — класс `.sa-pulse`, тот же, что в уроках; он уже погашен
  *  в системном «спокойном режиме», так что ничего добавлять не нужно.
  */
+// v59 (Доп. 372): подсказки — не чаще одной за 10 минут. Раньше новичок после четырёх карточек приветствия получал
+// подсказку на главной, потом свою на каждом новом экране подряд — лавина. Теперь очередная подсказка ждёт: экран,
+// чью подсказку отложили, покажет её в следующий заход (ключ «видел» не ставится). Та же подсказка в окне не считается.
+export const HINT_GAP_MS = 10 * 60 * 1000;
+const HINT_LAST = "sa_hint_last";
+export function hintBudgetFree(key, now = Date.now()) {
+  try {
+    const last = JSON.parse(localStorage.getItem(HINT_LAST) || "null");
+    if (!last || typeof last.t !== "number") return true;
+    return last.k === key || now - last.t >= HINT_GAP_MS;
+  } catch (e) { return true; }
+}
 export function useHintOnce(key, ready = true) {
   const [on, setOn] = React.useState(false);
   React.useEffect(() => {
     if (!ready) return;
-    try { if (localStorage.getItem("sa_hint_v" + HINTS_VERSION + "_" + key) !== "1") setOn(true); } catch (e) {}
+    try {
+      if (localStorage.getItem("sa_hint_v" + HINTS_VERSION + "_" + key) === "1") return;
+      if (!hintBudgetFree(key)) return;
+      localStorage.setItem(HINT_LAST, JSON.stringify({ k: key, t: Date.now() }));
+      setOn(true);
+    } catch (e) {}
   }, [key, ready]);
   const close = React.useCallback(() => {
     setOn(false);
@@ -93,7 +110,7 @@ export function resetHints() {
     const kill = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && (k.startsWith("sa_hint_") || k.startsWith("sa_welcome_seen"))) kill.push(k);
+      if (k && (k.startsWith("sa_hint_") || k.startsWith("sa_welcome_seen"))) kill.push(k);   // sa_hint_last (v59) — тоже: сброс снимает и паузу
     }
     kill.forEach(k => localStorage.removeItem(k));
     return kill.length;
@@ -456,7 +473,7 @@ export function LiquidSegment({
   const dragEndAt = React.useRef(0);          // v58: «только что выбрали указателем» — клик-хвост кнопки не нужен (флаг, а не время: часы могут стоять)
   const pickTimer = React.useRef(null);
   const acc = accent || (a11y ? "#6B4E1A" : GOLD);
-  const dim = muted || (a11y ? "#5C3D10" : "#7A654C");
+  const dim = muted || (a11y ? "#5C3D10" : "#A6926C");   // v59 (Доп. 372): неактивная вкладка-«линза» читаема (6,2:1; было 3,4:1 и прозрачность)
   const canDrag = !scroll; // в скролл-лентах горизонтальный жест — это прокрутка
 
   const measure = React.useCallback(() => {
@@ -596,7 +613,7 @@ export function LiquidSegment({
               padding:"8px 12px", borderRadius:999,
               fontFamily:"Georgia, serif", fontSize:12.5, fontWeight:"bold",
               color: active ? acc : dim,
-              opacity: active ? 1 : 0.75,
+              opacity: active ? 1 : 0.92,
               transform: active ? "scale(1.05)" : "scale(1)",
               transition:"color 0.3s ease, opacity 0.3s ease, transform 0.45s cubic-bezier(0.34,1.56,0.64,1)",
               ...itemStyle,

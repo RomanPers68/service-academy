@@ -111,13 +111,13 @@ describe("v57: звуки, вибрация, настройки", () => {
     expect(rd("ui/screens-gamification.jsx")).toContain("    sfx(\"done\");   // v57 (Доп. 370): тихий колокольчик");
   });
   it("«Аккаунт» → «Настройки»: «Для чтения», «Звуки», «Вибрация» — переключатели (role=switch)", () => {
-    expect(team).toContain("function AccountSettings({ T, a11y, onA11y }) {");
+    expect(team).toMatch(/function AccountSettings\(\{ T, a11y, onA11y(, themeAuto = false, onThemeAuto = null)? \}\) \{/);   // v59: + тема по системе
     expect(team).toContain("role=\"switch\" aria-checked={on}");
     expect(team).toContain("{row(\"theme\", \"Для чтения\",");
     expect(team).toContain("{row(\"sound\", \"Звуки\",");
     expect(team).toContain("{row(\"haptics\", \"Вибрация\",");
-    expect(team).toContain("<AccountSettings T={T} a11y={a11y} onA11y={onA11y} />");
-    expect(app).toContain("<AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y}");
+    expect(team).toMatch(/<AccountSettings T=\{T\} a11y=\{a11y\} onA11y=\{onA11y\}( themeAuto=\{themeAuto\} onThemeAuto=\{onThemeAuto\})? \/>/);
+    expect(app).toContain("<AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y}");   // v59: далее themeAuto
   });
 });
 

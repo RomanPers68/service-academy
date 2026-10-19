@@ -13,6 +13,7 @@ import { ROLES } from "../data/roles";
 import { ROLE_SKILLS } from "../data/skills";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
+import { positionLabel } from "../data/positions";
 
 // Допуски наставника — тот же ключ, что в ui/mentor.jsx
 const loadSkills = (profile) => {
@@ -29,7 +30,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
   const tcSteps = hintsFor("trainingCard");
   const skills = React.useMemo(() => loadSkills(profile), [profile]);
   const today = new Date().toLocaleDateString("ru-RU");
-  const posLabel = { waiter: "Официант", hostess: "Хостес", bartender: "Бармен", senior_bartender: "Старший бармен", manager: "Менеджер", senior: "Руководящий состав" }[profile?.position] || profile?.position || "";
+  const posLabel = positionLabel(profile?.position);   // v59: один словарь должностей
 
   // Прогресс по каждому треку
   const tracks = ROLES.map(r => {

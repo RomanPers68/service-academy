@@ -46,7 +46,7 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   const lensVisible = cellW > 0 && (dragX !== null || activeIdx >= 0);
 
   const accent = a11y ? "#6B4E1A" : GOLD;
-  const dim = a11y ? "#5C3D10" : "#7A654C";
+  const dim = a11y ? "#5C3D10" : "#A6926C";   // v59 (Доп. 372): неактивная вкладка читаема — контраст 6,2:1 (было #7A654C — 3,4:1)
   const spring = "cubic-bezier(0.3,1.3,0.45,1)";
 
   const evX = (e) => {
@@ -113,13 +113,13 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
                 transform: (pressed && lit) ? "scale(1.16)" : "scale(1)",
                 transition:`transform 0.3s ${spring}` }}>
                 <div style={{ height:24, display:"flex", alignItems:"center", justifyContent:"center",
-                  opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
+                  opacity: lit ? 1 : 0.8, transition:"opacity 0.25s ease" }}>
                   {NAV_ICONS[tab.icon](lit ? accent : dim)}
                 </div>
-                {/* v58 (Доп. 371): подписи вкладок 11 px (были 9 — мельче всего на экране) */}
+                {/* v58 (Доп. 371): подписи вкладок 11 px (были 9 — мельче всего на экране); v59: без прозрачности — иначе контраст падал до 2,3:1 */}
                 <div style={{ fontSize:11, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
                   whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
-                  color: lit ? accent : dim, opacity: lit ? 1 : 0.72,
+                  color: lit ? accent : dim, opacity: 1,
                   transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
               </div>
             </div>
@@ -178,7 +178,7 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact }) {
   const [aiNew, setAiNew] = useState(() => { try { return localStorage.getItem("sa_ai_fab") !== "1"; } catch (e) { return false; } });
   const ITEM = compact ? 54 : 62, PAD = 5, W = 68;
   const accent = a11y ? "#6B4E1A" : GOLD;
-  const dim = a11y ? "#5C3D10" : "#7A654C";
+  const dim = a11y ? "#5C3D10" : "#A6926C";   // v59 (Доп. 372): неактивная вкладка читаема — контраст 6,2:1 (было #7A654C — 3,4:1)
   const gold = a11y ? "#7A5D2A" : "#C8A96E";
   const spring = "cubic-bezier(0.3,1.3,0.45,1)";
   const ai = () => {
@@ -223,11 +223,11 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact }) {
               style={{ position:"relative", zIndex:2, height:ITEM, display:"flex", flexDirection:"column", alignItems:"center",
                 justifyContent:"center", gap: compact ? 2 : 3, cursor:"pointer", borderRadius:24 }}>
               <div style={{ height:24, display:"flex", alignItems:"center", justifyContent:"center",
-                opacity: lit ? 1 : 0.62, transition:"opacity 0.25s ease" }}>
+                opacity: lit ? 1 : 0.8, transition:"opacity 0.25s ease" }}>
                 {NAV_ICONS[tab.icon](lit ? accent : dim)}
               </div>
               <div style={{ fontSize:11, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold", whiteSpace:"nowrap",
-                color: lit ? accent : dim, opacity: lit ? 1 : 0.8, transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
+                color: lit ? accent : dim, opacity: 1, transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
             </div>
           );
         })}

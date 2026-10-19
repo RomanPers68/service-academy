@@ -4,13 +4,16 @@
 // публичный API остался в ui/screens.jsx — App.jsx не менялся.
 
 import { inkOf } from "../lib/tracks";
+import { dayLabel } from "../lib/dates";
+import { POSITION_LABEL, POS_LABELS } from "../data/positions";
+import { ROLE_LABEL, ROLE_COLOR } from "../data/roles";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { KEYS, BADGES, teamRecords, badgesFor, loadLocal } from "../lib/achievements";
 import React from "react";
 import { hintsFor } from "../data/hints";
 import { createPortal } from "react-dom";
 import { glass, Avatar, tones } from "./analytics-kit";
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcSync, flushQueue, rpcMissing } from "../api/supabase";
 import { MODULES, programOf, programAll } from "../data/modules";
 import { MODULES_INDEX } from "../data/modules-index";
 import { ROLES, RESTAURANTS } from "../data/roles";
@@ -330,8 +333,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   // v52: широкий экран — колонка до 900 px, сотрудники карточками в две колонки (1-е и 2-е место — рядом)
   const wide = useWide();
   useColumn(wide && !detailTab ? 900 : 0);
-  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
+  const roleLabel = ROLE_LABEL, roleColor = ROLE_COLOR;   // v59: названия и цвета ролей — data/roles.js
 
   const getAchievements = (player, allPlayers, allScores) => {
     const achievements = [];
@@ -649,10 +651,8 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   );
 }
 
-// v58 (Доп. 371): «Воскресенье, 18 октября» — дата в «Заданиях дня»
-const WEEKDAY_RU = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-const MONTH_GEN_RU = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
-export const dayLabelRu = (d) => WEEKDAY_RU[d.getDay()] + ", " + d.getDate() + " " + MONTH_GEN_RU[d.getMonth()];
+// v58 (Доп. 371): «Воскресенье, 18 октября» — дата в «Заданиях дня»; v59: словарь — общий (lib/dates.js)
+export const dayLabelRu = dayLabel;
 
 export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modules, onBack, onLesson, onReferenceLesson, mistakeTopics }) {
   const [dyHint, dyHintDone] = useHintOnce("daily");
@@ -817,27 +817,17 @@ export function PlayerDetailScreen({ player, T, onBack }) {
       setQuizDonePlayer(Array.isArray(qd) ? qd : []);
       setLoading(false);
     };
-    // Как было до этапа 21: напрямую из таблиц открытым ключом
-    const legacy = () => {
-      const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY };
-      Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/progress?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}`, { headers: h }).then(r => r.json()),
-        fetch(`${SUPABASE_URL}/rest/v1/scores?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}&order=updated_at.desc`, { headers: h }).then(r => r.json()),
-        fetch(`${SUPABASE_URL}/rest/v1/quiz_done?name=eq.${encodeURIComponent(player.name)}&surname=eq.${encodeURIComponent(player.surname||"")}`, { headers: h }).then(r => r.json()),
-      ]).then(([prog, sc, qd]) => put(prog, sc, qd)).catch(() => alive && setLoading(false));
-    };
+    // v59 (Доп. 372): запасное чтение таблиц progress/scores/quiz_done открытым ключом убрано (этап 21 на сервере)
     // Этап 21: карточку сотрудника отдаёт сервер по токену — руководителю сети любую,
     // руководителю ресторана — своих, сотруднику — только его собственную
     rpc("player_detail", { p_token: saToken(), p_name: player.name, p_surname: player.surname || "" }).then(res => {
       if (res && res.ok) put(res.progress, res.scores, res.quiz);
-      else if (rpcMissing(res)) legacy();
       else if (alive) setLoading(false);
     }).catch(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [player.name, player.surname]);
 
-  const roleNames = { seasonal: "Новичок", spg: "СПГ", core: "Ядро", manager: "Менеджер", service_manager: "Сервис-менеджер", bar: "Бар" };
-  const roleColors = { seasonal: "#7C9E87", spg: "#C8917A", core: GOLD, manager: "#8B7BAB", service_manager: "#5B8FA8", bar: GOLD };
+  const roleNames = ROLE_LABEL, roleColors = ROLE_COLOR;   // v59: из data/roles.js (здесь хостес звалась «СПГ»)
 
   // Группируем прогресс по ролям — уроки + практики (без квизов)
   const byRole = {};
@@ -1054,8 +1044,7 @@ function PlayersManager({ players, scores, T, a11y, onResetPlayer, onUnlockQuiz,
 }
 
 // Должности и склонение — для строки сотрудника (правка 182)
-const POSITION_RU = { waiter: "Официант", hostess: "Хостес", bartender: "Бармен", senior_bartender: "Старший бармен",
-  manager: "Менеджер", senior: "Руководитель", service_manager: "Сервис-менеджер", chef: "Повар", admin: "Руководитель" };
+const POSITION_RU = POSITION_LABEL;   // v59: один словарь должностей (data/positions.js)
 const kk = (n, one, few, many) => {
   const a = Math.abs(n) % 100, b = a % 10;
   return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many;
@@ -1236,15 +1225,14 @@ function PlayerSheet({ p, stat, T, a11y, onClose, onResetPlayer, onUnlockQuiz, o
 export function StatsScreen({ T, a11y, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee, onStart = null }) {
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const STAT_ROLES = ["spg", "bar", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
-  const roleLabel = { seasonal:"Новичок", core:"Ядро", spg:"Хостес", manager:"Менеджер", service_manager:"Сервис-менеджер", bar:"Бар" };
-  const roleColor = { seasonal:"#7C9E87", core:GOLD, spg:"#C8917A", manager:"#8B7BAB", service_manager:"#7B8FAB", bar:GOLD };
+  const roleLabel = ROLE_LABEL, roleColor = ROLE_COLOR;   // v59: названия и цвета ролей — data/roles.js
 
   const myScores = scores.filter(s => s.name === profile?.name && s.surname === profile?.surname);
   const totalTests = myScores.length;
   const avgScore = totalTests > 0 ? Math.round(myScores.reduce((s, x) => s + x.pct, 0) / totalTests) : 0;
   const perfect = myScores.filter(s => s.pct === 100).length;
   const myStars = Object.values(practiceStars[`${profile?.name}|${profile?.surname}`] || {}).reduce((a, b) => a + b, 0);
-  const rolesCompleted = ROLE_ORDER.filter(r => completedRoles.has(r)).length;
+  const rolesCompleted = STAT_ROLES.filter(r => completedRoles.has(r)).length;   // v59 (Доп. 372): считаем все шесть треков — хостес и бар тоже (было «из 4»)
 
   const completedLessons = Object.keys(completed || {}).length;
   // v58 (Доп. 371): ещё ничего не пройдено — вместо шести нулей подсказка, с чего начать, и кнопка к первому уроку
@@ -1314,7 +1302,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
             { label:"На 100%", value:perfect, icon:"diamond", color:"#8B7BAB" },
             { label:"Звёзды практики", value: myStars, icon:"star", color:"#E8A020" },
             { label:"Уроков пройдено", value:completedLessons, icon:"book", color:"#7B8FAB" },
-            { label:"Ролей завершено", value:`${rolesCompleted}/4`, icon:"gradcap", color: goldText(a11y) },
+            { label:"Ролей завершено", value:`${rolesCompleted}/${STAT_ROLES.length}`, icon:"gradcap", color: goldText(a11y) },
           ].map((s, i) => (
             <div key={i} ref={s.label === "Ролей завершено" ? stRefRoles : undefined} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon](s.color, 22) : s.icon}</div>
@@ -1596,4 +1584,4 @@ export function ProfileScreen({ onDone, T }) {
 
 export const APP_SHARE_URL = "https://t.me/SA_RestaurantBot";
 
-export const POS_LABELS = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав" };
+export { POS_LABELS };   // v59: должности — data/positions.js (имя экспорта прежнее, его берут «Команда» и App)

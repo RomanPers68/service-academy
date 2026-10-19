@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
 import { serverMissing, serverError } from "../lib/server-text";   // v58 (Доп. 371): сервер не ответил — по-человечески
+import { POS_LABELS } from "../data/positions";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES, MODULES_INDEX } from "../data/modules";
 import { cmsTitleMap } from "../lib/custom-modules";
@@ -513,7 +514,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
     : "официанты, хостес и бармены вашего ресторана";
   // Подписи должностей — те же, что POS_LABELS в screens-gamification.jsx (не импортирую,
   // чтобы не связывать файлы по кругу)
-  const POS = { waiter:"Официант", hostess:"Хостес", bartender:"Бармен", senior_bartender:"Старший бармен", manager:"Менеджер", senior:"Руководящий состав" };
+  const POS = POS_LABELS;   // v59: один словарь должностей (data/positions.js)
   const loopWho = React.useMemo(() => new Set(Array.isArray(retries) ? retries.map(r => (r.employee || "").trim()) : []), [retries]);
   const peopleList = React.useMemo(() => {
     if (!Array.isArray(people)) return [];

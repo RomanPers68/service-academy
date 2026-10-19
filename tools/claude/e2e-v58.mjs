@@ -464,7 +464,7 @@ const roleInfo = (p) => p.evaluate(() => {
   const line = document.querySelector("[data-role-line]"), auto = document.querySelector("[data-role-auto]"), tt = document.querySelector("[data-tracks-title]");
   const head = [...document.querySelectorAll("div")].find((d) => /^(Треки обучения|Выбери свою роль)$/.test((d.textContent || "").trim()) && d.children.length === 0);
   return { role: line ? line.innerText.replace(/\s+/g, " ").trim() : null, auto: auto ? auto.innerText.replace(/\s+/g, " ").trim() : null, head: head ? head.textContent.trim() : null,
-    ttTop: tt ? Math.round(tt.getBoundingClientRect().top) : null, lastRole: localStorage.getItem("sa_last_role"), screenText: document.body.innerText.replace(/\s+/g, " ").slice(0, 300) };
+    ttTop: tt ? Math.round(tt.getBoundingClientRect().top) : null, lastRole: localStorage.getItem("sa_last_role_Анна_Новикова") || localStorage.getItem("sa_last_role") /* v59: ключ личный */, screenText: document.body.innerText.replace(/\s+/g, " ").slice(0, 300) };
 });
 
 if (want("ROLE")) {
@@ -486,7 +486,7 @@ if (want("ROLE")) {
   await p.evaluate(() => { document.getElementById("root").scrollTop = 0; }); await sleep(300);
   await p.evaluate(() => { const el = [...document.querySelectorAll("div")].find((d) => d.children.length === 0 && d.textContent.trim() === "Начать" && d.closest("[data-home-logo]") === null); let c = el; while (c && !c.onclick && !c.getAttribute("tabindex")) c = c.parentElement; (c || el).click(); }); await sleep(1800);
   const saved = calls.filter((c) => c.fn === "save_last_role");
-  ok("ROLE: открыл урок — трек принят: save_last_role(seasonal) и sa_last_role на телефоне", saved.length >= 1 && saved.every((c) => c.body.p_role === "seasonal") && (await p.evaluate(() => localStorage.getItem("sa_last_role"))) === '"seasonal"', JSON.stringify(saved.map((c) => c.body)));
+  ok("ROLE: открыл урок — трек принят: save_last_role(seasonal) и sa_last_role на телефоне", saved.length >= 1 && saved.every((c) => c.body.p_role === "seasonal") && (await p.evaluate(() => localStorage.getItem("sa_last_role_Анна_Новикова") || localStorage.getItem("sa_last_role"))) === '"seasonal"', JSON.stringify(saved.map((c) => c.body)));
   await p.evaluate(() => window.__saNav("roleSelect")); await sleep(1200);
   r = await roleInfo(p);
   ok("ROLE: после принятия — просто роль, без «по должности»", r.role && /Новичок/.test(r.role) && !r.auto, JSON.stringify(r));

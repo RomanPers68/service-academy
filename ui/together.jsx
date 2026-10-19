@@ -186,7 +186,9 @@ export function questSegments(people = [], field, need, palette = PC_DARK) {
 // ── Квест смены ───────────────────────────────────────────────────────────────
 // data — ответ quest_today из сводки дня (этап 25): undefined — сводки нет, карточка грузит сама;
 // null — сводка ещё едет.
-export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = false, shift = "", data, onReload, onTask, onComplete }) {
+// v59 (Доп. 372): off — у человека сегодня выходной по графику: личные задания смены не показываем, а без ответа
+// сервера — не «квест не загрузился», а «сегодня выходной — отдыхай» (над карточкой и так стоит «Выходной ✦»)
+export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = false, shift = "", off = false, data, onReload, onTask, onComplete }) {
   ensureCss();
   const ext = data !== undefined;
   const [own, setOwn] = React.useState({ status: "loading" });
@@ -280,10 +282,12 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
   };
   const me = people.find((p) => p.me) || {};
   const noTg = notStarted.filter((p) => p.tg === false && !p.called);
+  const restDay = off && !(team && team.me_on);   // выходной: задания смены — не твои сегодня
+  const myTasks = restDay ? [] : tasks;
   return (
-    <div className={"sa-card sa-pagein tg-quest" + (open ? " open" : "")} style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 10px" }} data-quest="">
+    <div className={"sa-card sa-pagein tg-quest" + (open ? " open" : "")} style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 10px" }} data-quest="" data-quest-off={restDay ? "1" : undefined}>
       <div className="tg-qtop">
-        <div className="tg-tag">КВЕСТ {team && !team.known ? "ЗАВЕДЕНИЯ" : "СМЕНЫ"}{shift ? " · " + shift.toUpperCase() : ""}</div>
+        <div className="tg-tag">КВЕСТ {team && !team.known ? "ЗАВЕДЕНИЯ" : "СМЕНЫ"}{shift ? " · " + shift.toUpperCase() : restDay ? " · ВЫХОДНОЙ" : ""}</div>
         <button type="button" className="tg-more" aria-expanded={open} onClick={toggleOpen} data-quest-more="" aria-label={open ? "Свернуть квест" : "Подробнее: люди, спасибо, все задания"} title={open ? "Свернуть" : "Подробнее"}><span aria-hidden="true">▾</span></button>
       </div>
       {team ? (
@@ -330,12 +334,14 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
             </div>
           ) : null}
         </>
+      ) : restDay ? (
+        <><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены — в рабочий день. Отдыхай ✦</div></>
       ) : q.status === "loading" ? (
         <div className="tg-sub" style={{ marginTop: 6 }}>Смотрю, кто сегодня в смене…</div>
       ) : (
         <div className="tg-sub" style={{ marginTop: 6 }}>{q.status === "missing" ? (lead ? "Общий квест смены включится, когда владелец обновит сервер. Пока — личные задания." : "Твои задания на сегодня") : "Общий квест не загрузился — личные задания работают и так."}</div>
       )}
-      {tasks.length ? (
+      {myTasks.length ? (
         <>
           {allMine && !openTasks && !open ? (
             <button type="button" className="tg-who" aria-expanded={false} onClick={() => { setOpenTasks(true); setOpen(true); writeLS("sa_quest_open", "1"); }}>

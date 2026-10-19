@@ -24,13 +24,11 @@ import { palette } from "./day-emblems";
 import { ACCENT_SERIF } from "./styles";
 import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText } from "../lib/schedule-attn";
 import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон лёжа и компьютер
+import { WEEKDAY_MON_SHORT, WEEKDAY_MON, WEEKDAY_SHORT, MONTH_NOM, MONTH_GEN } from "../lib/dates";   // v59
 
 const mono = "ui-monospace, Menlo, monospace";
 const serif = "Georgia, serif";
-const DOWL = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
-const DOWF = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"];
-const MONTHS_N = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
-const MONTHS_R = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const DOWL = WEEKDAY_MON_SHORT, DOWF = WEEKDAY_MON, MONTHS_N = MONTH_NOM, MONTHS_R = MONTH_GEN;   // v59: один словарь дат (lib/dates.js)
 
 // Слияние сохранённых настроек с умолчаниями. Было поверхностным:
 // `{ ...DEFAULT_CONFIG, ...v.config }`. Любой объект внутри сохранённой
@@ -1806,7 +1804,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     x.fillText("S E R V I C E   A C A D E M Y", W / 2, 92);
     x.fillStyle = "#EFE4C8"; x.font = "54px Georgia, serif";
     x.fillText(me.name, W / 2, 172);
-    const dn = ["вс","пн","вт","ср","чт","пт","сб"];
+    const dn = WEEKDAY_SHORT;
     const p1 = days[0], p2 = days[days.length - 1];
     x.fillStyle = "#8A7A5C"; x.font = "30px ui-monospace, Menlo, monospace";
     x.fillText(p1 + "–" + p2 + " " + MONTHS_R[M].toLowerCase() + " · моя неделя", W / 2, 232);

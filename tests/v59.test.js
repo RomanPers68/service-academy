@@ -65,7 +65,7 @@ describe("v59: подсказки, треки, тема", () => {
     const w = rd("ui/widgets.jsx");
     expect(w).toContain("export function hintBudgetFree(key, now = Date.now()) {");
     expect(w).toContain("return last.k === key || now - last.t >= HINT_GAP_MS;");
-    expect(w).toContain("      if (!hintBudgetFree(key)) return;\n      localStorage.setItem(HINT_LAST, JSON.stringify({ k: key, t: Date.now() }));\n      setOn(true);");
+    expect(w).toMatch(/      if \((!chain && )?!hintBudgetFree\(key\)\) return;\n      localStorage\.setItem\(HINT_LAST, JSON\.stringify\(\{ k: key, t: Date\.now\(\) \}\)\);\n      setOn\(true\);/);   // v62: chain — продолжение тура без паузы
   });
   it("главная на телефоне: с треком список треков свёрнут в строку «Треки обучения · ещё N ›»; «сменить» раскрывает; с «Сменить» из трека — открыт сразу", () => {
     const rs = rd("ui/screens-roleselect.jsx");

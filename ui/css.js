@@ -322,6 +322,9 @@ export const injectStyles = () => {
     /* v31: кнопка ИИ-ассистента уезжает за край, пока листаешь вниз */
     .sa-fab { transition: transform .3s cubic-bezier(.3,1,.4,1), opacity .22s ease; }
     .sa-fab.hid { transform: translateX(84px); opacity: 0; pointer-events: none; }
+    /* v62 (Доп. 375): ряд треков под кнопкой — кнопка отходит к краю «ушком» (ui/tracks-row.jsx ставит класс), тап по ушку работает */
+    html.sa-fab-shy .sa-fab:not(.hid) { transform: translateX(42px); }
+    html.sa-fab-shy [data-tracks-title] { padding-right: 34px !important; }   /* «подробнее ›» не прячется под ушко */
     @media (prefers-reduced-motion: reduce) { .sa-fab { transition: opacity .15s linear; } .sa-fab.hid { transform: none; } }
 
     /* ══ График смен ══════════════════════════════════════════════

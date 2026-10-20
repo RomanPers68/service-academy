@@ -167,6 +167,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // не листались, пока не пролистаешь подсказку, — а рамка обводила размытый фон
   // под карточкой. hintsReady приходит из App: {!welcome}.
   const [homeHint, homeHintDone] = useHintOnce(hintKey("home", isBoss), !!role && hintsReady);
+  // v62 (Доп. 375): «Твоя роль. Тапни 😉» у своего кружка в ряду треков — сразу за туром главной (chain), один раз
+  const [orbHint, orbHintDone] = useHintOnce("track_orb", !!role && hintsReady && !homeHint && !wideCols, true);
   const [homeStep, setHomeStep] = React.useState(0);
   // Цели подсказки главного экрана: карточка трека и лента инструментов.
   const refTrack = React.useRef(null);
@@ -741,8 +743,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             трека уже раскрыта. Фишки v60 заменены этим рядом (владелец: «не заходит»). Полный список с описаниями —
             по строке «подробнее ›». */}
         {!wideCols && role && !listOpen ? (
-          <TracksRow T={T} a11y={a11y} role={role} unlocked={effectiveUnlocked} progressOf={progressOf} uk={profile ? `_${profile.name}_${profile.surname || ""}` : ""}
-            onSelect={onSelect} frame={saFrame(a11y, "mid")} />
+          <TracksRow T={T} a11y={a11y} role={role} unlocked={effectiveUnlocked} progressOf={progressOf}
+            onSelect={onSelect} onPick={orbHint ? orbHintDone : null} frame={saFrame(a11y, "mid")} />
+        ) : null}
+        {!wideCols && role && !listOpen && orbHint && hintsReady ? (
+          <HintBubble a11y={a11y} text={hintsFor("track_orb")[0]} arrow="up" anchorId={"sa-orb-" + role} onClose={orbHintDone} round passTap />
         ) : null}
       </div>
 

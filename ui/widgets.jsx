@@ -66,17 +66,19 @@ export function hintBudgetFree(key, now = Date.now()) {
     return last.k === key || now - last.t >= HINT_GAP_MS;
   } catch (e) { return true; }
 }
-export function useHintOnce(key, ready = true) {
+// v62: chain — подсказка идёт следом за только что закрытой (тур главной → «Твоя роль. Тапни»): пауза в 10 минут
+// между подсказками на неё не действует, иначе продолжение тура уехало бы в следующий заход
+export function useHintOnce(key, ready = true, chain = false) {
   const [on, setOn] = React.useState(false);
   React.useEffect(() => {
     if (!ready) return;
     try {
       if (localStorage.getItem("sa_hint_v" + HINTS_VERSION + "_" + key) === "1") return;
-      if (!hintBudgetFree(key)) return;
+      if (!chain && !hintBudgetFree(key)) return;
       localStorage.setItem(HINT_LAST, JSON.stringify({ k: key, t: Date.now() }));
       setOn(true);
     } catch (e) {}
-  }, [key, ready]);
+  }, [key, ready, chain]);
   const close = React.useCallback(() => {
     setOn(false);
     try { localStorage.setItem("sa_hint_v" + HINTS_VERSION + "_" + key, "1"); } catch (e) {}
@@ -118,7 +120,7 @@ export function resetHints() {
 }
 
 export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef, anchorId,
-                             step = 1, total = 1, onNext, onClose, style }) {
+                             step = 1, total = 1, onNext, onClose, style, round = false, passTap = false }) {   // v62: round — рамка-круг; passTap — тап по цели доходит до неё
   const txt  = a11y ? "#2A2113" : "#EFE4C8";
   // Крестик: было #6E5C3C / #9A865F — 4,4:1 и 3,7:1 (аудит подсказок 21.09).
   // Тот же цвет в EmptyState выше не трогаем — там он для текста, не для крестика.
@@ -327,13 +329,22 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   );
 
   return createPortal(
-    <div style={{ position:"fixed", inset:0, zIndex:4000 }}>
+    <div style={{ position:"fixed", inset:0, zIndex:4000, pointerEvents: passTap ? "none" : "auto" }}>
       {/* Притемнение всего, кроме цели. Дыра сделана огромной тенью вокруг
           рамки — так не нужны SVG-маски и это работает везде. */}
-      <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", inset:0 }} />
+      {passTap ? (
+        // v62: «Твоя роль. Тапни» — тап по самой цели должен сработать (а не только закрыть подсказку):
+        // ловушка тапов в четыре куска вокруг цели, над целью — дыра
+        <>
+          <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", pointerEvents:"auto", left:0, right:0, top:0, height: Math.max(0, box.top - 6) }} />
+          <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", pointerEvents:"auto", left:0, right:0, top: box.top + box.h + 6, bottom:0 }} />
+          <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", pointerEvents:"auto", left:0, width: Math.max(0, box.left - 6), top: box.top - 6, height: box.h + 12 }} />
+          <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", pointerEvents:"auto", left: box.left + box.w + 6, right:0, top: box.top - 6, height: box.h + 12 }} />
+        </>
+      ) : <div onClick={onClose} className="sa-fadein" style={{ position:"fixed", inset:0 }} />}
       <div style={{ position:"fixed", pointerEvents:"none",
         top: box.top - 6, left: box.left - 6, width: box.w + 12, height: box.h + 12,
-        borderRadius:16, border:`${a11y ? 2 : 1.5}px solid ${a11y ? "#7A5A18" : gold}`,
+        borderRadius: round ? "50%" : 16, border:`${a11y ? 2 : 1.5}px solid ${a11y ? "#7A5A18" : gold}`,
         boxShadow:`0 0 0 9999px ${a11y ? "rgba(46,34,12,0.58)" : "rgba(0,0,0,0.62)"}, 0 0 26px ${gold}${a11y ? "AA" : "66"}`,
         // Мягкое торможение в конце: цель «приезжает», а не дёргается.
         // Та же кривая, что у пузыря, — иначе они движутся вразнобой.
@@ -345,11 +356,11 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
           читается как полёт постороннего объекта — подсветке скользить
           уместно, она связывает старую цель с новой, а пузырю нет. */}
       {side ? (
-        <div key={step} className="sa-hintin" data-hint-side="" style={{ position:"fixed", width:W, left: box.left + box.w + 16, top: sTop }}>
+        <div key={step} className="sa-hintin" data-hint-side="" style={{ position:"fixed", pointerEvents:"auto", width:W, left: box.left + box.w + 16, top: sTop }}>
           {sideTail}{body}
         </div>
       ) : (
-      <div key={step} className="sa-hintin" style={{ position:"fixed", width:W, left,
+      <div key={step} className="sa-hintin" style={{ position:"fixed", pointerEvents:"auto", width:W, left,
         [below ? "top" : "bottom"]: below ? box.top + box.h + 14 : vh - box.top + 14 }}>
         {tail}{body}
       </div>

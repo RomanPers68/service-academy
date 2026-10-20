@@ -447,16 +447,16 @@ const fillEditor = async (p) => {
 
 // ════════════════════════════ v59 (Доп. 372): что заметил на обходе ════════════════════════════
 // ═══════════════════════════ v61 (Доп. 374): ряд треков под свёрнутым списком ═══════════════════════════
-// Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> node e2e-v61.mjs [ROW TAP FIRST MORE LIGHT WIDE]
+// Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> node e2e-v61.mjs [ROW TAP HINT MORE LIGHT WIDE FAB]
 const ANNA = { ...prof, id: "u-new", name: "Анна", surname: "Новикова", position: "waiter", is_admin: false };
 const RA9 = { ...prof, id: "u-own", name: "Роман", surname: "Смирнов", position: "manager", is_admin: true };
 const W = 393, H = 852;
-const MET = { "sa_tracks_met{uk}": "1" };   // не первый заход — ряд свёрнут
+const MET = {};   // v62: отметки первого захода больше нет (подсказка вместо раскрытой карточки)
 const rowState = (p) => p.evaluate(() => {
   const row = document.querySelector("[data-tracks-row]"); const r = row ? row.getBoundingClientRect() : null;
   const chips = [...document.querySelectorAll("[data-track-chip]")].map((b) => { const q = b.getBoundingClientRect(); return { id: b.getAttribute("data-track-chip"), l: Math.round(q.left), r: Math.round(q.right), w: Math.round(q.width), t: Math.round(q.top), locked: b.hasAttribute("data-track-locked") }; });
   const open = document.querySelector("[data-track-open]");
-  return { row: !!row, rowL: r ? Math.round(r.left) : null, rowR: r ? Math.round(r.right) : null, chips, open: open ? open.getAttribute("data-track-open") : null,
+  return { row: !!row, rowL: r ? Math.round(r.left) : null, rowR: r ? Math.round(r.right) - (Number(row.getAttribute("data-tracks-avoid")) || 0) : null, avoid: Number(row?.getAttribute("data-tracks-avoid")) || 0, chips, open: open ? open.getAttribute("data-track-open") : null,
     openText: open ? open.innerText.replace(/\s+/g, " ").trim() : "", pct: [...document.querySelectorAll("[data-track-pct]")].map((e) => e.innerText),
     toggle: document.querySelector("[data-tracks-toggle]")?.innerText.replace(/\s+/g, " "), list: !!document.querySelector("[data-tracks-list]"), quote: !!document.querySelector("[data-tracks-quote]") };
 });
@@ -466,10 +466,10 @@ if (want("ROW")) {
   const p = o.page; await sleep(1500); await dismissToasts(p);
   const s = await rowState(p);
   const ws = s.chips.map((c) => c.w);
-  ok("ROW: шесть узлов в ряд, одного размера, ровно по ширине (первый у левого края ряда, последний у правого), карточка не раскрыта",
+  ok("ROW: шесть узлов в ряд, одного размера, ровно по ширине ряда (первый у левого края, последний у правого; v62: правый край — до ушка кнопки AI, если она мешает), карточка не раскрыта",
     s.row && s.chips.length === 6 && !s.open && Math.max(...ws) - Math.min(...ws) <= 1 && Math.abs(s.chips[0].l - s.rowL) <= 1 && Math.abs(s.chips[5].r - s.rowR) <= 1 && new Set(s.chips.map((c) => c.t)).size === 1,
-    JSON.stringify({ n: s.chips.length, ws, l: [s.chips[0].l, s.rowL], r: [s.chips[5].r, s.rowR] }));
-  ok("ROW: узлы крупные — не меньше 50 px на телефоне 393", ws[0] >= 50, ws[0] + " px");
+    JSON.stringify({ n: s.chips.length, ws, l: [s.chips[0].l, s.rowL], r: [s.chips[5].r, s.rowR], avoid: s.avoid }));
+  ok("ROW: узлы крупные — не меньше 46 px на телефоне 393 (52 без ушка, 48 с ушком)", ws[0] >= 46 && (s.avoid ? ws[0] >= 46 : ws[0] >= 50), ws[0] + " px, ушко " + s.avoid);
   ok("ROW: у Анны-официанта три трека закрыты (Ядро, Менеджер, Сервис-менеджер) — с замком", s.chips.filter((c) => c.locked).map((c) => c.id).join(",") === "core,manager,service_manager", JSON.stringify(s.chips.filter((c) => c.locked).map((c) => c.id)));
   const rowText = await p.evaluate(() => document.querySelector("[data-tracks-row]").innerText);
   ok("ROW: плашка процента — только у начатых треков (Новичок 14 %), слова «сейчас» нет", s.pct.length === 1 && /14/.test(s.pct[0]) && !/сейчас/i.test(rowText), JSON.stringify(s.pct));
@@ -512,25 +512,36 @@ if (want("TAP")) {
   await o.ctx.close();
 }
 
-if (want("FIRST")) {
-  // первый заход со своим треком — карточка трека уже раскрыта; второй — свёрнута
-  const o = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
-  const p = o.page; await sleep(1500); await dismissToasts(p);
-  let s = await rowState(p);
-  const met = await p.evaluate(() => localStorage.getItem("sa_tracks_met_Анна_Новикова"));
-  ok("FIRST: первый заход — карточка своего трека «Новичок» уже раскрыта, пять узлов под ней; отметка sa_tracks_met<uk> поставлена", s.open === "seasonal" && s.chips.length === 5 && /Новичок/.test(s.openText) && met === "1", JSON.stringify({ open: s.open, n: s.chips.length, met }));
-  await shot(p, "row-first");
-  await p.reload({ waitUntil: "load" }); await sleep(1500); await dismissToasts(p);
-  s = await rowState(p);
-  ok("FIRST: второй заход — ряд свёрнут (не навязываемся)", !s.open && s.chips.length === 6, JSON.stringify({ open: s.open, n: s.chips.length }));
+if (want("HINT")) {
+  // v62: первый вход — не раскрытая карточка, а подсказка «Твоя роль. Тапни 😉» у своего кружка; тап по кружку
+  // сквозь подсказку открывает карточку и закрывает подсказку. Стенд помечает все подсказки v5 прочитанными —
+  // track_orb снимаем отдельно (бывалый пользователь после обновления).
+  const o = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal", sa_hint_v5_track_orb: "0" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  const p = o.page; await sleep(2200); await dismissToasts(p);
+  const hs = () => p.evaluate(() => ({ hint: document.body.innerText.includes("Твоя роль. Тапни"), key: localStorage.getItem("sa_hint_v5_track_orb"), open: document.querySelector("[data-track-open]")?.getAttribute("data-track-open") || null,
+    frameRound: (() => { const f = [...document.querySelectorAll("div")].find((d) => getComputedStyle(d).position === "fixed" && /9999px/.test(getComputedStyle(d).boxShadow)); return f ? getComputedStyle(f).borderRadius : null; })() }));
+  let s = await hs();
+  ok("HINT: бывалый после обновления — у своего кружка подсказка «Твоя роль. Тапни 😉», рамка круглая, карточка не раскрыта", s.hint && s.key !== "1" && !s.open && /50%/.test(s.frameRound || ""), JSON.stringify(s));
+  await shot(p, "hint-orb");
+  await p.locator('[data-track-chip="seasonal"]').click({ force: true }); await sleep(900);
+  s = await hs();
+  ok("HINT: тап по своему кружку сквозь подсказку — подсказка закрылась и запомнена, карточка трека открылась", !s.hint && s.key === "1" && s.open === "seasonal", JSON.stringify(s));
+  await p.reload({ waitUntil: "load" }); await sleep(2000); await dismissToasts(p);
+  s = await hs();
+  ok("HINT: следующий заход — подсказки нет, ряд свёрнут", !s.hint && !s.open, JSON.stringify(s));
   await o.ctx.close();
-  // по должности при первом входе: хостес → карточка «Хостес» раскрыта
+  // новая хостес (трек по должности): сначала тур главной, сразу за ним — подсказка на кружок «Хостес»
   const HOST = { ...prof, id: "u-host", name: "Лена", surname: "Иванова", position: "hostess", is_admin: false };
-  const h = await open({ profile: HOST, storage: { ...ROMAN44(), __role: null }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
-  await sleep(1800); await dismissToasts(h.page);
-  s = await rowState(h.page);
-  ok("FIRST: новая хостес (трек по должности) — при первом входе её встречает раскрытая карточка «Хостес»", s.open === "spg" && /Хостес/.test(s.openText), JSON.stringify({ open: s.open }));
-  await shot(h.page, "row-first-hostess");
+  const h = await open({ profile: HOST, storage: { __role: null }, fresh: true, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  await sleep(3000);
+  let steps = 0;
+  for (let i = 0; i < 8; i++) {
+    const nxt = h.page.locator("button", { hasText: /^(Дальше|Понятно|Начать|Готово)$/ }).first();
+    if (await nxt.count()) { const t = await nxt.innerText(); if (await h.page.evaluate(() => document.body.innerText.includes("Твоя роль. Тапни"))) break; await nxt.click(); steps++; await sleep(700); } else break;
+  }
+  const hh = await h.page.evaluate(() => ({ hint: document.body.innerText.includes("Твоя роль. Тапни"), orb: !!document.getElementById("sa-orb-spg"), open: document.querySelector("[data-track-open]")?.getAttribute("data-track-open") || null }));
+  ok("HINT: новая хостес — после тура главной подсказка стоит у кружка «Хостес» (трек по должности), карточка не навязана", hh.hint && hh.orb && !hh.open && steps >= 1, JSON.stringify({ ...hh, steps }));
+  await shot(h.page, "hint-fresh-hostess");
   await h.ctx.close();
 }
 
@@ -573,9 +584,40 @@ if (want("WIDE")) {
   const n = await open({ profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: 360, h: 780, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   await sleep(1500); await dismissToasts(n.page);
   const ns = await rowState(n.page);
-  ok("WIDE: узкий телефон 360 — шесть узлов в один ряд по ширине", ns.chips.length === 6 && new Set(ns.chips.map((c) => c.t)).size === 1 && Math.abs(ns.chips[5].r - ns.rowR) <= 1, JSON.stringify({ n: ns.chips.length, w: ns.chips[0].w }));
+  ok("WIDE: узкий телефон 360 — шесть узлов в один ряд по ширине (до ушка, если кнопка AI мешает)", ns.chips.length === 6 && new Set(ns.chips.map((c) => c.t)).size === 1 && Math.abs(ns.chips[5].r - ns.rowR) <= 1 && ns.chips[0].w >= 40, JSON.stringify({ n: ns.chips.length, w: ns.chips[0].w, avoid: ns.avoid }));
   await shot(n.page, "row-360");
   await n.ctx.close();
+}
+
+if (want("FAB")) {
+  // v62: кнопка AI ложилась на последний узел («AI закрывает бар») — теперь отходит к краю ушком, ряд чуть уже
+  const BAR = { ...prof, id: "u-bar", name: "Роман", surname: "", restaurant: "Два моря, Океан", position: "bartender", is_admin: true };
+  const o = await open({ profile: BAR, storage: { ...ROMAN44(), ...MET, __role: "bar" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  const p = o.page; await sleep(2200); await dismissToasts(p);
+  const st = () => p.evaluate(() => {
+    const fab = document.querySelector(".sa-fab .sa-pop")?.getBoundingClientRect(); const row = document.querySelector("[data-tracks-row]");
+    const chips = [...document.querySelectorAll("[data-track-chip]")].map((b) => b.getBoundingClientRect());
+    const hit = fab ? chips.filter((c) => c.left < fab.right && c.right > fab.left && c.top < fab.bottom && c.bottom > fab.top).length : 0;
+    const title = document.querySelector("[data-tracks-title]")?.getBoundingClientRect();
+    return { shy: document.documentElement.classList.contains("sa-fab-shy"), avoid: row?.getAttribute("data-tracks-avoid"), hit, fabLeft: fab ? Math.round(fab.left) : null, vw: innerWidth,
+      d: Math.round(chips[0]?.width || 0), titlePadR: title ? getComputedStyle(document.querySelector("[data-tracks-title]")).paddingRight : null, overlapRow: fab && row ? fab.top < row.getBoundingClientRect().bottom && fab.bottom > row.getBoundingClientRect().top : null };
+  });
+  let s = await st();
+  ok("FAB: на этом телефоне кнопка AI приходится на ряд — она отошла к краю ушком (html.sa-fab-shy), ни один узел не накрыт", s.overlapRow && s.shy && s.hit === 0 && s.fabLeft >= s.vw - 40 && Number(s.avoid) > 0, JSON.stringify(s));
+  ok("FAB: ряд уступил ровно под ушко — узлы почти того же размера (≥ 46 px), «подробнее ›» отодвинуто от края", s.d >= 46 && parseInt(s.titlePadR) >= 30, JSON.stringify({ d: s.d, pad: s.titlePadR }));
+  await shot(p, "fab-shy");
+  // ушко работает: тап открывает Наставника
+  await p.locator(".sa-fab .sa-pop").click({ position: { x: 6, y: 29 }, force: true }); await sleep(1400);
+  const aiText = await p.evaluate(() => document.body.innerText.slice(0, 400).replace(/\s+/g, " "));
+  const aiOpen = await p.evaluate(() => !document.querySelector("[data-tracks-row]"));
+  ok("FAB: тап по ушку открывает AI-наставника", aiOpen && /Наставник|наставник|AI/.test(aiText), aiText.slice(0, 80));
+  await o.ctx.close();
+  // низкий телефон: ряд ниже кнопки — ушка нет, ряд во всю ширину
+  const l = await open({ profile: BAR, storage: { ...ROMAN44(), ...MET, __role: "bar" }, w: 375, h: 667, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  await sleep(2200); await dismissToasts(l.page);
+  const ls = await l.page.evaluate(() => ({ shy: document.documentElement.classList.contains("sa-fab-shy"), avoid: document.querySelector("[data-tracks-row]")?.getAttribute("data-tracks-avoid") || null }));
+  ok("FAB: где кнопка не мешает — ушка нет и ряд во всю ширину", !ls.shy && !ls.avoid, JSON.stringify(ls));
+  await l.ctx.close();
 }
 
 console.log(results.join("\n"));

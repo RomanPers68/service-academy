@@ -2,23 +2,13 @@
 // трека на месте ряда, первый заход встречает раскрытой карточкой своего трека. Вид в браузере — tools/claude/e2e-v61.mjs.
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
-import { firstMeet, lockedHint, MET_KEY } from "../ui/tracks-row.jsx";
+import { lockedHint, SHY_PX } from "../ui/tracks-row.jsx";
+import { HINTS } from "../data/hints.js";
 
 const rd = (f) => readFileSync(f, "utf8");
 const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), _m: m }; };
 
-describe("v61: первый заход и подсказки закрытых", () => {
-  it("firstMeet: первый раз — «да» и отметка sa_tracks_met<uk>; дальше — «нет»; без ключа или памяти — «нет»", () => {
-    const st = mem();
-    expect(firstMeet("_Анна_Новикова", st)).toBe(true);
-    expect(st.getItem(MET_KEY + "_Анна_Новикова")).toBe("1");
-    expect(firstMeet("_Анна_Новикова", st)).toBe(false);
-    expect(firstMeet("_Лена_Иванова", st)).toBe(true);   // другой человек на том же телефоне — своя отметка
-    expect(firstMeet("", st)).toBe(false);
-    expect(firstMeet("_Анна_Новикова", null)).toBe(false);
-    const broken = { getItem: () => { throw new Error("quota"); }, setItem: () => {} };
-    expect(firstMeet("_x", broken)).toBe(false);
-  });
+describe("v61–v62: подсказки закрытых и первый заход", () => {
   it("lockedHint: ступени зала — «Пройди «предыдущая», чтобы открыть»; у первой ступени и остальных — «Откроется позже»", () => {
     expect(lockedHint("core")).toBe("Пройди «Новичок», чтобы открыть");
     expect(lockedHint("manager")).toBe("Пройди «Ядро», чтобы открыть");
@@ -40,7 +30,7 @@ describe("v61: ряд треков в коде", () => {
     expect(existsSync("ui/tracks-compact.jsx")).toBe(false);
   });
   it("узлы: шесть в ряд по ширине (размер от ширины ряда), плоское стекло без блика, кольцо прогресса, плашка «%» и замок — без слова «сейчас»", () => {
-    expect(row).toContain("const D = Math.max(40, Math.floor(((w || 365) - GAP * 5) / 6));");
+    expect(row).toContain("const D = Math.max(40, Math.floor(((w || 365) - avoid - GAP * 5) / 6));");
     expect(row).toContain("new ResizeObserver(upd)");
     expect(row).toContain('backdropFilter: "blur(10px)"');
     expect(row).not.toMatch(/radial-gradient\(circle at 3\d% 2\d%/);   // блика, делающего кружок выпуклым, нет
@@ -60,12 +50,34 @@ describe("v61: ряд треков в коде", () => {
     expect(row).toContain("el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: \"none\" }]");
     expect(row).toContain("card.animate(");
   });
-  it("первый заход: openId = свой трек, когда firstMeet(uk) впервые", () => {
-    expect(row).toContain("React.useState(() => (role && firstMeet(uk) ? role : null))");
-    expect(rs).toContain("uk={profile ? `_${profile.name}_${profile.surname || \"\"}` : \"\"}");
+  it("v62: первый заход — не раскрытая карточка, а подсказка «Твоя роль. Тапни 😉» у своего кружка, сразу за туром главной; тап сквозь подсказку", () => {
+    expect(HINTS.track_orb).toEqual(["Твоя роль. Тапни 😉"]);
+    expect(row).toContain("React.useState(null)");
+    expect(row).not.toContain("firstMeet");
+    expect(row).toContain('id={"sa-orb-" + x.r.id}');
+    expect(row).toContain("if (onPick) onPick(id);");
+    expect(rs).toContain('useHintOnce("track_orb", !!role && hintsReady && !homeHint && !wideCols, true)');
+    expect(rs).toContain('anchorId={"sa-orb-" + role} onClose={orbHintDone} round passTap');
+    expect(rs).toContain("onPick={orbHint ? orbHintDone : null}");
+    const w = rd("ui/widgets.jsx");
+    expect(w).toContain("export function useHintOnce(key, ready = true, chain = false)");
+    expect(w).toContain("if (!chain && !hintBudgetFree(key)) return;");
+    expect(w).toContain('borderRadius: round ? "50%" : 16');
+    expect(w).toContain('pointerEvents: passTap ? "none" : "auto"');
   });
-  it("метка сборки — v61; CHANGES — «Дополнение 374»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v61</span>");
+  it("v62: кнопка AI не закрывает ряд — уходит к краю ушком, ряд уступает ровно под ушко", () => {
+    expect(SHY_PX).toBe(42);
+    expect(row).toContain('html.classList.toggle("sa-fab-shy", hit)');
+    expect(row).toContain("setAvoid(hit ? Math.max(0, Math.ceil(r.right - (f.left + SHY_PX) + 6)) : 0)");
+    expect(row).toContain("const D = Math.max(40, Math.floor(((w || 365) - avoid - GAP * 5) / 6));");
+    expect(row).toContain('document.addEventListener("scroll", later, { capture: true, passive: true })');
+    const css = rd("ui/css.js");
+    expect(css).toContain("html.sa-fab-shy .sa-fab:not(.hid) { transform: translateX(42px); }");
+    expect(css).toContain("html.sa-fab-shy [data-tracks-title] { padding-right: 34px !important; }");
+  });
+  it("метка сборки; CHANGES — «Дополнение 374» и «Дополнение 375»", () => {
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);
     expect(rd("CHANGES.md")).toContain("# Дополнение 374");
+    expect(rd("CHANGES.md")).toContain("# Дополнение 375");
   });
 });

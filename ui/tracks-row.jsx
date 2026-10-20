@@ -11,8 +11,9 @@
 //   • тап по узлу — он вырастает в карточку трека (значок, название, кто это, описание, «›»), остальные узлы
 //     съезжают под неё (FLIP: двигаются со своих мест, не мигают); тап по карточке — в трек, «×» — свернуть,
 //     тап по другому узлу — меняет карточку; закрытый трек в карточке объясняет, что его откроет;
-//   • первый заход человека на главную со своим треком — карточка его трека уже раскрыта («намекая зайти»);
-//     отметка sa_tracks_met<uk> — больше не навязываемся.
+//   • первый заход (v62, владелец: «давай переосмыслим первый вход… подсказка на кружок роли, по типу «Твоя роль.
+//     Тапни😉»») — не раскрытая карточка, а подсказка-пузырь у своего кружка (screens-roleselect: HintBubble,
+//     ключ track_orb, сразу после тура главной); кружки имеют id sa-orb-<трек> — для привязки пузыря.
 // «Спокойный режим» телефона — без движения.
 import React from "react";
 import { ROLES } from "../data/roles";
@@ -22,20 +23,8 @@ import { vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 
 const ZAL = ["seasonal", "core", "manager", "service_manager"];   // ступени зала по порядку — для подсказки «что откроет»
-export const MET_KEY = "sa_tracks_met";
 const GAP = 10;
-
-// Первый ли это заход человека к ряду (чистая функция — для тестов): ставит отметку и говорит «да» один раз
-export function firstMeet(uk, storage) {
-  try {
-    const st = storage || (typeof localStorage !== "undefined" ? localStorage : null);
-    if (!st || !uk) return false;
-    const k = MET_KEY + uk;
-    if (st.getItem(k)) return false;
-    st.setItem(k, "1");
-    return true;
-  } catch (e) { return false; }
-}
+export const SHY_PX = 42;   // на сколько кнопка AI уходит к краю, когда мешает ряду (ui/css.js: html.sa-fab-shy)
 
 const roleIcon = (r, c, n) => (ROLE_SVG[r.id] ? ROLE_SVG[r.id](c, n) : r.icon);
 const lockIcon = (c, n) => ROLE_SVG.lock(c, n);
@@ -43,11 +32,11 @@ const prevOf = (id) => { const i = ZAL.indexOf(id); return i > 0 ? ROLES.find((r
 export const lockedHint = (id) => { const pr = prevOf(id); return pr ? `Пройди «${pr.label}», чтобы открыть` : "Откроется позже"; };
 const calm = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } };
 
-// T — стили темы (ui/styles.js), role — свой трек, unlocked — Set открытых, progressOf(id) → %, uk — личный ключ,
-// onSelect(id) — открыть трек, frame — цвет оправы (saFrame)
-export function TracksRow({ T, a11y, role, unlocked, progressOf, uk = "", onSelect, frame }) {
+// T — стили темы (ui/styles.js), role — свой трек, unlocked — Set открытых, progressOf(id) → %,
+// onSelect(id) — открыть трек, onPick(id) — тап по кружку (закрыть подсказку), frame — цвет оправы (saFrame)
+export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPick = null, frame }) {
   const items = ROLES.map((r) => { const open = unlocked.has(r.id); return { r, open, cur: r.id === role, pct: open ? progressOf(r.id) : 0 }; });
-  const [openId, setOpenId] = React.useState(() => (role && firstMeet(uk) ? role : null));
+  const [openId, setOpenId] = React.useState(null);
   const ex = openId ? items.find((x) => x.r.id === openId) : null;
   const rest = items.filter((x) => x.r.id !== openId);
 
@@ -62,7 +51,40 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, uk = "", onSele
     try { ro = new ResizeObserver(upd); ro.observe(el); } catch (e) { window.addEventListener("resize", upd); }
     return () => { if (ro) ro.disconnect(); else window.removeEventListener("resize", upd); };
   }, []);
-  const D = Math.max(40, Math.floor(((w || 365) - GAP * 5) / 6));
+  // Кнопка AI (внизу справа) на высоких телефонах ложится ровно на последний узел — владелец: «AI закрывает бар.
+  // Можем как-то сместить?». Когда её место пересекается с рядом, кнопка отходит к краю экрана «ушком» (html.sa-fab-shy,
+  // ui/css.js: видно 16 px, тап работает, при прокрутке возвращается), а ряд освобождает справа ровно под ушко —
+  // узлы почти того же размера. На остальных телефонах всё как было. Меряем в покое: при показе, после прокрутки,
+  // при повороте и когда карточки над рядом дорастают.
+  const [avoid, setAvoid] = React.useState(0);
+  const fabRest = React.useRef(null);   // положение кнопки в покое (спрятанная/ушедшая к краю — со сдвигом)
+  React.useLayoutEffect(() => {
+    const root = ref.current; if (!root) return undefined;
+    let t1 = 0, t2 = 0;
+    const html = document.documentElement;
+    const measure = () => {
+      const fab = document.querySelector(".sa-fab"); const pop = fab ? fab.querySelector(".sa-pop") : null;
+      if (!fab || !pop) { html.classList.remove("sa-fab-shy"); setAvoid(0); return; }
+      if (fab.getAttribute("data-fab") === "on") {
+        const q = pop.getBoundingClientRect(); const dx = html.classList.contains("sa-fab-shy") ? SHY_PX : 0;
+        fabRest.current = { left: q.left - dx, right: q.right - dx, top: q.top, bottom: q.bottom, width: q.width };
+      }
+      const f = fabRest.current; if (!f || !f.width) return;
+      const r = root.getBoundingClientRect();
+      const hit = f.top < r.bottom - 4 && f.bottom > r.top + 4 && f.left < r.right;
+      html.classList.toggle("sa-fab-shy", hit);
+      setAvoid(hit ? Math.max(0, Math.ceil(r.right - (f.left + SHY_PX) + 6)) : 0);
+    };
+    const later = () => { clearTimeout(t1); clearTimeout(t2); t1 = setTimeout(measure, 120); t2 = setTimeout(measure, 420); };
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener("resize", later);
+    document.addEventListener("scroll", later, { capture: true, passive: true });
+    // карточки над рядом дорастают позже (уроки роли, «что сейчас») — ряд съезжает; следим за высотой колонки
+    let ro = null;
+    try { ro = new ResizeObserver(later); const col = root.closest(".sa-col") || document.body; ro.observe(col); } catch (e) {}
+    return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); window.removeEventListener("resize", later); document.removeEventListener("scroll", later, { capture: true }); if (ro) ro.disconnect(); html.classList.remove("sa-fab-shy"); };
+  }, [openId]);
+  const D = Math.max(40, Math.floor(((w || 365) - avoid - GAP * 5) / 6));
 
   // Движение: тапнутый узел «вырастает» в карточку со своего места, остальные съезжают на новые места (FLIP)
   const before = React.useRef(null);
@@ -72,7 +94,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, uk = "", onSele
     root.querySelectorAll("[data-track-chip]").forEach((el) => { rects[el.getAttribute("data-track-chip")] = el.getBoundingClientRect(); });
     before.current = { rects, from: fromId ? rects[fromId] || null : null };
   };
-  const pick = (id) => { vibrate("light"); snap(id); setOpenId(id); };
+  const pick = (id) => { vibrate("light"); snap(id); setOpenId(id); if (onPick) onPick(id); };
   const close = () => { vibrate("light"); snap(null); setOpenId(null); };
   React.useLayoutEffect(() => {
     const b = before.current; before.current = null;
@@ -104,7 +126,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, uk = "", onSele
     const ic = x.open ? (a11y ? inkOf(x.r.color, true) : x.r.color) : "#8A8070";
     const badge = x.open && x.pct > 0 ? `${x.pct}%` : null;
     return (
-      <button key={x.r.id} type="button" data-track-chip={x.r.id} data-track-locked={x.open ? undefined : ""} title={x.r.label} className="sa-opt"
+      <button key={x.r.id} type="button" id={"sa-orb-" + x.r.id} data-track-chip={x.r.id} data-track-locked={x.open ? undefined : ""} title={x.r.label} className="sa-opt"
         aria-label={`Трек «${x.r.label}»${x.cur ? " — твой" : !x.open ? " — закрыт" : ""}`}
         onClick={() => pick(x.r.id)}
         style={{ ...btn, flex: `0 0 ${d}px`, width: d, height: d, display: "grid", placeItems: "center", WebkitTapHighlightColor: "transparent", position: "relative", zIndex: 1, alignSelf: "center" }}>
@@ -122,7 +144,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, uk = "", onSele
             backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
           <span style={{ position: "relative", display: "inline-flex", opacity: x.open ? 1 : 0.45 }}>{roleIcon(x.r, ic, Math.round(d * 0.42))}</span>
           {badge ? (
-            <span data-track-pct="" style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", fontFamily: "monospace", fontSize: a11y ? 10 : 9.5, letterSpacing: 1.1, whiteSpace: "nowrap",
+            <span data-track-pct="" style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", fontFamily: "monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1, whiteSpace: "nowrap",
               color: x.cur ? gold : ic, padding: "1px 6px", borderRadius: 999, background: pageBg, border: `1px solid ${x.cur ? gold : ic}66`, lineHeight: 1.3 }}>{badge}</span>
           ) : !x.open ? (
             <span aria-hidden style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", width: 18, height: 18, borderRadius: "50%", display: "grid", placeItems: "center",
@@ -169,8 +191,9 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, uk = "", onSele
   })() : null;
 
   return (
-    <div ref={ref} data-tracks-row="" data-tracks-open={openId || undefined}
-      style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", rowGap: 16, margin: "0 14px 6px", paddingBottom: 8 }}>
+    <div ref={ref} data-tracks-row="" data-tracks-open={openId || undefined} data-tracks-avoid={avoid || undefined}
+      style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", rowGap: 16, margin: "0 14px 6px", paddingBottom: 8,
+        paddingRight: avoid, boxSizing: "border-box", transition: "padding-right .25s ease" }}>
       {card}
       {rest.map(node)}
     </div>

@@ -566,6 +566,22 @@ if (want("TRACKS")) {
   const s3 = await w.page.evaluate(() => ({ toggle: !!document.querySelector("[data-tracks-toggle]"), list: !!document.querySelector("[data-tracks-list]"), head: /Выбери свою роль/.test(document.body.innerText) }));
   ok("TRACKS: без трека — «Выбери свою роль» и полный список, переключателя нет", !s3.toggle && s3.list && s3.head, JSON.stringify(s3));
   await w.ctx.close();
+  // v59.1: свёрнутый список — остальные треки фишками, девиз внизу; тап по открытому — в трек, по закрытому — список
+  const c = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  await sleep(1400); await dismissToasts(c.page);
+  const chips = () => c.page.evaluate(() => ({ chips: [...document.querySelectorAll("[data-track-chip]")].map((b) => b.getAttribute("data-track-chip")), locked: [...document.querySelectorAll("[data-track-locked]")].map((b) => b.getAttribute("data-track-chip")), quote: !!document.querySelector("[data-tracks-quote]"), list: !!document.querySelector("[data-tracks-list]"), toggle: document.querySelector("[data-tracks-toggle]")?.getAttribute("data-tracks-toggle") }));
+  let c1 = await chips();
+  ok("TRACKS: v59.1 — под строкой остальные 5 треков фишками (своего нет), закрытые с замком, девиз на месте", c1.chips.length === 5 && !c1.chips.includes("seasonal") && c1.locked.length >= 1 && c1.quote && !c1.list, JSON.stringify(c1));
+  await shot(c.page, "tracks-chips");
+  await c.page.locator("[data-track-locked]").first().click(); await sleep(900);
+  c1 = await chips();
+  ok("TRACKS: v59.1 — тап по закрытой фишке раскрывает список (фишки прячутся)", c1.list && c1.toggle === "open" && c1.chips.length === 0, JSON.stringify(c1));
+  await c.page.locator("[data-tracks-toggle]").click(); await sleep(700);
+  const openChip = (await chips()).chips.find((id) => id !== "seasonal" && !c1.locked.includes(id));
+  await c.page.locator(`[data-track-chip="${openChip}"]`).click(); await sleep(1400);
+  const t2 = await c.page.evaluate(() => ({ hub: !!document.querySelector("[data-tracks-title]"), head: document.body.innerText.slice(0, 160).replace(/\s+/g, " ") }));
+  ok("TRACKS: v59.1 — тап по открытой фишке «" + openChip + "» открывает этот трек", !t2.hub && new RegExp(openChip === "spg" ? "Хостес" : openChip === "bar" ? "Бар" : ".").test(t2.head), JSON.stringify(t2));
+  await c.ctx.close();
 }
 
 if (want("THEME")) {

@@ -203,6 +203,13 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
 
   // Добавляем разблокированные через прохождение
   const effectiveUnlocked = new Set([...baseUnlocked, ...completedRoles]);
+  const quote = (
+    <div data-tracks-quote="" style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D2A85A44" }}>
+      <span style={{ color:T.modSub.color, fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
+        «Сервис — это не обслуживание, а забота»
+      </span>
+    </div>
+  );
   return (
     // v50 (Доп. 363): широкий экран — две колонки (sa-home2, правила в ui/css.js): слева шапка дня, справа треки.
     // Телефон лёжа — логотип меньше, чтобы под ним сразу было видно день.
@@ -722,6 +729,30 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             </div>
           )
         ) : null}
+        {/* v59.1: свёрнутый список — не пустота под строкой, а остальные треки фишками: тап по открытому —
+            сразу в трек, по закрытому — раскрыть список (там написано, что его откроет). Владелец: «как-то стало
+            пустовато, как будто обрезали неудачно». Полный список с описаниями — по строке «ещё 5 ›». */}
+        {!wideCols && role && !listOpen ? (
+          <div data-tracks-chips="" style={{ padding:"0 16px 6px", display:"flex", flexWrap:"wrap", gap:8 }}>
+            {ROLES.filter((r) => r.id !== role).map((r) => {
+              const isUnlocked = effectiveUnlocked.has(r.id);
+              const go = () => { vibrate("light"); if (isUnlocked) onSelect(r.id); else { wantScroll.current = true; setListOpen(true); } };
+              return (
+                <button key={r.id} type="button" data-track-chip={r.id} data-track-locked={isUnlocked ? undefined : ""} onClick={go}
+                  aria-label={isUnlocked ? `Трек «${r.label}»` : `Трек «${r.label}» пока закрыт`}
+                  style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"4px 12px 4px 4px", borderRadius:999, cursor:"pointer", textAlign:"left",
+                    background: T.roleCard.background, border:`1px solid ${isUnlocked ? r.color + "55" : "rgba(255,255,255,0.08)"}`, opacity: isUnlocked ? 1 : 0.5,
+                    color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color, fontFamily:"Georgia, serif", fontSize: a11y ? 14 : 12.5, lineHeight:1.2 }}>
+                  <span aria-hidden style={{ width:26, height:26, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    background: isUnlocked ? r.color + "28" : "rgba(255,255,255,0.05)", filter: isUnlocked ? "none" : "grayscale(1)" }}>
+                    {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 15) : r.icon) : ROLE_SVG.lock("#8A8070", 13)}
+                  </span>
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       {/* v50: в две колонки заголовок треков — над правой колонкой */}
@@ -912,12 +943,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
         })}
       </div>
 
-      <div style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D2A85A44" }}>
-        <span style={{ color:T.modSub.color, fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
-          «Сервис — это не обслуживание, а забота»
-        </span>
-      </div>
-      </>) : null}
+      {quote}
+      </>) : (
+        // v59.1: свёрнутый список — строка-девиз остаётся внизу, экран не обрывается на пустом месте
+        quote
+      )}
 
       <div style={{ padding:"0 14px 20px", display:"flex", flexDirection:"column", gap:8 }}>
 

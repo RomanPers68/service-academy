@@ -318,6 +318,11 @@ export const injectStyles = () => {
       50%     { box-shadow: 0 0 0 7px rgba(212,168,90,.14), inset 0 0 26px rgba(255,240,205,.16), inset 0 1px 0 rgba(255,255,255,.2); }
     }
     .sa-hintglow { animation: saHintGlow 2.8s cubic-bezier(.4,0,.2,1) 3; }
+    /* v63 (Доп. 376): свой кружок в ряду треков «дышит» золотом, пока стоит ярлычок «Твоя роль. Тапни» */
+    @keyframes saOrbNudge { 0%,100% { box-shadow: 0 0 0 1.5px rgba(200,169,110,.95), 0 0 0 0 rgba(212,168,90,0), 0 0 16px rgba(200,169,110,.33); }
+      50% { box-shadow: 0 0 0 1.5px rgba(200,169,110,1), 0 0 0 8px rgba(212,168,90,.16), 0 0 26px rgba(200,169,110,.55); } }
+    .sa-orb-nudge { animation: saOrbNudge 2s ease-in-out infinite !important; }
+    @media (prefers-reduced-motion: reduce) { .sa-orb-nudge { animation: none !important; } }
     @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin, .sa-hintglow { animation:none; } }
     /* v31: кнопка ИИ-ассистента уезжает за край, пока листаешь вниз */
     .sa-fab { transition: transform .3s cubic-bezier(.3,1,.4,1), opacity .22s ease; }

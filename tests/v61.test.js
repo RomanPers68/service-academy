@@ -50,20 +50,29 @@ describe("v61: ряд треков в коде", () => {
     expect(row).toContain("el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: \"none\" }]");
     expect(row).toContain("card.animate(");
   });
-  it("v62: первый заход — не раскрытая карточка, а подсказка «Твоя роль. Тапни 😉» у своего кружка, сразу за туром главной; тап сквозь подсказку", () => {
+  it("v62–v63: первый заход — не раскрытая карточка, а ярлычок «Твоя роль. Тапни 😉» над своим кружком, сразу за туром главной", () => {
     expect(HINTS.track_orb).toEqual(["Твоя роль. Тапни 😉"]);
     expect(row).toContain("React.useState(null)");
     expect(row).not.toContain("firstMeet");
     expect(row).toContain('id={"sa-orb-" + x.r.id}');
     expect(row).toContain("if (onPick) onPick(id);");
+    // v63: ярлычок вместо системного пузыря — над кружком, с хвостиком, кружок дышит; тап по ярлычку = тап по кружку
+    expect(row).toContain('data-track-nudge="tag"');
+    expect(row).toContain("onClick={() => pick(role)}");
+    expect(row).toContain('className={nudgeOn && x.cur ? "sa-orb-nudge" : undefined}');
+    expect(row).toContain("paddingTop: nudgeOn ? LANE : 0");
+    expect(row).not.toContain("HintBubble");
     expect(rs).toContain('useHintOnce("track_orb", !!role && hintsReady && !homeHint && !wideCols, true)');
-    expect(rs).toContain('anchorId={"sa-orb-" + role} onClose={orbHintDone} round passTap');
+    expect(rs).toContain("nudge={orbHint && hintsReady}");
     expect(rs).toContain("onPick={orbHint ? orbHintDone : null}");
+    expect(rs).not.toContain('anchorId={"sa-orb-" + role}');
+    expect(rs).toContain('performance.now() - orbShownAt.current > 4000');   // ушёл с главной, не тапнув, — больше не навязываемся
     const w = rd("ui/widgets.jsx");
     expect(w).toContain("export function useHintOnce(key, ready = true, chain = false)");
     expect(w).toContain("if (!chain && !hintBudgetFree(key)) return;");
-    expect(w).toContain('borderRadius: round ? "50%" : 16');
-    expect(w).toContain('pointerEvents: passTap ? "none" : "auto"');
+    const css = rd("ui/css.js");
+    expect(css).toContain(".sa-orb-nudge { animation: saOrbNudge 2s ease-in-out infinite !important; }");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce) { .sa-orb-nudge { animation: none !important; } }");
   });
   it("v62: кнопка AI не закрывает ряд — уходит к краю ушком, ряд уступает ровно под ушко", () => {
     expect(SHY_PX).toBe(42);
@@ -75,9 +84,10 @@ describe("v61: ряд треков в коде", () => {
     expect(css).toContain("html.sa-fab-shy .sa-fab:not(.hid) { transform: translateX(42px); }");
     expect(css).toContain("html.sa-fab-shy [data-tracks-title] { padding-right: 34px !important; }");
   });
-  it("метка сборки; CHANGES — «Дополнение 374» и «Дополнение 375»", () => {
+  it("метка сборки; CHANGES — «Дополнение 374», «375», «376»", () => {
     expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);
     expect(rd("CHANGES.md")).toContain("# Дополнение 374");
     expect(rd("CHANGES.md")).toContain("# Дополнение 375");
+    expect(rd("CHANGES.md")).toContain("# Дополнение 376");
   });
 });

@@ -12,8 +12,8 @@
 //     съезжают под неё (FLIP: двигаются со своих мест, не мигают); тап по карточке — в трек, «×» — свернуть,
 //     тап по другому узлу — меняет карточку; закрытый трек в карточке объясняет, что его откроет;
 //   • первый заход (v62, владелец: «давай переосмыслим первый вход… подсказка на кружок роли, по типу «Твоя роль.
-//     Тапни😉»») — не раскрытая карточка, а подсказка-пузырь у своего кружка (screens-roleselect: HintBubble,
-//     ключ track_orb, сразу после тура главной); кружки имеют id sa-orb-<трек> — для привязки пузыря.
+//     Тапни😉»») — не раскрытая карточка, а подсказка у своего кружка (ключ track_orb, сразу после тура главной);
+//     v63 — ярлычок над кружком (nudge ниже); кружки имеют id sa-orb-<трек>.
 // «Спокойный режим» телефона — без движения.
 import React from "react";
 import { ROLES } from "../data/roles";
@@ -34,7 +34,7 @@ const calm = () => { try { return window.matchMedia("(prefers-reduced-motion: re
 
 // T — стили темы (ui/styles.js), role — свой трек, unlocked — Set открытых, progressOf(id) → %,
 // onSelect(id) — открыть трек, onPick(id) — тап по кружку (закрыть подсказку), frame — цвет оправы (saFrame)
-export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPick = null, frame }) {
+export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPick = null, frame, nudge = false }) {
   const items = ROLES.map((r) => { const open = unlocked.has(r.id); return { r, open, cur: r.id === role, pct: open ? progressOf(r.id) : 0 }; });
   const [openId, setOpenId] = React.useState(null);
   const ex = openId ? items.find((x) => x.r.id === openId) : null;
@@ -119,6 +119,16 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
 
   const gold = a11y ? "#7A5D2A" : GOLD;
   const pageBg = a11y ? "#F7F0E0" : "#1A1409";
+  // v63 (Доп. 376): подсказка «Твоя роль. Тапни 😉» — не системный пузырь с затемнением (v62), а лёгкий ярлычок над
+  // своим кружком с хвостиком к нему (владелец: «давай ярлычок»); ряд приспускается, чтобы ярлычок не лёг на строку
+  // «Треки обучения». Кружок при этом «дышит» золотым кольцом (css: sa-orb-nudge). Тап по ярлычку = тап по кружку.
+  const nudgeOn = nudge && !openId && !!role && rest.some((x) => x.cur);
+  const nudgeIdx = nudgeOn ? rest.findIndex((x) => x.cur) : -1;
+  const NW = 168, NH = 34, LANE = NH + 12;
+  const rowW = (w || 365) - avoid;
+  const slot = rest.length > 1 ? (rowW - D) / (rest.length - 1) : 0;   // шаг между центрами при space-between
+  const ncx = nudgeIdx >= 0 ? nudgeIdx * slot + D / 2 : 0;
+  const nleft = Math.max(0, Math.min(ncx - NW / 2, rowW - NW));
   const btn = { background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", textAlign: "left", cursor: "pointer" };
 
   const node = (x) => {
@@ -138,7 +148,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
               strokeDasharray={`${(CC * Math.min(100, x.pct)) / 100} ${CC}`} transform={`rotate(-90 ${d / 2} ${d / 2})`} /> : null}
           </svg>
           {/* плоское стекло без блика — как кнопка AI; у своего трека золотое кольцо-оправа */}
-          <span aria-hidden style={{ position: "absolute", inset: 5, borderRadius: "50%",
+          <span aria-hidden className={nudgeOn && x.cur ? "sa-orb-nudge" : undefined} style={{ position: "absolute", inset: 5, borderRadius: "50%",
             background: x.open ? `${ic}1F` : (a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.04)"),
             boxShadow: `inset 0 0 0 ${x.cur ? 1.5 : 1}px ${x.cur ? gold : x.open ? ic + "55" : frame}${x.cur ? `, 0 0 16px ${GOLD}55` : ""}`,
             backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
@@ -191,10 +201,24 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
   })() : null;
 
   return (
-    <div ref={ref} data-tracks-row="" data-tracks-open={openId || undefined} data-tracks-avoid={avoid || undefined}
-      style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", rowGap: 16, margin: "0 14px 6px", paddingBottom: 8,
-        paddingRight: avoid, boxSizing: "border-box", transition: "padding-right .25s ease" }}>
+    <div ref={ref} data-tracks-row="" data-tracks-open={openId || undefined} data-tracks-avoid={avoid || undefined} data-tracks-nudge={nudgeOn ? "tag" : undefined}
+      style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", rowGap: 16, margin: "0 14px 6px",
+        paddingBottom: 8, paddingTop: nudgeOn ? LANE : 0,
+        paddingRight: avoid, boxSizing: "border-box", transition: "padding-right .25s ease, padding-top .3s ease" }}>
       {card}
+      {nudgeOn ? (
+        <button type="button" data-track-nudge="tag" className="sa-hintin" onClick={() => pick(role)} aria-label="Твоя роль — открыть"
+          style={{ ...btn, position: "absolute", top: 0, left: nleft, width: NW, height: NH, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            background: a11y ? "rgba(246,238,220,0.98)" : "rgba(40,31,16,0.97)", border: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`,
+            boxShadow: a11y ? "0 6px 18px rgba(60,42,10,0.22), inset 0 1px 0 rgba(255,255,255,0.9)" : `0 8px 22px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 18px ${GOLD}22`,
+            color: a11y ? "#2A2113" : "#EFE4C8", fontFamily: "Georgia, serif", fontSize: 13, whiteSpace: "nowrap", zIndex: 3 }}>
+          <span style={{ color: gold, fontSize: 12 }}>✦</span>
+          <span>Твоя роль. <b style={{ color: gold, fontWeight: "bold" }}>Тапни</b> 😉</span>
+          {/* хвостик к кружку */}
+          <span aria-hidden style={{ position: "absolute", left: Math.max(10, Math.min(ncx - nleft - 6, NW - 22)), bottom: -6, width: 12, height: 12, transform: "rotate(45deg)",
+            background: a11y ? "rgba(246,238,220,0.98)" : "rgba(40,31,16,0.97)", borderRight: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`, borderBottom: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}` }} />
+        </button>
+      ) : null}
       {rest.map(node)}
     </div>
   );

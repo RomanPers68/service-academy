@@ -23,7 +23,7 @@ import { TracksRow } from "./tracks-row";   // v61 (Доп. 374): ряд тре�
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
-import { hintsFor, hintKey } from "../data/hints";
+import { hintsFor, hintKey, HINTS_VERSION } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette, MOOD_FACES } from "./mood-cards";
 import { moodTier, MOOD_REPLY } from "../lib/now-card";   // v56 (Доп. 369): «что сейчас»
@@ -167,8 +167,16 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // не листались, пока не пролистаешь подсказку, — а рамка обводила размытый фон
   // под карточкой. hintsReady приходит из App: {!welcome}.
   const [homeHint, homeHintDone] = useHintOnce(hintKey("home", isBoss), !!role && hintsReady);
-  // v62 (Доп. 375): «Твоя роль. Тапни 😉» у своего кружка в ряду треков — сразу за туром главной (chain), один раз
+  // v62 (Доп. 375): «Твоя роль. Тапни 😉» у своего кружка в ряду треков — сразу за туром главной (chain), один раз;
+  // v63 (Доп. 376): не системный пузырь, а ярлычок над кружком (ui/tracks-row.jsx: nudge)
   const [orbHint, orbHintDone] = useHintOnce("track_orb", !!role && hintsReady && !homeHint && !wideCols, true);
+  // ярлычок показан — и человек ушёл с главной (в урок, на другую вкладку): больше не навязываемся (постоял ≥ 4 с)
+  const orbShownAt = React.useRef(0);
+  React.useEffect(() => {
+    if (!orbHint) { orbShownAt.current = 0; return undefined; }
+    orbShownAt.current = performance.now();
+    return () => { if (orbShownAt.current && performance.now() - orbShownAt.current > 4000) { try { localStorage.setItem("sa_hint_v" + HINTS_VERSION + "_track_orb", "1"); } catch (e) {} } };
+  }, [orbHint]);
   const [homeStep, setHomeStep] = React.useState(0);
   // Цели подсказки главного экрана: карточка трека и лента инструментов.
   const refTrack = React.useRef(null);
@@ -744,10 +752,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             по строке «подробнее ›». */}
         {!wideCols && role && !listOpen ? (
           <TracksRow T={T} a11y={a11y} role={role} unlocked={effectiveUnlocked} progressOf={progressOf}
-            onSelect={onSelect} onPick={orbHint ? orbHintDone : null} frame={saFrame(a11y, "mid")} />
-        ) : null}
-        {!wideCols && role && !listOpen && orbHint && hintsReady ? (
-          <HintBubble a11y={a11y} text={hintsFor("track_orb")[0]} arrow="up" anchorId={"sa-orb-" + role} onClose={orbHintDone} round passTap />
+            onSelect={onSelect} onPick={orbHint ? orbHintDone : null} frame={saFrame(a11y, "mid")}
+            nudge={orbHint && hintsReady} />
         ) : null}
       </div>
 

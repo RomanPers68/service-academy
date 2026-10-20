@@ -513,34 +513,56 @@ if (want("TAP")) {
 }
 
 if (want("HINT")) {
-  // v62: первый вход — не раскрытая карточка, а подсказка «Твоя роль. Тапни 😉» у своего кружка; тап по кружку
-  // сквозь подсказку открывает карточку и закрывает подсказку. Стенд помечает все подсказки v5 прочитанными —
-  // track_orb снимаем отдельно (бывалый пользователь после обновления).
+  // v62: первый вход — подсказка у своего кружка; v63: не системный пузырь, а ярлычок над кружком с хвостиком,
+  // кружок «дышит» золотом; тап по ярлычку или кружку открывает карточку и убирает подсказку. Стенд помечает все
+  // подсказки v5 прочитанными — track_orb снимаем отдельно (бывалый пользователь после обновления).
   const o = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal", sa_hint_v5_track_orb: "0" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   const p = o.page; await sleep(2200); await dismissToasts(p);
-  const hs = () => p.evaluate(() => ({ hint: document.body.innerText.includes("Твоя роль. Тапни"), key: localStorage.getItem("sa_hint_v5_track_orb"), open: document.querySelector("[data-track-open]")?.getAttribute("data-track-open") || null,
-    frameRound: (() => { const f = [...document.querySelectorAll("div")].find((d) => getComputedStyle(d).position === "fixed" && /9999px/.test(getComputedStyle(d).boxShadow)); return f ? getComputedStyle(f).borderRadius : null; })() }));
+  const hs = () => p.evaluate(() => {
+    const tag = document.querySelector('[data-track-nudge="tag"]'); const t = tag ? tag.getBoundingClientRect() : null;
+    const title = document.querySelector("[data-tracks-title]")?.getBoundingClientRect(); const orb = document.getElementById("sa-orb-seasonal")?.getBoundingClientRect();
+    const disc = document.querySelector("#sa-orb-seasonal .sa-orb-nudge");
+    return { tag: !!tag, text: tag ? tag.innerText.replace(/\s+/g, " ") : "", key: localStorage.getItem("sa_hint_v5_track_orb"), open: document.querySelector("[data-track-open]")?.getAttribute("data-track-open") || null,
+      dim: !![...document.querySelectorAll("div")].find((d) => /9999px/.test(getComputedStyle(d).boxShadow)), breathe: !!disc,
+      clearOfTitle: t && title ? t.top >= title.bottom - 1 : null, aboveOrb: t && orb ? t.bottom <= orb.top + 2 : null, inRow: t ? t.left >= 0 && t.right <= innerWidth : null };
+  });
   let s = await hs();
-  ok("HINT: бывалый после обновления — у своего кружка подсказка «Твоя роль. Тапни 😉», рамка круглая, карточка не раскрыта", s.hint && s.key !== "1" && !s.open && /50%/.test(s.frameRound || ""), JSON.stringify(s));
-  await shot(p, "hint-orb");
-  await p.locator('[data-track-chip="seasonal"]').click({ force: true }); await sleep(900);
+  ok("HINT: бывалый после обновления — над своим кружком ярлычок «Твоя роль. Тапни 😉», без затемнения, кружок дышит, карточка не раскрыта", s.tag && /Твоя роль\. Тапни/.test(s.text) && !s.dim && s.breathe && !s.open && s.key !== "1", JSON.stringify(s));
+  ok("HINT: ярлычок стоит над кружком, не закрывает строку «Треки обучения» и не выходит за экран", s.clearOfTitle && s.aboveOrb && s.inRow, JSON.stringify({ c: s.clearOfTitle, a: s.aboveOrb, r: s.inRow }));
+  await shot(p, "hint-tag");
+  await p.locator('[data-track-nudge="tag"]').click(); await sleep(900);
   s = await hs();
-  ok("HINT: тап по своему кружку сквозь подсказку — подсказка закрылась и запомнена, карточка трека открылась", !s.hint && s.key === "1" && s.open === "seasonal", JSON.stringify(s));
+  ok("HINT: тап по ярлычку — подсказка ушла и запомнена, карточка трека открылась", !s.tag && s.key === "1" && s.open === "seasonal", JSON.stringify(s));
   await p.reload({ waitUntil: "load" }); await sleep(2000); await dismissToasts(p);
   s = await hs();
-  ok("HINT: следующий заход — подсказки нет, ряд свёрнут", !s.hint && !s.open, JSON.stringify(s));
+  ok("HINT: следующий заход — ярлычка нет, ряд свёрнут", !s.tag && !s.open, JSON.stringify(s));
   await o.ctx.close();
-  // новая хостес (трек по должности): сначала тур главной, сразу за ним — подсказка на кружок «Хостес»
+  // тап по самому кружку — тоже закрывает подсказку
+  const o2 = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal", sa_hint_v5_track_orb: "0" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  await sleep(2200); await dismissToasts(o2.page);
+  await o2.page.locator('[data-track-chip="seasonal"]').click(); await sleep(900);
+  const s2 = await o2.page.evaluate(() => ({ tag: !!document.querySelector('[data-track-nudge="tag"]'), open: document.querySelector("[data-track-open]")?.getAttribute("data-track-open") || null, key: localStorage.getItem("sa_hint_v5_track_orb") }));
+  ok("HINT: тап по кружку — то же: карточка открыта, подсказка запомнена", !s2.tag && s2.open === "seasonal" && s2.key === "1", JSON.stringify(s2));
+  await o2.ctx.close();
+  // ушёл с главной, не тапнув (ярлычок постоял ≥ 4 с) — больше не навязываемся
+  const o3 = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal", sa_hint_v5_track_orb: "0" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  await sleep(4600); await o3.page.evaluate(() => window.__saNav("shift")); await sleep(800);
+  const k3 = await o3.page.evaluate(() => localStorage.getItem("sa_hint_v5_track_orb"));
+  ok("HINT: ушёл с главной, не тапнув, — подсказка считается показанной", k3 === "1", String(k3));
+  await o3.ctx.close();
+  // новая хостес (трек по должности): сначала тур главной, сразу за ним — ярлычок у кружка «Хостес»
   const HOST = { ...prof, id: "u-host", name: "Лена", surname: "Иванова", position: "hostess", is_admin: false };
   const h = await open({ profile: HOST, storage: { __role: null }, fresh: true, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   await sleep(3000);
   let steps = 0;
   for (let i = 0; i < 8; i++) {
+    if (await h.page.evaluate(() => !!document.querySelector('[data-track-nudge="tag"]'))) break;
     const nxt = h.page.locator("button", { hasText: /^(Дальше|Понятно|Начать|Готово)$/ }).first();
-    if (await nxt.count()) { const t = await nxt.innerText(); if (await h.page.evaluate(() => document.body.innerText.includes("Твоя роль. Тапни"))) break; await nxt.click(); steps++; await sleep(700); } else break;
+    if (await nxt.count()) { await nxt.click(); steps++; await sleep(700); } else break;
   }
-  const hh = await h.page.evaluate(() => ({ hint: document.body.innerText.includes("Твоя роль. Тапни"), orb: !!document.getElementById("sa-orb-spg"), open: document.querySelector("[data-track-open]")?.getAttribute("data-track-open") || null }));
-  ok("HINT: новая хостес — после тура главной подсказка стоит у кружка «Хостес» (трек по должности), карточка не навязана", hh.hint && hh.orb && !hh.open && steps >= 1, JSON.stringify({ ...hh, steps }));
+  const hh = await h.page.evaluate(() => { const tag = document.querySelector('[data-track-nudge="tag"]'); const orb = document.getElementById("sa-orb-spg"); const t = tag?.getBoundingClientRect(), r = orb?.getBoundingClientRect();
+    return { tag: !!tag, orb: !!orb, open: document.querySelector("[data-track-open]")?.getAttribute("data-track-open") || null, overOrb: t && r ? Math.abs((t.left + t.width / 2) - (r.left + r.width / 2)) < 90 : null }; });
+  ok("HINT: новая хостес — после тура главной ярлычок стоит над кружком «Хостес» (трек по должности), карточка не навязана", hh.tag && hh.orb && !hh.open && hh.overOrb && steps >= 1, JSON.stringify({ ...hh, steps }));
   await shot(h.page, "hint-fresh-hostess");
   await h.ctx.close();
 }

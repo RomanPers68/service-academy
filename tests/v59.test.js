@@ -71,7 +71,7 @@ describe("v59: подсказки, треки, тема", () => {
     const rs = rd("ui/screens-roleselect.jsx");
     expect(rs).toContain("const showList = !role || wideCols || listOpen;");
     expect(rs).toContain('data-tracks-toggle={listOpen ? "open" : "closed"} aria-expanded={listOpen}');
-    expect(rs).toContain('{listOpen ? "Свернуть" : "ещё " + Math.max(0, ROLES.length - 1)}');
+    expect(rs).toMatch(/\{listOpen \? "Свернуть" : ("ещё " \+ Math\.max\(0, ROLES\.length - 1\)|"подробнее")\}/);   // v61: «подробнее» (ряд узлов показывает все треки)
     expect(rs).toContain('<div style={T.roleList} className="sa-stagger" data-tracks-list="">');
     expect(rs).toContain("const toTracks = () => { if (showList) { scrollTracks(); return; } wantScroll.current = true; setListOpen(true); };");
     const app = rd("App.jsx");

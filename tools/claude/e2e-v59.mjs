@@ -543,7 +543,7 @@ if (want("TRACKS")) {
   const p = o.page; await sleep(1400); await dismissToasts(p);
   const g = () => p.evaluate(() => { const t = document.querySelector("[data-tracks-toggle]"); return { toggle: t ? t.getAttribute("data-tracks-toggle") : null, label: t ? t.innerText.replace(/\s+/g, " ") : null, list: !!document.querySelector("[data-tracks-list]"), h: document.getElementById("root").scrollHeight }; });
   let s = await g();
-  ok("TRACKS: с треком список свёрнут — строка «Треки обучения · ещё 5», списка нет", s.toggle === "closed" && /Треки обучения/.test(s.label) && /ещё 5/.test(s.label) && !s.list, JSON.stringify(s));
+  ok("TRACKS: с треком список свёрнут — строка «Треки обучения · подробнее» (v61; в v59–v60 — «ещё 5»), списка нет", s.toggle === "closed" && /Треки обучения/.test(s.label) && /подробнее|ещё 5/.test(s.label) && !s.list, JSON.stringify(s));
   await shot(p, "tracks-closed");
   const h0 = s.h;
   await p.locator("[data-tracks-toggle]").click(); await sleep(700);
@@ -566,21 +566,13 @@ if (want("TRACKS")) {
   const s3 = await w.page.evaluate(() => ({ toggle: !!document.querySelector("[data-tracks-toggle]"), list: !!document.querySelector("[data-tracks-list]"), head: /Выбери свою роль/.test(document.body.innerText) }));
   ok("TRACKS: без трека — «Выбери свою роль» и полный список, переключателя нет", !s3.toggle && s3.list && s3.head, JSON.stringify(s3));
   await w.ctx.close();
-  // v59.1: свёрнутый список — остальные треки фишками, девиз внизу; тап по открытому — в трек, по закрытому — список
-  const c = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  // v60: фишки под строкой; v61 (Доп. 374): вместо них — ряд узлов по ширине экрана (подробно — e2e-v61.mjs).
+  // Здесь — только что место под строкой не пустое и девиз на месте.
+  const c = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal", "sa_tracks_met{uk}": "1" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   await sleep(1400); await dismissToasts(c.page);
-  const chips = () => c.page.evaluate(() => ({ chips: [...document.querySelectorAll("[data-track-chip]")].map((b) => b.getAttribute("data-track-chip")), locked: [...document.querySelectorAll("[data-track-locked]")].map((b) => b.getAttribute("data-track-chip")), quote: !!document.querySelector("[data-tracks-quote]"), list: !!document.querySelector("[data-tracks-list]"), toggle: document.querySelector("[data-tracks-toggle]")?.getAttribute("data-tracks-toggle") }));
-  let c1 = await chips();
-  ok("TRACKS: v59.1 — под строкой остальные 5 треков фишками (своего нет), закрытые с замком, девиз на месте", c1.chips.length === 5 && !c1.chips.includes("seasonal") && c1.locked.length >= 1 && c1.quote && !c1.list, JSON.stringify(c1));
-  await shot(c.page, "tracks-chips");
-  await c.page.locator("[data-track-locked]").first().click(); await sleep(900);
-  c1 = await chips();
-  ok("TRACKS: v59.1 — тап по закрытой фишке раскрывает список (фишки прячутся)", c1.list && c1.toggle === "open" && c1.chips.length === 0, JSON.stringify(c1));
-  await c.page.locator("[data-tracks-toggle]").click(); await sleep(700);
-  const openChip = (await chips()).chips.find((id) => id !== "seasonal" && !c1.locked.includes(id));
-  await c.page.locator(`[data-track-chip="${openChip}"]`).click(); await sleep(1400);
-  const t2 = await c.page.evaluate(() => ({ hub: !!document.querySelector("[data-tracks-title]"), head: document.body.innerText.slice(0, 160).replace(/\s+/g, " ") }));
-  ok("TRACKS: v59.1 — тап по открытой фишке «" + openChip + "» открывает этот трек", !t2.hub && new RegExp(openChip === "spg" ? "Хостес" : openChip === "bar" ? "Бар" : ".").test(t2.head), JSON.stringify(t2));
+  const c1 = await c.page.evaluate(() => ({ nodes: document.querySelectorAll("[data-track-chip]").length, row: !!document.querySelector("[data-tracks-row]"), quote: !!document.querySelector("[data-tracks-quote]"), list: !!document.querySelector("[data-tracks-list]") }));
+  ok("TRACKS: под свёрнутой строкой — ряд из шести треков и девиз (v61), списка нет", c1.row && c1.nodes === 6 && c1.quote && !c1.list, JSON.stringify(c1));
+  await shot(c.page, "tracks-row");
   await c.ctx.close();
 }
 

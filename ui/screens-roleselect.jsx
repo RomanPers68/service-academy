@@ -19,6 +19,7 @@ import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_IC
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { ScheduleTile } from "./schedule-tile";
+import { TracksRow } from "./tracks-row";   // v61 (Доп. 374): ряд треков под свёрнутым списком
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
@@ -203,6 +204,12 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
 
   // Добавляем разблокированные через прохождение
   const effectiveUnlocked = new Set([...baseUnlocked, ...completedRoles]);
+  const progressOf = (rid) => {
+    const mods = [...(MODULES[rid] || []), ...(customByRole[rid] || [])];
+    const all = mods.flatMap((m) => (m.lessons || []).filter((l) => l.type !== "result"));
+    if (!all.length) return 0;
+    return Math.round((all.filter((l) => (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length / all.length) * 100);
+  };
   const quote = (
     <div data-tracks-quote="" style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D2A85A44" }}>
       <span style={{ color:T.modSub.color, fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
@@ -720,7 +727,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               style={{ width:"100%", background:"none", border:"none", padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8, cursor:"pointer", textAlign:"left", scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
               <div style={{ ...T.roleSubtitle }}>Треки обучения</div>
               <div style={{ flex:1, height:1, background:"linear-gradient(to right, #D2A85A33, transparent)" }} />
-              <div style={{ fontFamily:"Georgia, serif", fontSize:12.5, color: T.modSub.color, whiteSpace:"nowrap" }}>{listOpen ? "Свернуть" : "ещё " + Math.max(0, ROLES.length - 1)}</div>
+              <div style={{ fontFamily:"Georgia, serif", fontSize:12.5, color: T.modSub.color, whiteSpace:"nowrap" }}>{listOpen ? "Свернуть" : "подробнее"}</div>
               <span aria-hidden style={{ color: goldText(a11y), fontSize:16, lineHeight:1, transform: listOpen ? "rotate(90deg)" : "none", transition:"transform .2s" }}>›</span>
             </button>
           ) : (
@@ -729,29 +736,13 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             </div>
           )
         ) : null}
-        {/* v59.1: свёрнутый список — не пустота под строкой, а остальные треки фишками: тап по открытому —
-            сразу в трек, по закрытому — раскрыть список (там написано, что его откроет). Владелец: «как-то стало
-            пустовато, как будто обрезали неудачно». Полный список с описаниями — по строке «ещё 5 ›». */}
+        {/* v61 (Доп. 374): свёрнутый список — ряд треков узлами по ширине экрана (ui/tracks-row.jsx): тап по узлу
+            раскрывает карточку трека на месте ряда, остальные узлы уходят под неё; первый заход — карточка своего
+            трека уже раскрыта. Фишки v60 заменены этим рядом (владелец: «не заходит»). Полный список с описаниями —
+            по строке «подробнее ›». */}
         {!wideCols && role && !listOpen ? (
-          <div data-tracks-chips="" style={{ padding:"0 16px 6px", display:"flex", flexWrap:"wrap", gap:8 }}>
-            {ROLES.filter((r) => r.id !== role).map((r) => {
-              const isUnlocked = effectiveUnlocked.has(r.id);
-              const go = () => { vibrate("light"); if (isUnlocked) onSelect(r.id); else { wantScroll.current = true; setListOpen(true); } };
-              return (
-                <button key={r.id} type="button" data-track-chip={r.id} data-track-locked={isUnlocked ? undefined : ""} onClick={go}
-                  aria-label={isUnlocked ? `Трек «${r.label}»` : `Трек «${r.label}» пока закрыт`}
-                  style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"4px 12px 4px 4px", borderRadius:999, cursor:"pointer", textAlign:"left",
-                    background: T.roleCard.background, border:`1px solid ${isUnlocked ? r.color + "55" : "rgba(255,255,255,0.08)"}`, opacity: isUnlocked ? 1 : 0.5,
-                    color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color, fontFamily:"Georgia, serif", fontSize: a11y ? 14 : 12.5, lineHeight:1.2 }}>
-                  <span aria-hidden style={{ width:26, height:26, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center",
-                    background: isUnlocked ? r.color + "28" : "rgba(255,255,255,0.05)", filter: isUnlocked ? "none" : "grayscale(1)" }}>
-                    {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 15) : r.icon) : ROLE_SVG.lock("#8A8070", 13)}
-                  </span>
-                  {r.label}
-                </button>
-              );
-            })}
-          </div>
+          <TracksRow T={T} a11y={a11y} role={role} unlocked={effectiveUnlocked} progressOf={progressOf} uk={profile ? `_${profile.name}_${profile.surname || ""}` : ""}
+            onSelect={onSelect} frame={saFrame(a11y, "mid")} />
         ) : null}
       </div>
 

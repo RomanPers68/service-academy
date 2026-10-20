@@ -418,7 +418,7 @@ const lay = (page) => page.evaluate(() => {
   const root = document.getElementById("root"), cl = document.documentElement.classList;
   const rail = document.querySelector("[data-nav-rail]"), bar = document.querySelector("#sa-tabbar:not([data-nav-rail])");
   return { wide: cl.contains("sa-wide"), short: cl.contains("sa-short"), desk: cl.contains("sa-desk"), railon: cl.contains("sa-railon"),
-    rail: r(rail), bar: r(bar), col: r(document.querySelector(".sa-col")), fab: !!document.querySelector("[data-fab]"), railAi: !!document.querySelector("[data-rail-ai]"),
+    rail: r(rail), bar: r(bar), col: r(document.querySelector(".sa-col")), fab: !!document.querySelector("[data-fab]"), railAi: !!document.querySelector("[data-rail-ai]"), tabAi: !!document.querySelector("#sa-tabbar [data-tab-ai]"),
     over: root ? root.scrollWidth - root.clientWidth : 0, iw: innerWidth, ih: innerHeight,
     active: (document.querySelector("[data-rail-tab][aria-current='page']") || { getAttribute: () => null }).getAttribute("data-rail-tab") };
 });
@@ -454,7 +454,8 @@ if (want("PORT")) for (const light of [false, true]) {
     await nav(p, s); const g = await lay(p);
     ok(`${tag} ${s}: портрет — без широкой раскладки, нижняя панель внизу, меню слева нет`, !g.wide && !g.rail && g.bar && g.bar.b > 852 - 80 && g.bar.w > 360, JSON.stringify(g.bar));
     // v55 (Доп. 368): поля браузера у body убраны и в портрете — колонка во всю ширину (0, 393); раньше 8 px и 377
-    ok(`${tag} ${s}: колонка — во всю ширину (v55: без полей body; до v55 — 8 px и 377 из 393) и плавающая кнопка Наставника`, g.col && ((g.col.l === 0 && g.col.w === 393) || (g.col.l === 8 && g.col.w === 377)) && g.fab && !g.railAi, JSON.stringify(g.col));
+    // v64 (Доп. 377): Наставник — кругом посередине нижнего меню; до v64 — плавающей кнопкой над ним
+    ok(`${tag} ${s}: колонка — во всю ширину (v55: без полей body; до v55 — 8 px и 377 из 393) и Наставник в нижнем меню (до v64 — плавающая кнопка)`, g.col && ((g.col.l === 0 && g.col.w === 393) || (g.col.l === 8 && g.col.w === 377)) && !g.fab && g.tabAi && !g.railAi, JSON.stringify({ col: g.col, fab: g.fab, tabAi: g.tabAi }));
   }
   await shot(p, "port-home" + (light ? "-light" : ""));
   ok(tag + ": без ошибок", !o.errors.length, o.errors.join(" | "));
@@ -467,7 +468,7 @@ if (want("LAND")) {
   let g = await lay(p);
   ok("LAND: телефон лёжа — sa-wide и sa-short, меню слева вместо нижней панели", g.wide && g.short && !g.desk && g.railon && g.rail && !g.bar, JSON.stringify({ rail: g.rail, bar: g.bar }));
   ok("LAND: меню целиком на экране, по центру высоты, у левого края", g.rail && g.rail.t >= 4 && g.rail.b <= 390 - 4 && g.rail.l === 12 && Math.abs((g.rail.t + g.rail.b) / 2 - 195) <= 2, JSON.stringify(g.rail));
-  ok("LAND: Наставник — кнопкой в меню, плавающей нет", g.railAi && !g.fab);
+  ok("LAND: Наставник — кнопкой в меню, плавающей нет", g.railAi && !g.fab && !g.tabAi);
   ok("LAND: колонка справа от меню с полем ≥ 12 px", g.col && g.col.l >= g.rail.r + 12 && g.col.r <= 844 - 11, JSON.stringify(g.col));
   const home = await p.evaluate(() => { const h2 = document.querySelector(".sa-home2"); const head = h2 && h2.children[0], title = document.querySelector("[data-home2-title]"), logo = document.querySelector("[data-home-logo]");
     const r = (el) => el ? el.getBoundingClientRect() : null; return { two: !!h2, headR: head ? Math.round(r(head).right) : 0, titleL: title ? Math.round(r(title).left) : 0, titleT: title ? Math.round(r(title).top) : 0, headT: head ? Math.round(r(head).top) : 0, logoW: logo ? Math.round(r(logo).width) : 0 }; });

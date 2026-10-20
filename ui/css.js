@@ -323,13 +323,17 @@ export const injectStyles = () => {
       50% { box-shadow: 0 0 0 1.5px rgba(200,169,110,1), 0 0 0 8px rgba(212,168,90,.16), 0 0 26px rgba(200,169,110,.55); } }
     .sa-orb-nudge { animation: saOrbNudge 2s ease-in-out infinite !important; }
     @media (prefers-reduced-motion: reduce) { .sa-orb-nudge { animation: none !important; } }
+    /* v64 (Доп. 377): содержимое панели трека проявляется (без растяжения), при смене трека — заново */
+    @keyframes saPanelIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .sa-panel-in { animation: saPanelIn .24s cubic-bezier(.2,.8,.2,1) .03s both; }
+    @keyframes saPanelOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-3px); } }
+    .sa-panel-out { animation: saPanelOut .12s ease-out both; }
+    @media (prefers-reduced-motion: reduce) { .sa-panel-in, .sa-panel-out { animation: none; } }
     @media (prefers-reduced-motion: reduce) { .sa-pagein, .sa-skel, .sa-pulse, .sa-fadein, .sa-pop, .sa-hintin, .sa-hintglow { animation:none; } }
     /* v31: кнопка ИИ-ассистента уезжает за край, пока листаешь вниз */
     .sa-fab { transition: transform .3s cubic-bezier(.3,1,.4,1), opacity .22s ease; }
     .sa-fab.hid { transform: translateX(84px); opacity: 0; pointer-events: none; }
-    /* v62 (Доп. 375): ряд треков под кнопкой — кнопка отходит к краю «ушком» (ui/tracks-row.jsx ставит класс), тап по ушку работает */
-    html.sa-fab-shy .sa-fab:not(.hid) { transform: translateX(42px); }
-    html.sa-fab-shy [data-tracks-title] { padding-right: 34px !important; }   /* «подробнее ›» не прячется под ушко */
+    /* v62: «ушко» кнопки AI над рядом треков — с v64 (Доп. 377) кнопка в нижнем меню, ушко не нужно */
     @media (prefers-reduced-motion: reduce) { .sa-fab { transition: opacity .15s linear; } .sa-fab.hid { transform: none; } }
 
     /* ══ График смен ══════════════════════════════════════════════

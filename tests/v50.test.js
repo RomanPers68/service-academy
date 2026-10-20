@@ -85,19 +85,22 @@ describe("v50: меню слева (NavRail)", () => {
     expect(low).toContain("height:54px");
     expect(low).not.toContain("data-rail-ai");
   });
-  it("App: шире 600 px — меню слева и Наставник в нём; в портрете — нижняя панель и плавающая кнопка, как было", () => {
+  it("App: шире 600 px — меню слева и Наставник в нём; в портрете — нижняя панель (v64: Наставник — круг посередине неё)", () => {
     expect(app).toContain('import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";');
     expect(app).toContain('const homeCols = screen === "roleSelect" && homeTwoCols(vp, railOn, vp.safe);');
     expect(app).toContain('const NAV_SCREENS = ["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"];');
     expect(app).toContain("? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate(\"assistant\")} />");
-    expect(app).toContain(": <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate(\"light\"); navigate(id); }} tabs={tabs} />;");
-    // v55 (Доп. 368): условие плавающей кнопки вынесено в fabOn — по нему же ставится запас снизу (sa-fabon)
-    expect(app).toContain("const fabOn = navOn && !vp.wide && !welcome && !mistakeHint;");
+    expect(app).toContain(": <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate(\"light\"); navigate(id); }} tabs={tabs}");
+    // v55 (Доп. 368): условие плавающей кнопки вынесено в fabOn — по нему же ставится запас снизу (sa-fabon).
+    // v64 (Доп. 377): Наставник — в нижнем меню (onAi), плавающая кнопка выключена; сама AiFab в коде осталась
+    expect(app).toContain('onAi={() => navigate("assistant")} aiMode="center" />;');
+    expect(app).toContain("const fabOn = false;");
     expect(app).toContain("{fabOn && (");
     expect(app).toContain('bottom: vp.wide ? 24 : 104');
   });
   it("подсказка главного: «Слева четыре вкладки», пузырь — справа от меню", () => {
-    expect(rd("ui/screens-roleselect.jsx")).toContain('text={wide && homeStep === 2 ? String(steps[homeStep] || "").replace(/^Внизу/, "Слева") : steps[homeStep]}');
+    // v64 (Доп. 377): в тексте теперь и круг «AI» «посередине» — на компьютере он «внизу меню» слева
+    expect(rd("ui/screens-roleselect.jsx")).toContain('text={wide && homeStep === 2 ? String(steps[homeStep] || "").replace(/^Внизу/, "Слева").replace("посередине", "внизу меню") : steps[homeStep]}');
     const w = rd("ui/widgets.jsx");
     expect(w).toContain("const side = box.h > box.w * 1.6 && box.left + box.w < vw * 0.3 && box.left + box.w + 16 + W + pad <= vw;");
     expect(w).toContain('data-hint-side=""');

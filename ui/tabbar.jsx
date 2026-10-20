@@ -9,12 +9,28 @@ import { vibrate, onActivate } from "../lib/utils";
 // Линзу можно тянуть пальцем — она следует за пальцем и с пружиной
 // прилипает к ближайшей вкладке. При нажатии вкладка под линзой плавно
 // увеличивается (без слоя-копии — ничего не двоится).
-export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
-  const n = tabs.length;
+// v64 (Доп. 377): кнопка Наставника (AI) — в панели. Владелец: «AI как-то не вписывается в новый дизайн… может в навбар?».
+//   aiMode "center" — круглая стеклянная кнопка посередине панели, между «Сменой» и «Командой» (вкладки — по две по бокам);
+//   aiMode "side"   — отдельная круглая кнопка справа от панели, тем же стеклом (как в новом iOS: поиск рядом с вкладками).
+export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode = "center" }) {
+  const n0 = tabs.length;
+  const aiIn = !!onAi && aiMode === "center";
+  const aiSide = !!onAi && aiMode === "side";
+  const AI_AT = Math.floor(n0 / 2);                       // ячейка кнопки AI среди видимых ячеек
+  const n = aiIn ? n0 + 1 : n0;                           // ячеек на панели
+  const visOf = (ti) => (aiIn && ti >= AI_AT ? ti + 1 : ti);        // вкладка → ячейка
+  const tabOf = (vi) => (!aiIn ? vi : vi === AI_AT ? -1 : vi > AI_AT ? vi - 1 : vi);   // ячейка → вкладка (-1 — AI)
   const activeIdx = tabs.findIndex(t => t.id === activeId);
   const lastIdxRef = useRef(activeIdx >= 0 ? activeIdx : 0);
   if (activeIdx >= 0) lastIdxRef.current = activeIdx;
   const restIdx = activeIdx >= 0 ? activeIdx : lastIdxRef.current;
+  // кольцо-«пульс» у Наставника, пока его ни разу не открывали — как было у плавающей кнопки и в меню слева
+  // (тот же ключ sa_ai_fab: кто уже нажимал прежнюю кнопку, пульса не увидит)
+  const [aiNew, setAiNew] = useState(() => { try { return localStorage.getItem("sa_ai_fab") !== "1"; } catch (e) { return false; } });
+  const ai = () => {
+    try { localStorage.setItem("sa_ai_fab", "1"); } catch (e) {}
+    setAiNew(false); vibrate("light"); onAi();
+  };
 
   const barRef = useRef(null);
   const [barW, setBarW] = useState(0);
@@ -38,12 +54,13 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
   const BAR_H = 58;
   const cellW = barW > 0 ? barW / n : 0;
   const lensW = cellW ? Math.max(44, cellW - 6) : 0; // компактнее ячейки
-  const rawC = dragX !== null ? dragX : (restIdx + 0.5) * cellW;
+  const rawC = dragX !== null ? dragX : (visOf(restIdx) + 0.5) * cellW;
   const cx = cellW ? Math.max(lensW / 2 + 4, Math.min(barW - lensW / 2 - 4, rawC)) : 0;
-  const litIdx = dragX !== null
+  const litVis = dragX !== null
     ? Math.max(0, Math.min(n - 1, Math.floor(dragX / cellW)))
-    : activeIdx; // -1 — ничего не подсвечено (экран вне вкладок)
-  const lensVisible = cellW > 0 && (dragX !== null || activeIdx >= 0);
+    : (activeIdx >= 0 ? visOf(activeIdx) : -1); // -1 — ничего не подсвечено (экран вне вкладок)
+  const litIdx = litVis >= 0 ? tabOf(litVis) : -1;
+  const lensVisible = cellW > 0 && (dragX !== null || activeIdx >= 0) && !(aiIn && dragX !== null && litVis === AI_AT);
 
   const accent = a11y ? "#6B4E1A" : GOLD;
   const dim = a11y ? "#5C3D10" : "#A6926C";   // v59 (Доп. 372): неактивная вкладка читаема — контраст 6,2:1 (было #7A654C — 3,4:1)
@@ -76,8 +93,10 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
     drag.current = null;
     setDragX(null);
     setPressed(false);
-    const i = Math.max(0, Math.min(n - 1, Math.floor(x / cellW)));
-    if (tabs[i]) onTab(tabs[i].id);
+    const vi = Math.max(0, Math.min(n - 1, Math.floor(x / cellW)));
+    const ti = tabOf(vi);
+    if (ti === -1) { ai(); return; }
+    if (tabs[ti]) onTab(tabs[ti].id);
   };
   const onCancel = () => { drag.current = null; setDragX(null); setPressed(false); };
 
@@ -86,13 +105,13 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
     // Передавать ссылку через три компонента ради одной подсветки — дороже,
     // чем найти элемент по имени.
     <div id="sa-tabbar" style={{ position:"fixed", left:10, right:10, zIndex:200,
-      bottom:"calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)" }}>
+      bottom:"calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)", ...(aiSide ? { display:"flex", alignItems:"center", gap:8 } : null) }}>
       {/* Разрешаем горизонтальный жест на баре: обходим глобальные touch-action и JS-блокировку свайпов */}
       <style>{`.sa-lensbar.sa-hscroll, .sa-lensbar.sa-hscroll * { touch-action: none !important; }`}</style>
       {/* Плавающий пилл */}
       <div ref={barRef} className="sa-lensbar sa-hscroll"
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
-        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch",
+        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch", ...(aiSide ? { flex:1, minWidth:0 } : null),
           background: a11y ? "rgba(255,252,244,0.22)" : "rgba(255,250,238,0.05)",
           backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
           border: a11y ? "1px solid rgba(139,106,48,0.32)" : "1px solid rgba(255,255,255,0.13)",
@@ -101,7 +120,17 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
             : "inset 0 0 24px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.12), 0 10px 30px rgba(0,0,0,0.55)",
 
           userSelect:"none", WebkitUserSelect:"none" }}>
-        {tabs.map((tab, i) => {
+        {Array.from({ length: n }, (_, vi) => {
+          const i = tabOf(vi);
+          if (i === -1) return (
+            // кнопка Наставника посередине панели: круглое стекло, как прежняя плавающая кнопка, — не вкладка
+            <div key="ai" data-tab-ai="" role="button" tabIndex={0} aria-label="AI-наставник"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ai(); } }}
+              style={{ flex:1, minWidth:0, height:"100%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", outline:"none", position:"relative", zIndex:3 }}>
+              <AiDisc a11y={a11y} size={46} pulse={aiNew} />
+            </div>
+          );
+          const tab = tabs[i];
           const lit = i === litIdx;
           return (
             <div key={tab.id} role="button" tabIndex={0} aria-label={tab.label}
@@ -159,7 +188,33 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y }) {
           </div>
         )}
       </div>
+      {aiSide ? (
+        <div data-tab-ai="" role="button" tabIndex={0} aria-label="AI-наставник" onClick={ai}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ai(); } }}
+          style={{ flexShrink:0, cursor:"pointer", outline:"none" }}>
+          <AiDisc a11y={a11y} size={BAR_H} glass pulse={aiNew} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+// Круглая кнопка Наставника — то же стекло, что у прежней плавающей кнопки AI (App.jsx AiFab): золотая кромка,
+// изморозь изнутри, значок «AI» в облачке. glass — своя подложка с размытием (кнопка стоит отдельно от панели);
+// pulse — золотое кольцо, пока Наставника ни разу не открывали.
+export function AiDisc({ a11y, size = 46, glass = false, pulse = false }) {
+  const gold = a11y ? "#7A5D2A" : "#C8A96E";
+  return (
+    <span data-ai-disc="" style={{ position:"relative", width:size, height:size, borderRadius:"50%", display:"grid", placeItems:"center", flexShrink:0,
+      background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.12)",
+      ...(glass ? { backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)" } : null),
+      boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.5)" : "rgba(214,178,102,0.45)"}, inset 0 0 18px ${a11y ? "rgba(255,255,255,0.45)" : "rgba(255,230,170,0.12)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)"}${glass ? `, 0 10px 30px rgba(0,0,0,${a11y ? 0.16 : 0.55})` : ""}` }}>
+      {pulse ? <span className="sa-pulse" data-ai-pulse="" style={{ position:"absolute", inset:-4, borderRadius:"50%", border:`1.5px solid ${gold}`, pointerEvents:"none" }} /> : null}
+      <svg width={Math.round(size * 0.48)} height={Math.round(size * 0.48)} viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z"/>
+        <text x="12" y="14.2" textAnchor="middle" fontSize="7.5" fontWeight="bold" fontFamily="Georgia, serif" letterSpacing="0.3" fill={gold} stroke="none">AI</text>
+      </svg>
+    </span>
   );
 }
 

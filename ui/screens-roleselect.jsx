@@ -604,7 +604,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
 
               const last = homeStep >= steps.length - 1;
               return (
-                <HintBubble a11y={a11y} text={wide && homeStep === 2 ? String(steps[homeStep] || "").replace(/^Внизу/, "Слева") : steps[homeStep]}
+                <HintBubble a11y={a11y} text={wide && homeStep === 2 ? String(steps[homeStep] || "").replace(/^Внизу/, "Слева").replace("посередине", "внизу меню") : steps[homeStep]}
                   arrow={homeStep === 0 ? "up" : "down"}
                   anchorRef={homeStep === 0 ? refTrack : homeStep === 1 ? refTools : null}
                   anchorId={homeStep === 2 ? "sa-tabbar" : null}

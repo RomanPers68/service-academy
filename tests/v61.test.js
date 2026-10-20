@@ -2,7 +2,7 @@
 // трека на месте ряда, первый заход встречает раскрытой карточкой своего трека. Вид в браузере — tools/claude/e2e-v61.mjs.
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
-import { lockedHint, SHY_PX } from "../ui/tracks-row.jsx";
+import { lockedHint } from "../ui/tracks-row.jsx";
 import { HINTS } from "../data/hints.js";
 
 const rd = (f) => readFileSync(f, "utf8");
@@ -30,7 +30,7 @@ describe("v61: ряд треков в коде", () => {
     expect(existsSync("ui/tracks-compact.jsx")).toBe(false);
   });
   it("узлы: шесть в ряд по ширине (размер от ширины ряда), плоское стекло без блика, кольцо прогресса, плашка «%» и замок — без слова «сейчас»", () => {
-    expect(row).toContain("const D = Math.max(40, Math.floor(((w || 365) - avoid - GAP * 5) / 6));");
+    expect(row).toContain("const D = Math.max(40, Math.floor((rowW - GAP * 5) / 6));");   // v64: без «ушка» AI — вся ширина ряду
     expect(row).toContain("new ResizeObserver(upd)");
     expect(row).toContain('backdropFilter: "blur(10px)"');
     expect(row).not.toMatch(/radial-gradient\(circle at 3\d% 2\d%/);   // блика, делающего кружок выпуклым, нет
@@ -39,16 +39,17 @@ describe("v61: ряд треков в коде", () => {
     expect(row).not.toMatch(/"СЕЙЧАС"|«сейчас»\s*<\/span>/);
     expect(row).toContain('data-track-locked={x.open ? undefined : ""}');
   });
-  it("тап: карточка трека на месте ряда (order: -1, во всю ширину), «×», тап по карточке — в трек; закрытый — без перехода", () => {
-    expect(row).toContain('flex: "0 0 100%", order: -1');
+  it("тап: «×», тап по панели — в трек; закрытый — без перехода (v64: ряд стоит, панель — под ним, а не на месте ряда)", () => {
+    expect(row).not.toContain('flex: "0 0 100%", order: -1');   // v61 ставил карточку на место ряда — владелец: «будет путать»
+    expect(row).toContain('data-track-panel=""');
     expect(row).toContain('data-track-close=""');
     expect(row).toContain("if (ex.open) { vibrate(\"light\"); onSelect(ex.r.id); }");
-    expect(row).toContain("lockedHint(ex.r.id)");
+    expect(row).toContain("lockedHint(x.r.id)");
   });
-  it("движение: FLIP по Web Animations, в «спокойном режиме» — без него", () => {
+  it("движение: Web Animations, в «спокойном режиме» — без него (v64: по высоте панели вместо FLIP ряда)", () => {
     expect(row).toContain("prefers-reduced-motion: reduce");
-    expect(row).toContain("el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: \"none\" }]");
-    expect(row).toContain("card.animate(");
+    expect(row).not.toContain("translate(${dx}px, ${dy}px)");
+    expect(row).toContain("el.animate(from ? [{ height: from + \"px\" }, { height: to + \"px\" }]");
   });
   it("v62–v63: первый заход — не раскрытая карточка, а ярлычок «Твоя роль. Тапни 😉» над своим кружком, сразу за туром главной", () => {
     expect(HINTS.track_orb).toEqual(["Твоя роль. Тапни 😉"]);
@@ -74,15 +75,13 @@ describe("v61: ряд треков в коде", () => {
     expect(css).toContain(".sa-orb-nudge { animation: saOrbNudge 2s ease-in-out infinite !important; }");
     expect(css).toContain("@media (prefers-reduced-motion: reduce) { .sa-orb-nudge { animation: none !important; } }");
   });
-  it("v62: кнопка AI не закрывает ряд — уходит к краю ушком, ряд уступает ровно под ушко", () => {
-    expect(SHY_PX).toBe(42);
-    expect(row).toContain('html.classList.toggle("sa-fab-shy", hit)');
-    expect(row).toContain("setAvoid(hit ? Math.max(0, Math.ceil(r.right - (f.left + SHY_PX) + 6)) : 0)");
-    expect(row).toContain("const D = Math.max(40, Math.floor(((w || 365) - avoid - GAP * 5) / 6));");
-    expect(row).toContain('document.addEventListener("scroll", later, { capture: true, passive: true })');
+  it("v62 → v64: кнопка AI больше не над рядом (переехала в нижнее меню) — «ушко» и уступка ряда убраны", () => {
+    expect(row).not.toContain("sa-fab-shy");
+    expect(row).not.toContain("SHY_PX");
+    expect(row).not.toContain("setAvoid(");
     const css = rd("ui/css.js");
-    expect(css).toContain("html.sa-fab-shy .sa-fab:not(.hid) { transform: translateX(42px); }");
-    expect(css).toContain("html.sa-fab-shy [data-tracks-title] { padding-right: 34px !important; }");
+    expect(css).not.toContain("html.sa-fab-shy .sa-fab:not(.hid)");
+    expect(rd("App.jsx")).toContain("const fabOn = false;");
   });
   it("метка сборки; CHANGES — «Дополнение 374», «375», «376»", () => {
     expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);

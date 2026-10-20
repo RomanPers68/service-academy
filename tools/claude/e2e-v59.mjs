@@ -458,7 +458,8 @@ const offRpcs = (fn, b) => { if (fn === "day_brief") return { ok: true, quest: {
 if (want("TABS")) {
   const o = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   const p = o.page; await sleep(1400); await dismissToasts(p);
-  const tabs = await p.evaluate(() => [...document.querySelectorAll("#sa-tabbar [role=button]")].map((b) => { const l = [...b.querySelectorAll("div")].pop(); const cs = getComputedStyle(l); return { t: l.textContent, color: cs.color, op: cs.opacity }; }));
+  // v64: круг Наставника посередине меню — не вкладка с подписью, его здесь не считаем
+  const tabs = await p.evaluate(() => [...document.querySelectorAll("#sa-tabbar [role=button]:not([data-tab-ai])")].map((b) => { const l = [...b.querySelectorAll("div")].pop(); const cs = getComputedStyle(l); return { t: l.textContent, color: cs.color, op: cs.opacity }; }));
   const inactive = tabs.filter((t) => t.t !== "Учусь");
   ok("TABS: неактивные вкладки — без прозрачности, контраст с фоном ≥ 4,5", inactive.length === 3 && inactive.every((t) => +t.op === 1 && contrast(t.color, "rgb(20,17,10)") >= 4.5), JSON.stringify(inactive));
   await shot(p, "tabs");

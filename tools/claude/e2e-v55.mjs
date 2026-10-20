@@ -608,8 +608,9 @@ if (want("SCROLL")) {
   ok("SCROLL: в самом низу ни одна строка не под кнопкой AI и не под панелью вкладок", !hidden.length, hidden.join(" | "));
   // кнопка AI — на месте и того же размера
   await p.evaluate(() => window.__saNav("teamHub")); await sleep(1200);
-  const fab = await p.evaluate(() => { const f = document.querySelector("[data-fab]"); if (!f) return null; const b = f.firstElementChild.getBoundingClientRect(); return { r: Math.round(innerWidth - b.right), b: Math.round(innerHeight - b.bottom), w: Math.round(b.width) }; });
-  ok("SCROLL: кнопка AI где была: справа 14, снизу 122, 58×58", fab && fab.r === 14 && fab.b === 122 && fab.w === 58, JSON.stringify(fab));
+  // v64 (Доп. 377): плавающей кнопки больше нет — Наставник кругом посередине нижнего меню; запаса под кнопку (sa-fabon) нет
+  const fab = await p.evaluate(() => ({ fab: !!document.querySelector("[data-fab]"), tabAi: !!document.querySelector("#sa-tabbar [data-tab-ai]"), fabon: document.documentElement.classList.contains("sa-fabon") }));
+  ok("SCROLL: кнопки AI над содержимым нет — Наставник в нижнем меню, запаса под кнопку нет", !fab.fab && fab.tabAi && !fab.fabon, JSON.stringify(fab));
   // «Рейтинг»: в покое кнопка закрывает строку — прокрутка поднимает её выше кнопки
   await p.evaluate(() => window.__saNav("leaderboard")); await sleep(1300);
   const lb = await scrollGeo(p);

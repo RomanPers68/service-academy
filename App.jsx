@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
-import { rpc, saToken, rpcSync, flushQueue, rpcMissing } from "./api/supabase";   // v59: открытый ключ и прямой клиент таблиц приложению больше не нужны
+import { rpc, saToken, rpcSync, flushQueue, rpcMissing, startBoot } from "./api/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
 import { setCustomProgram } from "./data/modules";
@@ -134,7 +134,7 @@ const WELCOME_AI_CARD = {
     </svg>
   ),
   title: "Наставник всегда рядом",
-  text: "Стеклянная кнопка «AI» внизу справа (на компьютере — в меню слева) — наставник. Он знает Справочник и меню твоего ресторана: спроси про жалобу гостя, состав блюда или аллергены — ответит как старший коллега и кнопкой отведёт в нужный раздел.",
+  text: "Круглая кнопка «AI» посередине нижнего меню (на компьютере — в меню слева) — наставник. Он знает Справочник и меню твоего ресторана: спроси про жалобу гостя, состав блюда или аллергены — ответит как старший коллега и кнопкой отведёт в нужный раздел.",
 };
 
 // Новые фичи большого обновления — карточки для всех
@@ -766,6 +766,7 @@ function ServiceAcademy() {
         let token = null;
         try { token = localStorage.getItem("sa_session_token"); } catch(e) {}
         if (!token) { clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return; }
+        startBoot(token);   // v64 (Доп. 377): один запрос за всем стартовым — whoami, my_state, day_brief… (api/supabase.js)
 
         let cached = null;
         try { const c = localStorage.getItem("sa_profile"); if (c) cached = JSON.parse(c); } catch(e) {}
@@ -1505,6 +1506,7 @@ function ServiceAcademy() {
       localStorage.setItem("sa_session_token", token || "demo");
       localStorage.setItem("sa_profile", JSON.stringify(prof));
     } catch(e) {}
+    startBoot(token || "demo");   // v64: после входа — тоже одним запросом
     setProfile(prof);
     setScreen("roleSelect");
   }, []);
@@ -2494,7 +2496,11 @@ function ServiceAcademy() {
   // пусть останется как есть, просто сделай отступ») — последние карточки поднимаются выше неё.
   const saBarRef = useRef(null);
   const barOn = storageLoaded && !["profile", "login"].includes(screen);
-  const fabOn = navOn && !vp.wide && !welcome && !mistakeHint;
+  // v64 (Доп. 377): кнопка Наставника переехала в нижнее меню — круг посередине, между «Сменой» и «Командой»
+  // (ui/tabbar.jsx: onAi). Владелец: «AI как-то не вписывается в новый дизайн… может в навбар?» — выбрали по кадрам
+  // из трёх мест. Плавающая кнопка (AiFab) больше не нужна там, где есть меню: она закрывала содержимое (v62: «AI
+  // закрывает бар»). На компьютере и лёжа Наставник, как и раньше, — в меню слева (NavRail).
+  const fabOn = false;
   const tabsOn = navOn && !vp.wide;   // внизу панель вкладок (в портрете): обёртке экрана нужен отступ под неё
   React.useLayoutEffect(() => {
     const root = document.documentElement;
@@ -3017,7 +3023,8 @@ function ServiceAcademy() {
           // v50 (Доп. 363): шире 600 px — меню слева (телефон лёжа, планшет, компьютер); в портрете — как было
           return vp.wide
             ? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate("assistant")} />
-            : <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate("light"); navigate(id); }} tabs={tabs} />;
+            : <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate("light"); navigate(id); }} tabs={tabs}
+                onAi={() => navigate("assistant")} aiMode="center" />;
         })()}
       </div>
     </div>

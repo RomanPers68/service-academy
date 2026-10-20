@@ -447,29 +447,44 @@ const fillEditor = async (p) => {
 
 // ════════════════════════════ v59 (Доп. 372): что заметил на обходе ════════════════════════════
 // ═══════════════════════════ v61 (Доп. 374): ряд треков под свёрнутым списком ═══════════════════════════
-// Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> node e2e-v61.mjs [ROW TAP HINT MORE LIGHT WIDE FAB]
+// v64 (Доп. 377): ряд не перестраивается — кружки на местах, панель трека под рядом (язычок к кружку), компактная;
+// страница едет вместе с панелью; Наставник — круг посередине нижнего меню (плавающей кнопки нет).
+// Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> node e2e-v61.mjs [ROW TAP MOTION HINT MORE LIGHT WIDE AI]
 const ANNA = { ...prof, id: "u-new", name: "Анна", surname: "Новикова", position: "waiter", is_admin: false };
 const RA9 = { ...prof, id: "u-own", name: "Роман", surname: "Смирнов", position: "manager", is_admin: true };
 const W = 393, H = 852;
 const MET = {};   // v62: отметки первого захода больше нет (подсказка вместо раскрытой карточки)
 const rowState = (p) => p.evaluate(() => {
   const row = document.querySelector("[data-tracks-row]"); const r = row ? row.getBoundingClientRect() : null;
-  const chips = [...document.querySelectorAll("[data-track-chip]")].map((b) => { const q = b.getBoundingClientRect(); return { id: b.getAttribute("data-track-chip"), l: Math.round(q.left), r: Math.round(q.right), w: Math.round(q.width), t: Math.round(q.top), locked: b.hasAttribute("data-track-locked") }; });
-  const open = document.querySelector("[data-track-open]");
-  return { row: !!row, rowL: r ? Math.round(r.left) : null, rowR: r ? Math.round(r.right) - (Number(row.getAttribute("data-tracks-avoid")) || 0) : null, avoid: Number(row?.getAttribute("data-tracks-avoid")) || 0, chips, open: open ? open.getAttribute("data-track-open") : null,
-    openText: open ? open.innerText.replace(/\s+/g, " ").trim() : "", pct: [...document.querySelectorAll("[data-track-pct]")].map((e) => e.innerText),
+  const chips = [...document.querySelectorAll("[data-track-chip]")].map((b) => { const q = b.getBoundingClientRect(); return { id: b.getAttribute("data-track-chip"), l: Math.round(q.left), r: Math.round(q.right), w: Math.round(q.width), t: Math.round(q.top), cx: Math.round(q.left + q.width / 2), cy: Math.round((q.top - (r ? r.top : 0)) + q.height / 2), b: Math.round(q.bottom), locked: b.hasAttribute("data-track-locked"), sel: b.hasAttribute("data-track-sel") }; });
+  const open = document.querySelector("[data-track-open]"); const panel = document.querySelector("[data-track-panel]"); const notch = document.querySelector("[data-track-notch]");
+  const pr = panel ? panel.getBoundingClientRect() : null, nr = notch ? notch.getBoundingClientRect() : null;
+  return { row: !!row, rowL: r ? Math.round(r.left) : null, rowR: r ? Math.round(r.right) : null, chips, open: open ? open.getAttribute("data-track-open") : null,
+    openText: panel ? panel.innerText.replace(/\s+/g, " ").trim() : "", panelTop: pr ? Math.round(pr.top) : null, panelH: pr ? Math.round(pr.height) : null, notchX: nr ? Math.round(nr.left + nr.width / 2) : null,
+    pct: [...document.querySelectorAll("[data-track-pct]")].map((e) => e.innerText),
     toggle: document.querySelector("[data-tracks-toggle]")?.innerText.replace(/\s+/g, " "), list: !!document.querySelector("[data-tracks-list]"), quote: !!document.querySelector("[data-tracks-quote]") };
 });
+// тап пальцем в центр элемента (а не locator.click: тот, если точку что-то закрыло, сам прокручивает страницу —
+// в том числе вбок, — чего палец не делает). Точка закрыта чужим элементом — ошибка теста, а не тихий промах.
+const tap = async (p, sel) => {
+  const c = await p.evaluate((sel) => { const el = document.querySelector(sel); if (!el) return { err: "нет " + sel };
+    const r = el.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const hit = document.elementFromPoint(x, y);
+    return { x, y, ok: !!hit && (hit === el || el.contains(hit)), hit: hit ? hit.tagName + "." + String(hit.className).slice(0, 30) : null }; }, sel);
+  if (c.err || !c.ok) throw new Error("тап мимо " + sel + ": " + JSON.stringify(c));
+  await p.mouse.click(c.x, c.y);
+};
+// кружки на своих местах: центры (относительно ряда) те же, что до тапа
+const samePlaces = (a, b) => a.chips.length === 6 && b.chips.length === 6 && a.chips.every((c, i) => c.id === b.chips[i].id && Math.abs(c.cx - b.chips[i].cx) <= 1 && Math.abs(c.cy - b.chips[i].cy) <= 1);
 
 if (want("ROW")) {
   const o = await open({ profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   const p = o.page; await sleep(1500); await dismissToasts(p);
   const s = await rowState(p);
   const ws = s.chips.map((c) => c.w);
-  ok("ROW: шесть узлов в ряд, одного размера, ровно по ширине ряда (первый у левого края, последний у правого; v62: правый край — до ушка кнопки AI, если она мешает), карточка не раскрыта",
+  ok("ROW: шесть узлов в ряд, одного размера, ровно по ширине ряда (первый у левого края, последний у правого), панель не раскрыта",
     s.row && s.chips.length === 6 && !s.open && Math.max(...ws) - Math.min(...ws) <= 1 && Math.abs(s.chips[0].l - s.rowL) <= 1 && Math.abs(s.chips[5].r - s.rowR) <= 1 && new Set(s.chips.map((c) => c.t)).size === 1,
-    JSON.stringify({ n: s.chips.length, ws, l: [s.chips[0].l, s.rowL], r: [s.chips[5].r, s.rowR], avoid: s.avoid }));
-  ok("ROW: узлы крупные — не меньше 46 px на телефоне 393 (52 без ушка, 48 с ушком)", ws[0] >= 46 && (s.avoid ? ws[0] >= 46 : ws[0] >= 50), ws[0] + " px, ушко " + s.avoid);
+    JSON.stringify({ n: s.chips.length, ws, l: [s.chips[0].l, s.rowL], r: [s.chips[5].r, s.rowR] }));
+  ok("ROW: узлы крупные — 52 px на телефоне 393 (ряду больше не нужно уступать кнопке AI)", ws[0] >= 50, ws[0] + " px");
   ok("ROW: у Анны-официанта три трека закрыты (Ядро, Менеджер, Сервис-менеджер) — с замком", s.chips.filter((c) => c.locked).map((c) => c.id).join(",") === "core,manager,service_manager", JSON.stringify(s.chips.filter((c) => c.locked).map((c) => c.id)));
   const rowText = await p.evaluate(() => document.querySelector("[data-tracks-row]").innerText);
   ok("ROW: плашка процента — только у начатых треков (Новичок 14 %), слова «сейчас» нет", s.pct.length === 1 && /14/.test(s.pct[0]) && !/сейчас/i.test(rowText), JSON.stringify(s.pct));
@@ -481,34 +496,83 @@ if (want("ROW")) {
 }
 
 if (want("TAP")) {
-  const o = await open({ profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  const o = await open({ profile: ANNA, storage: { ...ROMAN44(), ...QUIET, __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   const p = o.page; await sleep(1500); await dismissToasts(p);
   const before = await rowState(p);
-  await p.locator('[data-track-chip="spg"]').click(); await sleep(700);
+  await tap(p, '[data-track-chip="spg"]'); await sleep(800);
   let s = await rowState(p);
-  const cardBottom = await p.evaluate(() => document.querySelector("[data-track-open]")?.getBoundingClientRect().bottom || 0);
-  const under = !!s.open && s.chips.every((c) => c.t > cardBottom - 2);
-  ok("TAP: тап по «Хостес» — на месте ряда карточка трека, остальные пять узлов ушли под неё", s.open === "spg" && s.chips.length === 5 && !s.chips.find((c) => c.id === "spg") && under && /Хостес/.test(s.openText) && /Служба приёма гостей/.test(s.openText), JSON.stringify({ open: s.open, n: s.chips.length, under }));
-  ok("TAP: карточка — изначальная (описание трека и «›»), без «Начать» и строки фактов", /От хостес до амбассадора/.test(s.openText) && /›/.test(s.openText) && !/Начать|Продолжить|разделов/.test(s.openText), s.openText.slice(0, 120));
+  const spg = s.chips.find((c) => c.id === "spg");
+  ok("TAP: тап по «Хостес» — кружки остаются на своих местах (ничего не подменяется), «Хостес» выделен", s.open === "spg" && samePlaces(before, s) && spg.sel && s.chips.filter((c) => c.sel).length === 1,
+    JSON.stringify({ open: s.open, same: samePlaces(before, s), sel: s.chips.filter((c) => c.sel).map((c) => c.id) }));
+  ok("TAP: панель — под рядом, язычок указывает на выбранный кружок", s.panelTop > Math.max(...s.chips.map((c) => c.b)) && Math.abs(s.notchX - spg.cx) <= 3, JSON.stringify({ top: s.panelTop, bottom: Math.max(...s.chips.map((c) => c.b)), notch: s.notchX, cx: spg.cx }));
+  ok("TAP: компактная панель — три строки: «Хостес · Служба приёма гостей», описание, «Приём гостей · не начат · Открыть ›»",
+    /Хостес/.test(s.openText) && /Служба приёма гостей/.test(s.openText) && /От хостес до амбассадора/.test(s.openText) && /Приём гостей/i.test(s.openText) && /не начат/.test(s.openText) && /Открыть ›/.test(s.openText) && s.panelH <= 92,
+    JSON.stringify({ h: s.panelH, t: s.openText.slice(0, 140) }));
+  const lines = await p.evaluate(() => { const pn = document.querySelector("[data-track-panel] .sa-panel-in"); return pn ? [...pn.children].map((c) => Math.round(c.getBoundingClientRect().height)) : []; });
+  ok("TAP: каждая строка панели — в одну строку (описание не переносится)", lines.length === 3 && lines.every((h) => h <= 24), JSON.stringify(lines));
   await shot(p, "row-open");
-  await p.locator('[data-track-chip="bar"]').click(); await sleep(700);
+  await tap(p, '[data-track-chip="bar"]'); await sleep(800);
   s = await rowState(p);
-  ok("TAP: тап по другому узлу — карточка сменилась на «Бар», «Хостес» вернулась в ряд", s.open === "bar" && !!s.chips.find((c) => c.id === "spg") && !s.chips.find((c) => c.id === "bar"), JSON.stringify({ open: s.open, ids: s.chips.map((c) => c.id) }));
-  await p.locator('[data-track-chip="core"]').click(); await sleep(700);
+  const bar = s.chips.find((c) => c.id === "bar");
+  ok("TAP: тап по другому кружку — панель сменилась на «Бар», язычок переехал, кружки на местах", s.open === "bar" && /Бар/.test(s.openText) && Math.abs(s.notchX - bar.cx) <= 3 && samePlaces(before, s) && bar.sel && !s.chips.find((c) => c.id === "spg").sel,
+    JSON.stringify({ open: s.open, notch: s.notchX, cx: bar.cx }));
+  await tap(p, '[data-track-chip="core"]'); await sleep(800);
   s = await rowState(p);
-  ok("TAP: закрытый «Ядро» — карточка объясняет «Пройди «Новичок», чтобы открыть», без стрелки", s.open === "core" && /Пройди «Новичок», чтобы открыть/.test(s.openText) && !/›/.test(s.openText), s.openText.slice(0, 120));
+  ok("TAP: закрытый «Ядро» — «Ступень 2/4», замок и «Пройди «Новичок», чтобы открыть», без «Открыть ›»", s.open === "core" && /Пройди «Новичок», чтобы открыть/.test(s.openText) && /Ступень 2\/4/i.test(s.openText) && !/Открыть ›/.test(s.openText), s.openText.slice(0, 140));
   await shot(p, "row-locked");
-  await p.locator("[data-track-open]").click(); await sleep(600);
+  await tap(p, "[data-track-panel]"); await sleep(600);
   s = await rowState(p);
-  ok("TAP: тап по карточке закрытого трека — ничего не открывает (ряд на месте)", s.open === "core" && s.row, JSON.stringify({ open: s.open, row: s.row }));
-  await p.locator("[data-track-close]").click(); await sleep(700);
+  ok("TAP: тап по панели закрытого трека — ничего не открывает (ряд на месте)", s.open === "core" && s.row, JSON.stringify({ open: s.open, row: s.row }));
+  await tap(p, '[data-track-chip="core"]'); await sleep(800);
   s = await rowState(p);
-  ok("TAP: «×» — карточка свернулась, снова шесть узлов", !s.open && s.chips.length === 6, JSON.stringify({ open: s.open, n: s.chips.length }));
-  await p.locator('[data-track-chip="spg"]').click(); await sleep(600);
-  await p.locator("[data-track-open]").click(); await sleep(1400);
+  ok("TAP: повторный тап по выбранному кружку — панель свернулась, выделения нет", !s.open && s.chips.length === 6 && !s.chips.some((c) => c.sel), JSON.stringify({ open: s.open }));
+  await tap(p, '[data-track-chip="seasonal"]'); await sleep(800);
+  s = await rowState(p);
+  ok("TAP: свой «Новичок» — метка «твой», «Ступень 1/4», 14 %", s.open === "seasonal" && /твой/i.test(s.openText) && /Ступень 1\/4/i.test(s.openText) && /14%/.test(s.openText), s.openText.slice(0, 140));
+  await tap(p, "[data-track-close]"); await sleep(800);
+  s = await rowState(p);
+  ok("TAP: «×» — панель свернулась, шесть кружков на местах", !s.open && samePlaces(before, s), JSON.stringify({ open: s.open, b: before.chips.map((c) => [c.cx, c.cy]), a: s.chips.map((c) => [c.cx, c.cy]) }));
+  await tap(p, '[data-track-chip="spg"]'); await sleep(700);
+  await tap(p, "[data-track-panel]"); await sleep(1400);
   const t2 = await p.evaluate(() => ({ hub: !!document.querySelector("[data-tracks-title]"), head: document.body.innerText.slice(0, 160).replace(/\s+/g, " ") }));
-  ok("TAP: тап по карточке открытого трека — открылся трек «Хостес»", !t2.hub && /Хостес/.test(t2.head), t2.head.slice(0, 80));
+  ok("TAP: тап по панели открытого трека — открылся трек «Хостес»", !t2.hub && /Хостес/.test(t2.head), t2.head.slice(0, 80));
   ok("TAP: без ошибок", !o.errors.length, o.errors.join(" | "));
+  await o.ctx.close();
+}
+
+if (want("MOTION")) {
+  // страница у нижнего края: при раскрытии поднимается вместе с панелью (не после), при сворачивании опускается
+  // вместе с ней и не дёргается, когда панель убирается; кружки во время движения не сдвигаются относительно ряда
+  const o = await open({ profile: ANNA, storage: { ...ROMAN44(), ...QUIET, __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(23, 25) });
+  const p = o.page; await sleep(1500); await dismissToasts(p);
+  await p.mouse.move(200, 500); await p.mouse.wheel(0, 3000); await sleep(900);
+  const rec = () => p.evaluate(() => {
+    const row = document.querySelector("[data-tracks-row]");
+    let sc = row.parentElement; while (sc && !(sc.scrollHeight > sc.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+    sc = sc || document.scrollingElement;
+    window.__mv = []; const t0 = performance.now();
+    const tick = () => { const pn = document.querySelector("[data-track-open]"), ch = document.getElementById("sa-orb-bar");
+      window.__mv.push({ t: Math.round(performance.now() - t0), s: Math.round(sc.scrollTop * 10) / 10, h: pn ? Math.round(pn.getBoundingClientRect().height) : null, dy: Math.round(ch.getBoundingClientRect().top - row.getBoundingClientRect().top) });
+      if (performance.now() - t0 < 900) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+  await rec(); await tap(p, '[data-track-chip="spg"]'); await sleep(1100);
+  const op = await p.evaluate(() => window.__mv);
+  const s0 = op[0].s, hEnd = op[op.length - 1].h, sEnd = op[op.length - 1].s;
+  const firstMove = op.find((f) => f.s > s0 + 0.5);
+  ok("MOTION: раскрытие у нижнего края — страница начинает подниматься, пока панель ещё растёт, и встаёт, когда панель раскрылась",
+    sEnd > s0 && !!firstMove && firstMove.h !== null && firstMove.h < hEnd - 10 && op.filter((f) => f.h === hEnd).every((f, i, arr) => i === 0 || Math.abs(f.s - arr[0].s) <= 1 || f.s >= arr[i - 1].s),
+    JSON.stringify({ s0, sEnd, firstMove, hEnd }));
+  ok("MOTION: кружки во время раскрытия не двигаются относительно ряда", new Set(op.map((f) => f.dy)).size === 1, JSON.stringify([...new Set(op.map((f) => f.dy))]));
+  await rec(); await tap(p, '[data-track-chip="spg"]'); await sleep(1100);
+  const cl = await p.evaluate(() => window.__mv);
+  const withPanel = cl.filter((f) => f.h !== null), after = cl.filter((f) => f.h === null);
+  const lastP = withPanel[withPanel.length - 1], firstA = after[0];
+  const jumps = cl.slice(1).map((f, i) => Math.abs(f.s - cl[i].s));
+  ok("MOTION: сворачивание — страница опускается вместе с панелью: когда панель убралась, прокрутка уже на месте (без рывка после)",
+    !!lastP && !!firstA && Math.abs(firstA.s - lastP.s) <= 1 && Math.max(...jumps) <= 8 && cl[0].s > firstA.s,
+    JSON.stringify({ start: cl[0].s, lastP, firstA, maxJump: Math.max(...jumps), seq: cl.map((f) => f.s + "/" + f.h).join(" ") }));
+  ok("MOTION: без ошибок", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
 }
 
@@ -582,64 +646,82 @@ if (want("MORE")) {
 if (want("LIGHT")) {
   const l = await open({ light: true, profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   const p = l.page; await sleep(1500); await dismissToasts(p);
-  await p.locator('[data-track-chip="spg"]').click(); await sleep(700);
+  await p.locator('[data-track-chip="spg"]').click(); await sleep(800);
   const s = await rowState(p);
-  ok("LIGHT: «Для чтения» — ряд и карточка на месте, без ошибок", s.row && s.open === "spg" && s.chips.length === 5 && !l.errors.length, JSON.stringify({ open: s.open, n: s.chips.length, err: l.errors.length }));
+  ok("LIGHT: «Для чтения» — ряд и панель на месте, без ошибок", s.row && s.open === "spg" && s.chips.length === 6 && /Хостес/.test(s.openText) && !l.errors.length, JSON.stringify({ open: s.open, n: s.chips.length, err: l.errors.length }));
   await shot(p, "row-light");
   await l.ctx.close();
   // «спокойный режим» — без анимаций, но всё работает
   const c = await open({ profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20), motion: "reduce" });
   await sleep(1500); await dismissToasts(c.page);
-  await c.page.locator('[data-track-chip="bar"]').click(); await sleep(500);
+  await c.page.locator('[data-track-chip="bar"]').click(); await sleep(60);
   const cs = await rowState(c.page);
-  ok("LIGHT: «уменьшить движение» — раскрытие работает без анимации", cs.open === "bar" && cs.chips.length === 5 && !c.errors.length, JSON.stringify({ open: cs.open }));
+  await sleep(600);
+  const cs2 = await rowState(c.page);
+  ok("LIGHT: «уменьшить движение» — панель сразу в полный рост, без анимации", cs.open === "bar" && cs.panelH === cs2.panelH && cs.chips.length === 6 && !c.errors.length, JSON.stringify({ open: cs.open, h: [cs.panelH, cs2.panelH] }));
+  await c.page.locator('[data-track-chip="bar"]').click(); await sleep(80);
+  const cs3 = await rowState(c.page);
+  ok("LIGHT: «уменьшить движение» — свернулась сразу", !cs3.open, JSON.stringify({ open: cs3.open }));
   await c.ctx.close();
 }
 
 if (want("WIDE")) {
   const o = await open({ profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: 1440, h: 900, dsf: 1, mobile: false, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   await sleep(1500); await dismissToasts(o.page);
-  const s = await o.page.evaluate(() => ({ row: !!document.querySelector("[data-tracks-row]"), list: !!document.querySelector("[data-tracks-list]"), two: !!document.querySelector("[data-home2-title]") }));
+  const s = await o.page.evaluate(() => ({ row: !!document.querySelector("[data-tracks-row]"), list: !!document.querySelector("[data-tracks-list]"), two: !!document.querySelector("[data-home2-title]"),
+    rail: !!document.querySelector("[data-rail-ai]"), tabAi: !!document.querySelector("[data-tab-ai]"), fab: !!document.querySelector(".sa-fab") }));
   ok("WIDE: компьютер — ряда нет, список треков в правой колонке, как был", !s.row && s.list && s.two, JSON.stringify(s));
+  ok("WIDE: компьютер — Наставник в меню слева, как был; в нижнем меню и плавающей кнопки нет", s.rail && !s.tabAi && !s.fab, JSON.stringify(s));
   await o.ctx.close();
   // узкий телефон 360 — шесть узлов по-прежнему в один ряд
   const n = await open({ profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: 360, h: 780, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   await sleep(1500); await dismissToasts(n.page);
   const ns = await rowState(n.page);
-  ok("WIDE: узкий телефон 360 — шесть узлов в один ряд по ширине (до ушка, если кнопка AI мешает)", ns.chips.length === 6 && new Set(ns.chips.map((c) => c.t)).size === 1 && Math.abs(ns.chips[5].r - ns.rowR) <= 1 && ns.chips[0].w >= 40, JSON.stringify({ n: ns.chips.length, w: ns.chips[0].w, avoid: ns.avoid }));
+  ok("WIDE: узкий телефон 360 — шесть узлов в один ряд во всю ширину", ns.chips.length === 6 && new Set(ns.chips.map((c) => c.t)).size === 1 && Math.abs(ns.chips[5].r - ns.rowR) <= 1 && ns.chips[0].w >= 44, JSON.stringify({ n: ns.chips.length, w: ns.chips[0].w }));
+  await n.page.locator('[data-track-chip="bar"]').click(); await sleep(800);
+  const nb = await rowState(n.page);
+  const lines = await n.page.evaluate(() => { const pn = document.querySelector("[data-track-panel] .sa-panel-in"); return pn ? [...pn.children].map((c) => Math.round(c.getBoundingClientRect().height)) : []; });
+  ok("WIDE: 360 — панель «Бар» влезает: три строки, ничего не переносится", nb.open === "bar" && lines.length === 3 && lines.every((h) => h <= 24), JSON.stringify(lines));
   await shot(n.page, "row-360");
   await n.ctx.close();
 }
 
-if (want("FAB")) {
-  // v62: кнопка AI ложилась на последний узел («AI закрывает бар») — теперь отходит к краю ушком, ряд чуть уже
+if (want("AI")) {
+  // v64: Наставник — круг посередине нижнего меню (между «Сменой» и «Командой»); плавающей кнопки нет
   const BAR = { ...prof, id: "u-bar", name: "Роман", surname: "", restaurant: "Два моря, Океан", position: "bartender", is_admin: true };
   const o = await open({ profile: BAR, storage: { ...ROMAN44(), ...MET, __role: "bar" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   const p = o.page; await sleep(2200); await dismissToasts(p);
   const st = () => p.evaluate(() => {
-    const fab = document.querySelector(".sa-fab .sa-pop")?.getBoundingClientRect(); const row = document.querySelector("[data-tracks-row]");
-    const chips = [...document.querySelectorAll("[data-track-chip]")].map((b) => b.getBoundingClientRect());
-    const hit = fab ? chips.filter((c) => c.left < fab.right && c.right > fab.left && c.top < fab.bottom && c.bottom > fab.top).length : 0;
-    const title = document.querySelector("[data-tracks-title]")?.getBoundingClientRect();
-    return { shy: document.documentElement.classList.contains("sa-fab-shy"), avoid: row?.getAttribute("data-tracks-avoid"), hit, fabLeft: fab ? Math.round(fab.left) : null, vw: innerWidth,
-      d: Math.round(chips[0]?.width || 0), titlePadR: title ? getComputedStyle(document.querySelector("[data-tracks-title]")).paddingRight : null, overlapRow: fab && row ? fab.top < row.getBoundingClientRect().bottom && fab.bottom > row.getBoundingClientRect().top : null };
+    const ai = document.querySelector("[data-tab-ai]")?.getBoundingClientRect(); const bar = document.getElementById("sa-tabbar")?.getBoundingClientRect();
+    const labels = [...document.querySelectorAll("#sa-tabbar [role=button][aria-label]")].map((b) => { const q = b.getBoundingClientRect(); return { l: b.getAttribute("aria-label"), x: Math.round(q.left + q.width / 2) }; }).sort((a, b) => a.x - b.x).map((x) => x.l);
+    const row = document.querySelector("[data-tracks-row]");
+    return { fab: !!document.querySelector(".sa-fab"), ai: !!ai, aiCx: ai ? Math.round(ai.left + ai.width / 2) : null, barCx: bar ? Math.round(bar.left + bar.width / 2) : null, labels,
+      pulse: !!document.querySelector("[data-ai-pulse]"), shy: document.documentElement.classList.contains("sa-fab-shy"), avoid: row?.getAttribute("data-tracks-avoid") || null, seen: localStorage.getItem("sa_ai_fab") };
   });
   let s = await st();
-  ok("FAB: на этом телефоне кнопка AI приходится на ряд — она отошла к краю ушком (html.sa-fab-shy), ни один узел не накрыт", s.overlapRow && s.shy && s.hit === 0 && s.fabLeft >= s.vw - 40 && Number(s.avoid) > 0, JSON.stringify(s));
-  ok("FAB: ряд уступил ровно под ушко — узлы почти того же размера (≥ 46 px), «подробнее ›» отодвинуто от края", s.d >= 46 && parseInt(s.titlePadR) >= 30, JSON.stringify({ d: s.d, pad: s.titlePadR }));
-  await shot(p, "fab-shy");
-  // ушко работает: тап открывает Наставника
-  await p.locator(".sa-fab .sa-pop").click({ position: { x: 6, y: 29 }, force: true }); await sleep(1400);
+  ok("AI: плавающей кнопки нет; круг AI — посередине нижнего меню", !s.fab && s.ai && Math.abs(s.aiCx - s.barCx) <= 6, JSON.stringify(s));
+  ok("AI: порядок — Учусь, Смена, AI, Команда, Я", s.labels.join(",") === "Учусь,Смена,AI-наставник,Команда,Я", s.labels.join(","));
+  ok("AI: ряду треков ничего не мешает — «ушка» и уступки нет", !s.shy && !s.avoid, JSON.stringify({ shy: s.shy, avoid: s.avoid }));
+  await shot(p, "ai-center");
+  await p.locator("[data-tab-ai]").click(); await sleep(1400);
   const aiText = await p.evaluate(() => document.body.innerText.slice(0, 400).replace(/\s+/g, " "));
   const aiOpen = await p.evaluate(() => !document.querySelector("[data-tracks-row]"));
-  ok("FAB: тап по ушку открывает AI-наставника", aiOpen && /Наставник|наставник|AI/.test(aiText), aiText.slice(0, 80));
+  ok("AI: тап по кругу открывает AI-наставника", aiOpen && /Наставник|наставник|AI/.test(aiText), aiText.slice(0, 80));
   await o.ctx.close();
-  // низкий телефон: ряд ниже кнопки — ушка нет, ряд во всю ширину
-  const l = await open({ profile: BAR, storage: { ...ROMAN44(), ...MET, __role: "bar" }, w: 375, h: 667, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
-  await sleep(2200); await dismissToasts(l.page);
-  const ls = await l.page.evaluate(() => ({ shy: document.documentElement.classList.contains("sa-fab-shy"), avoid: document.querySelector("[data-tracks-row]")?.getAttribute("data-tracks-avoid") || null }));
-  ok("FAB: где кнопка не мешает — ушка нет и ряд во всю ширину", !ls.shy && !ls.avoid, JSON.stringify(ls));
-  await l.ctx.close();
+  // новичок: пульс «ещё не открывали» — на круге; после первого открытия — пропадает
+  const n = await open({ profile: ANNA, storage: { ...ROMAN44(), ...MET, __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
+  await sleep(1800); await dismissToasts(n.page);
+  const n1 = await n.page.evaluate(() => ({ pulse: !!document.querySelector("[data-ai-pulse]"), seen: localStorage.getItem("sa_ai_fab") }));
+  // перетащить линзу с «Учусь» на круг AI — тоже открывает Наставника
+  const geo = await n.page.evaluate(() => { const a = document.querySelector("#sa-tabbar [aria-label='Учусь']").getBoundingClientRect(), b = document.querySelector("[data-tab-ai]").getBoundingClientRect(); return { ax: a.left + a.width / 2, ay: a.top + a.height / 2, bx: b.left + b.width / 2, by: b.top + b.height / 2 }; });
+  await n.page.mouse.move(geo.ax, geo.ay); await n.page.mouse.down(); await n.page.mouse.move(geo.bx, geo.by, { steps: 8 }); await n.page.mouse.up(); await sleep(1400);
+  const n2 = await n.page.evaluate(() => ({ row: !!document.querySelector("[data-tracks-row]"), seen: localStorage.getItem("sa_ai_fab"), head: document.body.innerText.slice(0, 200).replace(/\s+/g, " ") }));
+  await n.page.evaluate(() => window.__saNav("roleSelect")); await sleep(1200);
+  const n3 = await n.page.evaluate(() => ({ pulse: !!document.querySelector("[data-ai-pulse]") }));
+  ok("AI: новичок — на круге золотой пульс; линзу перетащили на круг — открылся Наставник; после этого пульса нет",
+    n1.pulse && n1.seen !== "1" && !n2.row && n2.seen === "1" && /Наставник|наставник|AI/.test(n2.head) && !n3.pulse, JSON.stringify({ n1, n2: { row: n2.row, seen: n2.seen }, n3 }));
+  ok("AI: без ошибок", !o.errors.length && !n.errors.length, [...o.errors, ...n.errors].join(" | "));
+  await n.ctx.close();
 }
 
 console.log(results.join("\n"));

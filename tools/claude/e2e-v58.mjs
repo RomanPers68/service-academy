@@ -566,7 +566,8 @@ if (want("EMPTY")) {
 if (want("TEXT")) {
   const o = await open({ profile: RA8, storage: { ...ROMAN44(), __role: "spg" }, w: W, h: H, dsf: 1, rpcs: baseRpcs(), fixedTime: at(14, 20), motion: "reduce" });
   const p = o.page; await sleep(1400); await dismissToasts(p);
-  const tabFs = await p.evaluate(() => [...document.querySelectorAll("#sa-tabbar [role=button]")].map((b) => { const l = [...b.querySelectorAll("div")].pop(); return l ? parseFloat(getComputedStyle(l).fontSize) : 0; }));
+  // v64: круг Наставника посередине меню — без подписи, не считаем
+  const tabFs = await p.evaluate(() => [...document.querySelectorAll("#sa-tabbar [role=button]:not([data-tab-ai])")].map((b) => { const l = [...b.querySelectorAll("div")].pop(); return l ? parseFloat(getComputedStyle(l).fontSize) : 0; }));
   ok("TEXT: подписи вкладок — 11 px (были 9)", tabFs.length === 4 && tabFs.every((v) => v === 11), JSON.stringify(tabFs));
   const SCR = ["roleSelect", "home", "shift", "teamHub", "me", "glossary", "leaderboard", "stats", "daily", "guestbook", "cellar", "menuTrainer", "cocktails", "reference", "mentor", "profile", "analytics", "report"];
   const tiny = {};

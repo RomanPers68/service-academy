@@ -20,6 +20,7 @@ import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { ScheduleTile } from "./schedule-tile";
 import { TracksRow } from "./tracks-row";   // v61 (Доп. 374): ряд треков под свёрнутым списком
+import { dockFit } from "../lib/dock-fit";   // v65 (Доп. 378): кружки ленты — под ширину
 import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
@@ -159,6 +160,24 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // он открывает инструмент, а не раскрывает подпись: иначе каждое обращение
   // к справочнику стоило бы двух касаний. Поэтому подпись ездит сама.
   const [toolSpot, setToolSpot] = React.useState(0);
+  // v65 (Доп. 378): лента сама подбирает размер кружков под свою ширину — чтобы самая длинная подпись помещалась
+  // рядом с SOS при любом числе инструментов (у руководителя их теперь пять). Ширину ряда и подписей меряем на
+  // телефоне (шрифт у всех свой); не помещается даже при кружках 28 px — показываем только значки, без подписей.
+  const toolsRowRef = React.useRef(null);
+  const [toolsFit, setToolsFit] = React.useState({ w: 0, l: 0 });
+  React.useLayoutEffect(() => {
+    const el = toolsRowRef.current; if (!el) return undefined;
+    const upd = () => {
+      const w = el.clientWidth || 0;
+      let l = 0;
+      el.querySelectorAll("[data-tool-label]").forEach((x) => { l = Math.max(l, Math.ceil(x.scrollWidth || 0)); });
+      setToolsFit((v) => (v.w === w && v.l === l ? v : { w, l }));
+    };
+    upd();
+    let ro = null;
+    try { ro = new ResizeObserver(upd); ro.observe(el); } catch (e) {}
+    return () => { if (ro) ro.disconnect(); };
+  });
   // Подсказка по главному экрану. Ключ свой на роль: руководителю нужно
   // рассказать про график и команду, сотруднику — про трек и инструменты.
   const isBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
@@ -535,7 +554,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           if (onReference) tiles.push({ key:"sp", label:"Справочник", accent:true, onClick:onReference, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/></svg>
           )});
-          if (onCandidate) tiles.push({ key:"hire", label:"Собеседование", onClick:onCandidate, icon:(
+          // v65: в ленте — «AI-интервью» (владелец: «AI собеседование»); экран — тот же «Собеседование»
+          if (onCandidate) tiles.push({ key:"hire", label:"AI-интервью", onClick:onCandidate, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 3.5a4 4 0 0 1 0 7"/><path d="M19 8h4M21 6v4"/></svg>
           )});
           if (onSOS) tiles.push({ key:"sos", label:"SOS", red:true, onClick:onSOS, icon:(
@@ -573,7 +593,10 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             // Глоссарий, Чек-листы; с четырьмя подпись по очереди ещё помещается.
             // «Первая неделя» ушла во вкладку «Смена» — кроме сезонника-новичка
             // до первого урока: пока это его главный план, он остаётся под рукой.
-            const learn = new Set(["sp", "sos", "menu", "cl", ...(role === "seasonal" && newbie ? ["ob"] : [])]);
+            // v65 (Доп. 378), владелец: «AI собеседование добавим в вкладку, где справочник, меню… для менеджера и
+            // руководства — как раз с уменьшением появилось место». Пятой — «Собеседование» (менеджер, старший,
+            // владелец: onCandidate App передаёт только им); во вкладке «Команда» оно остаётся.
+            const learn = new Set(["sp", "sos", "menu", "cl", ...(role === "seasonal" && newbie ? ["ob"] : []), ...(isStaff && onCandidate ? ["hire"] : [])]);
             for (let i = tiles.length - 1; i >= 0; i--) if (!learn.has(tiles[i].key)) tiles.splice(i, 1);
             if (onGlossary) tiles.push({ key:"gl", label:"Глоссарий", onClick:onGlossary, icon:(
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h5"/></svg>
@@ -615,7 +638,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             })() : null}
             {(() => {
               // Порядок — как назвал владелец: Справочник, Меню, Глоссарий, Чек-листы
-              const ORDER = ["sp", "ob", "menu", "gl", "cl"];
+              const ORDER = ["sp", "ob", "menu", "gl", "cl", "hire"];   // v65: «Собеседование» — последним, перед SOS
               const tools = visibleTiles.filter(t => !t.red)
                 .sort((a, b) => (ORDER.indexOf(a.key) + 1 || 99) - (ORDER.indexOf(b.key) + 1 || 99));
               // Четыре инструмента и раскрытая подпись должны помещаться рядом с SOS.
@@ -624,7 +647,10 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               // v50: в две колонки левая колонка уже экрана — 340–440 px; уже 380 она при колонке меньше 728 px
               const narrow = typeof window !== "undefined" && (window.innerWidth < 380 || (wideCols && wideColW > 0 && wideColW < 728));
               // v44 (Доп. 357): плотнее — кружки 36 / 34 px, SOS 42 / 40 px, поля капсулы 6 px
-              const ring = narrow ? 34 : 36;
+              // v65: кружок — не больше прежнего (36 / 34 px) и не меньше 28; с подписью ряд должен влезть целиком
+              const n = tools.length, base = narrow ? 34 : 36;
+              const { ring, labels: labelsOn } = dockFit(toolsFit.w, toolsFit.l, n, base);   // lib/dock-fit.js
+              const ico = ring >= 32 ? 20 : 18;
               const sos = visibleTiles.find(t => t.red);
               // Свой цвет каждому инструменту: однородный серый ряд глаз
               // пропускает, а цветной узор замечает боковым зрением.
@@ -654,10 +680,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                       ничего не нажимая. В «спокойном режиме» ротация стоит. */}
                   {/* overflow — страховка: если шрифт на телефоне крупнее, ряд
                       обрежется по краю, а не заедет под SOS. */}
-                  <div style={{ flex:1, minWidth:0, display:"flex", alignItems:"center", gap:2, overflow:"hidden" }}>
+                  <div ref={toolsRowRef} data-tools-row="" data-tools-ring={ring} data-tools-labels={labelsOn ? "on" : "off"}
+                    style={{ flex:1, minWidth:0, display:"flex", alignItems:"center", gap:2, overflow:"hidden" }}>
                     {tools.map((t, i) => {
                       const c = tint(t.key);
-                      const on = tools.length ? (toolSpot % tools.length) === i : false;
+                      const on = labelsOn && tools.length ? (toolSpot % tools.length) === i : false;
                       const badge = t.key === "menu" && menuNew > 0;
                       const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
                       return (
@@ -670,14 +697,14 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                           <span style={{ position:"relative", width:ring, height:ring, borderRadius:"50%",
                             display:"grid", placeItems:"center", flexShrink:0,
                             background:`${c}${on ? "33" : "24"}`, transition:"background .45s ease" }}>
-                            {React.cloneElement(t.icon, { width:20, height:20 })}
+                            {React.cloneElement(t.icon, { width:ico, height:ico })}
                             {(badge || dot) ? (
                               <span style={{ position:"absolute", top:-1, right:-1, width:8, height:8,
                                 borderRadius:4, background:GOLD_SOFT,
                                 border:`1.5px solid ${a11y ? "#F7F0E0" : "#1A1409"}` }} />
                             ) : null}
                           </span>
-                          <span style={{ display:"inline-block", overflow:"hidden", whiteSpace:"nowrap",
+                          <span data-tool-label="" style={{ display:"inline-block", overflow:"hidden", whiteSpace:"nowrap",
                             fontSize: narrow ? 10.5 : 10.5, color:Cc.text,
                             maxWidth: on ? 96 : 0, opacity: on ? 1 : 0,
                             marginLeft: on ? 5 : 0, marginRight: on ? 5 : 0,

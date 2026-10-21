@@ -166,7 +166,9 @@ describe("v44: «Пульс недели», табличка и полка — �
     const dc = readFileSync("ui/day-cards.jsx", "utf8");
     expect(dc).toContain(".sa-dp{display:flex;align-items:stretch;border-radius:16px;--dp-m:32px;--dp-i:19px;--dp-l:25px}");
     expect(dc).toContain("gap:7px;padding:7px 5px;");
-    expect(src).toContain("const ring = narrow ? 34 : 36;");
+    // v65 (Доп. 378): 36 / 34 px — по-прежнему наибольший размер; уже ряд — кружки меньше, чтобы подпись влезала
+    expect(src).toContain("const n = tools.length, base = narrow ? 34 : 36;");
+    expect(src).toContain("dockFit(toolsFit.w, toolsFit.l, n, base)");
     expect(src).toContain('margin:"0 14px 8px", padding: narrow ? "6px 9px" : "6px 10px", borderRadius:999,');
     expect(src).toContain("width: narrow ? 40 : 42, height: narrow ? 40 : 42");
   });

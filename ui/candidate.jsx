@@ -16,6 +16,7 @@ import { CANDIDATE_QUESTIONS } from "../data/candidate-questions";
 import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS } from "./tokens";
 import { shuffleArray, vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
+import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v65 (Доп. 378): ответ голосом
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
@@ -340,6 +341,17 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const [aiVerdict, setAiVerdict] = React.useState(null);
   const aiListRef = React.useRef(null);
   const aiAnswered = aiMsgs.filter(m => m.role === "user").length;
+  // v65 (Доп. 378), владелец: «добавим в собеседование ответ голосом». Как у Наставника и «Живого гостя»
+  // (ui/talk.jsx): поле пустое — на месте «Отправить» кнопка-волна; коснулся — вместо поля полоса разговора:
+  // интервьюер читает вопрос вслух (живым голосом, нет его — голосом телефона), кандидат отвечает голосом,
+  // конец фразы — по паузе, ответ ложится в переписку и уходит интервьюеру; следующий вопрос — снова вслух.
+  // Диктовка (микрофон) остаётся — для тех, кто хочет поправить ответ перед отправкой.
+  const [talk, setTalk] = React.useState(false);
+  const [talkState, setTalkState] = React.useState("idle");
+  const [micBusy, setMicBusy] = React.useState(false);
+  const talkOk = React.useMemo(() => canTalk(), []);
+  const aiMsgsRef = React.useRef(aiMsgs);
+  aiMsgsRef.current = aiMsgs;
 
   React.useEffect(() => {
     const el = aiListRef.current;
@@ -379,6 +391,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
 
   const startAi = () => {
     vibrate("light");
+    setTalk(false);
     setAiMsgs([]); setAiInput(""); setAiErr(null); setAiVerdict(null);
     setAnswers([]); setTest([]);
     setPhase("ai");
@@ -393,8 +406,44 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     aiTurn([...aiMsgs, { role: "user", content: text }]);
   };
 
+  // v65: ответ голосом — тот же путь, что набранный: в переписку и к интервьюеру; вопрос читает полоса разговора.
+  // Не получилось — ответ убираем из переписки (вопрос — ответ остаются парами), полоса встаёт на паузу с причиной:
+  // кандидат касается волны и отвечает ещё раз.
+  const talkTurn = async (text) => {
+    const said = String(text || "").trim();
+    if (!said) return { text: "" };
+    const before = aiMsgsRef.current;
+    const list = [...before, { role: "user", content: said, voice: true }];
+    aiMsgsRef.current = list; setAiMsgs(list);
+    setAiBusy(true); setAiErr(null);
+    let d = null;
+    try { d = await callHr("chat", list); } catch (e) { d = { error: "network" }; }
+    setAiBusy(false);
+    if (d?.ok && d.reply) {
+      const next = [...list, { role: "assistant", content: d.reply }];
+      aiMsgsRef.current = next; setAiMsgs(next);
+      return { text: d.reply };
+    }
+    aiMsgsRef.current = before; setAiMsgs(before);
+    const msg = d?.error === "not_configured" ? "AI-интервью не подключено на сервере (функция ai-hr). Пока можно пройти обычный тест."
+      : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан — попробуйте позже или пройдите обычный тест."
+      : d?.error === "network" ? "Нет связи с сервером — коснитесь волны и ответьте ещё раз."
+      : "ИИ не ответил — коснитесь волны и ответьте ещё раз.";
+    if (d?.error === "not_configured" || d?.error === "rate_limit") setAiErr(msg);
+    throw new Error(msg);
+  };
+  const openTalk = () => {
+    vibrate("light");
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}   // клавиатура — вниз
+    setTalk(true);
+  };
+  // вопрос, на который ещё не ответили, — полоса прочитает его первым
+  const lastAi = aiMsgs.length && aiMsgs[aiMsgs.length - 1].role === "assistant" ? aiMsgs[aiMsgs.length - 1].content : null;
+
+  const voiceN = aiMsgs.filter(m => m.role === "user" && m.voice).length;   // v65: ответов голосом
   const finishAi = () => {
     if (aiBusy) return;
+    setTalk(false);
     vibrate("light");
     setAiBusy(true); setAiErr(null);
     callHr("assess", aiMsgs)
@@ -408,7 +457,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         const avg = Math.round(entries.reduce((a, [, s]) => a + s, 0) / Math.max(1, entries.length));
         const rec = {
           id: Date.now().toString(36),
-          name: name.trim(), roleLabel: role.label + " · AI-интервью", date: new Date().toISOString(),
+          // v65: отвечал голосом (половина ответов и больше) — видно в истории: «AI-интервью голосом»
+          name: name.trim(), roleLabel: role.label + " · AI-интервью" + (voiceN * 2 >= Math.max(1, aiAnswered) && voiceN ? " голосом" : ""), date: new Date().toISOString(),
+          aiVoice: voiceN,
           expLabel: exp ? exp.label : "", place: place || "", age: age || "",
           score: Math.round(synth.reduce((a, x) => a + x.pts, 0) * 10) / 10, total: entries.length, pct: avg,
           level, selfBand: null,
@@ -502,6 +553,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
 
   const backFromHeader = () => {
     if (phase === "test" || phase === "selfcheck" || phase === "gate") { setConfirmLeave(true); return; }
+    // v65: в AI-интервью с ответами — тоже спросить (разговор голосом при этом закрываем: микрофон не слушает вопрос)
+    if (phase === "ai" && aiAnswered > 0) { setTalk(false); setConfirmLeave(true); return; }
     if (phase !== "intro") { setPhase("intro"); return; }
     onBack();
   };
@@ -618,7 +671,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div key={rl.id} className="sa-btn" onClick={() => { vibrate("light"); setRole(rl); }} {...onActivate(() => setRole(rl))}
                 style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
-                  ...(role.id === rl.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
+                  // v65: рамку выбранного меняем целиком (border и borderTop вместе) — иначе React ругается на смесь
+                  ...(role.id === rl.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E", borderTop: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
                 {role.id === rl.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <span style={{ display: "flex", flexShrink: 0 }}>{ROLE_ICO[rl.id](role.id === rl.id ? gold : sub)}</span>
                 <div style={{ flex: 1 }}>
@@ -663,7 +717,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div key={x.id} className="sa-btn" onClick={() => { vibrate("light"); setExp(x); }} {...onActivate(() => setExp(x))}
                 style={{ ...glass, padding: "12px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
-                  ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
+                  ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E", borderTop: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
                 {exp?.id === x.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <div style={{ flex: 1 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>{x.label}</div>
@@ -718,7 +772,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               AI-интервью · бета
             </button>
             <div style={{ ...T.modSub, color: sub, fontSize: 11, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
-              В AI-режиме кандидат отвечает своими словами, а ИИ задаёт уточняющие вопросы
+              В AI-режиме кандидат отвечает своими словами — текстом или голосом (волна справа от поля:
+              вопросы звучат вслух, ответ записывается сам), а ИИ задаёт уточняющие вопросы
               и оценивает по тем же компетенциям.
               <br /><span style={{ opacity: 0.75 }}>ИИ-помощник — окончательное решение принимает менеджер.</span>
             </div>
@@ -752,9 +807,20 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                             boxShadow: "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.10)", color: "#F0E8D8" })),
                     borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px" }}>
                     {m.content}
+                    {/* v65: вопрос звучит вслух — значок у него */}
+                    {talk && talkState === "speaking" && m.role === "assistant" && i === aiMsgs.length - 1
+                      ? <TalkSpeaking style={{ marginLeft: 8, color: gold }} /> : null}
                   </div>
                 </div>
               ))}
+              {/* v65: кандидат говорит — его пузырь с точками, пока фраза записывается и распознаётся */}
+              {talk && (talkState === "hearing" || talkState === "recognizing") ? (
+                <div data-talk-pending="" style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ padding: "10px 14px", borderRadius: "14px 14px 4px 14px", color: gold,
+                    background: a11y ? "rgba(139,106,48,0.09)" : "rgba(200,169,110,0.10)",
+                    border: a11y ? "1px solid rgba(139,106,48,0.42)" : "1px solid rgba(214,178,102,0.35)" }}><TalkDots /></div>
+                </div>
+              ) : null}
               {aiBusy && (
                 <div style={{ display: "flex", gap: 4, padding: "8px 4px" }}>
                   {[0, 1, 2].map(i => <span key={i} className="sa-pulse" style={{ width: 6, height: 6, borderRadius: 3, background: gold, animationDelay: (i * 0.18) + "s" }} />)}
@@ -772,6 +838,13 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 </div>
               )}
             </div>
+            {talk ? (
+              // v65: разговор голосом — полоса на месте поля; «Стоп» — снова поле (переписка остаётся)
+              <div style={{ marginBottom: 10 }} data-hr-talk="">
+                <TalkBar who="hr" name="Интервьюер" voice="mentor" phone={{ pitch: 1, rate: 1 }} first={lastAi}
+                  ask={talkTurn} onState={setTalkState} onClose={() => setTalk(false)} />
+              </div>
+            ) : (
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
               <textarea
                 ref={aiInputRef}
@@ -790,15 +863,23 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               />
               <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
                 headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
-                onText={t => setAiInput(v => (v ? v.trimEnd() + " " : "") + t)}
+                onText={t => setAiInput(v => (v ? v.trimEnd() + " " : "") + t)} onBusy={setMicBusy}
                 onError={m => { try { window.Telegram?.WebApp?.showAlert?.(m); } catch (e) { alert(m); } }} />
+              {/* v65: поле пустое — на месте «Отправить» кнопка-волна «Отвечать голосом» */}
+              {!aiInput.trim() && talkOk ? (
+                <div style={{ alignSelf: "flex-end", display: "flex" }}>
+                  <TalkButton size={46} disabled={aiBusy || micBusy} onClick={openTalk} label="Отвечать голосом" />
+                </div>
+              ) : (
               <button className="sa-btn" onClick={aiSend} disabled={aiBusy || !aiInput.trim()}
                 style={{ width: 46, height: 46, alignSelf: "flex-end", borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   background: aiInput.trim() && !aiBusy ? "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)" : "rgba(160,120,60,0.25)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
               </button>
+              )}
             </div>
+            )}
             {aiAnswered >= 4 && !aiBusy && (
               <button className="sa-btn" style={goldBtn} onClick={finishAi}>Завершить интервью → оценка</button>
             )}

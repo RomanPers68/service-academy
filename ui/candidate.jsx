@@ -855,7 +855,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: hrSt.beta ? gold : GREEN, border: `1px solid ${hrSt.beta ? gold : GREEN}66`, borderRadius: RADIUS.pill, padding: "1px 7px", fontWeight: "normal" }}>{hrSt.beta ? "БЕТА" : "ПРОВЕРЕН"}</span>
                 </div>
                 <div style={{ color: sub, fontSize: 12, lineHeight: 1.45 }}>
-                  эталоны: {hrSt.ref ? `${hrSt.ref.match} из ${hrSt.ref.n}` : "не проверяли"} · ваши решения: {hrSt.real.n ? `совпало ${hrSt.real.agree} из ${hrSt.real.n}` : `0 из ${REAL_N}`}
+                  эталоны: {hrSt.ref ? (hrSt.stale ? "проверить на новой модели" : `${hrSt.ref.match} из ${hrSt.ref.n}`) : "не проверяли"} · ваши решения: {hrSt.real.n ? `совпало ${hrSt.real.agree} из ${hrSt.real.n}` : `0 из ${REAL_N}`}
                 </div>
               </div>
               <span style={{ color: gold, fontSize: 18, flexShrink: 0 }}>›</span>

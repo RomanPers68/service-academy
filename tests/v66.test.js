@@ -189,7 +189,7 @@ describe("v66: сервер и база", () => {
     expect(s).toContain("revoke all on function public._sa_hire_staff(text) from public, anon, authenticated;");
   });
   it("метка сборки и описание", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v66</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v67 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 379");
     expect(rd("supabase/AI-SETUP.md")).toContain("OPENROUTER_FALLBACK_MODEL");
   });

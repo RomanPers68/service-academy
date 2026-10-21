@@ -115,6 +115,8 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
             <div style={{ color: text, fontSize: 13.5, fontFamily: "Georgia, serif", fontWeight: "bold" }}>Эталонная проверка</div>
             <div style={small}>
               {ref ? <>совпало <b style={{ color: ref.pass ? GREEN : gold }}>{ref.match} из {ref.n}</b> ({pctOf(ref.match, ref.n)}%) · флагов пропущено: <b style={{ color: ref.missed ? RED : GREEN }}>{ref.missed}</b>{ref.at ? ` · ${fmtDate(ref.at)}` : ""}{ref.model ? ` · ${shortModel(ref.model)}` : ""}{ref.by ? ` · ${ref.by}` : ""}</> : "ещё не запускали"}
+              {/* v67: модель сменили — итог прежней модели не считается */}
+              {ref && status.stale ? <><br /><span data-hr-stale="" style={{ color: gold }}>проверяли на {shortModel(ref.model)}, а интервью теперь ведёт {shortModel(status.cur)} — запустите проверку ещё раз</span></> : null}
               <br /><span style={{ opacity: 0.8 }}>нужно: {Math.round(REF_SHARE * 100)}% и больше, ни одного пропущенного красного флага</span>
             </div>
           </div>

@@ -155,8 +155,9 @@ describe("исходники v36", () => {
   });
   it("ai-chat: разговор голосом — короткий ответ (voice)", () => {
     expect(chat).toMatch(/const \{ token, messages, mode, guest: guestIn, finish, stream, voice \}/);
-    expect(chat).toContain("buildSystem(emp, reglaments) + (voice ? VOICE_MODE : \"\")");
-    expect(chat).toContain("max_tokens: voice ? 280 : 520");
+    // v67: подсказка Наставника из двух частей (кэш), лимит — через genOpts (у Claude 5.x ×1,35)
+    expect(chat).toContain("const tail = parts.personal + (voice ? VOICE_MODE : \"\");");
+    expect(chat).toContain('...genOpts(m, voice ? 280 : 520, 0.6, voice ? "off" : "low")');   // голосом — без размышлений
     expect(asst).toContain("messages: sent, voice: true");
     expect(asst).toContain("maxSpeak={VOICE_MAX}");
   });

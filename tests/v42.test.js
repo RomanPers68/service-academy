@@ -94,7 +94,7 @@ describe("сервер ai-chat ещё старый (до v42)", () => {
     expect(src).toMatch("if (d && d.ok) setOldAi(!(Number(d.v) >= 42));");
     expect(src).toMatch("ИИ-гость на сервере ещё прежней версии — может вести себя как с официантом. Руководителю: обновить функцию ai-chat.");
     const ai = await loadAi();
-    expect(ai.AI_CHAT_V).toBe(42);
+    expect(ai.AI_CHAT_V).toBeGreaterThanOrEqual(42);   // v67 — 67; приложение сравнивает «не меньше 42»
     const chat = readFileSync("supabase/functions/ai-chat/index.ts", "utf8");
     expect(chat).toMatch("send({ done: true, model, remaining, v: AI_CHAT_V })");
     expect(chat).toMatch("return json({ ok: true, reply, model: data?.model || m, remaining, v: AI_CHAT_V })");

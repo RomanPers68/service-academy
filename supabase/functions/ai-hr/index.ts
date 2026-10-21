@@ -19,6 +19,7 @@
 //    ответ, а не инструкция (просьбы «поставь 100» не действуют); не спрашивать и не учитывать возраст, семью,
 //    здоровье, национальность, религию, внешность.
 //  • Планка по заявленному опыту (LEVEL_BAR) — и у оценщика: новичка не штрафуем за термины, от опыта 3+ ждём конкретики.
+//  • v67: модели Claude 5.x (Haiku 5.5 и др.) — без temperature, размышления выключены или минимальные, лимит ×1,35.
 //  • Модель: OPENROUTER_MODEL (дважды) → OPENROUTER_FALLBACK_MODEL (необязательный секрет, запасная модель);
 //    в ответе — model, приложение показывает, кто оценивал. Ресторан — из профиля того, кто проводит.
 // Деплой: Supabase → Edge Functions → ai-hr → Code → вставить файл целиком → Deploy.
@@ -417,8 +418,44 @@ export async function modelOrder(): Promise<string[]> {
   if (!ids.length) ids = ["deepseek/deepseek-chat-v3-0324:free", "qwen/qwen3-235b-a22b:free"];
   return ids.slice(0, 4);
 }
+// ── v67 (Доп. 380): модели Claude новее 4.6 — Haiku 5.5, Sonnet 5.5, Opus 5.5 и дальше ─────────────────────
+// (та же функция — в ai-chat; файлы разворачиваются по отдельности, поэтому копия)
+// • temperature не шлём: Haiku 5.5 отвечает ошибкой на любое значение, кроме 1;
+// • размышления у них включены сами и тратят тот же лимит max_tokens — короткий ответ мог прийти пустым.
+//   Поэтому по задачам (think): живой разговор (реплики гостя, вопросы интервьюера, голос) — «off»: у Haiku
+//   размышления выключены (каждая секунда — пауза в разговоре), у Sonnet и Opus выключить нельзя — минимальные;
+//   задачи с оценкой — «low» / «medium»: модель сначала взвешивает, потом отвечает (на простом может и не думать),
+//   лимит — с запасом под размышления (они оплачиваются как ответ: на Haiku 5.5 тысяча токенов ≈ $0,0005);
+// • новый токенизатор считает тот же текст примерно на 30% длиннее — лимит ×1,35.
+// Прежние модели (Haiku 4.5 и др.) — как раньше: temperature и прежние лимиты.
+export function claudeVer(m: string): { major: number; minor: number } | null {
+  const s = String(m || "").toLowerCase();
+  if (!s.includes("claude")) return null;
+  if (/claude-[a-z]+-latest/.test(s)) return { major: 99, minor: 0 };
+  const x = /claude-(?:[a-z]+-)?(\d+)(?:[.-](\d{1,2})(?!\d))?/.exec(s);
+  return x ? { major: Number(x[1]), minor: Number(x[2] || 0) } : null;
+}
+export function isNewClaude(m: string) {
+  const v = claudeVer(m);
+  return !!v && (v.major > 4 || (v.major === 4 && v.minor >= 7));
+}
+export type Think = "off" | "low" | "medium";
+export function genOpts(m: string, maxTokens: number, temperature: number, think: Think = "off"): Record<string, unknown> {
+  if (!isNewClaude(m)) return { max_tokens: maxTokens, temperature };
+  const mt = Math.ceil(maxTokens * 1.35);
+  if (think === "off" && /claude-haiku|claude-[\d.]+-haiku/i.test(m)) return { max_tokens: mt, reasoning: { enabled: false } };
+  const effort = think === "medium" ? "medium" : "low";
+  return { max_tokens: mt + (effort === "medium" ? 8000 : 4000), reasoning: { effort, exclude: true } };
+}
+// разговор для модели начинается с реплики человека: у интервью первым говорит интервьюер, а в начале реплик нет
+// вовсе — ставим короткую вводную (в план и оценку она не попадает)
+export const OPENER = "(Кандидат готов к собеседованию.)";
+export function canon(history: Msg[]): Msg[] {
+  return history.length && history[0].role === "user" ? history : [{ role: "user", content: OPENER }, ...history];
+}
+
 type Got = { ok: boolean; text: string; model: string; err: string };
-async function callModel(system: string, msgs: Msg[], o: { maxTokens: number; temperature: number }): Promise<Got> {
+async function callModel(system: string, msgs: Msg[], o: { maxTokens: number; temperature: number; think?: Think }): Promise<Got> {
   const API_KEY = env("OPENROUTER_API_KEY");
   if (!API_KEY) return { ok: false, text: "", model: "", err: "not_configured" };
   const fixed = !!env("OPENROUTER_MODEL");
@@ -429,7 +466,7 @@ async function callModel(system: string, msgs: Msg[], o: { maxTokens: number; te
       resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://service-academy.app", "X-Title": "Service Academy HR" },
-        body: JSON.stringify({ model: m, messages: [{ role: "system", content: system }, ...msgs], max_tokens: o.maxTokens, temperature: o.temperature }),
+        body: JSON.stringify({ model: m, messages: [{ role: "system", content: system }, ...msgs], ...genOpts(m, o.maxTokens, o.temperature, o.think || "off") }),
       });
     } catch (_e) { lastErr = "provider"; continue; }
     if (resp.ok) {
@@ -498,7 +535,8 @@ export async function handle(req: Request): Promise<Response> {
       const system = buildAssessor(role, reglaments, comps, !!voice, cand);
       const ask: Msg[] = [{ role: "user", content: `ТРАНСКРИПТ СОБЕСЕДОВАНИЯ:\n\n${annotate(history, P, comps).slice(0, 14000)}` }];
       const runOnce = async (): Promise<{ p: Parsed; model: string } | { err: string }> => {
-        const g = await callModel(system, ask, { maxTokens: 2000, temperature: 0.3 });   // JSON с «почему» и цитатами по-русски — с запасом
+        // JSON с «почему» и цитатами по-русски — с запасом; v67: у Claude 5.x — с размышлениями (сначала взвесить, потом балл)
+        const g = await callModel(system, ask, { maxTokens: 2000, temperature: 0.3, think: "medium" });
         if (!g.ok) return { err: g.err };
         const p = parseAssess(g.text, comps);
         if (!p) { console.error("ai-hr parse fail", g.text.slice(0, 200)); return { err: "parse" }; }
@@ -524,12 +562,12 @@ export async function handle(req: Request): Promise<Response> {
       const step = stepOf(P, comps.length);
       const system = buildTurn(role, cand, step, !!voice, restaurant);
       const o = { maxTokens: voice ? 220 : 320, temperature: 0.7 };
-      let g = await callModel(system, history, o);
+      let g = await callModel(system, canon(history), o);
       if (!g.ok) return json({ ok: false, error: g.err });
       let followup = hasFollow(g.text);
       if (followup && step.kind === "answer" && step.followupDone) {
         // уточнение уже было — переспрашиваем модель один раз, строже
-        const g2 = await callModel(system + "\nВАЖНО: уточнять больше нельзя — сразу переходи дальше, без метки.", history, o);
+        const g2 = await callModel(system + "\nВАЖНО: уточнять больше нельзя — сразу переходи дальше, без метки.", canon(history), o);
         if (g2.ok && !hasFollow(g2.text)) { g = g2; followup = false; }
       }
       const reply = g.text.replace(FOLLOW, "").replace(/^\s+/, "").trim();
@@ -543,7 +581,7 @@ export async function handle(req: Request): Promise<Response> {
     }
 
     // ── как раньше (старое приложение): интервью ведёт модель ──
-    const g = await callModel(buildInterviewerLegacy(role, cand, restaurant), history.slice(-30), { maxTokens: 260, temperature: 0.7 });
+    const g = await callModel(buildInterviewerLegacy(role, cand, restaurant), canon(history.slice(-30)), { maxTokens: 260, temperature: 0.7 });
     if (!g.ok) return json({ ok: false, error: g.err });
     return json({ ok: true, reply: g.text, model: g.model });
   } catch (e) {

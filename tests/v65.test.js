@@ -77,7 +77,8 @@ describe("v65: ответ голосом в AI-собеседовании", () =
   });
   it("ход голосом: ответ — в переписку (с пометкой voice) и к интервьюеру; сбой — ответ убираем, причина — в полосу", () => {
     expect(c).toContain('const list = [...before, { role: "user", content: said, voice: true }];');
-    expect(c).toContain('try { d = await callHr("chat", list); } catch (e) { d = { error: "network" }; }');
+    // v66: ход голосом уходит с пометкой voice (интервьюер отвечает короче, оценщик знает про распознавание)
+    expect(c).toContain('try { d = await callHr("chat", list, { voice: true }); } catch (e) { d = { error: "network" }; }');
     expect(c).toContain("aiMsgsRef.current = before; setAiMsgs(before);");
     expect(c).toContain('"ИИ не ответил — коснитесь волны и ответьте ещё раз."');
     // интервьюеру уходят только роль и текст (без пометки voice)
@@ -113,7 +114,7 @@ describe("v65: ответ голосом в AI-собеседовании", () =
 
 describe("v65: метка сборки и описание", () => {
   it("«сборка v65», «Дополнение 378»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v65</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v66 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 378");
   });
 });

@@ -20,6 +20,10 @@ import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";  
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
+import { aiCatOf, DECISIONS, hrStatus, REAL_N } from "../lib/hr-quality";   // v66 (Доп. 379): когда снимаем «бету»
+// v66: «Проверка AI HR» — отдельный кусок (эталоны ≈25 КБ), грузится, только когда её открыли
+const retryImport = (loader, tries = 3, delay = 600) => loader().catch(err => { if (tries <= 1) throw err; return new Promise(r => setTimeout(r, delay)).then(() => retryImport(loader, tries - 1, delay * 2)); });
+const HrEval = React.lazy(() => retryImport(() => import("./hr-eval")).then(m => ({ default: m.HrEval })));
 
 const STORE_KEY = "sa_candidate_results";
 const SECONDS_PER_Q = 60; // ситуации читаются дольше — минута на вопрос
@@ -67,6 +71,12 @@ function loadResults() {
 }
 function saveResults(list) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(list.slice(0, 50))); } catch (e) {}
+}
+// v66: итог последней «Проверки AI HR» на этом телефоне
+const HR_REF_KEY = "sa_hr_eval";
+function loadHrRef() {
+  try { const v = JSON.parse(localStorage.getItem(HR_REF_KEY)); return v && typeof v === "object" && v.n ? v : null; }
+  catch (e) { return null; }
 }
 
 // Вопросы из «своих» уроков ресторана для выбранной роли теста
@@ -182,6 +192,129 @@ function QTimer({ seconds, onExpire }) {
   );
 }
 
+// ── v66 (Доп. 379): отчёт AI-интервью — для экрана результата и для истории ──
+// Категория по правилу из баллов и флагов (сервер), вердикт, по каждой компетенции — балл, «почему» и цитата кандидата,
+// «ИИ не уверен» (прогоны оценки разошлись), что спросить на живой встрече, все ответы кандидата, модель,
+// и «Ваше решение» — Берём / Подумаю / Не берём (по нему считается, совпадает ли ИИ с менеджером).
+// категория, решения и совпадение ИИ с руководителем — lib/hr-quality.js (там же условия снятия «беты»)
+const catColorOf = (c) => (c === "Рекомендован" ? GREEN : c === "Не рекомендован" ? RED : GOLD_SOFT);
+const isAiRec = (r) => !!(r && (r.aiScores || r.aiVerdict));   // запись AI-интервью (новая или прежняя)
+const scoreColor = (v) => (v >= 70 ? GREEN : v >= 55 ? GOLD_SOFT : RED);
+const shortModel = (m) => String(m || "").split("/").pop();
+// ответы кандидата по порядку: вопрос → ответ (голосом — пометка)
+export function transcriptOf(msgs) {
+  const out = [];
+  for (const m of msgs || []) {
+    if (m.role === "assistant") out.push({ q: String(m.content || "").slice(0, 400), a: "", t: Number.isFinite(m.topic) ? m.topic : null, f: !!m.followup });
+    else if (out.length) { const last = out[out.length - 1]; last.a = (last.a ? last.a + " " : "") + String(m.content || "").slice(0, 700); if (m.voice) last.v = 1; }
+  }
+  return out.filter(x => x.a);
+}
+
+function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, beta = true }) {
+  const [showAll, setShowAll] = React.useState(false);
+  const cat = aiCatOf(rec);
+  const catColor = cat === "Рекомендован" ? GREEN : cat === "Не рекомендован" ? RED : GOLD_SOFT;
+  const names = (rec.aiTopics && rec.aiTopics.length ? rec.aiTopics : Object.keys(rec.aiScores || {}));
+  const unsure = new Set(rec.aiUncertain || []);
+  const text = T.modTitle?.color || (a11y ? "#3A2E1C" : "#EFE4C8");
+  const small = { ...T.modSub, color: sub, fontSize: 12.5, lineHeight: 1.55 };
+  const box = compact ? { marginTop: 10 } : { ...glass, marginBottom: 12 };
+  return (
+    <div data-ai-report={rec.id}>
+      <div style={box}>
+        {!compact ? (
+          <div style={{ ...T.bold, marginTop: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            Вердикт ИИ
+            {beta ? <span data-ai-beta="" style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span> : null}
+          </div>
+        ) : null}
+        {cat && compact ? <div data-ai-cat={cat} style={{ fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13.5, color: catColor, marginBottom: 4 }}>{cat}</div> : null}
+        {rec.aiVerdict ? <div style={{ ...small, marginBottom: 8 }}>{String(rec.aiVerdict).replace(/^(Рекомендован с оговорками|Не рекомендован|Рекомендован)\.?\s*/i, "")}</div> : null}
+        {rec.aiStrengths?.length > 0 && <div style={{ ...small, marginBottom: 6 }}><b style={{ color: GREEN }}>Сильное:</b> {rec.aiStrengths.join("; ")}</div>}
+        {rec.aiGrowth?.length > 0 && <div style={{ ...small, marginBottom: 6 }}><b style={{ color: gold }}>Над чем работать:</b> {rec.aiGrowth.join("; ")}</div>}
+        {rec.aiRisks?.length > 0 && <div style={{ ...small, marginBottom: 6 }}><b style={{ color: RED }}>Риски:</b> {rec.aiRisks.join("; ")}</div>}
+        {rec.aiModel ? (
+          <div data-ai-model="" style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 0.6, color: sub, opacity: 0.8, marginTop: 6 }}>
+            оценивал: {shortModel(rec.aiModel)}{rec.aiRuns > 1 ? ` · ${rec.aiRuns} прогона оценки` : ""}
+          </div>
+        ) : null}
+      </div>
+
+      {rec.aiScores ? (
+        <div style={box} data-ai-comps="">
+          <div style={{ ...T.bold, marginTop: compact ? 0 : 2, marginBottom: 8, fontSize: compact ? 13 : undefined }}>По компетенциям</div>
+          {names.map((c) => {
+            const v = Number(rec.aiScores[c] ?? 0), ev = (rec.aiEvidence && rec.aiEvidence[c]) || null;
+            return (
+              <div key={c} data-ai-comp={c} style={{ padding: "6px 0", borderTop: `1px solid ${gold}18` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ flex: 1, minWidth: 0, color: text, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c}</span>
+                  {unsure.has(c) ? <span data-ai-unsure="" style={{ fontFamily: "monospace", fontSize: 10.5, color: GOLD_SOFT, border: `1px solid ${GOLD_SOFT}55`, borderRadius: RADIUS.pill, padding: "0 6px", flexShrink: 0 }}>ИИ не уверен</span> : null}
+                  <div style={{ width: 60, height: 5, borderRadius: 3, background: "rgba(160,120,60,0.18)", overflow: "hidden", flexShrink: 0 }}>
+                    <div style={{ height: "100%", width: Math.max(0, Math.min(100, v)) + "%", background: scoreColor(v) }} />
+                  </div>
+                  <span style={{ color: scoreColor(v), fontFamily: "monospace", fontSize: 12.5, width: 26, textAlign: "right", flexShrink: 0 }}>{v}</span>
+                </div>
+                {ev && ev.why ? <div style={{ ...small, fontSize: 12, marginTop: 3 }}>{ev.why}</div> : null}
+                {ev && ev.quote ? <div style={{ ...small, fontSize: 12, fontStyle: "italic", opacity: 0.9, marginTop: 2 }}>«{String(ev.quote).replace(/^[«"]+|[»"]+$/g, "")}»</div> : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {rec.aiAsk?.length > 0 && (
+        <div style={box} data-ai-ask="">
+          <div style={{ ...T.bold, marginTop: compact ? 0 : 2, marginBottom: 6, fontSize: compact ? 13 : undefined }}>Спросите на встрече</div>
+          {rec.aiAsk.map((q, i) => <div key={i} style={{ ...small, marginBottom: 4 }}>— {q}</div>)}
+        </div>
+      )}
+
+      {rec.aiTranscript?.length > 0 && (
+        <div style={box}>
+          <button type="button" className="sa-btn" data-ai-answers="" onClick={(e) => { e.stopPropagation(); vibrate("light"); setShowAll(v => !v); }}
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: gold, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13 }}>
+            {showAll ? "Скрыть ответы кандидата" : `Ответы кандидата · ${rec.aiTranscript.length}`} {showAll ? "▴" : "▾"}
+          </button>
+          {showAll ? rec.aiTranscript.map((x, i) => (
+            <div key={i} data-ai-qa="" style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${gold}18` }}>
+              <div style={{ ...small, fontSize: 12 }}>{x.f ? "Уточнение: " : ""}{x.q}</div>
+              <div style={{ color: text, fontSize: 13, lineHeight: 1.5, marginTop: 3, fontFamily: "Georgia, serif" }}>
+                {x.a}{x.v ? <span style={{ fontFamily: "monospace", fontSize: 10.5, color: sub, marginLeft: 6 }}>· голосом</span> : null}
+              </div>
+            </div>
+          )) : null}
+        </div>
+      )}
+
+      {onDecide ? <Decision rec={rec} onDecide={onDecide} sub={sub} T={T} style={box} /> : null}
+    </div>
+  );
+}
+export const decisionColor = (id) => (id === "hire" ? GREEN : id === "reject" ? RED : GOLD_SOFT);
+// «Ваше решение»: подпись сверху, три равные кнопки в ряд (на 320 тоже в одну строку); повторный тап — снять
+function Decision({ rec, onDecide, sub, T, style }) {
+  return (
+    <div style={style} data-ai-decision={rec.decision || ""}>
+      <div style={{ ...T.modSub, color: sub, fontSize: 12.5, marginBottom: 8 }}>
+        Ваше решение{rec.decision && rec.decidedBy ? <span style={{ opacity: 0.75 }}> · отметил(а): {rec.decidedBy}</span> : null}
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {DECISIONS.map((d) => {
+          const on = rec.decision === d.id, c = decisionColor(d.id);
+          return (
+            <button key={d.id} type="button" className="sa-btn" data-decide={d.id} aria-pressed={on}
+              onClick={(e) => { e.stopPropagation(); onDecide(rec.id, d.id); }}
+              style={{ flex: 1, minWidth: 0, padding: "9px 4px", borderRadius: RADIUS.pill, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold", whiteSpace: "nowrap",
+                border: `1px solid ${c}${on ? "" : "55"}`, background: on ? `${c}26` : "transparent", color: on ? c : sub }}>{d.label}</button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   // Подсказка экрана — один раз при первом входе (правка 171)
   const [cdHint, cdHintDone] = useHintOnce("candidate");
@@ -211,17 +344,70 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const uploadResult = React.useCallback((rec) => {
     const t = saToken();
     if (!t || !restaurant) return;
-    rpc("candidate_save", { p_token: t, p_restaurant: restaurant, p_result: JSON.stringify(rec) })
+    const { decSync, srvId, ...clean } = rec;   // v66: служебные пометки телефона на сервер не шлём
+    rpc("candidate_save", { p_token: t, p_restaurant: restaurant, p_result: JSON.stringify(clean) })
       .then(d => {
         if (!d || !d.ok) return;
         setResults(prev => {
           const next = prev.map(r => r.id === rec.id ? { ...r, srvId: d.id } : r);
           saveResults(next);
+          const r = next.find(x => x.id === rec.id);
+          if (r && r.decSync === false) setTimeout(() => pushDecision(r), 0);   // v66: решение успели принять раньше
           return next;
         });
       })
       .catch(() => {});
   }, [restaurant]);
+
+  // v66 (Доп. 379): решение менеджера по кандидату («Берём / Подумаю / Не берём») — на сервер (этап 28,
+  // candidate_decide). Нет этапа или сети — решение живёт на телефоне (decSync: false) и уйдёт при следующем заходе.
+  const pushDecision = React.useCallback((rec) => {
+    const t = saToken();
+    if (!t || !restaurant || !rec?.srvId) return;
+    rpc("candidate_decide", { p_token: t, p_restaurant: restaurant, p_id: rec.srvId, p_decision: rec.decision || null })
+      .then(d => {
+        if (!d || !d.ok) return;
+        setResults(prev => { const next = prev.map(r => r.id === rec.id ? { ...r, decSync: true } : r); saveResults(next); return next; });
+      })
+      .catch(() => {});
+  }, [restaurant]);
+  const decide = (id, dec) => {
+    vibrate("light");
+    const rec = results.find(r => r.id === id);
+    if (!rec) return;
+    const upd = { ...rec, decision: rec.decision === dec ? null : dec, decidedAt: new Date().toISOString(), decSync: false };
+    const next = results.map(r => (r.id === id ? upd : r));
+    setResults(next); saveResults(next);
+    setLastRec(l => (l && l.id === id ? upd : l));
+    pushDecision(upd);
+  };
+  // v66: итог «Проверки AI HR» — общий для руководителей ресторана (этап 28: hr_quality_*); нет этапа или сети —
+  // живёт на телефоне и уходит на сервер при следующем заходе
+  const [hrEvalRes, setHrEvalRes] = React.useState(loadHrRef);
+  const saveHrRef = React.useCallback((res) => {
+    setHrEvalRes(res);
+    try { localStorage.setItem(HR_REF_KEY, JSON.stringify(res)); } catch (e) {}
+    const t = saToken();
+    if (t && restaurant) rpc("hr_quality_save", { p_token: t, p_restaurant: restaurant, p_payload: JSON.stringify(res) }).catch(() => {});
+  }, [restaurant]);
+  React.useEffect(() => {
+    const t = saToken();
+    if (!t || !restaurant) return;
+    rpc("hr_quality_get", { p_token: t, p_restaurant: restaurant })
+      .then(d => {
+        if (!d || !d.ok) return;
+        const srv = d.item && d.item.payload ? { ...d.item.payload, by: d.item.updated_by || "" } : null;
+        const loc = loadHrRef();
+        if (srv && (!loc || new Date(srv.at || 0) >= new Date(loc.at || 0))) {
+          setHrEvalRes(srv);
+          try { localStorage.setItem(HR_REF_KEY, JSON.stringify(srv)); } catch (e) {}
+        } else if (loc) {
+          rpc("hr_quality_save", { p_token: t, p_restaurant: restaurant, p_payload: JSON.stringify(loc) }).catch(() => {});   // проверяли без сервера — дозаливаем
+        }
+      })
+      .catch(() => {});
+  }, [restaurant]);
+  const hrSt = hrStatus(hrEvalRes, results);   // { refOk, real: { n, agree, need, pass }, beta }
 
   React.useEffect(() => {
     const t = saToken();
@@ -230,7 +416,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
       .then(d => {
         if (!d || !d.ok || !Array.isArray(d.items)) return;
         const cloud = d.items.map(row => ({
-          ...(row.payload || {}),
+          ...(({ decSync, ...p }) => p)(row.payload || {}),   // v66: пометка телефона «решение не дошло» с сервера не берём
           srvId: row.id,
           by: row.created_by || "",
           date: (row.payload && row.payload.date) || row.created_at,
@@ -239,16 +425,21 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         setResults(prev => {
           // локальные, ещё не долетевшие до сервера — оставляем и дозаливаем
           const pending = prev.filter(r => !r.srvId && !cloudIds.has(r.id));
-          const merged = [...cloud, ...pending]
+          // v66: решение менеджера, ещё не дошедшее до сервера (не было этапа 28 или сети), главнее облачного
+          const localDec = new Map(prev.filter(r => r.decSync === false).map(r => [r.id, r]));
+          const cloud2 = cloud.map(r => localDec.has(r.id)
+            ? { ...r, decision: localDec.get(r.id).decision, decidedAt: localDec.get(r.id).decidedAt, decSync: false } : r);
+          const merged = [...cloud2, ...pending]
             .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
             .slice(0, 100);
           saveResults(merged);
           pending.forEach(uploadResult);
+          cloud2.filter(r => r.decSync === false && r.srvId).forEach(r => pushDecision(r));
           return merged;
         });
       })
       .catch(() => {});
-  }, [restaurant, uploadResult]);
+  }, [restaurant, uploadResult]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [confirmLeave, setConfirmLeave] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const lock = React.useRef(false);
@@ -315,13 +506,13 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const startSetup = () => {
     vibrate("light");
     setName(""); setRole(TEST_ROLES[0]); setExp(null); setPlace(null); setAge(null);
-    setUseCustom(false); setSelfBand(null); setSaved(false);
+    setUseCustom(false); setSelfBand(null); setSaved(false); setLastRec(null);
     setPhase("setup");
   };
   const startTest = () => {
     vibrate("light");
     setTest(buildTest(role.id, level, useCustom ? customQs : []));
-    setQIdx(0); setChosen(null); setOrdSeq([]); setAnswers([]);
+    setQIdx(0); setChosen(null); setOrdSeq([]); setAnswers([]); setLastRec(null);
     lock.current = false;
     setPhase("test");
   };
@@ -348,6 +539,13 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   // Диктовка (микрофон) остаётся — для тех, кто хочет поправить ответ перед отправкой.
   const [talk, setTalk] = React.useState(false);
   const [talkState, setTalkState] = React.useState("idle");
+  // v66 (Доп. 379): план интервью ведёт сервер (ai-hr v2): тема сейчас, было ли уточнение, конец; v2 === false —
+  // функция на сервере ещё прежняя (без плана) — всё как раньше
+  const HR0 = { v2: null, topics: [], total: 0, topic: 0, followup: false, done: false, model: "" };
+  const [hrInfo, setHrInfo] = React.useState(HR0);
+  const hrRef = React.useRef(hrInfo);
+  hrRef.current = hrInfo;
+  const [lastRec, setLastRec] = React.useState(null);   // запись последнего AI-интервью — для экрана результата
   const [micBusy, setMicBusy] = React.useState(false);
   const talkOk = React.useMemo(() => canTalk(), []);
   const aiMsgsRef = React.useRef(aiMsgs);
@@ -358,12 +556,19 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
   }, [aiMsgs, aiBusy]);
 
-  const callHr = React.useCallback((mode, msgs) =>
+  // plan — у каждого вопроса интервьюера: тема и уточнение (сервер по нему знает, что спрашивать дальше)
+  const planOf = (msgs) => {
+    if (hrRef.current.v2 === false) return undefined;
+    const ai = msgs.filter(m => m.role === "assistant");
+    if (ai.some(m => !Number.isFinite(m.topic))) return undefined;
+    return ai.map(m => ({ topic: m.topic, followup: !!m.followup }));
+  };
+  const callHr = React.useCallback((mode, msgs, extra = {}) =>
     fetch(`${SUPABASE_URL}/functions/v1/ai-hr`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       body: JSON.stringify({
-        token: saToken(), mode, role: role?.id,
+        token: saToken(), mode, role: role?.id, plan: planOf(msgs), voice: !!extra.voice,
         candidate: {
           name: name.trim(), expLabel: exp?.label || "", place: place || "", age: age || "",
           level: exp?.level || "pro",
@@ -375,23 +580,42 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
       }),
     }).then(r => r.json()), [role, name, exp, place]);
 
+  // ответ интервьюера → его тема и уточнение (v2) или прежний режим
+  const applyHr = (d) => {
+    if (Number.isFinite(d?.topic)) {
+      const topics = Array.isArray(d.topics) ? d.topics : [];
+      setHrInfo({ v2: true, topics, total: d.total || topics.length, topic: d.topic, followup: !!d.followup, done: !!d.done, model: d.model || "" });
+      return { topic: d.topic, followup: !!d.followup };
+    }
+    setHrInfo(h => ({ ...h, v2: false, model: d?.model || h.model }));
+    return {};
+  };
+  // v66: интервьюер не ответил — набранный ответ возвращается в поле (раньше пропадал), «Повторить» шлёт его снова
+  const giveBack = (msgs) => {
+    const last = msgs[msgs.length - 1];
+    if (last && last.role === "user") setAiInput(v => (v && v.trim() ? v : last.content));
+  };
   const aiTurn = React.useCallback((msgs) => {
     setAiBusy(true); setAiErr(null);
     callHr("chat", msgs)
       .then(d => {
-        if (d?.ok && d.reply) setAiMsgs([...msgs, { role: "assistant", content: d.reply }]);
-        else setAiErr(d?.error === "not_configured"
-          ? "AI-интервью не подключено на сервере (функция ai-hr). Пока можно пройти обычный тест."
-          : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан — попробуйте позже или пройдите обычный тест."
-          : "ИИ временно недоступен. Попробуйте ещё раз или пройдите обычный тест.");
+        if (d?.ok && d.reply) { const meta = applyHr(d); setAiMsgs([...msgs, { role: "assistant", content: d.reply, ...meta }]); }
+        else {
+          giveBack(msgs);
+          setAiErr(d?.error === "not_configured"
+            ? "AI-интервью не подключено на сервере (функция ai-hr). Пока можно пройти обычный тест."
+            : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан — попробуйте позже или пройдите обычный тест."
+            : "ИИ временно недоступен. Попробуйте ещё раз или пройдите обычный тест.");
+        }
       })
-      .catch(() => setAiErr("Нет связи с сервером. Проверьте интернет."))
+      .catch(() => { giveBack(msgs); setAiErr("Нет связи с сервером. Проверьте интернет."); })
       .finally(() => setAiBusy(false));
-  }, [callHr]);
+  }, [callHr]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const startAi = () => {
     vibrate("light");
     setTalk(false);
+    setHrInfo(HR0); hrRef.current = HR0;
     setAiMsgs([]); setAiInput(""); setAiErr(null); setAiVerdict(null);
     setAnswers([]); setTest([]);
     setPhase("ai");
@@ -417,12 +641,14 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     aiMsgsRef.current = list; setAiMsgs(list);
     setAiBusy(true); setAiErr(null);
     let d = null;
-    try { d = await callHr("chat", list); } catch (e) { d = { error: "network" }; }
+    try { d = await callHr("chat", list, { voice: true }); } catch (e) { d = { error: "network" }; }
     setAiBusy(false);
     if (d?.ok && d.reply) {
-      const next = [...list, { role: "assistant", content: d.reply }];
+      const meta = applyHr(d);
+      const next = [...list, { role: "assistant", content: d.reply, ...meta }];
       aiMsgsRef.current = next; setAiMsgs(next);
-      return { text: d.reply };
+      // v66: интервьюер попрощался (все темы пройдены) — договорит, и полоса закроется сама
+      return { text: d.reply, end: !!d.done };
     }
     aiMsgsRef.current = before; setAiMsgs(before);
     const msg = d?.error === "not_configured" ? "AI-интервью не подключено на сервере (функция ai-hr). Пока можно пройти обычный тест."
@@ -446,7 +672,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     setTalk(false);
     vibrate("light");
     setAiBusy(true); setAiErr(null);
-    callHr("assess", aiMsgs)
+    callHr("assess", aiMsgs, { voice: voiceN > 0 })
       .then(d => {
         if (!d?.ok || !d.scores) {
           setAiErr("Не удалось получить оценку. Попробуйте «Завершить» ещё раз.");
@@ -465,12 +691,19 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           level, selfBand: null,
           topics: entries.map(([topic, s]) => ({ topic, ok: s / 100, n: 1 })),
           aiVerdict: d.verdict || "", aiStrengths: d.strengths || [], aiRisks: d.risks || [],
+          // v66 (Доп. 379): категория по правилу, баллы и доказательства по темам, что спросить на встрече, все ответы,
+          // кто оценивал; у прежней функции на сервере этих полей нет — запись как раньше
+          aiCategory: d.category || aiCatOf({ aiVerdict: d.verdict }), aiScores: d.scores, aiEvidence: d.evidence || null,
+          aiAsk: Array.isArray(d.ask) ? d.ask : [], aiUncertain: Array.isArray(d.uncertain) ? d.uncertain : [],
+          aiGrowth: Array.isArray(d.growth) ? d.growth : [], aiModel: d.model || hrInfo.model || "", aiRuns: d.runs || 1, aiV: d.v || 1,
+          aiTopics: hrInfo.topics && hrInfo.topics.length ? hrInfo.topics : Object.keys(d.scores), aiTranscript: transcriptOf(aiMsgs),
         };
         const next = [rec, ...results];
         setResults(next); saveResults(next); setSaved(true);
         uploadResult(rec);
         setAnswers(synth);
         setAiVerdict({ verdict: d.verdict, strengths: d.strengths, growth: d.growth, risks: d.risks });
+        setLastRec(rec);
         setPhase("result");
       })
       .catch(() => setAiErr("Нет связи с сервером. Попробуйте ещё раз."))
@@ -580,7 +813,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
       ) : null}
       <div style={T.lessHead}>
         <button style={T.backBtn2} onClick={backFromHeader}>‹</button>
-        <div style={T.lessHeadTitle}>Собеседование</div>
+        <div style={T.lessHeadTitle}>{phase === "eval" ? "Проверка AI HR" : "Собеседование"}</div>
       </div>
       <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "14px 16px 44px" }}>
 
@@ -611,31 +844,67 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             </div>
             <button className="sa-btn" style={goldBtn} onClick={startSetup}>Начать собеседование</button>
 
+            {/* v66 (Доп. 379): AI HR — бета или проверен; два условия коротко, тап — «Проверка AI HR» */}
+            <div className="sa-btn" data-hr-row={hrSt.beta ? "beta" : "ok"} role="button" tabIndex={0}
+              onClick={() => { vibrate("light"); setPhase("eval"); }} {...onActivate(() => setPhase("eval"))}
+              style={{ ...glass, padding: "12px 14px", marginTop: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ display: "flex", flexShrink: 0 }}>{hrSt.beta ? UI_SVG.target(gold, 20) : UI_SVG.checkCircle(GREEN, 20)}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...T.bold, marginTop: 2, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
+                  AI HR
+                  <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: hrSt.beta ? gold : GREEN, border: `1px solid ${hrSt.beta ? gold : GREEN}66`, borderRadius: RADIUS.pill, padding: "1px 7px", fontWeight: "normal" }}>{hrSt.beta ? "БЕТА" : "ПРОВЕРЕН"}</span>
+                </div>
+                <div style={{ color: sub, fontSize: 12, lineHeight: 1.45 }}>
+                  эталоны: {hrSt.ref ? `${hrSt.ref.match} из ${hrSt.ref.n}` : "не проверяли"} · ваши решения: {hrSt.real.n ? `совпало ${hrSt.real.agree} из ${hrSt.real.n}` : `0 из ${REAL_N}`}
+                </div>
+              </div>
+              <span style={{ color: gold, fontSize: 18, flexShrink: 0 }}>›</span>
+            </div>
+
             {results.length > 0 && (
               <>
                 <div style={{ ...secLabel, margin: "22px 2px 10px" }}>История · {results.length}</div>
+                {/* v66: насколько ИИ совпадает с решениями руководителя — второе условие снятия «беты» */}
+                {hrSt.real.n > 0 ? (
+                  <div data-ai-agree={`${hrSt.real.agree}/${hrSt.real.n}`} style={{ ...T.modSub, color: sub, fontSize: 12.5, lineHeight: 1.5, margin: "-4px 2px 10px" }}>
+                    ИИ и ваши решения: совпало <b style={{ color: gold }}>{hrSt.real.agree} из {hrSt.real.n}</b>
+                    {hrSt.real.n >= 5 ? ` (${Math.round((hrSt.real.agree / hrSt.real.n) * 100)}%)` : ""}
+                    {hrSt.real.n >= REAL_N ? ` на последних ${REAL_N}` : ""}.
+                  </div>
+                ) : null}
                 {results.map(r => {
                   const v = verdictOf(r.pct, r.level || "pro");
                   const open = openedResult === r.id;
                   const cal = calibrationOf(r.selfBand, r.pct);
                   return (
-                    <div key={r.id} style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer" }}
+                    <div key={r.id} data-cand-row={r.id} style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer" }}
                       onClick={() => { vibrate("light"); setOpenedResult(open ? null : r.id); }}
                       {...onActivate(() => setOpenedResult(open ? null : r.id))}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 40, textAlign: "center", color: v.color, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 16 }}>{r.pct}%</div>
+                        {/* v66: у AI-интервью — балл из 100 (не «процент верных»), цвет — по категории ИИ */}
+                        <div style={{ width: 40, textAlign: "center", color: isAiRec(r) && aiCatOf(r) ? catColorOf(aiCatOf(r)) : v.color, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 16 }}>{r.pct}{isAiRec(r) ? "" : "%"}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ ...T.bold, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
                           <div style={{ color: sub, fontSize: 11 }}>{r.roleLabel} · {r.expLabel || "?"} · {dateFmt(r.date)}</div>
                         </div>
-                        <div style={{ color: v.color, fontSize: 11, fontWeight: "bold", textAlign: "right", maxWidth: 110 }}>{v.label}</div>
+                        <div style={{ textAlign: "right", maxWidth: 120 }}>
+                          {/* v66: у AI-интервью — категория ИИ (у прежних — из начала вердикта); ниже — решение руководителя */}
+                          {(() => { const ac = aiCatOf(r); return (
+                            <div style={{ color: ac ? catColorOf(ac) : v.color, fontSize: 11, fontWeight: "bold" }}>{ac || v.label}</div>
+                          ); })()}
+                          {r.decision ? <div data-row-decision={r.decision} style={{ color: decisionColor(r.decision), fontSize: 11, marginTop: 2 }}>{(DECISIONS.find(d => d.id === r.decision) || {}).label}</div> : null}
+                        </div>
                       </div>
                       {open && (
                         <div style={{ marginTop: 12, borderTop: "1px solid rgba(200,160,80,0.2)", paddingTop: 10 }}>
                           <div style={{ color: sub, fontSize: 12.5, marginBottom: 8 }}>
-                            {r.score} из {r.total} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}{r.by ? ` · провёл(а): ${r.by}` : ""}{r.srvId ? " · ☁" : ""}
+                            {isAiRec(r) ? `балл ${r.pct} из 100` : `${r.score} из ${r.total}`} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}{r.by ? ` · провёл(а): ${r.by}` : ""}{r.srvId ? " · ☁" : ""}
                             {cal ? <> · самооценка: <b style={{ color: cal.color }}>{cal.label}</b></> : null}
                           </div>
+                      {r.aiScores ? (
+                        // v66: отчёт AI-интервью — баллы и цитаты по темам, что спросить, ответы кандидата, решение
+                        <AiReport rec={r} T={T} a11y={a11y} gold={gold} sub={sub} glass={glass} onDecide={decide} compact />
+                      ) : (<>
                       {r.aiVerdict && (
                         <div style={{ ...T.modSub, color: sub, fontSize: 12.5, lineHeight: 1.55, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${gold}22` }}>
                           <b style={{ color: gold }}>ИИ:</b> {r.aiVerdict}
@@ -644,9 +913,12 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                           {(r.topics || []).map((t, i) => (
                             <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, padding: "3px 0" }}>
                               <span style={{ color: T.modTitle.color, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.topic}</span>
-                              <span style={{ color: topicColor(t), fontFamily: "monospace", flexShrink: 0 }}>{t.ok}/{t.n}</span>
+                              {/* v66: у прежних AI-интервью балл хранился долей (0,8 из 1) — показываем как балл из 100 */}
+                              <span style={{ color: topicColor(t), fontFamily: "monospace", flexShrink: 0 }}>{r.aiVerdict && t.n === 1 && t.ok <= 1 ? Math.round(t.ok * 100) : `${t.ok}/${t.n}`}</span>
                             </div>
                           ))}
+                          <Decision rec={r} onDecide={decide} sub={sub} T={T} style={{ marginTop: 10 }} />
+                      </>)}
                           <button className="sa-btn" style={{ ...ghostBtn, marginTop: 10, color: RED, borderColor: "rgba(224,120,120,0.4)" }}
                             onClick={(e) => { e.stopPropagation(); removeResult(r.id); }}>Удалить запись</button>
                         </div>
@@ -657,6 +929,14 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               </>
             )}
           </>
+        )}
+
+        {/* ── ПРОВЕРКА AI HR (v66) ── */}
+        {phase === "eval" && (
+          <React.Suspense fallback={<div style={{ ...T.modSub, color: sub, textAlign: "center", padding: 24 }}>Загружаю эталоны…</div>}>
+            <HrEval T={T} a11y={a11y} gold={gold} sub={sub} glass={glass} goldBtn={goldBtn} ghostBtn={ghostBtn} secLabel={secLabel}
+              status={hrSt} briefs={HR_BRIEF} onSaved={saveHrRef} />
+          </React.Suspense>
         )}
 
         {/* ── ИМЯ И РОЛЬ ── */}
@@ -769,7 +1049,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             <button className="sa-btn" onClick={startAi}
               style={{ ...goldBtn, marginTop: 10, background: "transparent", color: gold,
                 border: `1px solid ${gold}66`, boxShadow: "none" }}>
-              AI-интервью · бета
+              {hrSt.beta ? "AI-интервью · бета" : "AI-интервью"}
             </button>
             <div style={{ ...T.modSub, color: sub, fontSize: 11, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
               В AI-режиме кандидат отвечает своими словами — текстом или голосом (волна справа от поля:
@@ -783,10 +1063,21 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {/* ── AI-ИНТЕРВЬЮ ── */}
         {phase === "ai" && (
           <>
-            <div style={{ ...secLabel, display: "flex", justifyContent: "space-between", margin: "0 2px 10px" }}>
-              <span>AI-ИНТЕРВЬЮ · {name.trim()}</span>
-              <span>ОТВЕТОВ: {aiAnswered}</span>
+            <div style={{ ...secLabel, display: "flex", justifyContent: "space-between", gap: 10, margin: hrInfo.v2 ? "0 2px 8px" : "0 2px 10px" }}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>AI-ИНТЕРВЬЮ · {name.trim()}</span>
+              {/* v66: план ведёт сервер — «тема 2 из 5»; прежняя функция — «ответов: N» */}
+              <span data-hr-step="" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{hrInfo.v2 ? (hrInfo.done ? "ТЕМЫ ПРОЙДЕНЫ" : `ТЕМА ${Math.min(hrInfo.topic + 1, hrInfo.total)} ИЗ ${hrInfo.total}`) : `ОТВЕТОВ: ${aiAnswered}`}</span>
             </div>
+            {hrInfo.v2 && hrInfo.total > 0 ? (
+              // названия тем кандидату не показываем (подсказывали бы, что проверяют) — только сколько пройдено
+              <div data-hr-progress="" aria-hidden style={{ display: "flex", gap: 4, margin: "0 2px 10px" }}>
+                {Array.from({ length: hrInfo.total }, (_, k) => {
+                  const passed = hrInfo.done || k < hrInfo.topic, cur = !hrInfo.done && k === hrInfo.topic;
+                  return <span key={k} data-hr-seg={passed ? "done" : cur ? "cur" : "next"} style={{ flex: 1, height: 3, borderRadius: 2,
+                    background: passed ? gold : cur ? `${gold}88` : (a11y ? "rgba(139,106,48,0.18)" : "rgba(255,255,255,0.10)") }} />;
+                })}
+              </div>
+            ) : null}
             <div ref={aiListRef} className="sa-dlgscroll"
               style={{ ...glass, padding: 12, marginBottom: 12, maxHeight: "46vh", overflowY: "auto",
                 WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
@@ -830,7 +1121,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 <div style={{ color: RED, fontSize: 12.5, lineHeight: 1.5, padding: "4px 2px" }}>
                   {aiErr}
                   <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                    <button className="sa-btn" onClick={() => aiTurn(aiMsgs)}
+                    <button className="sa-btn" data-hr-retry="" onClick={() => (aiInput.trim() ? aiSend() : aiTurn(aiMsgs))}
                       style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>↻ Повторить</button>
                     <button className="sa-btn" onClick={() => { setPhase("handoff"); }}
                       style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: "none", background: "transparent", color: sub, fontFamily: "Georgia, serif", fontSize: 12.5 }}>Назад</button>
@@ -880,8 +1171,13 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               )}
             </div>
             )}
-            {aiAnswered >= 4 && !aiBusy && (
+            {/* v66: с планом — «Завершить», когда пройдены все темы (раньше — после 4 ответов); можно и раньше */}
+            {(hrInfo.v2 ? hrInfo.done : aiAnswered >= 4) && !aiBusy && (
               <button className="sa-btn" style={goldBtn} onClick={finishAi}>Завершить интервью → оценка</button>
+            )}
+            {hrInfo.v2 && !hrInfo.done && aiAnswered >= 4 && !aiBusy && (
+              <button className="sa-btn" data-hr-early="" onClick={finishAi}
+                style={{ ...ghostBtn, marginTop: 4, padding: "9px", fontSize: 12.5 }}>Завершить раньше — оценка по пройденным темам</button>
             )}
             <div style={{ ...T.modSub, color: sub, fontSize: 11, textAlign: "center", marginTop: 8, opacity: 0.75, fontFamily: "monospace", letterSpacing: 1 }}>
               ИИ МОЖЕТ ОШИБАТЬСЯ · РЕШЕНИЕ ВСЕГДА ЗА МЕНЕДЖЕРОМ
@@ -975,7 +1271,34 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         )}
 
         {/* ── РЕЗУЛЬТАТ ── */}
-        {phase === "result" && (() => {
+        {/* ── РЕЗУЛЬТАТ AI-ИНТЕРВЬЮ (v66): категория, баллы и доказательства, вопросы на встречу, ответы, решение ── */}
+        {phase === "result" && lastRec && (() => {
+          const cat = aiCatOf(lastRec);
+          const cc = cat === "Рекомендован" ? GREEN : cat === "Не рекомендован" ? RED : GOLD_SOFT;
+          return (
+            <div data-ai-result="">
+              <div style={{ ...glass, marginBottom: 12, padding: "22px 16px 16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ ...T.resultCircle, borderColor: cc }}>
+                    <span style={{ ...T.resultScore, color: cc }}>{lastRec.pct}</span>
+                    <span style={{ color: "#a09080", fontSize: 12.5 }}>из 100</span>
+                  </div>
+                  <div data-ai-cat={cat || ""} style={{ ...T.resultTxt, fontWeight: "bold", color: cc }}>{cat || "Оценка ИИ"}</div>
+                </div>
+                <div style={{ ...secLabel, textAlign: "center", margin: 0 }}>
+                  {name.trim()} · {role.label} · {exp ? exp.label : "?"}{place ? ` · ${place}` : ""}{age ? ` · ${age}` : ""}
+                </div>
+              </div>
+              <AiReport rec={lastRec} T={T} a11y={a11y} gold={gold} sub={sub} glass={glass} onDecide={decide} beta={hrSt.beta} />
+              <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
+                ИИ может ошибаться — решение всегда за вами. Отметьте его выше: по таким отметкам видно, насколько ИИ совпадает с вами.
+              </div>
+              <button className="sa-btn" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>
+              <button className="sa-btn" style={ghostBtn} onClick={startSetup}>Собеседовать ещё одного</button>
+            </div>
+          );
+        })()}
+        {phase === "result" && !lastRec && (() => {
           const v = verdictOf(pct, level);
           const cal = calibrationOf(selfBand, pct);
           return (

@@ -1485,7 +1485,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     <div className="sa-schedwrap"
       onBlurCapture={() => { try { window.scrollTo(0, 0); } catch (_) {} }}
       style={{
-      position:"fixed", inset:0, zIndex:1000, display:"flex", flexDirection:"column",
+      // v69 (Доп. 382): в полноэкранном Telegram слой начинается под его кнопками (--sa-st, lib/tg-screen.js)
+      position:"fixed", inset:0, top:"var(--sa-st, 0px)", zIndex:1000, display:"flex", flexDirection:"column",
       // Тот же фон, что у всего приложения (ui/styles.js → app): тёплый
       // градиент с золотым свечением сверху. График рисовал собственный
       // плоский #1A1008, и на переходе с главной подмена была заметна —
@@ -1496,7 +1497,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       overflowY:"auto", WebkitOverflowScrolling:"touch", overscrollBehavior:"contain",
     }}>
       {(() => { const head = (<>
-      <div style={{ display:"flex", alignItems:"center", gap:10, padding: vpS.short ? "14px 18px 4px" : "44px 18px 4px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, padding: vpS.short ? "14px 18px 4px" : "max(14px, calc(44px - var(--sa-st, 0px))) 18px 4px" }}>
         <button className="sa-btn" style={{ background:"transparent", border:"none", color:GOLD,
           fontSize:25, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
           onClick={onBack} aria-label="Назад">‹</button>
@@ -3813,7 +3814,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     boxShadow: a11y
       ? "inset 0 0 26px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 -6px 26px rgba(90,66,20,0.16)"
       : "inset 0 0 22px rgba(255,248,230,0.055), inset 0 1px 0 rgba(255,255,255,0.10), 0 -6px 26px rgba(0,0,0,0.5)" };
-  const dialogBox = { ...sheetBox, margin:"calc(70px + env(safe-area-inset-top, 0px)) 12px 0", maxHeight:"70vh" };
+  const dialogBox = { ...sheetBox, margin:"calc(70px + var(--sa-st, env(safe-area-inset-top, 0px))) 12px 0", maxHeight:"70vh" };
   const veil = (top) => ({ position:"fixed", inset:0, zIndex: top ? 62 : 60, background:"rgba(0,0,0,0.45)", display:"flex",
     alignItems: top ? "flex-start" : "flex-end", justifyContent:"center" });
   const todayCol = (role) => {

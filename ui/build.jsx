@@ -660,11 +660,12 @@ function Shell({ title, onClose, accent, T, children }) {
   const a11y = !!T.a11y;
   return (
     <div className="sa-bld-buildwrap sa-safex" style={{
-      position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column",
+      // v69 (Доп. 382): в полноэкранном Telegram слой начинается под его кнопками (--sa-st, lib/tg-screen.js)
+      position: "fixed", inset: 0, top: "var(--sa-st, 0px)", zIndex: 1000, display: "flex", flexDirection: "column",
       background: T.a11y ? "#E8DEC8" : "linear-gradient(160deg,#1A1008 0%,#1A1008 50%,#1A1008 100%)",
       overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
     }}>
-      <div className="sa-tophead" style={{ display: "flex", alignItems: "center", gap: 10, padding: "44px 18px 4px" }}>
+      <div className="sa-tophead" style={{ display: "flex", alignItems: "center", gap: 10, padding: "max(14px, calc(44px - var(--sa-st, 0px))) 18px 4px" }}>
         <button className="sa-btn" style={{
           background: "transparent", border: "none", color: accent, fontSize: 25,
           cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: serif,

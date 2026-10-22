@@ -280,7 +280,7 @@ html.sa-light .tbp-mist span:first-of-type{color:#2A1F0E}
 .tbp-peek .ar{position:absolute;top:-5px;left:0;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);background:#241C10;box-shadow:inset 1px 1px 0 rgba(214,178,102,.45)}
 @keyframes tbpPeekIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 .tbp-pin{position:fixed;z-index:330;top:0;left:50%;width:100%;max-width:430px;box-sizing:border-box;transform:translateX(-50%);
-  padding:calc(env(safe-area-inset-top,0px) + 4px) 14px 5px;background:rgba(24,19,11,.94);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);
+  padding:calc(var(--sa-st,env(safe-area-inset-top,0px)) + 4px) 14px 5px;background:rgba(24,19,11,.94);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);
   border-bottom:1px solid rgba(214,178,102,.22);box-shadow:0 10px 24px rgba(0,0,0,.35);animation:tbpPinIn .22s ease-out}
 .tbp-pin .tbp-strip{margin:0}
 .tbp-pin .tbp-num{height:34px;padding-top:3px;gap:2px}

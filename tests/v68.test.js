@@ -189,7 +189,7 @@ describe("v68: главная — «Приглашение» на месте к�
 
 describe("v68: метка и журнал", () => {
   it("«сборка v68», «Дополнение 381»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v68</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);
     expect(rd("CHANGES.md")).toContain("# Дополнение 381 — главная карточка «Приглашение», свеча и бокал говорят одно (v68)");
   });
 });

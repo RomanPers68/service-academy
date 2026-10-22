@@ -85,11 +85,14 @@ function WaxSeal({ size = 50, icon = "clock" }) {
 }
 
 // Линза — то же стекло, что у кнопки AI в нижнем меню (ui/tabbar.jsx AiDisc): золотая кромка, изморозь изнутри,
-// блик сверху, и тонкое золотое кольцо вокруг
+// блик сверху, и тонкое золотое кольцо вокруг. v69 (Доп. 382), владелец: «не кажется, что она слишком тёмная?» —
+// кнопка AI стоит на стеклянной панели меню, линза — на чёрной карте, и то же стекло выходило темнее. Под стеклом
+// теперь тон панели меню (на телефоне владельца — rgb 33,30,23): линза такой же светлоты, как кнопка AI на экране.
+const LENS_BASE = "#221E16";
 function Lens({ size = 44, icon = "clock" }) {
   return (
     <span aria-hidden="true" data-now-lens="" style={{ position: "relative", width: size, height: size, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0,
-      background: "rgba(200,169,110,0.12)",
+      background: "linear-gradient(rgba(200,169,110,0.12), rgba(200,169,110,0.12)), " + LENS_BASE,
       boxShadow: "inset 0 0 0 1px rgba(214,178,102,0.45), inset 0 0 18px rgba(255,230,170,0.12), inset 0 1.5px 0 rgba(255,255,255,0.18)" }}>
       <span style={{ position: "absolute", inset: -4, borderRadius: "50%", border: "1.5px solid " + GOLD, pointerEvents: "none" }} />
       {glyph(icon, GOLD, Math.round(size * 0.46))}
@@ -104,27 +107,36 @@ const FOIL = { background: "linear-gradient(180deg,#F8E8BE 0%,#DDBD7F 48%,#A9833
 const STUB = 100;
 // полукруглые вырезы по линии отрыва — настоящие (маска): сквозь них видно фон экрана
 const CUT = `radial-gradient(circle at calc(100% - ${STUB}px) 0, transparent 9px, #000 9.5px) top / 100% 51% no-repeat, radial-gradient(circle at calc(100% - ${STUB}px) 100%, transparent 9px, #000 9.5px) bottom / 100% 51% no-repeat`;
+// v69 (Доп. 382): без CSS filter. Владелец заметил мерцание: на iPhone карточка с filter (тень и золотая кромка) под
+// маской перерисовывалась после анимации появления. Теперь тень — у подложки (box-shadow), кромка — у самой карточки
+// (inset), вокруг вырезов — кольцами в фоне; на вид — как было
+const notchRim = (c) => [0, 100].map((y) => `radial-gradient(circle at calc(100% - ${STUB}px) ${y}%, transparent 9.1px, ${c} 9.6px, ${c} 10.3px, transparent 10.9px)`).join(", ");
 
 // rows — нижние строки: [{ key, label: "Дальше:", title, onClick }]; foot — подсказка под карточкой (напоминания в Telegram)
-export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone }) {
+// fade — мягкое появление: только когда состояние сменилось на открытом экране (ответ на «как прошла», началась
+// смена). v69 (Доп. 382): при возврате на главную карточка проявлялась второй раз поверх появления всей страницы —
+// позже остального экрана («мерцание», запись владельца)
+export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone, fade = false }) {
   const { act, stop, key, later, tappable } = useActs({ ctx, on, onReplyDone });
   const dark = !a11y;
   const P = dark
     ? { ink: "#EFE4C8", sub: "#A99B7E", lead: "#C8A96E", gold: "#D9B87C", perf: "2px dotted rgba(214,178,102,0.45)", rowLine: "1px dashed rgba(214,178,102,0.30)",
         frame: "rgba(214,178,102,0.42)", bg: "radial-gradient(120% 90% at 20% 0%, rgba(214,178,102,0.10), transparent 60%), linear-gradient(160deg,#211809 0%,#0D0904 58%,#171009 100%)",
-        shadow: "drop-shadow(0 0 0.8px rgba(214,178,102,0.85)) drop-shadow(0 10px 16px rgba(0,0,0,0.6))" }
+        rim: "rgba(214,178,102,0.38)", shadow: "0 10px 16px rgba(0,0,0,0.6)" }
     : { ink: "#2A1F0E", sub: "#6E5A38", lead: "#8A6524", gold: "#8A6524", perf: "2px dashed rgba(122,93,42,0.38)", rowLine: "1px dashed rgba(122,93,42,0.38)",
         frame: "rgba(139,106,48,0.42)", bg: GRAIN + ", linear-gradient(180deg,#FFFDF8 0%,#F7EEDC 100%)",
-        shadow: "drop-shadow(0 5px 12px rgba(120,85,25,0.20))" };
+        rim: null, shadow: "0 5px 12px rgba(120,85,25,0.20)" };
   const mood = ctx.action === "mood";
   const icon = ctx.glyph || ICON[ctx.action] || ctx.icon || "clock";
   const list = (rows || []).filter((r) => r && r.title);
   return (
     <div className="tbv">
-      <div ref={refEl} data-now-card={ctx.mode} data-hero={dark ? "black" : "paper"} className="sa-fadein" onClick={tappable ? act : undefined} {...(tappable ? onActivate(act) : {})}
+      <div ref={refEl} data-now-card={ctx.mode} data-hero={dark ? "black" : "paper"} className={fade ? "sa-fadein" : undefined} onClick={tappable ? act : undefined} {...(tappable ? onActivate(act) : {})}
         aria-label={tappable ? [nowLead(ctx), ctx.title, ctx.cta].filter(Boolean).join(". ") : undefined}
-        style={{ position: "relative", cursor: tappable ? "pointer" : "default", filter: P.shadow }}>
-        <div style={{ position: "relative", display: "flex", borderRadius: 16, background: P.bg, WebkitMask: CUT, mask: CUT, minHeight: 124 }}>
+        style={{ position: "relative", cursor: tappable ? "pointer" : "default" }}>
+        <span aria-hidden="true" data-now-shadow="" style={{ position: "absolute", inset: 0, borderRadius: 16, boxShadow: P.shadow, pointerEvents: "none" }} />
+        <div style={{ position: "relative", display: "flex", borderRadius: 16, background: (P.rim ? notchRim(P.rim) + ", " : "") + P.bg,
+          boxShadow: P.rim ? "inset 0 0 0 1px " + P.rim : undefined, WebkitMask: CUT, mask: CUT, minHeight: 124 }}>
           <span aria-hidden="true" style={{ position: "absolute", inset: 5, borderRadius: 12, border: "1px solid " + P.frame, pointerEvents: "none" }} />
           <div style={{ flex: 1, minWidth: 0, padding: "15px 12px 12px 18px", display: "flex", flexDirection: "column" }}>
             <div data-now-tag="" style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 13, color: P.lead }}>{nowLead(ctx)}</div>

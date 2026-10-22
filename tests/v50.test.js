@@ -127,7 +127,7 @@ describe("v50: колонка экрана и классы на <html>", () => {
   });
   it("телефон лёжа: шапки ниже (тема), у слоёв «у стола» — компактные шапка и кнопки", () => {
     expect(app).toContain('const T = useMemo(() => (vp.short ? { ...T0, modHead: { ...T0.modHead, padding: "14px 18px 12px" },');
-    expect(css).toContain("html.sa-short .tb-head { padding-top: max(10px, env(safe-area-inset-top, 0px)); }");
+    expect(css).toContain("html.sa-short .tb-head { padding-top: max(10px, var(--sa-st, env(safe-area-inset-top, 0px))); }");   // v69: и кнопки Telegram
     expect(css).toContain("html.sa-short .sa-tophead { padding-top: 14px !important; }");
     for (const f of ["ui/screens-learning.jsx", "ui/module-menu.jsx", "ui/build.jsx"]) expect(rd(f)).toContain('className="sa-tophead"');
   });
@@ -166,7 +166,7 @@ describe("v50: график в широкой раскладке", () => {
     expect(sc).toContain("</>, { arrows: true, two: twoCols && !!me });");
     expect(sc).toContain('<div data-sched-tabs="" style=');
     expect(sc).toContain('<div style={card} data-sched-month="">');
-    expect(sc).toContain('padding: vpS.short ? "14px 18px 4px" : "44px 18px 4px"');
+    expect(sc).toContain('padding: vpS.short ? "14px 18px 4px" : "max(14px, calc(44px - var(--sa-st, 0px))) 18px 4px"');   // v69: слой графика уже под кнопками Telegram
   });
   it("сетка: вкладки на всю ширину, «Смены» и календарь — во второй колонке на все строки; «Сохранить» — плашкой внизу", () => {
     expect(css).toContain("html.sa-wide .sa-two .sa-schedbody { display: grid; grid-template-columns: minmax(340px, min(430px, 38%)) minmax(0, 1fr);");

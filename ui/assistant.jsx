@@ -503,6 +503,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     // v50 (Доп. 363): на компьютере — панелью по центру (sa-layer, ui/css.js), а не строкой во весь экран
     <div className="sa-screen sa-dlg sa-layer"
       style={{ ...T.screen, "--sa-layerw": "780px", position: "fixed", inset: 0, zIndex: z, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
+        paddingTop: "var(--sa-st, 0px)",   // v69 (Доп. 382): шапка — под кнопками Telegram в полноэкранном режиме
         transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
         // Сплошной фон — ровно как у основы приложения (слой #sa-scene, App.jsx). Без фона
         // экран чата, лежащий поверх приложения, становился прозрачным: сквозь него была видна

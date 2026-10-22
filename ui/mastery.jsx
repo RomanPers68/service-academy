@@ -31,8 +31,8 @@ html.sa-light .ms-hero-t{font-size:clamp(19px,5.9vw,22px)}
 .ms-sheet{position:relative;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;box-sizing:border-box;margin:0 auto;padding:10px 18px calc(18px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;animation:msUp .32s cubic-bezier(.2,.8,.2,1) both}
 @keyframes msUp{from{transform:translateY(48px);opacity:.3}to{transform:none;opacity:1}}
 .ms-cert-wrap{position:fixed;inset:0;z-index:1000;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:msFade .25s ease both}
-.ms-cert-col{max-width:420px;margin:0 auto;padding:max(16px,env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
-.ms-pv{position:fixed;inset:0;z-index:1002;background:#0D0905;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:max(18px,env(safe-area-inset-top,0px)) 18px calc(18px + env(safe-area-inset-bottom,0px));box-sizing:border-box;overflow-y:auto}
+.ms-cert-col{max-width:420px;margin:0 auto;padding:max(16px,var(--sa-st,env(safe-area-inset-top,0px))) 16px calc(20px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
+.ms-pv{position:fixed;inset:0;z-index:1002;background:#0D0905;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:max(18px,var(--sa-st,env(safe-area-inset-top,0px))) 18px calc(18px + env(safe-area-inset-bottom,0px));box-sizing:border-box;overflow-y:auto}
 .ms-pv img{max-width:100%;max-height:62vh;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55);-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
 .ms-pv p{margin:0;text-align:center;font:13.5px/1.45 Georgia,serif;color:rgba(243,233,210,.84);max-width:360px}
 .ms-cert-h{font-size:clamp(15.5px,5vw,19px);letter-spacing:1.4px}

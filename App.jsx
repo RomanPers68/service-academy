@@ -21,6 +21,7 @@ import { nextStreak, fresherStreak, liveStreak, dayOffFromSchedule, myShiftOn, s
 import { readActivity, bumpActivity, stepsOn, readGoal, saveGoal, weekSummary, ACTIVITY_EVENT } from "./lib/activity";
 import { nowMode, nowCardText, daysAway, dayDiff } from "./lib/now-card";   // v56 (Доп. 369): «что сейчас» на главной
 import { trackForPosition } from "./lib/position-track";   // v58 (Доп. 371): трек по должности
+import { startTgScreen } from "./lib/tg-screen";   // v69 (Доп. 382): полноэкранный Telegram на телефоне
 import { themeAutoOn, setThemeAuto, systemLight, watchSystemTheme } from "./lib/theme";   // v59 (Доп. 372): тема как в системе
 import { UpdateToast } from "./ui/update-toast";   // v59 (Доп. 372)
 import { pushLearning, scheduleLearningPush, scheduleDayPush, cancelDayPush } from "./lib/learning-sync";
@@ -307,7 +308,7 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
     borderRadius: 22, padding: "26px 22px",
   };
   return (
-    <div className="sa-fadein" style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    <div className="sa-fadein" style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, paddingTop: "max(20px, var(--sa-st, 0px))",
         background: a11y ? "rgba(90,70,40,0.35)" : "rgba(10,7,3,0.72)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
         opacity: leaving ? 0 : 1, transition: "opacity .28s ease" }}
       onTouchStart={e => { touchX.current = e.touches[0].clientX; }}
@@ -671,6 +672,10 @@ function ServiceAcademy() {
     const lv = liveStreak(streak, new Date(), (d) => dayOffFromSchedule(profile, d));
     return lv.count === ((streak && streak.count) || 0) ? streak : { ...streak, count: lv.count };
   }, [streak, todayKey, profile]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // v69 (Доп. 382): на телефоне — полноэкранный режим Telegram: шапки Telegram нет, сверху только его кнопки
+  // «Закрыть», «Свернуть» и «…»; смахнуть вниз нельзя. Отступ под кнопки (--sa-st) — по событиям Telegram
+  React.useEffect(() => startTgScreen(window.Telegram && window.Telegram.WebApp), []);
 
   // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
   React.useEffect(() => {
@@ -3047,7 +3052,8 @@ function ServiceAcademy() {
 
         {/* Нижняя навигация — только на основных экранах */}
         {!online && (
-          <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:500, padding:"6px 12px calc(6px + env(safe-area-inset-top, 0px))", textAlign:"center", fontSize:12, letterSpacing:0.5,
+          // v69 (Доп. 382): отступ под строку состояния — сверху (был снизу: под вырезом экрана текст прятался)
+          <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:500, padding:"calc(6px + var(--sa-st, env(safe-area-inset-top, 0px))) 12px 6px", textAlign:"center", fontSize:12, letterSpacing:0.5,
             background: a11y ? "rgba(139,106,48,0.92)" : "rgba(60,44,16,0.92)", color:"#EFE4C8", backdropFilter:"blur(6px)" }}>
             Без сети — работаем на сохранённом, синхронизируем при появлении связи
           </div>
@@ -3155,7 +3161,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "Georgia, serif" }}>
+        <div style={{ minHeight: "calc(100vh - var(--sa-st, 0px))", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "linear-gradient(160deg, #14100A 0%, #1C1509 50%, #14110A 100%)", fontFamily: "Georgia, serif" }}>
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>{ROLE_SVG.bar("#C8A96E", 44)}</div>
           <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>{this.state.updating ? "Приложение обновилось" : this.state.offline ? "Экран не докачался" : "Что-то пошло не так"}</div>
           <div style={{ color: "#7A654C", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>

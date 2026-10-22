@@ -246,7 +246,7 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .dc-ey{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--gold-ink)}
 
 /* шапка */
-.dc-head{flex:0 0 auto;position:relative;z-index:4;padding:max(6px,env(safe-area-inset-top,0px)) 8px 6px;background:var(--head);border-bottom:1px solid var(--head-line)}
+.dc-head{flex:0 0 auto;position:relative;z-index:4;padding:max(6px,var(--sa-st,env(safe-area-inset-top,0px))) 8px 6px;background:var(--head);border-bottom:1px solid var(--head-line)}
 .dc-head-in{display:flex;align-items:center;gap:6px;max-width:640px;margin:0 auto;min-height:50px}
 .dc-back{width:40px;height:40px;flex:0 0 auto;border:0;background:none;color:var(--gold-ink);display:grid;place-items:center;border-radius:50%;padding:0;cursor:pointer}
 .dc-back:active{background:var(--opt-hover)}

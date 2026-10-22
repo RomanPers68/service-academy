@@ -46,7 +46,7 @@ describe("v55: быстрый старт — профиль с телефона 
 describe("v55: экраны стоят на месте", () => {
   const app = rd("App.jsx"), css = rd("ui/css.js"), st = rd("ui/styles.js");
   it("экран — видимая высота минус верхняя строка, отступ под вкладки и запас под кнопку AI", () => {
-    expect(st).toContain("screen: { display:\"flex\", flexDirection:\"column\", minHeight:\"calc(100vh - var(--sa-top, 0px) - var(--sa-padb, 0px) - var(--sa-fab, 0px))\", background:\"transparent\", overflowX:\"hidden\" },");
+    expect(st).toContain("screen: { display:\"flex\", flexDirection:\"column\", minHeight:\"calc(100vh - var(--sa-st, 0px) - var(--sa-top, 0px) - var(--sa-padb, 0px) - var(--sa-fab, 0px))\", background:\"transparent\", overflowX:\"hidden\" },");
   });
   it("App меряет верхнюю строку «✦ SA» в --sa-top (нет строки — 0) и ставит sa-fabon / sa-navon", () => {
     expect(app).toContain("<div style={T.a11yBar} ref={saBarRef}>");

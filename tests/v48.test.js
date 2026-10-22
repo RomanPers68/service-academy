@@ -104,7 +104,7 @@ describe("v48: «Факт часов» и заметка ко дню — на в
     expect(src).toContain('<div data-fact-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={dialogBox}>');
     expect(src).toContain('<div onClick={() => setDayEdit(null)} style={veil(true)}>');
     expect(src).toContain('<div data-note-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={dialogBox}>');
-    expect(src).toContain('const dialogBox = { ...sheetBox, margin:"calc(70px + env(safe-area-inset-top, 0px)) 12px 0", maxHeight:"70vh" };');
+    expect(src).toContain('const dialogBox = { ...sheetBox, margin:"calc(70px + var(--sa-st, env(safe-area-inset-top, 0px))) 12px 0", maxHeight:"70vh" };');   // v69: и кнопки Telegram
     expect(src).toContain('alignItems: top ? "flex-start" : "flex-end"');
     expect(src).not.toMatch(/\{factEdit \? \(\(\) => \{[\s\S]{0,900}<div style=\{\{ \.\.\.card, marginTop:10 \}\}>/);
     expect(src).toContain('onClick={() => setFactEdit(null)}>Готово</button>');

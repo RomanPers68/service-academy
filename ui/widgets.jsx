@@ -7,6 +7,7 @@ import { MOD_SVG } from "./icons";
 import { CREAM, GOLD, GOLD_SOFT, GREEN, RED } from "./tokens";
 import { vibrate } from "../lib/utils";
 import { HINTS_VERSION } from "../data/hints";
+import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): кнопки Telegram сверху в полноэкранном режиме
 
 /** Пустое состояние — один язык на всё приложение.
  *  Было вразнобой: где-то голый текст «Смена не найдена» (читается как
@@ -306,7 +307,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
   // пузырь справа от неё, хвостик смотрит влево, на середину цели
   const side = box.h > box.w * 1.6 && box.left + box.w < vw * 0.3 && box.left + box.w + 16 + W + pad <= vw;
   const cyT = box.top + box.h / 2;
-  const sTop = Math.max(pad, Math.min(cyT - 60, vh - 230));
+  const sTop = Math.max(pad + topInsetPx(), Math.min(cyT - 60, vh - 230));
   const sideTail = (
     <svg width="22" height="11" viewBox="0 0 22 11" style={{ position:"absolute", left:-15.5,
       top: Math.max(14, Math.min(cyT - sTop, 200)) - 5.5, overflow:"visible", transform:"rotate(-90deg)" }}>

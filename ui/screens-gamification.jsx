@@ -1179,7 +1179,7 @@ function PlayerSheet({ p, stat, T, a11y, onClose, onResetPlayer, onUnlockQuiz, o
   );
 
   return createPortal((
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 5000, display: "grid", placeItems: "center", padding: "0 14px",
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 5000, display: "grid", placeItems: "center", padding: "var(--sa-st, 0px) 14px 0",
       // в светлой теме вуаль тёплая и мягкая: тёмная просвечивала сквозь карточку и делала её серой (правка 188)
       background: shown ? (a11y ? "rgba(74,54,24,0.26)" : "rgba(10,8,4,0.5)") : "rgba(10,8,4,0)",
       WebkitBackdropFilter: shown ? "blur(7px)" : "blur(0px)", backdropFilter: shown ? "blur(7px)" : "blur(0px)",
@@ -1446,7 +1446,7 @@ export function ProfileScreen({ onDone, T }) {
       <div style={{ position:"absolute", bottom:-60, right:-40, width:220, height:220, borderRadius:"50%",
         background:"radial-gradient(circle, rgba(93,187,138,0.06) 0%, transparent 70%)", pointerEvents:"none" }} />
 
-      <div style={{ maxWidth:430, margin:"0 auto", minHeight:"100vh", display:"flex", flexDirection:"column", overflowY:"auto" }}>
+      <div style={{ maxWidth:430, margin:"0 auto", minHeight:"calc(100vh - var(--sa-st, 0px))", display:"flex", flexDirection:"column", overflowY:"auto" }}>
 
         {/* Шапка */}
         <div style={{ padding:"32px 28px 20px", textAlign:"center" }}>

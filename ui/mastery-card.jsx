@@ -48,7 +48,7 @@ html.sa-light .ms-zone:active{background-color:rgba(139,106,48,0.08)}
 .ms-toast{pointer-events:auto;position:relative;width:100%;max-width:420px;box-sizing:border-box;user-select:none;-webkit-user-select:none}
 @keyframes msToastIn{from{opacity:0;transform:translateY(120%)}to{opacity:1;transform:none}}
 @keyframes msToastOut{to{opacity:0;transform:translateY(40%)}}
-.ms-modal{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto;animation:msFade .25s ease both}
+.ms-modal{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:max(20px,var(--sa-st,0px)) 20px 20px;box-sizing:border-box;overflow-y:auto;animation:msFade .25s ease both}
 .ms-modal-card{position:relative;width:100%;max-width:380px;box-sizing:border-box;text-align:center;animation:msPop .55s cubic-bezier(.2,1.3,.4,1) both}
 @keyframes msFade{from{opacity:0}to{opacity:1}}
 @keyframes msPop{from{opacity:0;transform:scale(.86) translateY(14px)}to{opacity:1;transform:none}}

@@ -207,6 +207,10 @@ export const injectStyles = () => {
        старых клиентах disableVerticalSwipes отсутствует). Контейнерный
        скролл она не трогает — работает на любой версии клиента. */
     html, body { height: 100%; overflow: hidden !important; touch-action: pan-y; }
+    /* v69 (Доп. 382): полноэкранный Telegram на телефоне — сверху строка состояния и кнопки Telegram («Закрыть»,
+       «Свернуть», «…»). Приложение начинается под ними (--sa-st ставит lib/tg-screen.js), фон сцены (#sa-scene) —
+       до самого верха. Слои поверх экрана отодвигают свои шапки сами — на --sa-st (без Telegram — прежний вырез env()). */
+    html.sa-tgfs body { padding-top: var(--sa-st, 0px); box-sizing: border-box; }
     /* Доп. 363: iPhone при повороте сам «подгоняет» шрифт (text autosizing) и после возврата
        в портрет оставляет его крупнее — запись владельца. Размер текста задаём только мы. */
     html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -372,6 +376,7 @@ export const injectStyles = () => {
     /* ширины колонок — по шапке (имя 92, дни по 26), остаток делится между колонками: длинное имя уходит в многоточие,
        а не раздвигает неделю за край карточки */
     .sa-schedgrid.sa-wk table{table-layout:fixed;width:100%;min-width:0}
+    /* v69: шапка таблицы липнет внутри слоя графика, а слой в полноэкранном Telegram уже начинается под его кнопками */
     .sa-schedgrid.sa-wk tr:first-child th{top:env(safe-area-inset-top,0px)}
     .sa-schedgrid.sa-wk tr:first-child th:first-child{border-top-left-radius:12px}
     .sa-schedgrid.sa-wk tr:first-child th:last-child{border-top-right-radius:12px}
@@ -978,7 +983,7 @@ export const injectStyles = () => {
     }
     /* Телефон лёжа: у слоёв «у стола» (разминка, радио, живой гость, чек недели…) шапка и полоса кнопок ниже —
        сверху нет строки состояния, а высоты экрана мало */
-    html.sa-short .tb-head { padding-top: max(10px, env(safe-area-inset-top, 0px)); }
+    html.sa-short .tb-head { padding-top: max(10px, var(--sa-st, env(safe-area-inset-top, 0px))); }
     html.sa-short .tb-foot { padding-top: 8px; padding-bottom: calc(8px + var(--sa-sb, env(safe-area-inset-bottom, 0px))); }
     html.sa-short .tb-main { min-height: 44px; }
     html.sa-short .sa-tophead { padding-top: 14px !important; }
@@ -1055,7 +1060,7 @@ export const injectStyles = () => {
     /* Полоска разделов редактора урока уехала вверх — сверху её копия в слое поверх экрана (fixed не дрожит на
        iPhone, в отличие от position: sticky внутри прокрутки приложения); место и ширину задаёт редактор */
     .sa-ednav-pin { position: fixed; top: 0; z-index: 330; box-sizing: border-box; display: flex; gap: 3px;
-      padding: calc(env(safe-area-inset-top, 0px) + 7px) 8px 7px; }
+      padding: calc(var(--sa-st, env(safe-area-inset-top, 0px)) + 7px) 8px 7px; }
 
     /* ═══ v55 (Доп. 368): быстро и твёрдо — экраны стоят на месте ═══
        Раньше любой экран листался на 43 px, даже когда всё помещалось («Поиск», «Лига», «Рейтинг» — на 131):

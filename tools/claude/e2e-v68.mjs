@@ -155,8 +155,9 @@ if (want("DARK")) {
   let g = await card(o.page);
   ok("DARK: до смены — чёрная карта: «До смены 26 мин», «Разминка перед сменой»", g && g.mode === "before" && g.hero === "black" && g.tag === "До смены 26 мин" && g.title === "Разминка перед сменой", JSON.stringify(g));
   ok("DARK: на корешке — линза, как кнопка AI, и «Начать»; сургуча нет", g && g.lens && !g.seal && g.cta === "Начать" && g.stubIn, JSON.stringify(g));
-  const lens = await o.page.evaluate(() => { const a = document.querySelector("[data-now-lens]"), b = document.querySelector("[data-ai-disc]"); const s = (e) => e ? getComputedStyle(e) : null; return { a: s(a) && [s(a).backgroundColor, s(a).boxShadow], b: s(b) && [s(b).backgroundColor, s(b).boxShadow] }; });
-  ok("DARK: линза — то же стекло, что у кнопки AI (фон и кромки)", lens.a && lens.b && lens.a[0] === lens.b[0] && lens.a[1] === lens.b[1], JSON.stringify(lens));
+  // v69 (Доп. 382): под тем же стеклом — тон панели меню (кнопка AI стоит на ней), иначе линза выходила темнее
+  const lens = await o.page.evaluate(() => { const a = document.querySelector("[data-now-lens]"), b = document.querySelector("[data-ai-disc]"); const s = (e) => e ? getComputedStyle(e) : null; return { a: s(a) && [s(a).backgroundImage, s(a).boxShadow], b: s(b) && [s(b).backgroundColor, s(b).boxShadow] }; });
+  ok("DARK: линза — то же стекло, что у кнопки AI (стекло и кромки; под стеклом — тон панели меню)", lens.a && lens.b && lens.a[0].includes(lens.b[0]) && lens.a[1] === lens.b[1], JSON.stringify(lens));
   ok("DARK: строка «Дальше: Тест «Философия сервиса»»", g && g.rows.length === 1 && /^next:Дальше: Тест «Философия сервиса»/.test(g.rows[0]), JSON.stringify(g && g.rows));
   await shot(o.page, "dark-before");
   const was = await warmOpen(o.page);

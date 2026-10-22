@@ -35,6 +35,7 @@ import { practiceRound } from "../lib/practice-round";
 import { tfLabel } from "../lib/practice-mistake";
 import { vibrate } from "../lib/utils";
 import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): редактор в две панели на компьютере
+import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
 
 const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -343,7 +344,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       const en = ents[ents.length - 1]; if (!en) return;
       const b = en.boundingClientRect;
       // верх полоски ушёл под край прокрутки (или вся она выше экрана) — показываем копию
-      const up = en.isIntersecting ? en.intersectionRect.top > b.top + 0.5 : b.top < 0;
+      const up = en.isIntersecting ? en.intersectionRect.top > b.top + 0.5 : b.top < topInsetPx();   // v69: верх — под кнопками Telegram
       setNavPin(up ? box() : null);
     }, { threshold: [0, 1] });
     io.observe(el);

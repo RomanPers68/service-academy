@@ -242,7 +242,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v68</span>
+        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v69</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -1191,7 +1191,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         {preview2 && (() => {
           const d = { ...form, ingredients: ingList };
           return (
-            <div onClick={() => setPreview2(false)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+            <div onClick={() => setPreview2(false)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18, paddingTop: "max(18px, var(--sa-st, 0px))" }}>
               <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width: "100%", maxWidth: 420 }}>
                 <div style={{ textAlign: "center", fontSize: 11, letterSpacing: 1.6, color: "#EFE4C8", fontFamily: "monospace", marginBottom: 8 }}>ТАК УВИДИТ ОФИЦИАНТ · ТАП — ПЕРЕВЕРНУТЬ</div>
                 <PreviewCard d={d} T={T} gold={gold} red={red} glass={glass} />

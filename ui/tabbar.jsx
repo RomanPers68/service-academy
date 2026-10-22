@@ -242,11 +242,12 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact }) {
   };
   return (
     // v51: слева — с учётом выреза из Telegram (--sa-sl ставит App): лёжа меню уходило под Dynamic Island
-    <nav id="sa-tabbar" data-nav-rail="" aria-label="Разделы" style={{ position:"fixed", zIndex:200, top:"50%", width:W,
+    // v69 (Доп. 382): в полноэкранном Telegram — по центру места под его кнопками (--sa-st)
+    <nav id="sa-tabbar" data-nav-rail="" aria-label="Разделы" style={{ position:"fixed", zIndex:200, top:"calc(50% + var(--sa-st, 0px) / 2)", width:W,
       left:"calc(12px + var(--sa-sl, env(safe-area-inset-left, 0px)))", transform:"translateY(-50%)" }}>
       {/* совсем низкий экран (клавиатура лёжа) — пилюля не выше экрана, вкладки листаются */}
       <div className="sa-railpill" style={{ position:"relative", padding:PAD, borderRadius:W / 2, display:"flex", flexDirection:"column", alignItems:"stretch",
-        maxHeight:"calc(100vh - 16px)", overflowY:"auto", scrollbarWidth:"none",
+        maxHeight:"calc(100vh - 16px - var(--sa-st, 0px))", overflowY:"auto", scrollbarWidth:"none",
         background: a11y ? "rgba(255,252,244,0.22)" : "rgba(255,250,238,0.05)",
         backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
         border: a11y ? "1px solid rgba(139,106,48,0.32)" : "1px solid rgba(255,255,255,0.13)",

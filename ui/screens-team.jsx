@@ -667,7 +667,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
 
   return (
     <div style={{ ...T.screen, justifyContent:"center", alignItems:"center", padding:"32px 24px",
-      background:"linear-gradient(160deg, #2A1F0E 0%, #1A1008 55%, #1A1008 100%)", minHeight:"100vh" }} className="sa-screen">
+      background:"linear-gradient(160deg, #2A1F0E 0%, #1A1008 55%, #1A1008 100%)", minHeight:"calc(100vh - var(--sa-st, 0px))" }} className="sa-screen">
       <img src={LOGO_SRC_DARK} alt="Service Academy" style={{ width:180, marginBottom:8, filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
       <div style={{ color:CREAM, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF, marginBottom:8, textAlign:"center" }}>
         Вход по приглашению

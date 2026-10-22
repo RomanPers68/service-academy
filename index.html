@@ -32,6 +32,16 @@
           tg.ready();
           tg.expand();
           if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+          // v69 (Доп. 382): на телефоне — полноэкранный режим, как у других мини-приложений: шапки Telegram нет,
+          // сверху только его кнопки «Закрыть», «Свернуть» и «…». Просим сразу, пока видна заставка, — без скачка
+          // после показа. Цвет шапки — под тему: по нему Telegram красит строку состояния и свои кнопки.
+          // Отступ под кнопки ставит lib/tg-screen.js (там же — повторная просьба и слежение)
+          var light = false;
+          try { light = localStorage.getItem("sa_a11y") === "1"; } catch (e) {}
+          if (tg.setHeaderColor) tg.setHeaderColor(light ? "#E8DEC8" : "#14110A");
+          if (tg.setBackgroundColor) tg.setBackgroundColor(light ? "#E8DEC8" : "#14110A");
+          var p = String(tg.platform || "").toLowerCase();
+          if (tg.requestFullscreen && (p === "ios" || p === "android" || p === "android_x") && tg.isVersionAtLeast && tg.isVersionAtLeast("8.0") && !tg.isFullscreen) tg.requestFullscreen();
         } catch (e) {}
       })();
     </script>

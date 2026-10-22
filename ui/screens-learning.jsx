@@ -33,6 +33,7 @@ import { lessonCards } from "../lib/lesson-cards";
 import { missText } from "../lib/practice-mistake";
 import { ensureTableCss } from "./table-css";
 import { ModuleMenu } from "./module-menu";
+import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
 import { Flame, Wine } from "./day-emblems";   // v43: вместо свечи и стакана из ./table-bits
 import { useWide, useColumn, splitAt } from "./viewport";   // v52 (Доп. 365): трек шире, глоссарий в две колонки на широком экране
 import { ymd } from "../lib/streak";
@@ -417,8 +418,9 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     // листал внизу длинного меню — подняться к началу новой темы (номера тем снова на своём месте)
     try {
       const vp = vpRef.current, sw = stripWrapRef.current; if (!vp) return;
-      if (vp.getBoundingClientRect().top < 0) {
-        const top = sw ? sw.getBoundingClientRect().top - 8 : vp.getBoundingClientRect().top - 12;
+      const inset = topInsetPx();
+      if (vp.getBoundingClientRect().top < inset) {
+        const top = (sw ? sw.getBoundingClientRect().top - 8 : vp.getBoundingClientRect().top - 12) - inset;
         scrollerOf(vp).scrollBy({ top, behavior: calmMotion() ? "auto" : "smooth" });
       }
     } catch (e) {}
@@ -541,7 +543,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     if (!el || typeof IntersectionObserver === "undefined") { setPinned(false); return undefined; }
     const io = new IntersectionObserver((ents) => {
       const en = ents[ents.length - 1];
-      if (en) setPinned(!en.isIntersecting && en.boundingClientRect.bottom <= 0);
+      if (en) setPinned(!en.isIntersecting && en.boundingClientRect.bottom <= topInsetPx() + 1);   // v69: верх — под кнопками Telegram
     }, { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();

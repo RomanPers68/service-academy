@@ -7,7 +7,7 @@ export const TABLE_LESSON_CSS = `
 .tb{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;color:var(--text);font-family:var(--font-body);
   background:radial-gradient(130% 80% at 50% -5%,var(--glow),transparent 55%),linear-gradient(160deg,var(--bg),var(--bg-2) 50%,var(--bg));
   -webkit-text-size-adjust:100%;text-size-adjust:100%}
-.tb-head{padding:max(44px,env(safe-area-inset-top,0px)) 16px 8px}
+.tb-head{padding:max(44px,var(--sa-st,env(safe-area-inset-top,0px))) 16px 8px}
 .tb-top{display:flex;align-items:center;gap:10px}
 .tb-x{width:38px;height:38px;border-radius:50%;border:1px solid var(--edge);background:var(--glass);display:grid;place-items:center;color:var(--sub);flex:0 0 auto;padding:0}
 .tb-host{display:flex;align-items:center;gap:10px;flex:1;min-width:0}

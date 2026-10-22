@@ -16,13 +16,13 @@ describe("v54: полоска разделов — копией сверху, а
     expect(ed).not.toMatch(/data-ednav="" style=\{\{ position: "sticky"/);
   });
   it("уехала вверх — копия в слое поверх экрана (portal в body), на том же месте и той же ширины", () => {
-    expect(ed).toContain("const up = en.isIntersecting ? en.intersectionRect.top > b.top + 0.5 : b.top < 0;");
+    expect(ed).toContain("const up = en.isIntersecting ? en.intersectionRect.top > b.top + 0.5 : b.top < topInsetPx();");   // v69: верх — под кнопками Telegram
     expect(ed).toContain("setNavPin(up ? box() : null);");
     expect(ed).toContain("}, { threshold: [0, 1] });");
     expect(ed).toContain("const onR = () => setNavPin((p) => (p ? box() : p));");
     expect(ed).toContain("<div data-ednav-pin=\"\" className=\"sa-ednav-pin\" style={{ left: navPin.left, width: navPin.width, ...navBg }}>{navRow}</div>, document.body) : null}");
     expect(css).toContain(".sa-ednav-pin { position: fixed; top: 0; z-index: 330; box-sizing: border-box; display: flex; gap: 3px;");
-    expect(css).toContain("padding: calc(env(safe-area-inset-top, 0px) + 7px) 8px 7px; }");
+    expect(css).toContain("padding: calc(var(--sa-st, env(safe-area-inset-top, 0px)) + 7px) 8px 7px; }");   // v69: и кнопки Telegram
   });
   it("обрезка без прокрутки (sa-edon) — только в две панели, для липкого предпросмотра", () => {
     expect(ed).toContain("if (!two || typeof document === \"undefined\") return undefined;");

@@ -89,6 +89,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   const isAdmin = !!profile?.is_admin;
   // v56 (Доп. 369): ответ на «как прошла смена» — пока человек не решил, разбирать ли с Наставником
   const [moodReply, setMoodReply] = React.useState(null);
+  // v69 (Доп. 382): с каким состоянием открылась главная — карточка проявляется только при смене состояния на открытом
+  // экране, а не при каждом возврате на главную (там вся страница и так въезжает; второе появление — мерцание)
+  const nowModeRef = React.useRef(null);
   const [openGroup, setOpenGroup] = React.useState(null);
   // Какой инструмент сейчас показывает своё слово. Тап оставляем тапом —
   // он открывает инструмент, а не раскрывает подпись: иначе каждое обращение
@@ -329,6 +332,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               {/* подсказка главной (шаг 1) показывает на эту карточку — ref на обёртке */}
               <div ref={refTrack}>
                 <NowInvitation key={card.mode} ctx={card} a11y={a11y} rows={rows} foot={foot} on={ctx ? nowOn : { go }}
+                  fade={(() => { if (nowModeRef.current === null) nowModeRef.current = card.mode; return card.mode !== nowModeRef.current; })()}
                   onMood={(lvl) => { setMoodReply(lvl); if (nowOn) nowOn.mood(lvl); }} onReplyDone={() => setMoodReply(null)} />
               </div>
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}

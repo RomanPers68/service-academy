@@ -294,7 +294,7 @@ export function LoopholeBanner({ a11y, n = 1, female = false, onOpen, onHide }) 
   const off = phase === "in" || phase === "out";
   return (
     <div onClick={open} role="button" aria-label="Секретная ачивка. Тапни, чтобы посмотреть" className="la-a"
-      style={{ position: "fixed", zIndex: 1250, left: 12, right: 12, top: "calc(62px + env(safe-area-inset-top, 0px))",   // под верхней строкой «SA · Для чтения»
+      style={{ position: "fixed", zIndex: 1250, left: 12, right: 12, top: "calc(62px + var(--sa-st, env(safe-area-inset-top, 0px)))",   // под верхней строкой «SA · Для чтения»
         maxWidth: 460, margin: "0 auto", cursor: "pointer", WebkitTapHighlightColor: "transparent",
         transform: off ? "translateY(-150%)" : phase === "open" ? "translateY(-8px) scale(.96)" : "translateY(0)",
         opacity: phase === "open" ? 0 : 1,

@@ -38,7 +38,7 @@ import { tasksFor, markQuestDone, questDays } from "./lib/quest";
 import { playlist } from "./lib/radio";
 import { readGuestRuns, guestSub } from "./lib/live-guest";
 import { recapMonth, monthRecap, MONTH } from "./lib/month-recap";
-import { Candle } from "./ui/table-bits";
+import { Flame } from "./ui/day-emblems";   // v70 (Доп. 383): пламя в строке напарника (была свеча из ./ui/table-bits)
 import { DayChips, WarmupCard, RemindSheet, readRemindFlag, inTelegramApp } from "./ui/day-cards";
 import { syncMySchedule } from "./lib/schedule-sync";
 import { practiceQuestionTexts, mistakeFromSituation } from "./lib/practice-mistake";
@@ -2828,7 +2828,10 @@ function ServiceAcademy() {
               {...onActivate(() => { if (pairLine.warm && warmSits.length >= 2) openWarmup(); else setPairOpen(true); })}
               style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 4px 9px", padding: "7px 11px", borderRadius: 12, fontSize: 12.5, cursor: "pointer",
                 color: a11y ? "#6B4E1A" : "#D9B87C", border: `1px solid ${a11y ? "rgba(139,106,48,0.32)" : "rgba(214,178,102,0.28)"}`, background: a11y ? "rgba(255,250,238,0.5)" : "rgba(214,178,102,0.06)" }}>
-              <Candle s={16} lit /><span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
+              {/* v70 (Доп. 383), владелец: «свечка некрасивая, в обеих темах одинаковая палитра» — свеча стояла вне «стола» (.tbv)
+                  и не получала цветов темы (тёмный воск). Из показанного выбрано «пламя» — как у серии на табличке выше */}
+              <Flame lit s={18} a11y={a11y} />
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
           nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
           warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}

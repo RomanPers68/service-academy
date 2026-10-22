@@ -151,9 +151,10 @@ describe("v69: страница и слои — под кнопками Telegram
 describe("v69: «Приглашение» — линза светлее, без мерцания", () => {
   const before = { mode: "before", mins: 26, from: 11, to: 24, title: "Разминка перед сменой", sub: "3 вопроса · 2 мин — освежишь главное", cta: "Начать", action: "warmup", icon: "clock" };
   const lensStyle = (html) => { const at = html.indexOf("data-now-lens"); return html.slice(at, html.indexOf(">", at)); };
-  it("линза: под тем же стеклом — тон панели меню, как у кнопки AI на экране", () => {
+  it("линза: стекло кнопки AI (v70: карточка сама в тон плиток — стекло прямо поверх неё, подложки нет)", () => {
     const html = R(h(NowInvitation, { ctx: before, a11y: false, on: {} }));
-    expect(lensStyle(html)).toContain("background:linear-gradient(rgba(200,169,110,0.12), rgba(200,169,110,0.12)), #221E16");
+    expect(lensStyle(html)).toContain("background:rgba(200,169,110,0.12)");
+    expect(lensStyle(html)).not.toContain("#221E16");
     expect(lensStyle(html)).toContain("inset 0 0 0 1px rgba(214,178,102,0.45)");
   });
   it("без CSS filter: тень — у подложки, кромка — inset и кольца вокруг вырезов (тёмная); светлая — тень без кромки", () => {
@@ -192,8 +193,7 @@ describe("v69: «Приглашение» — линза светлее, без 
 
 describe("v69: метка и журнал", () => {
   it("«сборка v69», «Дополнение 382»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v69</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v70: метка дальше
     expect(rd("CHANGES.md")).toContain("# Дополнение 382 — полноэкранный режим в Telegram, линза светлее, карточка без мерцания (v69)");
   });
 });

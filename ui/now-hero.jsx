@@ -86,13 +86,13 @@ function WaxSeal({ size = 50, icon = "clock" }) {
 
 // Линза — то же стекло, что у кнопки AI в нижнем меню (ui/tabbar.jsx AiDisc): золотая кромка, изморозь изнутри,
 // блик сверху, и тонкое золотое кольцо вокруг. v69 (Доп. 382), владелец: «не кажется, что она слишком тёмная?» —
-// кнопка AI стоит на стеклянной панели меню, линза — на чёрной карте, и то же стекло выходило темнее. Под стеклом
-// теперь тон панели меню (на телефоне владельца — rgb 33,30,23): линза такой же светлоты, как кнопка AI на экране.
-const LENS_BASE = "#221E16";
+// кнопка AI стоит на стеклянной панели меню, линза — на чёрной карте, и то же стекло выходило темнее; тогда под стекло
+// линзы положили тон панели меню. v70 (Доп. 383): карточка сама стала тёплым стеклом в тон плиток — подложка больше не
+// нужна: то же стекло прямо поверх карточки, как кнопка AI поверх панели меню.
 function Lens({ size = 44, icon = "clock" }) {
   return (
     <span aria-hidden="true" data-now-lens="" style={{ position: "relative", width: size, height: size, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0,
-      background: "linear-gradient(rgba(200,169,110,0.12), rgba(200,169,110,0.12)), " + LENS_BASE,
+      background: "rgba(200,169,110,0.12)",
       boxShadow: "inset 0 0 0 1px rgba(214,178,102,0.45), inset 0 0 18px rgba(255,230,170,0.12), inset 0 1.5px 0 rgba(255,255,255,0.18)" }}>
       <span style={{ position: "absolute", inset: -4, borderRadius: "50%", border: "1.5px solid " + GOLD, pointerEvents: "none" }} />
       {glyph(icon, GOLD, Math.round(size * 0.46))}
@@ -102,7 +102,7 @@ function Lens({ size = 44, icon = "clock" }) {
 
 // лёгкая фактура бумаги: шум поверх цвета, едва заметный
 const GRAIN = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.1  0 0 0 .55 0'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.22'/></svg>\")";
-// золотое тиснение заголовка на чёрной карте
+// золотое тиснение заголовка на карте тёмной темы
 const FOIL = { background: "linear-gradient(180deg,#F8E8BE 0%,#DDBD7F 48%,#A9833F 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" };
 const STUB = 100;
 // полукруглые вырезы по линии отрыва — настоящие (маска): сквозь них видно фон экрана
@@ -112,6 +112,9 @@ const CUT = `radial-gradient(circle at calc(100% - ${STUB}px) 0, transparent 9px
 // (inset), вокруг вырезов — кольцами в фоне; на вид — как было
 const notchRim = (c) => [0, 100].map((y) => `radial-gradient(circle at calc(100% - ${STUB}px) ${y}%, transparent 9.1px, ${c} 9.6px, ${c} 10.3px, transparent 10.9px)`).join(", ");
 
+// тон плиток главной (ui/screens-roleselect.jsx saInner: rgba(226,186,116,0.11)) — диагональю, как прежний чёрный фон
+const TILE_TONE = "linear-gradient(160deg, rgba(226,186,116,0.18) 0%, rgba(226,186,116,0.10) 58%, rgba(226,186,116,0.15) 100%)";
+
 // rows — нижние строки: [{ key, label: "Дальше:", title, onClick }]; foot — подсказка под карточкой (напоминания в Telegram)
 // fade — мягкое появление: только когда состояние сменилось на открытом экране (ответ на «как прошла», началась
 // смена). v69 (Доп. 382): при возврате на главную карточка проявлялась второй раз поверх появления всей страницы —
@@ -119,9 +122,15 @@ const notchRim = (c) => [0, 100].map((y) => `radial-gradient(circle at calc(100%
 export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone, fade = false }) {
   const { act, stop, key, later, tappable } = useActs({ ctx, on, onReplyDone });
   const dark = !a11y;
+  // v70 (Доп. 383), владелец: «может всё-таки эту кнопку сделаем чуть светлее, теплее? В тон других кнопок? А то кажется,
+  // что она выбивается из основного стиля»; из показанного — «тон, как у соседних плиток, но контуры и текстура как есть
+  // сейчас». На его снимке фон карточки был почти чёрным (rgb 16,12,5), у плиток «График смен» и «Книга отзывов» — тёплое
+  // стекло (около 55,47,30). Тон теперь — то же стекло, что у плиток (rgba(226,186,116,…) поверх фона экрана); текстура —
+  // прежняя: свет из левого верхнего угла и диагональ светлее — темнее — светлее; контуры — прежние: золотая кромка,
+  // кольца вокруг вырезов, золотая рамка внутри, перфорация, тень.
   const P = dark
     ? { ink: "#EFE4C8", sub: "#A99B7E", lead: "#C8A96E", gold: "#D9B87C", perf: "2px dotted rgba(214,178,102,0.45)", rowLine: "1px dashed rgba(214,178,102,0.30)",
-        frame: "rgba(214,178,102,0.42)", bg: "radial-gradient(120% 90% at 20% 0%, rgba(214,178,102,0.10), transparent 60%), linear-gradient(160deg,#211809 0%,#0D0904 58%,#171009 100%)",
+        frame: "rgba(214,178,102,0.42)", bg: "radial-gradient(120% 90% at 20% 0%, rgba(214,178,102,0.10), transparent 60%), " + TILE_TONE,
         rim: "rgba(214,178,102,0.38)", shadow: "0 10px 16px rgba(0,0,0,0.6)" }
     : { ink: "#2A1F0E", sub: "#6E5A38", lead: "#8A6524", gold: "#8A6524", perf: "2px dashed rgba(122,93,42,0.38)", rowLine: "1px dashed rgba(122,93,42,0.38)",
         frame: "rgba(139,106,48,0.42)", bg: GRAIN + ", linear-gradient(180deg,#FFFDF8 0%,#F7EEDC 100%)",

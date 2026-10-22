@@ -307,11 +307,14 @@ describe("v43: пламя и бокал — в шапке трека и в че�
     expect(wk).toMatch(/data-emb="wine"[^>]*>.*?<\/svg>Цель дня \(2 шага\)</);
     expect(wk).toContain('stop-color="' + palette(true).goldHi + '"');   // бумага — светлая палитра в обеих темах
   });
-  it("свеча осталась: «Свеча на двоих», итоги месяца, запас в «Раунде мастера», строка напарника", () => {
+  it("свеча осталась: «Свеча на двоих», итоги месяца, запас в «Раунде мастера»; строка напарника — с v70 пламя", () => {
     expect(readFileSync("ui/together.jsx", "utf8")).toMatch(/<Candle s=\{64\}/);
     expect(readFileSync("ui/month-recap.jsx", "utf8")).toMatch(/<Candle s=\{88\} lit \/>/);
     expect(readFileSync("ui/table.jsx", "utf8")).toMatch(/<Candle s=\{14\} lit=\{!stat\.wrong\.length\} \/>/);
-    expect(readFileSync("App.jsx", "utf8")).toMatch(/<Candle s=\{16\} lit \/>/);
+    // v70 (Доп. 383), владелец: «свечка некрасивая, в обеих темах одинаковая палитра» → «давай пламя»: свеча в строке
+    // напарника стояла вне «стола» (.tbv) и не получала цветов темы
+    expect(readFileSync("App.jsx", "utf8")).not.toMatch(/<Candle s=\{16\} lit \/>/);
+    expect(readFileSync("App.jsx", "utf8")).toContain("<Flame lit s={18} a11y={a11y} />");
   });
 });
 

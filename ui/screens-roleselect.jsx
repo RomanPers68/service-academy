@@ -25,11 +25,12 @@ import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { hintsFor, hintKey, HINTS_VERSION } from "../data/hints";
-import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
-import { MoodCheckCard, TeamMoodCard, moodPalette, MOOD_FACES } from "./mood-cards";
+import { crownIcon, flameIcon, trophyIcon } from "./icons-extra";
+import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { moodTier, MOOD_REPLY } from "../lib/now-card";   // v56 (Доп. 369): «что сейчас»
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor, goldText } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
+import { NowInvitation } from "./now-hero";   // v68 (Доп. 381): главная карточка «Приглашение»
 
 const _WAX_BLOB = "M12 1.9c2.3-.3 4.5.7 6.1 2.2 1.6 1.5 2.9 3.5 3.5 5.6.6 2.2.2 4.6-1 6.5-1.1 1.9-3 3.5-5.1 4.4-2.1.9-4.6 1-6.7.1-2.1-.8-3.9-2.5-5-4.5-1.1-2-1.5-4.4-.9-6.6C3.5 7.4 5 5.4 6.9 4 8.4 2.9 10.2 2.1 12 1.9Z";
 const WaxSealMini = ({ size = 15, rot = 0 }) => (
@@ -79,77 +80,10 @@ export const TRACK_GROUPS = [
     desc: "От управления сменой до архитектуры сервиса", members: ["manager", "service_manager"] },
 ];
 
-// v56 (Доп. 369): карточка «что сейчас» — на месте карточки трека, тем же «морозным льдом» (lib/now-card.js):
-// до смены — разминка, на смене — ошибки или SOS, после смены — «как прошла?» (те же пять лиц, что «Как настрой
-// сегодня?»), после перерыва — «С возвращением». Трек не пропадает — строкой «Дальше …» внизу карточки.
+// v56 (Доп. 369): «что сейчас» — на месте карточки трека (lib/now-card.js): до смены — разминка, на смене — ошибки или
+// SOS, после смены — «как прошла?», после перерыва — «С возвращением». v68 (Доп. 381): карточка — «Приглашение»
+// (ui/now-hero.jsx NowInvitation), и в обычный день тоже — приглашение к следующему шагу трека.
 const MOOD_TITLE = { good: "Хорошая смена ✦", ok: "Ровная смена", hard: "Тяжёлая смена — бывает" };
-function NowCard({ refEl, ctx, a11y, T, next, onNext, on, onMood, onReplyDone }) {
-  const gold = a11y ? "#7A5D2A" : GOLD;
-  const tappable = ctx.action !== "mood";
-  const act = () => {
-    if (!on) return;
-    vibrate("light");
-    if (ctx.action === "warmup") on.warmup();
-    else if (ctx.action === "mistakes") on.mistakes();
-    else if (ctx.action === "sos") on.sos();
-    else if (ctx.action === "ask") { on.ask(ctx.ask); if (onReplyDone) onReplyDone(); }
-  };
-  const stopThen = (fn) => (e) => { if (e && e.stopPropagation) e.stopPropagation(); fn(); };
-  const goNext = () => { vibrate("light"); if (onNext) onNext(); };
-  const later = () => { if (onReplyDone) onReplyDone(); };
-  return (
-    <div ref={refEl} data-now-card={ctx.mode} className="sa-fadein" onClick={tappable ? act : undefined} {...(tappable ? onActivate(act) : {})}
-      style={{ borderRadius:18, cursor: tappable ? "pointer" : "default",
-        background: a11y ? "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))" : "linear-gradient(180deg,rgba(214,178,102,0.17),rgba(214,178,102,0.05))",
-        border:`1px solid ${a11y ? "rgba(150,112,40,0.42)" : "rgba(214,178,102,0.4)"}`,
-        borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.58)" : "rgba(226,190,120,0.46)"}`,
-        boxShadow: a11y
-          ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(120,85,25,0.14)"
-          : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13), 0 5px 16px rgba(0,0,0,0.45)" }}>
-      <div style={{ padding:"10px 13px 9px", display:"flex", alignItems:"center", gap:12 }}>
-        <div aria-hidden="true" style={{ width:48, height:48, flexShrink:0, borderRadius:"50%", display:"grid", placeItems:"center",
-          border:`1.5px solid ${a11y ? "rgba(122,93,42,0.45)" : "rgba(214,178,102,0.45)"}`, background: a11y ? "rgba(255,250,238,0.6)" : "rgba(214,178,102,0.08)" }}>
-          {UI_SVG[ctx.icon] ? UI_SVG[ctx.icon](gold, 22) : null}
-        </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div data-now-tag="" style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.2, color: goldText(a11y), marginBottom:3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ctx.tag}</div>
-          <div data-now-title="" style={{ color: T.modTitle.color, fontSize:16, fontFamily:"Georgia, serif", lineHeight:1.25 }}>{ctx.title}</div>
-          <div style={{ color: T.modSub.color, fontSize:12, marginTop:3, lineHeight:1.4 }}>{ctx.sub}</div>
-        </div>
-        {ctx.cta ? (
-          <div style={{ flexShrink:0, padding:"9px 15px", borderRadius:999, fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold", color:"#1A1008",
-            background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>{ctx.cta}</div>
-        ) : null}
-      </div>
-      {ctx.action === "mood" ? (
-        <div data-now-moods="" style={{ display:"flex", justifyContent:"space-between", padding:"0 8px 10px" }}>
-          {MOOD_FACES.map((m) => (
-            <button key={m.lvl} type="button" className="sa-btn" aria-label={m.l} onClick={stopThen(() => { if (onMood) onMood(m.lvl); })}
-              style={{ flex:1, minWidth:0, background:"transparent", border:0, padding:"4px 0", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-              {faceIcon(m.lvl, gold, 30)}
-              <span style={{ fontSize:11, color: T.modSub.color, whiteSpace:"nowrap" }}>{m.l}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {ctx.mode === "reply" ? (
-        <div style={{ padding:"0 13px 10px", marginTop:-3 }}>
-          <span role="button" tabIndex={0} data-now-later="" onClick={stopThen(later)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); later(); } }}
-            style={{ fontSize:12.5, color: T.modSub.color, textDecoration:"underline", textUnderlineOffset:3, cursor:"pointer" }}>Не сейчас</span>
-        </div>
-      ) : null}
-      {next ? (
-        <div data-now-next="" role="button" tabIndex={0} onClick={stopThen(goNext)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); goNext(); } }}
-          style={{ display:"flex", alignItems:"center", gap:8, margin:"0 9px 9px", padding:"8px 11px", borderRadius:12, cursor:"pointer",
-            background: a11y ? "rgba(255,250,238,0.55)" : "rgba(255,250,238,0.04)", border:`1px solid ${a11y ? "rgba(139,106,48,0.22)" : "rgba(255,255,255,0.08)"}` }}>
-          <span style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.1, color: T.modSub.color, whiteSpace:"nowrap" }}>{next.done ? "ТРЕК" : "ДАЛЬШЕ"}</span>
-          <span style={{ flex:1, minWidth:0, fontSize:13, color: T.modTitle.color, fontFamily:"Georgia, serif", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{next.title}</span>
-          <span aria-hidden="true" style={{ color: gold, fontSize:16 }}>›</span>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false }) {
   const isAdmin = !!profile?.is_admin;
@@ -329,8 +263,6 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           const done = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0);
           const total = mods.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0);
           const prog = total ? Math.round((done / total) * 100) : 0;
-          const RC = inkOf(roleObj?.color, a11y) || (a11y ? "#4E7A58" : "#8FB890"); // цвет роли (правка 172: в светлой теме тёмный вариант)
-          const GRN = RC, GRN2 = RC;
           let title, sub, cta, go, gold = false, kind = null;
           // Что за шаг: тест, практика или урок. Человек заранее знает, на что
           // подписывается — тест на восемь вопросов это другое обязательство,
@@ -365,6 +297,28 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           const tier = moodReply ? moodTier(moodReply) : null;
           const ctx = tier ? { mode: "reply", tag: "СМЕНА ПОЗАДИ ✓", title: MOOD_TITLE[tier], sub: MOOD_REPLY[tier].text, cta: MOOD_REPLY[tier].cta, action: "ask", ask: MOOD_REPLY[tier].ask, icon: "moon" }
             : (nowCard && !firstDay ? nowCard : null);
+          // v68 (Доп. 381): главная карточка — «Приглашение» (ui/now-hero.jsx): в светлой теме — белая бумага с сургучной
+          // печатью, в тёмной — чёрная карта с линзой, как кнопка AI. Одна карточка на все случаи: «сейчас» по смене или,
+          // в обычный день, — приглашение к следующему шагу трека (раньше — отдельная карточка трека с кольцом прогресса).
+          // Внизу — строки: «Дальше» (при «сейчас»), «Разминка» и «Шаг дня» (в обычный день; раньше — плашками);
+          // подсказка «Напоминать в Telegram» — под карточкой, как была под плашками. В первый день строк нет: одно действие.
+          const Kind = kind ? kind.charAt(0) + kind.slice(1).toLowerCase() : "";
+          const nextTitle = Kind ? Kind + " «" + title + "»" : title;
+          const warm = !firstDay && warmupCard && !(warmupCard.props && warmupCard.props.done) ? warmupCard : null;
+          const step = !firstDay ? stepLine : null;
+          const stepData = step && step.props && step.props.step && !step.props.step.done && step.props.step.text ? step.props.step : null;
+          const warmWhen = (p) => "2 мин · " + (p.shift ? String(p.shift).split("·")[0].trim().toLowerCase() : p.known ? "сегодня смена" : "перед сменой");
+          const GUEST = (c, sz) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>;
+          const card = ctx || { mode: "track", action: "go", cta: cta.charAt(0) + cta.slice(1).toLowerCase(),
+            glyph: gold ? GUEST : (ROLE_SVG[role] ? (c, sz) => ROLE_SVG[role](c, sz) : "sparkle"),
+            lead: (roleObj ? roleObj.label + " · " : "") + (!next ? "пройдено 100%" : done ? "пройдено " + prog + "%" : "первый шаг"),
+            title: next ? nextTitle : title, sub: String(sub || "").replace(/\s*·\s*пройдено \d+%/, "") };
+          const rows = ctx
+            ? (next ? [{ key: "next", label: "Дальше:", title: nextTitle, onClick: go }] : [])
+            : [warm && warm.props ? { key: "warm", label: "Разминка:", title: warmWhen(warm.props), onClick: warm.props.onStart } : null,
+               stepData ? { key: "step", label: "Шаг дня:", title: String(stepData.text).replace(/^Попробуй:\s*/, "").replace(/^./, (x) => x.toUpperCase()),
+                 onClick: () => { if (step.props.onStep) step.props.onStep(stepData); } } : null].filter(Boolean);
+          const foot = !ctx && warm && warm.props ? warm.props.children || null : null;
           return (
             <div style={{ padding:"0 14px 9px" }}>
               {/* Роль чипом. После перестройки она пряталась только в заголовке
@@ -372,89 +326,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                   приветствии (там же видна), отдельного ряда над карточкой больше нет. */}
               {/* v31: строка напарника — отдельной строкой под чипами (раньше уезжала за край экрана) */}
               {dayNote}
-              {ctx ? (
-                <NowCard key={ctx.mode} refEl={refTrack} ctx={ctx} a11y={a11y} T={T} on={nowOn}
-                  next={next ? { title: (kind ? kind.charAt(0) + kind.slice(1).toLowerCase() + " · " : "") + title } : null} onNext={go}
+              {/* подсказка главной (шаг 1) показывает на эту карточку — ref на обёртке */}
+              <div ref={refTrack}>
+                <NowInvitation key={card.mode} ctx={card} a11y={a11y} rows={rows} foot={foot} on={ctx ? nowOn : { go }}
                   onMood={(lvl) => { setMoodReply(lvl); if (nowOn) nowOn.mood(lvl); }} onReplyDone={() => setMoodReply(null)} />
-              ) : (
-              <div ref={refTrack} onClick={go} {...onActivate(go)} style={{ borderRadius:18, cursor:"pointer",
-                // Тот же «морозный лёд», но ярче остальных карточек: это
-                // единственное действие, ради которого экран открывают.
-                background: a11y
-                  ? "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))"
-                  : "linear-gradient(180deg,rgba(214,178,102,0.17),rgba(214,178,102,0.05))",
-                border:`1px solid ${a11y ? "rgba(150,112,40,0.42)" : "rgba(214,178,102,0.4)"}`,
-                borderTop:`1px solid ${a11y ? "rgba(175,135,50,0.58)" : "rgba(226,190,120,0.46)"}`,
-                boxShadow: a11y
-                  ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 4px 12px rgba(120,85,25,0.14)"
-                  : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13), 0 5px 16px rgba(0,0,0,0.45)" }}>
-                <div style={{ borderRadius:14.5, padding:"9px 13px", background:"transparent",
-                  display:"flex", alignItems:"center", gap:12 }}>
-                  {/* Иконка роли с кольцом прогресса вокруг и значком типа шага.
-                      Раньше это были три отдельные штуки: кружок с иконкой слева,
-                      кольцо с процентом справа и полоска снизу — три способа
-                      сказать одно и то же. Слились в один смысловой узел 48×48. */}
-                  <div style={{ position:"relative", width:48, height:48, flexShrink:0,
-                    display:"grid", placeItems:"center" }}>
-                    {next && total > 0 ? (
-                      <svg width="48" height="48" viewBox="0 0 48 48" style={{ position:"absolute", inset:0 }}>
-                        <circle cx="24" cy="24" r="22" fill="none" strokeWidth="2.5"
-                          stroke={a11y ? "rgba(120,90,30,0.2)" : "rgba(200,169,110,0.2)"} />
-                        <circle cx="24" cy="24" r="22" fill="none" stroke={gold ? GOLD : RC} strokeWidth="2.5" strokeLinecap="round"
-                          strokeDasharray={(2 * Math.PI * 22 * prog / 100) + " " + (2 * Math.PI * 22)}
-                          transform="rotate(-90 24 24)" />
-                      </svg>
-                    ) : null}
-                    <span style={{ position:"relative", display:"inline-flex" }}>
-                      {gold
-                        ? <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>
-                        : (ROLE_SVG[role] ? ROLE_SVG[role](RC, 21) : <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={RC} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V9"/><path d="M12 9c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M12 13c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>)}
-                    </span>
-                    {kind ? (
-                      <span style={{ position:"absolute", bottom:-4, left:"50%", transform:"translateX(-50%)",
-                        fontFamily:"monospace", fontSize:10.5, letterSpacing:1.1, whiteSpace:"nowrap",
-                        color:RC, padding:"1px 6px", borderRadius:999,
-                        background: a11y ? "#F7F0E0" : "#1A1409",
-                        border:`1px solid ${RC}66` }}>{kind}</span>
-                    ) : null}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    {/* v41: до трёх строк — на узком экране «Как выглядеть…» больше не обрывается многоточием */}
-                    <div style={{ color: gold ? GOLD : T.modTitle.color, fontSize:16, fontFamily:"Georgia, serif",
-                      lineHeight:1.25, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical" }}>{title}</div>
-                    <div style={{ color: T.modSub.color, fontSize:11.5, marginTop:3, lineHeight:1.4 }}>{sub}</div>
-                  </div>
-                  {/* Кнопка по размеру задачи: не во всю ширину (так карточка
-                      раздувалась), но и не плашка в 9 px, неотличимая от стрелки. */}
-                  <div style={{ flexShrink:0, padding:"9px 15px", borderRadius:999,
-                    fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold", color:"#1A1008",
-                    background: gold ? `linear-gradient(180deg, ${GOLD_SOFT}, #7A5D2A)` : `linear-gradient(180deg,#E4C88C,${GOLD})` }}>
-                    {cta.charAt(0) + cta.slice(1).toLowerCase()}
-                  </div>
-                </div>
-                {/* Доп. 306: в день смены — «разминка 2 мин» (из App); v41 (Доп. 354): «Шаг дня» — строкой этой же
-                    карточки. v44 (Доп. 357): обе — плашками рядом внизу карточки (раньше — две строки во всю ширину);
-                    одна — во всю ширину. Подсказка «Напоминать в Telegram» разминки — строкой под плашками. */}
-                {(() => {
-                  const stop = (e) => e.stopPropagation();
-                  const pill = (el) => (React.isValidElement(el) && typeof el.type === "function" ? React.cloneElement(el, { pill: true }) : el);
-                  // v56 (Доп. 369): в самый первый день (App: firstDay — ничего не пройдено ни в одном треке) — без плашек
-                  // «Разминка» и «Шаг дня»: главное действие одно — первый урок; разминка о том, чего ещё не учил,
-                  // и «сдай первый тест» — путали. Сменил трек — плашки на месте.
-                  const warm = !firstDay && warmupCard && !(warmupCard.props && warmupCard.props.done) ? warmupCard : null;
-                  const step = !firstDay ? stepLine : null;
-                  const hint = warm && warm.props ? warm.props.children : null;
-                  if (!warm && !step) return null;
-                  return (<>
-                    <div data-day-pills="" onClick={stop} onKeyDown={stop} style={{ display:"flex", gap:8, padding:"0 9px 9px", alignItems:"stretch" }}>
-                      {warm ? pill(warm) : null}
-                      {step ? <div data-step-slot="" style={{ flex:"1 1 0", minWidth:0, display:"flex" }}>{pill(step)}</div> : null}
-                    </div>
-                    {hint ? <div onClick={stop} onKeyDown={stop} style={{ padding:"0 13px 9px", marginTop:-3 }}>{hint}</div> : null}
-                  </>);
-                })()}
               </div>
-              )}
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}
               {masteryCard ? <div data-mastery-slot="" style={{ marginTop:9 }}>{masteryCard}</div> : null}
             </div>

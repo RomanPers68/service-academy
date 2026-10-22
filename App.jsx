@@ -17,7 +17,7 @@ import { MODULES_INDEX } from "./data/modules-index";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
 import { modeOfDay, dailyCount, dailyStreak } from "./lib/day-mode";
-import { nextStreak, dayOffFromSchedule, myShiftOn, shiftLabel, ymd } from "./lib/streak";
+import { nextStreak, fresherStreak, liveStreak, dayOffFromSchedule, myShiftOn, shiftLabel, ymd } from "./lib/streak";
 import { readActivity, bumpActivity, stepsOn, readGoal, saveGoal, weekSummary, ACTIVITY_EVENT } from "./lib/activity";
 import { nowMode, nowCardText, daysAway, dayDiff } from "./lib/now-card";   // v56 (Доп. 369): «что сейчас» на главной
 import { trackForPosition } from "./lib/position-track";   // v58 (Доп. 371): трек по должности
@@ -616,12 +616,17 @@ function ServiceAcademy() {
   const streakRef = useRef(streak); streakRef.current = streak;
   const touchStreak = useCallback(() => {
     try {
-      const prev = streakRef.current;
+      const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
+      // v68 (Доп. 381): от более свежей из двух — в памяти или на телефоне. Серия в памяти могла отстать (вход по коду
+      // без перезапуска, второе окно) — и шаг начинал серию заново поверх настоящей.
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem("sa_streak" + uk) || "null"); } catch(e) { saved = null; }
+      const prev = fresherStreak(streakRef.current, saved);
       const next = nextStreak(prev, new Date(), (d) => dayOffFromSchedule(profile, d));
-      if (!next || next === prev) return prev;
+      if (!next) return prev;
+      if (next === prev) { if (prev !== streakRef.current) { streakRef.current = prev; setStreak(prev); } return prev; }
       streakRef.current = next;
       setStreak(next);
-      const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
       try { localStorage.setItem("sa_streak"+uk, JSON.stringify(next)); } catch(e) {}
       // Серия — повод для золотой вспышки (7 и 30 дней)
       if (next.count === 7 || next.count === 30) setTimeout(() => cheer("Серия " + next.count + " дней"), 500);
@@ -652,6 +657,20 @@ function ServiceAcademy() {
   const setGoal = useCallback((g) => { setGoalState(saveGoal(ukP, g)); }, [ukP]);
   const todayKey = ymd(new Date());
   const todaySteps = stepsOn(activity, todayKey);
+  // v68 (Доп. 381): свеча и бокал говорят одно. Сегодня в журнале дня уже есть шаг (или работа над ошибками), а свеча
+  // не зажжена — зажигаем: шаг засчитан в цель дня, значит, и в серию. Так чинится и то, что уже разошлось на телефоне.
+  const todayRec = activity ? activity[todayKey] : null;
+  const todayLit = !!(todayRec && ((Number(todayRec.st) || 0) > 0 || (Number(todayRec.f) || 0) > 0));
+  React.useEffect(() => {
+    if (!profile || !storageLoaded || !todayLit) return;
+    if (streak && streak.last === todayKey) return;
+    touchStreak();
+  }, [profile, storageLoaded, todayLit, todayKey, streak, touchStreak]);
+  // табличка на главной — серия «на сейчас»: прервалась — 0, а не прежнее число (lib/streak.js liveStreak)
+  const streakLive = useMemo(() => {
+    const lv = liveStreak(streak, new Date(), (d) => dayOffFromSchedule(profile, d));
+    return lv.count === ((streak && streak.count) || 0) ? streak : { ...streak, count: lv.count };
+  }, [streak, todayKey, profile]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Инициализация Telegram WebApp: убираем серые рамки, красим шапку и фон под тему
   React.useEffect(() => {
@@ -912,6 +931,8 @@ function ServiceAcademy() {
     try { localStorage.removeItem("sa_quiz_done"); } catch (e) {}
     setCompleted({}); setQuizDone({}); setScores([]); setPracticeStars({}); setMistakeBank([]);
     setCompletedRoles(new Set()); setExamResults({}); setStreak({ count: 0, best: 0, last: "", days: [] });
+    // v68 (Доп. 381): и журнал дня в памяти — иначе после сброса бокал показывал прежние шаги рядом с погасшей свечой
+    setActivity({}); setWarmDone("");
     setLoophole(null); setLoopView(null); setLoopRank(null);
     setMasteryVer((v) => v + 1);   // v40: значки и шаг дня — заново от пустого
   }, []);
@@ -1500,16 +1521,37 @@ function ServiceAcademy() {
   const recordExam = useCallback((roleId, result) => { setExamResults(prev => ({ ...prev, [roleId]: result })); try { touchStreak(); logActivity("exam"); } catch (e) {} }, [touchStreak, logActivity]);
   const openExam = useCallback((roleId) => { setExamRole(roleId); navigate("exam"); }, [navigate]);
   const openCertificate = useCallback((roleId) => { setExamRole(roleId); navigate("certificate"); }, [navigate]);
+  // v68 (Доп. 381): личное с телефона — как при запуске (серия, ошибки, избранное, экзамены, уроки, роль). Раньше после
+  // входа по коду без перезапуска приложения это не перечитывалось: серия оставалась нулём (или прежнего человека на
+  // общем телефоне), а цель дня читалась заново — на главной «0 дней подряд» рядом с «цель дня 1/1».
+  const loadLocalFor = useCallback((prof) => {
+    const uk = prof ? `_${prof.name}_${prof.surname || ""}` : "";
+    const get = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
+    const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
+    setQuizDone(obj(get("sa_quiz_done" + uk)) || {});
+    const cr = get("sa_completed_roles" + uk);
+    setCompletedRoles(new Set(Array.isArray(cr) ? cr : []));
+    setCompleted(obj(get("sa_completed" + uk)) || {});
+    const lr = get("sa_last_role" + uk);
+    if (lr) setRole(lr);
+    const st = obj(get("sa_streak" + uk)) || { count: 0, best: 0, last: "", days: [] };
+    streakRef.current = st; setStreak(st);
+    const mb = get("sa_mistakes" + uk);
+    setMistakeBank(Array.isArray(mb) ? mb : []);
+    setSaved(obj(get("sa_saved" + uk)) || {});
+    setExamResults(obj(get("sa_exam" + uk)) || {});
+  }, []);
   const handleLogin = useCallback((token, emp) => {
     const prof = { id: emp.id, name: emp.name, surname: normSurname(emp.surname || ""), restaurant: emp.restaurant, position: emp.position, is_admin: !!emp.is_admin };
     try {
       localStorage.setItem("sa_session_token", token || "demo");
       localStorage.setItem("sa_profile", JSON.stringify(prof));
     } catch(e) {}
+    loadLocalFor(prof);   // v68: серия, ошибки, избранное — с телефона, как при запуске
     startBoot(token || "demo");   // v64: после входа — тоже одним запросом
     setProfile(prof);
     setScreen("roleSelect");
-  }, []);
+  }, [loadLocalFor]);
   const handleLogout = useCallback(() => {
     cancelDayPush();   // v31: отметка дня прошлого человека не уходит после выхода
     try {
@@ -2765,7 +2807,7 @@ function ServiceAcademy() {
         /></div>}
         {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
         {screen === "roleSelect" && <div className={vp.wide ? "sa-tabpad sa-tabpad-w" : "sa-tabpad"}><RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short} hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
-          dayStrip={profile ? <DayChips a11y={a11y} streak={streak} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
+          dayStrip={profile ? <DayChips a11y={a11y} streak={streakLive} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
             firstDay={firstDay}
             /* v41 (Доп. 354): «Путь мастера» — чипом рядом со свечой и стаканом, а не карточкой под треком */
             mastery={role && mShown ? masteryChip(mShown, mNew.size, a11y) : null} onMastery={() => openMastery()} /> : null}

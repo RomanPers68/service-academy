@@ -123,10 +123,14 @@ describe("v56: главная", () => {
     expect(app).toContain("const saveShiftMood = useCallback((lvl) => { recordMood(lvl, todayKey); setShiftMood(String(lvl)); }, [todayKey]);");
   });
   it("карточка «сейчас» — на месте карточки трека; трек — строкой «Дальше»; первый день — как было", () => {
-    expect(home).toContain("function NowCard({ refEl, ctx, a11y, T, next, onNext, on, onMood, onReplyDone }) {");
+    // v68 (Доп. 381): карточка — «Приглашение» (ui/now-hero.jsx NowInvitation): строка «Дальше» и лица — там
+    const hero = rd("ui/now-hero.jsx");
+    expect(home).toContain("<NowInvitation key={card.mode} ctx={card} a11y={a11y} rows={rows} foot={foot} on={ctx ? nowOn : { go }}");
     expect(home).toContain(": (nowCard && !firstDay ? nowCard : null);");
-    expect(home).toContain("<div data-now-next=\"\" role=\"button\" tabIndex={0}");
-    expect(home).toContain("{MOOD_FACES.map((m) => (");
+    expect(home).toContain('? (next ? [{ key: "next", label: "Дальше:", title: nextTitle, onClick: go }] : [])');
+    expect(hero).toContain("export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone }) {");
+    expect(hero).toContain('data-now-next={r.key === "next" ? "" : undefined}');
+    expect(hero).toContain("{MOOD_FACES.map((m) => (");
     expect(home).toContain("const ctx = tier ? { mode: \"reply\", tag: \"СМЕНА ПОЗАДИ ✓\", title: MOOD_TITLE[tier], sub: MOOD_REPLY[tier].text,");
   });
   it("первый день: без плашек «Разминка» и «Шаг дня»; табличка дня — «Первый день» вместо трёх нулей", () => {

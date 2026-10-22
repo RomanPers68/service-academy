@@ -203,7 +203,8 @@ describe("v41: главная — строка шага в карточке тр
     roleHeader: {}, roleSubtitle: {}, roleList: {}, roleCard: {}, roleAccent: {}, roleIcon: {}, roleInfo: {}, roleLabel: {}, roleSublabel: {}, roleDesc: {} };
   const mod = { id: "cms-m-1", title: "Свой раздел", lessons: [{ id: "cms-l-1", type: "lesson", title: "Урок: встреча гостя", content: "Текст" }, { id: "cms-l-1q", type: "quiz", title: "Тест", questions: [{ q: "?", options: ["а", "б"], correct: 0 }] }] };
   const profile = { name: "Анна", surname: "Смирнова", restaurant: "Два моря, Океан", position: "waiter" };
-  const line = h("div", { "data-test-line": "" }, "Шаг дня · Освежи тему");
+  // v68 (Доп. 381): «Шаг дня» — строкой «Приглашения» (ui/now-hero.jsx): данные шага карточка берёт у StepLine
+  const line = h(StepLine, { a11y: false, step: { id: "fresh:x", kind: "fresh", fam: "fresh", text: "Освежи тему", sub: "" }, onStep: noop });
   const render = async (extra) => {
     const { RoleSelect } = await import("../ui/screens-roleselect");
     return R(h(RoleSelect, { T: T4, a11y: false, profile, role: "seasonal", onSelect: noop, onContinueLesson: noop, customByRole: { seasonal: [mod] }, ...extra }));
@@ -211,20 +212,19 @@ describe("v41: главная — строка шага в карточке тр
   it("строка — внутри карточки трека (после «Дальше», до «Мой график»), клики не уходят в карточку", async () => {
     // v44 (Доп. 357): «Шаг дня» — плашкой в ряду внизу карточки (ряд останавливает клики), карточка закрывается после ряда
     // v56 (Доп. 369): в самый первый день (firstDay из App) плашек нет — здесь первый урок пройден, кнопка — «Дальше»
+    // v68 (Доп. 381): карточка — «Приглашение»; «Шаг дня» — строкой под заголовком (клик строки не уходит в карточку —
+    // stopPropagation в ui/now-hero.jsx), «Дальше» — на корешке
     const html = await render({ stepLine: line, completed: { "cms-l-1": true } });
-    const slot = '<div data-step-slot="" style="flex:1 1 0;min-width:0;display:flex"><div data-test-line="">Шаг дня · Освежи тему</div></div>';
-    const at = html.indexOf(slot);
-    expect(at).toBeGreaterThan(0);
-    expect(html.indexOf(">Дальше</div>")).toBeGreaterThan(0);
-    expect(html.indexOf(">Дальше</div>")).toBeLessThan(at);
+    const at = html.indexOf('data-now-row="step"');
+    expect(at).toBeGreaterThan(html.indexOf("data-now-title"));
+    expect(html.slice(html.indexOf(">", at) + 1, html.indexOf("</div>", at)).replace(/<[^>]+>/g, "")).toBe("Шаг дня:Освежи тему›");
+    const cta = html.indexOf('data-now-cta=""');
+    expect(cta).toBeGreaterThan(at);
+    expect(html.slice(html.indexOf(">", cta) + 1, html.indexOf("</span>", cta))).toBe("Дальше");
     expect(at).toBeLessThan(html.indexOf("Мой график"));
-    const row = html.lastIndexOf('<div data-day-pills=""', at);
-    expect(row).toBeGreaterThan(html.indexOf(">Дальше</div>"));
-    // сразу после ряда закрывается карточка трека, а за ней — обёртка трека
-    expect(html.slice(at + slot.length).startsWith("</div></div></div>")).toBe(true);
+    expect(readFileSync("ui/now-hero.jsx", "utf8")).toContain("onClick={stop(() => { vibrate(\"light\"); if (r.onClick) r.onClick(); })}");
     const base = await render({});
-    expect(base).not.toContain("data-step-slot");
-    expect(base).not.toContain("data-day-pills");
+    expect(base).not.toContain("data-now-row=");
     expect(await render({ stepLine: null })).toBe(base);
   });
   it("подпись роли — целиком или никак: обёртка в одну строку с невидимым элементом нулевой ширины", async () => {
@@ -235,7 +235,10 @@ describe("v41: главная — строка шага в карточке тр
     expect(html).not.toMatch(/text-overflow:ellipsis;white-space:nowrap">Сезонный/);
   });
   it("название шага трека — до трёх строк (на узком экране не обрывается многоточием)", async () => {
-    expect(await render({})).toMatch(/-webkit-line-clamp:3;-webkit-box-orient:vertical">Встреча гостя</);
+    // v68 (Доп. 381): в «Приглашении» название переносится целиком, без многоточия
+    const html = await render({});
+    expect(html).toMatch(/data-now-title="" style="[^"]*">Урок «Встреча гостя»</);
+    expect(html).not.toMatch(/data-now-title="" style="[^"]*text-overflow/);
   });
   it("App: строка шага — только когда есть что делать и это не повтор главной карточки или разминки; чип — с точкой «новое»", () => {
     expect(app).toMatch(/import \{ BadgeToast, StepLine, masteryChip \} from "\.\/ui\/mastery-card";/);

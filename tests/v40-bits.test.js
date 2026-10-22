@@ -212,7 +212,8 @@ describe("v40: главная — место под карточку «Путь 
     const html = await render({ masteryCard: card });
     const slot = html.indexOf('<div data-mastery-slot="" style="margin-top:9px"><div data-test-mastery="">Путь мастера · 3 из 14 значков</div></div>');
     expect(slot).toBeGreaterThan(0);
-    const cta = html.indexOf(">Начать</div>");
+    const cta = html.indexOf('data-now-cta=""');   // v68 (Доп. 381): кнопка — на корешке «Приглашения»
+    expect(html.slice(html.indexOf(">", cta) + 1, html.indexOf("</span>", cta))).toBe("Начать");
     expect(cta).toBeGreaterThan(0);
     expect(cta).toBeLessThan(slot);
     expect(slot).toBeLessThan(html.indexOf("Мой график"));

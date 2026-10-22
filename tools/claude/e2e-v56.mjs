@@ -457,11 +457,15 @@ const cacheWith = (k) => ({ ...SCHED_CACHE, plan: { s1: { [new Date().getDate()]
 // v58: сервер (schedule_load) отвечает тем же, что и копия на телефоне — иначе смена из FX (вечер) перекрывала кэш,
 // и сценарии «после утренней смены» зависели от того, успел ли ответить сервер
 const fxWith = (k) => { const fx = clone(FX); fx.plan[9] = { ...(fx.plan[9] || {}), [FX.today]: k }; return fx; };
+// v68 (Доп. 381): карточка «сейчас» и карточка трека — одна карточка «Приглашение». Без «сейчас» она в режиме
+// data-now-card="track" — для проверок ниже это прежнее «карточки «сейчас» нет» (mode: null); плашки «Разминка» и
+// «Шаг дня» стали строками карточки (data-now-row="warm" / "step"); тег — «До смены 2 ч 40 мин», «На смене до 24:00»
 const nowInfo = (p) => p.evaluate(() => {
   const c = document.querySelector("[data-now-card]");
   const logo = document.querySelector("[data-home-logo]"); const lb = logo ? logo.getBoundingClientRect() : null;
-  return { mode: c ? c.getAttribute("data-now-card") : null, text: c ? c.innerText.replace(/\s+/g, " ") : "", tag: c && c.querySelector("[data-now-tag]") ? c.querySelector("[data-now-tag]").innerText : "",
-    first: !!document.querySelector("[data-first-day]"), pills: !!document.querySelector("[data-day-pills]"), next: !!document.querySelector("[data-now-next]"),
+  const m = c ? c.getAttribute("data-now-card") : null;
+  return { mode: m === "track" ? null : m, text: c ? c.innerText.replace(/\s+/g, " ") : "", tag: c && c.querySelector("[data-now-tag]") ? c.querySelector("[data-now-tag]").innerText : "",
+    first: !!document.querySelector("[data-first-day]"), pills: !!document.querySelector('[data-now-row="warm"], [data-now-row="step"]'), next: !!document.querySelector("[data-now-next]"),
     hello: (document.body.innerText.match(/(Доброе утро|Добрый день|Добрый вечер|Доброй ночи|С возвращением), [^\n]+/) || [""])[0],
     logo: lb ? [Math.round(lb.width), Math.round(lb.height)] : null, over: (() => { const r = document.getElementById("root"); return r.scrollWidth - r.clientWidth; })() };
 });
@@ -495,7 +499,7 @@ if (want("ROLE")) {
   // v58: смены Романа в сетке — генератор 2/2 по дням месяца: в его выходной карточки «сейчас» нет (и не должно быть)
   const romanDay = ((FX.plan[1] || {})[FX.today] || "") === "Д";
   ok("ROLE: новый трек у опытного сотрудника — не «первый день»: табличка дня на месте" + (romanDay ? ", карточка «сейчас» (до дневной смены 2 ч)" : " (сегодня у Романа выходной — «сейчас» нет)"),
-    !g.first && (romanDay ? g.mode === "before" && /ДАЛЬШЕ/.test(g.text) : g.mode === null && g.pills), JSON.stringify(g));
+    !g.first && (romanDay ? g.mode === "before" && /Дальше:/.test(g.text) : g.mode === null && g.pills), JSON.stringify(g));
   await o.ctx.close();
 }
 {
@@ -512,8 +516,8 @@ if (want("ROLE")) {
 if (want("BEFORE")) {
   const o = await openHome({ storage: { __role: "seasonal", "sa_completed{uk}": DONE6, ...recent, "sa_sched_cache_main_{mkey}": cacheWith("В") }, fixedTime: at(13, 20) });
   let g = await nowInfo(o.page);
-  ok("BEFORE: за 2 ч 40 мин до вечерней смены — «ДО СМЕНЫ · 2 Ч 40 МИН», разминка", g.mode === "before" && g.tag === "ДО СМЕНЫ · 2 Ч 40 МИН" && /Разминка перед сменой/.test(g.text) && /Начать/.test(g.text), JSON.stringify(g));
-  ok("BEFORE: трек не пропал — строка «Дальше …» внизу карточки; плашек нет", g.next && /ДАЛЬШЕ/.test(g.text) && !g.pills, g.text);
+  ok("BEFORE: за 2 ч 40 мин до вечерней смены — «До смены 2 ч 40 мин», разминка", g.mode === "before" && g.tag === "До смены 2 ч 40 мин" && /Разминка перед сменой/.test(g.text) && /Начать/.test(g.text), JSON.stringify(g));
+  ok("BEFORE: трек не пропал — строка «Дальше …» внизу карточки; плашек нет", g.next && /Дальше:/.test(g.text) && !g.pills, g.text);
   await shot(o.page, "before");
   await o.page.locator("[data-now-card]").click(); await sleep(1500);
   const warm = await o.page.evaluate(() => /Разминка до смены/.test(document.body.innerText));
@@ -524,7 +528,7 @@ if (want("BEFORE")) {
   const q = await openHome({ storage: { __role: "seasonal", "sa_completed{uk}": DONE6, ...recent, "sa_sched_cache_main_{mkey}": cacheWith("В") }, fixedTime: at(13, 20) });
   await q.page.locator("[data-now-next]").click(); await sleep(1500);
   const t = await q.page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").slice(0, 300));
-  ok("BEFORE: «Дальше» открывает следующий урок трека", /Shadow/.test(t) && !/ДО СМЕНЫ/.test(t), t.slice(0, 120));
+  ok("BEFORE: «Дальше» открывает следующий урок трека", /Shadow/.test(t) && !/До смены/i.test(t), t.slice(0, 120));
   ok("BEFORE: без ошибок", !q.errors.length, q.errors.join(" | "));
   await q.ctx.close();
 }
@@ -534,7 +538,7 @@ if (want("DURING")) {
   const due = ALL_Q.slice(0, 2).map((x) => ({ ...x, stage: 0, due: 0, img: null, explanation: "", lessonTitle: "Тема", lessonId: "s0-2" }));
   const o = await openHome({ storage: { __role: "seasonal", "sa_completed{uk}": DONE6, ...recent, "sa_sched_cache_main_{mkey}": cacheWith("В"), "sa_mistakes{uk}": due }, fixedTime: at(19, 5) });
   let g = await nowInfo(o.page);
-  ok("DURING: на смене — «НА СМЕНЕ · ДО 24:00», в перерыв повторить ошибки (2 вопроса ждут)", g.mode === "during" && g.tag === "НА СМЕНЕ · ДО 24:00" && /повтори ошибки/.test(g.text) && /2 вопроса ждут/.test(g.text), JSON.stringify(g));
+  ok("DURING: на смене — «На смене до 24:00», в перерыв повторить ошибки (2 вопроса ждут)", g.mode === "during" && g.tag === "На смене до 24:00" && /повтори ошибки/.test(g.text) && /2 вопроса ждут/.test(g.text), JSON.stringify(g));
   await shot(o.page, "during-mistakes");
   await o.page.locator("[data-now-card]").click(); await sleep(1300);
   ok("DURING: тап — «Работа над ошибками»", await o.page.evaluate(() => /Работа над ошибками/.test(document.body.innerText)));

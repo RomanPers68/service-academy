@@ -18,7 +18,6 @@ if (typeof globalThis.navigator === "undefined") globalThis.navigator = { userAg
 
 import { quizRule, quizTopic, rulePhrase, QuizPlates, QuizBeads, QUIZ_LIVES } from "../ui/quiz-bits";
 import { menuDishes, barCocktails } from "../lib/menu-dishes";
-import { tgButtonsRow, startTgScreen } from "../lib/tg-screen";
 import { COCKTAILS } from "../data/cocktails";
 
 const rd = (f) => readFileSync(f, "utf8");
@@ -214,33 +213,11 @@ describe("v71: разделы группами", () => {
   });
 });
 
-describe("v71: полноэкранный Telegram — верхняя строка в строке его кнопок", () => {
-  it("строка кнопок Telegram: высота из contentSafeAreaInset.top, только в полноэкранном и не ниже 30 px", () => {
-    expect(tgButtonsRow({ isFullscreen: true, contentSafeAreaInset: { top: 46 } })).toBe(46);
-    expect(tgButtonsRow({ isFullscreen: false, contentSafeAreaInset: { top: 46 } })).toBe(0);
-    expect(tgButtonsRow({ isFullscreen: true, contentSafeAreaInset: { top: 12 } })).toBe(0);
-    expect(tgButtonsRow(null)).toBe(0);
-  });
-  it("класс sa-tgrow и --sa-tgrow ставятся по событиям Telegram и снимаются при выходе", () => {
-    const ev = {};
-    const tg = { platform: "ios", isFullscreen: true, safeAreaInset: { top: 62 }, contentSafeAreaInset: { top: 46 }, isVersionAtLeast: () => true, requestFullscreen() {}, disableVerticalSwipes() {},
-      onEvent(n, f) { (ev[n] = ev[n] || []).push(f); }, offEvent() {} };
-    const cls = new Set(), vars = {};
-    const root = { classList: { toggle: (c, on) => (on ? cls.add(c) : cls.delete(c)) }, style: { setProperty: (k, v) => { vars[k] = v; }, removeProperty: (k) => { delete vars[k]; } } };
-    startTgScreen(tg, root);
-    expect(cls.has("sa-tgfs")).toBe(true);
-    expect(cls.has("sa-tgrow")).toBe(true);
-    expect(vars["--sa-st"]).toBe("108px");
-    expect(vars["--sa-tgrow"]).toBe("46px");
-    tg.isFullscreen = false; ev.fullscreenChanged.forEach((f) => f());
-    expect(cls.has("sa-tgrow")).toBe(false);
-    expect(vars["--sa-tgrow"]).toBeUndefined();
-  });
-  it("CSS: строка — посередине между кнопками Telegram; подпись «Для чтения» здесь — значком; у кнопки темы — подпись для диктора", () => {
-    const css = rd("ui/css.js"), app = rd("App.jsx");
-    expect(css).toContain("html.sa-tgfs.sa-tgrow [data-sa-topbar] { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);");
-    expect(css).toContain("top: calc(var(--sa-st, 0px) - var(--sa-tgrow, 0px)); height: var(--sa-tgrow, 46px); width: min(210px, calc(100vw - 236px));");
-    expect(css).toContain("html.sa-tgfs.sa-tgrow [data-sa-topbar] .sa-topbar-lbl { display: none; }");
+// v72 (Доп. 385): строку в строке кнопок Telegram убрали — на iPhone Telegram накрывает эту полосу своей подложкой
+// (запись владельца). Проверки строки — в tests/v72.test.js; здесь остаётся подпись кнопки темы для диктора.
+describe("v71: кнопка темы — подпись для экранного диктора", () => {
+  it("у кнопки темы — подпись для диктора, слово «Для чтения» — в своём span", () => {
+    const app = rd("App.jsx");
     expect(app).toContain('<span className="sa-topbar-lbl">{a11y ? "Тёмная" : "Для чтения"}</span>');
     expect(app).toContain('aria-label={a11y ? "Тёмная тема" : "Для чтения: светлая тема и крупный текст"}');
   });
@@ -248,7 +225,7 @@ describe("v71: полноэкранный Telegram — верхняя строк
 
 describe("v71: метка, гид и журнал", () => {
   it("«сборка v71», «Дополнение 384»; гид знает про лупу и правила теста", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v71</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v72 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 384 — пять улучшений по обходу: тест с правилами на виду, кнопка «назад» под палец, поиск с любого экрана, разделы группами, верх в Telegram (v71)");
     const g = rd("ui/guide.jsx");
     expect(g).toContain("Лупа в верхней строке, рядом с «Для чтения», открывает поиск с любого экрана.");

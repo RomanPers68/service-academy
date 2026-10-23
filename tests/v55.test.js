@@ -50,7 +50,7 @@ describe("v55: экраны стоят на месте", () => {
   });
   it("App меряет верхнюю строку «✦ SA» в --sa-top (нет строки — 0) и ставит sa-fabon / sa-navon", () => {
     expect(app).toContain("<div style={T.a11yBar} ref={saBarRef} data-sa-topbar=\"\">");   // v71: метка строки — для полноэкранного Telegram
-    // v71: в полноэкранном Telegram строка стоит в строке его кнопок (position: fixed) — места у экрана не занимает, --sa-top = 0
+    // v71: строка в position: fixed места у экрана не занимает, --sa-top = 0 (v72: в полноэкранном Telegram строка снова в потоке)
     expect(app).toContain("h = el && getComputedStyle(el).position !== \"fixed\" ? Math.round(el.getBoundingClientRect().height) : 0;");
     expect(app).toContain("root.style.setProperty(\"--sa-top\", h + \"px\");");
     expect(app).toContain("}, [barOn, a11y]);");

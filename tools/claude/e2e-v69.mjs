@@ -112,7 +112,7 @@ const shot = (page, name) => page.screenshot({ path: OUT + "/" + name + ".png" }
 const state = (p) => p.evaluate(() => {
   const W = window.Telegram && window.Telegram.WebApp, H = document.documentElement;
   const top = (s) => { const e = typeof s === "string" ? document.querySelector(s) : s; return e ? Math.round(e.getBoundingClientRect().top) : null; };
-  const bar = [...document.querySelectorAll("span")].find((e) => e.textContent === "✦ SA");
+  const bar = [...document.querySelectorAll("span")].find((e) => /^(✦ )?SA$/.test(e.textContent));
   return { calls: W ? W.__calls : null, fs: W ? W.isFullscreen : null, cls: H.classList.contains("sa-tgfs"), st: H.style.getPropertyValue("--sa-st"),
     bodyPad: getComputedStyle(document.body).paddingTop, root: top("#root"), bar: bar ? Math.round(bar.getBoundingClientRect().top) : null, scene: top("#sa-scene"),
     card: top("[data-now-card]"), tab: (() => { const t = document.getElementById("sa-tabbar"); return t ? Math.round(t.getBoundingClientRect().bottom) : null; })(), vh: innerHeight,
@@ -127,8 +127,8 @@ if (want("FS")) {
   ok("FS: телефон — просьба о полноэкранном режиме (Bot API 8.0), смахивание вниз выключено", s.calls && s.calls.fullscreen >= 1 && s.calls.swipesOff >= 1 && s.fs === true, JSON.stringify(s.calls));
   ok("FS: шапка Telegram — цвет приложения (#14110A): по нему Telegram красит строку состояния и свои кнопки", s.calls && s.calls.header.length && s.calls.header.every((c) => c === "#14110A"), JSON.stringify(s.calls && s.calls.header));
   ok("FS: отступ сверху — строка состояния 62 + кнопки Telegram 46 = 108 px (sa-tgfs, --sa-st)", s.cls && s.st === "108px" && s.bodyPad === "108px", JSON.stringify(s));
-  // v71 (Доп. 384): строка «✦ SA» встала в середину строки кнопок Telegram (62…108 px) — экран начинается сразу под кнопками
-  ok("FS: страница начинается под кнопками Telegram: прокрутка — ниже 108 px; «✦ SA» — в строке кнопок Telegram (v71)", s.root === TOP && s.bar >= 62 && s.bar < TOP, JSON.stringify({ root: s.root, bar: s.bar }));
+  // v72 (Доп. 385): строка «SA» снова под кнопками Telegram (в v71 стояла в их строке — на iPhone Telegram её накрывал)
+  ok("FS: страница начинается под кнопками Telegram: «SA» и прокрутка — ниже 108 px", s.root === TOP && s.bar >= TOP, JSON.stringify({ root: s.root, bar: s.bar }));
   ok("FS: фон приложения — до самого верха (сцена от 0 px), без прокрутки вбок", s.scene === 0 && s.over <= 0, JSON.stringify({ scene: s.scene, over: s.over }));
   ok("FS: нижнее меню — на месте, в экране", s.tab && s.tab <= s.vh, JSON.stringify({ tab: s.tab, vh: s.vh }));
   await shot(o.page, "fs-home");
@@ -192,7 +192,7 @@ if (want("LAYERS")) {
 if (want("LIGHT")) {
   const o = await open({ light: true });
   const s = await state(o.page);
-  ok("LIGHT: светлая тема — шапка Telegram светлая (#E8DEC8), отступ 108 px, страница под кнопками («✦ SA» — в строке кнопок, v71)", s.calls.header.length && s.calls.header[s.calls.header.length - 1] === "#E8DEC8" && s.root === TOP && s.bar >= 62 && s.bar < TOP, JSON.stringify({ h: s.calls.header, root: s.root, bar: s.bar }));
+  ok("LIGHT: светлая тема — шапка Telegram светлая (#E8DEC8), отступ 108 px, страница под кнопками", s.calls.header.length && s.calls.header[s.calls.header.length - 1] === "#E8DEC8" && s.root === TOP && s.bar >= TOP, JSON.stringify({ h: s.calls.header, root: s.root, bar: s.bar }));
   await shot(o.page, "fs-light");
   ok("LIGHT: без ошибок", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();

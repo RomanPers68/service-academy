@@ -8,9 +8,9 @@
 //            открывает колоду на Негрони; «орех» → блюдо из меню команды с аллергенами, примеры скрыты (как в «Колоде меню»);
 //   HUBS   — «Я»: группы по порядку, итоги и настройки строками; «Команда» у руководителя: «Управление» первым; «Смена»;
 //            компьютер 1440×900 — подписи групп над плитками; 320 px — без прокрутки вбок;
-//   TG     — полноэкранный Telegram: строка «✦ SA · лупа · тема» в середине строки кнопок Telegram (62…108 px), экран
-//            начинается сразу под кнопками, --sa-top = 0, подпись «Для чтения» спрятана, лупа и тема нажимаются; выход из
-//            полноэкранного — строка на прежнем месте; обычный Telegram — как было; светлая тема;
+//   TG     — полноэкранный Telegram (v72: строка снова под кнопками Telegram — в их строке на iPhone её накрывает подложка
+//            Telegram): строка ниже 108 px, в потоке, --sa-top — её высота, «Для чтения» словами, лупа и тема нажимаются;
+//            выход из полноэкранного; обычный Telegram — как было; светлая тема;
 //   FLOW   — 24 экрана на 393 и 320 px: без прокрутки вбок и без ошибок в консоли.
 // Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> node e2e-v71.mjs [разделы]
 import { createRequire } from "node:module";
@@ -280,15 +280,13 @@ if (want("TG")) {
       return { top: b.top, h: b.height, cx: b.left + b.width / 2, iw: innerWidth, pos: cs.position, lblShown: lbl ? getComputedStyle(lbl).display !== "none" : null,
         saTop: getComputedStyle(document.documentElement).getPropertyValue("--sa-top").trim(), st: getComputedStyle(document.documentElement).getPropertyValue("--sa-st").trim(),
         cls: document.documentElement.className, searchHit: hit(s), themeHit: hit(th), left: b.left, right: b.right }; });
-    ok(`TG ${T}: строка — в строке кнопок Telegram (62…108 px), посередине`, g.pos === "fixed" && Math.abs(g.top - 62) <= 1 && Math.abs(g.h - 46) <= 1 && Math.abs(g.cx - g.iw / 2) <= 1, JSON.stringify(g));
-    ok(`TG ${T}: не заходит под кнопки Telegram (слева «Закрыть» ~110 px, справа «⌄ ⋯» ~80 px)`, g.left >= 110 && g.right <= g.iw - 110, JSON.stringify({ l: g.left, r: g.right }));
-    ok(`TG ${T}: экрану не нужна высота строки (--sa-top: 0px), «Для чтения» — значком`, g.saTop === "0px" && g.lblShown === false && /sa-tgrow/.test(g.cls), JSON.stringify(g));
+    // v72 (Доп. 385): строка снова под кнопками Telegram — в их строке на iPhone её накрывает подложка Telegram
+    ok(`TG ${T}: строка под кнопками Telegram (ниже 108 px), в потоке, во всю ширину колонки (v72)`, g.pos !== "fixed" && g.top >= 108 && g.h >= 30 && !/sa-tgrow/.test(g.cls), JSON.stringify(g));
+    ok(`TG ${T}: экран вычитает высоту строки (--sa-top), «Для чтения» — словами`, parseFloat(g.saTop) >= 30 && g.lblShown === true, JSON.stringify({ saTop: g.saTop, lbl: g.lblShown }));
     ok(`TG ${T}: лупа и тема нажимаются (сверху ничего не лежит)`, g.searchHit && g.themeHit);
-    const first = await o.page.evaluate(() => { const r = document.getElementById("root"); const el = [...r.querySelectorAll("img, [data-now-card]")].find((e) => e.getBoundingClientRect().height > 30); return el ? Math.round(el.getBoundingClientRect().top) : null; });
-    ok(`TG ${T}: главная начинается сразу под кнопками Telegram (логотип выше, чем был: < 150 px)`, first !== null && first >= 108 && first < 150, String(first));
     await shot(o.page, `tg-${T.toLowerCase()}-home`);
     await o.page.click("[data-top-search]"); await sleep(1200);
-    ok(`TG ${T}: лупа из строки Telegram открывает поиск`, !!(await o.page.$('input[placeholder="Блюдо, аллерген, коктейль, термин…"]')));
+    ok(`TG ${T}: лупа открывает поиск`, !!(await o.page.$('input[placeholder="Блюдо, аллерген, коктейль, термин…"]')));
     await nav(o.page, "roleSelect", 900);
     await o.page.evaluate(() => window.Telegram.WebApp.exitFullscreen()); await sleep(500);
     const back = await o.page.evaluate(() => ({ pos: getComputedStyle(document.querySelector("[data-sa-topbar]")).position, saTop: getComputedStyle(document.documentElement).getPropertyValue("--sa-top").trim(), lbl: getComputedStyle(document.querySelector("[data-sa-topbar] .sa-topbar-lbl")).display }));

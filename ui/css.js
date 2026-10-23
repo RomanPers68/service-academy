@@ -216,16 +216,9 @@ export const injectStyles = () => {
        «Свернуть», «…»). Приложение начинается под ними (--sa-st ставит lib/tg-screen.js), фон сцены (#sa-scene) —
        до самого верха. Слои поверх экрана отодвигают свои шапки сами — на --sa-st (без Telegram — прежний вырез env()). */
     html.sa-tgfs body { padding-top: var(--sa-st, 0px); box-sizing: border-box; }
-    /* v71: верхняя строка «✦ SA · поиск · тема» — в середине строки кнопок Telegram (там пусто), а не отдельной
-       строкой под ней: каждому экрану +44 px. Подпись «Для чтения» здесь — только значком (место между кнопками).
-       z-index 40 — ниже листов и окон поверх экрана (60 и выше): их затемнение накрывает и строку. */
-    html.sa-tgfs.sa-tgrow [data-sa-topbar] { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
-      top: calc(var(--sa-st, 0px) - var(--sa-tgrow, 0px)); height: var(--sa-tgrow, 46px); width: min(210px, calc(100vw - 236px));
-      padding: 0 !important; border-bottom: none !important; justify-content: center !important; gap: 10px; box-sizing: border-box; }
-    html.sa-tgfs.sa-tgrow [data-sa-topbar] [data-sa-topspace] { display: none; }
-    html.sa-tgfs.sa-tgrow [data-sa-topbar] .sa-topbar-lbl { display: none; }
-    html.sa-tgfs.sa-tgrow [data-sa-topbar] [data-top-search] { margin-right: 0 !important; }
-    html.sa-tgfs.sa-tgrow [data-sa-topbar] > button:last-child { padding: 0 !important; width: 28px; height: 26px; display: inline-flex; align-items: center; justify-content: center; }
+    /* v72 (Доп. 385): в v71 верхняя строка «SA · поиск · тема» стояла в середине строки кнопок Telegram. На iPhone Telegram
+       накрывает эту полосу своей подложкой, как только показывает кнопки «Закрыть» и «⌄ ⋯» (запись владельца: строка видна,
+       пока кнопок нет, и пропадает вместе с их появлением). Своё туда положить нельзя — строка снова под кнопками, как в v70. */
     /* Доп. 363: iPhone при повороте сам «подгоняет» шрифт (text autosizing) и после возврата
        в портрет оставляет его крупнее — запись владельца. Размер текста задаём только мы. */
     html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }

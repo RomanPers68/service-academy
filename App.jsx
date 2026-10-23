@@ -2552,7 +2552,7 @@ function ServiceAcademy() {
   React.useLayoutEffect(() => {
     const root = document.documentElement;
     const el = saBarRef.current;
-    // v71: в полноэкранном Telegram строка стоит в строке его кнопок (position: fixed) и места у экрана не занимает
+    // v71: строка в position: fixed места у экрана не занимает (v72: в полноэкранном Telegram она снова в потоке, под его кнопками)
     const set = () => { let h = 0; try { h = el && getComputedStyle(el).position !== "fixed" ? Math.round(el.getBoundingClientRect().height) : 0; } catch (e) {} root.style.setProperty("--sa-top", h + "px"); };
     set();
     let ro = null;

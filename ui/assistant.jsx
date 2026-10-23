@@ -514,7 +514,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
                       : "radial-gradient(130% 80% at 50% -5%, rgba(214,170,80,0.10) 0%, rgba(214,170,80,0) 55%), linear-gradient(160deg, #171208 0%, #1C1509 50%, #14110A 100%)"; })() }}>
       {/* ── Шапка ── */}
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
           Наставник
           <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI</span>

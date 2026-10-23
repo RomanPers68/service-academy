@@ -197,7 +197,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
       {/* Шапка */}
       <div style={{ ...T.lessHead, justifyContent: "space-between" }}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z" /><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z" /><path d="M15 8h2M15 11h2" /></svg>
           <span>Книга отзывов</span></div>

@@ -111,7 +111,8 @@ const card = (p) => p.evaluate(() => {
 const chips = (p) => p.evaluate(() => { const e = document.querySelector("[data-day-panel]"); return e ? e.innerText.replace(/\s+/g, " ").trim() : null; });
 const body = (p) => p.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
 // открыт тест «Философия сервиса»: «Тест 1 / N» и вопрос из spg-0-q; карточки главной нет
-const onQuiz = async (p) => { const t = await body(p); return /Тест 1 \/ \d+/.test(t) && QUIZ.some((q) => t.includes(q)) && !(await p.$("[data-now-card]")); };
+// v71 (Доп. 384): шапка теста — «Тест · 12 вопросов», тема и «Вопрос 1 из 12» (было «Тест» и «1 / 12»)
+const onQuiz = async (p) => { const t = await body(p); return (/Тест 1 \/ \d+/.test(t) || (/Тест · \d+ вопрос/i.test(t) && /Вопрос 1 из \d+/i.test(t))) && QUIZ.some((q) => t.includes(q)) && !(await p.$("[data-now-card]")); };
 const warmOpen = (p) => p.evaluate(() => /Разминка до смены/.test(document.body.innerText));
 
 if (want("HEAL")) {

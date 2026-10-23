@@ -1498,7 +1498,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     }}>
       {(() => { const head = (<>
       <div style={{ display:"flex", alignItems:"center", gap:10, padding: vpS.short ? "14px 18px 4px" : "max(14px, calc(44px - var(--sa-st, 0px))) 18px 4px" }}>
-        <button className="sa-btn" style={{ background:"transparent", border:"none", color:GOLD,
+        <button className="sa-btn sa-hit" style={{ background:"transparent", border:"none", color:GOLD,
           fontSize:25, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
           onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ flex:1 }}>

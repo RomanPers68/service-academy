@@ -79,7 +79,7 @@ describe("v70: строка напарника — пламя, как у сер�
 
 describe("v70: метка и журнал", () => {
   it("«сборка v70», «Дополнение 383»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v70</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v71 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 383 — «Приглашение» в тон плиток, пламя в строке напарника (v70)");
   });
 });

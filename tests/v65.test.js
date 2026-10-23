@@ -46,7 +46,7 @@ describe("v65: AI-интервью в ленте у руководителей",
     const app = rd("App.jsx");
     expect(app).toContain('onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null}');
     // во вкладке «Команда» собеседование осталось
-    expect(app).toContain('staff && { key:"hire", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },');
+    expect(app).toContain('staff && { key:"hire", group:"Управление", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },');   // v71: группа «Управление»
   });
   it("лента меряет себя: ширина ряда и самой длинной подписи → dockFit; подписи не раскрываются, если не влезают", () => {
     expect(rs).toContain('import { dockFit } from "../lib/dock-fit";');

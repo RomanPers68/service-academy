@@ -131,7 +131,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ ...T.lessHead, justifyContent: "space-between" }}>
-        <button style={T.backBtn2} onClick={onBack} aria-label="Назад">‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Назад" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z" /></svg>
           <span>Лига недели</span></div>

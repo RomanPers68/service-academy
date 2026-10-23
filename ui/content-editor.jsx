@@ -620,7 +620,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     background: dark ? "rgba(214,178,102,0.10)" : "linear-gradient(180deg, rgba(255,250,238,0.85), rgba(244,232,206,0.8))", color: gold,
     border: `1px solid ${dark ? gold + "55" : "rgba(139,106,48,0.38)"}`, boxShadow: dark ? "none" : "inset 0 1px 0 rgba(255,255,255,0.95)" };
   const header = (title, back) => (
-    <div style={T.lessHead}><button style={T.backBtn2} onClick={back} aria-label="Назад">‹</button><div style={T.lessHeadTitle}>{title}</div></div>);
+    <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Назад" onClick={back}>‹</button><div style={T.lessHeadTitle}>{title}</div></div>);
 
   // ═════ СПИСОК ═════
   if (view === "list") {

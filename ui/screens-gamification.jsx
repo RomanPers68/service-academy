@@ -456,7 +456,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button style={T.backBtn2} onClick={detailTab ? () => { setDetailTab(false); setSelected(null); } : onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={detailTab ? () => { setDetailTab(false); setSelected(null); } : onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>
           <span>Рейтинг сотрудников</span></div>
@@ -704,7 +704,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
   if (!role) return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
         <div style={{ width:24 }} />
       </div>
@@ -719,7 +719,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
   return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
         <div style={{ width:24 }} />
       </div>
@@ -898,7 +898,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
           onClose={pdHintDone} />
       ) : null}
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.barChart(GOLD, 18)} {player.name} {player.surname}</div>
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 80px" }}>
@@ -1248,7 +1248,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
   return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.chartLine(GOLD, 18)} Моя статистика</div>
         <div style={{ width:24 }} />
       </div>

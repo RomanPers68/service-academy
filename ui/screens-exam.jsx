@@ -63,7 +63,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit, extraQu
     return (
       <div style={T.screen}>
         <div style={T.lessHead}>
-          <button style={T.backBtn2} onClick={onExit}>‹</button>
+          <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onExit}>‹</button>
           <div style={{ ...T.lessHeadTitle }}>Экзамен</div>
         </div>
         <div style={{ ...T.lessBody, padding:"40px 24px", textAlign:"center" }}>
@@ -129,7 +129,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit, extraQu
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onExit}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onExit}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}><span>Экзамен · {roleObj?.label || ""}</span></div>
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 40px" }}>
@@ -181,7 +181,7 @@ export function CertificateScreen({ T, a11y, profile, roleObj, result, onExit, o
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onExit}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onExit}>‹</button>
         <div style={{ ...T.lessHeadTitle }}>Сертификат</div>
       </div>
       <div style={{ ...T.lessBody, padding:"24px 20px 40px", display:"flex", flexDirection:"column", alignItems:"center", gap:20 }}>
@@ -224,7 +224,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onExit}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onExit}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gradcap(a11y ? "#7A5D2A" : GOLD, 19)}<span>Сертификаты</span></div>
       </div>
       {ceHint && ceSteps.length ? (

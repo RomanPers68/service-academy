@@ -286,7 +286,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
 
   const Head = (title, backTo) => (
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
-      <button className="sa-btn" onClick={backTo || onBack} {...onActivate(backTo || onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+      <button className="sa-btn sa-hit" onClick={backTo || onBack} {...onActivate(backTo || onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>СБОРКА · БАР</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>

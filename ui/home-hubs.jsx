@@ -51,7 +51,7 @@ const ICON = {
   mastery: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 2.5h3.1l1.8 6.5M6.5 2.5l2.7 7.2M17.5 2.5h-3.1l-1.8 6.5M17.5 2.5l-2.7 7.2"/><circle cx="12" cy="15" r="6"/><path d="M12 12.7l.59 1.59 1.69.07-1.33 1.05.46 1.63L12 16.1l-1.41.94.46-1.63-1.33-1.05 1.69-.07z"/></svg>,
 };
 
-export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps }) {
+export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null }) {
   // Подсказка вкладки. Ключ и тексты приходят снаружи: HubScreen общий для
   // «Смены» и «Команды», а объяснять им надо разное — и по-разному для
   // сотрудника и руководителя.
@@ -91,7 +91,10 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
               onClose={hintDone} style={{ margin:"4px 0 8px" }} />
           );
         })() : null;
-        const tiles = items.filter(Boolean).map((it, idx) => {
+        const list = items.filter(Boolean);
+        const badgeEl = (it, c) => it.badge ? <span style={{ minWidth: 22, height: 22, padding: "0 7px", borderRadius: 12, background: c, color: a11y ? "#fff" : "#1a160f", fontSize: 12.5, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{it.badge}</span>
+          : <span style={{ color: c, fontSize: 21, opacity: 0.7, flexShrink: 0 }}>›</span>;
+        const card = (it, idx) => {
           const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };
           return (
@@ -105,11 +108,55 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: it.red ? c : text, lineHeight: 1.25 }}>{it.label}</div>
                 {it.sub && <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.4 }}>{it.sub}</div>}
               </div>
-              {it.badge ? <span style={{ minWidth: 22, height: 22, padding: "0 7px", borderRadius: 12, background: c, color: a11y ? "#fff" : "#1a160f", fontSize: 12.5, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{it.badge}</span>
-                : <span style={{ color: c, fontSize: 21, opacity: 0.7, flexShrink: 0 }}>›</span>}
+              {badgeEl(it, c)}
             </div>
           );
-        });
+        };
+        // v71: разделы группами. Аудит v70: «Я» — 12 одинаковых карточек подряд, «Команда» у руководителя — 10, и
+        // «Сотрудники» с «Собеседованием» в самом низу. У пункта может быть group — над первым пунктом группы
+        // встаёт заголовок; группа из compactGroups — строками в одной карточке (как список настроек телефона).
+        const head = (g, k) => (
+          <div key={"g:" + k} data-hub-group={g} role="heading" aria-level={2}
+            style={{ gridColumn: "1 / -1", fontFamily: "ui-monospace, Menlo, monospace", fontSize: a11y ? 12 : 10.5, letterSpacing: 2, textTransform: "uppercase", color: gold, opacity: 0.9, margin: k ? "10px 4px 0" : "2px 4px 0" }}>{g}</div>
+        );
+        const rows = (group, idx0) => (
+          <div key={"c:" + group[0].key} data-hub-compact className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: "2px 0", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+            {group.map((it, j) => {
+              const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
+              const go = () => { vibrate("light"); it.onClick && it.onClick(); };
+              return (
+                <div key={it.key} className="sa-card" onClick={go} {...onActivate(go)} aria-label={it.label}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", minHeight: 48, boxSizing: "border-box", cursor: "pointer", WebkitTapHighlightColor: "transparent",
+                    borderTop: j ? `1px solid ${a11y ? "rgba(139,106,48,0.16)" : "rgba(255,240,210,0.08)"}` : "none" }}>
+                  <span style={{ width: 24, height: 24, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", transform: "scale(0.86)" }}>{(ICON[it.icon] || ICON.book)(c)}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "Georgia, serif", fontSize: 15.5, color: it.red ? c : text, lineHeight: 1.25 }}>{it.label}</div>
+                    {it.sub && it.subCompact !== false ? <div style={{ fontSize: 12, color: sub, marginTop: 1, lineHeight: 1.35, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.sub}</div> : null}
+                  </div>
+                  {badgeEl(it, c)}
+                </div>
+              );
+            })}
+          </div>
+        );
+        const grouped = list.some((it) => it.group);
+        const tiles = [];
+        if (!grouped) list.forEach((it, idx) => tiles.push(card(it, idx)));
+        else {
+          // группы — в порядке groupOrder, остальные — в порядке появления; внутри группы порядок пунктов прежний
+          const names = [];
+          list.forEach((it) => { const n = it.group || ""; if (!names.includes(n)) names.push(n); });
+          const rank = (n) => { const k = (groupOrder || []).indexOf(n); return k < 0 ? 100 + names.indexOf(n) : k; };
+          names.sort((a, b) => rank(a) - rank(b));
+          let idx = 0;
+          names.forEach((name, g) => {
+            const run = list.filter((it) => (it.group || "") === name);
+            if (name) tiles.push(head(name, g));
+            if (!wide && compactGroups && compactGroups.includes(name)) tiles.push(rows(run, idx));
+            else run.forEach((it, j) => tiles.push(card(it, idx + j)));
+            idx += run.length;
+          });
+        }
         return wide ? (
           <div className="sa-hub2" data-hub2="">
             <div className="sa-hub2-l">{hero}{hintEl}</div>

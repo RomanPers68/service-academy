@@ -127,7 +127,8 @@ if (want("FS")) {
   ok("FS: телефон — просьба о полноэкранном режиме (Bot API 8.0), смахивание вниз выключено", s.calls && s.calls.fullscreen >= 1 && s.calls.swipesOff >= 1 && s.fs === true, JSON.stringify(s.calls));
   ok("FS: шапка Telegram — цвет приложения (#14110A): по нему Telegram красит строку состояния и свои кнопки", s.calls && s.calls.header.length && s.calls.header.every((c) => c === "#14110A"), JSON.stringify(s.calls && s.calls.header));
   ok("FS: отступ сверху — строка состояния 62 + кнопки Telegram 46 = 108 px (sa-tgfs, --sa-st)", s.cls && s.st === "108px" && s.bodyPad === "108px", JSON.stringify(s));
-  ok("FS: страница начинается под кнопками Telegram: «✦ SA» и прокрутка — ниже 108 px", s.root === TOP && s.bar >= TOP, JSON.stringify({ root: s.root, bar: s.bar }));
+  // v71 (Доп. 384): строка «✦ SA» встала в середину строки кнопок Telegram (62…108 px) — экран начинается сразу под кнопками
+  ok("FS: страница начинается под кнопками Telegram: прокрутка — ниже 108 px; «✦ SA» — в строке кнопок Telegram (v71)", s.root === TOP && s.bar >= 62 && s.bar < TOP, JSON.stringify({ root: s.root, bar: s.bar }));
   ok("FS: фон приложения — до самого верха (сцена от 0 px), без прокрутки вбок", s.scene === 0 && s.over <= 0, JSON.stringify({ scene: s.scene, over: s.over }));
   ok("FS: нижнее меню — на месте, в экране", s.tab && s.tab <= s.vh, JSON.stringify({ tab: s.tab, vh: s.vh }));
   await shot(o.page, "fs-home");
@@ -191,7 +192,7 @@ if (want("LAYERS")) {
 if (want("LIGHT")) {
   const o = await open({ light: true });
   const s = await state(o.page);
-  ok("LIGHT: светлая тема — шапка Telegram светлая (#E8DEC8), отступ 108 px, страница под кнопками", s.calls.header.length && s.calls.header[s.calls.header.length - 1] === "#E8DEC8" && s.root === TOP && s.bar >= TOP, JSON.stringify({ h: s.calls.header, root: s.root, bar: s.bar }));
+  ok("LIGHT: светлая тема — шапка Telegram светлая (#E8DEC8), отступ 108 px, страница под кнопками («✦ SA» — в строке кнопок, v71)", s.calls.header.length && s.calls.header[s.calls.header.length - 1] === "#E8DEC8" && s.root === TOP && s.bar >= 62 && s.bar < TOP, JSON.stringify({ h: s.calls.header, root: s.root, bar: s.bar }));
   await shot(o.page, "fs-light");
   ok("LIGHT: без ошибок", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();

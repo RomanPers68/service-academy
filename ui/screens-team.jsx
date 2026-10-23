@@ -336,7 +336,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     return (
       <div style={T.screen} className="sa-screen">
         <div style={T.lessHead}>
-          <button style={T.backBtn2} onClick={() => setView("list")}>‹</button>
+          <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => setView("list")}>‹</button>
           <div style={T.lessHeadTitle}>Новый сотрудник</div>
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
@@ -383,7 +383,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     return (
       <div style={T.screen} className="sa-screen">
         <div style={T.lessHead}>
-          <button style={T.backBtn2} onClick={() => { setSelected(null); setConfirm(null); setActionError(null); setView("list"); }}>‹</button>
+          <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => { setSelected(null); setConfirm(null); setActionError(null); setView("list"); }}>‹</button>
           <div style={T.lessHeadTitle}>Сотрудник</div>
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
@@ -796,7 +796,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Аккаунт</div>
       </div>
       {acHint && acSteps.length ? (

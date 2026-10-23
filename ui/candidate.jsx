@@ -812,7 +812,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           onClose={cdHintDone} />
       ) : null}
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={backFromHeader}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={backFromHeader}>‹</button>
         <div style={T.lessHeadTitle}>{phase === "eval" ? "Проверка AI HR" : "Собеседование"}</div>
       </div>
       <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "14px 16px 44px" }}>

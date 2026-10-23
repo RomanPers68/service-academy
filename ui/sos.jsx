@@ -159,7 +159,7 @@ export function SOSScreen({ T, a11y, onBack }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "18px 18px 26px" }}>
-        <button style={T.backBtn} onClick={onBack} {...onActivate(onBack)}>‹ Назад</button>
+        <button className="sa-hit" style={T.backBtn} onClick={onBack} {...onActivate(onBack)}>‹ Назад</button>
         {sHint && sSteps.length ? (
           <HintBubble a11y={a11y} text={sSteps[0]} arrow="up" step={1} total={1}
             onClose={sHintDone} style={{ margin:"10px 0 0" }} />

@@ -2552,7 +2552,8 @@ function ServiceAcademy() {
   React.useLayoutEffect(() => {
     const root = document.documentElement;
     const el = saBarRef.current;
-    const set = () => root.style.setProperty("--sa-top", (el ? Math.round(el.getBoundingClientRect().height) : 0) + "px");
+    // v71: в полноэкранном Telegram строка стоит в строке его кнопок (position: fixed) и места у экрана не занимает
+    const set = () => { let h = 0; try { h = el && getComputedStyle(el).position !== "fixed" ? Math.round(el.getBoundingClientRect().height) : 0; } catch (e) {} root.style.setProperty("--sa-top", h + "px"); };
     set();
     let ro = null;
     try { if (el && typeof ResizeObserver === "function") { ro = new ResizeObserver(set); ro.observe(el); } } catch (e) {}
@@ -2587,8 +2588,19 @@ function ServiceAcademy() {
 
       <div style={T.phone} className="sa-col">
         {!["profile","login"].includes(screen) && (
-          <div style={T.a11yBar} ref={saBarRef}>
+          <div style={T.a11yBar} ref={saBarRef} data-sa-topbar="">
             <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
+            <span style={{ flex: 1 }} data-sa-topspace="" />
+            {/* v71: поиск с любого экрана — меню и аллергены, карта бара, глоссарий, справочник, уроки */}
+            {/* в тесте, на экзамене и в собеседовании кандидата поиска нет: он стал бы подсказкой (и обходом учёта «лазеек») */}
+            {profile && !["search", "exam", "certificate", "candidate"].includes(screen) && !(screen === "lesson" && activeLesson && activeLesson.type === "quiz") ? (
+              <button className="sa-btn sa-hit" data-top-search aria-label="Поиск: блюдо, аллерген, коктейль, термин" onClick={() => { vibrate("light"); navigate("search"); }}
+                style={{ width: 28, height: 26, marginRight: 10, borderRadius: 11, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
+                  background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.10)",
+                  boxShadow: a11y ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 1px 0 rgba(255,255,255,0.16)" }}>
+                {GAME_SVG.search(a11y ? "#6B4E1A" : "#D2A85A", 13)}
+              </button>
+            ) : null}
             <button style={{ ...T.a11yBtn,
               // Капелька-канон (рецепт AI-кнопки): золото вместо светофора
               background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.10)",
@@ -2596,8 +2608,8 @@ function ServiceAcademy() {
               boxShadow: a11y
                 ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 0 14px rgba(255,255,255,0.4), inset 0 1px 0 rgba(255,255,255,0.8)"
                 : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 14px rgba(255,230,170,0.10), inset 0 1px 0 rgba(255,255,255,0.16)" }}
-              onClick={() => setA11y(!a11y)}>
-              <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>{a11y ? UI_SVG.moon("currentColor", 12) : UI_SVG.eye("currentColor", 12)}{a11y ? "Тёмная" : "Для чтения"}</span>
+              onClick={() => setA11y(!a11y)} aria-label={a11y ? "Тёмная тема" : "Для чтения: светлая тема и крупный текст"}>
+              <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>{a11y ? UI_SVG.moon("currentColor", 12) : UI_SVG.eye("currentColor", 12)}<span className="sa-topbar-lbl">{a11y ? "Тёмная" : "Для чтения"}</span></span>
             </button>
           </div>
         )}
@@ -2859,14 +2871,15 @@ function ServiceAcademy() {
             <Suspense fallback={null}><QuestCard a11y={a11y} tasks={questTasks} todayRec={activity[todayKey] || {}} tick={questTick} lead={isLead} shift={shiftText} off={!!(shiftToday && shiftToday.off)}
               data={briefStatus === "ok" ? (brief && brief.quest) || { ok: false } : briefStatus === "pending" ? null : undefined} onReload={() => refreshDay(true)}
               onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
-          { key:"sch", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
-          { key:"cl", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
-          { key:"daily", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
-          { key:"remind", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено — за час до смены зовёт на разминку" : "За час до смены — разминка в 2 минуты", onClick:() => setRemindOpen(true) },
-          { key:"lg", icon:"guestai", label:"Живой гость", sub: guestSub(role, profile?.position), onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал; v42: подпись — по роли
-          { key:"rd", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков — слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319
-          { key:"wg", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest"), badge: isNewFam("dialogue") ? "новое" : null },
-          role === "seasonal" && { key:"ob", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },
+          // v71: группами — «На смене» (дело) и «Потренироваться» (две минуты на практику)
+          { key:"sch", group:"На смене", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
+          { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
+          { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено — за час до смены зовёт на разминку" : "За час до смены — разминка в 2 минуты", onClick:() => setRemindOpen(true) },
+          { key:"daily", group:"Потренироваться", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
+          { key:"lg", group:"Потренироваться", icon:"guestai", label:"Живой гость", sub: guestSub(role, profile?.position), onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал; v42: подпись — по роли
+          { key:"wg", group:"Потренироваться", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest"), badge: isNewFam("dialogue") ? "новое" : null },
+          { key:"rd", group:"Потренироваться", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков — слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319
+          role === "seasonal" && { key:"ob", group:"Первая неделя", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },
         ]} /></div>}
         {screen === "teamHub" && profile && (() => {
           const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
@@ -2877,17 +2890,18 @@ function ServiceAcademy() {
               <MastersBanner a11y={a11y} rows={masters && masters.status === "ok" ? masters.rows : []} onOpen={() => openMastery()} />
               {/* v57 (Доп. 370): «Жизнь команды» — тесты, мастера, рекорды и «спасибо» коллег за две недели */}
               <TeamFeed a11y={a11y} items={teamFeed} /></>} items={[
-            { key:"lb", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
-            { key:"lg", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника · заведение, сеть и кубок", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
-            { key:"mt", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },
-            role !== "seasonal" && { key:"ob", icon:"onboarding", label:"Новички", sub:"План первой недели и прогресс новых сотрудников", onClick:() => navigate("onboarding") },
-            { key:"mis", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
-            staff && { key:"an", icon:"analytics", label:"Аналитика", sub:"Сводка по команде и резервная копия", onClick:() => navigate("analytics") },
-            staff && { key:"rep", icon:"report", label:"Отчёты по сотрудникам", sub:"Где ошибается, что не пройдено · Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
-            profile?.is_admin && { key:"tm", icon:"team", label:"Сотрудники", sub:"Карточки, коды, роли", onClick:() => navigate("team") },
-            staff && { key:"hire", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
-            staff && { key:"ce", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
-          ]} /></div>;
+            // v71: у руководителя «Управление» — сразу под лентой, строками в одной карточке (было в самом низу)
+            staff && { key:"an", group:"Управление", icon:"analytics", label:"Аналитика", sub:"Сводка по команде и резервная копия", onClick:() => navigate("analytics") },
+            profile?.is_admin && { key:"tm", group:"Управление", icon:"team", label:"Сотрудники", sub:"Карточки, коды, роли", onClick:() => navigate("team") },
+            staff && { key:"hire", group:"Управление", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
+            staff && { key:"rep", group:"Управление", icon:"report", label:"Отчёты по сотрудникам", sub:"Где ошибается, что не пройдено · Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
+            staff && { key:"ce", group:"Управление", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
+            { key:"lb", group:"Команда", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
+            { key:"lg", group:"Команда", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника · заведение, сеть и кубок", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
+            { key:"mt", group:"Команда", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },
+            role !== "seasonal" && { key:"ob", group:"Команда", icon:"onboarding", label:"Новички", sub:"План первой недели и прогресс новых сотрудников", onClick:() => navigate("onboarding") },
+            { key:"mis", group:"Моё обучение", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
+          ]} compactGroups={["Управление"]} /></div>;
         })()}
         {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("me")} onOpen={(dest) => {
           if (dest === "menu") navigate("menuTrainer");
@@ -2910,40 +2924,41 @@ function ServiceAcademy() {
             done={programModules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}
             onOpen={() => navigate("stats")} />} items={[
           // v40: «Путь мастера» — значки и главная награда; «новое», пока не открывали
-          mShown && { key:"mastery", icon:"mastery", label:"Путь мастера",
+          // v71: группами; итоги и настройки — строками в одной карточке
+          mShown && { key:"mastery", group:"Мой путь", icon:"mastery", label:"Путь мастера",
             sub: mShown.master.ok
               ? "Мастер роли ✦ · " + mShown.bronze + " из " + mShown.total + " значков"
               : mShown.bronze + " из " + mShown.total + " значков · до «Мастера роли» " + mShown.master.have + " из " + mShown.master.need,
             badge: !mSeen.mastery ? "новое" : null, onClick:() => openMastery() },
-          { key:"guide", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
-          { key:"st", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
+          { key:"guide", group:"Помощь и настройки", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
+          { key:"st", group:"Мой путь", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
           // Доп. 306: по понедельникам — чек прошлой недели (с главной сюда, чтобы главная была лёгкой)
           weekCardShow
-            ? { key:"week", icon:"receipt", label:"Чек недели", sub:`Прошлая неделя: в деле ${prevWeek.activeDays} из 7 — можно отправить команде`, badge:"новый", onClick:() => openWeek("prev") }
-            : { key:"week", icon:"receipt", label:"Чек недели", sub:"Что сделано за 7 дней — можно отправить команде", onClick:() => openWeek("last7") },
+            ? { key:"week", group:"Итоги и документы", icon:"receipt", label:"Чек недели", sub:`Прошлая неделя: в деле ${prevWeek.activeDays} из 7 — можно отправить команде`, badge:"новый", onClick:() => openWeek("prev") }
+            : { key:"week", group:"Итоги и документы", icon:"receipt", label:"Чек недели", sub:"Что сделано за 7 дней — можно отправить команде", onClick:() => openWeek("last7") },
           // v30 (Доп. 320): итоги месяца; первые три дня месяца — итоги прошлого с отметкой «новые»
           (() => {
             const seenR = (() => { try { return localStorage.getItem("sa_recap_seen" + ukP) || ""; } catch (e) { return ""; } })();
             const rc = monthRecap({ act: activity, streak, month: recapWhich.key });
             const fresh = recapWhich.prev && seenR !== recapWhich.key;
-            return { key:"month", icon:"month", label:"Итоги месяца", sub: (recapWhich.prev ? "Итоги: " : "") + MONTH[rc.month - 1] + (recapWhich.prev ? "" : " пока") + ": " + rc.active + " " + pl3(rc.active, "день", "дня", "дней") + " в деле — карточки и «поделиться»",
+            return { key:"month", group:"Итоги и документы", icon:"month", label:"Итоги месяца", sub: (recapWhich.prev ? "Итоги: " : "") + MONTH[rc.month - 1] + (recapWhich.prev ? "" : " пока") + ": " + rc.active + " " + pl3(rc.active, "день", "дня", "дней") + " в деле — карточки и «поделиться»",
               badge: fresh ? "новые" : null, onClick:() => openRecap(recapWhich.key) };
           })(),
           // v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека
-          { key:"cellar", icon:"cellar", label:"Погреб тем", sub: (() => { const g = Object.keys(marks.gold || {}).length; const f = fadedIds.size; return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? " · золотых " + g : "") + " · освежить, раунд мастера, зачёт"; })(),
+          { key:"cellar", group:"Мой путь", icon:"cellar", label:"Погреб тем", sub: (() => { const g = Object.keys(marks.gold || {}).length; const f = fadedIds.size; return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? " · золотых " + g : "") + " · освежить, раунд мастера, зачёт"; })(),
             // v40: «новое» — если освежать или играть раунд мастера уже есть что, а ни разу не пробовал
             badge: fadedIds.size >= 3 ? String(fadedIds.size) : (isNewFam("fresh") || isNewFam("gold")) && !mSeen.cellar ? "новое" : null, onClick:() => navigate("cellar") },
-          { key:"myrep", icon:"report", label:"Мой отчёт", sub:"Что пройдено, где ошибаюсь, что повторить — PDF", onClick:() => { setReportSelf(true); navigate("report"); } },
+          { key:"myrep", group:"Итоги и документы", icon:"report", label:"Мой отчёт", sub:"Что пройдено, где ошибаюсь, что повторить — PDF", onClick:() => { setReportSelf(true); navigate("report"); } },
           // v30 (Доп. 318): свеча на двоих
-          { key:"pair", icon:"pair", label:"Свеча на двоих",
+          { key:"pair", group:"Вместе", icon:"pair", label:"Свеча на двоих",
             sub: pairInfo && pairInfo.pair ? "С " + ((pairInfo.pair.partner && pairInfo.pair.partner.name) || "напарником") + " · " + pairInfo.pair.streak + " " + pl3(pairInfo.pair.streak, "день", "дня", "дней") + " вместе"
               : pairInfo && pairInfo.invites && pairInfo.invites.length ? "Тебя зовут в пару — ответь" : "Общая серия с напарником или наставником",
             badge: pairInfo && pairInfo.invites && pairInfo.invites.length ? String(pairInfo.invites.length) : null, onClick:() => { vibrate("light"); setPairOpen(true); } },
-          CERTIFICATES_ENABLED && { key:"cert", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },
-          { key:"acc", icon:"profile", label:"Аккаунт и настройки", sub:"Тренировочная карточка, крупный шрифт, выход", onClick:() => navigate("profile") },
-          { key:"roles", icon:"roles", label:"Мои роли", sub:"Сменить трек или открыть новый", onClick:() => navigate("roleSelect") },
-          offlineHelp,
-        ]} /></div>}
+          CERTIFICATES_ENABLED && { key:"cert", group:"Итоги и документы", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },
+          { key:"acc", group:"Помощь и настройки", icon:"profile", label:"Аккаунт и настройки", sub:"Тренировочная карточка, крупный шрифт, выход", onClick:() => navigate("profile") },
+          { key:"roles", group:"Мой путь", icon:"roles", label:"Мои роли", sub:"Сменить трек или открыть новый", onClick:() => navigate("roleSelect") },
+          { ...offlineHelp, group:"Помощь и настройки" },
+        ]} groupOrder={["Мой путь", "Итоги и документы", "Вместе", "Помощь и настройки"]} compactGroups={["Итоги и документы", "Помощь и настройки"]} /></div>}
         {screen === "offline" && <OfflineScreen T={T} a11y={a11y} onBack={() => goBack("me")} />}
         {screen === "barLab" && <Suspense fallback={<ScreenLoader T={T} />}><BarLabScreen T={T} a11y={a11y} profile={profile} startId={labStart} onBack={() => goBack("reference")} onOpenDeck={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} /></Suspense>}
         {screen === "ckEditor" && <Suspense fallback={<ScreenLoader T={T} />}><CocktailEditor T={T} a11y={a11y} profile={profile} startEditId={ckEdit} onBack={() => goBack("cocktails")} onOpenCard={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} /></Suspense>}
@@ -2957,7 +2972,7 @@ function ServiceAcademy() {
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} noTests={!myScores.length && !Object.keys(quizDone || {}).length} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
-        {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onBack={() => goBack("home")} /></Suspense></div>}
+        {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} /></Suspense></div>}
         {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}

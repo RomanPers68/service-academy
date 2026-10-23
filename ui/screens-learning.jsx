@@ -40,6 +40,7 @@ import { ymd } from "../lib/streak";
 import { topicShade, inkOnColor } from "../lib/topic-tint";
 import { topicFreshness, freshLabel, wineLevel } from "../lib/freshness";
 import { canCredit, canGold, canRefresh } from "../lib/marks";
+import { QuizPlates, QuizBeads, QuizMeta, QuizRuleNote, OptLetter, quizTopic, ensureQuizCss } from "./quiz-bits";   // v71: тест с правилами на виду
 
 // Доп. 289–292: формат «у стола» (практика, проверка после урока) — отдельный
 // модуль, грузится фоном. Пока не приехал (или без сети не загрузился) —
@@ -115,7 +116,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
   // Хук стоит до условных return (правила хуков); на пустом банке вернёт undefined — ниже не используется.
   const q = React.useMemo(() => shuffleQuizOptions(bank[Math.min(idx, bank.length - 1)]), [bank, idx]);
 
-  const Head = (<div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
+  const Head = (<div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
 
   if (bank.length === 0) {
     const nextDue = mistakeBank.reduce((min, m) => (m.due && m.due > nowTs && (!min || m.due < min)) ? m.due : min, null);
@@ -1326,7 +1327,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   if (lesson.type === "lesson") {
     return (
       <div style={{ ...T.screen, position: "relative" }}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div>{onContents && stepInfo ? (
+        <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div>{onContents && stepInfo ? (
           <button onClick={onContents} aria-label={"Содержание раздела: шаг " + stepInfo.i + " из " + stepInfo.n} data-sa-contents=""
             style={{ flexShrink: 0, background: "transparent", border: `1px solid ${color}77`, borderRadius: 999, padding: "4px 10px", color: inkOf(color, !!T.a11y), fontFamily: "monospace", fontSize: 11, letterSpacing: 0.5, cursor: "pointer", whiteSpace: "nowrap" }}>{stepInfo.i} из {stepInfo.n}</button>
         ) : null}<button onClick={() => { dismissModeHint(); setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center", borderRadius: 12, animation: modeHint ? "pulse 2s infinite" : "none" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
@@ -1435,13 +1436,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {cardMode ? (
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0 0 6px", userSelect: "none" }}>
-                <span onClick={() => goCard(-1)} {...onActivate(() => goCard(-1))} style={{ color, opacity: cardIdx === 0 ? 0.22 : 0.8, fontSize: 25, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>‹</span>
+                <span className="sa-hit" role="button" aria-label="Предыдущая карточка" onClick={() => goCard(-1)} {...onActivate(() => goCard(-1))} style={{ color, opacity: cardIdx === 0 ? 0.22 : 0.8, fontSize: 25, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>‹</span>
                 {cards.length <= 10
                   ? <div style={{ display: "flex", gap: 6, alignItems: "center" }}>{cards.map((_, i) => (
                       <span key={i} style={{ width: i === cardIdx ? 18 : 6, height: 6, borderRadius: 3, background: i === cardIdx ? color : color + "44", transition: "all .25s" }} />
                     ))}</div>
                   : <span style={{ color, fontSize: 12.5, fontFamily: "monospace", letterSpacing: 1 }}>{cardIdx + 1} / {cards.length}</span>}
-                <span onClick={() => goCard(1)} {...onActivate(() => goCard(1))} style={{ color, opacity: cardIdx === cards.length - 1 ? 0.22 : 0.8, fontSize: 25, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>›</span>
+                <span className="sa-hit" role="button" aria-label="Следующая карточка" onClick={() => goCard(1)} {...onActivate(() => goCard(1))} style={{ color, opacity: cardIdx === cards.length - 1 ? 0.22 : 0.8, fontSize: 25, lineHeight: 1, padding: "2px 10px", cursor: "pointer" }}>›</span>
               </div>
               {cardIdx === 0 && cards.length > 1 && (
                 <div style={{ textAlign: "center", color: T.modSub.color, fontSize: 12.5, fontStyle: "italic", opacity: 0.75, marginBottom: 8 }}>листай свайпом ← →</div>
@@ -1526,7 +1527,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       return (
         <div style={T.screen} className="sa-screen">
           <div style={T.lessHead}>
-            <button style={T.backBtn2} onClick={onBack}>‹</button>
+            <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
             <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gamepad(color, 18)}<span>Результат раунда</span></div>
           </div>
           <div style={{ flex:1, padding:"20px 18px 40px", overflowY:"auto" }}>
@@ -1596,7 +1597,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         {/* ── ШАПКа ── */}
         <div className="sa-tophead" style={{ padding:"44px 18px 10px", background:"transparent" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-            <button style={T.backBtn2} onClick={onBack}>‹</button>
+            <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
             <div style={{ display:"flex", gap:2 }}>
               {[1,2,3].map(h=><span key={h} style={{ fontSize:16, opacity:h<=practiceState.lives?1:0.2, transition:"opacity 0.3s" }}>❤️</span>)}
             </div>
@@ -1753,7 +1754,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       const wrongAnswers = allAnswers.filter(a=>!a.isCorrect);
       return (
         <div style={T.screen}>
-          <div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Результат теста</div></div>
+          <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Результат теста</div></div>
           <div style={{ ...T.quizWrap, paddingBottom:40 }}>
             <div style={T.resultWrap}>
               <div className="sa-pop" style={{ ...T.resultCircle, borderColor:color }}>
@@ -1761,7 +1762,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 <span style={{ color:"#a09080", fontSize:12.5 }}>правильно</span>
               </div>
               <div style={T.resultTxt}>
-                {quizState.blocked?"Тест завершён — много ошибок. Перечитай уроки и попробуй снова!":
+                {quizState.blocked?"Это третья ошибка, тест закончился. Посмотри разбор ниже и попробуй снова: пересдать можно сразу.":
                   score===lesson.questions.length?<span><Mm id="star_eyes" size={24} style={{marginRight:4}}/>Отлично! Всё верно</span>:
                   score>=lesson.questions.length*0.7?<span><Mm id="thumbs_up" size={24} style={{marginRight:4}}/>Хорошо! Есть над чем поработать</span>:<span><Mm id="pensive" size={24} style={{marginRight:4}}/>Нужно повторить материал</span>}
               </div>
@@ -1791,18 +1792,31 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     const qBank2 = lesson.questions || [];
     const q = qBank2[quizState.step];
     const answered = quizState.answers[quizState.step];
+    // v71: правила на виду — тема в шапке, три тарелки, бусины, правило словами на первом вопросе, буквы у ответов
+    ensureQuizCss();
+    const light = !!T.a11y;
+    const nQ = qBank2.length;
+    const pendingBad = reveal !== null && reveal !== q.correct;
+    const mistakesNow = quizState.answers.filter((a) => !a.isCorrect).length + (pendingBad ? 1 : 0);
     return (
       <div style={T.screen}>
-        <div style={T.lessHead}><button style={T.backBtn2} onClick={() => { commitPending(); onBack(); }}>‹</button><div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="12" height="18" rx="2"/><path d="M8 8h4.5M8 12h3.5"/><path d="M13.2 17.4l6.2-6.2 2.2 2.2-6.2 6.2-2.7.5z"/></svg>
-          <span>Тест</span></div></div>
+        <div style={{ ...T.lessHead, gap: 8 }}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => { commitPending(); onBack(); }}>‹</button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div data-quiz-kind style={{ fontFamily: "monospace", fontSize: light ? 12 : 10.5, letterSpacing: 2, textTransform: "uppercase", color: light ? "#7A5A1E" : GOLD, marginBottom: 2 }}>Тест · {nQ} {nQ % 10 === 1 && nQ % 100 !== 11 ? "вопрос" : (nQ % 10 >= 2 && nQ % 10 <= 4 && (nQ % 100 < 10 || nQ % 100 >= 20)) ? "вопроса" : "вопросов"}</div>
+            <div data-quiz-title style={{ ...T.lessHeadTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{quizTopic(lesson.title)}</div>
+          </div>
+          <QuizPlates mistakes={mistakesNow} light={light} justBroke={pendingBad} />
+        </div>
         <div key={quizState.step} className="sa-cardpage-r" style={T.quizWrap}>
-          <div style={T.quizProgress}>{quizState.step+1} / {lesson.questions.length}</div>
+          <QuizMeta n={nQ} step={quizState.step} light={light} />
+          <QuizBeads n={nQ} step={quizState.step} answers={quizState.answers} pending={reveal !== null ? { isCorrect: !pendingBad } : null} light={light} />
+          {quizState.step === 0 && !quizState.answers.length ? <QuizRuleNote n={nQ} light={light} /> : null}
+          <div style={{ height: 14 }} />
           {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:210, objectFit:"cover", borderRadius:14, display:"block", margin:"0 0 14px" }} />}
-          <div style={T.quizQ}>{q.q}</div>
+          <div style={{ ...T.quizQ, fontSize: light ? 19 : 17, lineHeight: light ? 1.6 : 1.55 }}>{q.q}</div>
           {q.options.map((opt,i) => {
             // Подсветка ровно как в «Работе над ошибками» — единый язык ответов
-            let st = { ...T.quizOpt, cursor: reveal === null ? "pointer" : "default", transition:"background 0.2s, opacity 0.2s" };
+            let st = { ...T.quizOpt, cursor: reveal === null ? "pointer" : "default", transition:"background 0.2s, opacity 0.2s", display:"flex", alignItems:"center", gap:12, minHeight:52, marginBottom:9, padding: light ? "12px 14px" : "11px 13px" };
             if (reveal !== null) {
               // v57: и верхняя кромка — иначе у ответа оставалась светлая полоска сверху (border + borderTop)
               if (i === q.correct) st = { ...st, background:"rgba(93,187,138,0.15)", border:"1px solid #5DBB8A", borderTop:"1px solid #5DBB8A" };
@@ -1820,7 +1834,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               // чтобы глаз успел увидеть правильный вариант.
               revealTimer.current = setTimeout(() => { pendingPick.current = null; revealTimer.current = null; setReveal(null); onQuiz(i); }, ok ? 600 : 1400);
             };
-            return <div key={i} className="sa-opt" style={st} onClick={pickIt} {...onActivate(pickIt)}>{opt}</div>;
+            const mark = reveal === null ? null : i === q.correct ? "ok" : i === reveal ? "bad" : null;
+            return <div key={i} className="sa-opt" data-quiz-opt={i} style={st} onClick={pickIt} {...onActivate(pickIt)}><OptLetter i={i} state={mark} light={light} /><span style={{ flex: 1, minWidth: 0 }}>{opt}</span></div>;
           })}
         </div>
       </div>
@@ -1851,7 +1866,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.book(color || GOLD, 18)}<span>Глоссарий</span></div>
       </div>
       {/* ПОСЛЕ шапки, а не внутри: lessHead — флекс-ряд, и пузырь

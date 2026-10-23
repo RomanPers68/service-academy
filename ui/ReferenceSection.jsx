@@ -61,7 +61,7 @@ function Content({ text, T, gold, dark }) {
 }
 
 function Head({ T, title, onBack }) {
-  return (<div style={T.lessHead}><button style={T.backBtn2} onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{title}</div></div>);
+  return (<div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{title}</div></div>);
 }
 function Figure({ T, children }) {
   return (<div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 18, boxShadow: T.lessGlass.shadow, padding: "14px 10px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur, overflow: "hidden" }}>{children}</div>);
@@ -85,7 +85,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
   return (<div style={T.screen}>
       {hintNode}
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
-      <button style={T.backBtn2} onClick={onExit}>‹</button>
+      <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onExit}>‹</button>
       <span style={{ ...T.modTag, color: gold }}>РАЗДЕЛ</span>
     </div>
     <div style={{ padding: "6px 18px 8px" }}>

@@ -5,10 +5,12 @@
 
 import React from "react";
 import { GLOSSARY } from "../data/glossary";
-import { RESTAURANT_MENUS } from "../data/menu";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 import { onActivate, vibrate } from "../lib/utils";
-import { UI_SVG } from "./icons";
+import { UI_SVG, GAME_SVG } from "./icons";
+import { menuDishesFromStorage, sharedOf, barCocktails } from "../lib/menu-dishes";   // v71: меню команды и коктейли карты бара
+import { allergenLabel } from "../lib/deck-extras";
+import { GLASS_RU } from "../lib/bar-lab";
 
 const norm = (s) => (s || "").toLowerCase().replace(/ё/g, "е");
 
@@ -22,19 +24,13 @@ const snippet = (content, q) => {
   return (start > 0 ? "…" : "") + plain.slice(start, end) + (end < plain.length ? "…" : "");
 };
 
-// Меню ресторана: базовые блюда (если не скрыты) + добавленные менеджером в редакторе
-const dishesFor = (restaurant) => {
-  if (!restaurant) return [];
-  let hide = {}, custom = {};
-  try { hide = JSON.parse(localStorage.getItem("sa_menu_hide_samples") || "{}"); } catch (e) {}
-  try { custom = JSON.parse(localStorage.getItem("sa_menu_custom") || "{}"); } catch (e) {}
-  const samples = hide[restaurant] ? [] : (RESTAURANT_MENUS[restaurant] || []);
-  return [...samples, ...(custom[restaurant] || [])];
-};
+// Меню ресторана — то же, что в «Колоде меню»: свои, меню команды с сервера (кэш), примеры — пока своего меню нет.
+// v71: раньше здесь были только примеры и «свои» — опубликованное командой меню поиск не находил.
+const dishesFor = (restaurant) => menuDishesFromStorage(restaurant);
 
 const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE];
 
-export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText }) {
+export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText, onCocktail, onDish }) {
   const [q, setQ] = React.useState("");
   // Недавние запросы: три последних чипами, пишутся с паузой 1.2с
   const [recent, setRecent] = React.useState(() => {
@@ -58,15 +54,20 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
   const query = norm(q.trim());
 
   const dishes = React.useMemo(() => dishesFor(profile?.restaurant), [profile?.restaurant]);
+  const cocktails = React.useMemo(() => barCocktails(sharedOf(profile?.restaurant || "")), [profile?.restaurant]);
 
   const results = React.useMemo(() => {
-    if (query.length < 2) return { terms: [], lessons: [], menu: [], ref: [] };
+    if (query.length < 2) return { terms: [], lessons: [], menu: [], ref: [], bar: [] };
     const terms = GLOSSARY.filter(g => norm(g.term).includes(query) || norm(g.def).includes(query)).slice(0, 8);
 
     const menu = dishes.filter(d => {
       const hay = norm([d.name, d.cat, d.desc, (d.ingredients || []).join(" "), (d.allergens || []).join(" "), d.note, d.pairing].join(" "));
       return hay.includes(query);
-    }).slice(0, 8).map(d => ({ d, byAllergen: (d.allergens || []).some(a => norm(a).includes(query)) }));
+    }).slice(0, 8).map(d => ({ d, byAllergen: (d.allergens || []).some(a => norm(a).includes(query) || norm(allergenLabel(a)).includes(query)) }));
+
+    // v71: коктейли карты бара — по названию и составу (раньше на «негрони» находился только бокал «Рокс»)
+    const bar = cocktails.filter(c => c && c.name && (norm(c.name).includes(query) || (c.ing || []).some(i => norm(i[0]).includes(query))))
+      .sort((a, b) => (norm(b.name).includes(query) ? 1 : 0) - (norm(a.name).includes(query) ? 1 : 0)).slice(0, 6);
 
     const ref = [];
     for (const course of REF_COURSES) {
@@ -98,16 +99,16 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
       }
     }
     lessons.sort((a, b) => (b.inTitle ? 1 : 0) - (a.inTitle ? 1 : 0));
-    return { terms, lessons, menu, ref };
-  }, [query, modules, dishes]);
+    return { terms, lessons, menu, ref, bar };
+  }, [query, modules, dishes, cocktails]);
 
-  const nothing = query.length >= 2 && !results.terms.length && !results.lessons.length && !results.menu.length && !results.ref.length;
+  const nothing = query.length >= 2 && !results.terms.length && !results.lessons.length && !results.menu.length && !results.ref.length && !results.bar.length;
   const toggle = (key) => { vibrate("light"); setOpenKey(openKey === key ? null : key); };
 
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Поиск</div>
       </div>
       <div style={{ padding: "10px 16px 6px" }}>
@@ -115,7 +116,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
           autoFocus
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpenKey(null); }}
-          placeholder="Глютен, прожарки, жалоба, декантация…"
+          placeholder="Блюдо, аллерген, коктейль, термин…"
           style={{ width: "100%", boxSizing: "border-box", padding: "13px 15px", borderRadius: 14, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, outline: "none" }}
         />
         {!q && recent.length > 0 && (
@@ -132,8 +133,8 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
 
       {query.length < 2 && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🔎</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>{scopeText || "Введи минимум 2 буквы — найду по урокам твоей роли, глоссарию, меню ресторана и справочнику."}</div>
+          <div style={{ marginBottom: 12, display: "inline-flex", opacity: 0.8 }}>{GAME_SVG.search(gold, 34)}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>{scopeText || "Введи минимум 2 буквы — найду в меню (и по аллергену), в карте бара, глоссарии, справочнике и уроках твоей роли."}</div>
         </div>
       )}
 
@@ -158,7 +159,9 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
                 <div style={{ ...T.modBar, background: byAllergen ? red : gold }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={T.modTitle}>{d.name}</div>
-                  <div style={{ ...T.modSub, whiteSpace: "normal" }}>{d.cat || "Блюдо"}{byAllergen ? " · содержит искомый аллерген" : ""}</div>
+                  <div style={{ ...T.modSub, whiteSpace: "normal" }}>{d.cat || "Блюдо"}{d.stop ? " · в стопе" : ""}</div>
+                  {(d.allergens || []).length > 0 && <div data-dish-allergens style={{ fontSize: 12, lineHeight: 1.45, marginTop: 3, color: byAllergen ? red : T.modSub.color, whiteSpace: "normal" }}>
+                    {byAllergen ? "Содержит: " : "Аллергены: "}{(d.allergens || []).map(a => allergenLabel(a)).join(", ")}</div>}
                 </div>
                 <div style={T.modArrow}>{open ? "˅" : "›"}</div>
               </div>
@@ -181,6 +184,26 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
                   <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 8, whiteSpace: "normal", display: "flex", gap: 6, alignItems: "flex-start" }}><span style={{ flexShrink: 0, marginTop: 2, display: "inline-flex" }}>{UI_SVG.pin(gold, 12)}</span><span style={{ flex: 1 }}>Сомневаешься в аллергенах — подтверди у шефа. База — подсказка, не замена протоколу.</span></div>
                 </div>
               )}
+            </div>
+          );
+        })}
+      </div>
+
+      {results.bar.length > 0 && <div style={T.secTitle}>Карта бара</div>}
+      <div style={{ padding: "0 14px" }}>
+        {results.bar.map((c) => {
+          const go = () => { if (onCocktail) { vibrate("light"); onCocktail(c.id); } };
+          const spec = (c.ing || []).slice(0, 4).map(i => i[0] + (i[1] ? " " + i[1] + " " + (i[2] || "мл") : "")).join(" · ");
+          return (
+            <div key={"ck:" + c.id} data-search-cocktail={c.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", cursor: onCocktail ? "pointer" : "default" }}
+              onClick={go} {...onActivate(go)}>
+              <div style={{ ...T.modBar, background: (c.color && c.color[0]) || gold }} />
+              <div style={{ flex: 1, minWidth: 0, padding: "2px 0" }}>
+                <div style={{ fontSize: 11, color: gold, letterSpacing: 1, marginBottom: 2, fontFamily: "monospace", textTransform: "uppercase" }}>{[c.method, GLASS_RU[c.glass] || ""].filter(Boolean).join(" · ")}{c.stop ? " · в стопе" : ""}</div>
+                <div style={T.modTitle}>{c.name}</div>
+                {spec ? <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.5 }}>{spec}</div> : null}
+              </div>
+              {onCocktail ? <div style={T.modArrow}>›</div> : null}
             </div>
           );
         })}

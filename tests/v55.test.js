@@ -49,8 +49,10 @@ describe("v55: экраны стоят на месте", () => {
     expect(st).toContain("screen: { display:\"flex\", flexDirection:\"column\", minHeight:\"calc(100vh - var(--sa-st, 0px) - var(--sa-top, 0px) - var(--sa-padb, 0px) - var(--sa-fab, 0px))\", background:\"transparent\", overflowX:\"hidden\" },");
   });
   it("App меряет верхнюю строку «✦ SA» в --sa-top (нет строки — 0) и ставит sa-fabon / sa-navon", () => {
-    expect(app).toContain("<div style={T.a11yBar} ref={saBarRef}>");
-    expect(app).toContain("root.style.setProperty(\"--sa-top\", (el ? Math.round(el.getBoundingClientRect().height) : 0) + \"px\");");
+    expect(app).toContain("<div style={T.a11yBar} ref={saBarRef} data-sa-topbar=\"\">");   // v71: метка строки — для полноэкранного Telegram
+    // v71: в полноэкранном Telegram строка стоит в строке его кнопок (position: fixed) — места у экрана не занимает, --sa-top = 0
+    expect(app).toContain("h = el && getComputedStyle(el).position !== \"fixed\" ? Math.round(el.getBoundingClientRect().height) : 0;");
+    expect(app).toContain("root.style.setProperty(\"--sa-top\", h + \"px\");");
     expect(app).toContain("}, [barOn, a11y]);");
     expect(app).toContain("root.classList.toggle(\"sa-fabon\", fabOn);");
     expect(app).toContain("root.classList.toggle(\"sa-navon\", tabsOn);");

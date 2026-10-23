@@ -484,7 +484,8 @@ if (want("ROLE")) {
   await shot(p, "role-change");
   // принят: открыл урок — роль ушла на сервер и запомнилась; «по должности» больше не пишем
   await p.evaluate(() => { document.getElementById("root").scrollTop = 0; }); await sleep(300);
-  await p.evaluate(() => { const el = [...document.querySelectorAll("div")].find((d) => d.children.length === 0 && d.textContent.trim() === "Начать" && d.closest("[data-home-logo]") === null); let c = el; while (c && !c.onclick && !c.getAttribute("tabindex")) c = c.parentElement; (c || el).click(); }); await sleep(1800);
+  // v71: с v68 «Начать» — на корешке карточки «Приглашение» (span); вся карточка — одна кнопка [data-now-card]
+  await p.evaluate(() => { const el = [...document.querySelectorAll("div, span")].find((d) => d.children.length === 0 && d.textContent.trim() === "Начать" && d.closest("[data-home-logo]") === null); const card = el && el.closest("[data-now-card]"); let c = card || el; while (c && !card && !c.onclick && !c.getAttribute("tabindex")) c = c.parentElement; (c || el).click(); }); await sleep(1800);
   const saved = calls.filter((c) => c.fn === "save_last_role");
   ok("ROLE: открыл урок — трек принят: save_last_role(seasonal) и sa_last_role на телефоне", saved.length >= 1 && saved.every((c) => c.body.p_role === "seasonal") && (await p.evaluate(() => localStorage.getItem("sa_last_role_Анна_Новикова") || localStorage.getItem("sa_last_role"))) === '"seasonal"', JSON.stringify(saved.map((c) => c.body)));
   await p.evaluate(() => window.__saNav("roleSelect")); await sleep(1200);

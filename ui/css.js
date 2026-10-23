@@ -86,6 +86,11 @@ export const injectStyles = () => {
     .sa-btn {
       transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.2s ease;
     }
+    /* v71: «‹ назад» и стрелки листания были ровно размером со значок (7×26 px) — по ним промахивались.
+       Место для пальца — 44×44 вокруг значка; вид и раскладка прежние (место — невидимым псевдоэлементом). */
+    .sa-hit { position: relative; -webkit-user-select: none; user-select: none; }
+    .sa-hit::before { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+    .sa-hit:active { opacity: 0.55; }
     @keyframes chipPop {
       0% { transform: scale(0.9); }
       60% { transform: scale(1.07); }
@@ -211,6 +216,16 @@ export const injectStyles = () => {
        «Свернуть», «…»). Приложение начинается под ними (--sa-st ставит lib/tg-screen.js), фон сцены (#sa-scene) —
        до самого верха. Слои поверх экрана отодвигают свои шапки сами — на --sa-st (без Telegram — прежний вырез env()). */
     html.sa-tgfs body { padding-top: var(--sa-st, 0px); box-sizing: border-box; }
+    /* v71: верхняя строка «✦ SA · поиск · тема» — в середине строки кнопок Telegram (там пусто), а не отдельной
+       строкой под ней: каждому экрану +44 px. Подпись «Для чтения» здесь — только значком (место между кнопками).
+       z-index 40 — ниже листов и окон поверх экрана (60 и выше): их затемнение накрывает и строку. */
+    html.sa-tgfs.sa-tgrow [data-sa-topbar] { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
+      top: calc(var(--sa-st, 0px) - var(--sa-tgrow, 0px)); height: var(--sa-tgrow, 46px); width: min(210px, calc(100vw - 236px));
+      padding: 0 !important; border-bottom: none !important; justify-content: center !important; gap: 10px; box-sizing: border-box; }
+    html.sa-tgfs.sa-tgrow [data-sa-topbar] [data-sa-topspace] { display: none; }
+    html.sa-tgfs.sa-tgrow [data-sa-topbar] .sa-topbar-lbl { display: none; }
+    html.sa-tgfs.sa-tgrow [data-sa-topbar] [data-top-search] { margin-right: 0 !important; }
+    html.sa-tgfs.sa-tgrow [data-sa-topbar] > button:last-child { padding: 0 !important; width: 28px; height: 26px; display: inline-flex; align-items: center; justify-content: center; }
     /* Доп. 363: iPhone при повороте сам «подгоняет» шрифт (text autosizing) и после возврата
        в портрет оставляет его крупнее — запись владельца. Размер текста задаём только мы. */
     html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }

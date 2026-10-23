@@ -116,7 +116,7 @@ await run("лазейка", async ({ page, calls, toTest, answer, clickText, ls,
 await run("провал", async ({ page, calls, toTest, answer, clickText, ls, passAll }) => {
   check("тест открылся", await toTest());
   for (let i = 0; i < 3; i++) await answer(false);
-  const blocked = await page.evaluate(() => /много ошибок/.test(document.body.innerText));
+  const blocked = await page.evaluate(() => /много ошибок|третья ошибка, тест закончился/.test(document.body.innerText));   // v71: слова результата
   check("после трёх ошибок тест прерван", blocked);
   await clickText("← Вернуться к урокам");
   check("провал не записан как выход", !JSON.parse(await ls("sa_qskip" + UK) || "{}")["spg-0-q"] && !calls.some(c => c.fn === "log_quiz_skip"));

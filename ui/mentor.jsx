@@ -190,7 +190,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
     <div style={T.screen} className="sa-screen">
       {allDone && createPortal(<Confetti />, document.body)}
       <div style={T.lessHead}>
-        <button style={T.backBtn2} onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Допуск наставника</div>
       </div>
 

@@ -427,7 +427,7 @@ if (want("EDIT")) {
   const free = Object.entries((await personGeo(page)).k).filter(([d, k]) => +d > FX.today && !k && ![24, 25, 30].includes(+d)).map(([d]) => +d)[0];
   await page.locator(`[data-person-day="${free}"]`).click(); await sleep(600);
   const pickTxt = await page.evaluate(() => { const s = [...document.querySelectorAll("div")].find((d) => d.style && d.style.position === "fixed" && /Выходной/.test(d.innerText) && !d.querySelector("[data-person-sheet]")); return s ? s.innerText.replace(/\s+/g, " ") : ""; });
-  ok("EDIT: тап по дню в карточке — лист смены этого дня поверх карточки", new RegExp(free + " ОКТЯБРЯ.*Смирнова Анна").test(pickTxt) && (await page.locator("[data-person-sheet]").count()) === 1, pickTxt.slice(0, 80));
+  ok("EDIT: тап по дню в карточке — лист смены этого дня поверх карточки", new RegExp(free + " октября.*Смирнова Анна")   /* v73: подпись курсивом, обычными буквами */.test(pickTxt) && (await page.locator("[data-person-sheet]").count()) === 1, pickTxt.slice(0, 80));
   await page.locator("button", { hasText: "День" }).filter({ hasText: "12:00–20:00" }).first().click(); await sleep(600);
   let g = await personGeo(page);
   const bar = await page.evaluate(() => document.querySelector("[data-savebar]") ? document.querySelector("[data-savebar]").innerText.replace(/\s+/g, " ").trim() : null);
@@ -507,7 +507,7 @@ if (want("FACT")) for (const light of [false, true]) {
   const v = await inView(page, "[data-fact-sheet]");
   ok(nm + ": «Факт часов» — окошко на экране (раньше — за краем, над таблицей)", v && v.ok, JSON.stringify(v));
   const t = await page.evaluate(() => document.querySelector("[data-fact-sheet]").innerText.replace(/\s+/g, " "));
-  ok(nm + ": в окошке — человек, день, смена и поле «отработано по факту»", /ФАКТ ЧАСОВ · [А-Я]{2} · \d+ ОКТЯБРЯ/.test(t) && /Петров Иван · \d+ октября · смена [А-Яа-я]+ \(\d+ ч по плану\)/.test(t) && /отработано по факту/i.test(t), t.slice(0, 120));
+  ok(nm + ": в окошке — человек, день, смена и поле «отработано по факту»", /Факт часов · [а-я]{2} · \d+ октября/.test(t) && /Петров Иван · \d+ октября · смена [А-Яа-я]+ \(\d+ ч по плану\)/.test(t) && /отработано по факту/i.test(t), t.slice(0, 120));
   await page.screenshot({ path: `${OUT8}/fact-${light ? "light" : "dark"}.png` });
   await page.locator("[data-fact-sheet] button", { hasText: "Готово" }).click(); await sleep(400);
   ok(nm + ": «Готово» — окошко закрылось", !(await page.locator("[data-fact-sheet]").count()));

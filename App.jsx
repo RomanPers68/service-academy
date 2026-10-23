@@ -30,7 +30,7 @@ import { readFresh, saveFresh, syncFresh, touchFresh, fadedList, moduleDone, INT
 import { layersReducer, layerData } from "./lib/layers";
 import { useFreshMarks, useDayBrief, pairLineOf } from "./lib/use-day";
 import { readCredits, readGold, saveCredit, saveGold, creditTriedToday, markCreditTry, creditPool, goldPool, creditPassed, goldPassed, canRefresh, canCredit, canGold, GOLD_TIMER, GOLD_N, CREDIT_PASS, CREDIT_N } from "./lib/marks";
-// v40: «Путь мастера» — значки за привычки, «Мастер роли ✦», шаг дня, первая неделя в академии
+// v40: «Путь мастера» — значки за привычки, «Мастер роли», шаг дня, первая неделя в академии
 import { masteryFacts, masteryState, stepOfDay, stepLineText, readEarned, saveEarned, newlyEarned, mergeEarned, saveSummary, syncLife, readSeen, markSeen, newTools, isNewTool, mastersIndex, restoreFromCopy, TIERS, MASTER_NEED } from "./lib/mastery";
 import { BadgeToast, StepLine, masteryChip } from "./ui/mastery-card";
 import { tablePool } from "./lib/table-pick";
@@ -115,7 +115,7 @@ function ScreenLoader({ T }) {
         </div>
       ))}
       <div className="sa-pagein" style={{ textAlign: "center", marginTop: 22, ...later(4) }}>
-        <span className="sa-pulse" style={{ color: T.a11y ? "#7A5D2A" : "#C8A96E", fontFamily: "monospace", fontSize: T.a11y ? 13 : 11, letterSpacing: 4 }}>✦ SA</span>
+        <span className="sa-pulse" style={{ color: T.a11y ? "#7A5D2A" : "#C8A96E", fontFamily: "Georgia, serif", fontSize: T.a11y ? 15 : 14, letterSpacing: 3 }}>SA</span>
       </div>
     </div>
   );
@@ -429,7 +429,7 @@ import { weeklyDialogueIdFrom, weeklyLessonId } from "./data/reviews";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette, readMood, recordMood } from "./ui/mood-cards";
-import { BG_DARK, CREAM, GOLD, GOLD_LOGO, SAND, toolColor } from "./ui/tokens";
+import { BG_DARK, CREAM, GOLD, GOLD_LOGO, SAND, toolColor, labelStyle } from "./ui/tokens";
 import { hintsFor, hintKey } from "./data/hints";
 import {
   AchievementPopup,
@@ -1207,7 +1207,7 @@ function ServiceAcademy() {
       setSpecial({ mode, mod, sits: gSits, timer: GOLD_TIMER, key, verdict: {
         ok: "Номер темы в треке теперь золотой, в «Книге отзывов» — печать.",
         bad: "Для золота — не больше одной ошибки. Можно сразу ещё раз." },
-        intro: { title: "Раунд мастера ✦", sub: mod.title, cta: "Начать раунд",
+        intro: { title: "Раунд мастера", sub: mod.title, cta: "Начать раунд",
           lines: [gN + " " + pl3(gN, "задание", "задания", "заданий") + ", на каждое " + GOLD_TIMER + " секунд — последние 5 тикают", "Без подсказок", "Одна ошибка в запасе — это запасная свеча",
             "Получилось — номер темы в треке золотой, в «Книге отзывов» печать"],
           icons: ["⏱", "✕", "🕯", "✦"] } });
@@ -2079,7 +2079,7 @@ function ServiceAcademy() {
   };
 
   // ══ v40: «Путь мастера» (lib/mastery.js) — значки за привычки (бронза, серебро, золото у каждого
-  //    инструмента), «Мастер роли ✦», «Шаг дня», «Первая неделя в академии». Всё считается на
+  //    инструмента), «Мастер роли», «Шаг дня», «Первая неделя в академии». Всё считается на
   //    телефоне из того, что приложение уже хранит; сервер (этап 26) — только мастера заведения,
   //    приз руководителя и сообщение команде. Без этапа 26 всё, кроме этого, работает. ══
   // счётчики за всё время сверяются с журналом дня (он держит 75 дней) — один раз при входе.
@@ -2271,7 +2271,7 @@ function ServiceAcademy() {
     }
     return { ok: false, error: (r && r.error) || "error" };
   }).catch(() => ({ ok: false, error: "offline" })), [ukP]);
-  // «Мастер роли ✦» — сообщаем серверу один раз на роль (коллегам уходит сообщение в Telegram).
+  // «Мастер роли» — сообщаем серверу один раз на роль (коллегам уходит сообщение в Telegram).
   // Нет сети или этапа 26 — попробуем при следующем входе.
   React.useEffect(() => {
     if (!mReady || !mState || !profile || !role) return;
@@ -2368,10 +2368,10 @@ function ServiceAcademy() {
     const group = TRACK_GROUPS.find(g => g.members.includes(role));
     const nextRoleId = group ? group.members[group.members.indexOf(role) + 1] : null;
     const nextRole = nextRoleId ? ROLES.find(r => r.id === nextRoleId) : null;
-    if (!passed) return { eyebrow: "Все уроки пройдены ✦", title: "Экзамен ступени", sub: "«Слепой» тест без подсказок — как у гостя нет второй попытки на первое впечатление. Сдал — сертификат и печать в Книге.", cta: "Сдать ›", onGo: () => openExam(role) };
-    if (nextRole) return { eyebrow: "Экзамен сдан ✦", title: `Следующая ступень: ${nextRole.label}`, sub: nextRole.desc || nextRole.sublabel || "Трек продолжается — новые модули уже ждут", cta: "Перейти ›", onGo: () => { selectRole(nextRole.id); commitStack([]); }, // selectRole сам открывает программу новой роли
+    if (!passed) return { eyebrow: "Все уроки пройдены", title: "Экзамен ступени", sub: "«Слепой» тест без подсказок — как у гостя нет второй попытки на первое впечатление. Сдал — сертификат и печать в Книге.", cta: "Сдать ›", onGo: () => openExam(role) };
+    if (nextRole) return { eyebrow: "Экзамен сдан", title: `Следующая ступень: ${nextRole.label}`, sub: nextRole.desc || nextRole.sublabel || "Трек продолжается — новые модули уже ждут", cta: "Перейти ›", onGo: () => { selectRole(nextRole.id); commitStack([]); }, // selectRole сам открывает программу новой роли
       secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
-    return { eyebrow: "Экзамен сдан ✦", title: "Трек пройден до конца", sub: "Можно открыть новый трек — или держать форму: «Задание дня» и «Гость недели» во вкладке «Смена».", cta: "Другие треки ›", onGo: () => navigate("roleSelect"),
+    return { eyebrow: "Экзамен сдан", title: "Трек пройден до конца", sub: "Можно открыть новый трек — или держать форму: «Задание дня» и «Гость недели» во вкладке «Смена».", cta: "Другие треки ›", onGo: () => navigate("roleSelect"),
       secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
   };
   // Что Наставник знает о сотруднике (роль, прогресс, ошибки, смена) — вынесено из экрана
@@ -2538,7 +2538,7 @@ function ServiceAcademy() {
   }, []);
 
   // v55 (Доп. 368): экраны «твёрдые» — не листаются, если всё помещается.
-  // Высота верхней строки «✦ SA · Для чтения» → --sa-top: экран вычитает её из своей минимальной высоты
+  // Высота верхней строки «SA · Для чтения» → --sa-top: экран вычитает её из своей минимальной высоты
   // (ui/styles.js, screen). Кнопка AI на экране → класс sa-fabon: снизу запас под кнопку (владелец: «Кнопка AI
   // пусть останется как есть, просто сделай отступ») — последние карточки поднимаются выше неё.
   const saBarRef = useRef(null);
@@ -2569,8 +2569,8 @@ function ServiceAcademy() {
   if (!storageLoaded) return (
     <div style={{ ...T.app, alignItems:'center', justifyContent:'center' }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:18 }}>
-        <img src={LOGO_SRC_DARK} alt="" style={{ width:150, animation:'logoPulse 1.6s ease-in-out infinite', filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
-        <div style={{ color:'#9A8C74', fontSize:11, fontFamily:'monospace', letterSpacing:3 }}>ЗАГРУЗКА</div>
+        <img src={LOGO_SRC_DARK} alt="" decoding="sync" style={{ width:150, animation:'logoPulse 1.6s ease-in-out infinite', filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+        <div style={{ ...labelStyle(13.5), color:'#9A8C74' }}>Загрузка…</div>
       </div>
     </div>
   );
@@ -2581,7 +2581,7 @@ function ServiceAcademy() {
       {newAchievement && (
         <AchievementPopup ach={newAchievement} a11y={a11y} onClose={() => setNewAchievement(null)} />
       )}
-      {/* v40: новый значок «Пути мастера» или «Мастер роли ✦» — по одному, не поверх урока и слоёв */}
+      {/* v40: новый значок «Пути мастера» или «Мастер роли» — по одному, не поверх урока и слоёв */}
       {mToast ? <BadgeToast a11y={a11y} item={mToast} state={mState}
         onOpen={(it) => { ackBadge(it); openMastery(it && it.kind === "master" ? "certificate" : it && it.kind === "tier" ? it.id : null); }}
         onClose={(it) => ackBadge(it)} /> : null}
@@ -2589,7 +2589,8 @@ function ServiceAcademy() {
       <div style={T.phone} className="sa-col">
         {!["profile","login"].includes(screen) && (
           <div style={T.a11yBar} ref={saBarRef} data-sa-topbar="">
-            <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:13, letterSpacing:3, fontFamily:"monospace" }}>✦ SA</span>
+            {/* v73 (Доп. 386): «SA» — шрифтом с засечками, без звёздочки ✦ и моноширинного */}
+            <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:14, letterSpacing:2.5, fontFamily:"Georgia, serif" }}>SA</span>
             <span style={{ flex: 1 }} data-sa-topspace="" />
             {/* v71: поиск с любого экрана — меню и аллергены, карта бара, глоссарий, справочник, уроки */}
             {/* в тесте, на экзамене и в собеседовании кандидата поиска нет: он стал бы подсказкой (и обходом учёта «лазеек») */}
@@ -2688,7 +2689,7 @@ function ServiceAcademy() {
               {[[-96,-74],[92,-80],[-120,18],[118,26],[-58,-108],[64,96],[0,-118],[-10,104]].map(([dx, dy], i) => (
                 <span key={i} className="c-spark" style={{ "--dx": dx + "px", "--dy": dy + "px", animationDelay: (i * 0.04) + "s" }}>✦</span>
               ))}
-              <span style={{ color:"#D2A85A" }}>✦</span> {celebrate}
+              {celebrate}
             </div>
           </div>, document.body) : null}
         <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
@@ -2857,7 +2858,7 @@ function ServiceAcademy() {
           tried={(id) => creditTriedToday(ukP, id, todayKey)} onBack={() => goBack("me")} onOpenTopic={(m) => { setActiveModule(m); navigate("module"); }}
           onRefresh={(m) => openTopicRun("refresh", m)} onGold={(m) => openTopicRun("gold", m)} onCredit={(m) => openTopicRun("credit", m)}
           onFreshAll={openFreshAll} onProbe={openProbe} probeCount={probeMods.length} /></Suspense></div>}
-        {/* v40: «Путь мастера» — значки, «Мастер роли ✦», шаг дня, первая неделя в академии, мастера заведения */}
+        {/* v40: «Путь мастера» — значки, «Мастер роли», шаг дня, первая неделя в академии, мастера заведения */}
         {screen === "mastery" && profile && (mShown
           ? <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MasteryScreen T={T} a11y={a11y} profile={profile} role={role} state={mShown} step={mStepShown}
               earned={mEarned || readEarned(ukP)} seen={mSeenShown} masters={masters} focus={masteryFocus} shareUrl={APP_SHARE_URL}
@@ -2927,7 +2928,7 @@ function ServiceAcademy() {
           // v71: группами; итоги и настройки — строками в одной карточке
           mShown && { key:"mastery", group:"Мой путь", icon:"mastery", label:"Путь мастера",
             sub: mShown.master.ok
-              ? "Мастер роли ✦ · " + mShown.bronze + " из " + mShown.total + " значков"
+              ? "Мастер роли · " + mShown.bronze + " из " + mShown.total + " значков"
               : mShown.bronze + " из " + mShown.total + " значков · до «Мастера роли» " + mShown.master.have + " из " + mShown.master.need,
             badge: !mSeen.mastery ? "новое" : null, onClick:() => openMastery() },
           { key:"guide", group:"Помощь и настройки", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
@@ -3191,7 +3192,7 @@ class ErrorBoundary extends React.Component {
           {/* Диагностика: текст ошибки для скриншота в поддержку */}
           {(this.state.errMsg || this.state.errStack) && (
             <div style={{ marginTop: 22, maxWidth: 330, padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(140,106,38,0.3)", background: "rgba(0,0,0,0.25)" }}>
-              <div style={{ color: "#918879", fontSize: 10.5, letterSpacing: 2, fontFamily: "monospace", marginBottom: 5 }}>ДЛЯ ПОДДЕРЖКИ · СДЕЛАЙ СКРИНШОТ</div>
+              <div style={{ ...labelStyle(13), color: "#918879", marginBottom: 5 }}>Для поддержки · сделай скриншот</div>
               <div style={{ color: "#7A654C", fontSize: 10.5, fontFamily: "monospace", lineHeight: 1.6, wordBreak: "break-word" }}>{this.state.errMsg}{this.state.errStack ? " | " + this.state.errStack : ""}</div>
             </div>
           )}

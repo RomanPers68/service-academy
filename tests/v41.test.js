@@ -127,7 +127,7 @@ describe("v41: «Шаг дня» — строкой в карточке трек
     expect(html).toContain('aria-label="Шаг дня: Освежи тему «Психология первого дня». 3 ситуации · 1 мин — тема снова свежая"');
     expect(html.replace(/<[^>]+>/g, "")).toBe("Шаг дняОсвежи тему «Психология первого дня»");
     // «чуть-чуть компактнее»: значок — в строке надписи, дело — во всю ширину (короткое — в одну строку)
-    expect(html).toMatch(/text-transform:uppercase;line-height:1\.3;color:#D9B87C;display:flex;align-items:center;gap:7px"><svg[^>]*>.*?<\/svg>Шаг дня</);
+    expect(html).toMatch(/font-style:italic;[^"]*text-transform:none;line-height:1\.3;color:#D9B87C;display:flex;align-items:center;gap:7px"><svg[^>]*>.*?<\/svg>Шаг дня</);   // v73: курсивом, не капсом
     expect(html).toMatch(/font-size:14px;line-height:1\.25;color:#EFE4C8;margin-top:2px">Освежи тему «Психология первого дня»</);
     expect(html).toContain('data-ms-line-go=""');
     expect(html).toContain('d="M9 5l7 7-7 7"');
@@ -139,9 +139,9 @@ describe("v41: «Шаг дня» — строкой в карточке трек
     expect(R(h(StepLine, { step: { ...STEP, text: "" } }))).toBe("");
     expect(R(h(StepLine, { step: null }))).toBe("");
   });
-  it("светлая тема: надпись 11 px (метка), дело 14 px; последнее слово не остаётся одно на строке", () => {
+  it("светлая тема: надпись 13,5 px курсивом (v73; была метка 11 px), дело 14 px; последнее слово не остаётся одно на строке", () => {
     const html = R(h(StepLine, { a11y: true, step: STEP, onStep: noop }));
-    expect(html).toMatch(/font-size:11px;letter-spacing:1\.6px;text-transform:uppercase/);
+    expect(html).toMatch(/font-style:italic;font-weight:normal;font-size:13\.5px;letter-spacing:0\.1px;text-transform:none/);
     expect(html).toMatch(/font-size:14px;line-height:1\.25;color:#2A1F0E/);
     const raw = renderToString(h(StepLine, { a11y: true, step: STEP, onStep: noop }));
     expect(raw).toContain("первого\u00A0дня»");
@@ -169,7 +169,7 @@ describe("v41: «Путь мастера» — чипом в строке рол
     const ms = stateOf("master");
     expect(ms.master.ok).toBe(true);
     const mm = masteryChip(ms, 0, true);
-    expect(mm.aria).toMatch(/^Путь мастера: мастер роли ✦, \d+ из 14 значков$/);
+    expect(mm.aria).toMatch(/^Путь мастера: мастер роли, \d+ из 14 значков$/);   // v73: без ✦
     expect(R(mm.icon)).toContain('data-ms-ring="100"');   // у мастера кольцо полное
     expect(masteryChip(null)).toBe(null);
   });
@@ -194,7 +194,7 @@ describe("v41: «Путь мастера» — чипом в строке рол
     expect(lt).toMatch(/class="tbv sa-dp lt"/);
     expect(dk).toMatch(/class="tbv sa-dp"/);
     for (const html of [lt, dk]) expect(html).toMatch(/font-size:20px/);
-    expect(readFileSync("ui/day-cards.jsx", "utf8")).toMatch(/\.sa-dp\.lt \.sa-dp-cap\{font-size:11px;/);
+    expect(readFileSync("ui/day-cards.jsx", "utf8")).toMatch(/\.sa-dp\.lt \.sa-dp-cap\{font-size:13\.5px\}/);   // v73: подписи курсивом
   });
 });
 

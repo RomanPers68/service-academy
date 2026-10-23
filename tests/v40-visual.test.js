@@ -34,9 +34,9 @@ describe("v40: плитки действий темы", () => {
     const t = tiles(html);
     expect(t.map((x) => x.cls)).toEqual(["tbm-act hot", "tbm-act gold"]);
     expect(t[0]).toMatchObject({ title: "Освежить", sub: "3 ситуации · 1 мин", icon: true, label: "Освежить · 1 мин · 3 ситуации" });
-    expect(t[1]).toMatchObject({ title: "Раунд мастера ✦", sub: "8 заданий → тема золотая", icon: true });
+    expect(t[1]).toMatchObject({ title: "Раунд мастера", sub: "8 заданий → тема золотая", icon: true });
     expect(html).toContain('<button type="button" class="tbm-cellar">Погреб тем ›</button>');
-    expect(html).toContain('<span class="tbm-fresh-t"><span>тема выдохлась</span></span>');
+    expect(html).toContain('<span class="tbm-fresh-t"><span>Тема выдохлась</span></span>');
     // меню пройденного раздела — с местом под печать, сама печать — на углу
     expect(html).toContain('class="tbm-menu sealed"');
     expect(html).toMatch(/<span class="tbm-seal(?: stamp)?" aria-hidden="true"><svg width="46" height="46"/);
@@ -50,8 +50,8 @@ describe("v40: плитки действий темы", () => {
     const html = R(h(ModuleMenu, { mod: S0, completed: c, quizDone: q, onLesson: noop, embedded: true, topic: { f: { level: "fresh", dueIn: 6 }, gold: { d: "x" }, canGold: true }, acts: { onRefresh: noop, onGold: noop } }));
     const t = tiles(html);
     expect(t.map((x) => x.cls)).toEqual(["tbm-act", "tbm-act gold got"]);
-    expect(t[1]).toMatchObject({ title: "Золото ✦ · ещё раз", sub: "побей свой рекорд" });
-    expect(html).toContain('<span class="tbm-fresh-t"><span>тема свежая ·</span> <span>ещё 6 дней ·</span> <span>золотая тема</span></span>');
+    expect(t[1]).toMatchObject({ title: "Золото · ещё раз", sub: "побей свой рекорд" });
+    expect(html).toContain('<span class="tbm-fresh-t"><span>Тема свежая ·</span> <span>ещё 6 дней ·</span> <span>золотая тема</span></span>');
     expect(html).not.toContain("tbm-cellar");   // без onCellar — без кнопки
   });
 
@@ -106,10 +106,10 @@ describe("v40: стили", () => {
     expect(TABLE_CSS).toMatch(/\.tbm-act-s\{font-size:12\.5px/);
     expect(TABLE_CSS).toContain("html.sa-light .tbm-act-s{font-size:13px");
     expect(TABLE_CSS).toMatch(/\.tbm-act-ic\{[^}]*border-radius:50%/);
-    // «Погреб тем ›» — капсула 36 px, 14 px; свежесть — 12,5 px, цвета прежние
+    // «Погреб тем ›» — капсула 36 px, 14 px; свежесть — 14,5 px курсивом (v73: был моноширинный капс 12,5 px), цвета прежние
     expect(num(TABLE_CSS, /\.tbm-cellar\{[^}]*min-height:(\d+)px/)).toBeGreaterThanOrEqual(36);
     expect(TABLE_CSS).toMatch(/\.tbm-cellar\{[^}]*font:600 14px/);
-    expect(TABLE_CSS).toMatch(/\.tbm-fresh\{[^}]*font-size:12\.5px[^}]*color:#9C8E70/);
+    expect(TABLE_CSS).toMatch(/\.tbm-fresh\{[^}]*font-style:italic[^}]*font-size:14\.5px[^}]*color:#9C8E70/);
     expect(TABLE_CSS).toContain(".tbm-fresh.fading{color:#C9A35C}.tbm-fresh.faded{color:#D08A6A}.tbm-fresh.upd{color:#8FB0D6}");
     // в светлой теме залитая «Освежить» не теряет заливку (правило светлой плитки сильнее .hot)
     expect(TABLE_CSS).toContain("html.sa-light .tbm-act.hot{background:var(--role-wash");
@@ -137,7 +137,7 @@ describe("v40: стили", () => {
     expect(rule(".dc-chip")).toMatch(/padding:5px 10px;.*font-size:13\.5px/);
     expect(rule(".dc-howto")).toMatch(/font-size:13\.5px;.*color:var\(--sub\)/);
     expect(rule(".dc-svc")).toContain("font-size:15px");
-    expect(rule(".dc-ey")).toContain("font-size:11px");
+    expect(src).toContain(".dc-ey{${LABEL_CSS};font-size:13.5px");   // v73: курсивом, не моноширинным капсом (в правиле — ${…}, rule() его не разберёт)
     expect(rule(".dc-st")).toContain("font-size:14px");
     expect(rule(".dc-kb-n")).toContain("font-size:12.5px");
     expect(rule(".dc-intro-n")).toContain("font-size:21px");
@@ -154,9 +154,9 @@ describe("v40: стили", () => {
     for (const s of [".tbm-s", ".tbp-peek span", ".tbp-pin-t", ".tb-host-t span", ".tb-k span", ".tb-myth small", ".tb-autohint", ".tb-heard", ".tb-recap .s", ".r-note", ".r-by", ".r-topics li button"]) expect([s, light(s)]).toEqual([s, 13]);
     for (const s of [".tbm-eyebrow", ".tbm-mk .nm", ".tbm-ck", ".tbm-kchip", ".tbm-foot", ".tbm-sealnote", ".tb-k", ".tb-chip", ".tb-where", ".tb-who", ".tb-spare", ".tb-recap h4", ".r-brand", ".r-stamp", ".r-week small"]) expect([s, light(s) >= 11]).toEqual([s, true]);
     // тёмная — прежние размеры
-    expect(TABLE_CSS).toMatch(/\.tbm-eyebrow\{font-family:var\(--font-mono\);font-size:10\.5px/);
+    expect(TABLE_CSS).toMatch(/\.tbm-eyebrow\{font-family:Georgia[^}]*font-style:italic[^}]*font-size:13px/);   // v73: курсивом
     expect(TABLE_CSS).toMatch(/\.tbm-s\{[^}]*font-size:12px/);
-    expect(TABLE_LESSON_CSS).toMatch(/\.tb-who\{[^}]*font-size:10\.5px/);   // v58: метки не мельче 10,5 px (было 9,5)
+    expect(TABLE_LESSON_CSS).toMatch(/\.tb-who\{[^}]*font-style:italic[^}]*font-size:13px/);   // v58: метки не мельче 10,5 px (было 9,5); v73 — курсив 13 px
     // «пройден» от руки (.tbm-m.tbm-hand) светлые правила не задевают
     expect(TABLE_CSS).not.toMatch(/html\.sa-light \.tbm-m\{/);
   });

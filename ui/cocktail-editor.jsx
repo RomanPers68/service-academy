@@ -2,7 +2,7 @@ import { hintsFor } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { onActivate, vibrate, readPhoto } from "../lib/utils";
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { cocktailRecords, withCocktail, withoutCocktail, recToCocktail, cachedShared } from "../lib/deck-extras";
 import { buildScenario, GLASS_RU, GARNISH_RU } from "../lib/bar-lab";
@@ -101,12 +101,12 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
   };
   const pill = (on, extra) => ({ padding: "6px 11px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${on ? gold : gold + "44"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : sub, whiteSpace: "nowrap", ...extra });
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: `1px solid ${gold}44`, background: a11y ? "rgba(255,255,255,0.6)" : "rgba(255,248,230,0.05)", color: text, fontSize: 14, fontFamily: "Georgia, serif", outline: "none" };
-  const label = (t) => <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "14px 0 6px" }}>{t}</div>;
+  const label = (t) => <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 0 6px" }}>{t}</div>;   // v73 (Доп. 386): подпись поля — курсивом обычными буквами
   const Head = (title, back) => (
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
       <button className="sa-btn" onClick={back} {...onActivate(back)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>КОЛОДА БАРМЕНА · {restaurant.toUpperCase()}</div>
+        <div style={{ ...labelStyle(13.5), color: gold }}>Колода бармена · {restaurant}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
       </div>
     </div>
@@ -129,12 +129,12 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{form.name || "Без названия"}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{form.method} · {GLASS_RU[form.glass]} · {ICES.find(x => x[0] === form.ice)?.[1]}</div>
-              <div style={{ fontSize: 11, letterSpacing: 1.4, color: gold, fontFamily: "monospace", marginTop: 8 }}>СБОРКА · {seq.length ? `${seq.length} ШАГОВ` : "ДОПИШИ СОСТАВ И ШАГИ"}</div>
+              <div style={{ ...labelStyle(13.5), color: gold, marginTop: 8 }}>Сборка · {seq.length ? `${seq.length} шагов` : "допиши состав и шаги"}</div>
               {seq.length > 0 && <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, maxHeight: 74, overflow: "hidden" }}>{seq.map((s, i) => `${i + 1}. ${s.label}`).join(" · ")}</div>}
             </div>
           </div>
 
-          {label("ФОТО · НЕОБЯЗАТЕЛЬНО")}
+          {label("Фото · необязательно")}
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div onClick={() => photoRef.current && photoRef.current.click()} style={{ width: 96, height: 96, borderRadius: 14, border: `1px dashed ${gold}66`, background: form.img ? `url(${form.img}) center/cover` : (a11y ? "rgba(255,255,255,0.4)" : "rgba(255,248,230,0.04)"), display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 21, cursor: "pointer", flexShrink: 0 }}>{form.img ? "" : "＋"}</div>
             <div style={{ flex: 1, fontSize: 12.5, color: sub, lineHeight: 1.5 }}>
@@ -143,11 +143,11 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
             </div>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{ display: "none" }} />
           </div>
-          {label("НАЗВАНИЕ И БАЗА")}
+          {label("Название и база")}
           <input style={inputSt} placeholder="Название коктейля" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           <input style={{ ...inputSt, marginTop: 8 }} placeholder="База: джин, ром, водка…" value={form.base} onChange={e => setForm(f => ({ ...f, base: e.target.value }))} />
 
-          {label("БОКАЛ")}
+          {label("Бокал")}
           <div className="sa-hscroll" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
             {GLASSES.map(g => <div key={g} onClick={() => setForm(f => ({ ...f, glass: g }))} style={{ flexShrink: 0, width: 64, textAlign: "center", cursor: "pointer", opacity: form.glass === g ? 1 : 0.55 }}>
               <div style={{ width: 56, height: 72, margin: "0 auto", borderRadius: 12, border: `1px solid ${form.glass === g ? gold : gold + "33"}`, display: "flex", alignItems: "flex-end", justifyContent: "center", overflow: "hidden" }}><CocktailArt c={{ ...preview, glass: g }} w={54} light={a11y} /></div>
@@ -155,11 +155,11 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
             </div>)}
           </div>
 
-          {label("МЕТОД · ЛЁД")}
+          {label("Метод · лёд")}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{METHODS.map(m => <span key={m} style={pill(form.method === m)} onClick={() => setForm(f => ({ ...f, method: m }))}>{m}</span>)}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>{ICES.map(([k, l]) => <span key={k} style={pill(form.ice === k)} onClick={() => setForm(f => ({ ...f, ice: k }))}>{l}</span>)}</div>
 
-          {label("СОСТАВ · С ОБЪЁМАМИ")}
+          {label("Состав · с объёмами")}
           <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
             <span style={pill(!!paste)} onClick={() => setPaste(p => p == null ? "" : null)}>{paste == null ? "⌘ Вставить спек текстом" : "Скрыть"}</span>
           </div>
@@ -182,7 +182,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
           ))}
           <span style={pill(false, { display: "inline-block", marginTop: 2 })} onClick={() => setForm(f => ({ ...f, ing: [...f.ing, ["", "", "мл"]] }))}>＋ ингредиент</span>
 
-          {label("ШАГИ · ПО ПОРЯДКУ, ГЛАГОЛАМИ БАРА")}
+          {label("Шаги · по порядку, глаголами бара")}
           <div style={{ fontSize: 12.5, color: sub, marginBottom: 6, lineHeight: 1.5 }}>«Джин, вермут в смесительный стакан», «Лёд, стир 30 секунд», «Стрейн в купе», «Цедра лимона». Из шагов тренажёр строит сборку — смотри сверху, что получилось.</div>
           {form.steps.map((st, k) => (
             <div key={k} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
@@ -199,7 +199,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
             </div>
           )}
           {showMore && <>
-          {label("ГАРНИШ · ЦВЕТ · ХАРАКТЕР")}
+          {label("Гарниш · цвет · характер")}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{GARNISHES.map(g => <span key={g} style={pill(form.garnish === g)} onClick={() => setForm(f => ({ ...f, garnish: g }))}>{GARNISH_RU[g]}</span>)}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>{PALETTE.map((pal, i) => <span key={i} onClick={() => setForm(f => ({ ...f, color: pal }))} style={{ width: 30, height: 30, borderRadius: 14, background: `linear-gradient(180deg, ${pal[0]}, ${pal[1]})`, border: `2px solid ${form.color && form.color[0] === pal[0] ? gold : "transparent"}`, cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,.35)" }} />)}</div>
           <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 12.5, color: sub }}>
@@ -212,18 +212,18 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
             <span style={pill(form.inCard)} onClick={() => setForm(f => ({ ...f, inCard: !f.inCard }))}>в карте бара</span>
           </div>
 
-          {label("ДЛЯ ГОСТЯ И ДЛЯ БАРМЕНА")}
+          {label("Для гостя и для бармена")}
           <input style={inputSt} placeholder="Одной фразой гостю (необязательно)" value={form.short} onChange={e => setForm(f => ({ ...f, short: e.target.value }))} />
           <textarea style={{ ...inputSt, marginTop: 8, minHeight: 64 }} placeholder="История коктейля — как она звучит у стойки" value={form.story} onChange={e => setForm(f => ({ ...f, story: e.target.value }))} />
           <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
-            <span onClick={aiStory} {...onActivate(aiStory)} style={pill(false, { opacity: String(form.name || "").trim() ? 1 : 0.5 })}>{aiBusy ? "Наставник пишет…" : "✦ История от Наставника · 3 варианта"}</span>
+            <span onClick={aiStory} {...onActivate(aiStory)} style={pill(false, { opacity: String(form.name || "").trim() ? 1 : 0.5 })}>{aiBusy ? "Наставник пишет…" : "История от Наставника · 3 варианта"}</span>
             {aiErr && <span style={{ fontSize: 12.5, color: "#E07878" }}>{aiErr}</span>}
           </div>
           {aiVariants && (
             <div className="sa-fadein" style={{ marginTop: 8 }}>
               {aiVariants.map((v, i) => (
                 <div key={i} style={{ ...frost, borderRadius: 14, padding: "10px 12px", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, letterSpacing: 1.4, color: gold, fontFamily: "monospace" }}>{["ПРО ВКУС", "ПРО ПРОИСХОЖДЕНИЕ", "ИГРИВО"][i] || "ВАРИАНТ"}</div>
+                  <div style={{ ...labelStyle(13.5), color: gold }}>{["Про вкус", "Про происхождение", "Игриво"][i] || "Вариант"}</div>
                   <div style={{ fontSize: 12.5, color: text, lineHeight: 1.5, marginTop: 2 }}>{v}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                     <span style={pill(false)} onClick={() => { setForm(f => ({ ...f, story: v })); setAiVariants(null); vibrate("light"); }}>→ в историю</span>
@@ -281,7 +281,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
           </div>); })}
         {archived.length > 0 && (
           <div style={{ marginTop: 16 }}>
-            <div onClick={() => setShowArchive(v => !v)} {...onActivate(() => setShowArchive(v => !v))} style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", cursor: "pointer", marginBottom: 8 }}>АРХИВ · {archived.length} {showArchive ? "▾" : "▸"}</div>
+            <div onClick={() => setShowArchive(v => !v)} {...onActivate(() => setShowArchive(v => !v))} style={{ ...labelStyle(13.5), color: gold, cursor: "pointer", marginBottom: 8 }}>Архив · {archived.length} {showArchive ? "▾" : "▸"}</div>
             {showArchive && archived.map(r => (
               <div key={r.id} style={{ ...frost, borderRadius: 14, padding: "10px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10, opacity: 0.8 }}>
                 <div style={{ flex: 1, minWidth: 0, fontFamily: "Georgia, serif", fontSize: 14, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>

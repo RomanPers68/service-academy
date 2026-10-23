@@ -1021,7 +1021,7 @@ export const injectStyles = () => {
     /* Трек и меню раздела на компьютере: колонка шире, шрифт меню крупнее — читается с расстояния вытянутой руки */
     html.sa-desk .tbm-title { font-size: 25px; }
     html.sa-desk .tbm-sub { font-size: 14.5px; }
-    html.sa-desk .tbm-eyebrow { font-size: 11.5px; }
+    html.sa-desk .tbm-eyebrow { font-size: 14px; }   /* v73: подписи меню — курсивом (ui/table-css.js), на компьютере на 1 px крупнее */
     html.sa-desk .tbm-list > li { --my: 18px; }
     html.sa-desk .tbm-list > li.cur { --my: 37px; }
     html.sa-desk .tbm-node { min-height: 44px; }
@@ -1030,9 +1030,9 @@ export const injectStyles = () => {
     html.sa-desk .tbm-m { font-size: 12px; }
     html.sa-desk .tbm-ct { font-size: 19px; }
     html.sa-desk .tbm-cs { font-size: 14px; }
-    html.sa-desk .tbm-ck { font-size: 11px; }
+    html.sa-desk .tbm-ck { font-size: 13.5px; }
     html.sa-desk .tbm-cta { font-size: 15px; padding: 10px 18px; }
-    html.sa-desk .tbm-foot { font-size: 11.5px; }
+    html.sa-desk .tbm-foot { font-size: 14px; }
     /* Редактор урока на компьютере: форма слева, справа — как увидит сотрудник (шириной с телефон, листается сам).
        Высота — до полосы «Отменить / Сохранить урок»; поле снизу — чтобы конец предпросмотра можно было
        докрутить над полосой, даже пока он ещё не прилип наверху */
@@ -1072,7 +1072,7 @@ export const injectStyles = () => {
 
     /* ═══ v55 (Доп. 368): быстро и твёрдо — экраны стоят на месте ═══
        Раньше любой экран листался на 43 px, даже когда всё помещалось («Поиск», «Лига», «Рейтинг» — на 131):
-       минимальная высота экрана была 100vh, а сверху ещё строка «✦ SA», снизу — отступ под панель вкладок.
+       минимальная высота экрана была 100vh, а сверху ещё строка «SA», снизу — отступ под панель вкладок.
        Теперь экран вычитает их (ui/styles.js, screen): --sa-top — высота верхней строки (меряет App),
        --sa-padb — отступ обёртки под панель вкладок, --sa-fab — запас под кнопку AI. */
     body { margin: 0; }   /* было 8 px полей браузера по краям: в портрете экран был на 16 px уже и обрезался снизу */

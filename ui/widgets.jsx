@@ -4,7 +4,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { MOD_SVG } from "./icons";
-import { CREAM, GOLD, GOLD_SOFT, GREEN, RED } from "./tokens";
+import { CREAM, GOLD, GOLD_SOFT, GREEN, RED, labelStyle } from "./tokens";
 import { vibrate } from "../lib/utils";
 import { HINTS_VERSION } from "../data/hints";
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): кнопки Telegram сверху в полноэкранном режиме
@@ -244,10 +244,9 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
           <path d="M12 14c0-2 3-2.5 3-5a3 3 0 0 0-6 0"/></svg>
       </span>
       <span style={{ flex:1, minWidth:0 }}>
-        <span style={{ display:"block", fontFamily:"monospace", fontSize:10.5,
-          letterSpacing:1.8, textTransform:"uppercase", marginBottom:3,
+        <span style={{ ...labelStyle(13), display:"block", marginBottom:3,
           // 8 px на кремовом фоне золото давало 3,4:1 (страничный) и 4,25:1 (с подсветкой)
-          color: a11y ? "#6B4E14" : gold }}>подсказка</span>
+          color: a11y ? "#6B4E14" : gold }}>Подсказка</span>
         <span style={{ display:"block", fontFamily:"Georgia, serif", fontSize:12.5,
           lineHeight:1.45, color:txt }}>{text}</span>
         {total > 1 ? (
@@ -428,7 +427,7 @@ export function TimerBar({ duration, color, onExpire }) {
   return (
     <div style={{ marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-        <span style={{ color:barColor, fontSize:11, fontFamily:"monospace", fontWeight:"bold", display:"inline-flex", alignItems:"center", gap:4 }}>{MOD_SVG["⚡"](barColor, 12)}БЫСТРЫЙ ВЫБОР</span>
+        <span style={{ ...labelStyle(13.5), color:barColor, display:"inline-flex", alignItems:"center", gap:4 }}>{MOD_SVG["⚡"](barColor, 12)}Быстрый выбор</span>
         <span style={{ color:barColor, fontSize:12.5, fontWeight:"bold" }}>{timeLeft}с</span>
       </div>
       <div style={{ height:4, background:"rgba(255,255,255,0.1)", borderRadius:3, overflow:"hidden" }}>
@@ -445,7 +444,7 @@ export function SayAloud({ phrase, T, color }) {
     <div style={{ background:"rgba(200,169,110,0.1)", border:"1.5px solid rgba(200,169,110,0.4)", borderRadius:14, padding:"13px 14px", marginBottom:10 }}>
       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
         <span style={{ fontSize:16 }}>🗣</span>
-        <span style={{ color:gold, fontSize:11, letterSpacing:1.5, fontFamily:"monospace", fontWeight:"bold" }}>А ТЕПЕРЬ — ВСЛУХ</span>
+        <span style={{ ...labelStyle(13.5), color:gold }}>А теперь — вслух</span>
       </div>
       <div style={{ color:T.para.color, fontSize:14, lineHeight:1.6, fontStyle:"italic", marginBottom:done===null?12:10 }}>«{phrase}»</div>
       {done===null ? (

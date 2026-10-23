@@ -5,7 +5,7 @@ import React from "react";
 import { faceIcon, flameIcon, trophyIcon } from "./icons-extra";
 import { rpc, saToken } from "../api/supabase";
 import { vibrate, hapticsOn } from "../lib/utils";
-import { BROWN, GOLD, GREEN, GREEN_DARK, INK } from "./tokens";
+import { BROWN, GOLD, GREEN, GREEN_DARK, INK, labelStyle } from "./tokens";
 
 export function moodPalette(a11y) {
   return a11y
@@ -169,7 +169,7 @@ export function TeamMoodCard({ a11y }) {
   };
   return (
     <div style={_moodBase(C, a11y)}>
-      <div style={{ color:C.gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10 }}>📊 ПУЛЬС КОМАНДЫ · СЕГОДНЯ</div>
+      <div style={{ ...labelStyle(13.5), color:C.gold, marginBottom:10 }}>📊 Пульс команды · сегодня</div>
       {total === 0 ? (
         <div style={{ color:C.muted, fontSize:12.5, lineHeight:1.5 }}>Сегодня ещё нет ответов. Команда отметит настрой в течение дня.</div>
       ) : (

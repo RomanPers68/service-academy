@@ -9,7 +9,7 @@
 import React from "react";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { PlaceCard, MasterMark } from "./screens-gamification";
-import { GOLD, goldText } from "./tokens";
+import { GOLD, goldText, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { POINTS, weekPoints, weekStart } from "../lib/activity";
 import { useHintOnce, HintBubble } from "./widgets";
@@ -141,14 +141,14 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
         {hint && hsteps.length ? <HintBubble a11y={!!T.a11y} text={hsteps[hstep]} arrow="up" step={hstep + 1} total={hsteps.length}
           onNext={hstep >= hsteps.length - 1 ? null : () => setHstep((v) => v + 1)} onClose={hintDone} /> : null}
         <div style={card}>
-          <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>НЕДЕЛЯ С {ws.getDate()}.{String(ws.getMonth() + 1).padStart(2, "0")} · {left ? "ДО ФИНАЛА " + left + " " + plural(left, "ДЕНЬ", "ДНЯ", "ДНЕЙ").toUpperCase() : "ФИНАЛ СЕГОДНЯ"}</div>
+          <div style={{ ...labelStyle(13.5), color: gold }}>Неделя с {ws.getDate()}.{String(ws.getMonth() + 1).padStart(2, "0")} · {left ? "до финала " + left + " " + plural(left, "день", "дня", "дней") : "финал сегодня"}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
             <span style={{ fontFamily: "Georgia, serif", fontSize: 30, fontWeight: "bold", color: text }}>{myPts}</span>
             <span style={{ fontSize: 13, color: sub }}>{plural(myPts, "очко", "очка", "очков")} у тебя{myRow && myRow.days ? " · " + myRow.days + " " + plural(myRow.days, "день", "дня", "дней") + " в деле" : ""}</span>
           </div>
           {phoneExtra ? <div style={{ fontSize: 12, color: sub, marginTop: 4, lineHeight: 1.45 }} data-phone-extra="">Телефон насчитал {localPts} — в лиге считаются уроки и тесты, записанные на сервере (повторы того же урока очков не прибавляют).</div> : null}
           {ahead ? <div style={{ fontSize: 13, color: text, marginTop: 6, lineHeight: 1.45 }} role="status">До {myI}-го места — {gap} {plural(gap, "очко", "очка", "очков")}: это {gapWords(gap)}.</div>
-            : myI === 0 && myPts > 0 ? <div style={{ fontSize: 13, color: text, marginTop: 6 }} role="status">Ты первый(ая) {scope === "net" && twoScopes ? "во всей сети" : twoScopes ? "в заведении" : ""} ✦ Держи темп до воскресенья.</div> : null}
+            : myI === 0 && myPts > 0 ? <div style={{ fontSize: 13, color: text, marginTop: 6 }} role="status">Ты первый(ая){scope === "net" && twoScopes ? " во всей сети" : twoScopes ? " в заведении" : ""}. Держи темп до воскресенья.</div> : null}
           <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.45 }}>Очки — за занятия, а не за стаж: каждую неделю все начинают с нуля.</div>
           <button type="button" onClick={() => setHow((v) => !v)} aria-expanded={how} style={{ marginTop: 8, padding: 0, border: 0, background: "none", color: gold, font: "700 12.5px Georgia, serif", cursor: "pointer" }}>{how ? "Скрыть" : "За что очки ›"}</button>
           {how ? (
@@ -171,7 +171,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
                 <CupArt size={30} a11y={a11y} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: sub, lineHeight: 1.45 }}>
                   {mePrev ? <>Прошлая неделя: <b style={{ color: text }}>{mePrev.rank_rest}-е место</b> в заведении{twoScopes && mePrev.rank_net ? ", " + mePrev.rank_net + "-е в сети" : ""} · {mePrev.pts} {plural(mePrev.pts, "очко", "очка", "очков")}</> : "На прошлой неделе очков не было"}
-                  {wins && (wins.rest || wins.net) ? <><br />Побед недели: в заведении — {wins.rest}{twoScopes ? ", в сети — " + wins.net : ""} ✦</> : null}
+                  {wins && (wins.rest || wins.net) ? <><br />Побед недели: в заведении — {wins.rest}{twoScopes ? ", в сети — " + wins.net : ""}</> : null}
                 </span>
               </div>
             ) : null}
@@ -227,7 +227,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <CupArt a11y={a11y} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>КУБОК ЗАВЕДЕНИЙ · ОЧКИ НА ЧЕЛОВЕКА</div>
+                    <div style={{ ...labelStyle(13.5), color: gold }}>Кубок заведений · очки на человека</div>
                     <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.45 }}>{cs && cs.restaurant ? <>Кубок у «{cs.restaurant}» — {cs.weeks} {plural(cs.weeks, "неделю", "недели", "недель")} подряд. </> : null}Средние очки на сотрудника — маленькое заведение на равных с большим.</div>
                   </div>
                 </div>

@@ -91,9 +91,9 @@ describe("v45: плитка — листок календаря и нить су
     expect(html).toContain('data-seg="0-6"');
     expect(html).toContain('data-now="on"');
   });
-  it("выходной: «Сегодня выходной ✦» — звезда не отрывается от слова, число приглушено, нить без отрезка", () => {
+  it("выходной: «Сегодня выходной» (v73: без ✦), число приглушено, нить без отрезка", () => {
     const raw = RAW(el({ label: "выходной", now: at(12) }));
-    expect(raw).toContain('Сегодня выходной <span style="color:#E2C484">✦</span>');
+    expect(raw).toContain('data-when="off"'); expect(raw).toContain('>Сегодня выходной</div>'); expect(raw).not.toContain("✦");
     expect(raw).toContain('aria-label="График смен. Сегодня выходной"');
     expect(raw).toMatch(/data-sched-day=""[^>]*color:#A99B7E">/);
     expect(raw).toContain('data-sched-thread=""');

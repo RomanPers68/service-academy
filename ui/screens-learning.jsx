@@ -26,7 +26,8 @@ import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { frostOf } from "./home-hubs";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
+// v73 (Доп. 386): подписи и бейджи — курсивом, обычными буквами (labelStyle); счётчики «3 / 12» — моноширинным
 import { LiveDialogue } from "./screens-dialogue";
 import { practiceRound } from "../lib/practice-round";
 import { lessonCards } from "../lib/lesson-cards";
@@ -172,7 +173,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
             onClose={mkHintDone} />
         ) : null}
       <div style={{ padding: "10px 18px 0" }}>
-        <div style={{ ...T.secTitle, padding: "0 0 8px" }}>СЛАБЫЕ ТЕМЫ</div>
+        <div style={{ ...T.secTitle, padding: "0 0 8px" }}>Слабые темы</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
           {weak.slice(0, 6).map(([name, n]) => (
             <div key={name} style={{ ...T.modSub, fontSize: 12.5, padding: "5px 10px", borderRadius: 9, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", gap: 6 }}>
@@ -648,7 +649,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const statOf = (m) => {
     const st = stepsOf(m); const dn = st.filter(isDoneL).length;
     if (!st.length) return "";
-    if (dn >= st.length) { const tp = topicOf(m); return tp && tp.gold ? "золотая тема ✦" : tp && tp.f && tp.f.level !== "fresh" ? freshLabel(tp.f) : "тема пройдена ✓"; }
+    if (dn >= st.length) { const tp = topicOf(m); return tp && tp.gold ? "золотая тема" : tp && tp.f && tp.f.level !== "fresh" ? freshLabel(tp.f) : "тема пройдена ✓"; }
     const left = st.filter((l) => !isDoneL(l)).reduce((a, l) => a + _estMins(l), 0);
     return (dn ? "пройдено " + dn + " из " + st.length : st.length + " " + stepsWord(st.length)) + " · ≈ " + _fmtMins(left);
   };
@@ -768,7 +769,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
             <span style={{ display:"inline-flex", alignItems:"center", flexShrink: 0 }}>{ROLE_SVG[role.id] ? ROLE_SVG[role.id](role.color, 18) : role.icon}</span>
             <span style={{ color: inkOf(role.color, a11y), fontSize:14, fontWeight:"bold", flexShrink: 0 }}>{role.label}</span>
             <span style={{ color: a11y ? "#665337" : "#c8b898", fontSize:12.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{role.sublabel}</span>
-            {role.beta && <span style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4, flexShrink: 0 }}>BETA</span>}
+            {role.beta && <span style={{ ...labelStyle(12.5), padding:"1px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4, flexShrink: 0 }}>бета</span>}
           </div>
           <span style={{ flex: 1 }} />
           {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink: 0 }} onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
@@ -889,8 +890,8 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         const started = dn > 0;
         // Что за шаг: тест, практика или урок. Приставку из названия убираем —
         // её говорит значок, и в одной строке они спорили.
-        const kind = !step ? null : step.type === "quiz" ? "ТЕСТ"
-          : (step.situations && step.situations.length) ? "ПРАКТИКА" : "УРОК";
+        const kind = !step ? null : step.type === "quiz" ? "тест"
+          : (step.situations && step.situations.length) ? "практика" : "урок";
         const title = String(step?.title || nx.title).replace(/^(Тест|Практика|Урок)\s*[:·—-]\s*/i, "")
           .replace(/^./, c => c.toUpperCase());
         const qn = (step?.questions || []).length;
@@ -924,7 +925,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
               </span>
               {kind ? (
                 <span style={{ position:"absolute", bottom:-4, left:"50%", transform:"translateX(-50%)",
-                  fontFamily:"monospace", fontSize:10.5, letterSpacing:1.1, whiteSpace:"nowrap",
+                  ...labelStyle(12.5), whiteSpace:"nowrap",
                   color:RC, padding:"1px 6px", borderRadius:999,
                   background: a11y ? "#F7F0E0" : "#1A1409", border:`1px solid ${RC}66` }}>{kind}</span>
               ) : null}
@@ -950,7 +951,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         const _w = _n === 1 ? "вопрос" : (_n % 10 >= 2 && _n % 10 <= 4 && (_n % 100 < 10 || _n % 100 >= 20)) ? "вопроса" : "вопросов";
         return (
           <div onClick={onMistakes} {...onActivate(onMistakes)} style={{ ...T.modCard, margin:"0 14px 12px" }}>
-            <div style={{ ...T.modBar, background:_g }} />
+            {/* v73 (Доп. 386): цветная полоска слева убрана — золото и так у значка */}
             <div style={T.modIcon}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={_g} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={T.modTitle}>Работа над ошибками</div>
@@ -971,7 +972,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           const pct = total > 0 ? Math.round((done / total) * 100) : 0;
           return (
             <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => openPage(mi)} {...onActivate(() => openPage(mi))}>
-              <div style={{ ...T.modBar, background:m.color }} />
+              {/* v73 (Доп. 386): цветная полоска слева убрана — цвет темы и так у значка, подписи и процента */}
               <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{MOD_SVG[m.icon] ? MOD_SVG[m.icon](m.color, 28) : m.icon}</div>
               <div style={T.modInfo}>
                 <div style={{ ...T.modTag, color: inkOf(m.color, a11y) }}>{m.tag} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
@@ -1010,7 +1011,7 @@ export function ModuleNextCard({ mod, next, onNext, finish, T, a11y = false }) {
     const go = () => f.onGo && f.onGo();
     return (
       <div className="sa-card" style={{ ...frost, margin: "10px 16px 96px", padding: "14px 16px", borderRadius: 18 }}>
-        <div style={{ fontSize: 11, letterSpacing: 1.6, color: goldA, fontFamily: "monospace", marginBottom: 4 }}>{(f.eyebrow || "ПРОГРАММА РОЛИ ПРОЙДЕНА ✦").toUpperCase()}</div>
+        <div style={{ ...labelStyle(13.5), color: goldA, marginBottom: 4 }}>{f.eyebrow || "Программа роли пройдена"}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: T.modTitle.color, lineHeight: 1.25 }}>{f.title || "Все уроки пройдены"}</div>
@@ -1034,7 +1035,7 @@ export function ModuleNextCard({ mod, next, onNext, finish, T, a11y = false }) {
     <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "10px 16px 96px", padding: "10px 12px 10px 12px", borderRadius: 18, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: goldA, fontFamily: "monospace", marginBottom: 2 }}>{same ? "СЛЕДУЮЩИЙ ШАГ" : `ДАЛЬШЕ · ${(next.mod && next.mod.title) || ""}`.toUpperCase()}</div>
+        <div style={{ ...labelStyle(13), color: goldA, marginBottom: 2 }}>{same ? "Следующий шаг" : `Дальше · ${(next.mod && next.mod.title) || ""}`}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.lesson.title}</div>
         <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length}` : ""}</div>
       </div>
@@ -1138,7 +1139,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         {next ? (
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px" }} onClick={onNext}>
             <span style={{ textAlign: "left", minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 11, letterSpacing: 1.4, opacity: 0.85, fontFamily: "monospace" }}>ПРОЙДЕНО ✓ · {next.other ? `ДАЛЬШЕ · ${next.mod.title}`.toUpperCase() : "ДАЛЕЕ"}</span>
+              <span style={{ ...labelStyle(13), display: "block", opacity: 0.85 }}>Пройдено ✓ · {next.other ? `дальше · ${next.mod.title}` : "далее"}</span>
               <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70vw" }}>{next.lesson.title}{next.done ? " ✓" : ""}</span>
             </span>
             <span style={{ fontSize: 21, flexShrink: 0 }}>›</span>
@@ -1151,7 +1152,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           <div onClick={onSkipped} {...onActivate(onSkipped)} style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${color}44`, background: `${color}12`, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
             <span style={{ color, flexShrink: 0, fontSize: 14 }}>⚑</span>
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 11, letterSpacing: 1.4, color, fontFamily: "monospace" }}>{skipped.count > 1 ? `ПОЗАДИ ${skipped.count} НЕПРОЙДЕННЫХ` : "ПОЗАДИ ОСТАЛСЯ"}</span>
+              <span style={{ ...labelStyle(13.5), display: "block", color }}>{skipped.count > 1 ? `Позади ${skipped.count} непройденных` : "Позади остался"}</span>
               <span style={{ display: "block", fontSize: 14, color: T.modTitle.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{skipped.lesson.title}</span>
             </span>
             <span style={{ padding: "7px 12px", borderRadius: 999, border: `1px solid ${color}88`, color, fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", flexShrink: 0 }}>Пройти ›</span>
@@ -1302,7 +1303,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     return (
       <div style={{ marginTop: mt }}>
         <button className="sa-btn sa-btn-pulse" data-tb-check="" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }} onClick={() => { vibrate("light"); setCheckOpen(true); }}>
-          <span>Закрепить у стола</span><span style={{ fontFamily: "monospace", fontSize: 11, letterSpacing: 1, opacity: 0.85 }}>· 2 ситуации{dueN ? " + повтор" : ""}</span>
+          <span>Закрепить у стола</span><span style={{ ...labelStyle(13), opacity: 0.85 }}>· 2 ситуации{dueN ? " + повтор" : ""}</span>
         </button>
         <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", color: T.modTitle?.color || "#F0E8D8", border: `1px solid ${color}88`, boxShadow: "none" }} onClick={onComplete}>Урок пройден ✓</button>
         <div style={{ textAlign: "center", fontSize: 12, color: T.modSub.color, marginTop: 8, lineHeight: 1.45 }}>У стола — ситуации из практики этого раздела по теме урока. Можно пропустить.</div>
@@ -1582,12 +1583,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
 
     // Метаданные жанра
     const genreMeta = {
-      action:   { label:"ЧТО ДЕЛАЕШЬ?",   gicon:"clap",   color:GREEN },
-      find:     { label:"НАЙДИ ОШИБКУ",   gicon:"search", color:GOLD_SOFT },
-      timer:    { label:"БЫСТРЫЙ ВЫБОР",  gicon:"bolt",   color:RED },
-      truefalse:{ label:"ВЕРНО / НЕВЕРНО", gicon:"cards",  color:"#8B7BAB" },
-      complete: { label:"СОБЕРИ ПРАВИЛО",  gicon:"link",   color:"#7B8FAB" },
-      empathy:  { label:"РОЛЬ ГОСТЯ",     gicon:"mask",   color:GOLD },
+      // v73: бейдж жанра — курсивом, строчными
+      action:   { label:"что делаешь?",   gicon:"clap",   color:GREEN },
+      find:     { label:"найди ошибку",   gicon:"search", color:GOLD_SOFT },
+      timer:    { label:"быстрый выбор",  gicon:"bolt",   color:RED },
+      truefalse:{ label:"верно / неверно", gicon:"cards",  color:"#8B7BAB" },
+      complete: { label:"собери правило",  gicon:"link",   color:"#7B8FAB" },
+      empathy:  { label:"роль гостя",     gicon:"mask",   color:GOLD },
     };
     const gm = genreMeta[genre] || genreMeta.action;
     const sayPhrase = sit.say || ((genre === "action" || genre === "empathy") && sit.options ? sit.options[sit.correct] : null);
@@ -1627,7 +1629,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
 
           {/* Жанр-бейдж */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <span style={{ background:`${gm.color}22`, borderRadius:18, padding:"3px 12px", fontSize:10.5, fontFamily:"monospace", letterSpacing:1, color:gm.color, border:`1px solid ${gm.color}44`, display:"inline-flex", alignItems:"center", gap:4 }}>
+            <span style={{ ...labelStyle(13), background:`${gm.color}22`, borderRadius:18, padding:"2px 12px", color:gm.color, border:`1px solid ${gm.color}44`, display:"inline-flex", alignItems:"center", gap:4 }}>
               {gm.gicon === "bolt" ? MOD_SVG["⚡"](gm.color, 11) : gm.gicon === "link" ? MOD_SVG["🔗"](gm.color, 11) : GAME_SVG[gm.gicon] ? GAME_SVG[gm.gicon](gm.color, 11) : null}{gm.label}
             </span>
             <span style={{ color:T.modSub.color, fontSize:11, fontFamily:"monospace" }}>{practiceState.step+1}/{situations.length}</span>
@@ -1640,7 +1642,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {genre==="truefalse" && (
             <>
               <div style={{ background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(255,250,238,0.05)", borderRadius:14, padding:"16px", marginBottom:12, border: T.a11y ? "1px solid rgba(139,106,48,0.3)" : "1px solid rgba(255,255,255,0.13)", boxShadow: T.a11y ? "inset 0 0 18px rgba(255,250,235,0.5)" : "inset 0 0 18px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
-                <div style={{ color:T.modSub.color, fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:6 }}>УТВЕРЖДЕНИЕ</div>
+                <div style={{ ...labelStyle(13), color:T.modSub.color, marginBottom:6 }}>Утверждение</div>
                 <div style={{ color:T.para.color, fontSize:14, lineHeight:1.7, fontStyle:"italic" }}>«{sit.statement}»</div>
               </div>
               <div style={{ display:"flex", gap:10, marginBottom:10 }}>
@@ -1665,7 +1667,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {genre==="complete" && (
             <>
               <div style={{ ...T.simScen, borderRadius:14, padding:"14px", marginBottom:12 }}>
-                <div style={{ color:T.modSub.color, fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:6 }}>НАЧАЛО ПРАВИЛА</div>
+                <div style={{ ...labelStyle(13), color:T.modSub.color, marginBottom:6 }}>Начало правила</div>
                 <div style={{ color:T.para.color, fontSize:14, lineHeight:1.7 }}>{sit.start} <span style={{ color:gm.color }}>___?</span></div>
               </div>
               <div style={{ color:T.bold.color, fontSize:14, fontWeight:"bold", marginBottom:10 }}>Выбери правильное продолжение:</div>
@@ -1685,11 +1687,11 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {genre==="empathy" && (
             <>
               <div className="sa-fast" style={{ ...T.simScen, background:"rgba(200,169,110,0.12)", borderRadius:14, padding:"14px", marginBottom:6, border:"1px solid rgba(200,169,110,0.25)" }}>
-                <div style={{ color:GOLD_SOFT, fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{GAME_SVG.thought(GOLD_SOFT, 13)}<span>МЫСЛИ ГОСТЯ</span></div>
+                <div style={{ ...labelStyle(13), color:GOLD_SOFT, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{GAME_SVG.thought(GOLD_SOFT, 13)}<span>Мысли гостя</span></div>
                 <div style={{ color:T.para.color, fontSize:14, lineHeight:1.7, fontStyle:"italic" }}>«{sit.guestThought}»</div>
               </div>
               <div className="sa-fast" style={{ ...T.simScen, borderRadius:14, padding:"12px", marginBottom:12, animationDelay:"0.08s" }}>
-                <div style={{ color:T.modSub.color, fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:4 }}>СИТУАЦИЯ</div>
+                <div style={{ ...labelStyle(13), color:T.modSub.color, marginBottom:4 }}>Ситуация</div>
                 <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.65 }}>{sit.scene}</div>
               </div>
               <div className="sa-fast" style={{ color:T.bold.color, fontSize:14, fontWeight:"bold", marginBottom:10, animationDelay:"0.14s" }}>{sit.question}</div>
@@ -1769,7 +1771,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             </div>
             {wrongAnswers.length > 0 && (
               <div>
-                <div style={{ color, fontSize:14, fontWeight:"bold", letterSpacing:1, fontFamily:"monospace", marginBottom:12 }}>РАЗБОР ОШИБОК</div>
+                <div style={{ ...labelStyle(16), color, marginBottom:12 }}>Разбор ошибок</div>
                 {wrongAnswers.map((a,i) => (
                   <div key={i} style={{ background:T.progCard.background, borderRadius:14, padding:"14px 16px", marginBottom:12, border:`1px solid ${color}44` }}>
                     <div style={{ ...T.para, fontWeight:"bold", marginBottom:8 }}>{a.question.q}</div>
@@ -1802,7 +1804,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       <div style={T.screen}>
         <div style={{ ...T.lessHead, gap: 8 }}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => { commitPending(); onBack(); }}>‹</button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div data-quiz-kind style={{ fontFamily: "monospace", fontSize: light ? 12 : 10.5, letterSpacing: 2, textTransform: "uppercase", color: light ? "#7A5A1E" : GOLD, marginBottom: 2 }}>Тест · {nQ} {nQ % 10 === 1 && nQ % 100 !== 11 ? "вопрос" : (nQ % 10 >= 2 && nQ % 10 <= 4 && (nQ % 100 < 10 || nQ % 100 >= 20)) ? "вопроса" : "вопросов"}</div>
+            <div data-quiz-kind style={{ ...labelStyle(light ? 14.5 : 13), color: light ? "#7A5A1E" : GOLD, marginBottom: 2 }}>Тест · {nQ} {nQ % 10 === 1 && nQ % 100 !== 11 ? "вопрос" : (nQ % 10 >= 2 && nQ % 10 <= 4 && (nQ % 100 < 10 || nQ % 100 >= 20)) ? "вопроса" : "вопросов"}</div>
             <div data-quiz-title style={{ ...T.lessHeadTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{quizTopic(lesson.title)}</div>
           </div>
           <QuizPlates mistakes={mistakesNow} light={light} justBroke={pendingBad} />
@@ -1912,7 +1914,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           // Заголовок раздела — перед первым термином каждой категории
           const showCat = g.cat && (i === 0 || filtered[i - 1].cat !== g.cat);
           const catHeader = showCat && (
-            <div key={"cat_" + g.cat} style={{ fontFamily:"monospace", color: color || GOLD, fontSize:10.5, letterSpacing:2.5, textTransform:"uppercase", margin: i === 0 ? "2px 2px 10px" : "22px 2px 10px", opacity:0.85, display:"flex", alignItems:"center", gap:8 }}>
+            <div key={"cat_" + g.cat} style={{ ...labelStyle(13), color: color || GOLD, margin: i === 0 ? "2px 2px 10px" : "22px 2px 10px", opacity:0.85, display:"flex", alignItems:"center", gap:8 }}>
               <span>{g.cat}</span>
               <span style={{ flex:1, height:1, background:`${color || GOLD}33` }} />
             </div>

@@ -31,12 +31,12 @@ describe("v59: контраст и слова", () => {
     expect(rd("ui/widgets.jsx")).toContain('const dim = muted || (a11y ? "#5C3D10" : "#A6926C");');
     expect(rd("ui/widgets.jsx")).toContain("opacity: active ? 1 : 0.92,");
   });
-  it("слов «администратор» в экранах больше нет: код выдаёт руководитель, чип владельца — «ВЛАДЕЛЕЦ»", () => {
+  it("слов «администратор» в экранах больше нет: код выдаёт руководитель, чип владельца — «владелец» (v73: курсивом)", () => {
     const team = rd("ui/screens-team.jsx");
     expect(team).toContain("Введи код доступа — его выдаёт руководитель.");
     expect(team).toContain("Нет кода? Спроси у руководителя —<br/>он создаст тебя в системе за минуту.");
     expect(team).toContain("обратись к руководителю.");
-    expect((team.match(/>ВЛАДЕЛЕЦ<\/span>/g) || []).length).toBe(2);
+    expect((team.match(/>владелец<\/span>/g) || []).length).toBe(2);
     for (const f of ["App.jsx", "ui/screens-team.jsx", "ui/screens-roleselect.jsx", "ui/screens-admin.jsx", "data/hints.js"]) expect(rd(f)).not.toMatch(/администратор|АДМИН\b/);
   });
   it("мелкие тексты: «Ролей завершено N/6», склонение «вопросов», неразрывный «— N», карточка про кнопку AI на компьютере", () => {
@@ -55,7 +55,7 @@ describe("v59: контраст и слова", () => {
     expect(t).toContain('lead = false, shift = "", off = false, data, onReload, onTask, onComplete }) {');
     expect(t).toContain("const restDay = off && !(team && team.me_on);");
     expect(t).toContain("const myTasks = restDay ? [] : tasks;");
-    expect(t).toContain('<><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены — в рабочий день. Отдыхай ✦</div></>');
+    expect(t).toContain('<><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены — в рабочий день. Отдыхай.</div></>');   // v73: без ✦
     expect(rd("App.jsx")).toContain("shift={shiftText} off={!!(shiftToday && shiftToday.off)}");
   });
 });
@@ -110,9 +110,10 @@ describe("v59: шрифт, логотип, обновление", () => {
   });
   it("логотипы — файлы в public/assets, а не base64 в коде", () => {
     const logo = rd("assets/logo.js");
-    expect(logo).toContain('export const LOGO_SRC = "/assets/logo-light.webp";');
-    expect(logo).toContain('export const LOGO_SRC_DARK = "/assets/logo-dark.webp";');
-    expect(logo.length).toBeLessThan(2000);
+    // v73: экспорт живой (let) — после загрузки адрес меняется на blob: из памяти (см. tests/v73.test.js)
+    expect(logo).toContain('export let LOGO_SRC = "/assets/logo-light.webp";');
+    expect(logo).toContain('export let LOGO_SRC_DARK = "/assets/logo-dark.webp";');
+    expect(logo.length).toBeLessThan(2600);
     expect(existsSync("public/assets/logo-dark.webp") && existsSync("public/assets/logo-light.webp")).toBe(true);
   });
   it("обновление: при открытии — перезагрузка, позже — тост «Готова новая версия · Обновить» (кнопки «Обновить» и «Позже»)", () => {

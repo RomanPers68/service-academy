@@ -117,10 +117,10 @@ describe("v58: мелкий текст (неудобство 12)", () => {
     }
     expect(bad).toEqual([]);
     const st = rd("ui/styles.js");
-    expect(st).toContain("secTitle: { color:MUTED_2, fontSize:10.5, letterSpacing:4, padding:\"10px 20px 4px\",");
-    expect(st).toContain("modTag: { fontSize:10.5, letterSpacing:2,");
+    expect(st).toContain('secTitle: { ...labelStyle(13.5), color:"#C9A867", padding:"10px 20px 4px" },');   // v73: курсив 13,5 px — крупнее прежнего капса 10,5
+    expect(st).toContain("modTag: { ...labelStyle(13), marginBottom:1 },");
     expect(rd("ui/css.js")).toContain("font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#C8A96E}\n    .sa-step.done .sa-stepnum");
-    expect(rd("ui/day-cards.jsx")).toContain(".sa-dp-cap{display:block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;");
+    expect(rd("ui/day-cards.jsx")).toContain(".sa-dp-cap{display:block;${LABEL_CSS};font-size:12.5px;");   // v73: курсивом
   });
 });
 
@@ -144,7 +144,7 @@ describe("v58: обрезки и заголовки (неудобства 13, 14
     expect(w).toContain('<div aria-hidden data-seg-more=""');
     expect(w).toContain('try { el.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {}');
     expect(w).toContain("  if (!scroll) return track;");
-    expect(rd("ui/guestbook.jsx")).toContain('itemStyle={{ ...MONO, fontSize: 11.5, letterSpacing: .4, padding: "8px 13px" }}');
+    expect(rd("ui/guestbook.jsx")).toContain('itemStyle={{ padding: "8px 13px" }}');   // v73: шрифт — как у остальных переключателей
   });
   it("лидеры ресторана: медальон над именем — имя целиком; «Меню» — заголовок без названия ресторана дважды", () => {
     const h = rd("ui/home-hubs.jsx");

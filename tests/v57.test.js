@@ -47,7 +47,7 @@ describe("v57: лента — мастера, рекорды, «спасибо»
       { who: "Ангелина Токарева", role: "seasonal", at: ago(2), me: false },
       { who: "Ангелина Токарева", role: "core", at: ago(9), me: false },
       { who: "Анна Смирнова", role: "spg", at: ago(1), me: true }] });
-    expect(f.map((x) => x.text)).toEqual(["стал(а) мастером роли «Хостес» ✦", "стала мастером роли «Ядро» ✦"]);
+    expect(f.map((x) => x.text)).toEqual(["стал(а) мастером роли «Хостес»", "стала мастером роли «Ядро»"]);   // v73: без ✦
     expect(f[0].who).toBe("Ты");
   });
   it("рекорды и печати — понятными словами, с падежами", () => {
@@ -64,7 +64,7 @@ describe("v57: лента — мастера, рекорды, «спасибо»
     const f = buildFeed({ now: NOW, me, restaurant: R, titleOf, thanks: [{ name: "Ольга", initial: "О", me: false }],
       scores: [score("Иван", "Петров", "s0-q", 9, 12, 1)], achievements: [{ name: "Мария", surname: "Ким", key: "rush_best", value: 74, at: ago(0, 9) }] });
     expect(f.map((x) => x.kind)).toEqual(["thanks", "record", "test"]);
-    expect(f[0]).toMatchObject({ who: "Ольга", text: "— спасибо команде ✦" });
+    expect(f[0]).toMatchObject({ who: "Ольга", text: "— спасибо команде" });
     const many = Array.from({ length: 30 }, (_, i) => score("Имя" + i, "Ф", "s0-q", 12, 12, i % 10));
     expect(buildFeed({ now: NOW, restaurant: R, titleOf, scores: many }).length).toBe(15);
     expect(buildFeed({})).toEqual([]);

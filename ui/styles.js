@@ -2,7 +2,7 @@
 // Тема оформления: S — тёмная (основная), A — светлая (режим чтения).
 // A наследует S через спред. Из App.jsx (строки 8702–8872).
 
-import { GOLD, GOLD_LOGO, GOLD_SOFT, GREEN, GREEN_DARK, RED, RED_DARK, CREAM, CREAM_SOFT, SAND, SAND_DEEP, PAPER, INK, INK_DEEP, BROWN, BROWN_GOLD, BROWN_NOTE, MUTED, MUTED_2, MUTED_3, CLAY, BG_DARK, PANEL, PANEL_2 } from "./tokens";
+import { GOLD, GOLD_LOGO, GOLD_SOFT, GREEN, GREEN_DARK, RED, RED_DARK, CREAM, CREAM_SOFT, SAND, SAND_DEEP, PAPER, INK, INK_DEEP, BROWN, BROWN_GOLD, BROWN_NOTE, MUTED, MUTED_2, MUTED_3, CLAY, BG_DARK, PANEL, PANEL_2, labelStyle } from "./tokens";
 
 // Акцентный шрифт витрины: ТОЛЬКО заголовки и крупные цифры результатов.
 // Основной текст остаётся на Georgia — ритм чтения не трогаем (урок Spectral).
@@ -19,8 +19,8 @@ export const S = {
   screen: { display:"flex", flexDirection:"column", minHeight:"calc(100vh - var(--sa-st, 0px) - var(--sa-top, 0px) - var(--sa-padb, 0px) - var(--sa-fab, 0px))", background:"transparent", overflowX:"hidden" },
 
   a11yBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 18px", background:"transparent", borderBottom:"1px solid rgba(255,255,255,0.08)" },
-  a11yLabel: { color:"#A09080", fontSize:11, fontFamily:"monospace", letterSpacing:1 },
-  a11yBtn: { border:"none", borderRadius:11, color:"#fff", fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"monospace", boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 8px rgba(0,0,0,0.25)" },
+  a11yLabel: { color:"#A09080", fontSize:12, fontFamily:"Georgia, serif", letterSpacing:1 },   // v73: без моноширинного
+  a11yBtn: { border:"none", borderRadius:11, color:"#fff", fontSize:11, padding:"5px 12px", cursor:"pointer", fontFamily:"Georgia, serif", boxShadow:"inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 8px rgba(0,0,0,0.25)" },
 
   roleHeader: { background:"transparent" },
   logoText: { color:GOLD_LOGO, fontSize:14, letterSpacing:5, fontFamily:"monospace" },
@@ -50,14 +50,16 @@ export const S = {
   progBar: { height:4, background:"#2A2418", borderRadius:2, overflow:"hidden", marginBottom:6 },
   progFill: { height:"100%", borderRadius:2, transition:"width 0.6s cubic-bezier(0.4,0,0.2,1)" },
   progSub: { color:MUTED_2, fontSize:11 },
-  secTitle: { color:MUTED_2, fontSize:10.5, letterSpacing:4, padding:"10px 20px 4px", fontFamily:"monospace", textTransform:"uppercase" },   // v58: метка 10,5 px (была 9), отступы на 6 px плотнее — экран «Меню» по-прежнему помещается целиком
+  // v58: отступы на 6 px плотнее — экран «Меню» помещается целиком. v73 (Доп. 386): подпись раздела — курсивом обычными
+  // буквами, золотом, как подписи групп на вкладках (было: моноширинный капс вразрядку, 10,5 px, серый)
+  secTitle: { ...labelStyle(13.5), color:"#C9A867", padding:"10px 20px 4px" },
 
   modList: { padding:"0 14px 32px", display:"flex", flexDirection:"column", gap:8 },
   modCard: { background:"rgba(226,186,116,0.11)", border:"1px solid rgba(214,178,102,0.28)", boxShadow:"inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 20px rgba(0,0,0,0.35)", borderRadius:20, padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", position:"relative", overflow:"hidden" },
   modBar: { position:"absolute", left:0, top:0, bottom:0, width:3 },
   modIcon: { fontSize:22, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", borderRadius:10, flexShrink:0 },
   modInfo: { flex:1 },
-  modTag: { fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:2, textTransform:"uppercase" },
+  modTag: { ...labelStyle(13), marginBottom:1 },   // v73: бирка над названием раздела — курсивом (была моноширинным капсом)
   modTitle: { color:CREAM, fontSize:15, fontWeight:"bold", marginBottom:1, fontFamily:ACCENT_SERIF },
   modSub: { color:MUTED_3, fontSize:12 },
   modRight: { display:"flex", flexDirection:"column", alignItems:"center", gap:2 },
@@ -93,7 +95,7 @@ export const S = {
   doneBtn: { width:"100%", padding:"14px", border:"1px solid rgba(255,255,255,0.2)", borderRadius:16, color:"#fff", fontSize:15, fontWeight:"bold", cursor:"pointer", marginTop:24, fontFamily:"Georgia, serif", letterSpacing:0.3, boxShadow:"0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15)" },
 
   quizWrap: { flex:1, padding:"16px 18px 36px" },
-  quizProgress: { color:MUTED_3, fontSize:10.5, letterSpacing:2, fontFamily:"monospace", marginBottom:14, textTransform:"uppercase" },
+  quizProgress: { ...labelStyle(13), color:MUTED_3, marginBottom:14 },   // v73: курсивом (был моноширинный капс)
   quizQ: { color:CREAM, fontSize:15, lineHeight:1.75, marginBottom:18, fontWeight:"bold", whiteSpace:"pre-wrap" },
   quizOpt: { background:"rgba(255,250,238,0.05)", border:"1px solid rgba(255,255,255,0.13)", borderTop:"1px solid rgba(255,255,255,0.20)", boxShadow:"inset 0 0 18px rgba(255,248,230,0.06), 0 4px 16px rgba(0,0,0,0.40), 0 1px 0 rgba(200,160,60,0.14) inset", borderRadius:12, padding:"12px 14px", marginBottom:7, color:SAND_DEEP, fontSize:14, lineHeight:1.6, transition:"background 0.18s, border-color 0.18s", cursor:"pointer" },
   explain: { borderLeft:"3px solid", color:"#C8B89A", fontSize:12, lineHeight:1.7, marginTop:10, background:"linear-gradient(150deg, #2E2010 0%, #1E1508 100%)", padding:"10px 14px", borderRadius:"0 12px 12px 0", boxShadow:"0 3px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(200,160,60,0.10) inset" },
@@ -139,7 +141,7 @@ export const A = {
   progLabel:  { ...S.progLabel, color:INK, fontSize:16 },
   progBar:    { ...S.progBar, background:"rgba(160,120,60,0.15)" },
   progSub:    { ...S.progSub, color:BROWN, fontSize:14 },
-  secTitle:   { ...S.secTitle, color:"#6D5A40", fontSize:13, fontWeight:"normal" },   // 4,5 на креме (правка 170)
+  secTitle:   { ...S.secTitle, color:"#7A5A1E", fontSize:15, fontWeight:"normal" },   // тёмное золото на креме — 5,4 (правка 170: было серое #6D5A40)
 
   modList:    { ...S.modList, gap:10 },
   modCard:    { ...S.modCard, background:"rgba(250,242,222,0.60)", border:"1px solid rgba(139,106,48,0.35)", boxShadow:"inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 14px rgba(120,90,30,0.10)" },
@@ -147,7 +149,7 @@ export const A = {
   modTitle:   { ...S.modTitle, color:INK, fontSize:17, fontWeight:"bold" },
   modSub:     { ...S.modSub, color:"#6D5A40", fontSize:15 },   // 4,5 на креме (правка 172)
   modArrow:   { ...S.modArrow, color:CLAY },
-  modTag:     { ...S.modTag, fontSize:13 },
+  modTag:     { ...S.modTag, fontSize:14.5 },
 
   lessCard:   { ...S.lessCard, background:"rgba(250,242,222,0.60)", boxShadow:"inset 0 0 20px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.85), 0 3px 12px rgba(120,90,30,0.10), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset", border:"1px solid rgba(175,140,65,0.18)", borderTop:"1px solid rgba(255,240,200,0.65)",  },
   lessTitle:  { ...S.lessTitle, color:INK, fontSize:17 },
@@ -177,7 +179,7 @@ export const A = {
   doneBtn:    { ...S.doneBtn, fontSize:17, padding:"16px", border:"1px solid rgba(160,120,60,0.3)", color:"#fff", boxShadow:"0 4px 20px rgba(100,70,20,0.2), inset 0 1px 0 rgba(255,220,140,0.2)" },
 
   quizWrap:      { ...S.quizWrap, background:"transparent" },
-  quizProgress:  { ...S.quizProgress, color:"#7A654C", fontSize:14 },
+  quizProgress:  { ...S.quizProgress, color:"#7A654C", fontSize:16 },
   quizQ:         { ...S.quizQ, color:INK, fontSize:18, lineHeight:1.9 },
   quizOpt:       { ...S.quizOpt, background:"rgba(250,242,222,0.55)", border:"1px solid rgba(139,106,48,0.30)", borderTop:"1px solid rgba(255,252,240,0.9)", boxShadow:"inset 0 0 18px rgba(255,250,235,0.5), 0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.70) inset", color:INK, fontSize:16, padding:"14px 16px",  },
   explain:       { ...S.explain, color:INK, background:"rgba(235,220,192,0.75)", backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(175,140,65,0.20)", borderTop:"1px solid rgba(255,240,200,0.60)", fontSize:16, boxShadow:"0 3px 12px rgba(120,90,30,0.10), 0 1px 0 rgba(255,248,230,0.65) inset" },

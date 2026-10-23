@@ -18,6 +18,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { rpc, rpcSync, saToken, rpcMissing } from "../api/supabase";
 import { Confetti } from "./widgets";
 import { ROLES } from "../data/roles";
+import { labelStyle } from "./tokens";
 
 const keyFor = (profile) => `sa_skills_${(profile?.name || "guest")}|${(profile?.surname || "")}`.toLowerCase();
 const load = (profile) => { try { return JSON.parse(localStorage.getItem(keyFor(profile)) || "{}"); } catch (e) { return {}; } };
@@ -201,7 +202,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
       {canRevoke && Array.isArray(inbox) ? (
         <div style={{ ...glass(T), margin: "14px 16px 4px", padding: "14px 14px 6px" }} data-hall-inbox="">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>ЖДУТ ПОДТВЕРЖДЕНИЯ В ЗАЛЕ</span>
+            <span style={{ ...labelStyle(13.5), color: gold }}>Ждут подтверждения в зале</span>
             <b style={{ color: inbox.length ? gold : T.modSub.color, fontSize: 13 }}>{inbox.length}</b>
           </div>
           {!inbox.length ? <div style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, paddingBottom: 8 }}>Запросов нет. Когда сотрудник попросит подтвердить навык, он появится здесь — подтверди, когда увидишь своими глазами.</div> : null}
@@ -243,7 +244,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
         {allDone && <div style={{ marginTop: 10, color: green, fontWeight: "bold", fontSize: 14 }}>🎓 Допущен(а) к самостоятельной работе</div>}
       </div>
 
-      <div style={{ ...T.secTitle }}>Навыки</div>
+      <div style={{ ...T.secTitle, ...labelStyle(a11y ? 15 : 13) }}>Навыки</div>
       <div style={{ padding: "0 14px 24px" }}>
         {!skills.length && <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "6px 4px" }}>Для этой роли навыки допуска пока не заданы (data/skills.js).</div>}
         {skills.map((s, i) => {
@@ -251,12 +252,12 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
           return (
             <div key={s.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", alignItems: "flex-start", opacity: 1 }}
               onClick={() => !rec && setModal(s)} {...onActivate(() => !rec && setModal(s))}>
-              <div style={{ ...T.modBar, background: rec ? green : gold }} />
+              {/* v73 (Доп. 386): цветной полоски слева больше нет — «подтверждён» видно по зелёному кружку ✓ и заголовку */}
               <div style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, border: rec ? "none" : `1.5px solid ${gold}66`, background: rec ? green : "transparent", color: rec ? "#fff" : T.modSub.color, fontSize: rec ? 15 : 13 }}>{rec ? "✓" : i + 1}</div>
               <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <div style={{ ...T.modTitle, color: rec ? green : T.modTitle.color }}>{s.label}</div>
                 <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.45 }}>{s.hint}</div>
-                {rec && <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ marginLeft: 6, fontSize: 10.5, letterSpacing: 1, color: green, border: `1px solid ${green}66`, borderRadius: 6, padding: "1px 6px", fontFamily: "monospace", verticalAlign: "1px" }}>{rec.hall ? "В ЗАЛЕ ✓" : "PIN ✓"}</span>}</div>}
+                {rec && <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ ...labelStyle(12.5), marginLeft: 6, color: green, border: `1px solid ${green}66`, borderRadius: 6, padding: "0 6px", verticalAlign: "1px" }}>{rec.hall ? "в зале ✓" : "PIN ✓"}</span>}</div>}
                 {!rec && reqs[s.id] && reqs[s.id].status === "pending" ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 6, fontSize: 11.5, color: gold }}>
                     <span>⏳ Ждёт старшего — подтвердит в зале</span>
@@ -278,7 +279,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
       {modal && createPortal(
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={closeModal}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto", background: a11y ? "rgba(250,246,236,0.96)" : "rgba(30,22,10,0.96)", borderTop: a11y ? "1px solid rgba(255,245,215,0.95)" : "1px solid rgba(215,170,68,0.5)", boxShadow: "0 -12px 44px rgba(0,0,0,0.45)", borderRadius: "22px 22px 0 0", padding: "22px 18px", paddingBottom: "max(30px, env(safe-area-inset-bottom))", color: textColor }}>
-            <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ПОДТВЕРЖДЕНИЕ НАВЫКА</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Подтверждение навыка</div>
             <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6, color: T.bold?.color }}>{modal.label}</div>
             {/* Доп. 303: старший подтвердит у себя в телефоне */}
             <div style={{ margin: "0 0 14px", padding: "12px 12px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.45)" : "rgba(255,250,238,0.04)" }}>
@@ -294,7 +295,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
               )}
               {hallErr ? <div style={{ color: "#E07878", fontSize: 12.5, marginTop: 8 }}>{hallErr}</div> : null}
             </div>
-            <div style={{ textAlign: "center", fontSize: 10.5, letterSpacing: 1.6, color: T.modSub.color, fontFamily: "monospace", margin: "0 0 10px" }}>ИЛИ ПО PIN ПРЯМО ЗДЕСЬ</div>
+            <div style={{ ...labelStyle(13), textAlign: "center", color: T.modSub.color, margin: "0 0 10px" }}>Или по PIN прямо здесь</div>
             <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
               📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
             </div>

@@ -1,5 +1,6 @@
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
+import { labelStyle } from "./tokens";
 
 // ── Дополнение 173: экран «Без сети» ──────────────────────────────────────────
 // Объясняет честно: где офлайн работает сам, где нужен экран «Домой», что
@@ -30,7 +31,7 @@ export function OfflineScreen({ T, a11y, onBack }) {
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
         <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div>
-          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>БЕЗ СЕТИ</div>
+          <div style={{ ...labelStyle(13.5), color: gold }}>Без сети</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>Подвал, кухня, лестница</div>
         </div>
       </div>
@@ -41,7 +42,7 @@ export function OfflineScreen({ T, a11y, onBack }) {
         </div>
 
         <div style={frost}>
-          <div style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 8 }}>ЧТО РАБОТАЕТ БЕЗ СВЯЗИ</div>
+          <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>Что работает без связи</div>
           <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>
             Уроки и Справочник · Колода бармена · Меню и Колода меню (сохранённая версия) · Глоссарий · SOS · прогресс и ответы на тесты (уйдут на сервер, когда появится сеть).
             <br />Не работает: Наставник и голос, свежий график, фото из облака, публикация меню.
@@ -50,7 +51,7 @@ export function OfflineScreen({ T, a11y, onBack }) {
 
         {(ios && inTg) || (!swOk && !standalone) ? (
           <div style={frost}>
-            <div style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 8 }}>{ios ? "IPHONE: ЭКРАН «ДОМОЙ»" : "БРАУЗЕР: ЭКРАН «ДОМОЙ»"}</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>{ios ? "iPhone: экран «Домой»" : "Браузер: экран «Домой»"}</div>
             <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>
               1. Нажми «Открыть в браузере» — откроется Safari.<br />
               2. В Safari: кнопка «Поделиться» (квадрат со стрелкой) → «На экран “Домой”» → Добавить.<br />
@@ -65,7 +66,7 @@ export function OfflineScreen({ T, a11y, onBack }) {
 
         {!ios && inTg && swOk ? (
           <div style={frost}>
-            <div style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 8 }}>ANDROID</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>Android</div>
             <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>В Telegram на Android офлайн уже работает — ничего делать не нужно. Хочешь иконку на экране — «Открыть в браузере» и «Добавить на главный экран» в Chrome.</div>
             <button className="sa-btn" onClick={openBrowser} style={{ ...T.doneBtn, marginTop: 12, width: "100%", background: "transparent", border: `1px solid ${gold}88`, color: gold }}>Открыть в браузере</button>
           </div>

@@ -119,7 +119,7 @@ if (want("HEAL")) {
   const o = await open({ steps: 1, streak: null });
   const c = await chips(o.page);
   const st = await o.page.evaluate((k) => JSON.parse(localStorage.getItem(k) || "null"), "sa_streak" + uk);
-  ok("HEAL: шаг сегодня есть (цель 1/1), свечи не было — горит «1 день подряд»", /^1 ДЕНЬ/.test(c || "") && /1\/1/.test(c || ""), c);
+  ok("HEAL: шаг сегодня есть (цель 1/1), свечи не было — горит «1 день подряд»", /^1 день/i.test(c || "") && /1\/1/.test(c || ""), c);
   ok("HEAL: серия записана на телефон — 1 день, последний — сегодня", st && st.count === 1 && st.last === TODAY, JSON.stringify(st));
   ok("HEAL: пламя горит", await o.page.evaluate(() => !!document.querySelector('[data-emb="flame"][data-lit="1"]')));
   await shot(o.page, "heal");
@@ -127,11 +127,11 @@ if (want("HEAL")) {
   await o.ctx.close();
   // вчера — 6 дней подряд; сегодня шаг есть, а свеча не обновилась — 7, а не 1
   const q = await open({ steps: 1, streak: { count: 6, best: 6, last: YDAY, days: [YDAY] } });
-  ok("HEAL: вчера было 6 дней подряд — сегодня 7", /^7 ДНЕЙ/.test(await chips(q.page) || ""), await chips(q.page));
+  ok("HEAL: вчера было 6 дней подряд — сегодня 7", /^7 дней/i.test(await chips(q.page) || ""), await chips(q.page));
   await q.ctx.close();
   // прервалась (последний день 5 дней назад, графика нет) — табличка честно показывает 0, без шагов сегодня
   const b = await open({ steps: 0, shift: "none", streak: { count: 5, best: 5, last: "2026-10-17", days: ["2026-10-17"] } });
-  ok("HEAL: серия прервалась — 0, а не прежние 5", /^0 ДНЕЙ/.test(await chips(b.page) || ""), await chips(b.page));
+  ok("HEAL: серия прервалась — 0, а не прежние 5", /^0 дней/i.test(await chips(b.page) || ""), await chips(b.page));
   await b.ctx.close();
 }
 
@@ -142,7 +142,7 @@ if (want("LOGIN")) {
   await o.page.fill('input[placeholder="Введите код"]', "ROMAN-1");
   await o.page.locator("button.sa-btn-pulse").click(); await sleep(2500);
   const c = await chips(o.page);
-  ok("LOGIN: после входа — серия с телефона: «7 дней», а не 0", /^7 ДНЕЙ/.test(c || ""), c);
+  ok("LOGIN: после входа — серия с телефона: «7 дней», а не 0", /^7 дней/i.test(c || ""), c);
   // шаг (тренажёр) — серия продолжается: 8
   await o.page.evaluate(() => window.dispatchEvent(new CustomEvent("sa:activity", { detail: { kind: "trainer" } }))); await sleep(800);
   const st = await o.page.evaluate((k) => JSON.parse(localStorage.getItem(k) || "null"), "sa_streak" + uk);

@@ -1,5 +1,5 @@
 // v40: «Путь мастера» — интерфейс. Медали и значки семейств, карточка на главной («Шаг дня» и строка пути),
-// поздравления (новый значок, «Первые шаги», «Мастер роли ✦»), экран «Путь мастера» (главная награда,
+// поздравления (новый значок, «Первые шаги», «Мастер роли»; v73 — без ✦ в названиях), экран «Путь мастера» (главная награда,
 // условия, приз, первые шаги в академии, 14 значков, шторка значка, мастера заведения, сертификат) и сертификат
 // картинкой (lib/master-image.js). Здесь — разметка и тексты; вид в обеих темах на 320–430 px —
 // в браузере: /home/claude/preview/mastery-harness (shoot.mjs, interact.mjs).
@@ -99,11 +99,11 @@ describe("v40 UI: металл ступеней, значки семейств, 
     expect(silver).toContain('stroke="#E8C56A"');                    // кольцо — цветом следующей ступени (золото)
     expect(R(h(Medal, { id: "warmup", tier: 3 }))).toContain('aria-label="Разминка до смены — золото"');
     expect(R(h(Medal, { id: "warmup", tier: 3, ring: false }))).not.toContain('stroke-width="3"');
-    expect(R(h(Medal, { id: "first", tier: 3, ring: false }))).toContain('aria-label="Первые шаги ✦ — получен"');
+    expect(R(h(Medal, { id: "first", tier: 3, ring: false }))).toContain('aria-label="Первые шаги — получен"');
     const master = R(h(Medal, { id: "master", tier: 3, ring: false, size: 96 }));
-    expect(master).toContain('aria-label="Мастер роли ✦ — получен"');
+    expect(master).toContain('aria-label="Мастер роли — получен"');
     expect(count(master, /L/g)).toBeGreaterThan(100);                 // фестончатый край печати
-    expect(R(h(Medal, { id: "master", tier: 0, ring: false }))).toContain("Мастер роли ✦ — ещё не получен");
+    expect(R(h(Medal, { id: "master", tier: 0, ring: false }))).toContain("Мастер роли — ещё не получен");
     // у каждой медали свои градиенты — несколько на одном экране не путаются
     const two = R(h("div", null, h(Medal, { id: "gold", tier: 3 }), h(Medal, { id: "gold", tier: 3 })));
     const ids = [...two.matchAll(/linearGradient id="([^"]+)"/g)].map((m) => m[1]);
@@ -137,13 +137,13 @@ describe("v40 UI: карточка на главной", () => {
     expect(R(h(MasteryHomeCard, { step: null, state: st, newCount: 3 }))).toContain(">3 новых<");
   });
 
-  it("шаг сделан — «Шаг дня сделан ✓», «Завтра будет новый», без «Сделать»; мастер — «Мастер роли ✦ · 12 из 14 значков»", () => {
+  it("шаг сделан — «Шаг дня сделан ✓», «Завтра будет новый», без «Сделать»; мастер — «Мастер роли · 12 из 14 значков»", () => {
     const html = R(h(MasteryHomeCard, { a11y: true, step: { ...stepOf("mid"), done: true }, state: stateOf("master") }));
     expect(html).toContain("Шаг дня сделан ✓");
     expect(html).toContain("Завтра будет новый");
     expect(html).not.toContain(">Сделать<");
-    expect(html).toContain("Мастер роли ✦ · 12 из 14 значков");
-    expect(html).toContain('aria-label="Мастер роли ✦ — получен"');
+    expect(html).toContain("Мастер роли · 12 из 14 значков");
+    expect(html).toContain('aria-label="Мастер роли — получен"');
   });
 
   it("новичок: «Первые шаги в академии · 3 из 7» — семь точек, три закрашены", () => {
@@ -177,13 +177,13 @@ describe("v40 UI: карточка на главной", () => {
 
 describe("v40 UI: поздравления", () => {
   const toastState = stateOf("mid", { ...FACTS.mid, life: { ...FACTS.mid.life, u: 15 } });
-  it("новая ступень: плашка (role=status), медаль, «✦ Новый значок · серебро», название, строка из состояния, «Путь мастера ›»", () => {
+  it("новая ступень: плашка (role=status), медаль, «Новый значок · серебро», название, строка из состояния, «Путь мастера ›»", () => {
     const html = R(h(BadgeToast, { a11y: false, item: { kind: "tier", id: "fresh", title: "Свежесть тем", tier: 2 }, state: toastState, onOpen: noop, onClose: noop, inline: true }));
     expect(html).toContain("data-ms-toast");
     expect(html).toContain('role="status"');
     expect(html).toContain('aria-label="Свежесть тем — серебро"');
-    expect(html).toContain("✦ Новый значок · серебро");
-    expect(html).toMatch(/text-transform:uppercase[^"]*">✦ Новый значок · серебро/);
+    expect(html).toContain("Новый значок · серебро");
+    expect(html).toMatch(/font-style:italic[^"]*">Новый значок · серебро/);   // v73: курсивом, не капсом
     expect(html).toContain(">Свежесть тем<");
     expect(html).toContain("15 тем освежено · до золота ещё 25");
     expect(html).toContain("Путь мастера ›");
@@ -191,29 +191,29 @@ describe("v40 UI: поздравления", () => {
     expect(html).not.toContain("data-sa-back");   // плашка не модальная: «назад» Telegram — экрану, не ей
   });
 
-  it("золото — «высшая ступень ✦»; «Первые шаги ✦» — «7 первых шагов за первые две недели»", () => {
-    expect(toastLine({ kind: "tier", id: "warmup", tier: 3 }, toastState)).toBe("40 разминок · высшая ступень ✦");
+  it("золото — «высшая ступень»; «Первые шаги» — «7 первых шагов за первые две недели»", () => {
+    expect(toastLine({ kind: "tier", id: "warmup", tier: 3 }, toastState)).toBe("40 разминок · высшая ступень");
     expect(toastLine({ kind: "tier", id: "нет" }, toastState)).toBe("");
     expect(toastLine({ kind: "tier", id: "fresh" }, null)).toBe("");
     const html = R(h(BadgeToast, { item: { kind: "firstWeek" }, state: toastState, inline: true }));
-    expect(html).toContain("✦ Новый значок<");
-    expect(html).toContain(">Первые шаги ✦<");
+    expect(html).toContain(">Новый значок<");
+    expect(html).toContain(">Первые шаги<");
     expect(html).toContain("7 первых шагов за первые две недели");
-    expect(html).toContain('aria-label="Первые шаги ✦ — получен"');
+    expect(html).toContain('aria-label="Первые шаги — получен"');
   });
 
-  it("«Мастер роли ✦» — окно по центру: печать, искры, «✦ Главная награда», «Сертификат мастера ›» и «Позже» (data-sa-back)", () => {
+  it("«Мастер роли» — окно по центру: печать, искры, «Главная награда», «Сертификат мастера ›» и «Позже» (data-sa-back)", () => {
     const html = R(h(BadgeToast, { a11y: true, item: { kind: "master", role: "core" }, state: stateOf("master"), onOpen: noop, onClose: noop, inline: true }));
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
     expect(html).toContain("data-ms-toast");
-    expect(html).toContain("✦ Главная награда");
-    expect(html).toContain(">Мастер роли «Ядро» ✦<");
+    expect(html).toContain("Главная награда");
+    expect(html).toContain(">Мастер роли «Ядро»<");
     expect(html).toContain("Роль пройдена, 5 золотых тем, серия 14 дней и 10 значков. Коллеги увидят знак ✦ у твоего имени.");
     expect(html).toContain("Сертификат мастера ›");
     expect(html).toMatch(/data-sa-back=""[^>]*>Позже</);
     expect(count(html, /<i style="--dx:/g)).toBe(12);
-    expect(R(h(BadgeToast, { item: { kind: "master", role: "x" }, inline: true }))).toContain(">Мастер роли ✦<");
+    expect(R(h(BadgeToast, { item: { kind: "master", role: "x" }, inline: true }))).toContain(">Мастер роли<");
   });
 
   it("нет события — ничего", () => {
@@ -230,8 +230,8 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(html).toContain(">Путь мастера<");
     expect(html).toContain("роль «Ядро»");
     const hero = between(html, "data-ms-hero", "data-ms-step");
-    expect(hero).toContain("✦ Главная награда");
-    expect(hero).toContain("Мастер роли «Ядро» ✦");
+    expect(hero).toContain("Главная награда");
+    expect(hero).toContain("Мастер роли «Ядро»");
     expect(hero).toContain('aria-label="Мастер роли: 7 из 13"');
     expect(hero).toMatch(/>7<\/text><text[^>]*>из 13</);
     expect(text(hero)).toContain("До звания — ещё 6 из 13. Коллеги-мастера носят знак ✦ у имени в рейтинге и лиге.");
@@ -269,7 +269,7 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(FAMILIES.map((f) => f.id).filter((id) => tile(id).includes("data-ms-new"))).toEqual(["gold", "quest", "hall"]);   // гость уже открыт
     expect(tile("track")).toContain("Трек — серебро");
     expect(tile("track")).toContain(">серебро<");
-    expect(tile("warmup")).toContain(">золото ✦<");
+    expect(tile("warmup")).toContain(">золото<");
     expect(tile("fresh")).toContain(">2 из 3<");
     expect(tile("guest")).toContain(">как получить<");
     expect(tile("table")).toContain("Практика у стола");
@@ -285,11 +285,11 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(count(first, />сделано</g)).toBe(3);
     expect(count(first, /Открыть ›/g)).toBe(4);
     expect(first).toContain("Обслужи живого гостя");
-    expect(first).toContain("Все семь — значок «Первые шаги ✦».");
+    expect(first).toContain("Все семь — значок «Первые шаги».");
     expect(screen("mid")).not.toContain("data-ms-first");   // давно в академии, неделя не собрана — блока нет
     const all = stateOf("newbie", { ...FACTS.newbie, life: { w: 1, d: 1, p: 1, r: 1, g: 1, m: 1, q: 1 }, firstDay: "2026-10-10" });
-    expect(R(h(MasteryScreen, { T: S, state: all, role: "core", inline: true }))).toContain("Значок «Первые шаги» получен ✦");
-    expect(screen("mid", { earned: { tiers: {}, fw: true, master: {} } })).toContain("Значок «Первые шаги» получен ✦");
+    expect(R(h(MasteryScreen, { T: S, state: all, role: "core", inline: true }))).toContain("Значок «Первые шаги» получен");
+    expect(screen("mid", { earned: { tiers: {}, fw: true, master: {} } })).toContain("Значок «Первые шаги» получен");
     const late = stateOf("newbie", { ...FACTS.newbie, firstDay: "2026-09-01" });
     expect(R(h(MasteryScreen, { T: S, state: late, role: "core", inline: true }))).not.toContain("data-ms-first");
     // дней осталось: 1 — «остался 1 день»
@@ -333,12 +333,12 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(screen("mid", { masters: { ...MASTERS, prize: null } })).not.toContain("data-ms-prize");   // ни приза, ни прав — строки нет
   });
 
-  it("мастер роли: «Ты — мастер роли «Ядро» ✦», «с 12 октября», все условия выполнены, «Сертификат мастера»", () => {
+  it("мастер роли: «Ты — мастер роли «Ядро»», «с 12 октября», все условия выполнены, «Сертификат мастера»", () => {
     const html = screen("master", { earned: { tiers: {}, fw: true, master: { core: "2026-10-12" } }, masters: { status: "ok", rows: [], prize: null, can_prize: true } });
     const hero = between(html, "data-ms-hero", "data-ms-step");
-    expect(hero).toContain("Ты — мастер роли «Ядро» ✦");
+    expect(hero).toContain("Ты — мастер роли «Ядро»");
     expect(hero).toContain("с 12 октября");
-    expect(hero).toContain('aria-label="Мастер роли «Ядро» ✦ — получен"');
+    expect(hero).toContain('aria-label="Мастер роли «Ядро» — получен"');
     expect(count(hero, /— готово"/g)).toBe(4);
     expect(hero).toContain("12 из 12 разделов");
     expect(hero).toContain("лучшая: 14 из 14");
@@ -350,18 +350,18 @@ describe("v40 UI: экран «Путь мастера»", () => {
     const st = stateOf("master", { ...FACTS.master, sectionsDone: 11, roleDone: false });
     expect(st.master.ok).toBe(false);
     const kept = R(h(MasteryScreen, { T: S, state: st, role: "core", earned: { master: { core: "2025-12-30" } }, inline: true }));
-    expect(kept).toContain("Ты — мастер роли «Ядро» ✦");
+    expect(kept).toContain("Ты — мастер роли «Ядро»");
     expect(kept).toContain("с 30 декабря 2025");
     // роль без названия — без пустых «»
     const anon = R(h(MasteryScreen, { T: S, state: stateOf("master"), role: "x", inline: true, focus: "certificate", profile: PROFILE }));
-    expect(anon).toContain("Ты — мастер роли ✦");
-    expect(anon).toContain(">мастер роли ✦<");
+    expect(anon).toContain("Ты — мастер роли<");   // v73: без ✦
+    expect(anon).toContain(">мастер роли<");
     expect(anon).not.toContain("«»");
     const ctxAnon = []; drawMaster({ createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }), fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, arcTo() {}, arc() {}, closePath() {}, fill() {}, stroke() {},
       measureText: (t) => ({ width: String(t).length * 10 }), fillText: (t) => ctxAnon.push(t) }, { name: "Анна" });
-    expect(ctxAnon).toContain("мастер роли ✦");
+    expect(ctxAnon).toContain("мастер роли");   // v73: без ✦
     // мастер по состоянию, ещё не отпразднован — без даты
-    expect(screen("master")).toContain("Ты — мастер роли «Ядро» ✦");
+    expect(screen("master")).toContain("Ты — мастер роли «Ядро»");
     expect(screen("master")).not.toMatch(/>с \d+ [а-я]+</);
   });
 
@@ -382,7 +382,7 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(html).toMatch(/data-ms-show=""[^>]*>Показать ›</);
     const gold = screen("master", { focus: "warmup" });
     expect(gold).toContain("Значок · золото");
-    expect(gold).toContain("Высшая ступень ✦");
+    expect(gold).toContain("Высшая ступень");
     expect(count(between(gold, 'data-ms-sheet="warmup"', "Высшая ступень"), />есть</g)).toBe(3);
     expect(screen("mid", { focus: "streak" })).toContain("Лучшая серия — 14 дней подряд");
     expect(screen("newbie", { focus: "hall" })).toContain("Ещё не начато");
@@ -394,11 +394,11 @@ describe("v40 UI: экран «Путь мастера»", () => {
     const html = screen("master", { focus: "certificate", earned: { master: { core: "2026-10-12" } } });
     const cert = between(html, "data-ms-cert", "Закрыть</button>");
     expect(cert).toContain('role="dialog"');
-    expect(cert).toContain("✦ Service Academy ✦");
+    expect(cert).toContain(">Service Academy</div>");   // v73: знак прописными через CSS, без ✦
     expect(cert).toContain("СЕРТИФИКАТ МАСТЕРА");
     expect(cert).toContain("настоящим подтверждается, что");
     expect(cert).toContain(">Анна Смирнова<");
-    expect(cert).toContain(">мастер роли «Ядро» ✦<");
+    expect(cert).toContain(">мастер роли «Ядро»<");
     expect(cert).toContain(">Два моря, Океан · 12 октября 2026<");
     expect(count(between(cert, 'aria-label="Лучшие значки"', "</div>"), /role="listitem"/g)).toBe(6);
     expect(cert).toContain("Роль пройдена · 5 золотых тем · серия 14 дней · 10 значков");
@@ -440,9 +440,9 @@ describe("v40 UI: сертификат картинкой", () => {
     const ctx = fakeCtx();
     drawMaster(ctx, { ...PROFILE, roleLabel: "Ядро", date: "2026-10-12", badges: BADGES });
     const t = ctx.calls.map((c) => c.t);
-    for (const s of ["✦ SERVICE ACADEMY ✦", "СЕРТИФИКАТ МАСТЕРА", "настоящим подтверждается, что", "Анна Смирнова", "мастер роли «Ядро» ✦", "Два моря, Океан · 12 октября 2026", MASTER_PARTS]) expect(t, s).toContain(s);
+    for (const s of ["SERVICE ACADEMY", "СЕРТИФИКАТ МАСТЕРА", "настоящим подтверждается, что", "Анна Смирнова", "мастер роли «Ядро»", "Два моря, Океан · 12 октября 2026", MASTER_PARTS]) expect(t, s).toContain(s);
     expect(t).toContain("Трек");
-    expect(t.filter((x) => /ЗОЛОТО|СЕРЕБРО|БРОНЗА/.test(x)).length).toBe(6);
+    expect(t.filter((x) => /^(золото|серебро|бронза)$/.test(x)).length).toBe(6);   // v73: подписи металла курсивом, строчными
     expect(t.map((x) => x.replace(/ /g, " "))).toContain("до смены");   // «Разминка / до смены» — предлог со словом
     for (const c of ctx.calls) { expect(c.x).toBeGreaterThanOrEqual(0); expect(c.x).toBeLessThanOrEqual(1080); expect(c.y).toBeGreaterThan(0); expect(c.y).toBeLessThan(1350); }
     expect(ctx.calls.find((c) => c.t === "Анна Смирнова").font).toMatch(/^700 88px/);
@@ -455,15 +455,15 @@ describe("v40 UI: сертификат картинкой", () => {
     expect(t).toContain("Александра-Виктория");
     expect(t).toContain("Константинопольская");
     expect(t).not.toContain("настоящим подтверждается, что");
-    expect(t).toContain("мастер роли «Сервис-менеджер» ✦");
+    expect(t).toContain("мастер роли «Сервис-менеджер»");
     expect(t.filter((x) => x.length === 1).join("")).toContain("СЕРТИФИКАТ МАСТЕРА");
     expect(t).toContain(MASTER_PARTS);
   });
 
   it("masterShareText, masterDate; без canvas — null", async () => {
-    expect(masterShareText({ name: "Анна", roleLabel: "Ядро", restaurant: "Два моря, Океан" })).toBe("✦ Я — мастер роли «Ядро» в Service Academy!\nРоль пройдена, 5 золотых тем, серия 14 дней и 10 значков.\nАнна · Два моря, Океан");
-    expect(masterShareText({ roleLabel: "Бар" })).toBe("✦ Я — мастер роли «Бар» в Service Academy!\nРоль пройдена, 5 золотых тем, серия 14 дней и 10 значков.");
-    expect(masterShareText()).toMatch(/^✦ Я — мастер роли в Service Academy!/);
+    expect(masterShareText({ name: "Анна", roleLabel: "Ядро", restaurant: "Два моря, Океан" })).toBe("Я — мастер роли «Ядро» в Service Academy!\nРоль пройдена, 5 золотых тем, серия 14 дней и 10 значков.\nАнна · Два моря, Океан");
+    expect(masterShareText({ roleLabel: "Бар" })).toBe("Я — мастер роли «Бар» в Service Academy!\nРоль пройдена, 5 золотых тем, серия 14 дней и 10 значков.");
+    expect(masterShareText()).toMatch(/^Я — мастер роли в Service Academy!/);
     expect(masterDate("2026-10-12")).toBe("12 октября 2026");
     expect(masterDate(new Date(2026, 0, 5))).toBe("5 января 2026");
     expect(masterDate("")).toBe("");

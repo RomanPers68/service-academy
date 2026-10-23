@@ -10,7 +10,7 @@
 //   • Ряд больше не перестраивается: все шесть кружков всегда на своих местах. Тап по кружку — он выделяется (кольцо
 //     цвета трека, чуть крупнее), а под рядом раскрывается панель трека с «язычком», указывающим на кружок.
 //   • Панель (новая): плоское стекло с кромкой цвета трека, свет от язычка, крупный водяной знак значка; строка
-//     «ЗАЛ · СТУПЕНЬ 2 ИЗ 4» / «ПРИЁМ ГОСТЕЙ» / «БАР», название цветом трека, кто это, описание, тонкая нить прогресса
+//     «Ступень 2/4» / «Приём гостей» / «Бар» (v73 — курсивом, обычными буквами), название цветом трека, кто это, описание, тонкая нить прогресса
 //     и «Открыть трек ›» — без золотой кнопки и «Дальше», чтобы не было второго «Твоего трека». Закрытый трек —
 //     замок и «Пройди «Новичок», чтобы открыть».
 //   • Движение без растяжения текста: панель раскрывается по высоте (WAAPI), содержимое проявляется; тап по другому
@@ -26,7 +26,7 @@ import { ROLES } from "../data/roles";
 import { ROLE_SVG } from "./icons";
 import { inkOf } from "../lib/tracks";
 import { vibrate } from "../lib/utils";
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 
 const ZAL = ["seasonal", "core", "manager", "service_manager"];   // ступени зала по порядку
 const GAP = 10;
@@ -223,21 +223,24 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
     if (!x) return null;
     const c = x.open ? (a11y ? inkOf(x.r.color, true) : x.r.color) : "#8A8070";
     const pct = Math.max(0, Math.min(100, x.pct || 0));
-    const mono = { fontFamily: "monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1.2, textTransform: "uppercase", whiteSpace: "nowrap" };
+    // v73 (Доп. 386): подписи («Ступень 2/4», «твой», «не начат») — курсивом, обычными буквами; моноширинный — только проценту
+    const label = { ...labelStyle(a11y ? 13.5 : 13), whiteSpace: "nowrap" };
+    const mono = { fontFamily: "monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 0.6, whiteSpace: "nowrap" };
     return (<>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0, paddingRight: 28 }}>
         <span style={{ fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 17, lineHeight: 1.2, color: x.open ? inkOf(x.r.color, a11y) : T.modSub.color, whiteSpace: "nowrap", flexShrink: 0 }}>{x.r.label}</span>
         <span style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 12, color: T.modSub.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>· {x.r.sublabel}</span>
-        {x.cur ? <span data-track-mine="" style={{ ...mono, letterSpacing: 1, color: gold, border: `1px solid ${gold}66`, borderRadius: 999, padding: "0 6px", lineHeight: 1.6, marginLeft: "auto", flexShrink: 0, alignSelf: "center" }}>твой</span> : null}
+        {/* капсула «твой»: шрифт крупнее прежнего — межстрочный меньше, чтобы капсула не выросла по высоте */}
+        {x.cur ? <span data-track-mine="" style={{ ...label, color: gold, border: `1px solid ${gold}66`, borderRadius: 999, padding: "0 6px", lineHeight: 1.35, marginLeft: "auto", flexShrink: 0, alignSelf: "center" }}>твой</span> : null}
       </div>
       <div style={{ marginTop: 3, fontFamily: "Georgia, serif", fontSize: 12.5, lineHeight: 1.4, color: text, opacity: x.open ? 0.88 : 0.65, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", paddingRight: 4 }}>{x.r.desc}</div>
       <div style={{ marginTop: 7, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <span style={{ ...mono, color: x.open ? c : T.modSub.color, opacity: 0.95 }}>{trackEyebrow(x.r.id)}</span>
+        <span style={{ ...label, color: x.open ? c : T.modSub.color, opacity: 0.95 }}>{trackEyebrow(x.r.id)}</span>
         {x.open ? (<>
           <div aria-hidden style={{ flex: 1, minWidth: 24, height: 3, borderRadius: 3, background: a11y ? "rgba(120,90,40,0.16)" : "rgba(255,255,255,0.08)", overflow: "hidden" }}>
             <div style={{ width: `${Math.max(pct, pct ? 3 : 0)}%`, height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${c}99, ${c})`, boxShadow: pct ? `0 0 6px ${c}88` : "none" }} />
           </div>
-          <span style={{ ...mono, letterSpacing: 0.6, textTransform: "none", color: T.modSub.color }}>{pct ? `${pct}%` : "не начат"}</span>
+          <span style={{ ...(pct ? mono : label), color: T.modSub.color }}>{pct ? `${pct}%` : "не начат"}</span>
           <span data-track-go="" style={{ fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13, color: inkOf(x.r.color, a11y), whiteSpace: "nowrap" }}>Открыть ›</span>
         </>) : (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 12, color: T.modSub.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -298,7 +301,6 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
             background: a11y ? "rgba(246,238,220,0.98)" : "rgba(40,31,16,0.97)", border: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`,
             boxShadow: a11y ? "0 6px 18px rgba(60,42,10,0.22), inset 0 1px 0 rgba(255,255,255,0.9)" : `0 8px 22px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 18px ${GOLD}22`,
             color: text, fontFamily: "Georgia, serif", fontSize: 13, whiteSpace: "nowrap", zIndex: 3 }}>
-          <span style={{ color: gold, fontSize: 12 }}>✦</span>
           <span>Твоя роль. <b style={{ color: gold, fontWeight: "bold" }}>Тапни</b> 😉</span>
           <span aria-hidden style={{ position: "absolute", left: Math.max(10, Math.min(ncx - nleft - 6, NW - 22)), bottom: -6, width: 12, height: 12, transform: "rotate(45deg)",
             background: a11y ? "rgba(246,238,220,0.98)" : "rgba(40,31,16,0.97)", borderRight: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`, borderBottom: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}` }} />

@@ -12,6 +12,7 @@ import { ensureTableCss } from "./table-css";
 import { Candle, Glass, Ic, plural } from "./table-bits";
 import { Flame, Wine, Laurel, Medal, Val, palette, nextStreakTier } from "./day-emblems";
 import { onActivate, vibrate } from "../lib/utils";
+import { labelStyle, LABEL_CSS } from "./tokens";   // v73 (Доп. 386): подписи курсивом вместо моноширинного капса
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
 
@@ -68,8 +69,8 @@ const DP_CSS = `
 .sa-dp-cell[role=button]:active{background:rgba(214,178,102,.10)}
 .sa-dp-cell:focus-visible{outline:2px solid rgba(214,178,102,.7);outline-offset:-3px}
 .sa-dp-txt{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
-.sa-dp-cap{display:block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;margin-top:4px;white-space:nowrap;line-height:1}
-.sa-dp.lt .sa-dp-cap{font-size:11px;letter-spacing:.3px}
+.sa-dp-cap{display:block;${LABEL_CSS};font-size:12.5px;margin-top:3px;white-space:nowrap;line-height:1.1}
+.sa-dp.lt .sa-dp-cap{font-size:13.5px}
 .sa-dp-sep{width:1px;align-self:stretch;margin:8px 0;flex-shrink:0}
 .sa-dp-w{display:none}
 @media (min-width:430px){.sa-dp:not(.lt) .sa-dp-w{display:inline}.sa-dp:not(.lt) .sa-dp-n{display:none}}
@@ -141,7 +142,7 @@ export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mas
           <span className="sa-dp-txt" aria-hidden="true"><Val main={mm.have} of={mm.total} a11y={a11y} />
             <span className="sa-dp-cap" style={cap}>{mm.mode === "first"
               ? <><span className="sa-dp-w">первые шаги</span><span className="sa-dp-n">старт</span></>
-              : mm.mode === "master" ? <>мастер<span className="sa-dp-x"> ✦</span></> : plural(mm.total, "значок", "значка", "значков")}</span></span>
+              : mm.mode === "master" ? "мастер" : plural(mm.total, "значок", "значка", "значков")}</span></span>
           {mastery.dot ? <span data-ms-chip-new="" aria-hidden="true" style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: "50%", boxSizing: "border-box",
             background: p.goldHi, border: "1.5px solid " + p.dotEdge }} /> : null}
         </span>
@@ -198,7 +199,7 @@ export function WarmupCard({ a11y, shift, known = true, done, onStart, compact =
           border: "1px solid " + c.line, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,240,205,0.05)" }}>
         <span style={{ color: c.gold, display: "inline-flex", flexShrink: 0 }}><Ic n="clock" s={16} /></span>
         <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true">
-          <span style={{ display: "block", fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1, textTransform: "uppercase", color: c.gold, lineHeight: 1.3 }}>Разминка</span>
+          <span style={{ display: "block", ...labelStyle(a11y ? 14 : 13), color: c.gold, lineHeight: 1.3 }}>Разминка</span>
           <span style={{ display: "block", fontSize: 12.5, color: c.text, lineHeight: 1.3, marginTop: 1 }}>{when}</span>
         </span>
         <span aria-hidden="true" style={{ color: c.gold, fontSize: 15, lineHeight: 1, flexShrink: 0 }}>›</span>
@@ -239,7 +240,7 @@ export function WarmupCard({ a11y, shift, known = true, done, onStart, compact =
           boxShadow: a11y ? "inset 0 0 22px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95)" : "inset 0 0 22px rgba(255,240,205,0.08), inset 0 1px 0 rgba(255,255,255,0.13)" }}>
         <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", color: c.gold, border: `1.5px solid ${c.line}` }}><Ic n="clock" s={22} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, color: c.gold, textTransform: "uppercase" }}>Разминка до смены</div>
+          <div style={{ ...labelStyle(13), color: c.gold }}>Разминка до смены</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, lineHeight: 1.25, marginTop: 2 }}>2 минуты — 3 {what}</div>
           <div style={{ fontSize: 11.5, color: c.sub, marginTop: 2, lineHeight: 1.35 }}>{shift ? "Сегодня: " + shift : known ? "Сегодня смена по графику" : "Перед сменой — освежить главное"} · из того, что уже прошёл</div>
         </div>
@@ -281,7 +282,7 @@ const PREF_ROWS = [
   ["league", "Лига недели", "итоги недели — по понедельникам"],
   ["fresh", "Свежесть тем", "по четвергам, если темы выдыхаются"],
   ["month", "Итоги месяца", "первого числа — твой месяц в карточках"],
-  ["master", "Мастера заведения", "когда коллега становится мастером роли ✦"],   // v40, этап 26
+  ["master", "Мастера заведения", "когда коллега становится мастером роли"],   // v40, этап 26
 ];
 // Строки для ответа notify_prefs. Вид «master» знает только этап 26: сервер этапа 25 его не присылает
 // и не принял бы (notify_set → kind) — тогда строки нет.
@@ -307,7 +308,7 @@ function NotifyPrefs({ a11y, c, onLoad }) {
   };
   return (
     <div data-notify-prefs="" style={{ marginTop: 14 }}>
-      <div style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, color: c.gold, margin: "0 0 4px" }}>ЧТО ЕЩЁ ПРИСЫЛАТЬ</div>
+      <div style={{ ...labelStyle(13.5), color: c.gold, margin: "0 0 4px" }}>Что ещё присылать</div>
       {prefRows(p).map(([k, t, sub]) => {
         const on = !!p[k];
         return (
@@ -334,7 +335,8 @@ export function stepLine(t) {
   const ch = Array.from(s);
   return ch.length > 140 ? ch.slice(0, 139).join("").replace(/\s+$/, "") + "…" : s;
 }
-// Так выглядит сообщение бота за час до смены. step — текст «Шага дня» (v40): строка под текстом, перед кнопкой.
+// Так выглядит сообщение бота за час до смены. Текст — дословно как у бота (supabase, stage 26), поэтому «✦ SERVICE ACADEMY»
+// и «Хорошей смены ✦» здесь остаются, пока не поменяется само сообщение бота (v73 сервер не трогает). step — текст «Шага дня» (v40): строка под текстом, перед кнопкой.
 export function RemindExample({ c = C(false), when = "час", shift = "", step = "" }) {
   const st = stepLine(step);
   return (

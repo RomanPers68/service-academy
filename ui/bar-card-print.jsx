@@ -2,7 +2,7 @@ import { hintsFor } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
 import { readBarcard, cachedShared, houseCocktails, isFullCocktail } from "../lib/deck-extras";
 import { buildScenario, GLASS_RU, GARNISH_RU } from "../lib/bar-lab";
@@ -134,7 +134,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }} className="sa-noprint">
         <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>КОЛОДА БАРМЕНА · ЭКСПОРТ</div>
+          <div style={{ ...labelStyle(13.5), color: gold }}>Колода бармена · экспорт</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15 }}>Карта бара для печати</div>
         </div>
       </div>
@@ -148,7 +148,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
       {shot && shot.length > 0 && (
         <div className="sa-fadein sa-noprint" style={{ margin: "0 16px 14px", padding: 12, borderRadius: 14, border: `1px solid ${gold}55` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", flex: 1 }}>СТРАНИЦА {page + 1} ИЗ {shot.length}</span>
+            <span style={{ ...labelStyle(13.5), color: gold, flex: 1 }}>Страница {page + 1} из {shot.length}</span>
             {shot.length > 1 && <>
               <span onClick={() => setPage(p => Math.max(0, p - 1))} style={{ color: page ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 16 }}>‹</span>
               <span onClick={() => setPage(p => Math.min(shot.length - 1, p + 1))} style={{ color: page < shot.length - 1 ? gold : sub, cursor: "pointer", padding: "2px 8px", fontSize: 16 }}>›</span>

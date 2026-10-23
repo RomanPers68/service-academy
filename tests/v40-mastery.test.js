@@ -475,7 +475,7 @@ describe("отчёт руководителя: «Путь мастера»", () 
     const { MasteryBlock } = await import("../ui/report");
     const m = personModel(raw(LEARNING), ctx);
     const html = renderToString(React.createElement(MasteryBlock, { ms: m.mastery })).replace(/<!-- -->/g, "");
-    for (const t of ["Путь мастера", "3 из 14 значков", "✦ Мастер роли: «Новичок»", "Практика у стола", "бронза", "серебро", "Первые шаги пройдены", "Не пользуется", "Квест смены", "Шаг дня · 12.10", "Попробуй: Радио в дорогу"]) expect(html).toContain(t);
+    for (const t of ["Путь мастера", "3 из 14 значков", "Мастер роли: «Новичок»", "Практика у стола", "бронза", "серебро", "Первые шаги пройдены", "Не пользуется", "Квест смены", "Шаг дня · 12.10", "Попробуй: Радио в дорогу"]) expect(html).toContain(t);
     expect(html).toContain('class="t2"');
     const none = renderToString(React.createElement(MasteryBlock, { ms: { ...m.mastery, badges: [], bronze: 0, master: [], unused: [], fw: false, step: null } })).replace(/<!-- -->/g, "");
     expect(none).toContain("Значков пока нет.");

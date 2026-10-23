@@ -6,7 +6,7 @@
 // Правила НЕ менялись — те же, что в App.jsx (handleQuiz) и на экране результата: третья ошибка завершает
 // тест, зачёт — от 70% верных.
 import React from "react";
-import { GOLD, RED, GREEN, CREAM, INK, MUTED_3 } from "./tokens";
+import { GOLD, RED, GREEN, CREAM, INK, MUTED_3, labelStyle } from "./tokens";
 
 const plural = (n, one, few, many) => {
   const a = Math.abs(n) % 100, b = a % 10;
@@ -122,11 +122,12 @@ export function OptLetter({ i, state = null, light = false }) {
 // Строка над бусинами: «Вопрос 2 из 12» и «зачёт — от 10 верных»
 export function QuizMeta({ n, step, light = false }) {
   const { need } = quizRule(n);
-  const mono = { fontFamily: "monospace", fontSize: light ? 12 : 11, letterSpacing: 1.5, textTransform: "uppercase" };
+  // v73 (Доп. 386): подпись курсивом в обычном регистре (было: моноширинный капс)
+  const label = labelStyle(light ? 14.5 : 13.5);
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-      <span data-quiz-step style={{ ...mono, color: light ? "#6B5536" : MUTED_3 }}>Вопрос {Math.min(n, step + 1)} из {n}</span>
-      <span data-quiz-need style={{ ...mono, color: light ? "#7A5A1E" : GOLD }}>зачёт — от {need}</span>
+      <span data-quiz-step style={{ ...label, color: light ? "#6B5536" : MUTED_3 }}>Вопрос {Math.min(n, step + 1)} из {n}</span>
+      <span data-quiz-need style={{ ...label, color: light ? "#7A5A1E" : GOLD }}>зачёт — от {need}</span>
     </div>
   );
 }

@@ -46,3 +46,13 @@ export const toolColor = (key, a11y) =>
 // Золото как ЦВЕТ НАДПИСИ (правка 170): на креме #C8A96E даёт контраст 1,7–1,9 —
 // в светлой теме берём тёмное золото. Для иконок, рамок и полос цвет прежний.
 export const goldText = (light) => light ? "#7A5A1E" : GOLD;
+
+// v73 (Доп. 386): подпись-метка без «примет нейросети». Было: моноширинный капс вразрядку («ДО СМЕНЫ · 14:00»,
+// «ЛИДЕРЫ РЕСТОРАНА») — узнаваемая примета сгенерированных интерфейсов. Стало: тот же шрифт с засечками, что у текста,
+// курсивом и обычными буквами — как подписи в меню ресторана. Моноширинный остаётся цифрам: время, счёт, граммы, коды.
+// Размер — на 2,5 px крупнее прежнего капса (10,5 → 13): строчные курсивом мельче прописных.
+export const LABEL_FONT = "Georgia, 'PT Serif', serif";
+export const labelStyle = (size = 13, more = null) => ({ fontFamily: LABEL_FONT, fontStyle: "italic", fontWeight: "normal",
+  fontSize: size, letterSpacing: 0.1, textTransform: "none", ...more });
+// то же для CSS-строк (стили в шаблонах `...`)
+export const LABEL_CSS = "font-family:Georgia,'PT Serif',serif;font-style:italic;font-weight:normal;letter-spacing:.1px;text-transform:none";

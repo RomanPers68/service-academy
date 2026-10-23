@@ -56,7 +56,7 @@ describe("v44: приветствие — роль под именем, «хор
     const html = await render();
     const at = html.indexOf('data-shift-wish=""');
     expect(at).toBeGreaterThan(html.indexOf("Два моря, Океан"));
-    expect(text(html.slice(at, html.indexOf("</div>", at)))).toContain("хорошей смены ✦");
+    expect(text(html.slice(at, html.indexOf("</div>", at)))).toContain("хорошей смены");   // v73: без ✦
     expect(html).not.toContain("Хорошей смены ✦");
     shiftToday("выходной");
     expect(await render()).not.toContain("data-shift-wish");
@@ -163,7 +163,7 @@ describe("v44: «Пульс недели», табличка и полка — �
     const dk = await render({ profile: boss, scores });
     const lt = await render({ profile: boss, scores, a11y: true });
     expect(dk).toContain('data-pulse="" style="margin:0 14px 8px;padding:6px 12px;');
-    expect(text(dk)).toContain("пульс недели · 2 теста · 2 чел в игре · лидер: Ангелина Токарева");
+    expect(text(dk)).toContain("Пульс недели · 2 теста · 2 чел в игре · лидер: Ангелина Токарева");   // v73: подпись курсивом, с заглавной
     const pl = lt.slice(lt.indexOf("data-pulse"), lt.indexOf("</div>", lt.indexOf("data-pulse")));
     expect(pl).toContain("color:#7A5D2A");
     expect(pl).not.toContain("#C8A96E");

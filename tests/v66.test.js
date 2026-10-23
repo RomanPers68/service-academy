@@ -130,7 +130,7 @@ describe("v66: экран собеседования", () => {
     expect(c).toContain("token: saToken(), mode, role: role?.id, plan: planOf(msgs), voice: !!extra.voice,");
     expect(c).toContain("if (hrRef.current.v2 === false) return undefined;");
     expect(c).toContain("return ai.map(m => ({ topic: m.topic, followup: !!m.followup }));");
-    expect(c).toContain('hrInfo.v2 ? (hrInfo.done ? "ТЕМЫ ПРОЙДЕНЫ" : `ТЕМА ${Math.min(hrInfo.topic + 1, hrInfo.total)} ИЗ ${hrInfo.total}`) : `ОТВЕТОВ: ${aiAnswered}`');
+    expect(c).toContain('hrInfo.v2 ? (hrInfo.done ? "Темы пройдены" : `Тема ${Math.min(hrInfo.topic + 1, hrInfo.total)} из ${hrInfo.total}`) : `Ответов: ${aiAnswered}`');   // v73: курсивом, обычными буквами
     expect(c).toContain("{(hrInfo.v2 ? hrInfo.done : aiAnswered >= 4) && !aiBusy && (");
     expect(c).toContain("Завершить раньше — оценка по пройденным темам");
     // голосом: попрощался — полоса закроется сама

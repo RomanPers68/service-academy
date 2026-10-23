@@ -181,7 +181,7 @@ describe("из редактора — в приложение: ничего не
     expect(d({ name: "Михаил", avatar: "👔", context: "", mood: 3, walk: "Михаил уходит.", walkTitle: "Михаил ушёл" })).toEqual({ name: "Михаил", avatar: "👔", context: "", mood: 3, walk: "Михаил уходит.", walkTitle: "Михаил ушёл" });
     expect(dlgWalkLine({ name: "Михаил" })).toBe(dlgWalkText("Михаил"));   // не написал — общая фраза
     const src = read("ui/content-editor.jsx");
-    expect(src).toMatch(/ЕСЛИ ГОСТЬ УЙДЁТ · НЕОБЯЗАТЕЛЬНО/);
+    expect(src).toMatch(/Если гость уйдёт · необязательно/);   // v73: подпись поля курсивом, обычными буквами
     expect(src).toMatch(/onChange=\{e => setGuest\(\{ walk: e\.target\.value \}\)\}/);
     expect(src).toMatch(/onChange=\{e => setGuest\(\{ walkTitle: e\.target\.value \}\)\}/);
   });
@@ -333,6 +333,6 @@ describe("ИИ-помощник: ситуации всех шести видов
     }
     const src = read("ui/content-editor.jsx");
     expect(src).toMatch(/\.map\(x => toDraftSit\(\{ \.\.\.x, id: uid\(\) \}\)\)/);
-    expect(src).toMatch(/\{GENRE_RU\[g\]\.toUpperCase\(\)\}<\/div>/);
+    expect(src).toMatch(/\{GENRE_RU\[g\]\}<\/div>/);   // v73: без капса
   });
 });

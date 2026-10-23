@@ -8,6 +8,7 @@
 //     полночь — двумя), «сейчас» — светлой риской, пока смена идёт — с сиянием.
 // Выходной — «Сегодня выходной ✦», нить без отрезка; графика на сегодня нет — прежняя подпись, без нити.
 // Узкой плитке время уходит строкой ниже вместе с точкой-разделителем: точка в начале строки срезается.
+// v73 (Доп. 386): выходной — просто «Сегодня выходной», без золотой звёздочки ✦ после слова.
 import React from "react";
 import { ACCENT_SERIF } from "./styles";
 import { CREAM, INK } from "./tokens";
@@ -42,10 +43,10 @@ export function readTodayShift(storage, now = new Date()) {
   } catch (e) { return null; }
 }
 
-// Подпись: «Вечер · 17:00–24:00» — время золотом; «Сегодня выходной ✦»; без графика — запасная фраза
+// Подпись: «Вечер · 17:00–24:00» — время золотом; «Сегодня выходной» (v73: без ✦); без графика — запасная фраза
 function When({ sh, p, fallback }) {
   const base = { fontSize: 11, lineHeight: 1.3, color: p.sub, marginTop: 3, fontFamily: "Georgia, serif" };
-  if (sh && sh.off) return <div data-when="off" style={base}>Сегодня выходной{" "}<span style={{ color: p.gold }}>✦</span></div>;
+  if (sh && sh.off) return <div data-when="off" style={base}>Сегодня выходной</div>;
   if (sh && sh.a) return (
     <div data-when="shift" style={{ ...base, overflow: "hidden" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", marginLeft: -10 }}>

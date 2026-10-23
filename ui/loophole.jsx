@@ -11,7 +11,7 @@
 // хитрая жопка», и разбор ошибок первой попытки. Видит только он (и руководители —
 // в «Аналитике → Лазейки», через сервер, этап 15). Коллегам не видно.
 import React from "react";
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 
 const K = (uk) => ({ tries: "sa_qtry" + uk, skips: "sa_qskip" + uk, recs: "sa_loopholes" + uk });
 const rj = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } };
@@ -148,7 +148,8 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
       style={on ? { filter: a11y ? "none" : "drop-shadow(0 0 3px rgba(214,178,102,0.45))" } : undefined}>
       <circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 19 4M16 7l2.5 2.5M14 9l2 2" />
     </svg>);
-  const tag = (t, c) => <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.4, color: c, fontWeight: "bold", marginRight: 6 }}>{t}</span>;
+  // v73 (Доп. 386): подписи («Секретная ачивка», «Ты ответил», «Верно») — курсивом, обычными буквами; штамп — как был
+  const tag = (t, c) => <span style={{ ...labelStyle(13), color: c, marginRight: 6 }}>{t}</span>;
   const ring = narrow ? 60 : 68;
   const n = rec.n || 1; const W = loopWords(n, female);
   return (
@@ -185,7 +186,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ height: 1, width: 16, background: `linear-gradient(90deg, transparent, ${C.gold})` }} />
-              <span style={{ color: C.gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 2, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</span>
+              <span style={{ ...labelStyle(13), color: C.gold }}>Секретная ачивка</span>
             </div>
             <div style={{ fontFamily: serif, fontSize: narrow ? 20 : 22, fontWeight: "bold", lineHeight: 1.15, marginTop: 5,
               background: C.title, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", textShadow: "none" }}>«Находчивая жопка»</div>
@@ -219,7 +220,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
             <div style={{ background: C.plate, border: `1px solid ${C.gold}55`, borderRadius: 14, padding: "11px 12px", margin: "2px 0 12px",
               boxShadow: a11y ? "inset 0 1px 0 rgba(255,255,255,0.9)" : "inset 0 1px 0 rgba(255,236,190,0.10), 0 0 18px rgba(214,178,102,0.06)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ color: C.gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, fontWeight: "bold" }}>ТАЙНЫЙ ЗАЧЁТ КЛЮЧЕЙ</span>
+                <span style={{ ...labelStyle(13), color: C.gold }}>Тайный зачёт ключей</span>
                 <span style={{ color: C.muted, fontSize: 11.5 }}>{rank.place}-е место из {Math.max(rank.players, rank.place)}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 4, margin: "9px 0 8px", flexWrap: "wrap" }}>
@@ -239,8 +240,8 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
               <div style={{ color: C.text, fontFamily: serif, fontSize: 14, fontWeight: "bold", lineHeight: 1.4 }}>{w.q}</div>
             </div>
             <div style={{ paddingLeft: 29, marginTop: 7 }}>
-              {w.a ? <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.45 }}>{tag(female ? "ТЫ ОТВЕТИЛА" : "ТЫ ОТВЕТИЛ", C.muted)}{w.a}</div> : null}
-              {w.r ? <div style={{ color: C.hit, fontSize: 12.5, lineHeight: 1.45, marginTop: 3 }}>{tag("ВЕРНО", C.hit)}{w.r}</div> : null}
+              {w.a ? <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.45 }}>{tag(female ? "Ты ответила" : "Ты ответил", C.muted)}{w.a}</div> : null}
+              {w.r ? <div style={{ color: C.hit, fontSize: 12.5, lineHeight: 1.45, marginTop: 3 }}>{tag("Верно", C.hit)}{w.r}</div> : null}
               {w.e ? <div style={{ color: C.muted, fontFamily: serif, fontStyle: "italic", fontSize: 12.5, lineHeight: 1.5, marginTop: 7,
                 paddingLeft: 10, borderLeft: `2px solid ${C.gold}77` }}>{w.e}</div> : null}
             </div>
@@ -275,7 +276,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
 
 // ── Баннер. Ачивка не выпрыгивает целиком: сверху плавно выезжает плашка-загадка,
 // как уведомление. Тап — раскрывается карточка (решение владельца). Ключик в
-// медальоне время от времени поворачивается, как в замке; по плашке пробегает блик.
+// медальоне время от времени поворачивается, как в замке (пробегающий блик убран — правка 152).
 // Не тапнули за 12 секунд — плашка тихо уезжает; ачивка не просмотрена и
 // вернётся при следующем входе.
 export function LoopholeBanner({ a11y, n = 1, female = false, onOpen, onHide }) {
@@ -325,7 +326,7 @@ export function LoopholeBanner({ a11y, n = 1, female = false, onOpen, onHide }) 
           {numBadge(n, a11y)}
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ color: gold, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, fontWeight: "bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
+          <div style={{ ...labelStyle(13), color: gold }}>Секретная ачивка</div>
           <div style={{ color: text, fontFamily: serif, fontSize: 15.5, fontWeight: "bold", lineHeight: 1.25, marginTop: 2 }}>Тапни, чтобы посмотреть</div>
           <div style={{ color: muted, fontFamily: serif, fontStyle: "italic", fontSize: 12.5, marginTop: 1 }}>{loopWords(n, female).teaser}</div>
         </div>

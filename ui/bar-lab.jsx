@@ -1,6 +1,6 @@
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 import { COCKTAILS } from "../data/cocktails";
 import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
 import { emitActivity } from "../lib/activity";
@@ -288,7 +288,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
       <button className="sa-btn sa-hit" onClick={backTo || onBack} {...onActivate(backTo || onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, letterSpacing: 1.5, color: gold }}>СБОРКА · БАР</div>
+        <div style={{ ...labelStyle(13.5), color: gold }}>Сборка · бар</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
       </div>
     </div>
@@ -298,7 +298,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
   if (view === "hub") {
     const stamps = masteredCount();
     // Помощник называется tile, а не card: под именем card он перекрывал карту
-    // бара из компонента, и «· СВОЯ КАРТА» горела всегда, а «Час пик» отсюда
+    // бара из компонента, и «· своя карта» горела всегда, а «Час пик» отсюда
     // брал заказы из всех коктейлей вместо своей карты (функция — не список).
     const tile = (props, children) => <div className="sa-card" {...props} style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 10, cursor: props.onClick ? "pointer" : "default", ...(props.style || {}) }}>{children}</div>;
     return (
@@ -314,7 +314,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         ) : null}
         <div style={{ padding: "4px 16px 100px" }}>
           {tile({ ref: blRefDaily, onClick: () => { setCurrent(dailyC); setView("pick"); vibrate("light"); } }, <>
-            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>КОКТЕЙЛЬ ДНЯ</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Коктейль дня</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 56, height: 56, flexShrink: 0 }}><GlassView glass={dailyC.glass} fill={0.7} colors={dailyC.ing.map(i => ING_COLOR(i[0]))} ice={dailyC.ice === "crushed" ? "crushed" : dailyC.ice ? "cube" : null} garnish={dailyC.garnish} a11y={a11y} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -325,7 +325,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             </div>
           </>)}
           {tile({ ref: blRefMastery }, <>
-            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>МАСТЕРСТВО · {stamps} ИЗ {cardTotal()} ПЕЧАТЕЙ{card ? " · СВОЯ КАРТА" : ""}</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Мастерство · {stamps} из {cardTotal()} печатей{card ? " · своя карта" : ""}</div>
             {[1, 2, 3].map(t => { const total = cardTotal(t); const n = ALL.filter(c => tierOf(c) === t && inCard(c) && (mastery[c.id]?.level || 0) >= 2).length; return (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                 <div style={{ width: 84, fontSize: 12.5, color: text }}>{TIER_LABEL[t]}</div>
@@ -335,7 +335,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             <div style={{ fontSize: 12.5, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
           </>)}
           {tile({ onClick: () => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
-            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ЧАС ПИК</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Час пик</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text }}>Три заказа на время</div>
@@ -345,7 +345,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             </div>
           </>)}
           {onOpenDeck && tile({ onClick: () => onOpenDeck(null) }, <>
-            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ВЫБРАТЬ КОКТЕЙЛЬ</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Выбрать коктейль</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text }}>Колода бармена</div>
@@ -370,7 +370,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             <div style={{ width: 96, height: 96, flexShrink: 0 }}><GlassView glass={current.glass} fill={0.75} colors={current.ing.map(i => ING_COLOR(i[0]))} ice={current.ice === "crushed" ? "crushed" : current.ice ? "cube" : null} garnish={current.garnish} a11y={a11y} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12.5, color: sub }}>{current.method} · {GLASS_RU[current.glass]} · {current.ing.length} ингр.</div>
-              <div style={{ fontSize: 12.5, color: lv >= 2 ? gold : sub, marginTop: 4 }}>{lv >= 2 ? "✦ " : ""}{MASTERY_LABEL[lv]}{mastery[current.id]?.streak ? ` · серия ${mastery[current.id].streak}` : ""}</div>
+              <div style={{ fontSize: 12.5, color: lv >= 2 ? gold : sub, marginTop: 4 }}>{MASTERY_LABEL[lv]}{mastery[current.id]?.streak ? ` · серия ${mastery[current.id].streak}` : ""}</div>
               {onOpenDeck && <div onClick={() => onOpenDeck(current.id)} style={{ fontSize: 12.5, color: gold, marginTop: 8, cursor: "pointer" }}>Карточка в Колоде ›</div>}
             </div>
           </div>
@@ -379,7 +379,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Следующий шаг подсвечен, ошибка объясняется словами урока. Учишься телом, не текстом.</div>
           </div>
           <div className="sa-card" onClick={() => startPlay(current, "memory")} {...onActivate(() => startPlay(current, "memory"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", cursor: "pointer", borderColor: gold + "88" }}>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>По памяти ✦</div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>По памяти</div>
             <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Как за стойкой: подсказок нет, ошибка — «вылил», заново. Собрал чисто — печать на карточке.</div>
           </div>
         </div>
@@ -396,7 +396,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
     <div style={T.screen} className="sa-screen">
       {Head("Час пик", () => { setRush(null); setView("hub"); })}
       <div style={{ padding: "20px 16px 100px", textAlign: "center" }}>
-        <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>{rush.total <= rushBest ? "НОВЫЙ РЕКОРД ✦" : "СМЕНА ОТРАБОТАНА"}</div>
+        <div style={{ ...labelStyle(13.5), color: gold }}>{rush.total <= rushBest ? "Новый рекорд" : "Смена отработана"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 44, color: text, margin: "6px 0" }}>{rush.total} с</div>
         <div style={{ fontSize: 12.5, color: sub }}>{rush.orders.map(o => o.name).join(" · ")}{rush.penalties ? ` · штрафы +${rush.penalties} с` : " · без ошибок"}</div>
         <button className="sa-btn" onClick={() => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 20, width: "100%" }}>Ещё смену ›</button>
@@ -515,9 +515,10 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
       <LabStyle />
       {Head(c.name, onExit)}
       <div className="sa-labbody" style={{ padding: "0 16px 110px" }}>
-        <div data-labmode="" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, letterSpacing: 1.4, fontFamily: "monospace", color: sub, marginBottom: 8 }}>
-          <span>{mode === "hint" ? "С ПОДСКАЗКОЙ" : "ПО ПАМЯТИ ✦"}{rush ? ` · ЗАКАЗ ${rush.i + 1}/${rush.orders.length}` : ""}</span>
-          <span>{rush ? `${elapsed} с` : `${done.length}/${sc.steps.length}`}{mistakes ? ` · ошибок ${mistakes}` : ""}</span>
+        {/* v73 (Доп. 386): режим — подпись курсивом; справа счёт шагов / секунды — цифры, моноширинный как был */}
+        <div data-labmode="" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", ...labelStyle(13.5), color: sub, marginBottom: 8 }}>
+          <span>{mode === "hint" ? "С подсказкой" : "По памяти"}{rush ? ` · заказ ${rush.i + 1}/${rush.orders.length}` : ""}</span>
+          <span style={{ fontFamily: "monospace", fontStyle: "normal", fontSize: 11, letterSpacing: 1.4 }}>{rush ? `${elapsed} с` : `${done.length}/${sc.steps.length}`}{mistakes ? ` · ошибок ${mistakes}` : ""}</span>
         </div>
         {/* Доп. 220: Час пик — заказы выезжают чеками из принтера на стойке */}
         {rush && (
@@ -573,7 +574,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
           <div style={{ flex: 1, minWidth: 0, width: narrow ? "100%" : undefined }}>
             {finished ? (
               <div className="sa-fadein">
-                <div style={{ fontSize: 11, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{finished.clean ? "✦ ПОДАНО · ЧИСТО" : "✦ ПОДАНО"}</div>
+                <div style={{ ...labelStyle(13.5), color: "#5DBB8A" }}>{finished.clean ? "Подано · чисто" : "Подано"}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginTop: 4 }}>{c.name}</div>
                 <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.5 }}>{mode === "memory" && finished.clean ? "Печать на карточке твоя." : mistakes ? `Ошибок: ${mistakes}. По памяти и без ошибок — будет печать.` : "Теперь — по памяти."}</div>
                 {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>}
@@ -586,7 +587,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               </div>
             ) : pending ? (
               <div className="sa-fadein">
-                <div style={{ fontSize: 11, letterSpacing: 1.5, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ДЖИГГЕР · {pending.toUpperCase()}</div>
+                <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Джиггер · {pending}</div>
                 <div className="sa-hscroll" style={{ display: "flex", flexWrap: narrowW ? "nowrap" : "wrap", overflowX: narrowW ? "auto" : "visible", gap: 4, paddingBottom: narrowW ? 4 : 0 }}>
                   {jiggerFor(c).map(a => { const st = sc.steps.find(s => s.kind === "ing" && s.name === pending); return <span key={a} style={chip(hint(st) && Number(st.amount) === a, { padding: "6px 9px", fontSize: 12.5 })} onClick={() => { const n = pending; setPending(null); act({ kind: "ing", name: n, amount: a }); }}>{a}</span>; })}
                   <span style={chip(false, { padding: "6px 9px", fontSize: 12.5, color: sub })} onClick={() => setPending(null)}>✕</span>
@@ -679,11 +680,11 @@ function StationPrep({ T, a11y, gold, frost, Head, onExit, uk }) {
       <div style={{ padding: "0 16px 100px" }}>
         <div style={{ ...frost, borderRadius: 18, padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            {PREP.map((p, i) => <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 10.5, letterSpacing: 1, fontFamily: "monospace", color: donePhases.has(i) && PREP[i].items.every(it => placed.includes(it.id)) ? "#5DBB8A" : i === curPhase ? gold : sub, borderBottom: `2px solid ${i === curPhase ? gold : "transparent"}`, paddingBottom: 4 }}>{p.phase.toUpperCase()}</div>)}
+            {PREP.map((p, i) => <div key={i} style={{ flex: 1, textAlign: "center", ...labelStyle(12.5), color: donePhases.has(i) && PREP[i].items.every(it => placed.includes(it.id)) ? "#5DBB8A" : i === curPhase ? gold : sub, borderBottom: `2px solid ${i === curPhase ? gold : "transparent"}`, paddingBottom: 4 }}>{p.phase}</div>)}
           </div>
           {finished ? (
             <div className="sa-fadein">
-              <div style={{ fontSize: 11, letterSpacing: 1.6, color: "#5DBB8A", fontFamily: "monospace" }}>{took <= best ? "СТАНЦИЯ СОБРАНА · РЕКОРД ✦" : "СТАНЦИЯ СОБРАНА"}</div>
+              <div style={{ ...labelStyle(13.5), color: "#5DBB8A" }}>{took <= best ? "Станция собрана · рекорд" : "Станция собрана"}</div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, marginTop: 4 }}>{took} с{mistakes ? ` · ошибок ${mistakes}` : " · без ошибок"}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>Дальше смена идёт на автомате — ты не ищешь, ты берёшь.</div>
               <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 12, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>
@@ -699,7 +700,7 @@ function StationPrep({ T, a11y, gold, frost, Head, onExit, uk }) {
             <div key={it.id} className="sa-card" onClick={() => tap(it)} {...onActivate(() => tap(it))} style={{ ...frost, borderRadius: 14, padding: "11px 14px", cursor: on ? "default" : "pointer", opacity: on ? 0.45 : 1, display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ width: 22, color: on ? "#5DBB8A" : gold, fontSize: 14 }}>{on ? "✓" : "○"}</span>
               <span style={{ flex: 1, fontSize: 14, color: text }}>{it.t}</span>
-              {on && <span style={{ fontSize: 11, color: sub, fontFamily: "monospace" }}>{it.phase.toUpperCase()}</span>}
+              {on && <span style={{ ...labelStyle(13), color: sub }}>{it.phase}</span>}
             </div>); })}
         </div>
       </div>

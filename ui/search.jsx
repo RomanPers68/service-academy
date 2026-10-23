@@ -11,6 +11,7 @@ import { UI_SVG, GAME_SVG } from "./icons";
 import { menuDishesFromStorage, sharedOf, barCocktails } from "../lib/menu-dishes";   // v71: меню команды и коктейли карты бара
 import { allergenLabel } from "../lib/deck-extras";
 import { GLASS_RU } from "../lib/bar-lab";
+import { labelStyle } from "./tokens";
 
 const norm = (s) => (s || "").toLowerCase().replace(/ё/g, "е");
 
@@ -51,6 +52,9 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
   const gold = a11y ? "#7A5D2A" : "#C8A96E";
   const red = a11y ? "#A33A2A" : "#E07878";
   const textColor = a11y ? "#2e211a" : "#F5EFE2";
+  // v73 (Доп. 386): подписи разделов — курсивом обычными буквами (T.secTitle — моноширинный капс); цветные полоски
+  // слева у результатов убраны: смысл красной (найдено по аллергену) виден в строке «Содержит:», цвет модуля — в подписи.
+  const secT = { ...T.secTitle, ...labelStyle(a11y ? 15 : 13) };
   const query = norm(q.trim());
 
   const dishes = React.useMemo(() => dishesFor(profile?.restaurant), [profile?.restaurant]);
@@ -146,7 +150,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
       )}
 
       {/* ── Меню — первым: в смене чаще всего ищут блюдо или аллерген ── */}
-      {results.menu.length > 0 && <div style={T.secTitle}>Меню{results.menu.some(x => x.byAllergen) ? " · найдено по аллергену" : ""}</div>}
+      {results.menu.length > 0 && <div style={secT}>Меню{results.menu.some(x => x.byAllergen) ? " · найдено по аллергену" : ""}</div>}
       <div style={{ padding: "0 14px" }}>
         {results.menu.map(({ d, byAllergen }) => {
           const key = "dish:" + (d.id || d.name);
@@ -156,7 +160,6 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
               style={{ ...T.modCard, margin: "0 0 10px", flexDirection: "column", alignItems: "stretch", cursor: "pointer" }}
               onClick={() => toggle(key)} {...onActivate(() => toggle(key))}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ ...T.modBar, background: byAllergen ? red : gold }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={T.modTitle}>{d.name}</div>
                   <div style={{ ...T.modSub, whiteSpace: "normal" }}>{d.cat || "Блюдо"}{d.stop ? " · в стопе" : ""}</div>
@@ -189,7 +192,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
         })}
       </div>
 
-      {results.bar.length > 0 && <div style={T.secTitle}>Карта бара</div>}
+      {results.bar.length > 0 && <div style={secT}>Карта бара</div>}
       <div style={{ padding: "0 14px" }}>
         {results.bar.map((c) => {
           const go = () => { if (onCocktail) { vibrate("light"); onCocktail(c.id); } };
@@ -197,9 +200,8 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
           return (
             <div key={"ck:" + c.id} data-search-cocktail={c.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", cursor: onCocktail ? "pointer" : "default" }}
               onClick={go} {...onActivate(go)}>
-              <div style={{ ...T.modBar, background: (c.color && c.color[0]) || gold }} />
               <div style={{ flex: 1, minWidth: 0, padding: "2px 0" }}>
-                <div style={{ fontSize: 11, color: gold, letterSpacing: 1, marginBottom: 2, fontFamily: "monospace", textTransform: "uppercase" }}>{[c.method, GLASS_RU[c.glass] || ""].filter(Boolean).join(" · ")}{c.stop ? " · в стопе" : ""}</div>
+                <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 2 }}>{[c.method, GLASS_RU[c.glass] || ""].filter(Boolean).join(" · ")}{c.stop ? " · в стопе" : ""}</div>
                 <div style={T.modTitle}>{c.name}</div>
                 {spec ? <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.5 }}>{spec}</div> : null}
               </div>
@@ -209,7 +211,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
         })}
       </div>
 
-      {results.terms.length > 0 && <div style={T.secTitle}>Глоссарий</div>}
+      {results.terms.length > 0 && <div style={secT}>Глоссарий</div>}
       <div style={{ padding: "0 14px" }}>
         {results.terms.map((g) => {
           const key = "term:" + g.term;
@@ -218,7 +220,6 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
               style={{ ...T.modCard, margin: "0 0 10px", flexDirection: "column", alignItems: "stretch", cursor: "pointer" }}
               onClick={() => toggle(key)} {...onActivate(() => toggle(key))}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ ...T.modBar, background: gold }} />
                 <div style={{ ...T.modTitle, flex: 1 }}>{g.term}</div>
                 <div style={T.modArrow}>{openKey === key ? "˅" : "›"}</div>
               </div>
@@ -230,16 +231,15 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
         })}
       </div>
 
-      {results.ref.length > 0 && <div style={T.secTitle}>Справочник</div>}
+      {results.ref.length > 0 && <div style={secT}>Справочник</div>}
       <div style={{ padding: "0 14px" }}>
         {results.ref.map(({ course, l }) => (
           <div key={l.id} className="sa-card"
             style={{ ...T.modCard, margin: "0 0 10px", cursor: onReferenceLesson ? "pointer" : "default" }}
             onClick={() => { if (onReferenceLesson) { vibrate("light"); onReferenceLesson(l.id); } }}
             {...onActivate(() => { if (onReferenceLesson) { vibrate("light"); onReferenceLesson(l.id); } })}>
-            <div style={{ ...T.modBar, background: gold }} />
             <div style={{ flex: 1, minWidth: 0, padding: "2px 0" }}>
-              <div style={{ fontSize: 11, color: gold, letterSpacing: 1, marginBottom: 2, fontFamily: "monospace" }}>{course.title}</div>
+              <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 2 }}>{course.title}</div>
               <div style={T.modTitle}>{l.title}</div>
               <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.5 }}>{snippet(l.content, query)}</div>
             </div>
@@ -248,16 +248,15 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
         ))}
       </div>
 
-      {results.lessons.length > 0 && <div style={T.secTitle}>Уроки</div>}
+      {results.lessons.length > 0 && <div style={secT}>Уроки</div>}
       <div style={{ padding: "0 14px 20px" }}>
         {results.lessons.map(({ m, l }) => (
           <div key={l.id} className="sa-card"
             style={{ ...T.modCard, margin: "0 0 10px" }}
             onClick={() => { vibrate("light"); onOpen(m, l); }}
             {...onActivate(() => { vibrate("light"); onOpen(m, l); })}>
-            <div style={{ ...T.modBar, background: m.color }} />
             <div style={{ flex: 1, minWidth: 0, padding: "2px 0" }}>
-              <div style={{ fontSize: 11, color: m.color, letterSpacing: 1, marginBottom: 2, fontFamily: "monospace" }}>{m.title}</div>
+              <div style={{ ...labelStyle(13.5), color: m.color, marginBottom: 2 }}>{m.title}</div>
               <div style={T.modTitle}>{l.title}</div>
               <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.5 }}>{snippet(l.content, query)}</div>
             </div>

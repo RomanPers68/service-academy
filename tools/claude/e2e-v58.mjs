@@ -608,7 +608,7 @@ if (want("CUT")) {
   const gb = await p.evaluate(() => { const more = document.querySelector("[data-seg-more]"); const track = more ? more.parentElement.querySelector(".sa-hscroll") : document.querySelector(".sa-gbbook") && null;
     const tabs = document.querySelector("[data-seg-more]") ? [...document.querySelector("[data-seg-more]").parentElement.querySelectorAll("button")] : [];
     return { more: !!more, fs: tabs.length ? parseFloat(getComputedStyle(tabs[0]).fontSize) : 0, n: tabs.length }; });
-  ok("CUT: вкладки «Книги отзывов» — 11,5 px, у правого края намёк «листай» (›)", gb.more && gb.fs === 11.5 && gb.n >= 7, JSON.stringify(gb));
+  ok("CUT: вкладки «Книги отзывов» — 12,5 px (v73: шрифт как у остальных переключателей; был моноширинный 11,5), у правого края намёк «листай» (›)", gb.more && gb.fs === 12.5 && gb.n >= 7, JSON.stringify(gb));
   await shot(p, "guestbook-tabs");
   await p.evaluate(() => { const m = document.querySelector("[data-seg-more]"); const tr = m.parentElement.querySelector(".sa-hscroll"); tr.scrollLeft = tr.scrollWidth; }); await sleep(500);
   ok("CUT: долистал до конца — намёк пропал", (await p.locator("[data-seg-more]").count()) === 0);
@@ -684,7 +684,7 @@ if (want("WIDE")) {
   const segBefore = await segOf();
   await k.page.locator("button", { hasText: /^Вопросы$/ }).first().click(); await sleep(800);
   const segAfter = await segOf();
-  ok("WIDE: вкладки-«линзы» переключаются мышью (аналитика → «Вопросы»)", segAfter.includes("Вопросы:1") && !segBefore.includes("Вопросы:1") && /ЧАЩЕ ВСЕГО МИМО/.test(await text(k.page)), JSON.stringify({ segBefore, segAfter }));
+  ok("WIDE: вкладки-«линзы» переключаются мышью (аналитика → «Вопросы»)", segAfter.includes("Вопросы:1") && !segBefore.includes("Вопросы:1") && /Чаще всего мимо/i.test(await text(k.page))   /* v73: подпись курсивом, обычными буквами */, JSON.stringify({ segBefore, segAfter }));
   await k.page.keyboard.press("Tab");
   await k.ctx.close();
 

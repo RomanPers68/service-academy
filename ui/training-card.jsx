@@ -12,7 +12,7 @@ import { MODULES, programOf } from "../data/modules";
 import { ROLES } from "../data/roles";
 import { ROLE_SKILLS } from "../data/skills";
 import { onActivate, vibrate } from "../lib/utils";
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 import { positionLabel } from "../data/positions";
 
 // Допуски наставника — тот же ключ, что в ui/mentor.jsx
@@ -96,7 +96,9 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
       }}>
         {/* Шапка документа */}
         <div style={{ textAlign: "center", borderBottom: `2px solid ${gold}`, paddingBottom: 12, marginBottom: 12 }}>
-          <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 3, color: gold }}>✦ SERVICE ACADEMY ✦</div>
+          {/* v73 (Доп. 386): шапка и заголовки разделов — курсивом, обычными буквами, без звёздочек; штамп «SA · дата» внизу — как был */}
+          {/* знак — прописными с засечками, как на логотипе и сертификате (v73: без ✦ и моноширинного) */}
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 9.5, letterSpacing: 3, textTransform: "uppercase", color: gold }}>Service Academy</div>
           <div style={{ fontSize: 18, fontWeight: "bold", marginTop: 4 }}>Карта обучения сотрудника</div>
           <div style={{ fontSize: 11, color: "#735F44", marginTop: 2 }}>сформирована {today}</div>
         </div>
@@ -114,7 +116,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
         </tbody></table>
 
         {/* Треки обучения */}
-        <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2.5, color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>ТРЕКИ ОБУЧЕНИЯ</div>
+        <div style={{ ...labelStyle(11.5), color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>Треки обучения</div>
         <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse", marginBottom: 16 }}><tbody>
           {tracks.map(({ r, done, total, pct }) => (
             <tr key={r.id} style={{ borderBottom: "1px solid rgba(139,106,48,0.15)" }}>
@@ -126,7 +128,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
         </tbody></table>
 
         {/* Экзамены */}
-        <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2.5, color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>ЭКЗАМЕНЫ И СЕРТИФИКАТЫ</div>
+        <div style={{ ...labelStyle(11.5), color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>Экзамены и сертификаты</div>
         {exams.length === 0
           ? <div style={{ fontSize: 12.5, color: "#735F44", marginBottom: 16 }}>Экзамены пока не сданы.</div>
           : <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse", marginBottom: 16 }}><tbody>
@@ -142,7 +144,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
             </tbody></table>}
 
         {/* Допуски наставника */}
-        <div style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: 2.5, color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>ДОПУСКИ НАСТАВНИКА</div>
+        <div style={{ ...labelStyle(11.5), color: gold, borderBottom: line, paddingBottom: 4, marginBottom: 8 }}>Допуски наставника</div>
         {confirmed.length === 0
           ? <div style={{ fontSize: 12.5, color: "#735F44", marginBottom: 16 }}>Подтверждённых навыков пока нет.</div>
           : <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse", marginBottom: 16 }}><tbody>

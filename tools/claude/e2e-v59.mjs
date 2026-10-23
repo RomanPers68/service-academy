@@ -494,7 +494,7 @@ if (want("WORDS")) {
   await sleep(1400); await dismissToasts(a.page);
   await a.page.evaluate(() => window.__saNav("profile")); await sleep(1300);
   s = await text(a.page);
-  ok("WORDS: чип владельца — «ВЛАДЕЛЕЦ» (был «АДМИН»)", /ВЛАДЕЛЕЦ/.test(s) && !/АДМИН/.test(s), s.slice(0, 160));
+  ok("WORDS: чип владельца — «владелец» (был «АДМИН»; v73 — курсивом)", /владелец/.test(s) && !/АДМИН/.test(s), s.slice(0, 160));
   await a.ctx.close();
 }
 
@@ -507,7 +507,7 @@ if (want("QUEST")) {
   const p = o.page; await sleep(1400); await dismissToasts(p);
   await p.evaluate(() => window.__saNav("shift")); await sleep(1800); await dismissToasts(p);
   const q = await p.evaluate(() => { const c = document.querySelector("[data-quest]"); return c ? { off: c.getAttribute("data-quest-off"), text: c.innerText.replace(/\s+/g, " ") } : null; });
-  ok("QUEST: в выходной — «КВЕСТ СМЕНЫ · ВЫХОДНОЙ», «Сегодня у тебя выходной», без «не загрузился» и без «ТВОЯ ЧАСТЬ»", q && q.off === "1" && /ВЫХОДНОЙ/.test(q.text) && /Сегодня у тебя выходной/.test(q.text) && !/не загрузился|ТВОЯ ЧАСТЬ/.test(q.text), JSON.stringify(q));
+  ok("QUEST: в выходной — «Квест смены · выходной», «Сегодня у тебя выходной», без «не загрузился» и без «Твоя часть»", q && q.off === "1" && /Квест смены · выходной/.test(q.text) && /Сегодня у тебя выходной/.test(q.text) && !/не загрузился|Твоя часть/.test(q.text), JSON.stringify(q));
   await shot(p, "quest-off");
   await o.ctx.close();
   // рабочий день — как было: личные задания на месте
@@ -515,7 +515,7 @@ if (want("QUEST")) {
   await sleep(1400); await dismissToasts(w.page);
   await w.page.evaluate(() => window.__saNav("shift")); await sleep(1800); await dismissToasts(w.page);
   const q2 = await w.page.evaluate(() => { const c = document.querySelector("[data-quest]"); return c ? { off: c.getAttribute("data-quest-off"), text: c.innerText.replace(/\s+/g, " ") } : null; });
-  ok("QUEST: в день смены — личные задания («ТВОЯ ЧАСТЬ») как раньше", q2 && !q2.off && /ТВОЯ ЧАСТЬ/.test(q2.text), JSON.stringify(q2));
+  ok("QUEST: в день смены — личные задания («Твоя часть») как раньше", q2 && !q2.off && /Твоя часть/.test(q2.text), JSON.stringify(q2));
   await w.ctx.close();
 }
 
@@ -526,14 +526,14 @@ if (want("HINTS")) {
   const p = o.page;
   await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (/^sa_hint_/.test(k)) localStorage.removeItem(k); });
   await p.evaluate(() => window.__saNav("stats")); await sleep(1500);
-  const h1 = await p.evaluate(() => !!document.querySelector("[data-hint-side], .sa-hintin") || /ПОДСКАЗКА/.test(document.body.innerText));
+  const h1 = await p.evaluate(() => !!document.querySelector("[data-hint-side], .sa-hintin") || /(^|\n)Подсказка\n/.test(document.body.innerText));
   await p.evaluate(() => window.__saNav("daily")); await sleep(1500);
-  const h2 = await p.evaluate(() => /ПОДСКАЗКА/.test(document.body.innerText));
+  const h2 = await p.evaluate(() => /(^|\n)Подсказка\n/.test(document.body.innerText));
   const seenDaily = await p.evaluate((v) => localStorage.getItem("sa_hint_v" + v + "_daily"), HINTS_VERSION);
   ok("HINTS: первая подсказка показана, вторая на следующем экране в те же минуты — нет, и не помечена просмотренной", h1 && !h2 && seenDaily !== "1", JSON.stringify({ h1, h2, seenDaily }));
   await p.clock.runFor(11 * 60 * 1000);
   await p.evaluate(() => window.__saNav("cellar")); await sleep(1500);
-  const h3 = await p.evaluate(() => /ПОДСКАЗКА/.test(document.body.innerText));
+  const h3 = await p.evaluate(() => /(^|\n)Подсказка\n/.test(document.body.innerText));
   ok("HINTS: через 11 минут следующий экран показывает свою подсказку", h3);
   await shot(p, "hint-later");
   await o.ctx.close();

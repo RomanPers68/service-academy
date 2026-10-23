@@ -206,8 +206,8 @@ describe("v43: табличка на главной (DayChips)", () => {
     const ms = masteryChip(stateOf("master"), 0, true);
     expect(ms).toMatchObject({ mode: "master", pct: 1 });
     const msHtml = cell(chips({ mastery: ms, onMastery: noop, a11y: true }), "mastery");
-    expect(text(msHtml)).toContain("мастер ✦");
-    expect(msHtml).toContain('мастер<span class="sa-dp-x"> ✦</span>');
+    expect(text(msHtml)).toContain("мастер");   // v73: без ✦
+    expect(msHtml).toContain('>мастер</span>'); expect(msHtml).not.toContain("✦");
     expect(attr(msHtml, "data-medal")).toBe("100");
     expect(msHtml).not.toContain("data-ms-chip-new");
   });
@@ -227,7 +227,7 @@ describe("v43: табличка на главной (DayChips)", () => {
     expect(src).toMatch(/\.sa-dp\{display:flex;align-items:stretch;border-radius:16px;--dp-m:32px;--dp-i:19px;--dp-l:25px\}/);   // v44: плотнее
     expect(src).toMatch(/@media \(max-width:374px\)\{\.sa-dp\{--dp-m:28px;--dp-i:17px;--dp-l:22px\}\.sa-dp-cell\{gap:5px;padding:7px 3px\}\.sa-dp-x\{display:none\}\}/);
     expect(src).toMatch(/@media \(min-width:430px\)\{\.sa-dp:not\(\.lt\) \.sa-dp-w\{display:inline\}\.sa-dp:not\(\.lt\) \.sa-dp-n\{display:none\}\}/);
-    expect(src).toMatch(/\.sa-dp\.lt \.sa-dp-cap\{font-size:11px;letter-spacing:\.3px\}/);
+    expect(src).toMatch(/\.sa-dp\.lt \.sa-dp-cap\{font-size:13\.5px\}/);   // v73: курсивом, без разрядки
   });
   it("окно «Цель дня» — с бокалом: «Бокал наполняется с каждым шагом»", () => {
     const src = readFileSync("ui/day-cards.jsx", "utf8");

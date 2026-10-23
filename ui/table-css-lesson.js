@@ -2,6 +2,8 @@
 // вместе с ленивым модулем ui/table.jsx, на старт приложения не попадают.
 // Переменные палитры, иконки, свеча и меню раздела — в ui/table-css.js.
 
+import { LABEL_CSS } from "./tokens";   // v73 (Доп. 386): подписи — курсивом с засечками; чек и печать «ЗОЛОТО» — моноширинные, как были
+
 export const TABLE_LESSON_CSS = `
 /* ── оболочка урока ── */
 .tb{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;color:var(--text);font-family:var(--font-body);
@@ -27,7 +29,7 @@ export const TABLE_LESSON_CSS = `
 .tb-plate.just{animation:tbShake .45s}
 .tb-row2{display:flex;align-items:center;gap:8px;margin-top:9px}
 .tb-prog{flex:1;min-width:0}
-.tb-k{display:flex;align-items:baseline;gap:8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;color:var(--sub);text-transform:uppercase;white-space:nowrap}
+.tb-k{display:flex;align-items:baseline;gap:8px;${LABEL_CSS};font-size:13px;color:var(--sub);white-space:nowrap}
 .tb-k b{flex:0 0 auto;font-weight:400;color:var(--gold-ink)}
 .tb-k span{min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-body);font-style:italic;font-size:12.5px;letter-spacing:0;text-transform:none}
 .tb-beads{position:relative;height:12px;margin-top:7px}
@@ -53,13 +55,13 @@ export const TABLE_LESSON_CSS = `
 
 /* ── сцена ── */
 .tb-scene-row{display:flex;align-items:center;gap:8px;margin:4px 0 9px}
-.tb-where{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--edge-gold);color:var(--gold-ink);white-space:nowrap}
+.tb-where{${LABEL_CSS};font-size:13px;padding:2px 9px;border-radius:999px;border:1px solid var(--edge-gold);color:var(--gold-ink);white-space:nowrap}
 .tb-where.role{border-color:var(--role-edge,var(--edge-gold));color:var(--role-ink,var(--gold-ink))}
 .tb-scene{display:flex;gap:12px;align-items:flex-start;margin:0 0 12px;padding:12px 14px;border-radius:16px;border:1px solid var(--edge);background:var(--glass);box-shadow:inset 0 0 16px var(--inner)}
 .tb-scene .em{flex:0 0 auto;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;color:#7A5A1E;background:var(--plate);box-shadow:inset 0 0 0 4px rgba(0,0,0,.05),0 2px 6px var(--drop)}
 .tb-scene p{margin:0;font-size:15px;line-height:1.5;flex:1;min-width:0}
 .tb-thought{max-width:92%;margin:0 0 10px;padding:10px 14px;border-radius:20px;border:1.5px dashed var(--edge-gold);font-style:italic;font-size:14.5px;line-height:1.45}
-.tb-who{display:block;font-style:normal;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-ink);margin-bottom:3px}
+.tb-who{display:block;${LABEL_CSS};font-size:13px;color:var(--gold-ink);margin-bottom:3px}
 .tb-q{font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.3;margin:4px 0 12px;text-wrap:balance}
 .tb-second{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 12px;border-radius:12px;border:1px dashed var(--edge-gold);font-size:13px;line-height:1.35;color:var(--sub)}
 .tb-second .tb-ic{color:var(--gold-ink)}
@@ -90,9 +92,9 @@ export const TABLE_LESSON_CSS = `
 .tb-note .nt{font-family:var(--font-hand);font-size:24px;line-height:1.1;margin:0 0 6px;color:#2E2010}
 .tb-note .nt.ok{color:#2C6B48} .tb-note .nt.bad{color:#8B3A2E}
 .tb-note p{margin:0 0 7px;font-size:14px;line-height:1.5}
-.tb-note .na{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--paper-sub);margin:0 0 2px}
+.tb-note .na{display:block;${LABEL_CSS};font-size:13px;color:var(--paper-sub);margin:0 0 2px}
 .tb-note .nb{font-weight:700}
-.tb-note .pts{font-family:var(--font-mono);font-size:11px;letter-spacing:.8px;color:var(--paper-sub);margin:2px 0 0}
+.tb-note .pts{${LABEL_CSS};font-size:13.5px;color:var(--paper-sub);margin:2px 0 0}
 .tb-note .sign{font-family:var(--font-hand);font-size:18px;color:var(--paper-sub);text-align:right;margin:2px 0 0}
 /* «а теперь — вслух» */
 .tb-say{margin:12px 0 4px;padding:12px 14px;border-radius:16px;border:1px solid var(--edge-gold);background:var(--glass)}
@@ -105,7 +107,7 @@ export const TABLE_LESSON_CSS = `
 .tb-say .res{font-size:13px;font-weight:700;color:var(--ok-ink)} .tb-say .res.again{color:var(--gold-ink)}
 /* правда или миф */
 .tb-claim{margin:0 0 14px;padding:14px 16px;border-radius:16px;border:1px solid var(--edge);background:var(--glass);font-style:italic;font-size:16px;line-height:1.5}
-.tb-claim .na{display:block;font-style:normal;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--role-ink,var(--gold-ink));margin-bottom:5px}
+.tb-claim .na{display:block;${LABEL_CSS};font-size:13px;color:var(--role-ink,var(--gold-ink));margin-bottom:5px}
 .tb-myth{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 6px}
 .tb-myth button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:15px 8px;border-radius:16px;border:1px solid var(--edge-gold);background:var(--glass-2);font-family:var(--font-display);font-size:19px;font-weight:700;color:var(--text)}
 .tb-myth small{font-family:var(--font-body);font-size:12px;font-weight:400;color:var(--sub)}
@@ -170,7 +172,7 @@ export const TABLE_LESSON_CSS = `
 .r-week .fr .tb-ic{color:#3E5C80;margin:1px 0}
 /* Доп. 299: подсмотреть в уроке, послушать, автопереход, наставник */
 .tb-peek{max-height:62vh;overflow-y:auto;margin:0 -2px 12px;padding:14px 16px 10px;border-radius:4px;background:var(--paper);color:var(--paper-ink);box-shadow:0 6px 16px var(--drop)}
-.tb-peek .ey{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--paper-sub);margin:0 0 4px}
+.tb-peek .ey{${LABEL_CSS};font-size:13px;color:var(--paper-sub);margin:0 0 4px}
 .tb-peek h4{margin:0 0 8px;font-family:var(--font-display);font-size:17px;line-height:1.25;color:#2A1F0E}
 .tb-peek p{margin:0 0 6px;font-size:14px;line-height:1.5}
 .tb-peek p.b{font-weight:700;margin-top:8px}
@@ -191,8 +193,8 @@ export const TABLE_LESSON_CSS = `
 .tb-intro li>span:first-child{flex:0 0 22px;text-align:center;color:var(--gold-ink);font-size:15px}
 .tb-intro-n{margin:10px 0 0;font-size:13px;line-height:1.45;color:var(--sub);font-style:italic}
 /* v31: «запасная свеча» в раунде мастера — одна ошибка в запасе */
-.tb-spare{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;color:var(--gold-ink);text-transform:uppercase}
-.tb-spare small{font-size:10.5px}
+.tb-spare{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;gap:4px;${LABEL_CSS};font-size:12.5px;color:var(--gold-ink)}
+.tb-spare small{font-size:12.5px}
 .tb-spare.out{color:var(--sub)}
 /* v31: строки чека «какие темы освежены / что можно сдать на опыт» */
 .r-topics{margin:8px 0 2px;padding:0;list-style:none}
@@ -211,7 +213,7 @@ export const TABLE_LESSON_CSS = `
 .tb-heard{margin:0 0 8px;font-size:12.5px;font-style:italic;color:var(--sub)}
 /* разбор раунда */
 .tb-recap{width:100%;text-align:left;margin-top:4px}
-.tb-recap h4{margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--gold-ink);font-weight:400}
+.tb-recap h4{margin:0 0 8px;${LABEL_CSS};font-size:13px;color:var(--gold-ink)}
 .tb-recap li{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;margin:0 0 6px;border-radius:12px;border:1px solid var(--ok-edge);background:var(--ok-wash);list-style:none}
 .tb-recap li.no{border-color:var(--bad-edge);background:var(--bad-wash)}
 .tb-recap ul{margin:0;padding:0}
@@ -224,21 +226,21 @@ export const TABLE_LESSON_CSS = `
 .tb-sheet h3{margin:0 0 6px;font-family:var(--font-display);font-size:20px;font-weight:700}
 .tb-sheet p{margin:0 0 14px;color:var(--sub);font-size:14px;line-height:1.5}
 
-/* v40: светлая тема «Для чтения» — мелкий текст крупнее: подписи — от 13 px, моноширинные и
-   заглавные метки — от 11 px. Тёмная тема — как была. Чек остаётся «кассовым» (моноширинный 12,5 px) */
+/* v40: светлая тема «Для чтения» — мелкий текст крупнее: подписи — от 13 px, метки курсивом (v73) — на 0,5 px
+   крупнее тёмной темы, цифры в чипах — 11 px. Тёмная тема — как была. Чек остаётся «кассовым» (моноширинный 12,5 px) */
 html.sa-light .tb-host-t span{font-size:13px}
-html.sa-light .tb-k{font-size:11px;letter-spacing:1.2px}
+html.sa-light .tb-k{font-size:13.5px}
 html.sa-light .tb-k span{font-size:13px}
 html.sa-light .tb-chip{font-size:11px;letter-spacing:.6px}
-html.sa-light .tb-where{font-size:11px;letter-spacing:1.2px}
-html.sa-light .tb-who,html.sa-light .tb-note .na,html.sa-light .tb-claim .na,html.sa-light .tb-peek .ey{font-size:11px;letter-spacing:1.1px}
+html.sa-light .tb-where{font-size:13.5px}
+html.sa-light .tb-who,html.sa-light .tb-note .na,html.sa-light .tb-claim .na,html.sa-light .tb-peek .ey{font-size:13.5px}
 html.sa-light .tb-myth small{font-size:13px}
 html.sa-light .tb-autohint{font-size:13px}
-html.sa-light .tb-spare,html.sa-light .tb-spare small{font-size:11px;letter-spacing:.8px}
+html.sa-light .tb-spare,html.sa-light .tb-spare small{font-size:13px}
 html.sa-light .tb-say .mic-row span,html.sa-light .tb-heard{font-size:13px}
 /* подсказка «Проговори фразу вслух…» (без микрофона) — размер задан в ui/table.jsx прямо в разметке */
 html.sa-light .tb-say>div:not([class]){font-size:13px!important}
-html.sa-light .tb-recap h4{font-size:11px}
+html.sa-light .tb-recap h4{font-size:13.5px}
 html.sa-light .tb-recap .s{font-size:13px}
 html.sa-light .r-brand{font-size:11px;letter-spacing:2.6px}
 html.sa-light .r-note,html.sa-light .r-by{font-size:13px}

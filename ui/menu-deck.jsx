@@ -1,6 +1,6 @@
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 import { groupByCat, dishMatches, normCat } from "../lib/menu-sections";
 import { dishFaq, cocktailLinks, bumpDaily, allergenLabel } from "../lib/deck-extras";
 import { emitActivity } from "../lib/activity";
@@ -156,7 +156,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
         <div style={{ padding: "0 16px 100px" }}>
           {groupByCat(pool).map(g => (
             <div key={g.cat} style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", margin: "0 2px 6px" }}>{g.cat.toUpperCase()} · {g.items.length}</div>
+              <div style={{ ...labelStyle(13.5), color: gold, margin: "0 2px 6px" }}>{g.cat} · {g.items.length}</div>
               {g.items.map(x => {
                 const r = sr[x.id]; const known = r && r.stage > 0 && r.due > Date.now();
                 return (
@@ -197,21 +197,21 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                     {d.img && <span onClick={(e) => { e.stopPropagation(); setZoom(d.img); vibrate("light"); }} aria-label="Фото на весь экран"
                       style={{ position: "absolute", right: 10, top: 10, width: 34, height: 34, borderRadius: 18, background: "rgba(0,0,0,0.55)", color: "#EFE4C8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer" }}>⤢</span>}
                   </div>
-                  <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 6 }}>{reverse ? "ЧТО ЭТО? · " : ""}{(d.cat || "БЛЮДО").toUpperCase()}</div>
+                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>{reverse ? "Что это? · " : ""}{d.cat || "Блюдо"}</div>
                   {reverse
                     ? <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, lineHeight: 1.4 }}>{(d.ingredients || []).slice(0, 6).join(" · ") || "состав не указан"}</div>
                     : <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{d.name}</div>}
                   <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginTop: 10 }}>{reverse ? "Так гость и спросит: «а что вот это?». Вспомни название — и переверни." : "Вспомни состав, аллергены и как описать гостю — потом переверни и сверься."}</div>
-                  <div style={{ marginTop: 12, fontSize: 11, color: gold, fontStyle: "italic", textAlign: "center" }}>{reverse ? "тапни — название ✦" : "тапни — состав ✦"}</div>
+                  <div style={{ marginTop: 12, fontSize: 11, color: gold, fontStyle: "italic", textAlign: "center" }}>{reverse ? "тапни — название" : "тапни — состав"}</div>
                 </div>
                 <div className="sa-ck-face sa-ck-back" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
-                  <div style={{ fontSize: 11, letterSpacing: 2, color: gold, fontFamily: "monospace", marginBottom: 4 }}>{(d.cat || "БЛЮДО").toUpperCase()}</div>
+                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 4 }}>{d.cat || "Блюдо"}</div>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginBottom: 8 }}>{d.name}{d.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                   {String(d.short || "").trim() && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div>}
                   <DishBack d={d} T={T} gold={gold} />
                   {/* Доп. 210: гость спрашивает — пузыри; мост к Колоде бармена по сочетанию */}
                   <div style={{ marginTop: 10 }}>
-                    <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>ГОСТЬ СПРАШИВАЕТ</div>
+                    <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Гость спрашивает</div>
                     {dishFaq(d).map((f, k) => (
                       <div key={k} onClick={(e) => { e.stopPropagation(); setFaqOpen(faqOpen === d.id + k ? null : d.id + k); vibrate("light"); }} style={{ marginBottom: 6, cursor: "pointer" }}>
                         <div style={{ display: "inline-block", padding: "6px 11px", borderRadius: "14px 14px 14px 4px", background: a11y ? "rgba(139,106,48,0.12)" : "rgba(255,248,230,0.08)", border: `1px solid ${bd}`, fontSize: 12.5, color: text }}>«{f.q}»</div>
@@ -221,7 +221,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                   </div>
                   {(() => { const links = cocktailLinks(d.pairing); return links.length && onOpenCocktail ? (
                     <div style={{ marginTop: 8 }}>
-                      <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace", marginBottom: 6 }}>К НЕМУ ИЗ БАРА</div>
+                      <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>К нему из бара</div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenCocktail(l.id); }} style={{ ...pill(false), fontSize: 11, color: text }}>{l.name} ›</span>)}</div>
                     </div>) : null; })()}
                 </div>
@@ -232,12 +232,12 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
             {mode === "quiz" ? (
               <div style={{ display: "flex", gap: 10 }}>
                 <button className="sa-btn" onClick={() => mark(false)} style={{ ...pill(false), flex: 1, padding: "12px", textAlign: "center", color: red || "#D96A5E", borderColor: (red || "#D96A5E") + "66", fontSize: 12.5 }}>Повторить</button>
-                <button className="sa-btn" onClick={() => mark(true)} style={{ ...pill(true), flex: 1, padding: "12px", textAlign: "center", fontSize: 12.5 }}>Знал ✦</button>
+                <button className="sa-btn" onClick={() => mark(true)} style={{ ...pill(true), flex: 1, padding: "12px", textAlign: "center", fontSize: 12.5 }}>Знал</button>
               </div>
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
-                <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: sub, letterSpacing: 1.5, whiteSpace: "nowrap" }}>СВАЙП · ЛИСТАТЬ</span>
+                <span style={{ ...labelStyle(13), color: sub, whiteSpace: "nowrap" }}>Свайп · листать</span>
                 <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
               </div>
             )}
@@ -247,7 +247,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
       {zoom && (
         <div onClick={() => setZoom(null)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.94)", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "auto" }}>
           <img src={zoom} alt="" style={{ maxWidth: "100vw", maxHeight: "100vh", objectFit: "contain", touchAction: "pinch-zoom" }} />
-          <div style={{ position: "absolute", bottom: "calc(24px + env(safe-area-inset-bottom, 0px))", left: 0, right: 0, textAlign: "center", fontSize: 12.5, letterSpacing: 1.5, color: "#C8B898", fontFamily: "monospace" }}>ЩИПОК — УВЕЛИЧИТЬ · ТАП — ЗАКРЫТЬ</div>
+          <div style={{ position: "absolute", bottom: "calc(24px + env(safe-area-inset-bottom, 0px))", left: 0, right: 0, textAlign: "center", ...labelStyle(15), color: "#C8B898" }}>Щипок — увеличить · тап — закрыть</div>
         </div>
       )}
     </div>
@@ -308,7 +308,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
       <div style={{ padding: "6px 16px 100px" }}>
         {phase === "intro" && (
           <div style={{ ...frost, padding: 18, textAlign: "center" }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>30 СЕКУНД</div>
+            <div style={{ ...labelStyle(13.5), color: gold }}>30 секунд</div>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, margin: "8px 0" }}>Есть или нет?</div>
             <div style={{ fontSize: 14, color: sub, lineHeight: 1.55 }}>Фото, название и один аллерген. Свайп вправо — «есть», влево — «нет». Ошибка объясняется и вернётся через две карточки. Считаем верные.</div>
             {best > 0 && <div style={{ fontSize: 12.5, color: gold, marginTop: 8 }}>Твой рекорд: {best}</div>}
@@ -327,7 +327,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
               <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{q.d.name}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{(q.d.ingredients || []).slice(0, 5).join(", ")}</div>
               <div style={{ marginTop: 12, textAlign: "center" }}>
-                <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>ЕСТЬ ЛИ ЗДЕСЬ</div>
+                <div style={{ ...labelStyle(13.5), color: gold }}>Есть ли здесь</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, marginTop: 2 }}>{allergenLabel(q.al)}?</div>
               </div>
               {flash && !flash.ok && <div className="sa-fadein" style={{ marginTop: 10, fontSize: 12.5, color: red, lineHeight: 1.45 }}>{flash.why}</div>}
@@ -336,12 +336,12 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
               <button className="sa-btn" onClick={() => answer(false)} style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: text }}>‹ Нет</button>
               <button className="sa-btn" onClick={() => answer(true)} style={{ ...T.doneBtn, flex: 1, background: gold }}>Есть ›</button>
             </div>
-            <div style={{ textAlign: "center", fontSize: 11, letterSpacing: 1.5, color: sub, fontFamily: "monospace", marginTop: 8 }}>СВАЙП ВЛЕВО · НЕТ &nbsp;·&nbsp; ВПРАВО · ЕСТЬ</div>
+            <div style={{ textAlign: "center", ...labelStyle(13.5), color: sub, marginTop: 8 }}>Свайп влево · нет &nbsp;·&nbsp; вправо · есть</div>
           </>
         )}
         {phase === "done" && (
           <div className="sa-fadein" style={{ ...frost, padding: 18, textAlign: "center" }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.6, color: score >= best && score > 0 ? green : gold, fontFamily: "monospace" }}>{score > 0 && score >= best ? "РЕКОРД ✦" : "ВРЕМЯ"}</div>
+            <div style={{ ...labelStyle(13.5), color: score >= best && score > 0 ? green : gold }}>{score > 0 && score >= best ? "Рекорд" : "Время"}</div>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 44, color: text, margin: "4px 0" }}>{score}</div>
             <div style={{ fontSize: 12.5, color: sub }}>{miss ? `${miss} ошибок — они вернулись в круг` : "без единой ошибки"}{best ? ` · рекорд ${Math.max(best, score)}` : ""}</div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>

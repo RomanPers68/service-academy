@@ -21,7 +21,10 @@ import { liveVoiceAvailable, liveVoicePref, setLiveVoicePref, voiceUrl, silentUr
 import { canSpeak as ttsOk, speakText, cancelSpeech, audioWake, audioSleep, isAppleMobile } from "../lib/speech";
 import { shuffleQuizOptions, vibrate } from "../lib/utils";
 import { ymd } from "../lib/streak";
+import { LABEL_CSS } from "./tokens";
 
+// v73 (Доп. 386): подписи (вид выпуска, кто говорит, «фраза 3 из 12», «Дальше в плейлисте») — курсивом, обычными
+// буквами; капсулы — строчными. Моноширинный — только «≈ 3 мин». Звёздочка в центре пластинки убрана.
 const CSS = `
 /* выпуски — стеклянная капсула, подсветка едет за пальцем (v32) */
 .rd-seg{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;margin:2px 0 12px;padding:3px;border-radius:16px;
@@ -34,7 +37,7 @@ const CSS = `
 html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),rgba(246,234,206,.95));box-shadow:inset 0 0 0 1px rgba(139,106,48,.45),0 3px 8px rgba(120,85,25,.16)}
 .rd-tab{position:relative;z-index:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 9px 7px;border-radius:13px;border:0;background:transparent;
   color:var(--sub);font:700 12.5px var(--font-body);cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;transition:color .2s}
-.rd-tab small{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.8px;color:var(--kc,var(--gold-ink));font-weight:400;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.rd-tab small{${LABEL_CSS};font-size:12.5px;color:var(--kc,var(--gold-ink));white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .rd-tab span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rd-tab.on{color:var(--text)}
 .rd-tab i{font-style:normal;color:var(--ok-ink,#5DBB8A);margin-left:4px}
@@ -50,7 +53,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 /* v36: пустое место ленты обложек — невидимое (держит ширину ленты в пять обложек) */
 .rd-gap{position:absolute;top:0;bottom:0;min-height:1px;left:calc(22px + var(--k) * (100% - 38px));width:calc(100% - 44px);pointer-events:none}
 .rd-top{display:flex;align-items:center;gap:8px;width:100%;min-height:22px}
-.rd-kind{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font:700 10.5px/1.3 var(--font-mono);letter-spacing:1.2px;text-transform:uppercase;
+.rd-kind{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;${LABEL_CSS};font-size:13px;line-height:1.3;text-transform:lowercase;
   color:var(--kc);border:1px solid var(--edge-gold);border-color:color-mix(in srgb,var(--kc) 55%,transparent);background:var(--glass);background:color-mix(in srgb,var(--kc) 12%,transparent);white-space:nowrap}
 .rd-mins{font:11px var(--font-mono);letter-spacing:.6px;color:var(--sub);white-space:nowrap}
 .rd-heard{margin-left:auto;font:700 11px var(--font-body);color:var(--ok-ink,#5DBB8A);white-space:nowrap}
@@ -59,7 +62,6 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
   background:radial-gradient(circle at 50% 50%,var(--kc) 0 19%,rgba(0,0,0,.6) 19.6% 21%,transparent 21.5%),
     repeating-radial-gradient(circle at 50% 50%,#17120B 0 1.6px,#211A10 1.6px 3.2px),#15100A;
   box-shadow:0 12px 28px rgba(0,0,0,.5),inset 0 0 0 2px rgba(214,178,102,.2),inset 0 0 0 9px rgba(0,0,0,.25)}
-.rd-disc::before{content:"✦";position:absolute;left:50%;top:50%;transform:translate(-50%,-62%);font:12px/1 var(--font-body);color:rgba(26,16,8,.75)}
 .rd-disc::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:#0E0A05;box-shadow:0 0 0 1.5px rgba(255,255,255,.22)}
 .rd-disc.on{animation:rdSpin 4.2s linear infinite}
 .rd-sheen{position:absolute;left:14px;top:4px;width:138px;height:138px;border-radius:50%;pointer-events:none;
@@ -72,7 +74,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-bars.on i{animation:rdBar .9s ease-in-out infinite;opacity:1}
 .rd-bars.on i:nth-child(2){animation-delay:.12s}.rd-bars.on i:nth-child(3){animation-delay:.24s}.rd-bars.on i:nth-child(4){animation-delay:.36s}.rd-bars.on i:nth-child(5){animation-delay:.48s}
 @keyframes rdBar{0%,100%{height:5px}50%{height:18px}}
-.rd-who{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:3px 10px 3px 8px;border-radius:999px;font:700 10.5px/1.3 var(--font-mono);letter-spacing:1.6px;
+.rd-who{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:2px 10px 2px 8px;border-radius:999px;${LABEL_CSS};font-size:13px;line-height:1.3;
   color:var(--wc);border:1px solid var(--edge-gold);border-color:color-mix(in srgb,var(--wc) 50%,transparent);background:var(--glass);background:color-mix(in srgb,var(--wc) 11%,transparent)}
 .rd-who svg{flex:0 0 auto}
 .rd-now{font-family:var(--font-display);font-size:18.5px;line-height:1.36;margin:8px 0 0;min-height:76px;text-wrap:balance;display:flex;align-items:center;justify-content:center}
@@ -82,7 +84,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-segs button.past i{background:var(--kc);opacity:.6}
 .rd-segs button.now i{background:var(--kc);box-shadow:0 0 8px var(--kc)}
 .rd-segs button:focus-visible{outline:2px solid #D9B87C;outline-offset:1px}
-.rd-pos{margin-top:4px;font:10.5px var(--font-mono);letter-spacing:.8px;color:var(--sub)}
+.rd-pos{margin-top:4px;${LABEL_CSS};font-size:13px;color:var(--sub)}
 .rd-ttl{font-family:var(--font-display);font-size:16px;margin-top:10px}
 .rd-sub{font-size:12.5px;color:var(--sub);margin-top:2px}
 .rd-ctl{display:flex;align-items:center;justify-content:center;gap:18px;margin:12px 0 4px}
@@ -102,7 +104,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-txt{margin:14px 0 0;padding:0;list-style:none}
 .rd-txt li{padding:6px 2px;font-size:14px;line-height:1.45;color:var(--sub);border-bottom:1px dashed var(--edge)}
 .rd-txt li.cur{color:var(--text)}
-.rd-txt li b{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;margin-right:6px;color:var(--gold-ink)}
+.rd-txt li b{${LABEL_CSS};font-size:13px;margin-right:6px;color:var(--gold-ink)}
 .rd-note{font-size:12.5px;line-height:1.45;color:var(--sub);margin:10px 2px 0}
 .rd-tip{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;padding:8px 11px;border-radius:12px;border:1px dashed var(--edge-gold);font-size:12.5px;line-height:1.4;color:var(--sub)}
 /* v33: голос телефона не включился — заметно, но спокойно (под кнопками, как подсказка) */
@@ -125,7 +127,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 .rd-sw .tx{flex:1;min-width:0}
 .rd-next{margin:14px 0 0}
 .rd-next ul{margin:0;padding:0;list-style:none}
-.rd-next h4{margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:2px;color:var(--gold-ink);font-weight:400;text-transform:uppercase}
+.rd-next h4{margin:0 0 8px;${LABEL_CSS};font-size:13px;color:var(--gold-ink)}
 .rd-next li{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px dashed var(--edge)}
 .rd-next li .tx{flex:1;min-width:0}
 .rd-next li .tx b{display:block;font-family:var(--font-display);font-size:15px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -136,7 +138,7 @@ html.sa-light .rd-pill{background:linear-gradient(180deg,rgba(255,252,244,.98),r
 `;
 let cssOn = false;
 function ensureCss() { if (cssOn || typeof document === "undefined" || !document.head || !document.createElement) return; cssOn = true; const st = document.createElement("style"); st.id = "sa-radio-css"; st.textContent = CSS; document.head.appendChild(st); }
-const WHO = { host: "ВЕДУЩИЙ", guest: "ГОСТЬ", staff: "КАК СКАЗАТЬ" };
+const WHO = { host: "ведущий", guest: "гость", staff: "как сказать" };
 const KIND = { next: "Дальше по треку", fresh: "Освежить", repeat: "Повтор" };
 // v32: у каждого вида выпуска и у каждого голоса — свой цвет (тёмная / светлая тема)
 const KIND_C = { next: ["#D9B87C", "#6B4E0E"], fresh: ["#E0956B", "#8A3F1E"], repeat: ["#8FBF9F", "#245536"] };   // светлая — контраст ≥ 4,5
@@ -540,7 +542,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
           <Arm on={on} />
         </div>
         <div className={"rd-bars" + (on ? " on" : "")} aria-hidden="true"><i /><i /><i /><i /><i /></div>
-        <div className="rd-who">{WHO_IC[s.who] || WHO_IC.host}{WHO[s.who] || "ВЕДУЩИЙ"}</div>
+        <div className="rd-who">{WHO_IC[s.who] || WHO_IC.host}{WHO[s.who] || "ведущий"}</div>
         <p className="rd-now" aria-live={isCur ? "polite" : undefined}>{s.text}</p>
         {x.segs.length > 1 ? (
           <div className="rd-segs rd-tap" role="group" aria-label="Фразы выпуска">
@@ -647,7 +649,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
           <>
             <div className="rd-air" style={{ "--kc": kc(e.kind), "--wc": wc("host") }}>
               <div className="rd-deck" aria-hidden="true"><div className="rd-disc" /><div className="rd-sheen" /><Arm on={false} /></div>
-              <div className="rd-ttl">Выпуск дослушан ✦</div>
+              <div className="rd-ttl">Выпуск дослушан</div>
               <div className="rd-sub">{quiz.length ? "Верно " + right + " из " + quiz.length + (right < quiz.length ? " — ошибка ушла в «Работу над ошибками»" : "") : "«" + e.title + "»"}</div>
             </div>
             {/* v31: что дальше — вместо пустоты после выпуска */}

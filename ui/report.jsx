@@ -16,12 +16,13 @@ import { onActivate, vibrate } from "../lib/utils";
 import { serverMissing, serverStage } from "../lib/server-text";   // v58 (Доп. 371): без «этап 23» у руководителя без прав владельца
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
+import { LABEL_CSS } from "./tokens";   // v73 (Доп. 386): надзаголовок .rp-ey — курсив с засечками, не моноширинный капс
 
 const CSS = `
 .rp{min-height:100%;padding:0 0 28px;color:#EFE4C8;font-family:Georgia,serif}
 .rp-top{display:flex;align-items:center;gap:8px;padding:14px 14px 4px}
 .rp-back{background:none;border:0;padding:0 6px;cursor:pointer;color:#D9B87C;font:25px/1 Georgia,serif}
-.rp-ey{font:700 10.5px/1.2 ui-monospace,Menlo,monospace;letter-spacing:1.8px;text-transform:uppercase;color:#D9B87C}
+.rp-ey{${LABEL_CSS};font-size:13px;line-height:1.2;color:#D9B87C}
 .rp-h{margin:2px 0 0;font-size:21px;line-height:1.2;font-weight:700;color:#F3E9D2}
 .rp-sub{font-size:12.5px;color:#A99B7E;margin-top:2px}
 .rp-card{margin:10px 14px 0;padding:13px 14px;border-radius:16px;border:1px solid rgba(214,178,102,.28);background:rgba(255,250,238,.04)}
@@ -369,7 +370,7 @@ export function MasteryBlock({ ms }) {
   return (
     <section className="rp-sec">
       <h3>Путь мастера<span>{ms.bronze} из {ms.total} {pl(ms.total, "значка", "значков", "значков")}</span></h3>
-      {ms.master.length ? <div className="rp-master">✦ Мастер роли: {ms.master.map((r) => "«" + r.label + "»").join(", ")}</div> : null}
+      {ms.master.length ? <div className="rp-master">Мастер роли: {ms.master.map((r) => "«" + r.label + "»").join(", ")}</div> : null}
       {ms.badges.length ? (
         <div className="rp-ms" role="list" aria-label="Значки">
           {ms.badges.map((b) => <span key={b.id} role="listitem" className={"t" + b.tier}><i aria-hidden="true" />{b.title}<em>{b.tierName}</em></span>)}

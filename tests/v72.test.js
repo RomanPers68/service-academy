@@ -30,7 +30,7 @@ describe("v72: строка под кнопками Telegram", () => {
     expect(app).toContain('root.style.setProperty("--sa-top", h + "px");');
   });
   it("метка «сборка v72», «Дополнение 385»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v72</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v73 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 385 — верхняя строка снова под кнопками Telegram: на iPhone он накрывает свою полосу (v72)");
   });
 });

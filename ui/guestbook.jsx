@@ -7,7 +7,7 @@
 import React from "react";
 import { readGold } from "../lib/marks";
 import { hintsFor } from "../data/hints";
-import { GOLD, goldText } from "./tokens";
+import { GOLD, goldText, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { ROLE_SVG } from "./icons";
@@ -26,6 +26,7 @@ const BM = () => bookModules(MODULES);
 
 const GOLD_SOFT = "#D2A85A", PAPER = "#F5EFE2", PAPER_DIM = "#F0E8D8",
   INK = "#2A1F0E", BROWN = "#735F44", WAX = "#8B3020";
+// v73 (Доп. 386): моноширинный — только цифрам («12/56») и надписям внутри сургучных печатей; подписи — labelStyle
 const MONO = { fontFamily: "ui-monospace, Menlo, monospace" };
 const SCRIPT = { fontFamily: "'Marck Script', 'Caveat', 'Segoe Script', cursive" };
 
@@ -56,13 +57,13 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates, gold = 
     const rv = reviewOf(m);
     if (!rv) continue;
     // v30 (Доп. 316): золотая тема — на странице её отзыва золотая печать
-    if (moduleDone(m, completed, quizDone)) pages.push({ kind: "earned", key: m.id, ...rv, gold: !!(gold && gold[m.id]), source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, date: dates[m.id] ? ruDate(dates[m.id]) : "" });
-    else pages.push({ kind: "locked", key: m.id, source: `${m.tag.toUpperCase()} · ${m.title.toUpperCase()}`, hint: `Пройди «${m.title}» — и этот разворот займёт гость, для которого ты это сделаешь по-настоящему.` });
+    if (moduleDone(m, completed, quizDone)) pages.push({ kind: "earned", key: m.id, ...rv, gold: !!(gold && gold[m.id]), source: `${m.tag} · ${m.title}`, date: dates[m.id] ? ruDate(dates[m.id]) : "" });
+    else pages.push({ kind: "locked", key: m.id, source: `${m.tag} · ${m.title}`, hint: `Пройди «${m.title}» — и этот разворот займёт гость, для которого ты это сделаешь по-настоящему.` });
   }
   const lg = LEGEND_REVIEWS[roleId];
   if (lg) {
-    if (examResults?.[roleId]?.passed) pages.push({ kind: "legend", key: "lg_" + roleId, ...lg, source: "ЭКЗАМЕН РОЛИ · СДАН", date: dates["lg_" + roleId] ? ruDate(dates["lg_" + roleId]) : "" });
-    else pages.push({ kind: "locked", key: "lg_" + roleId, legend: true, source: "ЛЕГЕНДАРНАЯ СТРАНИЦА", hint: "Сдай экзамен роли — и её займёт гость, о котором рассказывают истории. С печатью." });
+    if (examResults?.[roleId]?.passed) pages.push({ kind: "legend", key: "lg_" + roleId, ...lg, source: "Экзамен роли · сдан", date: dates["lg_" + roleId] ? ruDate(dates["lg_" + roleId]) : "" });
+    else pages.push({ kind: "locked", key: "lg_" + roleId, legend: true, source: "Легендарная страница", hint: "Сдай экзамен роли — и её займёт гость, о котором рассказывают истории. С печатью." });
   }
   return pages;
 }
@@ -140,7 +141,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   const pages = React.useMemo(() => {
     if (tab === "weekly") {
       return completed[wid]
-        ? [{ kind: "legend", key: wid, ...WEEKLY_REVIEW, seal: "ВЫИГРАН", source: "ГОСТЬ НЕДЕЛИ · ПРОЙДЕН", date: dates[wid] ? ruDate(dates[wid]) : "" }]
+        ? [{ kind: "legend", key: wid, ...WEEKLY_REVIEW, seal: "ВЫИГРАН", source: "Гость недели · пройден", date: dates[wid] ? ruDate(dates[wid]) : "" }]
         : [{ kind: "challenge", key: wid }];
     }
     if (tab === "builds") return [{ kind: "builds", key: "builds_page" }];
@@ -159,7 +160,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   // Если у роли ещё нет ни одной страницы (не заведены отзывы для её модулей),
   // подставляем заглушку вместо undefined — иначе экран падает на page.kind.
   const page = pages[Math.min(idx, pages.length - 1)] || pages[0] || {
-    kind: "locked", key: "empty_" + tab, source: "СТРАНИЦ ПОКА НЕТ",
+    kind: "locked", key: "empty_" + tab, source: "Страниц пока нет",
     hint: "Для этой роли отзывы ещё готовятся. Проходи разделы — страницы появятся здесь.",
   };
   const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };
@@ -167,7 +168,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
   const chips = [...ROLES.filter(r => BM()[r.id] && (BM()[r.id] || []).some(m => reviewOf(m))).map(r => ({ id: r.id, label: r.shortLabel || r.label })),
     ...((BM().bar || []).some(m => (m.lessons || []).some(l => l.type === "build")) ? [{ id: "builds", label: "Сборка" }] : []),
-    { id: "weekly", label: "✦ Гость недели" }];
+    { id: "weekly", label: "Гость недели" }];
   // Витрина сборки: build-уроки роли «Бар» и лучшие звёзды по каждому.
   // Данные — из общего контура practice_stars, отдельного хранилища нет.
   const buildLessons = React.useMemo(() =>
@@ -224,7 +225,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       {/* Разделы книги */}
       <div style={{ padding: "12px 16px 2px" }}>
         <LiquidSegment a11y={a11y} equal={false} scroll accent={a11y ? "#6B4E14" : GOLD} muted={T.modSub.color}   // активная вкладка лежит на золотистой подложке (правка 172)
-          itemStyle={{ ...MONO, fontSize: 11.5, letterSpacing: .4, padding: "8px 13px" }}   // v58 (Доп. 371): крупнее (были 9 px), у края — намёк «листай»
+          itemStyle={{ padding: "8px 13px" }}   // v58 (Доп. 371): у края — намёк «листай»; v73: шрифт — как у остальных переключателей (Georgia), без моноширинного
           items={chips.map(c => ({ id: c.id, render: () => (<>
             {c.label}
             {unreadByTab[c.id] && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: GOLD, marginLeft: 5, boxShadow: `0 0 5px ${GOLD}`, verticalAlign: "middle" }} />}
@@ -248,16 +249,16 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
             {page.kind === "challenge" ? (
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 10 }}>
-                <div style={{ ...MONO, color: BROWN, fontSize: 10.5, letterSpacing: 3 }}>НОВОЕ ИСПЫТАНИЕ КАЖДУЮ НЕДЕЛЮ</div>
+                <div style={{ ...labelStyle(13), color: BROWN }}>Новое испытание каждую неделю</div>
                 <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.3" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6" /><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z" /><path d="M6.5 14v7M17.5 14v7M7 17.5h10" /></svg>
                 <div style={{ ...SCRIPT, color: INK, fontSize: 25, lineHeight: 1.2 }}>Гость недели уже за столиком…</div>
                 <div style={{ color: BROWN, fontSize: 14, lineHeight: 1.65, maxWidth: 258 }}>Сложный живой диалог. Проведи его достойно — и получи страницу с печатью. Не получится — гость уйдёт без отзыва, но вернётся: попробуешь снова.</div>
-                <button onClick={onWeekly} {...onActivate(onWeekly)} style={{ ...MONO, marginTop: 4, fontSize: 11, letterSpacing: 2, color: PAPER, background: `linear-gradient(135deg, ${GOLD_SOFT}, #7A5D2A)`, border: "none", borderRadius: 14, padding: "10px 22px", boxShadow: "0 4px 14px rgba(139,106,48,.4)", cursor: "pointer" }}>ПРИНЯТЬ СТОЛ ›</button>
+                <button onClick={onWeekly} {...onActivate(onWeekly)} style={{ fontFamily: "Georgia, serif", marginTop: 4, fontSize: 13.5, color: PAPER, background: `linear-gradient(135deg, ${GOLD_SOFT}, #7A5D2A)`, border: "none", borderRadius: 14, padding: "10px 22px", boxShadow: "0 4px 14px rgba(139,106,48,.4)", cursor: "pointer" }}>Принять стол ›</button>
               </div>
             ) : page.kind === "builds" ? (
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ ...MONO, color: "#7A654C", fontSize: 10.5, letterSpacing: 2 }}>РОЛЬ «БАР» · ЛУЧШИЕ ПРОГОНЫ</div>
+                  <div style={{ ...labelStyle(13), color: "#7A654C" }}>Роль «Бар» · лучшие прогоны</div>
                   <span style={{ display:"inline-flex", verticalAlign:"-3px" }}>{ROLE_SVG.bar("#C8A96E", 16)}</span>
                 </div>
                 <div style={{ ...SCRIPT, color: INK, fontSize: 25, marginTop: 10 }}>Витрина сборки</div>
@@ -278,7 +279,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                           <div style={{ color: INK, fontSize: 12.5, fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {(l.title || "").replace(/^Сборка:\s*/i, "")}
                           </div>
-                          <div style={{ ...MONO, color: col, fontSize: 10.5, letterSpacing: 1.5, marginTop: 2, textTransform: "uppercase" }}>{verdict}</div>
+                          <div style={{ ...labelStyle(12.5), color: col, marginTop: 2 }}>{verdict}</div>
                         </div>
                         <div style={{ color: GOLD_SOFT, fontSize: 11, letterSpacing: 1, flexShrink: 0 }}>
                           {"★".repeat(st)}<span style={{ opacity: .22 }}>{"★".repeat(3 - st)}</span>
@@ -294,7 +295,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                   const masters = stamped.filter(c => m[c.id].level >= 3).length;
                   return (
                     <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed rgba(122,101,72,.3)" }}>
-                      <div style={{ ...MONO, color: "#7A654C", fontSize: 10.5, letterSpacing: 2 }}>СБОРКА РУКАМИ · ПО ПАМЯТИ</div>
+                      <div style={{ ...labelStyle(13), color: "#7A654C" }}>Сборка руками · по памяти</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                         <div style={{ ...SCRIPT, color: INK, fontSize: 21 }}>{stamped.length}<span style={{ fontSize: 12.5, color: "#7A654C", marginLeft: 6 }}>из {COCKTAILS.length}{masters ? ` · мастер ${masters}` : ""}</span></div>
                         <div style={{ display: "flex", gap: 2, flexWrap: "wrap", flex: 1, justifyContent: "flex-end" }}>
@@ -302,12 +303,12 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                           {stamped.length > 12 && <span style={{ ...MONO, fontSize: 10.5, color: "#7A654C" }}>+{stamped.length - 12}</span>}
                         </div>
                       </div>
-                      {!stamped.length && <div style={{ ...MONO, color: "#7A654C", fontSize: 10.5, letterSpacing: 1.5, marginTop: 4 }}>СОБЕРИ КОКТЕЙЛЬ ПО ПАМЯТИ — ПЕРВАЯ ПЕЧАТЬ ЛЯЖЕТ СЮДА</div>}
+                      {!stamped.length && <div style={{ ...labelStyle(13), color: "#7A654C", marginTop: 4 }}>Собери коктейль по памяти — первая печать ляжет сюда</div>}
                     </div>
                   );
                 })()}
-                <div style={{ ...MONO, color: "#7A654C", fontSize: 10.5, letterSpacing: 1.5, marginTop: 10 }}>
-                  ЛУЧШИЙ ПРОГОН КАЖДОЙ СБОРКИ · ОБНОВЛЯЕТСЯ САМ
+                <div style={{ ...labelStyle(13), color: "#7A654C", marginTop: 10 }}>
+                  Лучший прогон каждой сборки · обновляется сам
                 </div>
               </div>
             ) : page.kind === "locked" ? (
@@ -317,18 +318,18 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                   : <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>}
                 <div style={{ ...SCRIPT, color: BROWN, fontSize: 25 }}>Здесь появится отзыв</div>
                 <div style={{ color: BROWN, fontSize: 14, lineHeight: 1.65, maxWidth: 250 }}>{page.hint}</div>
-                <div style={{ ...MONO, color: "#7A654C", fontSize: 10.5, letterSpacing: 2, border: "1px solid rgba(122,101,72,.3)", borderRadius: 9, padding: "5px 12px" }}>{page.source}</div>
+                <div style={{ ...labelStyle(13), color: "#7A654C", border: "1px solid rgba(122,101,72,.3)", borderRadius: 9, padding: "4px 12px" }}>{page.source}</div>
               </div>
             ) : (
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ ...MONO, color: "#7A654C", fontSize: 10.5, letterSpacing: 2 }}>{(page.date ? page.date + " · " : "") + page.table.toUpperCase()}</div>
+                  <div style={{ ...labelStyle(13), color: "#7A654C" }}>{(page.date ? page.date + " · " : "") + page.table}</div>
                   <div style={{ color: GOLD_SOFT, fontSize: 12.5, letterSpacing: 2 }}>★★★★★</div>
                 </div>
                 <div style={{ ...SCRIPT, color: INK, fontSize: 21, lineHeight: "28px", marginTop: 12, flex: 1 }}>{page.text}</div>
                 <div style={{ ...SCRIPT, color: BROWN, fontSize: 21, textAlign: "right", marginTop: 6 }}>— {page.guest}</div>
                 <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                  <div style={{ ...MONO, color: "#7A654C", fontSize: 10.5, letterSpacing: 1.5, border: "1px solid rgba(122,101,72,.35)", borderRadius: 9, padding: "5px 10px", transform: "rotate(-2deg)" }}>✓ {page.source}</div>
+                  <div style={{ ...labelStyle(13), color: "#7A654C", border: "1px solid rgba(122,101,72,.35)", borderRadius: 9, padding: "4px 10px", transform: "rotate(-2deg)" }}>✓ {page.source}</div>
                   {page.kind === "earned" && page.gold ? (
                     <div className="gb-seal" aria-label="Золотая тема" style={{ width: 54, height: 54, borderRadius: "50%", flexShrink: 0, background: "radial-gradient(circle at 34% 30%, #F6DD8C, #C99A2E 60%, #7A5612)", boxShadow: "0 4px 10px rgba(122,86,18,.45), inset 0 2px 4px rgba(255,255,255,.35), inset 0 -3px 6px rgba(0,0,0,.3)", display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-10deg)" }}>
                       <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(255,245,210,.55)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
@@ -367,8 +368,8 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
             <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 18, padding: "6px 15px", fontSize: 14, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
           </div>
         )}
-        <div style={{ ...MONO, color: T.modSub.color, fontSize: 10.5, letterSpacing: 1, textAlign: "center", marginTop: 10, opacity: .8 }}>
-          {tab === "weekly" ? "НОВЫЙ ГОСТЬ — КАЖДЫЙ ПОНЕДЕЛЬНИК" : tab === "builds" ? "СОБЕРИ ВСЕ НА «БЕЗУПРЕЧНО» — ТРИ ЗВЕЗДЫ В КАЖДОЙ СТРОКЕ" : `ЗАПОЛНЕНО В РАЗДЕЛЕ: ${earnedInTab} ИЗ ${pages.length}`}
+        <div style={{ ...labelStyle(13), color: T.modSub.color, textAlign: "center", marginTop: 10, opacity: .8 }}>
+          {tab === "weekly" ? "Новый гость — каждый понедельник" : tab === "builds" ? "Собери все на «безупречно» — три звезды в каждой строке" : `Заполнено в разделе: ${earnedInTab} из ${pages.length}`}
         </div>
         <div style={{ height: 10 }} />
       </div>

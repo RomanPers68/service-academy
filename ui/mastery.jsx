@@ -173,12 +173,12 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
   // ── HERO «Мастер роли ✦» ──
   const hero = ms ? (
     <section data-ms-hero="" aria-label="Мастер роли" style={card(a11y, true)}>
-      <div style={{ ...eye, color: c.gold, marginBottom: 8 }}>✦ Главная награда</div>
+      <div style={{ ...eye, color: c.gold, marginBottom: 8 }}>Главная награда</div>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        {achieved ? <Medal id="master" tier={3} size={96} a11y={a11y} ring={false} title={"Мастер роли" + roleQ + " ✦"} /> : <MasterRing have={ms.have} need={ms.need} a11y={a11y} c={c} />}
+        {achieved ? <Medal id="master" tier={3} size={96} a11y={a11y} ring={false} title={"Мастер роли" + roleQ} /> : <MasterRing have={ms.have} need={ms.need} a11y={a11y} c={c} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 className="ms-hero-t" style={{ margin: 0, fontFamily: SERIF, fontWeight: 700, lineHeight: 1.18, color: c.text, overflowWrap: "anywhere" }}>
-            {(achieved ? "Ты — мастер роли" : "Мастер роли") + roleQ + "\u00A0✦"}
+            {(achieved ? "Ты — мастер роли" : "Мастер роли") + roleQ}
           </h2>
           {achieved && sinceYmd ? <div style={{ fontSize: small(13), color: c.sub, marginTop: 4 }}>{"с " + sinceDay(sinceYmd)}</div> : null}
         </div>
@@ -276,7 +276,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
     firstBlock = (
       <section data-ms-first="" data-ms-first-got="" style={{ ...card(a11y, false), display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
         <Medal id="first" tier={3} size={40} a11y={a11y} ring={false} />
-        <span style={{ flex: 1, minWidth: 0, fontFamily: BODY, fontSize: a11y ? 16 : 15, lineHeight: 1.35, color: c.text }}>Значок «Первые шаги» получен ✦</span>
+        <span style={{ flex: 1, minWidth: 0, fontFamily: BODY, fontSize: a11y ? 16 : 15, lineHeight: 1.35, color: c.text }}>Значок «Первые шаги» получен</span>
       </section>
     );
   } else if (fwOpen) {
@@ -321,7 +321,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
             );
           })}
         </div>
-        <div style={{ fontSize: small(13), lineHeight: 1.45, color: c.sub, marginTop: 8 }}>Все семь — значок «Первые шаги ✦».</div>
+        <div style={{ fontSize: small(13), lineHeight: 1.45, color: c.sub, marginTop: 8 }}>Все семь — значок «Первые шаги».</div>
       </section>
     );
   }
@@ -334,7 +334,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
         {fams.map((f) => {
           const silhouette = !f.tier && !(f.value > 0);
           const fresh = isNewTool(f, seen);
-          const word = f.tier ? TIERS[f.tier] + (f.tier >= 3 ? " ✦" : "") : f.value > 0 ? f.value + " из " + f.next : "как получить";
+          const word = f.tier ? TIERS[f.tier] : f.value > 0 ? f.value + " из " + f.next : "как получить";
           return (
             <button key={f.id} type="button" className="ms-tile sa-btn" data-ms-badge={f.id} data-ms-locked={silhouette ? "" : undefined}
               aria-label={f.title + " — " + (f.tier ? TIERS[f.tier] : "ещё не получен") + ". " + (f.value > 0 ? familyCount(f.id, f.value) : "Как получить") + (fresh ? ". Новое" : "")}
@@ -435,7 +435,7 @@ function BadgeSheet({ a11y, fam, fresh, onClose, onShow }) {
   const tiers = Array.isArray(fam.tiers) ? fam.tiers : [];
   const n = (k) => tiers[k - 1] || 0;
   const count = fam.value > 0 ? (fam.id === "streak" ? "Лучшая серия — " : "") + familyCount(fam.id, fam.value) : "Ещё не начато";
-  const nextLine = fam.tier >= 3 || fam.next == null ? "Высшая ступень ✦" : "До " + TIERS_OF[fam.tier + 1] + " — ещё " + fam.left + " " + plural(fam.left, unit[0], unit[1], unit[2]);
+  const nextLine = fam.tier >= 3 || fam.next == null ? "Высшая ступень" : "До " + TIERS_OF[fam.tier + 1] + " — ещё " + fam.left + " " + plural(fam.left, unit[0], unit[1], unit[2]);
   const T3 = ["Бронза", "Серебро", "Золото"];
   return (
     <div className="ms-sheet-wrap" onClick={onClose} style={{ background: a11y ? "rgba(70,52,24,0.35)" : "rgba(8,6,3,0.62)" }}>
@@ -561,12 +561,13 @@ function MasterCertificate({ a11y, profile, role, state, earned, shareUrl, onClo
           background: a11y ? "linear-gradient(160deg,#FCF6E6 0%,#F2E3C1 100%)" : "linear-gradient(160deg,#3B2B13 0%,#1F170B 55%,#170F07 100%)",
           boxShadow: a11y ? "0 16px 40px rgba(90,66,20,0.25), inset 0 1px 0 #fff" : "0 18px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,236,190,0.15)" }}>
           <div style={{ borderRadius: 16, border: "1px solid " + ink.inner, padding: "20px 14px 18px", textAlign: "center", fontFamily: BODY }}>
-            <div style={{ ...msEye(a11y), letterSpacing: 2.4, color: ink.gold }}>✦ Service Academy ✦</div>
+            {/* v73 (Доп. 386): знак, как на логотипе — прописные с засечками вразрядку (без ✦ по краям и без моноширинного) */}
+            <div style={{ fontFamily: "Georgia, serif", fontSize: a11y ? 13 : 12, letterSpacing: 3, textTransform: "uppercase", color: ink.gold }}>Service Academy</div>
             <div className="ms-cert-h" style={{ fontFamily: SERIF, fontWeight: 700, color: ink.text, marginTop: 6, whiteSpace: "nowrap" }}>СЕРТИФИКАТ МАСТЕРА</div>
-            <div style={{ display: "flex", justifyContent: "center", margin: "14px 0 10px" }}><Medal id="master" tier={3} size={88} a11y={a11y} ring={false} title={"Мастер роли" + roleQ + " ✦"} /></div>
+            <div style={{ display: "flex", justifyContent: "center", margin: "14px 0 10px" }}><Medal id="master" tier={3} size={88} a11y={a11y} ring={false} title={"Мастер роли" + roleQ} /></div>
             <div style={{ fontStyle: "italic", fontSize: a11y ? 15 : 14, color: ink.sub }}>настоящим подтверждается, что</div>
             <div style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 27, lineHeight: 1.2, color: ink.text, margin: "6px 0 4px", overflowWrap: "anywhere" }}>{name || "Сотрудник"}</div>
-            <div style={{ fontFamily: BODY, fontSize: 19, color: ink.gold }}>{"мастер роли" + roleQ + " ✦"}</div>
+            <div style={{ fontFamily: BODY, fontSize: 19, color: ink.gold }}>{"мастер роли" + roleQ}</div>
             <div style={{ fontSize: a11y ? 15 : 14, color: ink.sub, marginTop: 6 }}>{[pf.restaurant, dateStr].filter(Boolean).join(" · ")}</div>
             {badges.length ? (
               <div role="list" aria-label="Лучшие значки" className="ms-cert-badges">

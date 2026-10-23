@@ -13,8 +13,12 @@ import React from "react";
 import { ACCENT_SERIF } from "./styles";
 import { palette, Medal, Val } from "./day-emblems";
 import { CalendarPage, DayThread } from "./schedule-tile";
+import { labelStyle } from "./tokens";
 
-const mono = "ui-monospace, Menlo, monospace", serif = "Georgia, serif";
+// v73 (Доп. 386): подписи карточки и медальонов — курсивом в обычном регистре (labelStyle), а не моноширинным
+// капсом; первая буква надзаголовка — заглавная, как в предложении («Сегодня · суббота»)
+const serif = "Georgia, serif";
+const upFirst = (s) => { const t = String(s || ""); return t.charAt(0).toUpperCase() + t.slice(1); };
 
 // «1 ч 40 мин», «2 ч», «35 мин»
 export const leftText = (mins) => {
@@ -56,7 +60,7 @@ export function staffMonthCells({ hours, norm, vac, pay, prev, shifts, peaks, av
   const cells = [{
     key: "hours", pct: norm > 0 ? Math.min(1, hours / norm) : 0, main: hours, of: norm > 0 ? norm : null, cap: "часов",
     // неразрывные пробелы: «34 ч ≈ 5 см.» не рвётся на «5 / см.» в узкой ячейке
-    sub: norm > 0 && hours >= norm ? "норма закрыта ✦" : lack ? `до нормы ${lack}\u00A0ч ≈\u00A0${Math.ceil(lack / Math.max(1, avg || 12))}\u00A0см.` : "",
+    sub: norm > 0 && hours >= norm ? "норма закрыта" : lack ? `до нормы ${lack}\u00A0ч ≈\u00A0${Math.ceil(lack / Math.max(1, avg || 12))}\u00A0см.` : "",
     sub2: vac ? "отпуск учтён" : "",
   }];
   if (pay) cells.push({
@@ -74,7 +78,7 @@ export function personMonthCells({ hours, norm, vac, pay, prev, shifts, peaks, a
   const lack = norm > 0 && hours < norm ? norm - hours : 0, over = norm > 0 && hours > norm ? hours - norm : 0;
   const cells = [{
     key: "hours", pct: norm > 0 ? Math.min(1, hours / norm) : 0, main: hours, of: norm > 0 ? norm : null, cap: "часов",
-    sub: over ? `+${over} ч сверх нормы` : norm > 0 && hours >= norm ? "норма закрыта ✦"
+    sub: over ? `+${over} ч сверх нормы` : norm > 0 && hours >= norm ? "норма закрыта"
       : lack ? `до нормы ${lack} ч ≈ ${Math.ceil(lack / Math.max(1, avg || 12))} см.` : "",
     sub2: vac ? "отпуск учтён" : "",
   }];
@@ -104,7 +108,7 @@ export function MonthMedals({ a11y, cells, note, payMain, style, compact }) {
               <Medal s={ms} pct={x.pct || 0} a11y={a11y}>{ICONS[x.key](p.gold)}</Medal>
               {x.key === "pay" && payMain ? <Val main={payMain} a11y={a11y} big={(cells.length > 2 ? 17 : 19) - dz} /> : <Val main={x.main} of={x.of} a11y={a11y} big={(x.key === "pay" ? (cells.length > 2 ? 17 : 19) : 20) - dz} />}
             </div>
-            <div style={{ fontFamily: mono, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 0.4 : 1, textTransform: "uppercase", color: p.sub }}>{x.cap}</div>
+            <div style={{ ...labelStyle(a11y ? 13.5 : 13), color: p.sub }}>{x.cap}</div>
             {x.sub ? <div data-medal-sub="" style={{ fontSize: a11y ? 11.5 : 10.5, lineHeight: 1.25, color: p.gold, textAlign: "center" }}>{x.sub}</div> : null}
             {x.sub2 ? <div style={{ fontSize: a11y ? 11 : 10.5, lineHeight: 1.25, color: p.sub, textAlign: "center" }}>{x.sub2}</div> : null}
           </div>
@@ -126,12 +130,12 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
   const st = shiftStatus(sh, isToday, nowH);
   const to = sh.to > 24 ? sh.to - 24 : sh.to;
   const len = endOf(sh) - sh.from;
-  const eyebrow = { fontFamily: mono, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 1 : 2.4, textTransform: "uppercase" };
+  const eyebrow = labelStyle(a11y ? 13.5 : 13);
   const pill = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 999, fontFamily: serif, fontSize: 12.5, cursor: "pointer", WebkitTapHighlightColor: "transparent", whiteSpace: "nowrap" };
   const gold = { ...pill, fontWeight: "bold", color: "#1A1008", background: "linear-gradient(180deg,#E4C88C,#C8A96E)" };
   const ghost = { ...pill, color: p.gold, border: `1px solid ${a11y ? "rgba(139,106,48,0.45)" : "rgba(200,169,110,0.45)"}`, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,250,238,0.03)" };
   const act = (fn) => (fn ? { role: "button", tabIndex: 0, onClick: fn, onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } } } : {});
-  const label = (when ? when + " · " + dowName : dowShort + " · " + d + " " + monthR);
+  const label = upFirst(when ? when + " · " + dowName : dowShort + " · " + d + " " + monthR);
   return (
     // flexShrink 0: экран графика — колонка flex фиксированной высоты, и карточка с overflow:hidden иначе
     // сжимается в полоску (как секции до Доп. 66)
@@ -155,7 +159,7 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
             {String(lead).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...eyebrow, fontSize: a11y ? 10.5 : 10.5, color: p.sub }}>старший смены</div>
+            <div style={{ ...eyebrow, fontSize: 13, color: p.sub }}>Старший смены</div>
             <div style={{ fontFamily: serif, fontSize: 14, marginTop: 2, color: p.text }}>{leadNode || lead}</div>
           </div>
           {callNode || null}
@@ -183,7 +187,7 @@ export function NoShiftHero({ a11y, card, todayD }) {
     <div data-sched-hero="" data-hero-status="none" style={{ ...card, flexShrink: 0, display: "flex", alignItems: "center", gap: 14 }}>
       <CalendarPage day={todayD} p={p} a11y={a11y} off w={40} h={44} />
       <div>
-        <div style={{ fontFamily: mono, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 1 : 2.4, textTransform: "uppercase", color: p.sub }}>ближайшая смена</div>
+        <div style={{ ...labelStyle(a11y ? 13.5 : 13), color: p.sub }}>Ближайшая смена</div>
         <div style={{ fontSize: 14, color: p.sub, marginTop: 3 }}>в этом месяце смен больше нет</div>
       </div>
     </div>

@@ -12,7 +12,7 @@ import React from "react";
 import { HR_EVAL, HR_EVAL_V, EXP_LABEL, evalMessages } from "../data/hr-eval";
 import { evalItem, evalSummary, REF_SHARE, REAL_N, REAL_SHARE } from "../lib/hr-quality";
 import { saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
-import { GREEN, RED, GOLD_SOFT, RADIUS } from "./tokens";
+import { GREEN, RED, GOLD_SOFT, RADIUS, labelStyle } from "./tokens";
 import { UI_SVG } from "./icons";
 import { vibrate } from "../lib/utils";
 
@@ -102,8 +102,8 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
       <div style={{ ...glass, marginBottom: 12 }} data-hr-status={status.beta ? "beta" : "ok"}>
         <div style={{ ...T.bold, marginTop: 2, marginBottom: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           AI HR
-          <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: status.beta ? gold : GREEN, border: `1px solid ${status.beta ? gold : GREEN}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>
-            {status.beta ? "БЕТА" : "ПРОВЕРЕН"}
+          <span style={{ ...labelStyle(13), color: status.beta ? gold : GREEN, border: `1px solid ${status.beta ? gold : GREEN}66`, borderRadius: RADIUS.pill, padding: "1px 7px" }}>
+            {status.beta ? "бета" : "проверен"}
           </span>
         </div>
         <div style={{ ...small, marginBottom: 10 }}>

@@ -61,7 +61,7 @@ describe("smoke render", () => {
     expect(html).toContain("Новичок и меню");
     const html2 = R(<ModuleScreen mod={MOD} completed={{ l1: true, l2: true, p1: true }} quizDone={{ q1: true }} onBack={noop} onLesson={noop} T={T} next={null} finish={{ title: "Экзамен" }} a11y />);
     expect(html2).toContain("сдан");
-    expect(html2).toContain("раздел пройден целиком");
+    expect(html2).toContain("Раздел пройден целиком");   // v73: строка курсивом, с заглавной
   });
   it("Практика «у стола» — вопрос, ответ, итог (Доп. 290)", async () => {
     const { TablePractice } = await import("../ui/table");
@@ -202,8 +202,8 @@ describe("smoke render", () => {
     const { QuestCard, PairSheet } = await import("../ui/together");
     // v31: сделанная часть сворачивается в строку (задания — по раскрытию), несделанная — список
     expect(R(<QuestCard a11y={false} tasks={[{ id: "warm", need: 1, label: "Разминка до смены — 2 минуты", f: "w" }]} todayRec={{ w: 1 }} />)).toContain("Твоя часть сделана · 1 из 1");
-    expect(R(<QuestCard a11y={false} tasks={[{ id: "warm", need: 1, label: "Разминка до смены — 2 минуты", f: "w" }]} todayRec={{}} />)).toContain("ТВОЯ ЧАСТЬ · 0 ИЗ 1");
-    expect(R(<PairSheet a11y={true} profile={profile} onClose={noop} />)).toContain("СВЕЧА НА ДВОИХ");
+    expect(R(<QuestCard a11y={false} tasks={[{ id: "warm", need: 1, label: "Разминка до смены — 2 минуты", f: "w" }]} todayRec={{}} />)).toContain("Твоя часть · 0 из 1");   // v73: подпись курсивом, обычными буквами
+    expect(R(<PairSheet a11y={true} profile={profile} onClose={noop} />)).toContain(">Свеча на двоих<");   // v73: курсивом, обычными буквами
     const { LeagueScreen } = await import("../ui/league");
     expect(R(<LeagueScreen T={{ ...T, modCard: {}, lessHead: {}, lessHeadTitle: {}, backBtn2: {} }} a11y={false} profile={profile} activity={{}} onBack={noop} />)).toContain("Лига недели");
     const { RadioScreen } = await import("../ui/radio");
@@ -213,7 +213,7 @@ describe("smoke render", () => {
     expect(rd).toContain("Радио в дорогу");
     expect(rd).toContain("Дальше по треку");
     const { MonthRecap } = await import("../ui/month-recap");
-    expect(R(<MonthRecap a11y={false} profile={profile} data={{ act: {} }} month="2026-10" onClose={noop} inline />)).toContain("ИТОГИ · ОКТЯБРЬ");
+    expect(R(<MonthRecap a11y={false} profile={profile} data={{ act: {} }} month="2026-10" onClose={noop} inline />)).toContain("Итоги · октябрь");
     const { TableCheck } = await import("../ui/table");
     const { creditPool, goldPool } = await import("../lib/marks");
     const cr = R(<TableCheck mode="credit" mod={S1} situations={creditPool(S1, 1)} color="#7C9E87" a11y={false} profile={profile} mistakeBank={[]} onClose={noop} inline />);
@@ -225,8 +225,8 @@ describe("smoke render", () => {
     const { ModuleMenu } = await import("../ui/module-menu");
     const done = {}; S1.lessons.forEach((l) => { if (l.type !== "quiz") done[l.id] = true; });
     const mm = R(<ModuleMenu mod={S1} completed={done} quizDone={{ "s1-q": true }} onLesson={noop} embedded topic={{ f: { level: "faded", k: 0.4, days: 20 }, gold: { d: "x" }, canGold: true }} acts={{ onRefresh: noop, onGold: noop }} />);
-    expect(mm).toContain("тема выдохлась");
-    expect(mm).toContain("Золото ✦ · ещё раз");
+    expect(mm).toContain("Тема выдохлась");
+    expect(mm).toContain("Золото · ещё раз");
     // ревью v30: в теме без заданий «у стола» нет кнопки «Освежить»
     const mm2 = R(<ModuleMenu mod={S1} completed={done} quizDone={{ "s1-q": true }} onLesson={noop} embedded topic={{ f: null, canRefresh: false, canGold: false }} acts={{ onRefresh: noop, onGold: noop }} />);
     expect(mm2).not.toContain("Освежить · 1 мин");

@@ -11,9 +11,11 @@ import { ensureTableCss } from "./table-css";
 import { monthRecap, recapShareText, plural, recapParts, compareLine } from "../lib/month-recap";
 import { recapImage } from "../lib/recap-image";
 import { vibrate } from "../lib/utils";
+import { LABEL_CSS } from "./tokens";
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
 const BODY = "Georgia,'Times New Roman',serif";
+// v73 (Доп. 386): подписи (.mr-hd b, .mr-ey, печать) — курсивом с засечками в обычном регистре
 const CSS = `
 .mr{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;color:#F3E9D2;font-family:${BODY};user-select:none;-webkit-user-select:none}
 .mr-bg{position:absolute;inset:0;transition:background .5s}
@@ -26,10 +28,10 @@ const CSS = `
 .mr-bars i.run.hold b{animation-play-state:paused}
 @keyframes mrFill{from{width:0}to{width:100%}}
 .mr-hd{display:flex;align-items:center;gap:10px;margin-top:12px;font:12.5px ${BODY};color:rgba(243,233,210,.8)}
-.mr-hd b{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:2px;color:#E8C56A;font-weight:400}
+.mr-hd b{${LABEL_CSS};font-size:13px;color:#E8C56A}
 .mr-x{margin-left:auto;width:36px;height:36px;border-radius:50%;border:1px solid rgba(243,233,210,.3);background:rgba(0,0,0,.2);color:#F3E9D2;display:grid;place-items:center;cursor:pointer}
 .mr-body{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;justify-content:center;padding:18px 26px 30px;max-width:520px;width:100%;margin:0 auto;box-sizing:border-box}
-.mr-ey{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:2.6px;color:#E8C56A;text-transform:uppercase}
+.mr-ey{${LABEL_CSS};font-size:13.5px;color:#E8C56A}
 .mr-big{font:700 64px/1 ${SERIF};margin:12px 0 6px;color:#FFF6E2}
 .mr-h{font:600 28px/1.18 ${SERIF};margin:10px 0 6px;text-wrap:balance;color:#FFF6E2}
 .mr-p{font:15.5px/1.5 ${BODY};color:rgba(243,233,210,.86);margin:6px 0 0}
@@ -41,7 +43,7 @@ const CSS = `
 .mr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .mr-chips span{padding:7px 12px;border-radius:999px;border:1px solid rgba(243,233,210,.25);font:14px ${BODY};color:#F3E9D2}
 .mr-chips span b{color:#E8C56A}
-.mr-stamp{display:inline-block;margin-top:18px;padding:8px 16px;border:2px solid #E08A70;border-radius:8px;color:#F2A88E;font:700 13px ui-monospace,Menlo,monospace;letter-spacing:2px;transform:rotate(-4deg)}
+.mr-stamp{display:inline-block;margin-top:18px;padding:7px 16px;border:2px solid #E08A70;border-radius:8px;color:#F2A88E;font-size:15px;line-height:normal;${LABEL_CSS};transform:rotate(-4deg)}
 .mr-nav{position:absolute;inset:0;z-index:0;display:flex}
 .mr-nav button{flex:1;border:0;background:transparent;cursor:pointer}
 .mr-nav button:first-child{flex:0 0 32%}
@@ -157,7 +159,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   const cards = [];
   cards.push({ k: "cover", body: <>
     <Art k="cover" r={r} />
-    <div className="mr-ey">{r.current ? "месяц в разгаре" : "итоги месяца"}</div>
+    <div className="mr-ey">{r.current ? "Месяц в разгаре" : "Итоги месяца"}</div>
     <h2 className="mr-h" style={{ fontSize: 40 }}>{r.title}{r.current ? " — пока" : ""} в академии</h2>
     <p className="mr-p">{profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : ""}{profile && profile.restaurant ? " · " + profile.restaurant : ""}</p>
     <p className="mr-p" style={{ marginTop: 18 }}>Листай карточки — касание справа, дальше само.</p>
@@ -165,7 +167,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   const first = (new Date(r.year, r.month - 1, 1).getDay() + 6) % 7;
   cards.push({ k: "days", body: <>
     <Art k="days" />
-    <div className="mr-ey">дни в деле</div>
+    <div className="mr-ey">Дни в деле</div>
     <div className="mr-big">{r.active}</div>
     <p className="mr-p">{plural(r.active, "день", "дня", "дней")} из {r.current ? r.upto : r.daysIn} {r.current ? "прошедших" : ""}{r.off ? " · выходных по графику " + r.off + " — серия в них не гаснет" : ""}</p>
     <div className="mr-cal" role="img" aria-label={"Календарь: в деле " + r.active + " дней"}>
@@ -178,7 +180,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   const parts = recapParts(t);
   cards.push({ k: "steps", body: <>
     <Art k="steps" />
-    <div className="mr-ey">шаги обучения</div>
+    <div className="mr-ey">Шаги обучения</div>
     <div className="mr-big">{t.st}</div>
     <p className="mr-p">{t.st ? plural(t.st, "шаг", "шага", "шагов") + " за " + r.title.toLowerCase() + " · " + r.points + " " + plural(r.points, "очко", "очка", "очков") + " лиги" : "в этом месяце пока тихо — первый шаг всё изменит"}</p>
     {parts.length ? <div className="mr-chips">{parts.map((p) => <span key={p.k}><b>{p.n}</b> {p.word}</span>)}</div> : null}
@@ -191,7 +193,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
     const w = (v, a, b) => Math.round(100 * (Number(v) || 0) / Math.max(1, a, b)) + "%";
     cards.push({ k: "cmp", body: <>
       <Art k="cmp" r={r} />
-      <div className="mr-ey">{pv.partial ? "к " + r.upto + "-му числу" : "к прошлому месяцу"}</div>
+      <div className="mr-ey">{pv.partial ? "К " + r.upto + "-му числу" : "К прошлому месяцу"}</div>
       <h2 className="mr-h">{cmp.title}</h2>
       <div className="mr-cmp" role="img" aria-label={rows.map((x) => x[0] + ": " + x[1] + " против " + x[2]).join("; ")}>
         {rows.map((x) => <div key={x[0]}>
@@ -206,37 +208,37 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   }
   if (r.best || r.longest > 1) cards.push({ k: "best", body: <>
     <Art k="best" />
-    <div className="mr-ey">лучшее</div>
+    <div className="mr-ey">Лучшее</div>
     {r.best ? <><h2 className="mr-h">{r.best.label}</h2><p className="mr-p">лучший день: {r.best.steps} {plural(r.best.steps, "шаг", "шага", "шагов")}</p></> : null}
     {r.longest > 1 ? <><div className="mr-big" style={{ marginTop: 26 }}>{r.longest}</div><p className="mr-p">{plural(r.longest, "день", "дня", "дней")} подряд — самая длинная серия месяца</p></> : null}
   </> });
   if (r.guests.n) cards.push({ k: "guest", body: <>
     <Art k="guest" />
-    <div className="mr-ey">живой гость</div>
+    <div className="mr-ey">Живой гость</div>
     <div className="mr-big">{r.guests.n}</div>
     <p className="mr-p">{plural(r.guests.n, "гость обслужен", "гостя обслужено", "гостей обслужено")}{r.guests.best ? " · лучший чек разбора — " + r.guests.best + " из 5" : ""}</p>
   </> });
   if (r.gold || r.credits || t.u) cards.push({ k: "topics", body: <>
     <Art k="topics" />
-    <div className="mr-ey">темы</div>
+    <div className="mr-ey">Темы</div>
     <h2 className="mr-h">{r.gold ? "Золотых тем: " + r.gold : t.u ? "Освежено тем: " + t.u : "Зачтено по опыту: " + r.credits}</h2>
     <div className="mr-chips">
-      {r.gold ? <span><b>{r.gold}</b> {plural(r.gold, "золотая тема", "золотые темы", "золотых тем")} ✦</span> : null}
+      {r.gold ? <span><b>{r.gold}</b> {plural(r.gold, "золотая тема", "золотые темы", "золотых тем")}</span> : null}
       {t.u ? <span><b>{t.u}</b> {plural(t.u, "тема освежена", "темы освежены", "тем освежено")}</span> : null}
       {r.credits ? <span><b>{r.credits}</b> {plural(r.credits, "зачёт на опыт", "зачёта на опыт", "зачётов на опыт")}</span> : null}
     </div>
   </> });
   if (r.quests) cards.push({ k: "quest", body: <>
     <Art k="quest" />
-    <div className="mr-ey">квест смены</div>
+    <div className="mr-ey">Квест смены</div>
     <div className="mr-big">{r.quests}</div>
     <p className="mr-p">{plural(r.quests, "раз", "раза", "раз")} смена закрыла квест вместе</p>
-    <div className="mr-stamp">✦ СМЕНА ОТРАБОТАНА ✦</div>
+    <div className="mr-stamp">смена отработана</div>
   </> });
   cards.push({ k: "end", body: <>
     <Art k="end" />
-    <div className="mr-ey">{r.current ? "месяц продолжается" : "до встречи в новом месяце"}</div>
-    <h2 className="mr-h" style={{ fontSize: 34 }}>Спасибо за {r.title.toLowerCase()} ✦</h2>
+    <div className="mr-ey">{r.current ? "Месяц продолжается" : "До встречи в новом месяце"}</div>
+    <h2 className="mr-h" style={{ fontSize: 34 }}>Спасибо за {r.title.toLowerCase()}</h2>
     <p className="mr-p">{r.active ? "Каждый день в деле — это гость, которого ты обслужишь чуть лучше." : "Новый месяц — новая свеча. Начни с разминки или урока."}</p>
   </> });
 
@@ -311,7 +313,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
       <div className="mr-bg" style={{ background: (a11y ? BG_L : BG)[i % BG.length] }} />
       <div className="mr-top">
         <div className="mr-bars" aria-hidden="true">{cards.map((c, k) => <i key={c.k} className={k < i ? "done" : k === i ? "run" + (hold || last ? " hold" : "") : undefined}><b style={k === i ? { animationDuration: SHOW + "ms" } : undefined} /></i>)}</div>
-        <div className="mr-hd"><b>✦ ИТОГИ · {r.title.toUpperCase()}</b><span>{i + 1} / {cards.length}</span>
+        <div className="mr-hd"><b>Итоги · {r.title.toLowerCase()}</b><span>{i + 1} / {cards.length}</span>
           <button type="button" className="mr-x" data-sa-back={pv ? undefined : ""} aria-label="Закрыть" onClick={onClose}><Ic n="x" s={16} /></button></div>
       </div>
       <div className="mr-nav" onPointerDown={() => setHold(true)} onPointerUp={() => setHold(false)} onPointerCancel={() => setHold(false)} onPointerLeave={() => setHold(false)}>

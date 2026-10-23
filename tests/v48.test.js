@@ -24,7 +24,7 @@ describe("v48: медальоны в карточке сотрудника — �
     const sub = (o) => NB(personMonthCells({ shifts: 16, peaks: 0, avg: 8, pay: null, prev: 0, ...o }).cells[0].sub);
     expect(sub({ hours: 128, norm: 160 })).toBe("до нормы 32 ч ≈ 4 см.");
     expect(sub({ hours: 176, norm: 160 })).toBe("+16 ч сверх нормы");
-    expect(sub({ hours: 160, norm: 160 })).toBe("норма закрыта ✦");
+    expect(sub({ hours: 160, norm: 160 })).toBe("норма закрыта");   // v73: без ✦
     const c = personMonthCells({ hours: 104, norm: 124, vac: true, shifts: 13, peaks: 2, avg: 8, pay: null, prev: 0 }).cells[0];
     expect([c.main, c.of, c.sub2]).toEqual([104, 124, "отпуск учтён"]);
     expect(personMonthCells({ hours: 176, norm: 160, shifts: 22, peaks: 0, pay: null, prev: 0 }).cells[0].pct).toBe(1);

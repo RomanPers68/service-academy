@@ -15,21 +15,21 @@ import { createPortal } from "react-dom";
 import { FAMILIES, TIERS, TIERS_OF, ROLE_TITLE, familyCount } from "../lib/mastery";
 import { vibrate, onActivate } from "../lib/utils";
 import { sfx } from "../lib/sfx";   // v57 (Доп. 370)
-import { GOLD } from "./tokens";
+import { GOLD, labelStyle } from "./tokens";
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
 const BODY = "Georgia,'Times New Roman',serif";
-const MONO = "ui-monospace,'SF Mono',Menlo,Consolas,monospace";
 
 // Палитра и размеры — общие с экраном «Путь мастера». Светлая тема «Для чтения»: мелкий текст от 13 px,
-// метки от 11 px; тёмная — от 12 и 10,5 px.
+// метки от 13,5 px; тёмная — от 12 и 13 px.
 export const msPal = (a11y) => (a11y
   ? { text: "#2A1F0E", sub: "#6B5B40", gold: "#7A5A1E", line: "rgba(150,112,40,0.30)", faint: "rgba(120,90,30,0.16)", ok: "#2C6B48", okLine: "rgba(44,107,72,0.42)",
       muted: "#8A7A5C", chipBg: "rgba(201,154,46,0.18)", chip: "#6B4E0E", card: "rgba(250,242,222,0.62)", cardLine: "rgba(139,106,48,0.30)" }
   : { text: "#EFE4C8", sub: "#B5A78A", gold: "#D9B87C", line: "rgba(214,178,102,0.28)", faint: "rgba(214,178,102,0.16)", ok: "#8AD8AF", okLine: "rgba(93,187,138,0.45)",
       muted: "#8C7F66", chipBg: "rgba(232,197,106,0.16)", chip: "#F0D9A0", card: "rgba(226,186,116,0.09)", cardLine: "rgba(255,255,255,0.13)" });
 export const msSmall = (a11y, px) => (a11y ? Math.max(13, px) : Math.max(12, px));
-export const msEye = (a11y) => ({ fontFamily: MONO, fontSize: a11y ? 11 : 10.5, letterSpacing: 1.6, textTransform: "uppercase", lineHeight: 1.3 });
+// v73 (Доп. 386): надзаголовок — курсивом с засечками в обычном регистре (был моноширинный капс 10,5/11 px)
+export const msEye = (a11y) => labelStyle(a11y ? 13.5 : 13, { lineHeight: 1.3 });
 export const msPrimary = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, border: 0, borderRadius: 999, cursor: "pointer",
   background: "linear-gradient(180deg,#E4C88C," + GOLD + ")", color: "#1A1008", fontFamily: BODY, fontWeight: "bold" };
 
@@ -126,7 +126,7 @@ export function FamIcon({ id, size = 24, color = "currentColor", strokeWidth = 1
 
 // короткие предлоги, союзы и числа — к следующему слову («Практика у\u00A0стола», «3\u00A0разминки»)
 export const msTie = (t) => String(t || "").replace(/(^|[\s\u00A0])([А-Яа-яЁё]{1,2}|\d{1,3})\s+(?=\S)/g, "$1$2\u00A0");
-const titleOf = (id) => (id === "first" ? "Первые шаги ✦" : id === "master" ? "Мастер роли ✦" : (FAMILIES.find((f) => f.id === id) || {}).title || "Значок");
+const titleOf = (id) => (id === "first" ? "Первые шаги" : id === "master" ? "Мастер роли" : (FAMILIES.find((f) => f.id === id) || {}).title || "Значок");
 
 let seq = 0;
 const useUid = (p) => { const ref = React.useRef(null); if (ref.current === null) ref.current = p + (++seq); return ref.current; };
@@ -221,7 +221,7 @@ export function MasteryHomeCard({ a11y, step, state, newCount = 0, onStep, onOpe
   // неразрывные пробелы: строка переносится только между частями «·», а не «7/13» отдельной строкой
   const nb = (t) => t.replace(/ /g, "\u00A0");
   const line = firstWeek ? nb((fw.done || 0) + " из " + (fw.total || 7))
-    : ms && ms.ok ? nb("Мастер роли ✦") + "\u00A0· " + nb(badges + " из " + total + " значков")
+    : ms && ms.ok ? nb("Мастер роли") +"\u00A0· " + nb(badges + " из " + total + " значков")
     : nb(badges + " из " + total + " значков") + "\u00A0· " + nb("мастер роли " + have + "/" + need);
   const longT = String((step && step.text) || "").length > 38;
   const R = 15, CC = 2 * Math.PI * R;
@@ -288,7 +288,7 @@ export function MasteryHomeCard({ a11y, step, state, newCount = 0, onStep, onOpe
 // ── v41 (Доп. 354): главная снова минималистичная ────────────────────────────
 // Отзыв владельца: «новая функция немного рушит изначальный минимализм». На главной одно главное
 // действие — карточка трека. «Шаг дня» — строкой внутри неё (как «разминка 2 мин», Доп. 306), без второй
-// большой кнопки: значок и золотая надпись «ШАГ ДНЯ», под ними дело и круглая стрелка справа; сделал —
+// большой кнопки: значок и золотая надпись «Шаг дня», под ними дело и круглая стрелка справа; сделал —
 // строка уходит. «Путь мастера» — чип рядом со свечой и стаканом: звёздочка ✦ в кольце, которое
 // заполняется по мере значков; новое — точкой. Вид выбран владельцем из четырёх («Б · Строка с подписью»,
 // «Звёздочка в кольце»). MasteryHomeCard остался (его разметку проверяют тесты и слот RoleSelect), но
@@ -305,7 +305,7 @@ export function StepLine({ a11y, step, onStep, pill = false }) {
   const go = () => { vibrate("light"); onStep && onStep(step); };
   // последнее слово — вместе с предпоследним: строка не кончается одиноким «дня»»
   const text = msTie(step.text).replace(/\s+(\S+)$/, "\u00A0$1");
-  // v44 (Доп. 357): плашкой внизу карточки трека, рядом с разминкой: «ШАГ ДНЯ» и дело (без «Попробуй:» — места
+  // v44 (Доп. 357): плашкой внизу карточки трека, рядом с разминкой: «Шаг дня» и дело (без «Попробуй:» — места
   // мало, приставку говорит значок); длинное — до трёх строк, без многоточия; вся плашка — кнопка
   if (pill) return (
     <div role="button" tabIndex={0} className="ms-zone" data-ms-line="" data-pill="step" onClick={go} {...onActivate(go)}
@@ -314,7 +314,7 @@ export function StepLine({ a11y, step, onStep, pill = false }) {
         border: "1px solid " + c.line, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,240,205,0.05)" }}>
       <span style={{ flexShrink: 0, display: "inline-flex" }}><FamIcon id={stepIcon(step)} size={16} color={c.gold} strokeWidth={1.9} /></span>
       <span style={{ flex: 1, minWidth: 0 }} aria-hidden="true">
-        <span style={{ ...msEye(a11y), fontSize: a11y ? 11 : 10.5, letterSpacing: 1, color: c.gold, display: "block" }}>Шаг дня</span>
+        <span style={{ ...msEye(a11y), fontSize: a11y ? 13 : 12.5, color: c.gold, display: "block" }}>Шаг дня</span>
         {/* в узкой плашке слова переносятся свободно (без неразрывной склейки последних слов, как в строке) */}
         <span className="ms-clamp ms-c3" style={{ fontFamily: BODY, fontSize: 12.5, lineHeight: 1.3, color: c.text, marginTop: 1 }}>{String(step.text).replace(/^Попробуй:\s*/, "").replace(/^./, (x) => x.toUpperCase())}</span>
       </span>
@@ -364,7 +364,7 @@ export function masteryChip(state, newCount = 0, a11y = false) {
   const icon = <ChipRing c={c} a11y={a11y} pct={pct} />;
   const text = firstWeek ? fd + "/" + ft : badges + "/" + total;
   const aria = (firstWeek ? "Первые шаги в академии: " + fd + " из " + ft
-    : ms && ms.ok ? "Путь мастера: мастер роли ✦, " + badges + " из " + total + " значков"
+    : ms && ms.ok ? "Путь мастера: мастер роли, " + badges + " из " + total + " значков"
     : "Путь мастера: " + badges + " из " + total + " значков, до мастера роли " + have + " из " + need) + (newCount > 0 ? ", есть новое" : "");
   return { icon, text, aria, dot: newCount > 0, pct, have: firstWeek ? fd : badges, total: firstWeek ? ft : total,
     mode: firstWeek ? "first" : ms && ms.ok ? "master" : "path" };
@@ -403,7 +403,7 @@ export function toastLine(item, state) {
   const fs = state && Array.isArray(state.families) ? state.families.find((f) => f && f.id === item.id) : null;
   if (!fs) return "";
   const count = familyCount(fs.id, fs.value);
-  return fs.next == null || fs.tier >= 3 ? count + " · высшая ступень ✦" : count + " · до " + TIERS_OF[fs.tier + 1] + " ещё " + fs.left;
+  return fs.next == null || fs.tier >= 3 ? count + " · высшая ступень" : count + " · до " + TIERS_OF[fs.tier + 1] + " ещё " + fs.left;
 }
 
 function TierToast({ a11y, item, state, onOpen, onClose }) {
@@ -428,7 +428,7 @@ function TierToast({ a11y, item, state, onOpen, onClose }) {
   }, [drag, finish]);
   const first = item.kind === "firstWeek";
   const tier = first ? 3 : Math.max(1, Math.min(3, Math.floor(Number(item.tier) || 1)));
-  const title = first ? "Первые шаги ✦" : item.title || titleOf(item.id);
+  const title = first ? "Первые шаги" : item.title || titleOf(item.id);
   const line = toastLine(item, state);
   const down = (e) => { if (e.target.closest && e.target.closest("button")) return; from.current = { x: e.clientX, y: e.clientY }; setDrag({ x: 0, y: 0 }); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {} };
   const move = (e) => { if (!from.current) return; setDrag({ x: e.clientX - from.current.x, y: e.clientY - from.current.y }); };
@@ -454,7 +454,7 @@ function TierToast({ a11y, item, state, onOpen, onClose }) {
             {burst(SPARKS_SM, true)}
           </span>
           <div style={{ flex: 1, minWidth: 0, paddingRight: 26 }}>
-            <div style={{ ...msEye(a11y), color: tierText(tier, a11y) }}>{"✦ Новый значок" + (first ? "" : " · " + TIERS[tier])}</div>
+            <div style={{ ...msEye(a11y), color: tierText(tier, a11y) }}>{"Новый значок" + (first ? "" : " · " + TIERS[tier])}</div>
             <div style={{ fontFamily: SERIF, fontSize: a11y ? 19 : 18, fontWeight: 700, lineHeight: 1.2, color: c.text, marginTop: 3 }}>{msTie(title)}</div>
             {line ? <div style={{ fontSize: msSmall(a11y, 13), lineHeight: 1.38, color: c.sub, marginTop: 3 }}>{line}</div> : null}
           </div>
@@ -474,7 +474,7 @@ function MasterModal({ a11y, item, onOpen, onClose }) {
   const once = (fn) => () => { if (fired.current) return; fired.current = true; vibrate("light"); if (fn) fn(item); };
   React.useEffect(() => { buzz(); }, []);
   const role = ROLE_TITLE[item.role] || "";
-  const title = role ? "Мастер роли «" + role + "» ✦" : "Мастер роли ✦";
+  const title = role ? "Мастер роли «" + role + "»" : "Мастер роли";
   return (
     <div className="ms-modal" data-ms-toast="" onClick={once(onClose)} style={{ background: a11y ? "rgba(70,52,24,0.45)" : "rgba(8,6,3,0.76)" }}>
       <div className="ms-modal-card" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
@@ -487,7 +487,7 @@ function MasterModal({ a11y, item, onOpen, onClose }) {
           <Medal id="master" tier={3} size={128} a11y={a11y} ring={false} style={{ position: "relative" }} />
           {burst(SPARKS, false)}
         </div>
-        <div style={{ ...msEye(a11y), color: c.gold }}>✦ Главная награда</div>
+        <div style={{ ...msEye(a11y), color: c.gold }}>Главная награда</div>
         <h2 style={{ margin: "6px 0 8px", fontFamily: SERIF, fontWeight: 700, fontSize: a11y ? 26 : 25, lineHeight: 1.18, color: c.text, textWrap: "balance" }}>{title}</h2>
         <p style={{ margin: "0 0 16px", fontSize: a11y ? 16 : 15, lineHeight: 1.5, color: a11y ? c.sub : "#CFC2A4" }}>{"Роль пройдена, 5\u00A0золотых тем, серия 14\u00A0дней и 10\u00A0значков. Коллеги увидят знак\u00A0✦ у\u00A0твоего имени."}</p>
         <button type="button" className="sa-btn" onClick={once(onOpen)} style={{ ...msPrimary, width: "100%", minHeight: 52, fontSize: a11y ? 17 : 16 }}>Сертификат мастера ›</button>

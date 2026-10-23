@@ -28,7 +28,7 @@ import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } 
 import { hintsFor, hintKey } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
 
 export const DEFAULT_CHECKLISTS = {
   open: [
@@ -617,7 +617,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <Ring pct={dg.avg} size={64} tone={dg.lessons ? toneOfScore(dg.avg) : "gold"} a11y={a11y} label={dg.lessons ? `${dg.avg}%` : "—"} />
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:10.5, letterSpacing:1.8, fontWeight:"bold" }}>СРЕДНИЙ РЕЗУЛЬТАТ · НЕДЕЛЯ</div>
+            <div style={{ ...labelStyle(13), color:TN.gold }}>Средний результат · неделя</div>
             {delta != null ? (
               // Разница в пунктах, не в процентах: было 68%, стало 77% — это +9
               <div style={{ fontFamily:serif, fontSize:19, fontWeight:"bold", marginTop:4, color: delta > 0 ? TN.good : delta < 0 ? TN.bad : C.text }}>
@@ -633,7 +633,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
       {/* Рестораны — тем, кто видит больше одного (админ, руководящий состав) */}
       {allScope && rests.length > 1 ? (
         <div style={G({ margin:"0 14px 12px", padding:"12px 14px" })}>
-          <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:10.5, letterSpacing:1.8, fontWeight:"bold", marginBottom:8 }}>РЕСТОРАНЫ · СРЕДНИЙ РЕЗУЛЬТАТ</div>
+          <div style={{ ...labelStyle(13), color:TN.gold, marginBottom:8 }}>Рестораны · средний результат</div>
           {rests.map((r, i) => (
             <div key={i} style={{ marginBottom: i < rests.length - 1 ? 9 : 0 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
@@ -653,7 +653,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
 
       <div style={{ padding:"0 14px" }}>
         {view === "people" ? (<>
-          <SectionLabel a11y={a11y} right="90 дней">КТО И ГДЕ ОШИБАЕТСЯ</SectionLabel>
+          <SectionLabel a11y={a11y} right="90 дней">Кто и где ошибается</SectionLabel>
           <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px", lineHeight:1.45 }}>Видны: {peopleScope}. Нажми на человека — раскроются вопросы.</div>
           {people === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {people === "off" && note(offText("сотрудники и их ошибки"))}
@@ -706,7 +706,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                 background: a11y ? "radial-gradient(circle at 35% 30%, #FFF8E8, #EADBB8)" : "radial-gradient(circle at 35% 30%, #4A3A20, #1E160A)" }}>{Icon.key(TN.gold, 21)}</span>
             </span>
             <div style={{ minWidth:0 }}>
-              <div style={{ color:TN.gold, fontFamily:"monospace", fontSize:10.5, letterSpacing:1.8, fontWeight:"bold" }}>СЕКРЕТНАЯ АЧИВКА</div>
+              <div style={{ ...labelStyle(13), color:TN.gold }}>Секретная ачивка</div>
               <div style={{ color:C.text, fontFamily:serif, fontSize:16.5, fontWeight:"bold" }}>«Находчивая жопка»</div>
               <div style={{ color:muted, fontSize:12, lineHeight:1.45, marginTop:2 }}>Вышел до конца теста, чтобы стереть ошибки. Сам получает ачивку с разбором, коллеги её не видят.</div>
             </div>
@@ -715,7 +715,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           {retries === "off" && note(offText("те, кто нашёл лазейку"))}
           {Array.isArray(retries) && retryPeople.length === 0 && note("Пока никто не нашёл лазейку — все сдают тесты с первого захода.")}
           {retryPeople.some(p => p.keys) ? (<>
-            <SectionLabel a11y={a11y}>ТАЙНЫЙ ЗАЧЁТ КЛЮЧЕЙ</SectionLabel>
+            <SectionLabel a11y={a11y}>Тайный зачёт ключей</SectionLabel>
             {Object.entries(retryPeople.filter(p => p.keys).reduce((m, p) => { (m[p.restaurant] = m[p.restaurant] || []).push(p); return m; }, {})).map(([rest, list], i) => (
               <div key={i} style={G({ padding:"10px 12px", marginBottom:8 })}>
                 {allScope ? <div style={{ color:muted, fontSize:11, marginBottom:4 }}>{rest}</div> : null}
@@ -731,7 +731,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                   </div>))}
               </div>))}
           </>) : null}
-          {retryPeople.length ? <SectionLabel a11y={a11y}>КТО И ЧТО СТЁР</SectionLabel> : null}
+          {retryPeople.length ? <SectionLabel a11y={a11y}>Кто и что стёр</SectionLabel> : null}
           {retryPeople.map((p, i) => (
             <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
               <div style={{ display:"flex", alignItems:"center", gap:11 }}>
@@ -761,7 +761,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
               })}
             </div>))}
         </>) : view === "questions" ? (<>
-          <SectionLabel a11y={a11y} right="30 дней">ЧАЩЕ ВСЕГО МИМО</SectionLabel>
+          <SectionLabel a11y={a11y} right="30 дней">Чаще всего мимо</SectionLabel>
           <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px" }}>Каждый вопрос — готовая тема для брифинга.</div>
           {hardQ === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {hardQ === "off" && note(srvErr && (srvErr.code || srvErr.message) && srvErr.code !== "PGRST202"
@@ -785,7 +785,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         </>) : scoped.length === 0 ? (
           note(`Пока нет данных по тестам${allScope ? "" : " в вашем ресторане"}. Сводка появится, когда команда начнёт проходить тесты.`)
         ) : (<>
-          <SectionLabel a11y={a11y}>СЛАБОЕ МЕСТО</SectionLabel>
+          <SectionLabel a11y={a11y}>Слабое место</SectionLabel>
           {dg.weak ? (
             <div style={{ ...G({ padding:"14px 14px" }), display:"flex", alignItems:"center", gap:14 }}>
               <Ring pct={dg.weak.avg} size={62} tone={toneOfScore(dg.weak.avg)} a11y={a11y} />
@@ -794,7 +794,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                 <div style={{ color:muted, fontSize:12, marginTop:3 }}>самый низкий средний результат · {dg.weak.n} {dg.weak.n === 1 ? "ответ" : "ответов"}</div>
               </div>
             </div>) : note("Для слабого места пока мало данных.")}
-          <SectionLabel a11y={a11y} right="7+ дней">УСНУЛИ</SectionLabel>
+          <SectionLabel a11y={a11y} right="7+ дней">Уснули</SectionLabel>
           <div style={G({ padding:"12px 12px" })}>
             {dg.asleep.length === 0 ? (
               <div style={{ display:"flex", alignItems:"center", gap:8, color:TN.good, fontSize:13 }}>{Icon.check(TN.good, 17)} Все активны</div>
@@ -808,7 +808,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                 {dg.asleep.length > 8 ? <span style={{ color:muted, fontSize:12, alignSelf:"center" }}>и ещё {dg.asleep.length - 8}</span> : null}
               </div>)}
           </div>
-          <SectionLabel a11y={a11y}>ТЕМЫ С САМЫМ НИЗКИМ РЕЗУЛЬТАТОМ</SectionLabel>
+          <SectionLabel a11y={a11y}>Темы с самым низким результатом</SectionLabel>
           {weak.map((q, i) => { const tone = toneOfScore(q.avg); return (
             <div key={i} style={G({ padding:"11px 12px", marginBottom:7 })}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>

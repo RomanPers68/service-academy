@@ -10,7 +10,7 @@ import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 import { SearchScreen } from "./search";
 import { onActivate } from "../lib/utils";
-import { GOLD, GREEN, RED } from "./tokens";
+import { GOLD, GREEN, RED, labelStyle } from "./tokens";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): курсы и главы — в две колонки на широком экране
 
 const R = React;
@@ -86,7 +86,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
       {hintNode}
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
       <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onExit}>‹</button>
-      <span style={{ ...T.modTag, color: gold }}>РАЗДЕЛ</span>
+      <span style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>Раздел</span>
     </div>
     <div style={{ padding: "6px 18px 8px" }}>
       <div style={{ fontFamily: SERIF, fontSize: 25, fontWeight: "bold", color: T.modTitle.color }}>Справочник</div>
@@ -106,12 +106,11 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     <div className="sa-g2" style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
         <div key={c.id} onClick={c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
-          <div style={{ ...T.modBar, background: gold, opacity: c.on ? 1 : 0.4 }} />
           {["serving","wine","coffee","cocktails"].includes(c.id)
             ? <RefArt kind={c.id} light={!!a11y} size={56} /> /* Доп. 147: витражи для курсов */
             : <div style={T.modIcon}>{c.icon(gold, 24)}</div>}
           <div style={{ flex: 1 }}>
-            <div style={{ ...T.modTag, color: gold }}>{c.tag || (c.deck ? "КОЛОДА" : c.on ? "КУРС" : "СКОРО")}</div>
+            <div style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>{c.tag || (c.deck ? "Колода" : c.on ? "Курс" : "Скоро")}</div>
             <div style={T.modTitle}>{c.t}</div>
             <div style={{ ...T.modSub, display: "flex", alignItems: "center", gap: 4 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
           </div>
@@ -130,7 +129,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
       <div style={{ fontFamily: SERIF, fontSize: 25, fontWeight: "bold", color: T.modTitle.color }}>{course.title}</div>
       <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>{course.subtitle}</div>
     </div>
-    <div style={T.secTitle}>ПРОГРАММА</div>
+    <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Программа</div>
     <div className="sa-g2" style={T.lessList}>
       {course.lessons.map((l, i) => {
         const isQuiz = l.type === "quiz";
@@ -140,7 +139,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
           </div>
           <div style={{ ...T.lessInfo, display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ ...T.lessTitle, marginBottom: 2, color: isQuiz ? gold : T.lessTitle.color }}>{l.title}</div>
-            <div style={{ fontSize: 10.5, letterSpacing: 1, fontFamily: "monospace", color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
+            <div style={{ ...labelStyle(13), color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "Фото-тест" : "Глава"}</div>
           </div>
           <div style={T.lessArrow}>›</div>
         </div>);
@@ -190,7 +189,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
   return (<div style={T.screen}>
     <Head T={T} title={lesson.title} onBack={onBack} />
     <div style={T.quizWrap}>
-      <div style={T.quizProgress}>Вопрос {step + 1} / {qs.length}</div>
+      <div style={{ ...T.quizProgress, ...labelStyle(dark ? 13 : 16) }}>Вопрос {step + 1} / {qs.length}</div>
       {q.img && <div style={{ marginBottom: 16 }}><Figure T={T}>{renderIll(q.img, gold, dark)}</Figure></div>}
       <div style={T.quizQ}>{q.q}</div>
       {q.options.map((opt, i) => {

@@ -62,8 +62,8 @@ function TopicActs({ topic, acts, passive, n }) {
     }
     if (acts.onGold && canGold) {
       items.push(gold
-        ? tile("g", " gold got", UI_SVG.crown("currentColor", 18), "Золото" + NB + "✦" + NB + "· ещё" + NB + "раз", "побей свой рекорд", "Золото ✦ · ещё раз — побей свой рекорд", acts.onGold)
-        : tile("g", " gold", UI_SVG.crown("currentColor", 18), "Раунд мастера" + NB + "✦", tasks(n.gold, true) + NB + "→ тема золотая",
+        ? tile("g", " gold got", UI_SVG.crown("currentColor", 18), "Золото" + NB + "· ещё" + NB + "раз", "побей свой рекорд", "Золото · ещё раз — побей свой рекорд", acts.onGold)
+        : tile("g", " gold", UI_SVG.crown("currentColor", 18), "Раунд мастера", tasks(n.gold, true) + NB + "→ тема золотая",
           "Раунд мастера · " + tasks(n.gold) + " — тема станет золотой", acts.onGold));
     }
   } else if (acts.onCredit && canCredit) {
@@ -75,7 +75,8 @@ function TopicActs({ topic, acts, passive, n }) {
   const marks = [credit ? "зачтено по опыту" : "", gold ? "золотая тема" : ""].filter(Boolean).join(" · ");
   if (!items.length && !line && !marks) return null;
   // строка свежести переносится только между частями («тема свежая · ещё 6 дней · золотая тема»)
-  const parts = [line, marks].filter(Boolean).join(" · ").split(" · ");
+  // v73 (Доп. 386): строка — курсивом обычными буквами (был капс через CSS), поэтому первая буква — заглавная
+  const parts = [line, marks].filter(Boolean).join(" · ").replace(/^./, (c) => c.toUpperCase()).split(" · ");
   return (
     <div className="tbm-acts">
       {line || marks ? <div className={"tbm-fresh" + (f && f.level !== "fresh" ? " " + f.level : "") + (f && f.updated ? " upd" : "")}>
@@ -159,8 +160,9 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
           </div>
           <h2 className="tbm-title">{mod.title}</h2>
           {mod.subtitle ? <p className="tbm-sub">{mod.subtitle}</p> : null}
-          {sealed ? <div className="tbm-sealnote" role="note">раздел пройден · печать</div> : null}
-          <div className="tbm-orn" aria-hidden="true"><i /><span>✦</span><i /></div>
+          {sealed ? <div className="tbm-sealnote" role="note">Раздел пройден · печать</div> : null}
+          {/* v73 (Доп. 386): разделитель — одна тонкая линия без звезды (половинки сходятся; высота — как была со звездой) */}
+          <div className="tbm-orn" aria-hidden="true" style={{ gap: 0, height: 10.5 }}><i /><i /></div>
           <TopicActs topic={topic ? { ...topic, done: sealed } : null} acts={acts} passive={passive} n={counts} />
         </div>
         <ol className="tbm-list" aria-label={"Шаги раздела «" + mod.title + "»"}>
@@ -185,7 +187,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
                     {marker}
                     <div className="tbm-card">
                       <div className="tbm-cc">
-                        <div className="tbm-ck"><span className="tbm-kchip">{kind.toUpperCase()}</span><span>{"≈ " + est(l) + " мин" + (l.type !== "lesson" ? " · " + detail(l, est(l)) : "")}</span></div>
+                        <div className="tbm-ck"><span className="tbm-kchip">{kind}</span><span>{"≈ " + est(l) + " мин" + (l.type !== "lesson" ? " · " + detail(l, est(l)) : "")}</span></div>
                         <span className="tbm-ct">{l.title}</span>
                         <span className="tbm-cs">{"шаг " + (i + 1) + " из " + real.length + (doneN ? " · пройдено " + doneN : " · начало раздела")}</span>
                       </div>
@@ -217,7 +219,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
         </ol>
         <div className="tbm-foot">
           <Ic n={doneN >= real.length && real.length ? "checkC" : "book"} s={16} />
-          <span>{doneN >= real.length && real.length ? "раздел пройден целиком" : "пройдено " + doneN + " из " + real.length + " · осталось ≈ " + fmt(left)}</span>
+          <span>{doneN >= real.length && real.length ? "Раздел пройден целиком" : "Пройдено " + doneN + " из " + real.length + " · осталось ≈ " + fmt(left)}</span>
         </div>
       </div>
     </div>

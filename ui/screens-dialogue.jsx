@@ -39,7 +39,7 @@ import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } 
 import { hintsFor } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, LABEL_CSS } from "./tokens";
 // v37: переписка — звуки, голос гостя, род имени
 import { isFemaleName } from "../lib/utils";
 import { sfx, sfxOn, setSfx } from "../lib/sfx";
@@ -243,7 +243,8 @@ const DLG_CSS = `
 html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .sa-dlg.dc *{box-sizing:border-box}
 :where(.sa-dlg.dc) button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;margin:0}
-.dc-ey{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--gold-ink)}
+/* v73 (Доп. 386): надзаголовки, шапка наставника и плашка «верно» — курсивом, обычными буквами; «3 из 5» — моноширинным */
+.dc-ey{${LABEL_CSS};font-size:13.5px;color:var(--gold-ink)}
 
 /* шапка */
 .dc-head{flex:0 0 auto;position:relative;z-index:4;padding:max(6px,var(--sa-st,env(safe-area-inset-top,0px))) 8px 6px;background:var(--head);border-bottom:1px solid var(--head-line)}
@@ -322,10 +323,10 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .dc-coach.ok{border-color:var(--ok-edge);background-image:linear-gradient(var(--ok-wash),var(--ok-wash))}
 .dc-coach.bad{border-color:var(--bad-edge);background-image:linear-gradient(var(--bad-wash),var(--bad-wash))}
 .dc-coach.tip{border-color:var(--edge-gold)}
-.dc-coach-h{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-ink)}
-.dc-coach-av{width:20px;height:20px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold);font-size:11px;letter-spacing:0}
+.dc-coach-h{display:flex;align-items:center;gap:7px;margin-bottom:5px;${LABEL_CSS};font-size:13px;color:var(--gold-ink)}
+.dc-coach-av{width:20px;height:20px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold);font-size:11px;font-style:normal;letter-spacing:0}
 .dc-coach-h i{font-family:Georgia,serif;font-style:italic;text-transform:none;letter-spacing:0;font-size:12px;color:var(--faint)}
-.dc-verdict{margin-left:auto;padding:2px 8px;border-radius:999px;font-style:normal;font-size:10.5px;letter-spacing:.8px;white-space:nowrap}
+.dc-verdict{margin-left:auto;padding:1px 8px;border-radius:999px;font-size:13px;white-space:nowrap}
 .dc-coach.ok .dc-verdict{color:var(--ok-ink);background:var(--ok-wash);box-shadow:inset 0 0 0 1px var(--ok-edge)}
 .dc-coach.bad .dc-verdict{color:var(--bad-ink);background:var(--bad-wash);box-shadow:inset 0 0 0 1px var(--bad-edge)}
 .dc-coach p{margin:0;color:var(--text)}

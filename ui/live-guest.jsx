@@ -26,7 +26,11 @@ import { COCKTAILS } from "../data/cocktails";
 import { vibrate } from "../lib/utils";
 import { ymd } from "../lib/streak";
 import { speakText, audioWake, audioSleep, stopSpeech } from "../lib/speech";   // v32 (Доп. 336)
+import { LABEL_CSS } from "./tokens";
 
+// v73 (Доп. 386): имя гостя над репликой, «Шёпот наставника» и теги гостя — курсивом, обычными буквами.
+// Моноширинный остался там, где он часть бумаги: чек разбора (.lg-sec, .lg-was), шапка карточки стола (.ey),
+// подписи на схеме стола (.tt-cap, .tt-num).
 const CSS = `
 .lg-card{position:relative;margin:6px 0 14px;padding:16px 16px 14px;border-radius:6px;background:var(--paper);color:var(--paper-ink);box-shadow:0 10px 26px var(--drop);font-family:var(--font-body)}
 .lg-card .ey{font-family:var(--font-mono);font-size:10.5px;letter-spacing:2.4px;color:var(--paper-sub);display:flex;justify-content:space-between;gap:8px}
@@ -35,14 +39,14 @@ const CSS = `
 .lg-card p{margin:8px 0 0;font-size:14.5px;line-height:1.5}
 .lg-card p.nt{font-size:13.5px;color:var(--paper-sub);font-style:italic}
 .lg-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.lg-tags span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--paper-line);color:var(--paper-sub)}
+.lg-tags span{${LABEL_CSS};font-size:13px;padding:3px 9px;border-radius:999px;border:1px solid var(--paper-line);color:var(--paper-sub)}
 .lg-tags span.own{border-color:#B08A3E;color:#7A5A1E}
 .lg-note{margin:0 0 12px;font-size:13.5px;line-height:1.5;color:var(--sub)}
 .lg-role{margin:0 0 8px;font-size:14px;line-height:1.45;color:var(--text)}
 .lg-opt{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:14px;color:var(--text)}
 .lg-opt input{width:18px;height:18px;accent-color:#C8A96E}
 .lg-g,.lg-gp{align-self:flex-start;max-width:88%;padding:10px 13px;border-radius:16px;border-bottom-left-radius:5px;background:var(--glass-2);border:1px solid var(--edge);font-size:15px;line-height:1.45}
-.lg-g b,.lg-gp b{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--sub);margin-bottom:2px;font-weight:400}
+.lg-g b,.lg-gp b{display:block;${LABEL_CSS};font-size:13px;color:var(--sub);margin-bottom:2px}
 .lg-gp span::after{content:"▍";margin-left:1px;opacity:.6;animation:tbBlink 1s infinite}
 .lg-row{display:flex;align-items:flex-end;gap:8px}
 .lg-in{flex:1;min-width:0;min-height:46px;max-height:120px;resize:none;box-sizing:border-box;padding:12px 14px;border-radius:22px;border:1px solid var(--edge);background:var(--glass);color:var(--text);font:15px/1.35 var(--font-body)}
@@ -79,7 +83,7 @@ const CSS = `
 .lg-mood.bump{animation:lgBump .55s cubic-bezier(.3,1.4,.5,1)}
 @keyframes lgBump{0%{transform:scale(1)}40%{transform:scale(1.035)}100%{transform:scale(1)}}
 .lg-whisper{margin:0 0 12px;padding:10px 12px;border-radius:14px;border:1px dashed var(--edge-gold);background:rgba(200,169,110,.08);font-size:14px;line-height:1.45}
-.lg-whisper b{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.6px;color:var(--gold-ink);font-weight:400;margin-bottom:3px}
+.lg-whisper b{display:flex;align-items:center;gap:6px;${LABEL_CSS};font-size:13px;color:var(--gold-ink);margin-bottom:3px}
 .lg-left{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;padding:4px 10px;border-radius:999px;border:1px solid var(--edge);font-size:12px;color:var(--sub)}
 .lg-line{display:block;width:100%;height:auto;margin:6px 0 2px}
 .lg-line path{fill:none;stroke:#8B6A30;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
@@ -557,7 +561,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
             <div className="ag">{guest.age} · {guest.occasion}</div>
             <p>{guest.who}.</p>
             {guest.note ? <p className="nt" data-guest-note="">{guest.note}.</p> : null}
-            <div className="lg-tags">{guest.tags.map((t) => <span key={t}>{t}</span>)}{guest.custom ? <span className="own">✦ гость заведения</span> : null}</div>
+            <div className="lg-tags">{guest.tags.map((t) => <span key={t}>{t}</span>)}{guest.custom ? <span className="own">гость заведения</span> : null}</div>
             <TableTop guest={guest} />
           </div>
           {/* v42: кто ты в этой сцене — гость и чек разбора ждут именно этого */}
@@ -598,7 +602,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
         <div className="tb-body" ref={bodyRef}><div className="tb-col">
           <div className="tb-res"><div className="tb-rslot"><div className="tb-rslot-in">
             <div className="tb-receipt" role="group" aria-label="Чек разбора">
-              <div className="r-brand">✦ SERVICE ACADEMY ✦</div>
+              <div className="r-brand">SERVICE ACADEMY</div>
               <div className="r-place">{(profile && profile.restaurant) || "Service Academy"} · {ui.where}</div>
               <div className="r-cut" />
               <h2 className="r-title">Чек разбора</h2>
@@ -652,7 +656,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
             : busy ? <div className="tb-typing tb-new" aria-label="Гость отвечает"><i /><i /><i /></div> : null}
           {ended ? <div className="tb-actl tb-new">{ui.ended}</div> : null}
         </div>
-        {whisper && guest.whisper ? <div className="lg-whisper" role="note"><b><Ic n="mentor" s={13} />ШЁПОТ НАСТАВНИКА</b>{guest.whisper}</div> : null}
+        {whisper && guest.whisper ? <div className="lg-whisper" role="note"><b><Ic n="mentor" s={13} />Шёпот наставника</b>{guest.whisper}</div> : null}
         {err ? (
           <div className="lg-err" role="alert">{guestErrorText(err)}
             <div className="lg-bar">

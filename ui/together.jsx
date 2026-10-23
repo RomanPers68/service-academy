@@ -18,11 +18,13 @@ import { vibrate, onActivate } from "../lib/utils";
 import { SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { taskProgress, goalLine, plural, GOAL_WORDS } from "../lib/quest";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
+import { LABEL_CSS } from "./tokens";
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
 const BODY = "Georgia,'Times New Roman',serif";
+// v73 (Доп. 386): подписи (.tg-tag, печать, «вдвоём», вехи) — курсивом с засечками в обычном регистре
 const CSS = `
-.tg-tag{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:1.6px;color:#D2A85A}
+.tg-tag{${LABEL_CSS};font-size:13px;color:#D2A85A}
 html.sa-light .tg-tag{color:#7A5D2A}
 .tg-h{font-family:Georgia,serif;font-size:19px;line-height:1.2;color:#EFE4C8;margin:6px 0 2px}
 html.sa-light .tg-h{color:#2A1F0E}
@@ -80,7 +82,7 @@ html.sa-light .tg-task.done .tt{color:#6B5B40}
 .tg-task .n{flex:0 0 auto;font-size:12px;color:#A8966F;font-variant-numeric:tabular-nums}
 html.sa-light .tg-task .n{color:#6B5B40}
 .tg-task:focus-visible,.tg-who:focus-visible{outline:2px solid #D9B87C;outline-offset:2px;border-radius:8px}
-.tg-stamp{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:6px 12px;border-radius:999px;border:1.5px solid #B0492F;color:#E08A70;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1.6px;transform:rotate(-2deg)}
+.tg-stamp{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:5px 12px;border-radius:999px;border:1.5px solid #B0492F;color:#E08A70;font-size:13.5px;line-height:normal;${LABEL_CSS};transform:rotate(-2deg)}
 .tg-stamp.drop{animation:tgStamp .75s cubic-bezier(.2,1.5,.45,1) both}
 @keyframes tgStamp{0%{opacity:0;transform:scale(2.2) rotate(-14deg)}60%{opacity:1;transform:scale(.94) rotate(-1deg)}100%{opacity:1;transform:scale(1) rotate(-2deg)}}
 html.sa-light .tg-stamp{color:#8F3520;border-color:#8F3520}
@@ -110,7 +112,7 @@ html.sa-light .tg-sheet{background-color:#F6EEDC;color:#2A1F0E}
 html.sa-light .tg-two>div{color:#4A3B22}
 .tg-glow{position:absolute;left:50%;top:-6px;width:150px;height:96px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 55%,rgba(248,210,122,.42),rgba(226,135,58,.16) 45%,transparent 70%);pointer-events:none;animation:tgGlow 2.8s ease-in-out infinite}
 @keyframes tgGlow{0%,100%{opacity:.75;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
-.tg-bridge{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:1.6px;color:#E8C56A;white-space:nowrap}
+.tg-bridge{position:absolute;left:50%;top:6px;transform:translateX(-50%);${LABEL_CSS};font-size:13px;color:#E8C56A;white-space:nowrap}
 html.sa-light .tg-bridge{color:#8A6410}
 .tg-big{text-align:center;font-family:Georgia,serif;font-size:30px;line-height:1.1;margin-top:6px}
 .tg-big small{display:block;font:12.5px ${BODY};color:#A8966F;margin-top:2px}
@@ -124,7 +126,7 @@ html.sa-light .tg-week .lb{color:#4A3B22}
 .tg-dot.s2{background:#E8C56A;border-color:#E8C56A}.tg-dot.s1{border-style:dashed}
 html.sa-light .tg-dot{border-color:rgba(122,93,42,.55)}html.sa-light .tg-dot.s2{background:#B8902E;border-color:#B8902E}
 .tg-ms{display:flex;gap:6px;justify-content:center;margin:10px 0 2px}
-.tg-ms span{padding:4px 10px;border-radius:999px;border:1px dashed rgba(214,178,102,.4);font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#A8966F}
+.tg-ms span{padding:3px 10px;border-radius:999px;border:1px dashed rgba(214,178,102,.4);font-size:13.5px;line-height:normal;${LABEL_CSS};color:#A8966F}
 .tg-ms span.got{border-style:solid;border-color:#E8C56A;color:#E8C56A}
 html.sa-light .tg-ms span{color:#6B5B40;border-color:rgba(139,106,48,.4)}html.sa-light .tg-ms span.got{color:#8A6410;border-color:#B8902E}
 .tg-nudge{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:10px 0 0;padding:11px 13px;border-radius:14px;border:1px solid rgba(214,178,102,.4);background:rgba(214,178,102,.10);color:inherit;font:14px/1.4 ${BODY};cursor:pointer}
@@ -242,7 +244,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
       if (rpcMissing(r)) { setCall({ busy: false, msg: "Позвать в Telegram получится, когда владелец обновит сервер." }); return; }
       if (r && r.ok) {
         const n = r.sent || 0;
-        setCall({ busy: false, msg: n ? "Позвали " + n + " " + plural(n, "человека", "человек", "человек") + " — сообщение в Telegram ✦" + (r.no_tg ? " · без Telegram: " + r.no_tg : "")
+        setCall({ busy: false, msg: n ? "Позвали " + n + " " + plural(n, "человека", "человек", "человек") + " — сообщение в Telegram" + (r.no_tg ? " · без Telegram: " + r.no_tg : "")
           : r.already ? "Сегодня уже звали — хватит одного раза" : "Некого звать: у остальных нет Telegram или напоминания выключены" });
         if (onReload) onReload();
         return;
@@ -287,16 +289,16 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
   return (
     <div className={"sa-card sa-pagein tg-quest" + (open ? " open" : "")} style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 10px" }} data-quest="" data-quest-off={restDay ? "1" : undefined}>
       <div className="tg-qtop">
-        <div className="tg-tag">КВЕСТ {team && !team.known ? "ЗАВЕДЕНИЯ" : "СМЕНЫ"}{shift ? " · " + shift.toUpperCase() : restDay ? " · ВЫХОДНОЙ" : ""}</div>
+        <div className="tg-tag">Квест {team && !team.known ? "заведения" : "смены"}{shift ? " · " + shift : restDay ? " · выходной" : ""}</div>
         <button type="button" className="tg-more" aria-expanded={open} onClick={toggleOpen} data-quest-more="" aria-label={open ? "Свернуть квест" : "Подробнее: люди, спасибо, все задания"} title={open ? "Свернуть" : "Подробнее"}><span aria-hidden="true">▾</span></button>
       </div>
       {team ? (
         <>
-          <div className="tg-h">{team.complete ? "Смена отработана ✦" : team.known ? (team.me_on ? "Смена вместе" : "Сегодня у тебя выходной") : "Заведение сегодня"}</div>
+          <div className="tg-h">{team.complete ? "Смена отработана" : team.known ? (team.me_on ? "Смена вместе" : "Сегодня у тебя выходной") : "Заведение сегодня"}</div>
           {team.known && !team.me_on ? <div className="tg-sub">Смена занимается без тебя — отдыхай.</div> : null}
           {open ? <div className="tg-sub tg-goal">Цель: {goalLine(team.goal)}</div> : null}
           <div className="tg-bars">{["warm", "steps", "guest"].map(bar)}</div>
-          {team.complete ? <div className={"tg-stamp" + (drop ? " drop" : "")}><span>✦</span>СМЕНА ОТРАБОТАНА</div> : null}
+          {team.complete ? <div className={"tg-stamp" + (drop ? " drop" : "")}>смена отработана</div> : null}
           {people.length ? (
             <>
               <button type="button" className="tg-who" aria-expanded={open && openWho} onClick={() => { if (!open) { setOpen(true); writeLS("sa_quest_open", "1"); if (!openWho) { setOpenWho(true); writeLS("sa_quest_who", "1"); } vibrate("light"); } else toggleWho(); }}>
@@ -317,10 +319,10 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
           ) : null}
           {open && people.length >= 2 && !thx.missing && (team.thanks !== undefined) ? (
             <div className="tg-row2">
-              <button type="button" className={"tg-chipbtn" + (iThanked ? " on" : "")} onClick={sayThanks} disabled={thx.busy} aria-pressed={iThanked}>{iThanked ? "Ты сказал(а) спасибо ✓" : "Спасибо команде ✦"}</button>
+              <button type="button" className={"tg-chipbtn" + (iThanked ? " on" : "")} onClick={sayThanks} disabled={thx.busy} aria-pressed={iThanked}>{iThanked ? "Ты сказал(а) спасибо ✓" : "Спасибо команде"}</button>
             </div>
           ) : null}
-          {open && thanksList.length ? <div className="tg-thanks">Спасибо от {thanksList.map((t) => (t.me ? "тебя" : t.name + (t.initial ? " " + t.initial + "." : ""))).join(", ")} ✦</div> : null}
+          {open && thanksList.length ? <div className="tg-thanks">Спасибо от {thanksList.map((t) => (t.me ? "тебя" : t.name + (t.initial ? " " + t.initial + "." : ""))).join(", ")}</div> : null}
           {team.lead && notStarted.length ? (
             <div className={"tg-lead" + (open ? "" : " min")} role="group" aria-label="Кто ещё не начал">
               {open ? (
@@ -335,7 +337,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
           ) : null}
         </>
       ) : restDay ? (
-        <><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены — в рабочий день. Отдыхай ✦</div></>
+        <><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены — в рабочий день. Отдыхай.</div></>
       ) : q.status === "loading" ? (
         <div className="tg-sub" style={{ marginTop: 6 }}>Смотрю, кто сегодня в смене…</div>
       ) : (
@@ -349,7 +351,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
             </button>
           ) : (
             <>
-              <div className="tg-sep"><i /><span className="tg-tag">ТВОЯ ЧАСТЬ · {myDone} ИЗ {tasks.length}</span><i /></div>
+              <div className="tg-sep"><i /><span className="tg-tag">Твоя часть · {myDone} из {tasks.length}</span><i /></div>
               {open || openTasks ? tasks.map(taskRow) : nextTask ? taskRow(nextTask) : null}
             </>
           )}
@@ -373,7 +375,7 @@ export function pairNudgeText(pair) {
   if (pt.state === 2 && me.state !== 2) return name + (pt.warm ? (f ? " уже размялась" : " уже размялся") : (f ? " уже занималась сегодня" : " уже занимался сегодня")) + " — твоя очередь";
   if (me.state === 2 && pt.state === 1) return "Ты свою часть сделал(а). " + name + " сегодня не в смене — свеча подождёт";
   if (me.state === 2 && pt.state !== 2) return "Ты свою часть сделал(а). " + name + " — ещё нет: свеча ждёт двоих";
-  if (me.state === 2 && pt.state === 2) return "Сегодня горите вдвоём ✦";
+  if (me.state === 2 && pt.state === 2) return "Сегодня горите вдвоём";
   if (pt.state === 1) return name + " сегодня не в смене — свечу сегодня держишь ты: хотя бы один шаг";
   return "Свеча ждёт вас обоих — хотя бы по шагу за день";
 }
@@ -386,7 +388,7 @@ export function pairMilestone(streak) {
   const next = PAIR_MILESTONES.find((m) => n < m) || null;
   return { got, next, left: next ? next - n : 0, last: got.length ? got[got.length - 1] : 0 };
 }
-const MS_WORD = { 7: "Неделя вместе ✦", 30: "Месяц вместе ✦", 100: "Сто дней вместе ✦" };
+const MS_WORD = { 7: "Неделя вместе", 30: "Месяц вместе", 100: "Сто дней вместе" };
 
 export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
   ensureCss();
@@ -438,9 +440,9 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
     vibrate("light"); setNudge({ busy: true, msg: "", hide: false });
     rpc("pair_nudge", { p_token: saToken() }).then((r) => {
       if (rpcMissing(r)) { setNudge({ busy: false, msg: "", hide: true }); return; }
-      if (r && r.ok) { vibrate("success"); setNudge({ busy: false, msg: pn + " получит сообщение в Telegram ✦", hide: false, sent: true }); return; }
+      if (r && r.ok) { vibrate("success"); setNudge({ busy: false, msg: pn + " получит сообщение в Telegram", hide: false, sent: true }); return; }
       const e = r && r.error;
-      setNudge({ busy: false, hide: false, msg: e === "already" ? "Сегодня уже подталкивал(а) — хватит одного раза" : e === "done" ? pn + (fem(pn) ? " уже сделала" : " уже сделал") + " свою часть ✦"
+      setNudge({ busy: false, hide: false, msg: e === "already" ? "Сегодня уже подталкивал(а) — хватит одного раза" : e === "done" ? pn + (fem(pn) ? " уже сделала" : " уже сделал") + " свою часть"
         : e === "no_tg" ? "У " + (fem(pn) ? "напарницы" : "напарника") + " не включены сообщения в Telegram" : e === "no_bot" ? "Бот ещё не подключён на сервере" : "Не получилось — попробуй ещё раз" });
     }).catch(() => setNudge({ busy: false, msg: "Нет связи — попробуй ещё раз", hide: false }));
   };
@@ -448,7 +450,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
   return (
     <div className="tg-scrim tbv" onClick={onClose}>
       <div className="tg-sheet" role="dialog" aria-modal="true" aria-label="Свеча на двоих" onClick={(e) => e.stopPropagation()}>
-        <div className="tg-tag">СВЕЧА НА ДВОИХ</div>
+        <div className="tg-tag">Свеча на двоих</div>
         {st.status === "loading" ? <SkelLines a11y={a11y} widths={["74%", "52%"]} style={{ marginTop: 10 }} /> : null}
         {st.status === "missing" ? <div className="tg-sub" style={{ marginTop: 8 }}>{serverMissing({ what: "«Свеча на двоих»", admin: !!(profile && profile.is_admin), sql: "supabase-stage24-together.sql" })}</div> : null}
         {st.status === "offline" || st.status === "error" ? <div className="tg-sub" style={{ marginTop: 8 }}>Нет связи с сервером — попробуй чуть позже.</div> : null}
@@ -457,7 +459,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
             <div className="tg-h">Ты и {pn} · {pair.streak ? pair.streak + " " + plural(pair.streak, "день", "дня", "дней") + " вместе" : "свеча ждёт первого общего дня"}</div>
             <div className="tg-sub">Свеча горит, пока занимаетесь оба — хотя бы по шагу в день. Выходной по графику свечу не гасит.</div>
             <div className="tg-two" aria-label={both ? "Сегодня горите вдвоём" : "Свечи на сегодня"}>
-              {both ? <><span className="tg-glow" aria-hidden="true" /><span className="tg-bridge" aria-hidden="true">✦ ВДВОЁМ ✦</span></> : null}
+              {both ? <><span className="tg-glow" aria-hidden="true" /><span className="tg-bridge" aria-hidden="true">Вдвоём</span></> : null}
               <div><Candle s={64} lit={pair.me_today && pair.me_today.state === 2} /><span>ты</span></div>
               <div><Candle s={64} lit={pair.partner_today && pair.partner_today.state === 2} /><span>{short(pair.partner) || pn}</span></div>
             </div>
@@ -497,7 +499,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
                 <div><b>{short(inv.from)}</b> зовёт тебя в Свечу на двоих</div>
                 <div className="bb">
                   <button type="button" disabled={busy} onClick={() => act("pair_answer", { p_id: inv.id, p_accept: false }, () => "Приглашение отклонено")}>Не сейчас</button>
-                  <button type="button" className="y" disabled={busy} onClick={() => act("pair_answer", { p_id: inv.id, p_accept: true }, () => "Свеча на двоих зажжена ✦")}>Принять</button>
+                  <button type="button" className="y" disabled={busy} onClick={() => act("pair_answer", { p_id: inv.id, p_accept: true }, () => "Свеча на двоих зажжена")}>Принять</button>
                 </div>
               </div>
             ))}
@@ -514,7 +516,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
                   {list.slice(0, 60).map((c) => (
                     <div key={c.id} className="tg-row">
                       <div className="nm">{c.name} {c.surname}<small>{(POS[c.position] || "сотрудник") + (c.lead ? " · может быть наставником" : "")}{c.busy ? " · уже в паре" : ""}</small></div>
-                      <button type="button" disabled={busy || c.busy} onClick={() => act("pair_invite", { p_emp: c.id }, (r) => (r.status === "active" ? "Свеча на двоих зажжена ✦" : "Приглашение отправлено — " + c.name + " увидит его у себя"))}>Позвать</button>
+                      <button type="button" disabled={busy || c.busy} onClick={() => act("pair_invite", { p_emp: c.id }, (r) => (r.status === "active" ? "Свеча на двоих зажжена" : "Приглашение отправлено — " + c.name + " увидит его у себя"))}>Позвать</button>
                     </div>
                   ))}
                 </div>

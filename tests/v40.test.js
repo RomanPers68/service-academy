@@ -133,9 +133,9 @@ describe("v40: «новое» и мастера заведения (lib/mastery.
     const idx = M.mastersIndex([{ who: "Анна Смирнова", role: "core" }, { who: "Анна Смирнова", role: "seasonal" }, { who: "Иван Петров", role: "bar" }, null, { who: "", role: "core" }]);
     expect(M.masterRolesOf(idx, "Смирнова", "Анна")).toEqual(["core", "seasonal"]);
     expect(M.masterRolesOf(idx, "Олег", "Петров")).toBe(null);
-    expect(M.masterTitle(["bar"])).toBe("Мастер роли «Бар» ✦");
-    expect(M.masterTitle(["core", "seasonal"])).toBe("Мастер ролей «Ядро», «Новичок» ✦");
-    expect(M.masterTitle([])).toBe("Мастер роли ✦");
+    expect(M.masterTitle(["bar"])).toBe("Мастер роли «Бар»");   // v73: без ✦ (знак у имени — прежний)
+    expect(M.masterTitle(["core", "seasonal"])).toBe("Мастер ролей «Ядро», «Новичок»");
+    expect(M.masterTitle([])).toBe("Мастер роли");
   });
   it("тексты: «Раунд мастера» в «как получить», «Бронза в 10 значках»", async () => {
     const M = await import("../lib/mastery.js");

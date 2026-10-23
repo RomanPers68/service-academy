@@ -350,7 +350,7 @@ if (want("BACK")) {
   await page.locator("[data-talk-open]").click(); await sleep(200);
   await waitSt(page, "listening", 9000);
   await page.evaluate(() => window.__bb.press()); await sleep(500);
-  const s = await page.evaluate(() => ({ talk: !!document.querySelector("[data-talk]"), ta: !!document.querySelector('textarea[placeholder="Ответ кандидата…"]'), body: document.body.innerText.includes("AI-ИНТЕРВЬЮ") }));
+  const s = await page.evaluate(() => ({ talk: !!document.querySelector("[data-talk]"), ta: !!document.querySelector('textarea[placeholder="Ответ кандидата…"]'), body: /AI-интервью/i.test(document.body.innerText) }));
   ok("BACK: кнопка «Назад» Telegram в разговоре голосом — закрывает разговор, интервью на месте", !s.talk && s.ta && s.body, JSON.stringify(s));
   ok("BACK: без ошибок", !errors.length, errors.join(" | "));
   await ctx.close();

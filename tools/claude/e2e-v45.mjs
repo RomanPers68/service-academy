@@ -352,7 +352,7 @@ if (want("STATES")) {
     const th = light ? " светлая" : " тёмная";
     { const { ctx, page, errors } = await home45({ storage: ROMAN44({ sa_today_shift: { date: TODAY, label: "выходной" } }), light, w: 393 });
       const g = await tileV45(page);
-      ok("STATES выходной" + th + ": «Сегодня выходной ✦», звезда не одна в строке", g.when === "off" && g.whenText === "Сегодня выходной ✦" && g.star && g.star.left > 30, JSON.stringify([g.whenText, g.star]));
+      ok("STATES выходной" + th + ": «Сегодня выходной» (v73: без ✦)", g.when === "off" && g.whenText === "Сегодня выходной" && !g.star, JSON.stringify([g.whenText, g.star]));
       ok("STATES выходной" + th + ": число приглушено, нить без отрезка, риска не горит", g.dayColor === (light ? SUB_LT : SUB_DK) && g.thread && g.segs.length === 0 && g.now && g.now.on === "off", JSON.stringify([g.dayColor, g.segs, g.now]));
       ok("STATES выходной" + th + ": скринридер, рамка, без ошибок", g.aria === "График смен. Сегодня выходной" && g.fits && errors.length === 0, g.aria + " " + errors.slice(0, 2).join(" | "));
       await tileShot(page, "state-off-" + (light ? "light" : "dark")); await ctx.close(); }

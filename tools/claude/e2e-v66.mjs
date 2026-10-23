@@ -298,26 +298,26 @@ if (want("PLAN") || want("DECIDE")) {
   const { ctx, page, errors } = await open({ profile: MANAGER, role: "manager", calls: C, rpcs: { ...RECS } });
   await toAi(page);
   let h = await hrHead(page);
-  ok("PLAN: интервью ведёт сервер — «ТЕМА 1 ИЗ 5», пять полосок (первая — текущая)", h.step === "ТЕМА 1 ИЗ 5" && h.segs === "cur,next,next,next,next", JSON.stringify(h));
+  ok("PLAN: интервью ведёт сервер — «ТЕМА 1 ИЗ 5», пять полосок (первая — текущая)", h.step === "Тема 1 из 5" && h.segs === "cur,next,next,next,next", JSON.stringify(h));
   ok("PLAN: первый запрос — chat, plan пустой, не голосом", Array.isArray(lastHr(C).plan) && lastHr(C).plan.length === 0 && lastHr(C).voice === false, JSON.stringify(lastHr(C).plan));
   await shot(page, "plan1-topic1");
   await send(page, SAY[0]);
   h = await hrHead(page);
-  ok("PLAN: ответил — «ТЕМА 2 ИЗ 5», первая полоска пройдена; на сервер ушёл plan [тема 0]", h.step === "ТЕМА 2 ИЗ 5" && h.segs === "done,cur,next,next,next" && JSON.stringify(lastHr(C).plan) === '[{"topic":0,"followup":false}]', JSON.stringify({ h, p: lastHr(C).plan }));
+  ok("PLAN: ответил — «ТЕМА 2 ИЗ 5», первая полоска пройдена; на сервер ушёл plan [тема 0]", h.step === "Тема 2 из 5" && h.segs === "done,cur,next,next,next" && JSON.stringify(lastHr(C).plan) === '[{"topic":0,"followup":false}]', JSON.stringify({ h, p: lastHr(C).plan }));
   await send(page, "Не знаю");
   h = await hrHead(page);
   let c = await chat(page);
-  ok("PLAN: «не знаю» — уточнение по той же теме (тема не сменилась)", h.step === "ТЕМА 2 ИЗ 5" && c.ai[c.ai.length - 1] === V2FOLLOW, JSON.stringify({ h, last: c.ai[c.ai.length - 1] }));
+  ok("PLAN: «не знаю» — уточнение по той же теме (тема не сменилась)", h.step === "Тема 2 из 5" && c.ai[c.ai.length - 1] === V2FOLLOW, JSON.stringify({ h, last: c.ai[c.ai.length - 1] }));
   await shot(page, "plan2-followup");
   await send(page, SAY[2]);
-  ok("PLAN: после уточнения — следующая тема; в plan уточнение помечено", (await hrHead(page)).step === "ТЕМА 3 ИЗ 5" && JSON.stringify(lastHr(C).plan) === '[{"topic":0,"followup":false},{"topic":1,"followup":false},{"topic":1,"followup":true}]', JSON.stringify(lastHr(C).plan));
+  ok("PLAN: после уточнения — следующая тема; в plan уточнение помечено", (await hrHead(page)).step === "Тема 3 из 5" && JSON.stringify(lastHr(C).plan) === '[{"topic":0,"followup":false},{"topic":1,"followup":false},{"topic":1,"followup":true}]', JSON.stringify(lastHr(C).plan));
   await send(page, SAY[3]);
   ok("PLAN: четыре ответа, темы не пройдены — только «Завершить раньше — оценка по пройденным темам»", (await cnt(page, "[data-hr-early]")) === 1 && (await page.locator("button", { hasText: "Завершить интервью → оценка" }).count()) === 0);
   await send(page, SAY[4]);
-  ok("PLAN: «ТЕМА 5 ИЗ 5»", (await hrHead(page)).step === "ТЕМА 5 ИЗ 5");
+  ok("PLAN: «ТЕМА 5 ИЗ 5»", (await hrHead(page)).step === "Тема 5 из 5");
   await send(page, SAY[5]);
   h = await hrHead(page); c = await chat(page);
-  ok("PLAN: последняя тема — интервьюер прощается, «ТЕМЫ ПРОЙДЕНЫ», все полоски пройдены", h.step === "ТЕМЫ ПРОЙДЕНЫ" && h.segs === "done,done,done,done,done" && c.ai[c.ai.length - 1].includes(CLOSING), JSON.stringify(h));
+  ok("PLAN: последняя тема — интервьюер прощается, «ТЕМЫ ПРОЙДЕНЫ», все полоски пройдены", h.step === "Темы пройдены" && h.segs === "done,done,done,done,done" && c.ai[c.ai.length - 1].includes(CLOSING), JSON.stringify(h));
   ok("PLAN: теперь главная кнопка «Завершить интервью → оценка», «раньше» — нет", (await page.locator("button", { hasText: "Завершить интервью → оценка" }).count()) === 1 && (await cnt(page, "[data-hr-early]")) === 0);
   await shot(page, "plan3-done");
   await btn(page, "Завершить интервью → оценка").click();
@@ -352,7 +352,7 @@ if (want("PLAN") || want("DECIDE")) {
   await btn(page, "К списку кандидатов").click(); await sleep(600);
   const row = await page.evaluate(() => ({ dec: document.querySelector("[data-row-decision]")?.innerText, agree: document.querySelector("[data-ai-agree]")?.getAttribute("data-ai-agree"), hrRow: document.querySelector("[data-hr-row]")?.innerText.replace(/\s+/g, " ") }));
   ok("DECIDE: в истории — «Рекомендован» и «Берём»; «ИИ и ваши решения: совпало 1 из 1»", row.dec === "Берём" && row.agree === "1/1", JSON.stringify(row));
-  ok("DECIDE: строка «AI HR · БЕТА»: эталоны не проверяли, решения — совпало 1 из 1", /AI HR\s*БЕТА/.test(row.hrRow) && /эталоны: не проверяли · ваши решения: совпало 1 из 1/.test(row.hrRow), row.hrRow);
+  ok("DECIDE: строка «AI HR · БЕТА»: эталоны не проверяли, решения — совпало 1 из 1", /AI HR\s*бета/.test(row.hrRow) && /эталоны: не проверяли · ваши решения: совпало 1 из 1/.test(row.hrRow), row.hrRow);
   await shot(page, "decide2-history");
   // открыть запись → отчёт; снять отметку
   await page.locator("[data-cand-row]").first().click(); await sleep(500);
@@ -392,7 +392,7 @@ if (want("EARLY")) {
   const { ctx, page, errors } = await open({ profile: MANAGER, role: "manager", calls: C, rpcs: { ...RECS } });
   await toAi(page);
   for (const t of [SAY[0], SAY[2], SAY[3], SAY[4]]) await send(page, t);
-  ok("EARLY: «ТЕМА 5 ИЗ 5», кнопка «Завершить раньше — оценка по пройденным темам»", (await hrHead(page)).step === "ТЕМА 5 ИЗ 5" && (await cnt(page, "[data-hr-early]")) === 1);
+  ok("EARLY: «ТЕМА 5 ИЗ 5», кнопка «Завершить раньше — оценка по пройденным темам»", (await hrHead(page)).step === "Тема 5 из 5" && (await cnt(page, "[data-hr-early]")) === 1);
   await page.locator("[data-hr-early]").click();
   await page.waitForSelector("[data-ai-result]", { timeout: 8000 }).catch(() => {});
   const as = lastHr(C, "assess");
@@ -408,7 +408,7 @@ if (want("VOICE")) {
   await page.locator("[data-talk-open]").click(); await sleep(250);
   for (let k = 0; k < 5; k++) {
     await sayTurn(page, 900);
-    const want = k < 4 ? `ТЕМА ${k + 2} ИЗ 5` : "ТЕМЫ ПРОЙДЕНЫ";
+    const want = k < 4 ? `Тема ${k + 2} из 5` : "Темы пройдены";   // v73: курсивом, обычными буквами
     await page.waitForFunction((w) => { const s = document.querySelector("[data-hr-step]"); return s && s.textContent === w; }, want, { timeout: 12000 }).catch(() => {});
   }
   ok("VOICE: голосом — каждый ход уходит с voice: true и планом", C.hr.filter((b) => b.mode === "chat").slice(1).every((b) => b.voice === true && Array.isArray(b.plan)) && C.hr.filter((b) => b.mode === "chat").length === 6, JSON.stringify(C.hr.map((b) => [b.mode, b.voice, (b.plan || []).length])));
@@ -439,7 +439,7 @@ if (want("RETRY")) {
   await page.locator("[data-hr-retry]").click();
   await page.waitForFunction(() => document.body.innerText.includes("Это несъедобно"), null, { timeout: 8000 }).catch(() => {});
   const c2 = await chat(page);
-  ok("RETRY: «Повторить» — ответ ушёл, интервьюер перешёл ко второй теме", c2.user.length === 1 && c2.user[0] === SAY[0] && (await hrHead(page)).step === "ТЕМА 2 ИЗ 5" && (await ta(page).inputValue()) === "", JSON.stringify(c2.user));
+  ok("RETRY: «Повторить» — ответ ушёл, интервьюер перешёл ко второй теме", c2.user.length === 1 && c2.user[0] === SAY[0] && (await hrHead(page)).step === "Тема 2 из 5" && (await ta(page).inputValue()) === "", JSON.stringify(c2.user));
   ok("RETRY: без ошибок", !errors.length, errors.join(" | "));
   await ctx.close();
 }
@@ -481,7 +481,7 @@ if (want("LEGACY")) {
   const { ctx, page, errors } = await open({ profile: MANAGER, role: "manager", calls: C, rpcs: { ...RECS }, hr: { legacy: true } });
   await toAi(page);
   let h = await hrHead(page);
-  ok("LEGACY: прежняя функция на сервере (без плана) — «ОТВЕТОВ: 0», полосок нет", h.step === "ОТВЕТОВ: 0" && !h.prog, JSON.stringify(h));
+  ok("LEGACY: прежняя функция на сервере (без плана) — «ОТВЕТОВ: 0», полосок нет", h.step === "Ответов: 0" && !h.prog, JSON.stringify(h));
   for (const t of [SAY[0], SAY[2], SAY[3]]) await send(page, t);
   ok("LEGACY: план больше не шлём (сервер его не понимает)", lastHr(C).plan === undefined, JSON.stringify(lastHr(C).plan));
   ok("LEGACY: три ответа — завершать рано", (await page.locator("button", { hasText: "Завершить интервью → оценка" }).count()) === 0);
@@ -604,12 +604,12 @@ if (want("BETA")) {
   const { ctx, page, errors } = await open({ profile: MANAGER, role: "manager", calls: C, rpcs: { ...RECS, candidate_list: { ok: true, items: decided(17) }, hr_quality_get: PASSED } });
   await page.evaluate(() => window.__saNav("candidate")); await sleep(1600);
   const row = await page.evaluate(() => document.querySelector("[data-hr-row]")?.innerText.replace(/\s+/g, " "));
-  ok("BETA: оба условия — «AI HR · ПРОВЕРЕН: эталоны 21 из 22 · ваши решения: совпало 17 из 20»", (await attr(page, "[data-hr-row]", "data-hr-row")) === "ok" && /ПРОВЕРЕН/.test(row) && /эталоны: 21 из 22 · ваши решения: совпало 17 из 20/.test(row), row);
+  ok("BETA: оба условия — «AI HR · ПРОВЕРЕН: эталоны 21 из 22 · ваши решения: совпало 17 из 20»", (await attr(page, "[data-hr-row]", "data-hr-row")) === "ok" && /проверен/.test(row) && /эталоны: 21 из 22 · ваши решения: совпало 17 из 20/.test(row), row);
   ok("BETA: в истории — «ИИ и ваши решения: совпало 17 из 20 (85%) на последних 20»", /совпало 17 из 20 \(85%\) на последних 20/.test(await page.evaluate(() => document.querySelector("[data-ai-agree]")?.innerText.replace(/\s+/g, " ") || "")));
   await shot(page, "beta1-intro");
   await page.locator("[data-hr-row]").click(); await page.waitForSelector("[data-hr-eval]", { timeout: 8000 }).catch(() => {});
   const sc = await page.evaluate(() => document.querySelector("[data-hr-status]")?.innerText || "");
-  ok("BETA: «Проверка AI HR» — «ПРОВЕРЕН», оба ✓, кто проверял эталоны (Роман Владелец)", (await attr(page, "[data-hr-status]", "data-hr-status")) === "ok" && /ПРОВЕРЕН/.test(sc) && /Оба условия выполнены/.test(sc) && /Роман Владелец/.test(sc) && (await attr(page, "[data-hr-real]", "data-hr-real")) === "ok", sc.slice(0, 200));
+  ok("BETA: «Проверка AI HR» — «ПРОВЕРЕН», оба ✓, кто проверял эталоны (Роман Владелец)", (await attr(page, "[data-hr-status]", "data-hr-status")) === "ok" && /проверен/.test(sc) && /Оба условия выполнены/.test(sc) && /Роман Владелец/.test(sc) && (await attr(page, "[data-hr-real]", "data-hr-real")) === "ok", sc.slice(0, 200));
   await shot(page, "beta2-eval");
   await page.locator("button", { hasText: /^‹$/ }).first().click(); await sleep(500);
   await toHandoff(page);

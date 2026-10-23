@@ -2,6 +2,7 @@
 // Тот же язык, что у ачивки «Находчивая жопка»: золото, стекло с бликом по кромке,
 // медальоны, плашки с метками. Каждый цвет — с вариантом для светлой темы (a11y).
 import React from "react";
+import { labelStyle } from "./tokens";
 
 // Тона тяжести: хорошо / внимание / плохо — у каждого светлый вариант для контраста
 export const tones = (a11y) => ({
@@ -135,7 +136,7 @@ export function ExitTrack({ answered = 0, total = 0, a11y }) {
 export function MissPlate({ q, picked, right, times, a11y }) {
   const T = tones(a11y);
   const text = a11y ? "#2A2113" : "#EFE4C8", muted = a11y ? "#5E4E30" : "#BFAE8A";
-  const tag = (t, c) => <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.3, color: c, fontWeight: "bold", marginRight: 6 }}>{t}</span>;
+  const tag = (t, c) => <span style={{ ...labelStyle(13), color: c, marginRight: 6 }}>{t}</span>;   // v73 (Доп. 386): бирка курсивом, не моноширинным капсом
   return (
     <div style={{ background: a11y ? "rgba(255,255,255,0.6)" : "rgba(255,236,190,0.04)", border: `1px solid ${a11y ? "rgba(107,78,20,0.18)" : "rgba(214,178,102,0.16)"}`,
       borderRadius: 13, padding: "10px 11px", marginTop: 7, boxShadow: a11y ? "inset 0 1px 0 rgba(255,255,255,0.9)" : "inset 0 1px 0 rgba(255,236,190,0.07)" }}>
@@ -147,20 +148,21 @@ export function MissPlate({ q, picked, right, times, a11y }) {
       </div>
       {(picked || right) ? (
         <div style={{ paddingLeft: 26, marginTop: 5 }}>
-          {picked ? <div style={{ color: muted, fontSize: 12, lineHeight: 1.45 }}>{tag("ВЫБРАЛ", muted)}{picked}</div> : null}
-          {right ? <div style={{ color: T.good, fontSize: 12, lineHeight: 1.45, marginTop: 2 }}>{tag("ВЕРНО", T.good)}{right}</div> : null}
+          {picked ? <div style={{ color: muted, fontSize: 12, lineHeight: 1.45 }}>{tag("Выбрал", muted)}{picked}</div> : null}
+          {right ? <div style={{ color: T.good, fontSize: 12, lineHeight: 1.45, marginTop: 2 }}>{tag("Верно", T.good)}{right}</div> : null}
         </div>) : null}
     </div>
   );
 }
 
-// Заголовок раздела: подпись с золотыми линиями — как «СЕКРЕТНАЯ АЧИВКА»
+// Заголовок раздела: подпись курсивом с золотыми линиями — как «Секретная ачивка».
+// v73 (Доп. 386): было моноширинным капсом; текст подписи передают обычным регистром («Кто и где ошибается»)
 export function SectionLabel({ children, a11y, right }) {
   const c = a11y ? "#6B4E14" : "#D6B266";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 2px 8px" }}>
       <span style={{ height: 1, width: 14, background: `linear-gradient(90deg, transparent, ${c})` }} />
-      <span style={{ color: c, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.8, fontWeight: "bold", whiteSpace: "nowrap" }}>{children}</span>
+      <span style={{ ...labelStyle(13), color: c, whiteSpace: "nowrap" }}>{children}</span>
       <span style={{ height: 1, flex: 1, background: `linear-gradient(90deg, ${c}, transparent)`, opacity: 0.5 }} />
       {right ? <span style={{ color: a11y ? "#5E4E30" : "#BFAE8A", fontSize: 11 }}>{right}</span> : null}
     </div>

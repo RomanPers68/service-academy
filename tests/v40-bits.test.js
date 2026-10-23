@@ -54,13 +54,13 @@ describe("v40: «Мастер роли ✦» в рейтинге", () => {
     const html = await render({ masters: mastersIndex(ROWS) });
     delete store.sa_lb_scope;
     expect(marks(html)).toEqual([
-      { name: "Анна Смирнова", title: "Мастер роли «Ядро» ✦", label: "Мастер роли «Ядро» ✦" },
-      { name: "Екатерина Заяц", title: "Мастер роли «Новичок» ✦", label: "Мастер роли «Новичок» ✦" },
+      { name: "Анна Смирнова", title: "Мастер роли «Ядро»", label: "Мастер роли «Ядро»" },   // v73: в названии без ✦ (знак у имени — прежний)
+      { name: "Екатерина Заяц", title: "Мастер роли «Новичок»", label: "Мастер роли «Новичок»" },
     ]);
     expect(count(html, "data-master-mark")).toBe(2);   // тёзка из «Причала» и Иван — без знака
     expect(count(html, ">Анна Смирнова</div>")).toBe(2);
     // знак — сразу после имени, перед значками достижений; цвет — золото надписи
-    expect(html).toMatch(/>Анна Смирнова<\/div><span data-master-mark="" role="img" title="Мастер роли «Ядро» ✦" aria-label="Мастер роли «Ядро» ✦" style="[^"]*color:#C8A96E[^"]*">✦<\/span><span title="Ядро команды"/);
+    expect(html).toMatch(/>Анна Смирнова<\/div><span data-master-mark="" role="img" title="Мастер роли «Ядро»" aria-label="Мастер роли «Ядро»" style="[^"]*color:#C8A96E[^"]*">✦<\/span><span title="Ядро команды"/);
   });
 
   it("моё заведение (по умолчанию): знаки у своих; светлая тема — тёмное золото", async () => {
@@ -80,15 +80,15 @@ describe("v40: «Мастер роли ✦» в рейтинге", () => {
     expect(noRest).not.toContain("data-master-mark");
   });
 
-  it("карточка игрока: строка «✦ Мастер роли «Ядро»» под именем (разметка в исходнике; клик — в браузере)", () => {
+  it("карточка игрока: строка «Мастер роли «Ядро»» под именем (разметка в исходнике; клик — в браузере)", () => {
     const src = readFileSync("ui/screens-gamification.jsx", "utf8");
     expect(src).toContain('{selMaster ? <div data-master-line=""');
-    expect(src).toContain('{"✦ " + masterTitle(selMaster).replace(/\\s*✦$/, "")}');
+    expect(src).toContain('{masterTitle(selMaster).replace(/\\s*✦$/, "")}</div>');   // v73: без «✦ » впереди
   });
 
   it("MasterMark: несколько ролей — «Мастер ролей …», пусто — ничего", async () => {
     const { MasterMark } = await import("../ui/screens-gamification");
-    expect(R(h(MasterMark, { roles: ["core", "bar"] }))).toContain('title="Мастер ролей «Ядро», «Бар» ✦"');
+    expect(R(h(MasterMark, { roles: ["core", "bar"] }))).toContain('title="Мастер ролей «Ядро», «Бар»"');   // v73: без ✦ в названии
     expect(R(h(MasterMark, { roles: null }))).toBe("");
     expect(R(h(MasterMark, { roles: [] }))).toBe("");
   });
@@ -129,7 +129,7 @@ describe("v40: баннер «✦ МАСТЕР РОЛИ»", () => {
     const { MastersBanner } = await import("../ui/home-hubs");
     const html = R(h(MastersBanner, { a11y: false, rows: [ROWS[0]], onOpen: noop }));
     expect(html).toMatch(/^<div class="sa-card sa-pagein" data-ms-banner="" role="button" tabindex="0"/);
-    expect(html).toContain(">✦ МАСТЕР РОЛИ<");
+    expect(html).toContain(">Мастер роли<");   // v73: курсивом, без ✦ и капса
     expect(html).toContain(">Анна Смирнова стала мастером роли «Ядро»<");
     expect(html).toContain(">вчера<");
     expect(html).toContain(">Путь мастера ›<");
@@ -185,11 +185,11 @@ describe("v40: баннер «✦ МАСТЕР РОЛИ»", () => {
     expect(mastersNews([{ who: "Анна Смирнова", role: "core", at: new Date(at(7, 9)).toISOString() }], now)).toBe(null);   // 7 суток и час назад
     expect(mastersNews([{ who: "Анна Смирнова", role: "core", at: new Date(now + 3600e3).toISOString() }], now)).toMatchObject({ when: "сегодня" });   // часы сервера чуть впереди
   });
-  it("светлая тема: метка 11 px, подписи 13 px; тёмная — 10,5 и 12,5", async () => {
+  it("светлая тема: метка 14 px, подписи 13 px; тёмная — 13,5 и 12,5 (v73: метка курсивом, крупнее капса)", async () => {
     const { MastersBanner } = await import("../ui/home-hubs");
     const sizes = (html) => [...new Set([...html.matchAll(/font-size:([\d.]+)px/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
-    expect(sizes(R(h(MastersBanner, { a11y: true, rows: ROWS })))).toEqual([11, 13, 15]);
-    expect(sizes(R(h(MastersBanner, { a11y: false, rows: ROWS })))).toEqual([10.5, 12.5, 15]);
+    expect(sizes(R(h(MastersBanner, { a11y: true, rows: ROWS })))).toEqual([13, 14, 15]);
+    expect(sizes(R(h(MastersBanner, { a11y: false, rows: ROWS })))).toEqual([12.5, 13.5, 15]);
   });
   it("ICON.mastery: медаль (лента, круг, звезда) — в списке хаба вместо запасной книги", async () => {
     const { HubScreen } = await import("../ui/home-hubs");
@@ -239,7 +239,7 @@ describe("v40: напоминания — «Мастера заведения» 
     expect(prefRows(null).map((r) => r[0])).toEqual(["pair", "quest", "league", "fresh", "month"]);
     const rows = prefRows({ ...st25, master: false });
     expect(rows.map((r) => r[0])).toEqual(["pair", "quest", "league", "fresh", "month", "master"]);
-    expect(rows[5]).toEqual(["master", "Мастера заведения", "когда коллега становится мастером роли ✦"]);
+    expect(rows[5]).toEqual(["master", "Мастера заведения", "когда коллега становится мастером роли"]);
     expect(prefRows({ ...st25, master: true })).toHaveLength(6);
     const src = readFileSync("ui/day-cards.jsx", "utf8");
     expect(src).toContain("{prefRows(p).map(([k, t, sub]) => {");
@@ -283,7 +283,7 @@ describe("v40: подсказка, кнопка ассистента, конте
     expect(HINTS_VERSION).toBe(5);
     expect(hintsFor("mastery")).toEqual([
       "Значки — за привычки: у каждого инструмента бронза, серебро и золото. Серые ещё не открыты — нажми, чтобы узнать, как получить.",
-      "«Мастер роли ✦» — главная награда: роль пройдена, 5 золотых тем, серия 14 дней и бронза в 10 значках. Коллеги увидят знак ✦ у твоего имени.",
+      "«Мастер роли» — главная награда: роль пройдена, 5 золотых тем, серия 14 дней и бронза в 10 значках. Коллеги увидят знак ✦ у твоего имени.",
       "«Шаг дня» — одно дело на сегодня, подобранное под тебя. Сделал — завтра будет новое.",
     ]);
     expect(HINTS.mastery).toHaveLength(3);
@@ -303,7 +303,7 @@ describe("v40: подсказка, кнопка ассистента, конте
     expect(c).toContain("первые шаги в академии 2/7");
     expect(c).toContain("слабые темы. Значки, мастер роли, шаг дня, первые шаги — кнопка [[go:mastery|Путь мастера]].]");
     const m = withRefContext([{ role: "user", content: "привет" }], profile, { mastery: { ...ms, master: true, step: "", fw: { done: 7, total: 7, active: false } } })[0].content;
-    expect(m).toContain("значков 3/14, мастер роли ✦");
+    expect(m).toContain("значков 3/14, мастер роли.");   // v73: без ✦
     expect(m).not.toContain("до мастера роли");
     expect(m).not.toContain("шаг дня —");
     expect(m).not.toContain("первые шаги в академии");

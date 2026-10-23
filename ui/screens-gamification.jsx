@@ -31,7 +31,8 @@ import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, goldText } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, goldText, labelStyle } from "./tokens";
+// v73 (Доп. 386): подписи разделов и бейджи — курсивом, обычными буквами (labelStyle); моноширинный — только цифрам
 import { masterRolesOf, masterTitle } from "../lib/mastery";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): рейтинг шире, сотрудники — в две колонки
 
@@ -94,7 +95,7 @@ export function AchievementPopup({ ach, a11y, onClose }) {
             animation:"achIconPulse 2s ease-in-out infinite",
           }}>{UI_SVG[ach.icon] ? UI_SVG[ach.icon](color, 34) : ach.icon}</div>
           <div>
-            <div style={{ color:labelColor, fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:4 }}>✦ НОВАЯ АЧИВКА</div>
+            <div style={{ ...labelStyle(13.5), color:labelColor, marginBottom:4 }}>Новая ачивка</div>
             <div style={{ color:titleColor, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF }}>{ach.label}</div>
           </div>
         </div>
@@ -137,12 +138,12 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
         <div style={{ marginBottom:10, filter:"drop-shadow(0 0 30px rgba(212,168,90,0.6))", lineHeight:1, display:"flex", justifyContent:"center" }}>
           {ROLE_SVG[role?.id] ? ROLE_SVG[role.id](ach.color, 72) : ach.icon}
         </div>
-        <div style={{ fontSize:11, letterSpacing:4, color:"#C8A96E", fontFamily:"monospace", marginBottom:12 }}>
-          ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО
+        <div style={{ ...labelStyle(13.5), color:"#C8A96E", marginBottom:12 }}>
+          Достижение разблокировано
         </div>
         <div style={{ display:"inline-block", background:"linear-gradient(135deg, rgba(212,168,90,0.25) 0%, rgba(212,168,90,0.05) 100%)", border:"1px solid rgba(212,168,90,0.5)", borderRadius:28, padding:"6px 20px", marginBottom:16 }}>
           <span style={{ color:GOLD_SOFT, fontSize:12.5, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
-            ✦ {ach.badge}
+            {ach.badge}
           </span>
         </div>
         <div style={{ color:CREAM, fontSize:25, fontWeight:"bold", fontFamily:ACCENT_SERIF, marginBottom:8, letterSpacing:0.3 }}>
@@ -164,7 +165,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
       {phase >= 1 && !isLast && (
         <div className="sa-pop" style={{ width:"100%", maxWidth:340, marginBottom:24 }}>
           <div style={{ background:"linear-gradient(135deg, rgba(93,187,138,0.12) 0%, rgba(0,0,0,0.2) 100%)", border:"1px solid rgba(93,187,138,0.3)", borderRadius:18, padding:"16px 20px", textAlign:"center" }}>
-            <div style={{ fontSize:11, letterSpacing:3, color:GREEN, fontFamily:"monospace", marginBottom:8 }}>✦ РАЗБЛОКИРОВАНО</div>
+            <div style={{ ...labelStyle(13.5), color:GREEN, marginBottom:8 }}>Разблокировано</div>
             <div style={{ marginBottom:6, display:"flex", justifyContent:"center" }}>{ROLE_SVG[nextRole.id] ? ROLE_SVG[nextRole.id](nextRole.color, 30) : nextRole.icon}</div>
             <div style={{ color:CREAM, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", marginBottom:4 }}>{nextRole.label}</div>
             <div style={{ color:"#8A8070", fontSize:12.5 }}>{nextRole.desc}</div>
@@ -208,7 +209,7 @@ export function WeekStar({ weekly, T }) {
   if (!weekly || weekly.length === 0) {
     return (
       <div style={wrap}>
-        <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} СОТРУДНИК НЕДЕЛИ</div>
+        <div style={{ ...labelStyle(13.5), color:gold, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} Сотрудник недели</div>
         <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.5 }}>На этой неделе пока нет активности — самое время вырваться вперёд!</div>
       </div>
     );
@@ -216,7 +217,7 @@ export function WeekStar({ weekly, T }) {
   const top = weekly[0]; const rest = weekly.slice(1);
   return (
     <div style={wrap}>
-      <div style={{ color:gold, fontSize:11, letterSpacing:1.5, fontWeight:"bold", fontFamily:"monospace", marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} СОТРУДНИК НЕДЕЛИ</div>
+      <div style={{ ...labelStyle(13.5), color:gold, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} Сотрудник недели</div>
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
         <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #7A5D2A)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#FBF7EE", 24)}</div>
         <div style={{ flex:1, minWidth:0 }}>
@@ -275,7 +276,7 @@ export function PlaceCard({ T, tabLabel, rest, restIdx, restN, netIdx, netN, net
   };
   return (
     <div className="sa-card" style={{ padding:"10px 10px 8px", marginBottom:12, borderRadius:14, border:`1px solid ${GOLD}55`, background: a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.05)" }}>
-      <div style={{ fontSize:11, letterSpacing:1.6, color: goldText(a11y), fontFamily:"monospace", margin:"2px 4px 8px" }}>ТВОЁ МЕСТО{tabLabel ? " · " + tabLabel.toUpperCase() : ""}</div>
+      <div style={{ ...labelStyle(13.5), color: goldText(a11y), margin:"2px 4px 8px" }}>Твоё место{tabLabel ? " · " + tabLabel.toLowerCase() : ""}</div>
       <div role="group" aria-label="Какой рейтинг показать" style={{ display:"flex", gap:6 }}>
         {half("rest", restIdx, restN, "в заведении", rest)}
         {half("net", netIdx, netN, "во всей сети", netR + " " + (netR % 10 === 1 && netR % 100 !== 11 ? "заведение" : netR % 10 >= 2 && netR % 10 <= 4 && (netR % 100 < 10 || netR % 100 >= 20) ? "заведения" : "заведений"))}
@@ -509,7 +510,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
             <div role="button" tabIndex={0} onClick={onLeague} {...onActivate(onLeague)} className="sa-card"
               style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 14px", marginBottom:12, borderRadius:14, cursor:"pointer", border:`1px solid ${GOLD}55`, background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.07)" }}>
               <span style={{ flex:1, minWidth:0 }}>
-                <span style={{ display:"block", fontSize:11, letterSpacing:1.6, color: goldText(!!T.a11y), fontFamily:"monospace" }}>ЛИГА НЕДЕЛИ</span>
+                <span style={{ ...labelStyle(13.5), display:"block", color: goldText(!!T.a11y) }}>Лига недели</span>
                 <span style={{ display:"block", fontSize:12.5, color:T.modSub.color, marginTop:2 }}>Очки за занятия с понедельника — новичок на равных со всеми</span>
               </span>
               <span style={{ color:GOLD, fontSize:18 }}>›</span>
@@ -520,7 +521,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           <div className="sa-card" style={{ padding:"12px 14px", marginBottom:12, borderRadius:14, border:`1px solid ${GOLD}55`, background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.07)" }}>
             <div onClick={() => setShowRec(v => !v)} {...onActivate(() => setShowRec(v => !v))} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
               <div>
-                <div style={{ fontSize:11, letterSpacing:1.6, color: goldText(!!T.a11y), fontFamily:"monospace" }}>РЕКОРДЫ КОМАНДЫ</div>
+                <div style={{ ...labelStyle(13.5), color: goldText(!!T.a11y) }}>Рекорды команды</div>
                 {!records && !recErr ? <SkelLines a11y={!!T.a11y} widths={["58%"]} h={10} style={{ marginTop:6 }} />
                 : <div style={{ fontSize:12.5, color:T.modSub.color, marginTop:2 }}>{records ? Object.values(records).flat().length ? `Лидеры по ${Object.values(records).filter(l => l.length).length} дисциплинам` : "Пока пусто — первый рекорд твой"
                   /* v58 (Доп. 371): была надпись для разработчика («нужен stage… на сервере») у любого сотрудника */
@@ -545,11 +546,11 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
                   </div>); })}
                 {myBadges.length > 0 && (
                   <div style={{ paddingTop:10, borderTop:`1px solid ${GOLD}22` }}>
-                    <div style={{ fontSize:11, letterSpacing:1.6, color:GOLD, fontFamily:"monospace", marginBottom:6 }}>ТВОИ АЧИВКИ</div>
+                    <div style={{ ...labelStyle(13.5), color:GOLD, marginBottom:6 }}>Твои ачивки</div>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{myBadges.map((b, i) => <span key={i} title={b.desc} style={{ padding:"5px 10px", borderRadius:999, border:`1px solid ${GOLD}66`, fontSize:12.5, color:T.modTitle.color }}><span style={{ color:GOLD, marginRight:5 }}>{b.sign}</span>{b.title}</span>)}</div>
                   </div>
                 )}
-                <div style={{ fontSize:11, color:T.modSub.color, marginTop:8, lineHeight:1.5 }}>Дальше: {BADGES.filter(b => !myBadges.includes(b)).slice(0, 2).map(b => `«${b.title}» — ${b.desc}`).join("; ") || "все ачивки собраны ✦"}.</div>
+                <div style={{ fontSize:11, color:T.modSub.color, marginTop:8, lineHeight:1.5 }}>Дальше: {BADGES.filter(b => !myBadges.includes(b)).slice(0, 2).map(b => `«${b.title}» — ${b.desc}`).join("; ") || "все ачивки собраны"}.</div>
               </div>
             )}
           </div>
@@ -569,7 +570,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
                   <div style={{ ...T.modTitle }}>{p.name} {shownSurname(p)}</div>
                   <MasterMark roles={masterOf(p)} a11y={!!T.a11y} />
                   {i === myIdx && rankDelta != null && rankDelta !== 0 ? (
-                    <span style={{ fontSize:10.5, fontFamily:"ui-monospace, Menlo, monospace", padding:"2px 7px", borderRadius:999,
+                    <span style={{ ...labelStyle(13), padding:"1px 7px", borderRadius:999,
                       color: rankDelta > 0 ? "#8FB890" : T.modSub.color,
                       background: rankDelta > 0 ? "rgba(124,158,135,0.14)" : "rgba(154,140,116,0.12)",
                       border: `1px solid ${rankDelta > 0 ? "rgba(124,158,135,0.4)" : "rgba(154,140,116,0.3)"}` }}>
@@ -604,7 +605,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ ...T.modTitle }}>{selected?.name} {selected ? shownSurname(selected) : ""}</div>
-                {selMaster ? <div data-master-line="" style={{ color: goldText(!!T.a11y), fontSize: T.a11y ? 13 : 12.5, fontFamily:"Georgia, serif", lineHeight:1.35, margin:"1px 0 1px" }}>{"✦ " + masterTitle(selMaster).replace(/\s*✦$/, "")}</div> : null}
+                {selMaster ? <div data-master-line="" style={{ color: goldText(!!T.a11y), fontSize: T.a11y ? 13 : 12.5, fontFamily:"Georgia, serif", lineHeight:1.35, margin:"1px 0 1px" }}>{masterTitle(selMaster).replace(/\s*✦$/, "")}</div> : null}
                 <div style={{ color:T.modSub.color, fontSize:12.5 }}>{selected?.restaurant}</div>
               </div>
             </div>
@@ -699,7 +700,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
   }, [allLessons, completed, quizDone, seed]);
 
   const taskTypeIcon = { lesson:"book", quiz:"quiz", practice:"gamepad", dialogue:"dialog", build:"shaker" };
-  const taskTypeLabel = { lesson:"Урок", quiz:"Тест", practice:"Практика", dialogue:"Диалог" };
+  const taskTypeLabel = { lesson:"урок", quiz:"тест", practice:"практика", dialogue:"диалог" };   // v73: после «·» — со строчной
 
   if (!role) return (
     <div style={T.screen}>
@@ -749,7 +750,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
             </div>
             <div style={{ flex:1 }}>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                <div style={{ color: goldText(a11y), fontSize:10.5, letterSpacing:2, fontFamily:"monospace", opacity: a11y ? 1 : 0.85 }}>СПРАВОЧНИК · {refTask.type === "quiz" ? "ФОТО-ТЕСТ" : "ГЛАВА"}</div>
+                <div style={{ ...labelStyle(13), color: goldText(a11y), opacity: a11y ? 1 : 0.85 }}>Справочник · {refTask.type === "quiz" ? "фото-тест" : "глава"}</div>
               </div>
               <div style={{ ...T.modTitle, fontSize:14 }}>{refTask.title}</div>
               <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:2 }}>Курс: {refTask.course || "Справочник"}</div>
@@ -775,7 +776,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
               <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{isDone ? UI_SVG.checkCircle(GREEN, 26) : (UI_SVG[taskTypeIcon[task.type]] || UI_SVG.book)(GOLD, 26)}</div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                  <div style={{ color: goldText(a11y), fontSize:10.5, letterSpacing:2, fontFamily:"monospace", opacity: a11y ? 1 : 0.85 }}>ЗАДАНИЕ {i+1} · {taskTypeLabel[task.type] || "Урок"}</div>
+                  <div style={{ ...labelStyle(13), color: goldText(a11y), opacity: a11y ? 1 : 0.85 }}>Задание {i+1} · {taskTypeLabel[task.type] || "урок"}</div>
                 </div>
                 <div style={{ ...T.modTitle, fontSize:14 }}>{task.title}</div>
                 <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:2 }}>{task.mod?.title}</div>
@@ -923,7 +924,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
             </div>
 
             {/* Прогресс по ролям */}
-            <div style={{ color: T.secTitle?.color || "#7A654C", fontSize:11, letterSpacing:3, marginBottom:10, fontFamily:"monospace" }}>ПРОГРЕСС ПО РОЛЯМ</div>
+            <div style={{ ...labelStyle(13.5), color: T.secTitle?.color || "#7A654C", marginBottom:10 }}>Прогресс по ролям</div>
             {Object.entries(roleNames).map(([roleId, roleName]) => {
               const lessonCount = byRole[roleId] || 0;
               const quizCount = quizByRole[roleId] || 0;
@@ -950,7 +951,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
             {/* Последние тесты */}
             {scores.length > 0 && (
               <>
-                <div style={{ color: T.secTitle?.color || "#7A654C", fontSize:11, letterSpacing:3, margin:"16px 0 10px", fontFamily:"monospace" }}>ПОСЛЕДНИЕ ТЕСТЫ</div>
+                <div style={{ ...labelStyle(13.5), color: T.secTitle?.color || "#7A654C", margin:"16px 0 10px" }}>Последние тесты</div>
                 {uniqueScores.sort((a,b) => (b.score/b.total) - (a.score/a.total)).map((s, i) => {
                   const pct = Math.round(s.score / s.total * 100);
                   return (
@@ -1018,8 +1019,8 @@ function PlayersManager({ players, scores, T, a11y, onResetPlayer, onUnlockQuiz,
 
   return (
     <>
-      <div style={{ color: T.modSub.color, fontSize: 10.5, letterSpacing: 3, fontFamily: "monospace", margin: "16px 0 8px" }}>
-        УПРАВЛЕНИЕ ДАННЫМИ · {players.length}
+      <div style={{ ...labelStyle(13), color: T.modSub.color, margin: "16px 0 8px" }}>
+        Управление данными · {players.length}
       </div>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Найти сотрудника"
         style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 13, marginBottom: 8, outline: "none",
@@ -1111,7 +1112,8 @@ function PlayerRow({ p, stat, T, a11y, peek, onResetPlayer, onUnlockQuiz, onView
 
   const tone = stat.tests === 0 ? "bad" : stat.avg >= 90 ? "good" : "mid";
   const sub = stat.tests === 0 ? "не начинал" : `${stat.tests} ${kk(stat.tests, "тест", "теста", "тестов")} · ${stat.avg}%`;
-  const badge = stat.tests === 0 ? { t: "НОВЫЙ", c: L.mid } : stat.days >= 14 ? { t: `${stat.days} ДН.`, c: L.bad } : null;
+  // v73: «новый» — подпись (курсив); «14 дн.» — мера времени, остаётся моноширинной (num)
+  const badge = stat.tests === 0 ? { t: "новый", c: L.mid } : stat.days >= 14 ? { t: `${stat.days} дн.`, c: L.bad, num: true } : null;
 
   if (done) return (
     <div style={glass(C, a11y, { marginBottom: 7, padding: "14px 16px", color: C.muted, fontSize: 13, fontFamily: "Georgia, serif" })}>{done}</div>
@@ -1122,15 +1124,15 @@ function PlayerRow({ p, stat, T, a11y, peek, onResetPlayer, onUnlockQuiz, onView
       <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "flex-end" }}>
         <div onClick={() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setX(0, true); }} {...onActivate(() => { onUnlockQuiz && onUnlockQuiz(p.name, p.surname); setX(0, true); })}
           style={{ width: 76, display: "grid", placeItems: "center", cursor: "pointer", gap: 3,
-            background: a11y ? "rgba(79,122,88,0.16)" : "rgba(143,184,144,0.18)", color: L.good, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 0.6 }}>
-          {UI_SVG.lockOpen(L.good, 15)}<span>ТЕСТЫ</span>
+            background: a11y ? "rgba(79,122,88,0.16)" : "rgba(143,184,144,0.18)", color: L.good, fontFamily: "Georgia, serif", fontSize: 13 }}>
+          {UI_SVG.lockOpen(L.good, 15)}<span>Тесты</span>
         </div>
         <div onClick={() => { if (ask) { onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk(true); }}
           {...onActivate(() => { if (ask) { onResetPlayer && onResetPlayer(p.name, p.surname); setDone("Прогресс сброшен ✓"); } else setAsk(true); })}
           style={{ width: 76, display: "grid", placeItems: "center", cursor: "pointer", gap: 3,
             background: ask ? (a11y ? "rgba(168,68,52,0.22)" : "rgba(217,136,120,0.32)") : (a11y ? "rgba(168,124,40,0.18)" : "rgba(224,178,90,0.20)"),
-            color: ask ? L.bad : L.mid, fontFamily: "monospace", fontSize: 10.5, letterSpacing: 0.6 }}>
-          {ask ? <span style={{ fontSize: 11 }}>ТОЧНО?</span> : <><span style={{ fontSize: 15 }}>↺</span><span>СБРОС</span></>}
+            color: ask ? L.bad : L.mid, fontFamily: "Georgia, serif", fontSize: 13 }}>
+          {ask ? <span style={{ fontSize: 13.5 }}>Точно?</span> : <><span style={{ fontSize: 15 }}>↺</span><span>Сброс</span></>}
         </div>
       </div>
       {/* только «указатель»: он покрывает и палец, и мышь. Раньше рядом висели ещё
@@ -1147,7 +1149,7 @@ function PlayerRow({ p, stat, T, a11y, peek, onResetPlayer, onUnlockQuiz, onView
             {POSITION_RU[p.position] || "Сотрудник"} · {sub}
           </div>
         </div>
-        {badge ? <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1, padding: "3px 7px", borderRadius: 7,
+        {badge ? <span style={{ ...(badge.num ? { fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1, padding: "3px 7px" } : { ...labelStyle(13), padding: "2px 7px" }), borderRadius: 7,
           color: badge.c, background: `${badge.c}1f`, border: `1px solid ${badge.c}4d`, flexShrink: 0 }}>{badge.t}</span> : null}
         <button onClick={(e) => { e.stopPropagation(); setX(0, true); openMenu(p, stat); }} aria-label="Ещё"
           onPointerDown={(e) => e.stopPropagation()} onPointerMove={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}
@@ -1313,7 +1315,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
         </div> : null}
 
         {/* Прогресс по ролям */}
-        <div style={{ color:T.modSub.color, fontSize:10.5, letterSpacing:3, fontFamily:"monospace", marginBottom:8 }}>ПРОГРЕСС ПО РОЛЯМ</div>
+        <div style={{ ...labelStyle(13), color:T.modSub.color, marginBottom:8 }}>Прогресс по ролям</div>
         {STAT_ROLES.map(r => {
           const roleScores = myScores.filter(s => s.role === r);
           const avg = roleScores.length > 0 ? Math.round(roleScores.reduce((s, x) => s + x.pct, 0) / roleScores.length) : 0;
@@ -1349,7 +1351,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
         {/* Последние результаты */}
         {myScores.length > 0 && (
           <>
-            <div style={{ color:T.modSub.color, fontSize:10.5, letterSpacing:3, fontFamily:"monospace", margin:"12px 0 8px" }}>ПОСЛЕДНИЕ ТЕСТЫ</div>
+            <div style={{ ...labelStyle(13), color:T.modSub.color, margin:"12px 0 8px" }}>Последние тесты</div>
             {[...myScores].reverse().slice(0, 5).map((s, i) => (
               <div key={i} style={{ ...T.lessCard, marginBottom:8, flexDirection:"column", gap:4 }}>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
@@ -1395,8 +1397,8 @@ export const PS = {
   fieldBase: { width:"100%", padding:"14px 16px", borderRadius:14, color:"#EFE4C8", fontSize:14, fontFamily:"Georgia, serif", outline:"none", boxSizing:"border-box", transition:"all 0.25s ease" },
   fieldNormal: { border:"1px solid rgba(180,138,55,0.45)", borderTop:"1px solid rgba(210,165,65,0.38)", background:"linear-gradient(155deg, rgba(55,40,16,0.65) 0%, rgba(38,26,10,0.55) 100%)", boxShadow:"0 4px 14px rgba(0,0,0,0.3), 0 1px 0 rgba(200,160,60,0.14) inset" },
   fieldFocus:  { border:"1px solid rgba(200,160,80,0.6)", borderTop:"1px solid rgba(220,175,75,0.7)", background:"linear-gradient(155deg, rgba(58,42,16,0.7) 0%, rgba(40,28,8,0.6) 100%)", boxShadow:"0 0 0 3px rgba(200,160,80,0.1), 0 4px 14px rgba(0,0,0,0.3), 0 1px 0 rgba(200,160,60,0.15) inset" },
-  lblEmpty:  { color:"#8A7055",             fontSize:10.5, letterSpacing:2.5, fontFamily:"monospace", textTransform:"uppercase", marginBottom:6, display:"block" },
-  lblFilled: { color:"rgba(220,175,80,1.0)", fontSize:10.5, letterSpacing:2.5, fontFamily:"monospace", textTransform:"uppercase", marginBottom:6, display:"block" },
+  lblEmpty:  { ...labelStyle(13), color:"#8A7055",             marginBottom:6, display:"block" },
+  lblFilled: { ...labelStyle(13), color:"rgba(220,175,80,1.0)", marginBottom:6, display:"block" },
 };
 
 export function ProfileScreen({ onDone, T }) {
@@ -1452,12 +1454,12 @@ export function ProfileScreen({ onDone, T }) {
         <div style={{ padding:"32px 28px 20px", textAlign:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
             <div style={{ flex:1, height:1, background:"linear-gradient(to right, transparent, rgba(200,160,80,0.3))" }} />
-            <div style={{ color:"rgba(200,160,80,0.6)", fontSize:10.5, letterSpacing:4, fontFamily:"monospace" }}>SERVICE ACADEMY</div>
+            <div style={{ ...labelStyle(13), color:"rgba(200,160,80,0.6)" }}>Service Academy</div>
             <div style={{ flex:1, height:1, background:"linear-gradient(to left, transparent, rgba(200,160,80,0.3))" }} />
           </div>
 
           <div style={{ display:"flex", justifyContent:"center", margin:"0 auto 20px" }}>
-            <img src={LOGO_SRC_DARK} alt="Service Academy" style={{ width:130, height:104, objectFit:"contain", display:"block", filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+            <img src={LOGO_SRC_DARK} alt="Service Academy" decoding="sync" style={{ width:130, height:104, objectFit:"contain", display:"block", filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
           </div>
 
           <div style={{ color:CREAM, fontSize:25, fontWeight:"bold", marginBottom:8, letterSpacing:0.3 }}>

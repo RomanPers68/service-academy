@@ -8,7 +8,8 @@ import { LOGO_SRC_DARK } from "../assets/logo";
 import { WEEKDAY, MONTH_GEN } from "../lib/dates";
 import { onActivate, vibrate, isFemaleName } from "../lib/utils";
 import { ROLE_TITLE, masterKey } from "../lib/mastery";
-import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
+import { useViewport, useColumn } from "./viewport";
+import { labelStyle } from "./tokens";   // v73 (Доп. 386): подписи — курсивом, без моноширинного капса   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
 
 // ── Дополнение 133: вкладки «Смена», «Команда», «Я» ───────────────────────────
 // Один компонент-хаб: заголовок с малым фирменным знаком, подзаголовок и список
@@ -75,7 +76,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "18px 16px 8px", display: "flex", alignItems: "center", gap: 12 }}>
-        <img src={LOGO_SRC_DARK} alt="" aria-hidden="true" style={{ width: 44, height: 36, objectFit: "contain", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+        <img src={LOGO_SRC_DARK} alt="" aria-hidden="true" decoding="sync" style={{ width: 44, height: 36, objectFit: "contain", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>{title}</div>
           {subtitle && <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{subtitle}</div>}
@@ -100,7 +101,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           return (
             <div key={it.key} className="sa-card sa-pagein" onClick={go} {...onActivate(go)} aria-label={it.label}
               style={{ ...frost, animationDelay: `${Math.min(idx, 8) * 45}ms`, borderRadius: 18, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", position: "relative", overflow: "hidden", WebkitTapHighlightColor: "transparent" }}>
-              <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: `linear-gradient(118deg, transparent 30%, ${a11y ? "rgba(255,255,255,0.22)" : "rgba(255,245,220,0.05)"} 44%, transparent 58%)` }} />
+              {/* v73 (Доп. 386): косого блика поверх плитки больше нет — примета сгенерированных интерфейсов */}
               <div style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(139,106,48,0.10)" : "rgba(214,178,102,0.10)", border: `1px solid ${c}44` }}>
                 {(ICON[it.icon] || ICON.book)(c)}
               </div>
@@ -117,7 +118,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
         // встаёт заголовок; группа из compactGroups — строками в одной карточке (как список настроек телефона).
         const head = (g, k) => (
           <div key={"g:" + k} data-hub-group={g} role="heading" aria-level={2}
-            style={{ gridColumn: "1 / -1", fontFamily: "ui-monospace, Menlo, monospace", fontSize: a11y ? 12 : 10.5, letterSpacing: 2, textTransform: "uppercase", color: gold, opacity: 0.9, margin: k ? "10px 4px 0" : "2px 4px 0" }}>{g}</div>
+            style={{ gridColumn: "1 / -1", ...labelStyle(a11y ? 16 : 14.5), color: gold, opacity: 0.9, margin: k ? "10px 4px 0" : "2px 4px 0" }}>{g}</div>
         );
         const rows = (group, idx0) => (
           <div key={"c:" + group[0].key} data-hub-compact className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: "2px 0", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
@@ -183,7 +184,7 @@ export const frostOf = (a11y) => ({
     ? "inset 0 0 26px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(120,85,25,0.14)"
     : "inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.45)",
 });
-const tagStyle = (a11y) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, letterSpacing: 1.6, color: a11y ? "#7A5D2A" : "#D2A85A" });
+const tagStyle = (a11y) => ({ ...labelStyle(a11y ? 14.5 : 13.5), color: a11y ? "#7A5D2A" : "#D2A85A" });
 
 /** Скелет карточки — пока данные едут (мерцание из css: .sa-skel). */
 export function SkeletonCard({ a11y, h = 74, style }) {
@@ -206,11 +207,11 @@ export function ShiftHero({ a11y, onOpen, shift = null }) {
   const go = () => { vibrate("light"); onOpen && onOpen(); };
   return (
     <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
-      <div style={tagStyle(a11y)}>СЕГОДНЯ · {DAYS[t.getDay()].toUpperCase()}, {t.getDate()} {MONTHS[t.getMonth()].toUpperCase()}</div>
+      <div style={tagStyle(a11y)}>Сегодня · {DAYS[t.getDay()]}, {t.getDate()} {MONTHS[t.getMonth()]}</div>
       {label ? (<>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 6 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: off ? gold : text, lineHeight: 1.1 }}>
-            {off ? "Выходной ✦" : label}
+            {off ? "Выходной" : label}
           </div>
         </div>
         <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>
@@ -244,7 +245,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
   const go = () => { vibrate("light"); onOpen && onOpen(); };
   if (!top.length) return (
     <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
-      <div style={tagStyle(a11y)}>ЛИДЕРЫ РЕСТОРАНА</div>
+      <div style={tagStyle(a11y)}>Лидеры ресторана</div>
       <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 6 }}>Пока пусто</div>
       <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>Первый пройденный тест откроет рейтинг</div>
     </div>
@@ -253,7 +254,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
   return (
     <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <div style={tagStyle(a11y)}>ЛИДЕРЫ РЕСТОРАНА</div>
+        <div style={tagStyle(a11y)}>Лидеры ресторана</div>
         {me >= 0 && <div style={{ fontSize: 11, color: sub }}>ты — <span style={{ color: gold }}>{me + 1}-й</span>{meNet >= 0 ? <> · в сети <span style={{ color: gold }}>{meNet + 1}-й</span></> : null}</div>}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -293,7 +294,7 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
         <text x="34" y="38" textAnchor="middle" fontSize="13" fontFamily="Georgia, serif" fill={text}>{pct}%</text>
       </svg>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={tagStyle(a11y)}>{(roleLabel || "ТВОЙ ТРЕК").toUpperCase()}</div>
+        <div style={tagStyle(a11y)}>{roleLabel || "Твой трек"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 4 }}>{done} из {total} уроков</div>
         <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>
           {days > 0 ? <><span className="tbv" style={{ color: gold, display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "-2px" }}><Candle s={15} lit={streak.last === ymd(new Date())} />{days} {dword}</span> подряд</> : "Начни серию — заходи каждый день"}
@@ -303,7 +304,7 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
   );
 }
 
-// ── v40: «✦ Мастер роли» — коллега стал мастером (этап 26: mastery_list) ─────────
+// ── v40: «Мастер роли» — коллега стал мастером (этап 26: mastery_list) ─────────
 // Строки сервера: [{ who: "Анна Смирнова", name, role, at, me }], новые сверху.
 const DAY_MS = 86400000;
 const dayStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
@@ -333,7 +334,7 @@ export function mastersNews(rows, now = Date.now()) {
   return { who, name, surname, female: isFemaleName(name, surname), role: top.role || "", title: ROLE_TITLE[top.role] || "", when: relDay(fresh[0].t, now), more };
 }
 
-/** v40: баннер «✦ МАСТЕР РОЛИ» — коллега стал мастером за последние 7 дней (свои записи не в счёт). */
+/** v40: баннер «Мастер роли» — коллега стал мастером за последние 7 дней (свои записи не в счёт). */
 export function MastersBanner({ a11y, rows = [], onOpen }) {
   const news = mastersNews(rows);
   if (!news) return null;
@@ -344,7 +345,7 @@ export function MastersBanner({ a11y, rows = [], onOpen }) {
   return (
     <div className="sa-card sa-pagein" data-ms-banner="" role="button" tabIndex={0} onClick={go} {...onActivate(go)}
       style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px", cursor: "pointer", marginBottom: 4, WebkitTapHighlightColor: "transparent" }}>
-      <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1.6, color: gold }}>✦ МАСТЕР РОЛИ</div>
+      <div style={{ ...labelStyle(a11y ? 14 : 13.5), color: gold }}>Мастер роли</div>
       <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: text, lineHeight: 1.3, marginTop: 4 }}>{line}</div>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 10, rowGap: 2, marginTop: 4, fontSize: a11y ? 13 : 12.5, lineHeight: 1.4 }}>
         <span style={{ color: sub }}>{news.when + (news.more ? " · ещё " + news.more + " " + plural(news.more, "новый мастер", "новых мастера", "новых мастеров") + " за неделю" : "")}</span>
@@ -372,7 +373,7 @@ export function TeamFeed({ a11y, items = [], now = Date.now(), first = 3 }) {
   const toggle = () => { vibrate("light"); setOpen((v) => !v); };
   return (
     <div className="sa-card sa-pagein" data-team-feed="" style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 4px", marginBottom: 4 }}>
-      <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 1.6, color: gold, marginBottom: 2 }}>ЖИЗНЬ КОМАНДЫ</div>
+      <div style={{ ...labelStyle(a11y ? 14 : 13.5), color: gold, marginBottom: 2 }}>Жизнь команды</div>
       {shown.map((it, i) => (
         <div key={i} data-feed-item={it.kind} className={i >= first ? "sa-fadein" : undefined}
           style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderTop: i ? "1px solid " + line : "none" }}>

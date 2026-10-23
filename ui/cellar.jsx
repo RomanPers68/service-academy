@@ -5,7 +5,7 @@
 // выдохшееся» (одним заходом, 2–3 темы) и «Проверка по треку» для тех, кто пришёл с опытом.
 // Прогресс здесь не меняется — только показывает и ведёт к нужному действию.
 import React from "react";
-import { GOLD, goldText } from "./tokens";
+import { GOLD, goldText, labelStyle } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
 import { topicFreshness, freshLabel, wineLevel, moduleDone } from "../lib/freshness";
 import { canRefresh, canGold, canCredit } from "../lib/marks";
@@ -74,12 +74,12 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
     if (!r.done) return r.dn ? "пройдено " + r.dn + " из " + r.steps : "ещё не начата";
     const parts = [];
     if (r.f) parts.push(freshLabel(r.f)); else parts.push("пройдена");
-    if (r.gold) parts.push("золото ✦"); if (r.credit) parts.push("по опыту");
+    if (r.gold) parts.push("золото"); if (r.credit) parts.push("по опыту");
     return parts.join(" · ");
   };
   const action = (r) => {
     if (r.done && r.f && r.f.level !== "fresh" && onRefresh) return { label: "Освежить", go: () => onRefresh(r.m), primary: true };
-    if (r.done && r.canGold && !r.gold && onGold) return { label: "Раунд мастера ✦", go: () => onGold(r.m) };
+    if (r.done && r.canGold && !r.gold && onGold) return { label: "Раунд мастера", go: () => onGold(r.m) };
     if (!r.done && r.canCredit && onCredit && !tried(r.m.id)) return { label: "Зачёт на опыт", go: () => onCredit(r.m) };
     return null;
   };
@@ -94,9 +94,9 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
         {hint && hsteps.length ? <HintBubble a11y={!!a11y} text={hsteps[hstep]} arrow="up" step={hstep + 1} total={hsteps.length}
           onNext={hstep >= hsteps.length - 1 ? null : () => setHstep((v) => v + 1)} onClose={hintDone} /> : null}
         <div style={card} role="group" aria-label="Сводка">
-          <div style={{ fontSize: 11, letterSpacing: 1.6, color: gold, fontFamily: "monospace" }}>ТВОЙ ПОГРЕБ · {doneN} {plural(doneN, "ТЕМА", "ТЕМЫ", "ТЕМ").toUpperCase()} ИЗ {rows.length}</div>
+          <div style={{ ...labelStyle(13.5), color: gold }}>Твой погреб · {doneN} {plural(doneN, "тема", "темы", "тем")} из {rows.length}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10 }}>
-            {[[freshN, "свежих", 1], [fading.length, plural(fading.length, "выдыхается", "выдыхаются", "выдыхаются"), 0.35], [goldN + (goldMax ? "/" + goldMax : ""), "золото ✦", null]].map(([v, l, lv], k) => (
+            {[[freshN, "свежих", 1], [fading.length, plural(fading.length, "выдыхается", "выдыхаются", "выдыхаются"), 0.35], [goldN + (goldMax ? "/" + goldMax : ""), "золото", null]].map(([v, l, lv], k) => (
               <div key={k} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 12, border: `1px solid ${GOLD}33` }}>
                 <div style={{ display: "flex", justifyContent: "center" }}><WineGlass level={lv == null ? 1 : lv} gold={lv == null} size={22} a11y={a11y} /></div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 20, fontWeight: "bold", color: text, lineHeight: 1.1, marginTop: 2 }}>{v}</div>
@@ -117,7 +117,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
                 background: filter === id ? (a11y ? "rgba(255,255,255,0.6)" : "rgba(226,186,116,0.12)") : "transparent", color: filter === id ? text : sub }}>{l}</button>
           ))}
         </div>
-        {list.length === 0 ? <div style={{ color: sub, fontSize: 13.5, padding: "14px 2px" }}>{filter === "fade" ? "Всё свежее — освежать нечего ✦" : filter === "gold" ? "Пройди тему — и раунд мастера откроется." : "Тем пока нет."}</div> : null}
+        {list.length === 0 ? <div style={{ color: sub, fontSize: 13.5, padding: "14px 2px" }}>{filter === "fade" ? "Всё свежее — освежать нечего" : filter === "gold" ? "Пройди тему — и раунд мастера откроется." : "Тем пока нет."}</div> : null}
         <div role="list" aria-label="Темы трека">
           {list.map((r) => {
             const a = action(r);

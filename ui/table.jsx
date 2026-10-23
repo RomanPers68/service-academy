@@ -503,7 +503,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
             </div>
             <div className="tb-rslot"><div className="tb-rslot-in">
               <div className="tb-receipt" role="group" aria-label={"Чек: " + (ps.lives > 0 ? "практика пройдена" : "раунд окончен")}>
-                <div className="r-brand">✦ SERVICE ACADEMY ✦</div>
+                <div className="r-brand">SERVICE ACADEMY</div>
                 <div className="r-place">{(profile && profile.restaurant) || "Service Academy"} · {stampNow()}</div>
                 <div className="r-cut" />
                 <h2 className="r-title">{ps.lives > 0 ? "Практика пройдена" : "Раунд окончен"}</h2>
@@ -848,7 +848,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
           <div className="tb-res">
             <div className="tb-rslot"><div className="tb-rslot-in">
               <div className={"tb-receipt" + (mode === "gold" && passed ? " gold" : "")} role="group" aria-label={"Чек: " + title}>
-                <div className="r-brand">✦ SERVICE ACADEMY ✦</div>
+                <div className="r-brand">SERVICE ACADEMY</div>
                 <div className="r-place">{(profile && profile.restaurant) || "Service Academy"} · {stampNow()}</div>
                 <div className="r-cut" />
                 <h2 className="r-title">{title}</h2>
@@ -859,7 +859,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                   <Line label={mode === "guest" ? "Решений с первого раза" : "Верно с первого раза"} value={ok + " из " + total} />
                   {mode === "credit" ? <Line label="Нужно для зачёта" value={Math.ceil(total * CREDIT_PASS / CREDIT_N) + " из " + total} /> : null}
                   {mode === "gold" ? <Line label="Ошибок" value={wrongN + (wrongN <= GOLD_MAX_WRONG ? " ✓" : " — можно не больше " + GOLD_MAX_WRONG)} /> : null}
-                  {mode === "gold" && passed && pb ? <Line label="Твой рекорд" value={fmtSec(Math.min(pb.sec, secs)) + (secs < pb.sec ? " — новый ✦" : "")} /> : null}
+                  {mode === "gold" && passed && pb ? <Line label="Твой рекорд" value={fmtSec(Math.min(pb.sec, secs)) + (secs < pb.sec ? " — новый" : "")} /> : null}
                   {best ? <Line label="Рекорд заведения" value={fmtSec(best.sec) + " · " + (best.me ? "твой" : best.name + (best.initial ? " " + best.initial + "." : ""))} /> : null}
                   {stat.hinted ? <Line label="С подсказкой из урока" value={stat.hinted} /> : null}
                   {stat.rescued ? <Line label="Спасено ситуаций" value={stat.rescued} /> : null}
@@ -870,7 +870,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 {typeof extra === "function" ? extra({ okMods: stat.okMods, sits: sitsUsed, wrong: stat.wrong }) : null}
                 {note ? <p className="r-note"><Ic n={passed ? "checkC" : "book"} s={14} /><span>{note}</span></p> : null}
                 {review ? <><div className="r-review">«{review}»</div><div className="r-by">— {(guest && guest.name) || "гость"}{guest && guest.table ? ", стол " + guest.table : ""}</div></>
-                  : <div className="r-thanks">{mode === "probe" ? "Учёба — с того, что ещё нужно" : passed ? (mode === "gold" ? "Мастер ✦" : "Так держать!") : "Ещё подход — и получится"}</div>}
+                  : <div className="r-thanks">{mode === "probe" ? "Учёба — с того, что ещё нужно" : passed ? (mode === "gold" ? "Мастер" : "Так держать!") : "Ещё подход — и получится"}</div>}
                 {mode === "gold" && passed ? <span className="r-goldseal" aria-hidden="true"><span>✦</span><small>ЗОЛОТО</small></span> : null}
                 <Edge />
               </div>
@@ -916,7 +916,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
           <div className="tb-res">
             <div className="tb-rslot"><div className="tb-rslot-in">
               <div className="tb-receipt" role="group" aria-label={warm ? "Чек: разминка готова" : "Чек: урок пройден"}>
-                <div className="r-brand">✦ SERVICE ACADEMY ✦</div>
+                <div className="r-brand">SERVICE ACADEMY</div>
                 <div className="r-place">{(profile && profile.restaurant) || "Service Academy"} · {stampNow()}</div>
                 <div className="r-cut" />
                 <h2 className="r-title">{warm ? "Разминка готова" : "Урок пройден"}</h2>
@@ -1009,7 +1009,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
         <div className="tb-body"><div className="tb-col">
           <div className="tb-intro" role="group" aria-label="Правила">
             <div className="tb-intro-t">{intro.title || "Правила"}</div>
-            <ul>{(intro.lines || []).map((x, i) => <li key={i}><span aria-hidden="true">{intro.icons && intro.icons[i] ? intro.icons[i] : "✦"}</span><span>{x}</span></li>)}</ul>
+            <ul>{(intro.lines || []).map((x, i) => <li key={i}><span aria-hidden="true">{intro.icons && intro.icons[i] ? intro.icons[i] : ""}</span><span>{x}</span></li>)}</ul>
             {intro.note ? <p className="tb-intro-n">{intro.note}</p> : null}
           </div>
         </div></div>
@@ -1147,7 +1147,7 @@ export function WeekReceipt({ a11y, profile, streak, summary, goal = 2, prev = f
         <div className="tb-res">
           <div className="tb-rslot"><div className="tb-rslot-in">
             <div className="tb-receipt" role="group" aria-label="Чек недели">
-              <div className="r-brand">✦ SERVICE ACADEMY ✦</div>
+              <div className="r-brand">SERVICE ACADEMY</div>
               <div className="r-place">{(profile && profile.restaurant) || "Service Academy"} · {dm(sum.from)}–{dm(sum.to)}</div>
               <div className="r-cut" />
               <h2 className="r-title">Чек недели</h2>
@@ -1174,7 +1174,7 @@ export function WeekReceipt({ a11y, profile, streak, summary, goal = 2, prev = f
                 {/* v30 (Доп. 314): дни, когда смена закрыла квест */}
                 {questN ? <Line icon={<Ic n="team" s={16} />} label="Квест смены закрыт" value={questN + " " + plural(questN, "раз", "раза", "раз")} /> : null}
               </ul>
-              {questN ? <div className="r-stamp" aria-hidden="true">✦ СМЕНА ОТРАБОТАНА ✦</div> : null}
+              {questN ? <div className="r-stamp" aria-hidden="true">СМЕНА ОТРАБОТАНА</div> : null}
               <div className="r-thanks">{verdict}</div>
               <Edge />
             </div>

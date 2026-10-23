@@ -28,7 +28,7 @@ import { hintsFor, hintKey, HINTS_VERSION } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon } from "./icons-extra";
 import { MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { moodTier, MOOD_REPLY } from "../lib/now-card";   // v56 (Доп. 369): «что сейчас»
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor, goldText } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor, goldText, labelStyle } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
 import { NowInvitation } from "./now-hero";   // v68 (Доп. 381): главная карточка «Приглашение»
 
@@ -83,7 +83,7 @@ export const TRACK_GROUPS = [
 // v56 (Доп. 369): «что сейчас» — на месте карточки трека (lib/now-card.js): до смены — разминка, на смене — ошибки или
 // SOS, после смены — «как прошла?», после перерыва — «С возвращением». v68 (Доп. 381): карточка — «Приглашение»
 // (ui/now-hero.jsx NowInvitation), и в обычный день тоже — приглашение к следующему шагу трека.
-const MOOD_TITLE = { good: "Хорошая смена ✦", ok: "Ровная смена", hard: "Тяжёлая смена — бывает" };
+const MOOD_TITLE = { good: "Хорошая смена", ok: "Ровная смена", hard: "Тяжёлая смена — бывает" };
 
 export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false }) {
   const isAdmin = !!profile?.is_admin;
@@ -176,10 +176,13 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
     if (!all.length) return 0;
     return Math.round((all.filter((l) => (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length / all.length) * 100);
   };
+  // v73 (Доп. 386): девиз владельца — «Сервис — это забота». Было «Сервис — это не обслуживание, а забота»: оборот
+  // «не X, а Y» — любимый шаблон нейросетей, владелец выбрал короткий вариант (23.10, «2😉»). В уроке «Что такое сервис?»
+  // фраза прежняя — там вокруг неё объяснение.
   const quote = (
     <div data-tracks-quote="" style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D2A85A44" }}>
       <span style={{ color:T.modSub.color, fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
-        «Сервис — это не обслуживание, а забота»
+        «Сервис — это забота»
       </span>
     </div>
   );
@@ -204,14 +207,14 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
         {/* v56 (Доп. 369): логотип на четверть меньше (198 → 152 px) — первым на экране «что сделать», а не знак */}
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : "16px 24px 8px" }}>
           <img src={LOGO_SRC_DARK /* тёмная версия читается на обеих темах;
-                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" style={{ width: short ? 118 : 152, height: short ? 94 : 121, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" decoding="sync" style={{ width: short ? 118 : 152, height: short ? 94 : 121, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         </div>
         {/* ═══ Приветствие по часам (профиль-карточка переехала в «Профиль») ═══ */}
         {profile && (() => {
           const h = new Date().getHours();
           // v56 (Доп. 369): после перерыва в занятиях (3+ дня) — «С возвращением» вместо приветствия по часам
           const hello = nowCard && nowCard.mode === "back" ? "С возвращением" : h < 6 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
-          // v44 (Доп. 357): «хорошей смены ✦» — справа под заведением (раньше — второй строкой слева, лишняя высота)
+          // v44 (Доп. 357): «хорошей смены» — справа под заведением (раньше — второй строкой слева, лишняя высота)
           const wish = (() => { try {
             const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
             const t = new Date();
@@ -242,8 +245,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 ) : null}
               </div>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
-                <div style={{ fontFamily:"monospace", color: T.modSub.color, fontSize:10.5, letterSpacing:1.5, textTransform:"uppercase", whiteSpace:"nowrap" }}>{profile.restaurant}</div>
-                {wish ? <div data-shift-wish="" style={{ fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic", whiteSpace:"nowrap" }}>хорошей смены ✦</div> : null}
+                {/* v73 (Доп. 386): заведение — курсивом обычными буквами (был моноширинный капс); у пожелания — без ✦ */}
+                <div style={{ ...labelStyle(a11y ? 14 : 13), color: T.modSub.color, whiteSpace:"nowrap" }}>{profile.restaurant}</div>
+                {wish ? <div data-shift-wish="" style={{ fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic", whiteSpace:"nowrap" }}>хорошей смены</div> : null}
               </div>
             </div>
           );
@@ -360,7 +364,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             <div data-pulse="" style={{ margin:"0 14px 8px", padding:"6px 12px", borderRadius:12, fontSize:11, lineHeight:1.4,
               color: T.modSub.color, background: a11y ? "rgba(255,250,238,0.55)" : "rgba(200,169,110,0.06)",
               border: a11y ? "1px solid rgba(150,112,40,0.3)" : "1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
-              <span style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.5, textTransform:"uppercase", color: a11y ? "#7A5D2A" : "#C8A96E" }}>пульс недели</span>
+              <span style={{ ...labelStyle(a11y ? 13.5 : 12.5), color: a11y ? "#7A5D2A" : "#C8A96E" }}>Пульс недели</span>
               {" "}· {wk.length} {wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов"} · {ppl} чел в игре
               {top ? <> · лидер: <span style={{ color: a11y ? "#7A5D2A" : "#C8A96E" }}>{top[0].trim()}</span></> : null}
             </div>
@@ -407,7 +411,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                         <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 10.5, whiteSpace:"nowrap" }}>{bs.pages}/{bs.total}</span>
                       </div>
                       <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6, rowGap:3, marginTop:3, minWidth:0 }}>
-                        <span style={{ fontFamily:"monospace", color: T.modSub.color, fontSize: a11y ? 11 : 10.5, letterSpacing: a11y ? 0.6 : 1.2, textTransform:"uppercase", whiteSpace:"nowrap" }}>{bs.rank.label}</span>
+                        <span style={{ ...labelStyle(a11y ? 13.5 : 12.5), color: T.modSub.color, whiteSpace:"nowrap" }}>{bs.rank.label}</span>
                         <span style={{ display:"flex", gap:2, alignItems:"center", minWidth:0 }}>
                           {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
                         </span>
@@ -629,10 +633,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             </>
           );
         })()}
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 20px 10px" }}>
+        {/* v73 (Доп. 386): разделитель — одна тонкая линия, без звёздочки ✦ посередине; высота строки прежняя */}
+        <div style={{ display:"flex", alignItems:"center", height:19, padding:"0 20px 10px" }}>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D2A85A55, transparent)" }} />
-          <span style={{ color:GOLD_SOFT, fontSize:14 }}>✦</span>
-          <div style={{ flex:1, height:"1px", background:"linear-gradient(to left, transparent, #D2A85A55, transparent)" }} />
         </div>
 
 
@@ -726,14 +729,14 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 }}
                 onClick={() => isUnlocked && onSelect(r.id)} {...onActivate(() => isUnlocked && onSelect(r.id))}
               >
-                {isUnlocked && <div style={{ ...T.roleAccent, background: r.color }} />}
+                {/* v73 (Доп. 386): без цветной полоски слева — цвет трека и так на значке и в названии */}
                 <div style={{ ...T.roleIcon, background: isUnlocked ? r.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: isUnlocked ? `0 2px 8px ${r.color}44` : "none", filter: isUnlocked ? "none" : "grayscale(1)" }}>
                   {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 30) : r.icon) : ROLE_SVG.lock("#8A8070", 25)}
                 </div>
                 <div style={T.roleInfo}>
                   <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                     <div style={{ ...T.roleLabel, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color }}>{r.label}</div>
-                    {r.beta && <span style={{ fontFamily:"monospace", fontSize:10.5, letterSpacing:1.6, padding:"2px 6px", borderRadius:999, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.4 }}>BETA</span>}
+                    {r.beta && <span style={{ ...labelStyle(13), padding:"0 7px", borderRadius:999, color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color, border:`1px solid ${isUnlocked ? r.color : T.modSub.color}66`, opacity:0.85, lineHeight:1.45 }}>бета</span>}
                   </div>
                   <div style={T.roleSublabel}>{r.sublabel}</div>
                   {isUnlocked
@@ -767,7 +770,6 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 }}
                 onClick={() => setOpenGroup(open ? null : g.id)} {...onActivate(() => setOpenGroup(open ? null : g.id))}
               >
-                {anyUnlocked && <div style={{ ...T.roleAccent, background: g.color }} />}
                 <div style={{ ...T.roleIcon, background: anyUnlocked ? g.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: anyUnlocked ? `0 2px 8px ${g.color}44` : "none", filter: anyUnlocked ? "none" : "grayscale(1)" }}>
                   {ico(anyUnlocked ? g.color : "#8A8070", 30)}
                 </div>
@@ -843,9 +845,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:2, opacity:0.85 }}>{s.sub}</div>
             </div>
             {active ? (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:10.5, letterSpacing:2, color: a11y ? "#7A5D2A" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"3px 8px" }}>НОВОЕ</div>
+              <div style={{ flexShrink:0, ...labelStyle(13), color: a11y ? "#7A5D2A" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"2px 9px" }}>новое</div>
             ) : (
-              <div style={{ flexShrink:0, fontFamily:"monospace", fontSize:10.5, letterSpacing:2, color: a11y ? "#7A5D2A" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"3px 8px", transform:"rotate(-4deg)" }}>СКОРО</div>
+              <div style={{ flexShrink:0, ...labelStyle(13), color: a11y ? "#7A5D2A" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"2px 9px", transform:"rotate(-4deg)" }}>скоро</div>
             )}
           </div>
           );

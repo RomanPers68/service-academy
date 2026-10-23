@@ -15,7 +15,7 @@ import { hintsFor } from "../data/hints";
 import { rpc, saToken } from "../api/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { vibrate, onActivate } from "../lib/utils";
-import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS } from "./tokens";
+import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS, labelStyle } from "./tokens";
 // v46 (Доп. 359): верх графика сотрудника — ближайшая смена карточкой и медальоны месяца; у руководителя —
 // «Требует внимания» наверху и плашка «Сохранить» внизу
 import { ShiftHero, NoShiftHero, MonthMedals, nextShift, staffMonthCells, personMonthCells } from "./schedule-hero";
@@ -26,8 +26,11 @@ import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText }
 import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон лёжа и компьютер
 import { WEEKDAY_MON_SHORT, WEEKDAY_MON, WEEKDAY_SHORT, MONTH_NOM, MONTH_GEN } from "../lib/dates";   // v59
 
-const mono = "ui-monospace, Menlo, monospace";
+const mono = "ui-monospace, Menlo, monospace";   // v73: только цифрам — время, часы, счёт, коды, телефоны
 const serif = "Georgia, serif";
+// v73 (Доп. 386): подписи — курсивом в обычном регистре (labelStyle), а не моноширинным капсом. Первая буква —
+// заглавная, как в предложении («Пн · 5 октября»): раньше регистр делали textTransform и toUpperCase
+const upFirst = (s) => { const t = String(s || ""); return t.charAt(0).toUpperCase() + t.slice(1); };
 const DOWL = WEEKDAY_MON_SHORT, DOWF = WEEKDAY_MON, MONTHS_N = MONTH_NOM, MONTHS_R = MONTH_GEN;   // v59: один словарь дат (lib/dates.js)
 
 // Слияние сохранённых настроек с умолчаниями. Было поверхностным:
@@ -199,7 +202,7 @@ const ROW = (a11y) => ({ display:"flex", alignItems:"center", gap:8, padding:"7p
 function Field({ label, P, children }) {
   return (
     <div style={{ flex:"1 1 0", minWidth:0, maxWidth:"100%" }}>
-      <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
+      <div style={{ ...labelStyle(11.5),
         color:P.sub, paddingBottom:4 }}>{label}</div>
       {children}
     </div>
@@ -362,7 +365,7 @@ function CallName({ who, label, color, badge, round }) {
           <IcoPhone size={16} color={INK_DEEP} sw={2.1} />
         </span>
       )}
-      {copied ? <span style={{ fontSize:"0.78em", fontFamily:mono, color, opacity:.8, whiteSpace:"nowrap" }}>скопирован</span> : null}
+      {copied ? <span style={{ ...labelStyle("0.88em"), color, opacity:.8, whiteSpace:"nowrap" }}>скопирован</span> : null}
     </span>
   );
   return (
@@ -384,7 +387,7 @@ function CallName({ who, label, color, badge, round }) {
         </a>
       ) : null}
       {copied ? (
-        <span style={{ fontSize:"0.78em", fontFamily:mono, color, opacity:.8, whiteSpace:"nowrap" }}>
+        <span style={{ ...labelStyle("0.88em"), color, opacity:.8, whiteSpace:"nowrap" }}>
           номер скопирован
         </span>
       ) : null}
@@ -1476,7 +1479,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const ghost = { ...btn, background:"transparent", border:`1px solid ${GOLD}66`, color:GOLD, fontWeight:"normal" };
   // v46: у новых кнопок в светлой теме — тёмное золото (светлое золото на кремовом не читается)
   const ghostInk = a11y ? { ...ghost, color:"#7A5A22", border:"1px solid rgba(122,90,34,0.45)" } : ghost;
-  const eyebrow = { fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase",
+  // v73 (Доп. 386): надзаголовок карточки — курсивом в обычном регистре (был моноширинный капс вразрядку)
+  const eyebrow = { ...labelStyle(11.5),
     color:P.sub, display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:10 };
 
   // v46: у сотрудника стрелки месяца — в шапке (месяц написан один раз)
@@ -1502,7 +1506,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           fontSize:25, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
           onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ flex:1 }}>
-          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:3, textTransform:"uppercase", color:P.sub }}>График</div>
+          <div style={{ ...labelStyle(11.5), color:P.sub }}>График</div>
           <div style={{ color:P.text, fontSize: opts.arrows ? 18 : 16, fontFamily:serif }}>{MONTHS_N[M]} {Y}</div>
         </div>
         {opts.arrows ? [[-1, "‹", "Предыдущий месяц"], [1, "›", "Следующий месяц"]].map(([dir, t, al]) => (
@@ -1556,7 +1560,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         onClick={() => { const m = M - 1; if (m < 0) { setM(11); setY(Y - 1); } else setM(m); }}>‹</button>
       <div style={{ flex:1, textAlign:"center" }}>
         <div style={{ fontSize:16, color:P.text }}>{MONTHS_N[M]} {Y}</div>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.sub }}>{DAYS} дней</div>
+        <div style={{ ...labelStyle(11.5), color:P.sub }}>{DAYS} дней</div>
       </div>
       <button className="sa-btn" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
         onClick={() => { const m = M + 1; if (m > 11) { setM(0); setY(Y + 1); } else setM(m); }}>›</button>
@@ -1603,7 +1607,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} сотрудников`, 16, 54);
     // Вордмарк и служебная строка — правым краем: слева им тесно
     // (строка «составлен» упиралась в числа первых дней)
-    x.fillStyle = C.faint; x.font = "600 10px ui-monospace, Menlo, monospace";
+    // v73 (Доп. 386): знак — прописными с засечками, как на логотипе (был моноширинный)
+    x.fillStyle = C.faint; x.font = "600 10px Georgia, serif";
     const wm = "S E R V I C E   A C A D E M Y";
     x.fillText(wm, W - 16 - x.measureText(wm).width, 30);
     x.fillStyle = C.dim; x.font = "12px Georgia, serif";
@@ -1648,7 +1653,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     groups.forEach(g => {
       // заголовок должности
       x.fillStyle = C.grpBg; x.fillRect(0, y, W, ROW);
-      x.fillStyle = C.text; x.font = "600 11px ui-monospace, Menlo, monospace";
+      x.fillStyle = C.text; x.font = "600 11px Georgia, serif";   // v73: заголовок группы — с засечками
       x.fillText(g.t.toUpperCase(), 12, y + ROW / 2);
       line(y); line(y + ROW); y += ROW;
 
@@ -1801,13 +1806,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     g.addColorStop(0, "#1A1008"); g.addColorStop(1, "#2A1F0E");
     x.fillStyle = g; x.fillRect(0, 0, W, H);
     x.textBaseline = "middle";
-    x.fillStyle = "#C8A96E"; x.font = "600 26px ui-monospace, Menlo, monospace"; x.textAlign = "center";
+    x.fillStyle = "#C8A96E"; x.font = "600 26px Georgia, serif"; x.textAlign = "center";   // v73: знак с засечками
     x.fillText("S E R V I C E   A C A D E M Y", W / 2, 92);
     x.fillStyle = "#EFE4C8"; x.font = "54px Georgia, serif";
     x.fillText(me.name, W / 2, 172);
     const dn = WEEKDAY_SHORT;
     const p1 = days[0], p2 = days[days.length - 1];
-    x.fillStyle = "#8A7A5C"; x.font = "30px ui-monospace, Menlo, monospace";
+    x.fillStyle = "#8A7A5C"; x.font = "italic 30px Georgia, serif";   // v73: подпись курсивом
     x.fillText(p1 + "–" + p2 + " " + MONTHS_R[M].toLowerCase() + " · моя неделя", W / 2, 232);
     x.strokeStyle = "rgba(200,169,110,0.4)"; x.lineWidth = 2;
     x.beginPath(); x.moveTo(140, 278); x.lineTo(W - 140, 278); x.stroke();
@@ -1850,12 +1855,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         x.fillText("Отпуск", 300, yc);
       } else {
         x.fillStyle = "#8A7A5C"; x.font = "italic 40px Georgia, serif";
-        x.fillText("Отдыхай ✦", 300, yc);
+        x.fillText("Отдыхай", 300, yc);   // v73: без ✦
       }
     });
-    x.textAlign = "center"; x.fillStyle = "#C8A96E"; x.font = "34px ui-monospace, Menlo, monospace";
+    x.textAlign = "center"; x.fillStyle = "#C8A96E"; x.font = "italic 34px Georgia, serif";
     x.fillText("часов за неделю: " + wh, W / 2, top + days.length * rowH + 64);
-    x.fillStyle = "#6B5B40"; x.font = "24px ui-monospace, Menlo, monospace";
+    x.fillStyle = "#6B5B40"; x.font = "italic 24px Georgia, serif";
     x.fillText("составлено в Service Academy", W / 2, H - 64);
     return cv;
   };
@@ -1950,7 +1955,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     g.addColorStop(0, C.bg1); g.addColorStop(1, C.bg2);
     x.fillStyle = g; x.fillRect(0, 0, W, H);
     x.textBaseline = "middle"; x.textAlign = "center";
-    x.fillStyle = C.head; x.font = "600 24px ui-monospace, Menlo, monospace";
+    x.fillStyle = C.head; x.font = "600 24px Georgia, serif";   // v73: знак с засечками
     x.fillText("S E R V I C E   A C A D E M Y", W / 2, 76);
     x.fillStyle = C.title; x.font = "54px Georgia, serif";
     x.fillText((dd && !(dd === t.getDate() && M === t.getMonth() && Y === t.getFullYear())
@@ -1965,7 +1970,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     const dm = String(td).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
     const bd = staff.filter(q => (q.bday || "") === dm);
     if (bd.length) { x.fillStyle = C.head; x.font = "28px Georgia, serif";
-      x.fillText("✦ День рождения: " + bd.map(q => q.name).join(", "), W / 2, y); y += 52; }
+      x.fillText("День рождения: " + bd.map(q => q.name).join(", "), W / 2, y); y += 52; }   // v73: без ✦
 
     const circle = (cx, cy, r) => { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); };
     const fit = (str, px, max) => {            // ужать подпись под ширину ячейки
@@ -2028,8 +2033,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         x.fillStyle = C.sub; x.font = "23px Georgia, serif";
         x.fillText(fit(String(c.pos).toLowerCase(), 23, CW - 20), cx, cy + AV / 2 + 72);
         x.fillStyle = lead ? C.head : C.sub;
-        x.font = (lead ? "600 " : "") + "22px ui-monospace, Menlo, monospace";
-        x.fillText(lead ? "СТАРШИЙ" : (c.sh.from + "–" + (c.sh.to > 24 ? c.sh.to - 24 : c.sh.to) + ":00"), cx, cy + AV / 2 + 104);
+        // v73: «старший» — подпись курсивом; время — цифры, моноширинным, как было
+        x.font = lead ? "italic 600 23px Georgia, serif" : "22px ui-monospace, Menlo, monospace";
+        x.fillText(lead ? "старший" : (c.sh.from + "–" + (c.sh.to > 24 ? c.sh.to - 24 : c.sh.to) + ":00"), cx, cy + AV / 2 + 104);
       });
       y += Math.ceil(cells.length / cols) * ROW;
     });
@@ -2130,7 +2136,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     return shell(
       <div style={{ ...card }}>
         <div style={{ display:"flex", gap:4, marginBottom:12 }}>{[1,2,3,4].map(i => <span key={i} style={{ flex:1, height:3, borderRadius:3, background: i <= step ? P.acc : `${P.acc}33` }} />)}</div>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>ШАГ {step} ИЗ 4</div>
+        <div style={{ ...labelStyle(11.5), color:P.acc }}>Шаг {step} из 4</div>
         {step === 1 && <>
           <div style={{ fontFamily:"Georgia, serif", fontSize:21, color:P.text, margin:"6px 0 4px" }}>На что похоже заведение?</div>
           <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:12 }}>Выставлю часы работы и смены — потом их можно поправить.</div>
@@ -2246,7 +2252,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <Sec no={<IcoBulb size={13} />} title="Настроить за один тап" hint="типовые заведения — часы, смены и правила разом" P={P} open={openSec===9} onToggle={() => setOpenSec(openSec===9?0:9)}>
             <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:10 }}>Выбери, на что похоже заведение — часы работы, смены и правила выставятся сами. Останется вписать людей в разделе «Сотрудники» и нажать «Заполнить».</div>
             <button className="sa-btn" onClick={() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] })}
-              style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:12.5, marginBottom:12 }}>✦ Мастер: четыре вопроса — и график готов</button>
+              style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:12.5, marginBottom:12 }}>Мастер: четыре вопроса — и график готов</button>
             {PRESETS.map(pr => (
               <div key={pr.id} className="sa-card" onClick={() => apply(pr)} {...onActivate(() => apply(pr))}
                 style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 13px", marginBottom:8, borderRadius:14, border:`1px solid ${P.acc}44`, cursor:"pointer" }}>
@@ -2299,8 +2305,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       })()}
       {/* Две карточки выше — быстрые помощники, ниже — шесть шагов по порядку.
           Без этой подписи список выглядел так, будто нумерация начинается с третьего пункта. */}
-      <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.6, textTransform:"uppercase",
-        color:P.sub, margin:"16px 4px 6px" }}>шесть шагов настройки</div>
+      <div style={{ ...labelStyle(11.5),
+        color:P.sub, margin:"16px 4px 6px" }}>Шесть шагов настройки</div>
       <Sec no={1} title="Часы работы" hint={openSec===1 ? "Когда открываемся и закрываемся в каждый день недели" : sum1} P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
         {DOWL.map((dl, i) => (
           <div key={i} style={rowStyle}>
@@ -2345,10 +2351,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       </Sec>
 
       <Sec no={3} title="Сколько людей нужно" hint={openSec===3 ? "Разное количество в будни, выходные и праздники" : sum3} P={P} open={openSec===3} onToggle={() => setOpenSec(openSec===3?0:3)}>
-        <div style={{ display:"flex", gap:8, fontFamily:mono, fontSize:9, letterSpacing:1.2,
-          textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>
-          <span style={{ flex:1 }}>позиция</span>
-          {LVLS.map(([, nm]) => <span key={nm} style={{ flex:"0 0 56px", textAlign:"center" }}>{nm}</span>)}
+        <div style={{ display:"flex", gap:8, ...labelStyle(11.5),
+          color:P.sub, paddingBottom:4 }}>
+          <span style={{ flex:1 }}>Позиция</span>
+          {LVLS.map(([, nm]) => <span key={nm} style={{ flex:"0 0 56px", textAlign:"center" }}>{upFirst(nm)}</span>)}
         </div>
         {/* Какие дни относятся к уровню — задаётся в РАЗДЕЛЕ 4, и здесь этого
             было не видно: вводишь число для пика, не зная, что пик не назначен
@@ -2396,7 +2402,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       <Sec no={4} title="Правила смен" hint={openSec===4 ? "Загрузка по дням недели, выходные и отдых" : sum4} P={P} open={openSec===4} onToggle={() => setOpenSec(openSec===4?0:4)}>
         {/* Срок приёма пожеланий: сотрудник видит его на своём экране и знает,
             до какого числа отмечаться. 0 — без срока, принимаем всегда. */}
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пожелания принимаем до числа</div>
+        <div style={{ ...labelStyle(11.5), color:P.sub, paddingBottom:4 }}>Пожелания принимаем до числа</div>
         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
           <Num inp={inp} v={Number(cfg.rules.wishDeadline || 0)} min={0} max={28}
             set={v => patch(c => { c.rules.wishDeadline = v; })} />
@@ -2418,7 +2424,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           </span>
         </div>
         <div style={{ height:1, background: a11y ? "rgba(120,90,30,0.15)" : "rgba(255,255,255,0.08)", margin:"10px 0" }} />
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>пиковые дни недели</div>
+        <div style={{ ...labelStyle(11.5), color:P.sub, paddingBottom:4 }}>Пиковые дни недели</div>
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
             <Pill a11y={a11y} P={P} key={wi} on={cfg.rules.peakDows.includes(wi)} style={{ flex:1, padding:"6px 0" }}
@@ -2430,7 +2436,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           ))}
         </div>
         {levels === 3 ? (<>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:4 }}>высокие дни</div>
+        <div style={{ ...labelStyle(11.5), color:P.sub, paddingBottom:4 }}>Высокие дни</div>
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
             <Pill a11y={a11y} P={P} key={wi} on={cfg.rules.highDows.includes(wi)} style={{ flex:1, padding:"6px 0",
@@ -2465,9 +2471,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           </span>
         </div>
         <div style={rowStyle}>
-          <Field label="смен подряд" P={P}><Num inp={inp} v={cfg.rules.maxRow} min={1} max={14} set={v => patch(c => { c.rules.maxRow = v; })} /></Field>
-          <Field label="выходных в неделю" P={P}><Num inp={inp} v={cfg.rules.minOff} min={0} max={4} set={v => patch(c => { c.rules.minOff = v; })} /></Field>
-          <Field label="отдых, ч" P={P}><Num inp={inp} v={cfg.rules.minRest} min={0} max={24} set={v => patch(c => { c.rules.minRest = v; })} /></Field>
+          <Field label="Смен подряд" P={P}><Num inp={inp} v={cfg.rules.maxRow} min={1} max={14} set={v => patch(c => { c.rules.maxRow = v; })} /></Field>
+          <Field label="Выходных в неделю" P={P}><Num inp={inp} v={cfg.rules.minOff} min={0} max={4} set={v => patch(c => { c.rules.minOff = v; })} /></Field>
+          <Field label="Отдых, ч" P={P}><Num inp={inp} v={cfg.rules.minRest} min={0} max={24} set={v => patch(c => { c.rules.minRest = v; })} /></Field>
         </div>
         <div style={{ marginTop:8 }}>
           <Pill a11y={a11y} P={P} on={cfg.rules.holidayPeak} onClick={() => patch(c => { c.rules.holidayPeak = !c.rules.holidayPeak; })}>
@@ -2475,8 +2481,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           </Pill>
         </div>
 
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
-          color:P.sub, padding:"14px 0 5px" }}>что означает норма часов</div>
+        <div style={{ ...labelStyle(11.5),
+          color:P.sub, padding:"14px 0 5px" }}>Что означает норма часов</div>
         <div style={{ display:"flex", gap:6 }}>
           {[["floor","обязательный минимум"],["cap","потолок"]].map(([v, t]) => (
             <Pill key={v} a11y={a11y} P={P} on={(cfg.rules.normMode || "floor") === v} style={{ flex:1, padding:"8px 6px" }}
@@ -2490,8 +2496,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           {" "}Эти правила генератор не нарушает: он скорее оставит смену незакрытой, чем поставит человека сверх предела.
         </Hint>
 
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
-          color:P.sub, padding:"14px 0 5px" }}>как выходит каждая позиция</div>
+        <div style={{ ...labelStyle(11.5),
+          color:P.sub, padding:"14px 0 5px" }}>Как выходит каждая позиция</div>
         {POS.map(({ id, t }) => {
           const pat = (cfg.posRules?.[id]?.pattern) || "even";
           return (
@@ -2510,8 +2516,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         <div style={hintStyle}>«2 / 2» — жёсткий цикл: два дня работает, два отдыхает, смещение у каждого своё.
           «Поровну» — генератор делит смены по недобору часов и старается склеивать выходные по два подряд.</div>
 
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
-          color:P.sub, padding:"14px 0 5px" }}>основная смена</div>
+        <div style={{ ...labelStyle(11.5),
+          color:P.sub, padding:"14px 0 5px" }}>Основная смена</div>
         <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
           {(cfg.shifts || []).filter(x => !x.extra).map(sh => (
             <Pill key={sh.k} a11y={a11y} P={P} on={(cfg.dayShift || "Д") === sh.k} style={{ flex:"1 1 auto", padding:"7px 10px" }}
@@ -2520,8 +2526,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
         <div style={hintStyle}>Её получают все позиции по умолчанию.</div>
 
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
-          color:P.sub, padding:"14px 0 5px" }}>разбивка по сменам</div>
+        <div style={{ ...labelStyle(11.5),
+          color:P.sub, padding:"14px 0 5px" }}>Разбивка по сменам</div>
         {POS.map(({ id, t }) => {
           const spRaw = (cfg.split || {})[id];
           const byLvl = !!spRaw && Object.keys(spRaw).length > 0
@@ -2597,7 +2603,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 const put = sumOf(spL);
                 return (
                   <div key={lv} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:4 }}>
-                    <span style={{ fontFamily:mono, fontSize:9, color:P.sub, width:92 }}>{nm} · {needL} чел</span>
+                    <span style={{ ...labelStyle(11), color:P.sub, width:92 }}>{nm} · {needL} чел</span>
                     {steppers(spL, (k, v) => writeLvl(lv, k, v))}
                     {/* Раньше сходимость с потребностью нужно было считать в уме:
                         подписано «5 чел», а сумма по буквам — 4, и что будет с
@@ -2668,7 +2674,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
             {openE ? (<>
             <div style={{ display:"flex", alignItems:"flex-end", gap:8, padding:"8px 0 2px", minWidth:0 }}>
-              <Field label="имя" P={P}>
+              <Field label="Имя" P={P}>
                 <Text inp={inp} v={sf.name} style={{ width:"100%" }}
                   set={val => patch(c => { c.staff[i].name = val; })} />
               </Field>
@@ -2685,13 +2691,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   padding:0, display:"grid", placeItems:"center" }}>✕</button>
             </div>
             <div style={{ ...rowStyle, borderTop:"none" }}>
-              <Field label="должность" P={P}>
+              <Field label="Должность" P={P}>
                 <select value={sf.pos} style={{ ...inp, width:"100%" }} onFocus={focusScroll}
                   onChange={e => patch(c => { c.staff[i].pos = e.target.value; })}>
                   {POS.map(({ id, t }) => <option key={id} value={id}>{t}</option>)}
                 </select>
               </Field>
-              <Field label="работает с" P={P}>
+              <Field label="Работает с" P={P}>
                 {/* Симметрично «работает до». Без этого поля новенького нужно
                     было заводить ровно в нужный момент, иначе он получал
                     смены задним числом — в прошлых месяцах, где его не было. */}
@@ -2701,16 +2707,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     if (!v) delete c.staff[i].since; else c.staff[i].since = v;
                   })} />
               </Field>
-              <Field label="норма, ч" P={P}>
+              <Field label="Норма, ч" P={P}>
                 <Num inp={inp} v={sf.norm} min={0} max={320} set={v => patch(c => { c.staff[i].norm = v; })} />
               </Field>
             </div>
             <div style={{ ...rowStyle, borderTop:"none", display:"flex", gap:8 }}>
-              <Field label="телефон · для связи" P={P}>
+              <Field label="Телефон · для связи" P={P}>
                 <Text inp={inp} v={sf.phone || ""} maxLength={20} style={{ width:"100%" }}
                   set={val => patch(c => { c.staff[i].phone = val; })} />
               </Field>
-              <Field label={"оплата, " + ({ hour:"₽/час", shift:"₽/смена", month:"₽/мес" }[sf.rateMode || "hour"])} P={P}>
+              <Field label={"Оплата, " + ({ hour:"₽/час", shift:"₽/смена", month:"₽/мес" }[sf.rateMode || "hour"])} P={P}>
                 <Num inp={inp} v={sf.rate || 0} min={0} max={sf.rateMode === "month" ? 2000000 : 20000}
                   set={v => patch(c => { c.staff[i].rate = v; })} />
               </Field>
@@ -2720,7 +2726,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <Pill key={v} a11y={a11y} P={P} on={(sf.rateMode || "hour") === v} style={{ flex:1, padding:"7px 4px", fontSize:11 }}
                   onClick={() => patch(c => { c.staff[i].rateMode = v; })}>{t}</Pill>
               ))}
-              <Field label="д.р." P={P}>
+              <Field label="Д.р." P={P}>
                 <Text inp={{ ...inp, width:64 }} v={sf.bday || ""} maxLength={5} placeholder="дд.мм"
                   set={val => patch(c => { c.staff[i].bday = val; })} />
               </Field>
@@ -2731,8 +2737,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 vacs[mkey]; старое поле vac переносится сюда при первом
                 изменении, чтобы данные не раздваивались. */}
             <div style={{ padding:"8px 0 2px" }}>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase", color:P.sub, paddingBottom:5 }}>
-                отпуск · {MONTHS_R[M]}
+              <div style={{ ...labelStyle(11.5), color:P.sub, paddingBottom:5 }}>
+                Отпуск · {MONTHS_R[M]}
               </div>
               {(() => {
                 const rs = vacsOf(sf);
@@ -2751,14 +2757,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   <>
                     {rs.map((r, ri2) => (
                       <div key={ri2} style={{ display:"flex", alignItems:"flex-end", gap:8, marginBottom:6 }}>
-                        <Field label="с" P={P}>
+                        <Field label="С" P={P}>
                           <Num inp={inp} v={r[0]} min={0} max={DAYS} set={v => patch(c => {
                             const list = vacsOf(sf).map(x => [x[0], x[1]]);
                             if (!v) list.splice(ri2, 1); else { list[ri2][0] = v; list[ri2][1] = Math.max(v, list[ri2][1]); }
                             writeVacs(c, list);
                           })} />
                         </Field>
-                        <Field label="по" P={P}>
+                        <Field label="По" P={P}>
                           <Num inp={inp} v={r[1]} min={0} max={DAYS} set={v => patch(c => {
                             const list = vacsOf(sf).map(x => [x[0], x[1]]);
                             list[ri2][1] = Math.max(list[ri2][0], v);
@@ -2790,8 +2796,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               })()}
             </div>
             <div style={{ ...rowStyle, borderTop:"none" }}>
-              <Field label="статус" P={P}>
-                <span style={{ fontFamily:mono, fontSize:9, letterSpacing:1, padding:"3px 8px",
+              <Field label="Статус" P={P}>
+                <span style={{ ...labelStyle(11.5), padding:"2px 8px",
                   borderRadius:999, display:"inline-block",
                   color: vacOn(sf) ? "#F0C0C0" : "#BFE6D0",
                   background: vacOn(sf) ? "rgba(224,120,120,.12)" : "rgba(93,187,138,.13)",
@@ -2802,8 +2808,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
 
             {/* Постоянные выходные: учёба, вторая работа, транспорт */}
-            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
-              color:P.sub, padding:"8px 0 4px" }}>не работает в эти дни недели</div>
+            <div style={{ ...labelStyle(11.5),
+              color:P.sub, padding:"8px 0 4px" }}>Не работает в эти дни недели</div>
             <div style={{ display:"flex", gap:4 }}>
               {DOWL.map((dl, wi) => (
                 <Pill key={wi} a11y={a11y} P={P} on={(sf.off || []).includes(wi)} style={{ flex:1, padding:"6px 0" }}
@@ -2814,17 +2820,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               ))}
             </div>
             {/* Выходные по конкретным датам — поверх недельного шаблона */}
-            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, textTransform:"uppercase",
+            <div style={{ ...labelStyle(11.5),
               color:P.sub, padding:"10px 0 5px" }}>
-              <span>выходные по датам · {MONTHS_R[M]}
+              <span>Выходные по датам · {MONTHS_R[M]}
                 {offDays(sf).length ? <span style={{ color:P.acc }}> · выбрано {offDays(sf).length}</span> : null}</span>
               <button className="sa-btn" onClick={() => { setOffRange(!offRange); setOffAnchor(null); vibrate("light"); }}
-                style={{ float:"right", padding:"3px 9px", borderRadius:9, cursor:"pointer", fontFamily:mono, fontSize:9,
-                  letterSpacing:1, textTransform:"uppercase",
+                style={{ float:"right", padding:"3px 9px", borderRadius:9, cursor:"pointer", fontFamily:serif, fontSize:11.5, fontStyle:"normal",
                   color: offRange ? INK_DEEP : P.sub,
                   background: offRange ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
                   border:`1px solid ${offRange ? GOLD : (a11y ? "rgba(175,140,65,.28)" : "rgba(145,108,40,.28)")}` }}>
-                ↔ диапазон
+                ↔ Диапазон
               </button>
             </div>
             {offRange ? (
@@ -2885,7 +2890,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
 
             <div style={{ ...rowStyle, borderTop:"none", marginTop:4 }}>
-              <Field label="не раньше, ч" P={P}>
+              <Field label="Не раньше, ч" P={P}>
                 <Num inp={inp} v={sf.notBefore || 0} min={0} max={23}
                   set={v => patch(c => { c.staff[i].notBefore = v || 0; })} />
               </Field>
@@ -3035,7 +3040,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           return <MonthMedals a11y={a11y} cells={cells} note={note} payMain={po ? <NumUp v={po.sum} /> : null} />;
         })()}
         <div style={card} data-sched-month="">
-          <div style={eyebrow}><span>мой месяц</span>
+          <div style={eyebrow}><span>Мой месяц</span>
             {/* v46: месяц календарём (по умолчанию) или прежним списком — выбор помнит устройство */}
             <span data-sched-viewtoggle="" style={{ display:"inline-flex", padding:3, gap:2, borderRadius:999, flexShrink:0,
               border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)"}`, background: a11y ? "rgba(120,90,30,0.08)" : "rgba(0,0,0,0.25)" }}>
@@ -3067,7 +3072,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             return (
               <div data-sched-cal="" style={{ marginBottom:12 }}>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
-                  {DOWL.map((w, wi) => <div key={w} style={{ fontFamily:mono, fontSize: a11y ? 11 : 9, color: wi >= 5 ? P.acc : P.sub, textAlign:"center", paddingBottom:2 }}>{w}</div>)}
+                  {DOWL.map((w, wi) => <div key={w} style={{ ...labelStyle(a11y ? 13.5 : 11.5), color: wi >= 5 ? P.acc : P.sub, textAlign:"center", paddingBottom:2 }}>{w}</div>)}
                   {Array.from({ length: dow(1) }, (_, i) => <div key={"e" + i} />)}
                   {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
                     const kk = plan[me.id]?.[d], sh = shiftOf(kk), col = sh ? colorOf(kk) : null;
@@ -3143,7 +3148,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
                 border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}`,
                 boxShadow: a11y ? "none" : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
-                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>обмен сменами</div>
+                <div style={{ ...labelStyle(11.5), color:P.sub, marginBottom:6 }}>Обмен сменами</div>
                 {myAct ? (
                   <div style={{ fontSize:12.5, color:P.text, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                     Ты отдаёшь смену {swapWhen(myAct.day, myAct.k)}{myAct.status === "taken" ? <> — берёт <b style={{ color:P.acc }}>{myAct.to_name}</b>, ждём менеджера</> : " — ждём желающих"}
@@ -3239,7 +3244,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <div className={hint && hintStep === 1 ? "sa-pulse" : undefined}
                 style={{ ...card, marginTop: 12, padding: 14 }}>
                 <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:8 }}>
-                  <div style={{ ...eyebrow, color:P.sub }}>мои пожелания · {MONTHS_R[M]}</div>
+                  <div style={{ ...eyebrow, color:P.sub }}>Мои пожелания · {MONTHS_R[M]}</div>
                   <button className="sa-btn" onClick={() => { setWishOpen(o => !o); setWishRange(null); vibrate("light"); }}
                     style={{ background:"transparent", border:"none", color:P.acc, fontSize:12.5, cursor:"pointer", padding:0 }}>
                     {wishOpen ? "свернуть" : "открыть"}
@@ -3275,7 +3280,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     </div>
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
                       {DOWL.map(w => (
-                        <div key={w} style={{ fontFamily:mono, fontSize:9, color:P.sub, textAlign:"center", paddingBottom:2 }}>{w}</div>
+                        <div key={w} style={{ ...labelStyle(11.5), color:P.sub, textAlign:"center", paddingBottom:2 }}>{w}</div>
                       ))}
                       {Array.from({ length: lead }, (_, i) => <div key={"e" + i} />)}
                       {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
@@ -3348,7 +3353,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   boxShadow: a11y
                     ? "inset 0 0 26px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 -6px 26px rgba(90,66,20,0.16)"
                     : "inset 0 0 22px rgba(255,248,230,0.055), inset 0 1px 0 rgba(255,255,255,0.10), 0 -6px 26px rgba(0,0,0,0.5)" }}>
-                  <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>что отметить</div>
+                  <div style={{ ...labelStyle(11.5), color:P.acc }}>что отметить</div>
                   <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2 }}>{title}</div>
                   <button className="sa-btn" style={row(curWish, false)} onClick={() => go("off", !curWish)}>
                     <IcoSun size={16} />
@@ -3399,7 +3404,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               && (staff.find(q => String(q.id) === String(w.from_staff)) || {}).pos === me.pos);
             const taking = swaps.find(w => w.day === d && String(w.to_staff) === String(me.id) && w.status === "taken");
             const pp = palette(a11y);
-            const lab = { fontFamily:mono, fontSize: a11y ? 10.5 : 9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub };
+            const lab = { ...labelStyle(a11y ? 13 : 11.5), color:P.sub };   // v73: подписи листа — курсивом, не капсом
             const ink = a11y ? "#7A5A22" : GOLD;   // светлая тема: тёмное золото — светлое на кремовом не читалось
             const act2 = { ...ghost, flex:"1 1 46%", boxSizing:"border-box", padding:"10px 8px", fontSize:12.5, color: ink, borderColor: a11y ? "rgba(122,90,34,0.5)" : GOLD + "66" };
             const goldBtn = { ...btn, flex:"1 1 46%", boxSizing:"border-box", padding:"10px 8px", fontSize:12.5 };
@@ -3433,7 +3438,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   <div style={{ display:"flex", gap:13, alignItems:"center" }}>
                     <CalendarPage day={d} p={pp} a11y={a11y} off={!sh} w={40} h={44} />
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ ...lab, color:P.acc }}>{DOWL[dow(d)]} · {d} {MONTHS_R[M]}{d === todayD ? " · сегодня" : ""}</div>
+                      <div style={{ ...lab, color:P.acc }}>{upFirst(DOWL[dow(d)])} · {d} {MONTHS_R[M]}{d === todayD ? " · сегодня" : ""}</div>
                       <div style={{ fontFamily:serif, fontSize:19, marginTop:2, color:P.text }}>
                         {sh ? <>{sh.name} <span style={{ fontFamily:ACCENT_SERIF, fontWeight:700, color:pp.gold, whiteSpace:"nowrap" }}>{sh.from}:00–{sh.to > 24 ? sh.to - 24 : sh.to}:00</span></>
                           : vac ? <>Отпуск <IcoWave size={15} color={P.acc} dy={-2} /></> : "Выходной"}
@@ -3445,7 +3450,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   </div>
                   {days[d]?.note ? <div style={{ fontSize:12.5, color:P.acc, marginTop:10 }}>✎ {days[d].note}</div> : null}
                   {sh ? (<>
-                    <div style={{ ...lab, margin:"14px 0 8px" }}>с тобой в смене · {mates.length}</div>
+                    <div style={{ ...lab, margin:"14px 0 8px" }}>С тобой в смене · {mates.length}</div>
                     {!mates.length ? <div style={{ fontSize:12.5, color:P.sub }}>Больше никого — держишь оборону в одиночку</div> : null}
                     {Object.keys(byFrom).map(Number).sort((a, b) => a - b).map(f => (
                       <div key={f} style={{ display:"flex", gap:6, marginBottom:6 }}>
@@ -3463,7 +3468,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     ) : null}
                   </>) : null}
                   {rest.length ? (<>
-                    <div style={{ ...lab, margin:"12px 0 6px" }}>отдыхают · можно попросить подменить</div>
+                    <div style={{ ...lab, margin:"12px 0 6px" }}>Отдыхают · можно попросить подменить</div>
                     {restMine.length ? (
                       <div style={{ display:"flex", gap:8, fontSize:12.5, lineHeight:1.7 }}>
                         <span style={{ flex:"0 0 84px", color:P.sub }}>{posName(me.pos)}</span>
@@ -3534,7 +3539,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   {typeof facts[me.id]?.[d] === "number" && sh ? (
                     <div style={{ fontSize:12.5, color:P.text, marginTop:10 }}>Учтено по факту: <b style={{ color:P.acc }}>{facts[me.id][d]} ч</b><span style={{ color:P.sub }}> · план {len(sh)} ч</span></div>
                   ) : null}
-                  <div style={{ ...lab, margin:"14px 0 5px" }}>заметка</div>
+                  <div style={{ ...lab, margin:"14px 0 5px" }}>Заметка</div>
                   <textarea key={"snt" + mkey + "-" + d} defaultValue={notes[d] || ""} rows={2} maxLength={200} placeholder="Чаевые, важный день, напоминание…"
                     onFocus={focusScroll} onBlur={e => saveNote(d, e.target.value)}
                     style={{ ...INP(a11y, P), width:"100%", boxSizing:"border-box", resize:"none", fontFamily:serif, fontSize:12.5, lineHeight:1.5 }} />
@@ -3563,11 +3568,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 cursor:"pointer", flexWrap:"wrap",
                 outline: (now.getFullYear() === Y && now.getMonth() === M && now.getDate() === d)
                   ? `1px solid ${GOLD}66` : undefined,
-                borderLeft: col ? `3px solid ${a11y ? col.bdL : col.bd}` : undefined,
+                // v73 (Доп. 386): цветная полоска слева (borderLeft 3px цвета смены) убрана — смена и так подписана словом и временем
               }}>
                 <div style={{ flex:"0 0 44px", textAlign:"center" }}>
                   <div style={{ fontSize: idle ? 14 : 17, color: holOf(d) ? P.warn : P.text }}>{d}</div>
-                  <div style={{ fontFamily:mono, fontSize:9, color:P.sub }}>{DOWL[dow(d)]}</div>
+                  <div style={{ ...labelStyle(11), color:P.sub }}>{DOWL[dow(d)]}</div>
                   {notes[d] ? <div style={{ fontSize:9, color:P.acc, lineHeight:1.2 }}>✎</div> : null}
                   {days[d]?.note ? <div style={{ width:4, height:4, borderRadius:3, background:GOLD, margin:"1px auto 0" }} /> : null}
                   {wishOf(me.id, d) ? <div style={{ lineHeight:1 }}><IcoSun size={10} /></div> : null}
@@ -3597,8 +3602,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}
                       onClick={e => e.stopPropagation()}>
                       {sh ? (<>
-                        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase",
-                          color:P.sub, marginBottom:4 }}>в смене с тобой</div>
+                        <div style={{ ...labelStyle(11.5),
+                          color:P.sub, marginBottom:4 }}>В смене с тобой</div>
                         {!mates.length ? (
                           <div style={{ fontSize:12.5, color:P.sub }}>Больше никого — держишь оборону в одиночку</div>
                         ) : POS.map(({ id: pos, t }) => {
@@ -3631,8 +3636,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         const order = [me.pos, ...POS.map(q => q.id).filter(q => q !== me.pos)];
                         return (
                           <>
-                            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase",
-                              color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>отдыхают · можно попросить подменить</div>
+                            <div style={{ ...labelStyle(11.5),
+                              color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>Отдыхают · можно попросить подменить</div>
                             {order.map(pos => {
                               const list = rest.filter(x => x.pos === pos);
                               if (!list.length) return null;
@@ -3652,8 +3657,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         );
                       })()}
                       {/* Личная заметка дня: чаевые, важные события, напоминания */}
-                      <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase",
-                        color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>заметка</div>
+                      <div style={{ ...labelStyle(11.5),
+                        color:P.sub, margin: sh ? "9px 0 5px" : "0 0 5px" }}>Заметка</div>
                       <textarea key={"nt" + mkey + "-" + d} defaultValue={notes[d] || ""} rows={2} maxLength={200}
                         placeholder="Чаевые, важный день, напоминание…"
                         onFocus={focusScroll} onBlur={e => saveNote(d, e.target.value)}
@@ -3882,8 +3887,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       const calm = !confl.length && !holes.length && !waiting.length;
       return (
         <div data-attn="" style={{ ...card, flexShrink:0 }}>
-          <div style={{ ...eyebrow, marginBottom:2 }}><span>требует внимания</span>
-            <span style={{ letterSpacing:1 }}>{win.length ? (isCur ? "ближайшие 7 дней" : "весь месяц") : ""}</span></div>
+          <div style={{ ...eyebrow, marginBottom:2 }}><span>Требует внимания</span>
+            <span>{win.length ? (isCur ? "ближайшие 7 дней" : "весь месяц") : ""}</span></div>
           {confl.map(c => (
             <div key={"c" + c.id + "-" + c.d} data-attn-row="conflict" style={row(true)}>
               <IcoBan size={16} color={P.warn} />
@@ -3986,15 +3991,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <CalendarPage day={d} p={palette(a11y)} a11y={a11y} w={40} h={44} />
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>{DOWF[dow(d)].toUpperCase()} · {d} {MONTHS_R[M].toUpperCase()}{holName(d) ? " · " + String(holName(d)).toUpperCase() : ""}</div>
+                <div style={{ ...labelStyle(11.5), color:P.acc }}>{upFirst(DOWF[dow(d)])} · {d} {MONTHS_R[M]}{holName(d) ? " · " + String(holName(d)) : ""}</div>
                 <div data-day-title="" style={{ fontFamily:serif, fontSize:17, color:P.text, marginTop:1 }}>{lvT} · {onMain} из {needTot} {needTot % 10 === 1 && needTot % 100 !== 11 ? "человека" : "человек"}</div>
                 <div data-day-miss="" style={{ fontSize:11.5, marginTop:1, color: missPos.length ? P.warn : okC }}>
                   {missPos.length ? "не хватает: " + missPos.map(x => x.t.toLowerCase()).join(", ") : "все на месте ✓"}{lead ? <span style={{ color:P.sub }}> · старший: {lead}</span> : null}</div>
               </div>
             </div>
             {/* силуэт дня: сколько людей в зале по часам; часы работы — подложкой */}
-            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.2, color:P.sub, margin:"12px 0 4px", display:"flex", justifyContent:"space-between", gap:8 }}>
-              <span>ЛЮДЕЙ В ЗАЛЕ ПО ЧАСАМ</span><span>открыты {openH}:00–{hlab(closeH)}:00</span>
+            <div style={{ ...labelStyle(11.5), color:P.sub, margin:"12px 0 4px", display:"flex", justifyContent:"space-between", gap:8 }}>
+              <span>Людей в зале по часам</span><span>открыты {openH}:00–{hlab(closeH)}:00</span>
             </div>
             <div data-day-skyline="" style={{ position:"relative", height:46, display:"flex", alignItems:"flex-end", gap:2 }}>
               <i style={{ position:"absolute", left: pc(openH) + "%", width: (pc(closeH) - pc(openH)) + "%", top:0, bottom:0, borderRadius:6,
@@ -4029,7 +4034,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 return (
                   <div key={pos} data-day-pos={pos} style={{ marginTop:6 }}>
                     <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                      <span style={{ width:76, flexShrink:0, fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.acc }}>{pt}</span>
+                      <span style={{ width:76, flexShrink:0, ...labelStyle(11.5), color:P.acc }}>{pt}</span>
                       {n ? <span style={{ fontFamily:mono, fontSize:9.5, color: miss ? P.warn : (a11y ? "rgba(107,91,64,0.8)" : "rgba(145,136,121,0.8)") }}>{have} из {n}{miss ? " · −" + miss : " ✓"}</span> : null}
                     </div>
                     {list.map(x => { const q = shiftOf(plan[x.id][d]), c = colorOf(q.k), e = endOf(q);
@@ -4107,7 +4112,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 border:`1.5px solid ${GOLD}`, boxShadow:"0 0 0 3px rgba(214,178,102,0.12)",
                 background: a11y ? "linear-gradient(180deg,rgba(214,178,102,0.30),rgba(214,178,102,0.12))" : "linear-gradient(180deg,rgba(214,178,102,0.24),rgba(214,178,102,0.08))" }}>{initialsOf(s.name)}</span>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>{MONTHS_N[M].toUpperCase()} {Y}</div>
+                <div style={{ ...labelStyle(11.5), color:P.acc }}>{MONTHS_N[M]} {Y}</div>
                 <div data-person-name="" style={{ fontFamily:serif, fontSize:18, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
                 <div data-person-sub="" style={{ fontSize:12, color:P.sub, lineHeight:1.4 }}>{posName(s.pos)} · {rateT} · {normT}</div>
               </div>
@@ -4115,7 +4120,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </div>
             <MonthMedals a11y={a11y} cells={cells} note={note} payMain={po ? <NumUp v={po.sum} /> : null} style={{ margin:"12px 0 0" }} compact />
             <div data-person-cal="" style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4, marginTop:12 }}>
-              {DOWL.map((w, wi) => <div key={w} style={{ fontFamily:mono, fontSize: a11y ? 11 : 9, color: wi >= 5 ? P.acc : P.sub, textAlign:"center", paddingBottom:2 }}>{w}</div>)}
+              {DOWL.map((w, wi) => <div key={w} style={{ ...labelStyle(a11y ? 13.5 : 11.5), color: wi >= 5 ? P.acc : P.sub, textAlign:"center", paddingBottom:2 }}>{w}</div>)}
               {Array.from({ length: dow(1) }, (_, i) => <div key={"e" + i} />)}
               {Array.from({ length: DAYS }, (_, i) => i + 1).map(d => {
                 const kk = plan[s.id]?.[d], sh = shiftOf(kk), col = sh ? colorOf(kk) : null;
@@ -4214,8 +4219,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             boxShadow: a11y
               ? "inset 0 0 26px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.95), 0 -6px 26px rgba(90,66,20,0.16)"
               : "inset 0 0 22px rgba(255,248,230,0.055), inset 0 1px 0 rgba(255,255,255,0.10), 0 -6px 26px rgba(0,0,0,0.5)" }}>
-            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>
-              {DOWL[dow(d)].toUpperCase()} · {d} {MONTHS_R[M].toUpperCase()}
+            <div style={{ ...labelStyle(11.5), color:P.acc }}>
+              {upFirst(DOWL[dow(d)])} · {d} {MONTHS_R[M]}
             </div>
             <div style={{ display:"flex", alignItems:"baseline", gap:8, marginTop:2 }}>
               <span style={{ flex:1, minWidth:0, fontFamily:serif, fontSize:18, color:P.text }}>{who.name}</span>
@@ -4316,11 +4321,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <div data-fill-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width:"calc(100% - 24px)", maxWidth:440, margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))",
             borderRadius:18, padding:16, maxHeight:"76vh", overflowY:"auto",
             background: a11y ? "rgba(250,242,222,0.98)" : "rgba(26,20,10,0.98)", border:`1px solid ${GOLD}55` }}>
-            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>КТО МОЖЕТ ВЫЙТИ · {DOWL[dow(d)].toUpperCase()} · {d} {MONTHS_R[M].toUpperCase()}</div>
+            <div style={{ ...labelStyle(11.5), color:P.acc }}>Кто может выйти · {DOWL[dow(d)]} · {d} {MONTHS_R[M]}</div>
             <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2 }}>{posName(pos)} · {z.name} {z.from}:00–{z.to > 24 ? z.to - 24 : z.to}:00</div>
             <div style={{ fontSize:12.5, color:P.sub, marginTop:2, marginBottom:10 }}>нужно {needOf(d)[pos] || 0}, в смене {staff.filter(x => { const q = x.pos === pos && shiftOf(plan[x.id]?.[d]); return q && !q.extra; }).length}</div>
             {free.length ? <>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>МОГУТ ВЫЙТИ · {free.length}</div>
+              <div style={{ ...labelStyle(11.5), color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>Могут выйти · {free.length}</div>
               {free.map(({ x }) => (
                 <div key={x.id} data-fill-pick={x.id} onClick={() => put(x)} {...onActivate(() => put(x))} className="sa-card"
                   style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", marginBottom:6, borderRadius:12, cursor:"pointer", border:`1px solid ${GOLD}44` }}>
@@ -4333,7 +4338,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 </div>))}
             </> : <div style={{ fontSize:12.5, color:P.warn, marginBottom:8 }}>Свободных нет — ниже видно, что мешает каждому.</div>}
             {busy.length ? <>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.sub, margin:"10px 0 6px" }}>НЕ МОГУТ · {busy.length}</div>
+              <div style={{ ...labelStyle(11.5), color:P.sub, margin:"10px 0 6px" }}>Не могут · {busy.length}</div>
               {busy.map(({ x, r }) => (
                 <div key={x.id} style={{ display:"flex", gap:8, padding:"6px 2px", fontSize:12.5, color:P.sub }}>
                   <span style={{ flex:"0 0 40%", color:P.text }}>{x.name}</span>
@@ -4368,11 +4373,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width:"calc(100% - 24px)", maxWidth:440, margin:"0 12px calc(20px + env(safe-area-inset-bottom, 0px))",
             borderRadius:18, padding:16, maxHeight:"76vh", overflowY:"auto",
             background: a11y ? "rgba(250,242,222,0.98)" : "rgba(26,20,10,0.98)", border:`1px solid ${GOLD}55` }}>
-            <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc }}>КТО ВМЕСТО · {d} {MONTHS_R[M].toUpperCase()}</div>
+            <div style={{ ...labelStyle(11.5), color:P.acc }}>Кто вместо · {d} {MONTHS_R[M]}</div>
             <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2 }}>{who.name} · {sh.name} {sh.from}:00–{sh.to}:00</div>
             <div style={{ fontSize:12.5, color:P.sub, marginTop:2, marginBottom:10 }}>{posName(who.pos)}</div>
             {free.length ? <>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>МОГУТ ВЫЙТИ · {free.length}</div>
+              <div style={{ ...labelStyle(11.5), color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>Могут выйти · {free.length}</div>
               {free.map(({ x }) => (
                 <div key={x.id} onClick={() => put(x)} {...onActivate(() => put(x))} className="sa-card"
                   style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", marginBottom:6, borderRadius:12, cursor:"pointer", border:`1px solid ${GOLD}44` }}>
@@ -4382,7 +4387,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 </div>))}
             </> : <div style={{ fontSize:12.5, color:P.warn, marginBottom:8 }}>Свободных нет — ниже видно, что мешает каждому.</div>}
             {busy.length ? <>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.sub, margin:"10px 0 6px" }}>НЕ МОГУТ · {busy.length}</div>
+              <div style={{ ...labelStyle(11.5), color:P.sub, margin:"10px 0 6px" }}>Не могут · {busy.length}</div>
               {busy.map(({ x, r }) => (
                 <div key={x.id} style={{ display:"flex", gap:8, padding:"6px 2px", fontSize:12.5, color:P.sub }}>
                   <span style={{ flex:"0 0 40%", color:P.text }}>{x.name}</span>
@@ -4509,12 +4514,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       return (
         <div onClick={() => setFactEdit(null)} style={veil(true)}>
         <div data-fact-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={dialogBox}>
-          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc, marginBottom:4 }}>ФАКТ ЧАСОВ · {DOWL[dow(factEdit.d)].toUpperCase()} · {factEdit.d} {MONTHS_R[M].toUpperCase()}</div>
+          <div style={{ ...labelStyle(11.5), color:P.acc, marginBottom:4 }}>Факт часов · {DOWL[dow(factEdit.d)]} · {factEdit.d} {MONTHS_R[M]}</div>
           <div style={{ fontSize:14, color:P.text, marginBottom:8 }}>
             <b>{fs.name}</b> · {factEdit.d} {MONTHS_R[M]} · смена {sh.name} ({planH} ч по плану)
           </div>
           <div style={{ display:"flex", alignItems:"flex-end", gap:8, flexWrap:"wrap" }}>
-            <Field label="отработано по факту, ч" P={P}>
+            <Field label="Отработано по факту, ч" P={P}>
               <Num inp={inp} v={val} min={0} max={24} set={setFact} />
             </Field>
             {typeof cur === "number" ? (
@@ -4537,7 +4542,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     {dayEdit ? (
       <div onClick={() => setDayEdit(null)} style={veil(true)}>
       <div data-note-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={dialogBox}>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, color:P.acc, marginBottom:4 }}>{DOWL[dow(dayEdit)].toUpperCase()} · {dayEdit} {MONTHS_R[M].toUpperCase()}</div>
+        <div style={{ ...labelStyle(11.5), color:P.acc, marginBottom:4 }}>{upFirst(DOWL[dow(dayEdit)])} · {dayEdit} {MONTHS_R[M]}</div>
         <div style={{ fontSize:14, color:P.text, marginBottom:8 }}>
           Заметка ко дню <b>{dayEdit} {MONTHS_R[M]}</b> — увидит вся команда
         </div>
@@ -4562,8 +4567,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
         <button style={{ ...btn, background:P.dangerBg, color:P.dangerFg, width:"100%", boxSizing:"border-box", marginBottom:10 }}
           className="sa-btn" onClick={() => clearScope({})}>Стереть весь месяц</button>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
-          или только одну должность
+        <div style={{ ...labelStyle(11.5), color:P.sub, marginBottom:6 }}>
+          Или только одну должность
         </div>
         <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
           {POS.filter(pp => staff.some(x => x.pos === pp.id)).map(pp => (
@@ -4571,16 +4576,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               onClick={() => clearScope({ pos: pp.id })}>{pp.t}</button>
           ))}
         </div>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
-          или одного сотрудника
+        <div style={{ ...labelStyle(11.5), color:P.sub, marginBottom:6 }}>
+          Или одного сотрудника
         </div>
         <select style={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:10 }} value=""
           onChange={e => { if (e.target.value) clearScope({ staffId: e.target.value }); }}>
           <option value="">Выбрать сотрудника…</option>
           {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
-          новенький пришёл — дать ему смены
+        <div style={{ ...labelStyle(11.5), color:P.sub, marginBottom:6 }}>
+          Новенький пришёл — дать ему смены
         </div>
         <div style={{ fontSize:11, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
           Сначала добавь человека в настройках. Он получит только свободные
@@ -4591,8 +4596,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <option value="">Выбрать новенького…</option>
           {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
-        <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
-          сотрудник уходит — раздать его смены другим
+        <div style={{ ...labelStyle(11.5), color:P.sub, marginBottom:6 }}>
+          Сотрудник уходит — раздать его смены другим
         </div>
         <div style={{ fontSize:11, color:P.sub, lineHeight:1.5, marginBottom:8 }}>
           Чужие смены останутся как есть: генератор заполнит только освободившиеся
@@ -4722,7 +4727,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           const dm = String(today).padStart(2, "0") + "." + String(M + 1).padStart(2, "0");
           const bd = staff.filter(x => (x.bday || "") === dm);
           return bd.length ? (
-            <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>✦ День рождения: {bd.map(x => x.name).join(", ")}</div>
+            <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>День рождения: {bd.map(x => x.name).join(", ")}</div>
           ) : null;
         })()}
         {/* Раскрыто — лица. Список «должность: капсула, капсула» отвечал на
@@ -4998,10 +5003,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <tr>
                 <th className="sa-schednm" style={{ width:92, minWidth:92 }} />
                 {visibleDays.map(d => (
-                  <th key={d} style={{ width:26, minWidth:26, fontSize:9, color:P.sub, padding:"3px 0", lineHeight:1.2,
+                  <th key={d} style={{ width:26, minWidth:26, ...labelStyle(11), color:P.sub, padding:"3px 0", lineHeight:1.2,
                     ...(d === today ? todayCol("head") : null),
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
-                    <b data-day-open={d} onClick={() => { setBossDay(d); vibrate("light"); }} style={{ display:"block", fontSize:11, cursor:"pointer",
+                    {/* v73: день недели под числом — курсивом («пн»); само число — по-прежнему моноширинным */}
+                    <b data-day-open={d} onClick={() => { setBossDay(d); vibrate("light"); }} style={{ display:"block", fontFamily:mono, fontStyle:"normal", fontSize:11, cursor:"pointer",
                       fontWeight: d === today ? "bold" : "normal",
                       color: d === today ? (a11y ? P.acc : GOLD) : holOf(d) ? P.warn : dow(d) >= 5 ? P.acc : (a11y ? P.text : SAND) }}>{d}</b>
                     {DOWL[dow(d)]}
@@ -5021,8 +5027,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 return (
                   <React.Fragment key={pos}>
                     <tr>
-                      <td className="sa-schednm sa-schedgrp" style={{ fontFamily:mono, fontSize:9,
-                        letterSpacing:2, textTransform:"uppercase", color:P.acc, padding:"6px 8px" }}>{t}</td>
+                      <td className="sa-schednm sa-schedgrp" style={{ ...labelStyle(11.5),
+                        color:P.acc, padding:"6px 8px" }}>{t}</td>
                       {visibleDays.map(d => {
                         // Факт против плана: недобор виден прямо в сетке, без
                         // сверки со списком «Проверки» — красная цифра = дыра.
@@ -5140,7 +5146,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           if (!shifts) return null;
           const fund = staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0);
           return (
-            <div style={{ fontFamily:mono, fontSize:9, color:P.sub, marginTop:8, letterSpacing:0.3 }}>
+            <div style={{ ...labelStyle(11.5), color:P.sub, marginTop:8 }}>
               итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
               {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}><NumUp v={fund} /> ₽</span></> : null}
               {prevStats ? (() => {
@@ -5171,7 +5177,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           if (!list.length) return null;
           return (
             <div key={pos}>
-              <div style={{ fontFamily:mono, fontSize:9, letterSpacing:2, textTransform:"uppercase",
+              <div style={{ ...labelStyle(11.5),
                 color:P.acc, margin:"12px 0 4px" }}>{t}</div>
               {list.map(s => {
                 const b = breakdownOf(s);
@@ -5202,7 +5208,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           </span>
                         );
                       })}
-                      <span style={{ fontFamily:mono, fontSize:11, marginLeft:"auto",
+                      <span style={{ ...labelStyle(13), marginLeft:"auto",
                         color: diff > 0 ? P.warn : diff < 0 ? P.sub : P.acc }}>
                         {diff > 0 ? `+${diff} ч сверх нормы` : diff < 0 ? `${-diff} ч недобор` : "норма закрыта"}
                       </span>
@@ -5237,7 +5243,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   ? "inset 0 0 14px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9)"
                   : "inset 0 0 14px rgba(255,248,230,0.05), inset 0 1px 0 rgba(255,255,255,0.10)" }}>
                 <div style={{ fontSize:21, color:P.acc, lineHeight:1.1 }}>{v}</div>
-                <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.4, textTransform:"uppercase",
+                <div style={{ ...labelStyle(11.5),
                   color:P.sub, marginTop:4 }}>{t}</div>
               </div>
             ))}
@@ -5282,8 +5288,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       )}
       {staff.some(x => x.rate > 0) ? (
         <div style={{ marginTop:10, paddingTop:10, borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
-          <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1.5, textTransform:"uppercase", color:P.sub, marginBottom:6 }}>
-            зарплата · по ставкам и сменам черновика
+          <div style={{ ...labelStyle(11.5), color:P.sub, marginBottom:6 }}>
+            Зарплата · по ставкам и сменам черновика
           </div>
           {staff.filter(x => payOf(x)).map(x => (
             <div key={x.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12.5, color:P.text, padding:"2px 0" }}>

@@ -25,7 +25,7 @@ import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } 
 import { hintsFor } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
-import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK } from "./tokens";
+import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
 import { APP_SHARE_URL } from "./screens-gamification";
 import { POS_LABELS, positionLabel } from "../data/positions";
 
@@ -301,7 +301,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           </div>
           <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:4, marginBottom:24 }}>{issued.emp.restaurant}</div>
 
-          <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:10 }}>КОД ДОСТУПА</div>
+          <div style={{ ...labelStyle(13.5), color:"#9A8C74", marginBottom:10 }}>Код доступа</div>
           <div onClick={() => copyCode(issued.code)} {...onActivate(() => copyCode(issued.code))} style={{
             fontSize:36, fontWeight:"bold", fontFamily:"Georgia, serif", letterSpacing:5, color: a11y ? "#4A3525" : CREAM,
             padding:"18px 28px", borderRadius:18, cursor:"pointer",
@@ -347,7 +347,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               onChange={e => setForm({ ...form, surname:e.target.value })} />
           </div>
 
-          <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", margin:"20px 0 10px" }}>РЕСТОРАН</div>
+          <div style={{ ...labelStyle(13.5), color:"#9A8C74", margin:"20px 0 10px" }}>Ресторан</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
             {RESTAURANTS.map(r => (
               <div key={r} className={"sa-btn" + (form.restaurant === r ? " sa-chip-on" : "")}
@@ -356,7 +356,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             ))}
           </div>
 
-          <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", margin:"20px 0 10px" }}>ДОЛЖНОСТЬ</div>
+          <div style={{ ...labelStyle(13.5), color:"#9A8C74", margin:"20px 0 10px" }}>Должность</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
             {Object.entries(POS_LABELS).map(([id, label]) => (
               <div key={id} className={"sa-btn" + (form.position === id ? " sa-chip-on" : "")}
@@ -398,7 +398,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
                 {selected.name} {selected.surname}
-                {isSelf && <span style={{ marginLeft:8, fontSize:10.5, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ЭТО ТЫ</span>}
+                {isSelf && <span style={{ ...labelStyle(13), marginLeft:8, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"1px 7px", verticalAlign:"2px" }}>это ты</span>}
               </div>
               <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:2 }}>{selected.restaurant} · {POS_LABELS[selected.position] || selected.position}</div>
             </div>
@@ -427,7 +427,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           {isSelf ? (
             <div>
               <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:8, marginBottom:12 }}>
-                <div style={{ color:GOLD, fontSize:11, letterSpacing:1.5, fontFamily:"monospace" }}>ПОСТОЯННЫЙ КОД ВХОДА</div>
+                <div style={{ ...labelStyle(13.5), color:GOLD }}>Постоянный код входа</div>
                 <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.6 }}>Не сгорает при входе: Telegram, Safari на экране «Домой», новый телефон — один и тот же код. Показывается один раз.</div>
                 <button className="sa-btn" style={{ ...goldBtn, marginTop:4 }} disabled={busy} onClick={doPermanent}>{busy ? "Выдаю…" : "Выдать себе постоянный код"}</button>
               </div>
@@ -579,8 +579,8 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
         {groups.map(([rest, emps]) => (
           <div key={rest} style={{ marginBottom:16 }}>
-            <div style={{ color:"#9A8C74", fontSize:11, letterSpacing:2, fontFamily:"monospace", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
-              {UI_SVG.building("#9A8C74", 11)}<span>{rest.toUpperCase()}</span>
+            <div style={{ ...labelStyle(13.5), color:"#9A8C74", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
+              {UI_SVG.building("#9A8C74", 11)}<span>{rest}</span>
               <span style={{ opacity:0.6 }}>· {emps.length}</span>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
@@ -593,13 +593,13 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color:T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {e.name} {e.surname}
-                        {e.is_admin && <span style={{ marginLeft:6, fontSize:10.5, letterSpacing:1, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"1px 5px", verticalAlign:"2px", fontFamily:"monospace" }}>ВЛАДЕЛЕЦ</span>}
+                        {e.is_admin && <span style={{ ...labelStyle(12.5), marginLeft:6, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"0 5px", verticalAlign:"2px" }}>владелец</span>}
                       </div>
                       <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>
                         {POS_LABELS[e.position] || e.position} · {ago(e.last_seen_at)}
                       </div>
                     </div>
-                    <span style={{ color:st.color, fontSize:11, fontFamily:"monospace", flexShrink:0 }}>{st.label}</span>
+                    <span style={{ ...labelStyle(13), color:st.color, flexShrink:0 }}>{st.label}</span>
                   </div>
                 );
               })}
@@ -668,7 +668,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
   return (
     <div style={{ ...T.screen, justifyContent:"center", alignItems:"center", padding:"32px 24px",
       background:"linear-gradient(160deg, #2A1F0E 0%, #1A1008 55%, #1A1008 100%)", minHeight:"calc(100vh - var(--sa-st, 0px))" }} className="sa-screen">
-      <img src={LOGO_SRC_DARK} alt="Service Academy" style={{ width:180, marginBottom:8, filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+      <img src={LOGO_SRC_DARK} alt="Service Academy" decoding="sync" style={{ width:180, marginBottom:8, filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
       <div style={{ color:CREAM, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF, marginBottom:8, textAlign:"center" }}>
         Вход по приглашению
       </div>
@@ -777,7 +777,7 @@ function AccountSettings({ T, a11y, onA11y, themeAuto = false, onThemeAuto = nul
   );
   return (
     <div data-settings="" style={{ ...T.modCard, display:"block", padding:"4px 14px", marginBottom:12 }}>
-      <div style={{ fontFamily:"monospace", fontSize: a11y ? 11.5 : 10.5, letterSpacing:1.6, color: gold, padding:"8px 2px 0" }}>НАСТРОЙКИ</div>
+      <div style={{ ...labelStyle(a11y ? 14 : 13), color: gold, padding:"8px 2px 0" }}>Настройки</div>
       {row("theme", "Для чтения", "светлый фон и текст крупнее — удобно днём и для глаз", !!a11y, () => { vibrate("light"); if (onA11y) onA11y(!a11y); }, true)}
       {/* v59 (Доп. 372): тема по системе — светлая у телефона или Telegram включает «Для чтения» сама */}
       {onThemeAuto ? row("auto", "Тема как в системе", "светлая тема телефона или Telegram включит «Для чтения», тёмная — выключит", !!themeAuto, () => { vibrate("light"); onThemeAuto(!themeAuto); }) : null}
@@ -814,7 +814,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
               {profile?.name} {profile?.surname}
-              {profile?.is_admin && <span style={{ marginLeft:8, fontSize:10.5, letterSpacing:1.5, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"2px 7px", verticalAlign:"2px", fontFamily:"monospace" }}>ВЛАДЕЛЕЦ</span>}
+              {profile?.is_admin && <span style={{ ...labelStyle(13), marginLeft:8, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"1px 7px", verticalAlign:"2px" }}>владелец</span>}
             </div>
             <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:4, display:"flex", alignItems:"center", gap:4 }}>
               {UI_SVG.building("#C8A96E", 12)}<span>{profile?.restaurant}</span>
@@ -840,7 +840,6 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
         {onTrainingCard && (
           <div className="sa-card" style={{ ...T.modCard, marginBottom:12, cursor:"pointer" }}
             onClick={onTrainingCard} {...onActivate(onTrainingCard)}>
-            <div style={{ ...T.modBar, background: GOLD }} />
             <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,169,110,0.13)" }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h10v6H7z"/><path d="M5 9h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/><path d="M7 15h10"/></svg>
             </div>

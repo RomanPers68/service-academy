@@ -14,7 +14,7 @@ import { BUILDS } from "../data/builds";
 import { GLOSSARY } from "../data/glossary";
 import { shuffleArray, vibrate } from "../lib/utils";
 import { Confetti } from "./widgets";
-import { GOLD, GOLD_SOFT, CREAM, SAND, GREEN, RED, MUTED, MUTED_2, CLAY, INK_DEEP, RADIUS } from "./tokens";
+import { GOLD, GOLD_SOFT, CREAM, SAND, GREEN, RED, MUTED, MUTED_2, CLAY, INK_DEEP, RADIUS, labelStyle } from "./tokens";
 import { UI_SVG, BUILD_SVG } from "./icons";
 
 const serif = "Georgia, serif";
@@ -218,7 +218,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
             {(BUILD_SVG[garn.garnish] || BUILD_SVG.mint)(garn.garnish === "twist" ? (a11y ? "#A85A18" : "#E09A50") : (a11y ? "#4E7A32" : "#8FC471"), 26)}
           </div>
         )}
-        <div style={{ textAlign: "center", fontFamily: mono, fontSize: 10.5, letterSpacing: 1.6, color: P.sub, marginTop: 6, textTransform: "uppercase" }}>
+        <div style={{ textAlign: "center", ...labelStyle(13), color: P.sub, marginTop: 6 }}>
           {/* До первого решения имя бокала скрыто: первый вопрос коктейлей —
               «в чём подаёшь?», и подпись выдавала бы ответ. После ответа
               имя появляется как подтверждение выбора. */}
@@ -311,9 +311,9 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
     const ready = marks.has("ready") && !spoiled;
     return (
       <div className={"sa-bld-station" + (marks.has("clean") ? " clean" : "") + (spoiled ? " spoiled" : "")}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontFamily: mono, fontSize: 10.5, letterSpacing: 1.3, color: P.sub, marginBottom: 6 }}>
-          <span>СТАНЦИЯ</span>
-          <span style={{ color: ready ? GREEN : RED }}>{ready ? "ГОТОВА ✓" : "НЕ ГОТОВА"}</span>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, ...labelStyle(12.5), color: P.sub, marginBottom: 6 }}>
+          <span>Станция</span>
+          <span style={{ color: ready ? GREEN : RED }}>{ready ? "Готова ✓" : "Не готова"}</span>
         </div>
         <div className={"sa-bld-icebin" + (marks.has("ice") ? " on" : "")}>
           {marks.has("ice") && [...Array(9)].map((_, i) => (
@@ -552,13 +552,13 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
               <span className="sa-bld-sealtop">{right} / {total}</span>
               <span className="sa-bld-sealtext">{verdict.label}</span>
             </div>
-            <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: 3, textTransform: "uppercase", color: P.sub, marginTop: 12 }}>шагов без ошибки</div>
+            <div style={{ ...labelStyle(13), color: P.sub, marginTop: 12 }}>шагов без ошибки</div>
             <div style={{ fontSize: 16, letterSpacing: 4, marginTop: 10 }}>
               {[1, 2, 3].map(s => (
                 <span key={s} style={{ opacity: s <= stars ? 1 : 0.22, filter: s <= stars ? "none" : "grayscale(1)" }}>⭐</span>
               ))}
             </div>
-            <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: 2, textTransform: "uppercase", color: P.faint, marginTop: 4 }}>
+            <div style={{ ...labelStyle(13), color: P.faint, marginTop: 4 }}>
               лучший результат идёт в общий зачёт
             </div>
           </div>
@@ -567,7 +567,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
           ) : (
             <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: RED }}>
               <div>💡 {sc.lose}</div>
-              <div style={{ margin: "12px 0 6px", fontFamily: mono, fontSize: 10.5, letterSpacing: 2.4, textTransform: "uppercase", color: P.sub }}>
+              <div style={{ margin: "12px 0 6px", ...labelStyle(13), color: P.sub }}>
                 Что из этого получит гость
               </div>
               {missed.map((st, i) => (
@@ -671,7 +671,7 @@ function Shell({ title, onClose, accent, T, children }) {
           cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: serif,
         }} onClick={onClose} aria-label="Закрыть">‹</button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: 3, textTransform: "uppercase", color: a11y ? "#6B5B40" : MUTED_2 }}>Сборка</div>
+          <div style={{ ...labelStyle(13), color: a11y ? "#6B5B40" : MUTED_2 }}>Сборка</div>
           <div style={{ color: a11y ? "#2A1F0E" : CREAM, fontSize: 16, fontFamily: serif }}>{title}</div>
         </div>
         {UI_SVG.shaker ? UI_SVG.shaker(a11y ? "#7A5D2A" : accent, 22) : null}
@@ -683,13 +683,15 @@ function Shell({ title, onClose, accent, T, children }) {
 }
 
 function Eyebrow({ left, right, a11y }) {
+  // v73 (Доп. 386): надзаголовок — курсивом обычными буквами; счёт шагов «3 / 7» — цифры, остаётся моноширинным как был
+  const num = /^\d/.test(String(right));
   return (
     <div style={{
-      fontFamily: mono, fontSize: 10.5, letterSpacing: 3.5, textTransform: "uppercase",
+      ...labelStyle(13),
       color: a11y ? "#6B5B40" : MUTED_2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
     }}>
       <span>{left}</span>
-      <span style={{ color: a11y ? "#7A5D2A" : GOLD_SOFT, whiteSpace: "nowrap" }}>{right}</span>
+      <span style={{ color: a11y ? "#7A5D2A" : GOLD_SOFT, whiteSpace: "nowrap", ...(num ? { fontFamily: mono, fontStyle: "normal", fontSize: 10.5, letterSpacing: 3.5 } : null) }}>{right}</span>
     </div>
   );
 }

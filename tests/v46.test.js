@@ -52,12 +52,12 @@ describe("v46: ближайшая смена — расчёты", () => {
 
 describe("v46: медальоны месяца — подписи", () => {
   const base = { hours: 126, norm: 160, vac: false, prev: 0, shifts: 16, peaks: 6, avg: 8 };
-  it("часы: «до нормы 34 ч ≈ 5 см.» (неразрывно), «норма закрыта ✦», «отпуск учтён»", () => {
+  it("часы: «до нормы 34 ч ≈ 5 см.» (неразрывно), «норма закрыта» (v73: без ✦), «отпуск учтён»", () => {
     const a = staffMonthCells({ ...base, pay: null });
     expect(a.cells.map((c) => c.key)).toEqual(["hours", "shifts"]);
     expect(a.cells[0]).toMatchObject({ main: 126, of: 160, cap: "часов", sub: "до нормы 34 ч ≈ 5 см." });
     expect(a.cells[0].pct).toBeCloseTo(126 / 160, 5);
-    expect(staffMonthCells({ ...base, hours: 168, pay: null }).cells[0]).toMatchObject({ sub: "норма закрыта ✦", pct: 1 });
+    expect(staffMonthCells({ ...base, hours: 168, pay: null }).cells[0]).toMatchObject({ sub: "норма закрыта", pct: 1 });
     expect(staffMonthCells({ ...base, vac: true, pay: null }).cells[0].sub2).toBe("отпуск учтён");
     expect(staffMonthCells({ ...base, norm: 0, pay: null }).cells[0]).toMatchObject({ of: null, sub: "", pct: 0 });
   });
@@ -86,7 +86,7 @@ describe("v46: карточка смены и медальоны — вид", ()
     expect(html).toMatch(/data-hero-status="soon" style="[^"]*overflow:hidden;flex-shrink:0/);   // в колонке flex не сжимается в полоску
     expect(html).toMatch(/data-sched-page="" style="position:relative;display:block;width:46px;height:50px/);
     expect(html).toMatch(/data-sched-day=""[^>]*font-size:24px[^>]*color:#E2C484">17</);
-    expect(text(html)).toContain("сегодня · суббота");
+    expect(text(html)).toContain("Сегодня · суббота");   // v73: подпись курсивом, с заглавной
     expect(html).toMatch(/data-hero-time=""[^>]*color:#E2C484[^>]*>16:00–24:00</);
     expect(text(html)).toContain("8 ч · через 1 ч 40 мин");
     expect(html).toContain('data-sched-thread=""');
@@ -96,7 +96,7 @@ describe("v46: карточка смены и медальоны — вид", ()
     const html = hero({ due: { n: 3, onMistakes: () => {} } });
     expect(html).toContain('data-hero-lead=""');
     expect(html).toContain('data-test-call=""');
-    expect(text(html)).toContain("старший смены");
+    expect(text(html)).toContain("Старший смены");
     expect(html).toMatch(/data-hero-checklist="" [^>]*role="button"[^>]*>✓ Чек-лист смены</);
     expect(html).toMatch(/data-hero-mates=""[^>]*>Кто со мной · 10</);
     expect(text(html)).toContain("3 вопроса ждут повтора");
@@ -113,10 +113,10 @@ describe("v46: карточка смены и медальоны — вид", ()
     expect(text(hero({ now: at(20, 30) }))).toContain("идёт · ещё 3 ч 30 мин");
     expect(hero({ now: at(20, 30) })).toContain('data-now="on"');
     const tmr = hero({ d: 18, when: "завтра", dowName: "воскресенье", dowShort: "вс", isToday: false });
-    expect(text(tmr)).toContain("завтра · воскресенье");
+    expect(text(tmr)).toContain("Завтра · воскресенье");
     expect(tmr).toContain('data-hero-status="later"');
     expect(tmr).not.toContain("data-sched-thread");
-    expect(text(hero({ d: 21, when: "", dowName: "среда", dowShort: "ср", isToday: false }))).toContain("ср · 21 октября");
+    expect(text(hero({ d: 21, when: "", dowName: "среда", dowShort: "ср", isToday: false }))).toContain("Ср · 21 октября");
   });
   it("смен больше нет — тихая карточка с бледным числом", () => {
     const html = R(h(NoShiftHero, { a11y: false, card: CARD, todayD: 30 }));
@@ -220,7 +220,7 @@ describe("v46: календарь месяца и лист дня у сотру�
     expect(at1).toBeGreaterThan(0);
     const sh = src.slice(at1, src.indexOf("})() : null}", src.indexOf('data-day-sheet={d}', at1)));
     expect(sh).toContain("data-sheet-face={x.id}");
-    expect(sh).toContain("с тобой в смене · {mates.length}");
+    expect(sh).toContain("С тобой в смене · {mates.length}");
     expect(sh).toContain("ещё {restOther.length} из других позиций ›");
     expect(sh).toContain('swapCall("swap_create", { p_venue: venueKey, p_month: mkey, p_day: d, p_k: kk, p_staff: String(me.id), p_name: me.name }, "Предложение отправлено")');
     expect(sh).toContain('swapCall("swap_take", { p_id: offer.id, p_staff: String(me.id), p_name: me.name }, "Ты взял смену — ждём менеджера")');

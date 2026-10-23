@@ -10,7 +10,7 @@ import React from "react";
 import { hintsFor } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
 import { createPortal } from "react-dom";
-import { GOLD, RED, RADIUS } from "./tokens";
+import { GOLD, RED, RADIUS, labelStyle } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
@@ -517,7 +517,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
           Наставник
-          <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 2, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 8px", fontWeight: "normal" }}>AI</span>
+          <span style={{ ...labelStyle(13), color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "1px 8px" }}>AI</span>
         </div>
         <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
           <button className="sa-btn" style={miniBtn} aria-label="Список чатов"
@@ -718,8 +718,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           </div>
         )}
         {msgs.length > 0 && !sending && (
-          <div style={{ color: sub, fontSize: 10.5, textAlign: "center", opacity: 0.7, fontFamily: "monospace", letterSpacing: 1, padding: "4px 0" }}>
-            ИИ МОЖЕТ ОШИБАТЬСЯ · СТАНДАРТЫ РЕСТОРАНА ГЛАВНЕЕ
+          <div style={{ ...labelStyle(13), color: sub, textAlign: "center", opacity: 0.7, padding: "4px 0" }}>
+            ИИ может ошибаться · стандарты ресторана главнее
           </div>
         )}
       </div>

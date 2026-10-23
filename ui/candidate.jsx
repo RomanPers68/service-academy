@@ -13,7 +13,7 @@
 import { hintsFor } from "../data/hints";
 import React from "react";
 import { CANDIDATE_QUESTIONS } from "../data/candidate-questions";
-import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS } from "./tokens";
+import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS, labelStyle } from "./tokens";
 import { shuffleArray, vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v65 (Доп. 378): ответ голосом
@@ -226,7 +226,7 @@ function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, b
         {!compact ? (
           <div style={{ ...T.bold, marginTop: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             Вердикт ИИ
-            {beta ? <span data-ai-beta="" style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span> : null}
+            {beta ? <span data-ai-beta="" style={{ ...labelStyle(13), color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "1px 7px" }}>бета</span> : null}
           </div>
         ) : null}
         {cat && compact ? <div data-ai-cat={cat} style={{ fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13.5, color: catColor, marginBottom: 4 }}>{cat}</div> : null}
@@ -250,7 +250,7 @@ function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, b
               <div key={c} data-ai-comp={c} style={{ padding: "6px 0", borderTop: `1px solid ${gold}18` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ flex: 1, minWidth: 0, color: text, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c}</span>
-                  {unsure.has(c) ? <span data-ai-unsure="" style={{ fontFamily: "monospace", fontSize: 10.5, color: GOLD_SOFT, border: `1px solid ${GOLD_SOFT}55`, borderRadius: RADIUS.pill, padding: "0 6px", flexShrink: 0 }}>ИИ не уверен</span> : null}
+                  {unsure.has(c) ? <span data-ai-unsure="" style={{ ...labelStyle(12.5), color: GOLD_SOFT, border: `1px solid ${GOLD_SOFT}55`, borderRadius: RADIUS.pill, padding: "0 6px", flexShrink: 0 }}>ИИ не уверен</span> : null}
                   <div style={{ width: 60, height: 5, borderRadius: 3, background: "rgba(160,120,60,0.18)", overflow: "hidden", flexShrink: 0 }}>
                     <div style={{ height: "100%", width: Math.max(0, Math.min(100, v)) + "%", background: scoreColor(v) }} />
                   </div>
@@ -281,7 +281,7 @@ function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, b
             <div key={i} data-ai-qa="" style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${gold}18` }}>
               <div style={{ ...small, fontSize: 12 }}>{x.f ? "Уточнение: " : ""}{x.q}</div>
               <div style={{ color: text, fontSize: 13, lineHeight: 1.5, marginTop: 3, fontFamily: "Georgia, serif" }}>
-                {x.a}{x.v ? <span style={{ fontFamily: "monospace", fontSize: 10.5, color: sub, marginLeft: 6 }}>· голосом</span> : null}
+                {x.a}{x.v ? <span style={{ ...labelStyle(13), color: sub, marginLeft: 6 }}>· голосом</span> : null}
               </div>
             </div>
           )) : null}
@@ -482,8 +482,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E",
     background: a11y ? "rgba(139,106,48,0.14)" : "rgba(200,169,110,0.18)",
   };
-  // Подпись секции — фирменный monospace-капс приложения
-  const secLabel = { ...T.secTitle, padding: 0, margin: "0 2px 10px" };
+  // Подпись секции — курсив с засечками в обычном регистре, как подписи в меню.
+  // v73 (Доп. 386): раньше — моноширинный капс из общего T.secTitle; шрифт перекрываем здесь (тёмная тема 13 px, светлая 15)
+  const secLabel = { ...T.secTitle, ...labelStyle(a11y ? 15 : 13), padding: 0, margin: "0 2px 10px" };
   const optNote = { textTransform: "none", letterSpacing: 0, fontFamily: "Georgia, serif" };
 
   const level = exp ? exp.level : "pro";
@@ -852,7 +853,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ ...T.bold, marginTop: 2, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
                   AI HR
-                  <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: hrSt.beta ? gold : GREEN, border: `1px solid ${hrSt.beta ? gold : GREEN}66`, borderRadius: RADIUS.pill, padding: "1px 7px", fontWeight: "normal" }}>{hrSt.beta ? "БЕТА" : "ПРОВЕРЕН"}</span>
+                  <span style={{ ...labelStyle(13), color: hrSt.beta ? gold : GREEN, border: `1px solid ${hrSt.beta ? gold : GREEN}66`, borderRadius: RADIUS.pill, padding: "0 7px" }}>{hrSt.beta ? "бета" : "проверен"}</span>
                 </div>
                 <div style={{ color: sub, fontSize: 12, lineHeight: 1.45 }}>
                   эталоны: {hrSt.ref ? (hrSt.stale ? "проверить на новой модели" : `${hrSt.ref.match} из ${hrSt.ref.n}`) : "не проверяли"} · ваши решения: {hrSt.real.n ? `совпало ${hrSt.real.agree} из ${hrSt.real.n}` : `0 из ${REAL_N}`}
@@ -953,7 +954,6 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
                   // v65: рамку выбранного меняем целиком (border и borderTop вместе) — иначе React ругается на смесь
                   ...(role.id === rl.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E", borderTop: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
-                {role.id === rl.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <span style={{ display: "flex", flexShrink: 0 }}>{ROLE_ICO[rl.id](role.id === rl.id ? gold : sub)}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>{rl.label}</div>
@@ -998,7 +998,6 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 style={{ ...glass, padding: "12px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
                   ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E", borderTop: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
-                {exp?.id === x.id && <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: gold }} />}
                 <div style={{ flex: 1 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>{x.label}</div>
                   <div style={{ color: sub, fontSize: 11 }}>{x.note}</div>
@@ -1064,9 +1063,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {phase === "ai" && (
           <>
             <div style={{ ...secLabel, display: "flex", justifyContent: "space-between", gap: 10, margin: hrInfo.v2 ? "0 2px 8px" : "0 2px 10px" }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>AI-ИНТЕРВЬЮ · {name.trim()}</span>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>AI-интервью · {name.trim()}</span>
               {/* v66: план ведёт сервер — «тема 2 из 5»; прежняя функция — «ответов: N» */}
-              <span data-hr-step="" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{hrInfo.v2 ? (hrInfo.done ? "ТЕМЫ ПРОЙДЕНЫ" : `ТЕМА ${Math.min(hrInfo.topic + 1, hrInfo.total)} ИЗ ${hrInfo.total}`) : `ОТВЕТОВ: ${aiAnswered}`}</span>
+              <span data-hr-step="" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{hrInfo.v2 ? (hrInfo.done ? "Темы пройдены" : `Тема ${Math.min(hrInfo.topic + 1, hrInfo.total)} из ${hrInfo.total}`) : `Ответов: ${aiAnswered}`}</span>
             </div>
             {hrInfo.v2 && hrInfo.total > 0 ? (
               // названия тем кандидату не показываем (подсказывали бы, что проверяют) — только сколько пройдено
@@ -1179,8 +1178,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <button className="sa-btn" data-hr-early="" onClick={finishAi}
                 style={{ ...ghostBtn, marginTop: 4, padding: "9px", fontSize: 12.5 }}>Завершить раньше — оценка по пройденным темам</button>
             )}
-            <div style={{ ...T.modSub, color: sub, fontSize: 11, textAlign: "center", marginTop: 8, opacity: 0.75, fontFamily: "monospace", letterSpacing: 1 }}>
-              ИИ МОЖЕТ ОШИБАТЬСЯ · РЕШЕНИЕ ВСЕГДА ЗА МЕНЕДЖЕРОМ
+            <div style={{ ...T.modSub, ...labelStyle(13.5), color: sub, textAlign: "center", marginTop: 8, opacity: 0.75 }}>
+              ИИ может ошибаться · решение всегда за менеджером
             </div>
           </>
         )}
@@ -1189,7 +1188,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {phase === "test" && q && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ ...T.quizProgress, marginBottom: 2 }}>ВОПРОС {qIdx + 1} / {test.length}</span>
+              <span style={{ ...T.quizProgress, ...labelStyle(a11y ? 16 : 13), marginBottom: 2 }}>Вопрос {qIdx + 1} / {test.length}</span>
               <span style={{ color: sub, fontSize: 12.5 }}>{name.trim()}</span>
             </div>
             <QTimer key={qIdx} seconds={SECONDS_PER_Q} onExpire={onExpire} />
@@ -1333,7 +1332,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 <div style={{ ...glass, marginBottom: 12 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
                     Вердикт ИИ
-                    <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.5, color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "2px 7px", fontWeight: "normal" }}>БЕТА</span>
+                    <span style={{ ...labelStyle(13), color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "1px 7px" }}>бета</span>
                   </div>
                   <div style={{ ...T.modSub, color: sub, lineHeight: 1.6, marginBottom: aiVerdict.strengths?.length || aiVerdict.growth?.length || aiVerdict.risks?.length ? 10 : 0 }}>{aiVerdict.verdict}</div>
                   {aiVerdict.strengths?.length > 0 && (

@@ -6,6 +6,8 @@
 // Fonts — без сети почерк превращался в обычный шрифт. Vite кладёт файл в /assets/
 // с хэшем, сервис-воркер его кэширует — работает и офлайн.
 
+import { LABEL_CSS } from "./tokens";   // v73 (Доп. 386): подписи — курсивом с засечками, без капса
+
 const HAND_FONT_URL = new URL("../assets/fonts/marck-script.woff", import.meta.url).href;
 
 export const TABLE_CSS = `
@@ -75,7 +77,7 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-top{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0}
 .tbm-icon{display:flex;justify-content:center;margin:0;flex:0 0 auto}
 .tbm-icon svg{width:20px;height:20px}
-.tbm-eyebrow{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase}
+.tbm-eyebrow{${LABEL_CSS};font-size:13px}
 .tbm-title{font-family:var(--font-display);font-size:21.5px;font-weight:700;line-height:1.15;margin:6px 0 3px;text-wrap:balance;color:var(--text)}
 .tbm-sub{margin:0;color:var(--sub);font-style:italic;font-size:13px;line-height:1.3;text-wrap:balance}
 .tbm-orn{display:flex;align-items:center;gap:10px;max-width:180px;margin:9px auto 5px;color:var(--gold-ink);font-size:10.5px;line-height:1}
@@ -110,18 +112,18 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-list>li.final>.tbm-node{padding-top:10px}
 .tbm-card{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:18px;background:var(--cur-bg);border:1px solid var(--cur-edge);border-top-color:var(--cur-top);box-shadow:var(--cur-shadow)}
 .tbm-cc{flex:1;min-width:0}
-.tbm-ck{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;color:var(--sub);white-space:nowrap;overflow:hidden}
-.tbm-kchip{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.2px;padding:2px 7px;border-radius:999px;border:1px solid var(--role-edge,var(--edge-gold));color:var(--role-ink,var(--gold-ink));background:var(--chip-bg)}
+.tbm-ck{display:flex;align-items:center;gap:7px;${LABEL_CSS};font-size:12.5px;color:var(--sub);white-space:nowrap;overflow:hidden}
+.tbm-kchip{${LABEL_CSS};font-size:12.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--role-edge,var(--edge-gold));color:var(--role-ink,var(--gold-ink));background:var(--chip-bg)}
 .tbm-ct{display:block;margin:4px 0 1px;font-family:var(--font-display);font-size:17px;font-weight:700;line-height:1.22;color:var(--text);text-wrap:balance}
 .tbm-cs{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.35;color:var(--sub)}
 .tbm-cta{flex:0 0 auto;padding:9px 15px;border-radius:999px;font-family:var(--font-body);font-size:14px;font-weight:700;color:var(--on-gold);background:linear-gradient(180deg,var(--gold-hi),var(--gold));box-shadow:0 3px 10px var(--drop),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .1s}
 .tbm-node:active .tbm-cta{transform:scale(.96)}
-.tbm-foot{display:flex;align-items:center;gap:10px;margin:2px 0 0;padding:8px 2px 9px 34px;border-top:1px dashed var(--edge-gold);font-family:var(--font-mono);font-size:10.5px;letter-spacing:.8px;color:var(--sub)}
+.tbm-foot{display:flex;align-items:center;gap:10px;margin:2px 0 0;padding:8px 2px 9px 34px;border-top:1px dashed var(--edge-gold);${LABEL_CSS};font-size:13px;color:var(--sub)}
 /* v30: свежесть темы и действия (освежить, зачёт на опыт, раунд мастера).
    v40: действия — крупные плитки «значок · название · что внутри»: две — в ряд, одна — во всю
    ширину, на узком экране (до 340 px) — друг под другом. «Погреб тем ›» — кнопка рядом со свежестью */
 .tbm-acts{display:flex;flex-direction:column;gap:10px;margin:2px -8px 10px}
-.tbm-fresh{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px;font-family:var(--font-mono);font-size:12.5px;line-height:1.35;letter-spacing:1.2px;text-transform:uppercase;color:#9C8E70;text-align:center}
+.tbm-fresh{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px;${LABEL_CSS};font-size:14.5px;line-height:1.35;color:#9C8E70;text-align:center}
 .tbm-fresh.fading{color:#C9A35C}.tbm-fresh.faded{color:#D08A6A}.tbm-fresh.upd{color:#8FB0D6}
 .tbm-fresh-t{min-width:0}
 .tbm-fresh-t>span{white-space:nowrap}
@@ -179,7 +181,7 @@ html.sa-light .tbm-act:focus-visible,html.sa-light .tbm-cellar:focus-visible{out
 .tbm-seal svg{display:block;width:46px;height:46px;margin:-3px;transform:rotate(-12deg);filter:drop-shadow(0 3px 5px rgba(0,0,0,.45))}
 .tbm-seal.stamp svg{animation:tbStamp .75s cubic-bezier(.2,1.2,.3,1) .35s both}
 html.sa-light .tbm-seal svg{filter:drop-shadow(0 3px 5px rgba(110,45,20,.32))}
-.tbm-sealnote{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;padding:4px 10px;border-radius:999px;border:1px solid rgba(150,51,31,.45);color:#C0624B;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase}
+.tbm-sealnote{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;padding:3px 10px;border-radius:999px;border:1px solid rgba(150,51,31,.45);color:#C0624B;${LABEL_CSS};font-size:13px}
 html.sa-light .tbm-sealnote{color:#8B3020}
 @keyframes tbStamp{0%{transform:rotate(-30deg) scale(2.3);opacity:0}55%{transform:rotate(-10deg) scale(.92);opacity:1}75%{transform:rotate(-13deg) scale(1.04)}100%{transform:rotate(-12deg) scale(1)}}
 /* Доп. 307: трек — меню тем, листаются за пальцем; номера тем — оглавление, как страницы меню */
@@ -315,17 +317,17 @@ html.sa-light .tbp-pin-t{color:#6B5B40}
 html.sa-light .tbp-pin-t b{color:#2A1F0E}
 html.sa-light .tbp-go{background:rgba(251,246,234,.94);box-shadow:inset 0 0 0 1px rgba(139,106,48,.5),inset 0 1px 0 rgba(255,255,255,.9),0 8px 20px rgba(120,90,30,.22);color:#2A1F0E}
 html.sa-light .tbp-go .ic,html.sa-light .tbp-go .k{color:#7A5D2A}
-/* v40: светлая тема «Для чтения» — мелкий текст крупнее: подписи — от 13 px, моноширинные и
-   заглавные метки — от 11 px. Тёмная тема — как была. Не трогаем номера в ленте на узком экране
+/* v40: светлая тема «Для чтения» — мелкий текст крупнее: подписи — от 13 px, метки курсивом (v73) — на 0,5 px
+   крупнее тёмной темы, номера шагов — 11 px. Тёмная тема — как была. Не трогаем номера в ленте на узком экране
    (12,5 px до 360 px: при 13 px между «10», «11», «12» меньше 1 px — слипаются) и номера на
    закладках соседних тем (закладка шириной 14 px — двузначный номер крупнее 11,5 px не влезает) */
-html.sa-light .tbm-eyebrow{font-size:11px;letter-spacing:1.6px}
+html.sa-light .tbm-eyebrow{font-size:13.5px}
 html.sa-light .tbm-mk .nm{font-size:11px;letter-spacing:-.5px}
 html.sa-light .tbm-s{font-size:13px}
-html.sa-light .tbm-ck{font-size:11px;letter-spacing:.8px}
-html.sa-light .tbm-kchip{font-size:11px;letter-spacing:1px}
-html.sa-light .tbm-foot{font-size:11px;letter-spacing:.5px}
-html.sa-light .tbm-sealnote{font-size:11px;letter-spacing:1.3px}
+html.sa-light .tbm-ck{font-size:13px}
+html.sa-light .tbm-kchip{font-size:13px}
+html.sa-light .tbm-foot{font-size:13.5px}
+html.sa-light .tbm-sealnote{font-size:13.5px}
 html.sa-light .tbp-tab{font-size:11.5px}
 html.sa-light .tbp-peek span{font-size:13px}
 html.sa-light .tbp-pin-t{font-size:13px}

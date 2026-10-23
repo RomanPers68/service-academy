@@ -153,7 +153,7 @@ const canSpeak = ttsOk;
 const canWake = () => typeof navigator !== "undefined" && !!navigator.wakeLock && typeof navigator.wakeLock.request === "function";
 const readRoad = () => { try { return localStorage.getItem(ROAD_KEY) === "1"; } catch (e) { return false; } };
 const calm = () => { try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } };
-const LIVE_ERR = { daily_limit: "Живые голоса на сегодня закончились — дальше читает телефон.", not_configured: "", auth: "Живые голоса недоступны — дальше читает телефон." };
+const LIVE_ERR = { daily_limit: "Живые голоса на сегодня закончились. Дальше читает телефон.", not_configured: "", auth: "Живые голоса недоступны. Дальше читает телефон." };
 const EASE = "cubic-bezier(.22,.8,.24,1)";
 
 // тонарм пластинки: лежит на пластинке, пока идёт выпуск
@@ -216,7 +216,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
   // v33 (Доп. 341): что сказать, если телефон отказался читать (код ошибки — чтобы было понятно почему)
   const ttsMsg = (err) => {
     const code = String((err && (err.error || err.message)) || "").trim().slice(0, 40);
-    return "Голос телефона не включился" + (code ? " (" + code + ")" : "") + " — нажми «Слушать» ещё раз или открой «Текст выпуска»." +
+    return "Голос телефона не включился" + (code ? " (" + code + ")" : "") + ". Нажми «Слушать» ещё раз или открой «Текст выпуска»." +
       (isAppleMobile() ? " На iPhone в беззвучном режиме голос телефона не звучит." : "");
   };
   const audioEl = () => {
@@ -264,7 +264,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
       if (gen.current !== my) return;
       // v36: почему живые голоса не ответили — коротко, в скобках (чтобы по скриншоту было видно причину)
       const why = liveWhy(code, detail);
-      setLiveErr(LIVE_ERR[code] != null ? LIVE_ERR[code] || "Живые голоса недоступны — дальше читает телефон." : "Живые голоса не отвечают" + why + " — дальше читает телефон.");
+      setLiveErr(LIVE_ERR[code] != null ? LIVE_ERR[code] || "Живые голоса недоступны. Дальше читает телефон." : "Живые голоса не отвечают" + why + ". Дальше читает телефон.");
       if (code === "not_configured") setLiveOk(false);
       liveRef.current = false;
       if (canSpeak()) speakEp(i, k, r, true); else setPlaying(false);
@@ -307,7 +307,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
       // v31 (ревью): телефон молча не начал читать (так бывает на iPhone без касания) — не висим
       setTimeout(() => {
         let speaking = false; try { speaking = !!window.speechSynthesis.speaking; } catch (x) {}
-        if (!alive && !speaking && gen.current === my) { stop(); setTtsErr("Телефон не начал читать вслух — нажми «Слушать» ещё раз или открой «Текст выпуска»."); }
+        if (!alive && !speaking && gen.current === my) { stop(); setTtsErr("Телефон не начал читать вслух. Нажми «Слушать» ещё раз или открой «Текст выпуска»."); }
       }, 6000 + dl);
     };
     if (useLive) {
@@ -514,7 +514,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
           <button type="button" className="tb-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}><Ic n="x" s={18} /></button>
           <div className="tb-host"><span className="tb-av" aria-hidden="true"><Ic n="speaker" s={18} /></span><span className="tb-host-t"><b>Радио в дорогу</b><span>выпусков пока нет</span></span></div>
         </div></div>
-        <div className="tb-body"><div className="tb-col"><p className="rd-note">Выпуски собираются из текстовых уроков трека — открой трек, и радио появится.</p></div></div>
+        <div className="tb-body"><div className="tb-col"><p className="rd-note">Выпуски собираются из текстовых уроков трека. Открой трек, и радио появится.</p></div></div>
       </>, vars, inline);
   }
   const right = quiz.filter((q, i) => answers[i] === q.correct).length;
@@ -602,29 +602,29 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
               </div>
             ) : null}
             {sound && playing && phoneVoice && isAppleMobile() ? (
-              <p className="rd-tip" role="note" data-radio-tip="">Не слышно? На iPhone проверь громкость и беззвучный режим — голос телефона он может глушить.</p>
+              <p className="rd-tip" role="note" data-radio-tip="">Не слышно? На iPhone проверь громкость и беззвучный режим: он может глушить голос телефона.</p>
             ) : null}
             {/* v33 (Доп. 341): телефон отказался читать — сразу под кнопками, чтобы было видно */}
             {ttsErr && !playing ? <p className="rd-tip rd-err" role="status" data-radio-err="">{ttsErr}</p> : null}
             {/* v36 (Доп. 346): живой голос остановила система — говорим об этом, а не молчим */}
-            {sysPause && !playing && !ttsErr ? <p className="rd-tip" role="status" data-radio-paused="">Выпуск на паузе — звук прервал звонок, другое приложение или экран блокировки. Нажми «Слушать», чтобы продолжить.</p> : null}
+            {sysPause && !playing && !ttsErr ? <p className="rd-tip" role="status" data-radio-paused="">Выпуск на паузе: звук прервал звонок, другое приложение или экран блокировки. Нажми «Слушать», чтобы продолжить.</p> : null}
             {sound ? (
               <div className="rd-opts">
                 {episodes.length > 1 ? (
                   <button type="button" className="rd-sw" role="switch" aria-checked={road} onClick={toggleRoad} data-radio-road="">
-                    <span className="tx"><b>Вся дорога</b><small>Выпуски подряд, вопросы — в конце</small></span><span className="k" aria-hidden="true" />
+                    <span className="tx"><b>Вся дорога</b><small>Выпуски подряд, вопросы в конце</small></span><span className="k" aria-hidden="true" />
                   </button>
                 ) : null}
                 {liveOk === true ? (
                   <button type="button" className="rd-sw" role="switch" aria-checked={live} onClick={toggleLive} data-radio-live="">
-                    <span className="tx"><b>Живые голоса</b><small>Ведущий, гость и официант — разными голосами</small></span><span className="k" aria-hidden="true" />
+                    <span className="tx"><b>Живые голоса</b><small>У ведущего, гостя и официанта свои голоса</small></span><span className="k" aria-hidden="true" />
                   </button>
                 ) : null}
               </div>
             ) : null}
             {liveErr ? <p className="rd-note" role="status">{liveErr}</p> : null}
-            {sound ? <p className="rd-note">{playing && wake ? "Экран не погаснет, пока идёт выпуск." : canWake() ? "Пока идёт выпуск, экран не гаснет — телефон можно не трогать." : "Держи экран включённым — с погасшим экраном телефон перестаёт читать."}{episodes.length > 1 ? " Выпуски листаются пальцем." : ""}</p>
-              : <p className="rd-note">Этот телефон не умеет читать вслух — выпуск можно прочитать, а вопросы — в конце.</p>}
+            {sound ? <p className="rd-note">{playing && wake ? "Экран не погаснет, пока идёт выпуск." : canWake() ? "Пока идёт выпуск, экран не гаснет. Телефон можно не трогать." : "Держи экран включённым: с погасшим экраном телефон перестаёт читать."}{episodes.length > 1 ? " Выпуски листаются пальцем." : ""}</p>
+              : <p className="rd-note">Этот телефон не умеет читать вслух. Выпуск можно прочитать, вопросы будут в конце.</p>}
             <button type="button" className="tb-ghost" onClick={() => setShowText((v) => !v)} aria-expanded={showText}>{showText ? "Скрыть текст" : "Текст выпуска"}</button>
             {showText ? (
               <ul className="rd-txt">{e.segs.map((s, i) => <li key={i} className={i === seg ? "cur" : undefined}><b>{WHO[s.who]}</b>{s.text}</li>)}</ul>
@@ -632,7 +632,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
           </>
         ) : phase === "quiz" ? (
           <>
-            {later.includes(ep) ? <p className="rd-note" style={{ marginTop: 0 }}>Вопросы к «{e.title}» — выпуск из дороги</p> : null}
+            {later.includes(ep) ? <p className="rd-note" style={{ marginTop: 0 }}>Отложенные вопросы к «{e.title}»</p> : null}
             {quiz.map((q, qi) => (
               <div key={qi} className="rd-q" role="group" aria-label={"Вопрос " + (qi + 1)}>
                 <h3>{qi + 1}. {q.q}</h3>
@@ -650,7 +650,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
             <div className="rd-air" style={{ "--kc": kc(e.kind), "--wc": wc("host") }}>
               <div className="rd-deck" aria-hidden="true"><div className="rd-disc" /><div className="rd-sheen" /><Arm on={false} /></div>
               <div className="rd-ttl">Выпуск дослушан</div>
-              <div className="rd-sub">{quiz.length ? "Верно " + right + " из " + quiz.length + (right < quiz.length ? " — ошибка ушла в «Работу над ошибками»" : "") : "«" + e.title + "»"}</div>
+              <div className="rd-sub">{quiz.length ? "Верно " + right + " из " + quiz.length + (right < quiz.length ? (quiz.length - right > 1 ? ". Ошибки ушли" : ". Ошибка ушла") + " в «Работу над ошибками»" : "") : "«" + e.title + "»"}</div>
             </div>
             {/* v31: что дальше — вместо пустоты после выпуска */}
             {rest.length ? (

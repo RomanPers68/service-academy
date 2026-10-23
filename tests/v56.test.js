@@ -58,19 +58,19 @@ describe("v56: nowMode — что показать сейчас", () => {
 describe("v56: тексты карточки", () => {
   it("до смены: «ДО СМЕНЫ · 1 Ч 40 МИН», разминка, «Начать»", () => {
     const t = nowCardText({ mode: "before", mins: 100 }, { warmN: 3, warmWhat: "ситуации" });
-    expect(t).toEqual({ tag: "ДО СМЕНЫ · 1 Ч 40 МИН", title: "Разминка перед сменой", sub: "3 ситуации · 2 мин — освежишь главное", cta: "Начать", action: "warmup", icon: "clock" });
+    expect(t).toEqual({ tag: "ДО СМЕНЫ · 1 Ч 40 МИН", title: "Разминка перед сменой", sub: "3 ситуации · 2 мин, освежишь главное", cta: "Начать", action: "warmup", icon: "clock" });
   });
   it("на смене: ошибки (с правильным падежом) или SOS", () => {
     expect(nowCardText({ mode: "during", to: 20, due: 1 }).sub).toBe("1 вопрос ждёт · хватит минуты");
     expect(nowCardText({ mode: "during", to: 20, due: 3 }).sub).toBe("3 вопроса ждут · хватит минуты");
     expect(nowCardText({ mode: "during", to: 20, due: 12 }).sub).toBe("12 вопросов ждут · хватит минуты");
     expect(nowCardText({ mode: "during", to: 24, due: 2 })).toMatchObject({ tag: "НА СМЕНЕ · ДО 24:00", action: "mistakes", cta: "Ответить" });
-    expect(nowCardText({ mode: "during", to: 20, due: 0 })).toMatchObject({ title: "Если в зале жарко — SOS", action: "sos", cta: "Открыть" });
+    expect(nowCardText({ mode: "during", to: 20, due: 0 })).toMatchObject({ title: "Если в зале жарко, есть SOS", action: "sos", cta: "Открыть" });   // v74
   });
   it("после смены — «Как прошла смена?» без кнопки (пять лиц); «С возвращением» — разминка", () => {
     expect(nowCardText({ mode: "after", to: 20 })).toMatchObject({ tag: "СМЕНА ПОЗАДИ", title: "Как прошла смена?", cta: null, action: "mood" });
     expect(nowCardText({ mode: "back", away: 5 }, { warmN: 2, warmWhat: "вопроса" })).toMatchObject({ tag: "С ВОЗВРАЩЕНИЕМ", title: "Освежим за 2 минуты",
-      sub: "2 вопроса из пройденного — вспомнишь главное", action: "warmup" });
+      sub: "2 вопроса из пройденного, вспомнишь главное", action: "warmup" });
     expect(nowCardText(null)).toBe(null);
   });
   it("время: «35 мин», «2 ч», «1 ч 5 мин»; часы «20:00», конец вечерней смены — «24:00», как в графике", () => {

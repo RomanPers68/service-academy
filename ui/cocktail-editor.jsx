@@ -50,7 +50,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
     rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) }).then(res => {
       setBusy(false);
       if (res && res.ok === true) { setShared(next); rememberSharedMenu(restaurant, next); setMsg(okText); vibrate("success"); setForm(null); }
-      else { setMsg("Не сохранилось — проверь связь и права"); vibrate("error"); }
+      else { setMsg("Не сохранилось. Проверь связь и права"); vibrate("error"); }
     }).catch(() => { setBusy(false); setMsg("Нет связи"); vibrate("error"); });
   };
   const save = () => {
@@ -61,7 +61,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
   const patch = (id, fn, okText) => { const r = cocktailRecords(shared).find(x => x.id === id); if (!r) return; persist(withCocktail(shared, fn(r)), okText); };
   const toggleStop = (id) => patch(id, r => ({ ...r, stop: r.stop ? null : { since: Date.now() } }), "Стоп-лист обновлён у всех ✓");
   const duplicate = (id) => { const r = cocktailRecords(shared).find(x => x.id === id); if (!r) return; setForm(toForm({ ...r, id: "", name: r.name + " · вариация", stop: null })); vibrate("light"); };
-  const archive = (id) => patch(id, r => ({ ...r, archived: true, stop: null }), "В архиве — вернуть можно в любой момент ✓");
+  const archive = (id) => patch(id, r => ({ ...r, archived: true, stop: null }), "В архиве. Вернуть можно в любой момент ✓");
   const unarchive = (id) => patch(id, r => ({ ...r, archived: false }), "Вернули в Колоду ✓");
   const remove = (id) => { const r = cocktailRecords(shared).find(x => x.id === id); if (!r || !window.confirm(`Удалить «${r.name}» навсегда? Вернуть будет нельзя.`)) return; persist(withoutCocktail(shared, id), "Удалено навсегда"); };
   // ── фото: сжать → в облако (photo-upload) → в записи ссылка; не вышло — base64 остаётся в записи
@@ -85,8 +85,8 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
         if (j && j.ok && j.reply) {
           const raw = String(j.reply).replace(/\[\[[^\]]*\]\]/g, "");
           const parts = raw.split(/\n?\s*(?:^|\n)\s*[1-3][.)]\s*/m).map(x => x.replace(/^["«»\s*]+|["«»\s*]+$/g, "").trim()).filter(x => x.length > 20).slice(0, 3);
-          if (parts.length >= 1) { setAiVariants(parts); vibrate("success"); } else setAiErr("Наставник ответил невнятно — попробуй ещё раз");
-        } else setAiErr("Наставник не ответил — попробуй ещё раз");
+          if (parts.length >= 1) { setAiVariants(parts); vibrate("success"); } else setAiErr("Наставник ответил невнятно. Попробуй ещё раз");
+        } else setAiErr("Наставник не ответил. Попробуй ещё раз");
       }).catch(() => { setAiBusy(false); setAiErr("Нет связи с Наставником"); });
   };
   // ── вставка спека текстом: «Джин 40 мл», «Тоник — доверху», «Ангостура 2 дэша»
@@ -138,7 +138,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div onClick={() => photoRef.current && photoRef.current.click()} style={{ width: 96, height: 96, borderRadius: 14, border: `1px dashed ${gold}66`, background: form.img ? `url(${form.img}) center/cover` : (a11y ? "rgba(255,255,255,0.4)" : "rgba(255,248,230,0.04)"), display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 21, cursor: "pointer", flexShrink: 0 }}>{form.img ? "" : "＋"}</div>
             <div style={{ flex: 1, fontSize: 12.5, color: sub, lineHeight: 1.5 }}>
-              {form.img ? (photoState === "uploading" ? "Отправляю в облако…" : photoState === "cloud" ? "В облаке ✓ — увидят все" : photoState === "local" ? "Сохранено в записи (облако не ответило)" : "Фото есть") : "Фото покажется на лице карточки в Колоде; витраж останется в углу и в Сборке."}
+              {form.img ? (photoState === "uploading" ? "Отправляю в облако…" : photoState === "cloud" ? "В облаке ✓, видно всем" : photoState === "local" ? "Сохранено в записи (облако не ответило)" : "Фото есть") : "Фото покажется на лице карточки в Колоде; витраж останется в углу и в Сборке."}
               {form.img && <div style={{ marginTop: 6, display: "flex", gap: 10 }}><span style={{ color: gold, cursor: "pointer" }} onClick={() => photoRef.current && photoRef.current.click()}>Заменить</span><span style={{ color: "#E07878", cursor: "pointer" }} onClick={() => setForm(f => ({ ...f, img: "" }))}>Убрать</span></div>}
             </div>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{ display: "none" }} />
@@ -165,10 +165,10 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
           </div>
           {paste != null && (
             <div className="sa-fadein" style={{ ...frost, borderRadius: 14, padding: 10, marginBottom: 10 }}>
-              <textarea style={{ ...inputSt, minHeight: 96 }} placeholder={"Строка — ингредиент с объёмом, остальное — шаги:\nДжин 40 мл\nБлю кюрасао 15 мл\nТоник — доверху\nХайбол со льдом\nПеремешать один оборот"} value={paste} onChange={e => setPaste(e.target.value)} />
+              <textarea style={{ ...inputSt, minHeight: 96 }} placeholder={"Строки с объёмом идут в состав, прочие в шаги:\nДжин 40 мл\nБлю кюрасао 15 мл\nТоник — доверху\nХайбол со льдом\nПеремешать один оборот"} value={paste} onChange={e => setPaste(e.target.value)} />
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <span style={pill(true)} onClick={() => { const r = parsePaste(paste); setForm(f => ({ ...f, ing: r.ing.length ? r.ing : f.ing, steps: r.steps.length ? r.steps : f.steps })); setPaste(null); vibrate("success"); }}>Разобрать → в форму</span>
-                <span style={{ fontSize: 12.5, color: sub, alignSelf: "center" }}>объёмы — в состав, остальные строки — в шаги</span>
+                <span style={{ fontSize: 12.5, color: sub, alignSelf: "center" }}>объёмы уйдут в состав, остальное в шаги</span>
               </div>
             </div>
           )}
@@ -183,7 +183,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
           <span style={pill(false, { display: "inline-block", marginTop: 2 })} onClick={() => setForm(f => ({ ...f, ing: [...f.ing, ["", "", "мл"]] }))}>＋ ингредиент</span>
 
           {label("Шаги · по порядку, глаголами бара")}
-          <div style={{ fontSize: 12.5, color: sub, marginBottom: 6, lineHeight: 1.5 }}>«Джин, вермут в смесительный стакан», «Лёд, стир 30 секунд», «Стрейн в купе», «Цедра лимона». Из шагов тренажёр строит сборку — смотри сверху, что получилось.</div>
+          <div style={{ fontSize: 12.5, color: sub, marginBottom: 6, lineHeight: 1.5 }}>«Джин, вермут в смесительный стакан», «Лёд, стир 30 секунд», «Стрейн в купе», «Цедра лимона». Из шагов тренажёр строит сборку: смотри сверху, что получилось.</div>
           {form.steps.map((st, k) => (
             <div key={k} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
               <span style={{ width: 20, color: gold, fontFamily: "monospace", fontSize: 12.5 }}>{k + 1}.</span>
@@ -214,7 +214,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
 
           {label("Для гостя и для бармена")}
           <input style={inputSt} placeholder="Одной фразой гостю (необязательно)" value={form.short} onChange={e => setForm(f => ({ ...f, short: e.target.value }))} />
-          <textarea style={{ ...inputSt, marginTop: 8, minHeight: 64 }} placeholder="История коктейля — как она звучит у стойки" value={form.story} onChange={e => setForm(f => ({ ...f, story: e.target.value }))} />
+          <textarea style={{ ...inputSt, marginTop: 8, minHeight: 64 }} placeholder="История коктейля: как она звучит у стойки" value={form.story} onChange={e => setForm(f => ({ ...f, story: e.target.value }))} />
           <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
             <span onClick={aiStory} {...onActivate(aiStory)} style={pill(false, { opacity: String(form.name || "").trim() ? 1 : 0.5 })}>{aiBusy ? "Наставник пишет…" : "История от Наставника · 3 варианта"}</span>
             {aiErr && <span style={{ fontSize: 12.5, color: "#E07878" }}>{aiErr}</span>}
@@ -241,7 +241,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
         </div>
         <div className="sa-colbar" style={{ position: "fixed", left: 0, right: 0, bottom: "calc(64px + env(safe-area-inset-bottom, 0px))", padding: "10px 16px 12px", background: a11y ? "rgba(250,242,222,0.96)" : "rgba(24,19,9,0.96)", borderTop: `1px solid ${gold}33`, display: "flex", gap: 10, zIndex: 20 }}>
           <button className="sa-btn" onClick={() => setForm(null)} style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}66`, color: text }}>Отмена</button>
-          <button className="sa-btn" onClick={save} disabled={busy} style={{ ...T.doneBtn, flex: 1.6, background: gold, opacity: busy ? 0.55 : 1 }}>{busy ? "Сохраняю…" : form.id ? "Сохранить — увидят все" : "Добавить в Колоду"}</button>
+          <button className="sa-btn" onClick={save} disabled={busy} style={{ ...T.doneBtn, flex: 1.6, background: gold, opacity: busy ? 0.55 : 1 }}>{busy ? "Сохраняю…" : form.id ? "Сохранить для всех" : "Добавить в Колоду"}</button>
         </div>
       </div>
     );
@@ -259,11 +259,11 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
       {Head("Свои коктейли", onBack)}
       <div style={{ padding: "4px 16px 100px" }}>
         <div style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 12 }}>
-          <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.55 }}>Свой коктейль получает всё, что классика: витраж, оборот, «Собрать руками» с точной последовательностью, «Знаю?», печати и Наставника. Сохраняется в меню команды — бармены видят сразу.</div>
+          <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.55 }}>Свой коктейль получает всё, что классика: витраж, оборот, «Собрать руками» с точной последовательностью, «Знаю?», печати и Наставника. Сохраняется в меню команды, бармены видят сразу.</div>
           <button className="sa-btn" onClick={() => { setForm(empty()); vibrate("light"); }} style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }}>＋ Новый коктейль</button>
           {msg && <div style={{ fontSize: 12.5, color: /✓/.test(msg) ? "#5DBB8A" : "#E07878", marginTop: 8 }}>{msg}</div>}
         </div>
-        {recs.length === 0 && <div style={{ textAlign: "center", color: sub, fontSize: 12.5, padding: "20px 0" }}>Пока пусто — первый авторский коктейль будет здесь.</div>}
+        {recs.length === 0 && <div style={{ textAlign: "center", color: sub, fontSize: 12.5, padding: "20px 0" }}>Пока пусто. Первый авторский коктейль появится здесь.</div>}
         {recs.map(r => { const c = recToCocktail(r); const seq = c.ing.length && c.steps.length ? buildScenario(c, COCKTAILS).steps.length : 0; return (
           <div key={r.id} className="sa-card" style={{ ...frost, borderRadius: 14, padding: "10px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 52, flexShrink: 0 }} onClick={() => onOpenCard && onOpenCard(r.id)}><CocktailArt c={c} w={52} light={a11y} /></div>

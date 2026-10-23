@@ -92,7 +92,7 @@ describe("сервер ai-chat ещё старый (до v42)", () => {
     expect(src).toMatch('{err === "bad_guest" ? <button type="button" className="tb-ghost" data-guest-other="" onClick={anotherAfterErr}>Другой гость</button> : null}');
     expect(src).toMatch("if (j.done) setOldAi(!(Number(j.v) >= 42));");
     expect(src).toMatch("if (d && d.ok) setOldAi(!(Number(d.v) >= 42));");
-    expect(src).toMatch("ИИ-гость на сервере ещё прежней версии — может вести себя как с официантом. Руководителю: обновить функцию ai-chat.");
+    expect(src).toMatch("ИИ-гость на сервере ещё прежней версии и может вести себя как с официантом. Руководителю: обновить функцию ai-chat.");   // v74
     const ai = await loadAi();
     expect(ai.AI_CHAT_V).toBeGreaterThanOrEqual(42);   // v67 — 67; приложение сравнивает «не меньше 42»
     const chat = readFileSync("supabase/functions/ai-chat/index.ts", "utf8");
@@ -104,7 +104,7 @@ describe("сервер ai-chat ещё старый (до v42)", () => {
 describe("слова экрана по роли", () => {
   it("хостес: кто ты в сцене, «Встретить гостя», «Завершить встречу» — без «Рассчитать гостя»", () => {
     const u = placeUi({ place: "door" });
-    expect(u.role).toMatch(/^Ты — хостес: встреча, бронь, рассадка и передача официанту\. Заказ и аперитив — уже работа официанта\.$/);
+    expect(u.role).toMatch(/^Ты хостес: встреча, бронь, рассадка и передача официанту\. Заказ и аперитив — уже работа официанта\.$/);   // v74
     expect([u.eye, u.go, u.finish, u.ended]).toEqual(["ВХОД", "Встретить гостя", "Завершить встречу", "Встреча у входа окончена"]);
   });
   it("звонок на стойку хостес — своя карточка и кнопки", () => {
@@ -116,15 +116,15 @@ describe("слова экрана по роли", () => {
     const m = placeUi({ place: "manager", table: 7 });
     expect([m.eye, m.where, m.go, m.finish]).toEqual(["СТОЛ 7", "стол 7", "Подойти к гостю", "Завершить разговор"]);
     const h = placeUi({ place: "hall", table: 4 });
-    expect([h.eye, h.go, h.finish, h.ended]).toEqual(["СТОЛ 4", "Подойти к столу", "Рассчитать гостя", "Гость попросил счёт — разговор окончен"]);
+    expect([h.eye, h.go, h.finish, h.ended]).toEqual(["СТОЛ 4", "Подойти к столу", "Рассчитать гостя", "Гость попросил счёт, разговор окончен"]);
     const b = placeUi({ place: "bar" });
     expect([b.eye, b.where, b.go, b.finish]).toEqual(["БАРНАЯ СТОЙКА", "бар", "Подойти к гостю", "Рассчитать гостя"]);
   });
   it("проводы на выходе — «ВЫХОД», «Подойти к гостю», «Проводить гостя»", () => {
     const g = pickGuest({ role: "spg", seed: 1, prefer: "leaving" });
     const u = placeUi(g);
-    expect([g.exit, u.eye, u.go, u.finish, u.ended]).toEqual([true, "ВЫХОД", "Подойти к гостю", "Проводить гостя", "Гость ушёл — проводы окончены"]);
-    expect(u.role).toMatch(/^Ты — хостес: гость уходит после ужина\. Проводи/);
+    expect([g.exit, u.eye, u.go, u.finish, u.ended]).toEqual([true, "ВЫХОД", "Подойти к гостю", "Проводить гостя", "Гость ушёл, проводы окончены"]);
+    expect(u.role).toMatch(/^Ты хостес: гость уходит после ужина\. Проводи/);
     // признаки звонка и проводов действуют только у входа
     expect(placeUi({ place: "hall", table: 3, phone: true, exit: true }).eye).toBe("СТОЛ 3");
   });
@@ -356,19 +356,19 @@ describe("экран и тексты", () => {
       role, uk: "_x", color: "#C8917A", track: [SPG_MODULES[0]], modules: [SPG_MODULES[0]], dishes: [{ name: "Борщ" }], drinks: [], onClose: () => {}, inline: true })).replace(/<!-- -->/g, "");
     for (let i = 0; i < 4; i++) {
       const door = R("spg", "waiter");
-      expect(door).toMatch(/data-guest-role="door">Ты — хостес: /);
+      expect(door).toMatch(/data-guest-role="door">Ты хостес: /);
       expect(door).toMatch(/Встретить гостя|Ответить на звонок|Подойти к гостю/);
       expect(door).toContain("гость — ИИ · хостес");
     }
     const mgr = R("manager", "manager");
-    expect(mgr).toMatch(/data-guest-role="manager">Ты — менеджер: гость позвал тебя разобраться/);
+    expect(mgr).toMatch(/data-guest-role="manager">Ты менеджер: гость позвал тебя разобраться/);
     expect(mgr).toContain("Подойти к гостю");
     expect(mgr).toMatch(/СТОЛ \d+</);
     const bar = R("bar", "bartender");
-    expect(bar).toMatch(/data-guest-role="bar">Ты — бармен/);
+    expect(bar).toMatch(/data-guest-role="bar">Ты бармен/);
     expect(bar).toContain("БАРНАЯ СТОЙКА");
     const hall = R("seasonal", "waiter");
-    expect(hall).toMatch(/data-guest-role="hall">Ты — официант/);
+    expect(hall).toMatch(/data-guest-role="hall">Ты официант/);
     expect(hall).toContain("Подойти к столу");
   });
   it("экран шлёт трек, берёт слова и пункты чека по роли", () => {
@@ -377,7 +377,7 @@ describe("экран и тексты", () => {
     expect(src).toMatch("parseReceipt(reply, knownLesson, receiptKind(guest))");
     expect(src).toMatch("const canFinish = myTurns >= 2 || (ended && myTurns >= 1);");   // гость простился после первой реплики — чек всё равно есть
     expect(src).toMatch("if (busy || !canFinish) return;");
-    expect(src).toMatch("Говори как на смене — голосом или текстом.");
+    expect(src).toMatch("Говори как на смене, голосом или текстом.");
     expect(src).toMatch("ownHere ? <p className=\"lg-own\">В подборке есть гости вашего заведения: {ownHere}</p>");
     expect(src).toMatch("(rc.crit || CRITERIA).map(");
     expect(src).toMatch('<p className="lg-role" data-guest-role={guest.place}>{ui.role}</p>');
@@ -387,7 +387,7 @@ describe("экран и тексты", () => {
   });
   it("гость по сценарию у входа и у менеджера — без «Гость рассчитался»", () => {
     const src = readFileSync("ui/table.jsx", "utf8");
-    expect(src).toMatch('door: { done: "Встреча окончена", exitT: "Гость уйдёт без помощи — можно встретить нового." }');
+    expect(src).toMatch('door: { done: "Встреча окончена", exitT: "Гость уйдёт без помощи. Можно встретить нового." }');
     expect(src).toMatch('manager: { done: "Разговор окончен"');
     expect(src).toMatch("GUEST_MODE_PLACE[guest.place] ? { ...MODE.guest, ...GUEST_MODE_PLACE[guest.place] }");
   });

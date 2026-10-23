@@ -185,7 +185,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
     return (
       <button key={x.r.id} type="button" id={"sa-orb-" + x.r.id} data-track-chip={x.r.id} data-track-locked={x.open ? undefined : ""} data-track-sel={sel ? "" : undefined}
         title={x.r.label} className="sa-opt" aria-pressed={sel}
-        aria-label={`Трек «${x.r.label}»${x.cur ? " — твой" : !x.open ? " — закрыт" : ""}`}
+        aria-label={`Трек «${x.r.label}»${x.cur ? ", твой" : !x.open ? ", закрыт" : ""}`}
         onClick={() => pick(x.r.id)}
         style={{ ...btn, flex: `0 0 ${d}px`, width: d, height: d, display: "grid", placeItems: "center", WebkitTapHighlightColor: "transparent", position: "relative", zIndex: 1,
           transform: sel ? "scale(1.07)" : "none", transition: `transform .3s ${EASE}` }}>
@@ -296,7 +296,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
     <div ref={ref} data-tracks-row="" data-tracks-open={openId || undefined} data-tracks-nudge={nudgeOn ? "tag" : undefined}
       style={{ position: "relative", margin: "0 14px 6px", paddingTop: nudgeOn ? LANE : 0, paddingBottom: 8, boxSizing: "border-box", transition: "padding-top .3s ease" }}>
       {nudgeOn ? (
-        <button type="button" data-track-nudge="tag" className="sa-hintin" onClick={() => pick(role)} aria-label="Твоя роль — открыть"
+        <button type="button" data-track-nudge="tag" className="sa-hintin" onClick={() => pick(role)} aria-label="Открыть твою роль"
           style={{ ...btn, position: "absolute", top: 0, left: nleft, width: NW, height: NH, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             background: a11y ? "rgba(246,238,220,0.98)" : "rgba(40,31,16,0.97)", border: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`,
             boxShadow: a11y ? "0 6px 18px rgba(60,42,10,0.22), inset 0 1px 0 rgba(255,255,255,0.9)" : `0 8px 22px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 18px ${GOLD}22`,

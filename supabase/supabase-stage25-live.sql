@@ -323,8 +323,8 @@ begin
     chat := _sa_tg_chat(p->>'id', 'quest');
     if chat is null then no_tg := no_tg + 1; continue; end if;
     if not _sa_tg_once(p->>'id', ld, 'quest_call') then already := already + 1; continue; end if;
-    perform sa_tg_send(chat, '✦ SERVICE ACADEMY' || E'\n\n' || who || ' зовёт на разминку перед сменой: 2 минуты, 3 задания из того, что ты уже прошёл.' ||
-      E'\n\nКвест смены закроем вместе ✦', 'Разминка ✦', 'warmup');
+    perform sa_tg_send(chat, who || ' зовёт на разминку перед сменой: 2 минуты, 3 задания из того, что ты уже прошёл.' ||
+      E'\n\nКвест смены закроем вместе.', 'Разминка', 'warmup');
     sent := sent + 1;
   end loop;
   return jsonb_build_object('ok', true, 'sent', sent, 'no_tg', no_tg, 'already', already);
@@ -522,7 +522,7 @@ begin
   if chat is null then return jsonb_build_object('ok', false, 'error', 'no_tg'); end if;
   if not _sa_tg_once(partner, ld, 'pair_nudge') then return jsonb_build_object('ok', false, 'error', 'already'); end if;
   pname := coalesce(nullif(c->>'name', ''), 'Напарник');
-  perform sa_tg_send(chat, '✦ SERVICE ACADEMY' || E'\n\n' || pname || ' зовёт: свеча на двоих ждёт твой шаг сегодня. Хватит одной разминки — 2 минуты ✦', 'Мой шаг ✦', 'pair');
+  perform sa_tg_send(chat, pname || ' зовёт: свеча на двоих ждёт твой шаг сегодня. Хватит одной разминки на 2 минуты.', 'Мой шаг', 'pair');
   return jsonb_build_object('ok', true, 'sent', true);
 end; $$;
 
@@ -581,11 +581,11 @@ begin
       if _sa_day_mark(coalesce(dx, '{}'::jsonb), to_char(ld, 'YYYY-MM-DD'), sx) <> 0 then continue; end if;   -- уже занимался или выходной
       if _sa_day_mark(coalesce(dy, '{}'::jsonb), to_char(ld, 'YYYY-MM-DD'), sy) <> 2 then continue; end if;   -- напарник ещё не занимался
       select coalesce(nullif(em.name, ''), 'Напарник') into ynm from employees em where em.id::text = y;
-      txt := '✦ SERVICE ACADEMY' || E'\n\n' || ynm || case when _sa_fem(ynm) then ' уже сделала' else ' уже сделал' end ||
-             ' свою часть — свеча на двоих ждёт тебя. Хватит одной разминки ✦';
+      txt := ynm || case when _sa_fem(ynm) then ' уже сделала' else ' уже сделал' end ||
+             ' свою часть, свеча на двоих ждёт тебя. Хватит одной разминки.';
       if p_send then
         if not _sa_tg_once(x, ld, 'pair_eve') then continue; end if;
-        perform sa_tg_send(chat, txt, 'Мой шаг ✦', 'pair');
+        perform sa_tg_send(chat, txt, 'Мой шаг', 'pair');
       end if;
       out := out || jsonb_build_object('kind', 'pair', 'emp', x, 'text', txt);
     end loop;
@@ -607,12 +607,12 @@ begin
         into me from sa_league_weeks lw where lw.week_start = pws and lw.emp_id = e.emp_id;
       select restaurant into cupw from sa_cup_weeks where week_start = pws and rank = 1 order by avg desc, restaurant limit 1;
       if me.pts is not null and me.pts > 0 then
-        txt := '✦ SERVICE ACADEMY' || E'\n\n' || 'Итоги недели в лиге: ' || me.rank_rest || '-е место в заведении (из ' || me.n_rest || ')' ||
-               case when me.n_net > me.n_rest then ' и ' || me.rank_net || '-е в сети' else '' end || ' — ' || me.pts || ' ' || _sa_plural(me.pts, 'очко', 'очка', 'очков') || '.' ||
-               case when cupw is not null then E'\nКубок заведений — у «' || cupw || '».' else '' end ||
-               E'\n\nНовая неделя — все снова с нуля ✦';
+        txt := 'Итоги недели в лиге: ' || me.rank_rest || '-е место в заведении (из ' || me.n_rest || ')' ||
+               case when me.n_net > me.n_rest then ' и ' || me.rank_net || '-е в сети' else '' end || ', ' || me.pts || ' ' || _sa_plural(me.pts, 'очко', 'очка', 'очков') || '.' ||
+               case when cupw is not null then E'\nКубок заведений у «' || cupw || '».' else '' end ||
+               E'\n\nНовая неделя: все снова с нуля.';
         if p_send then
-          if _sa_tg_once(e.emp_id, pws, 'league_week') then perform sa_tg_send(_sa_tg_chat(e.emp_id, 'league'), txt, 'Лига недели ✦', 'league'); else txt := null; end if;
+          if _sa_tg_once(e.emp_id, pws, 'league_week') then perform sa_tg_send(_sa_tg_chat(e.emp_id, 'league'), txt, 'Лига недели', 'league'); else txt := null; end if;
         end if;
         if txt is not null then out := out || jsonb_build_object('kind', 'league', 'emp', e.emp_id, 'text', txt); end if;
       end if;
@@ -626,10 +626,10 @@ begin
          and nowms - (f.value->>'t')::numeric >= (array[3, 7, 14, 30, 60])[least(5, _sa_num(f.value->>'n')::int + 1)] * 86400000::numeric;
       if nf >= 3 then
         -- без точного числа: сервер видит свежесть всех треков, а «Погреб тем» — текущего (ревью v31)
-        txt := '✦ SERVICE ACADEMY' || E'\n\n' || 'Несколько тем начали выдыхаться' ||
-               ' — освежить можно за 3 минуты разом: «Погреб тем» → «Освежить всё». Свежая тема — уверенный ответ гостю ✦';
+        txt := 'Несколько тем начали выдыхаться' ||
+               '. Освежить их можно разом за 3 минуты: «Погреб тем» → «Освежить всё».';
         if p_send then
-          if _sa_tg_once(e.emp_id, wk, 'fresh_week') then perform sa_tg_send(_sa_tg_chat(e.emp_id, 'fresh'), txt, 'Освежить ✦', 'cellar'); else txt := null; end if;
+          if _sa_tg_once(e.emp_id, wk, 'fresh_week') then perform sa_tg_send(_sa_tg_chat(e.emp_id, 'fresh'), txt, 'Освежить', 'cellar'); else txt := null; end if;
         end if;
         if txt is not null then out := out || jsonb_build_object('kind', 'fresh', 'emp', e.emp_id, 'text', txt); end if;
       end if;
@@ -645,11 +645,11 @@ begin
         from emp_learning el cross join generate_series(m0::timestamp, m1::timestamp, interval '1 day') g
        where el.emp_id = e.emp_id;
       if coalesce(adays, 0) > 0 then
-        txt := '✦ SERVICE ACADEMY' || E'\n\n' || 'Итоги ' || _sa_month_gen(extract(month from m0)::int) || ' готовы: ' ||
+        txt := 'Итоги ' || _sa_month_gen(extract(month from m0)::int) || ' готовы: ' ||
                adays || ' ' || _sa_plural(adays, 'день', 'дня', 'дней') || ' в деле, ' || asteps || ' ' || _sa_plural(asteps, 'шаг', 'шага', 'шагов') || ' обучения.' ||
-               E'\n\nКарточки — в «Я» → «Итоги месяца» ✦';
+               E'\n\nКарточки лежат в «Я» → «Итоги месяца».';
         if p_send then
-          if _sa_tg_once(e.emp_id, ld, 'month') then perform sa_tg_send(_sa_tg_chat(e.emp_id, 'month'), txt, 'Итоги месяца ✦', 'month'); else txt := null; end if;
+          if _sa_tg_once(e.emp_id, ld, 'month') then perform sa_tg_send(_sa_tg_chat(e.emp_id, 'month'), txt, 'Итоги месяца', 'month'); else txt := null; end if;
         end if;
         if txt is not null then out := out || jsonb_build_object('kind', 'month', 'emp', e.emp_id, 'text', txt); end if;
       end if;

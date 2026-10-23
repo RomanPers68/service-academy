@@ -444,12 +444,12 @@ export function SayAloud({ phrase, T, color }) {
     <div style={{ background:"rgba(200,169,110,0.1)", border:"1.5px solid rgba(200,169,110,0.4)", borderRadius:14, padding:"13px 14px", marginBottom:10 }}>
       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
         <span style={{ fontSize:16 }}>🗣</span>
-        <span style={{ ...labelStyle(13.5), color:gold }}>А теперь — вслух</span>
+        <span style={{ ...labelStyle(13.5), color:gold }}>А теперь вслух</span>
       </div>
       <div style={{ color:T.para.color, fontSize:14, lineHeight:1.6, fontStyle:"italic", marginBottom:done===null?12:10 }}>«{phrase}»</div>
       {done===null ? (
         <>
-          <div style={{ color:T.modSub.color, fontSize:12.5, marginBottom:10, lineHeight:1.5 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
+          <div style={{ color:T.modSub.color, fontSize:12.5, marginBottom:10, lineHeight:1.5 }}>Проговори фразу вслух, как живому гостю. Получилось?</div>
           <div style={{ display:"flex", gap:8 }}>
             <button onClick={()=>setDone("ok")} style={{ flex:1, padding:"9px", borderRadius:12, border:"none", background:gold, color:"#2A1F0E", fontSize:12.5, fontWeight:"bold", cursor:"pointer" }}>Получилось</button>
             <button onClick={()=>setDone("again")} style={{ flex:1, padding:"9px", borderRadius:12, border:`1.5px solid ${gold}`, background:"transparent", color:gold, fontSize:12.5, fontWeight:"bold", cursor:"pointer" }}>Ещё разок</button>
@@ -457,7 +457,7 @@ export function SayAloud({ phrase, T, color }) {
         </>
       ) : (
         <div style={{ color:done==="ok"?GREEN:gold, fontSize:12.5, fontWeight:"bold", lineHeight:1.5 }}>
-          {done==="ok" ? "🔥 Отлично! Звучит уверенно." : "💪 Ещё пара повторов — и пойдёт на автомате."}
+          {done==="ok" ? "🔥 Отлично! Звучит уверенно." : "💪 Ещё пара повторов, и пойдёт на автомате."}
         </div>
       )}
     </div>

@@ -179,7 +179,7 @@ describe("v50: график в широкой раскладке", () => {
     expect(css).toContain("html.sa-wide .sa-two .sa-schedgrid:not(.sa-wk) table { table-layout: fixed; width: 100%; min-width: 898px; }");
     expect(css).toContain("html.sa-wide .sa-two .sa-schedgrid:not(.sa-wk) th.sa-schednm { width: 92px; }");
     expect(sc).toContain("const fits = !!(g && g.scrollWidth > 0 && g.scrollWidth <= g.clientWidth + 1);");
-    expect(sc).toContain('(monthFits ? "Весь месяц — целиком. Тап по полоске — неделя крупнее" : "Весь месяц: таблица листается вбок. Тап по полоске — неделя, она влезает без прокрутки")');
+    expect(sc).toContain('(monthFits ? "Весь месяц целиком. Тап по полоске откроет неделю крупнее" : "Весь месяц: таблица листается вбок. Тап по полоске откроет неделю без прокрутки")');   // v74
   });
   it("в широкой раскладке у body нет поля браузера 8 px (в портрете оно остаётся, как было)", () => {
     expect(css).toContain("html.sa-wide body { margin: 0 !important; }");

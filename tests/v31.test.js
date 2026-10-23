@@ -88,7 +88,7 @@ describe("квест смены и свеча на двоих (v31)", () => {
   });
   it("строка свечи: напарница уже размялась — твоя очередь; выходной не рвёт", () => {
     const p = (pt, me) => ({ partner: { name: "Аня" }, partner_today: pt, me_today: me });
-    expect(pairNudgeText(p({ state: 2, warm: true }, { state: 0 }))).toBe("Аня уже размялась — твоя очередь");
+    expect(pairNudgeText(p({ state: 2, warm: true }, { state: 0 }))).toBe("Аня уже размялась, твоя очередь");   // v74: без тире
     expect(pairNudgeText(p({ state: 2 }, { state: 1 }))).toMatch(/выходной по графику, а Аня свою часть сделала/);
     expect(pairNudgeText(p({ state: 2 }, { state: 2 }))).toBe("Сегодня горите вдвоём");   // v73: без ✦
     expect(pairNudgeText(null)).toBe("");

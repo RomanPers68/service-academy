@@ -160,16 +160,16 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   cards.push({ k: "cover", body: <>
     <Art k="cover" r={r} />
     <div className="mr-ey">{r.current ? "Месяц в разгаре" : "Итоги месяца"}</div>
-    <h2 className="mr-h" style={{ fontSize: 40 }}>{r.title}{r.current ? " — пока" : ""} в академии</h2>
+    <h2 className="mr-h" style={{ fontSize: 40 }}>{r.title} в академии</h2>
     <p className="mr-p">{profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : ""}{profile && profile.restaurant ? " · " + profile.restaurant : ""}</p>
-    <p className="mr-p" style={{ marginTop: 18 }}>Листай карточки — касание справа, дальше само.</p>
+    <p className="mr-p" style={{ marginTop: 18 }}>Касание справа листает карточки, дальше они пойдут сами.</p>
   </> });
   const first = (new Date(r.year, r.month - 1, 1).getDay() + 6) % 7;
   cards.push({ k: "days", body: <>
     <Art k="days" />
     <div className="mr-ey">Дни в деле</div>
     <div className="mr-big">{r.active}</div>
-    <p className="mr-p">{plural(r.active, "день", "дня", "дней")} из {r.current ? r.upto : r.daysIn} {r.current ? "прошедших" : ""}{r.off ? " · выходных по графику " + r.off + " — серия в них не гаснет" : ""}</p>
+    <p className="mr-p">{plural(r.active, "день", "дня", "дней")} из {r.current ? r.upto : r.daysIn} {r.current ? "прошедших" : ""}{r.off ? " · выходных по графику: " + r.off + ", серия в них не гаснет" : ""}</p>
     <div className="mr-cal" role="img" aria-label={"Календарь: в деле " + r.active + " дней"}>
       {DOW.map((d) => <span key={d} className="wk">{d}</span>)}
       {Array.from({ length: first }, (_, i) => <span key={"e" + i} className="wk" />)}
@@ -182,7 +182,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
     <Art k="steps" />
     <div className="mr-ey">Шаги обучения</div>
     <div className="mr-big">{t.st}</div>
-    <p className="mr-p">{t.st ? plural(t.st, "шаг", "шага", "шагов") + " за " + r.title.toLowerCase() + " · " + r.points + " " + plural(r.points, "очко", "очка", "очков") + " лиги" : "в этом месяце пока тихо — первый шаг всё изменит"}</p>
+    <p className="mr-p">{t.st ? plural(t.st, "шаг", "шага", "шагов") + " за " + r.title.toLowerCase() + " · " + r.points + " " + plural(r.points, "очко", "очка", "очков") + " лиги" : "в этом месяце пока тихо"}</p>
     {parts.length ? <div className="mr-chips">{parts.map((p) => <span key={p.k}><b>{p.n}</b> {p.word}</span>)}</div> : null}
   </> });
   // v31: сравнение с прошлым месяцем
@@ -210,13 +210,13 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
     <Art k="best" />
     <div className="mr-ey">Лучшее</div>
     {r.best ? <><h2 className="mr-h">{r.best.label}</h2><p className="mr-p">лучший день: {r.best.steps} {plural(r.best.steps, "шаг", "шага", "шагов")}</p></> : null}
-    {r.longest > 1 ? <><div className="mr-big" style={{ marginTop: 26 }}>{r.longest}</div><p className="mr-p">{plural(r.longest, "день", "дня", "дней")} подряд — самая длинная серия месяца</p></> : null}
+    {r.longest > 1 ? <><div className="mr-big" style={{ marginTop: 26 }}>{r.longest}</div><p className="mr-p">{plural(r.longest, "день", "дня", "дней")} подряд: самая длинная серия месяца</p></> : null}
   </> });
   if (r.guests.n) cards.push({ k: "guest", body: <>
     <Art k="guest" />
     <div className="mr-ey">Живой гость</div>
     <div className="mr-big">{r.guests.n}</div>
-    <p className="mr-p">{plural(r.guests.n, "гость обслужен", "гостя обслужено", "гостей обслужено")}{r.guests.best ? " · лучший чек разбора — " + r.guests.best + " из 5" : ""}</p>
+    <p className="mr-p">{plural(r.guests.n, "гость обслужен", "гостя обслужено", "гостей обслужено")}{r.guests.best ? " · лучший чек разбора: " + r.guests.best + " из 5" : ""}</p>
   </> });
   if (r.gold || r.credits || t.u) cards.push({ k: "topics", body: <>
     <Art k="topics" />
@@ -239,7 +239,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
     <Art k="end" />
     <div className="mr-ey">{r.current ? "Месяц продолжается" : "До встречи в новом месяце"}</div>
     <h2 className="mr-h" style={{ fontSize: 34 }}>Спасибо за {r.title.toLowerCase()}</h2>
-    <p className="mr-p">{r.active ? "Каждый день в деле — это гость, которого ты обслужишь чуть лучше." : "Новый месяц — новая свеча. Начни с разминки или урока."}</p>
+    <p className="mr-p">{r.active ? "Поделись итогами с командой: картинкой или текстом." : "Новый месяц, новая свеча. Начни с разминки или урока."}</p>
   </> });
 
   const [i, setI] = React.useState(0);
@@ -260,7 +260,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
       if (tg && tg.initData && typeof tg.openTelegramLink === "function") { tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(shareUrl || "") + "&text=" + encodeURIComponent(text)); setSent("Выбери чат в Telegram"); return; }
     } catch (e) {}
     const full = text + (shareUrl ? "\n" + shareUrl : "");
-    const copy = () => { try { navigator.clipboard.writeText(full).then(() => setSent("Текст скопирован"), () => setSent("Не получилось скопировать — сделай снимок экрана")); } catch (e) { setSent("Не получилось скопировать — сделай снимок экрана"); } };
+    const copy = () => { try { navigator.clipboard.writeText(full).then(() => setSent("Текст скопирован"), () => setSent("Не получилось скопировать. Сделай снимок экрана")); } catch (e) { setSent("Не получилось скопировать. Сделай снимок экрана"); } };
     try { if (navigator.share) { navigator.share({ text: full }).then(() => setSent("Отправлено"), (e) => { if (!(e && e.name === "AbortError")) copy(); }); return; } } catch (e) {}
     copy();
   };
@@ -278,7 +278,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
     return () => { dead = true; };
   }, [last]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => () => { if (pv && pv.url) { try { URL.revokeObjectURL(pv.url); } catch (e) {} } }, [pv]);
-  const preview = (blob) => { try { setPv({ url: URL.createObjectURL(blob), name: picName }); } catch (e) { setSent("Картинка не открылась — поделись текстом"); } };
+  const preview = (blob) => { try { setPv({ url: URL.createObjectURL(blob), name: picName }); } catch (e) { setSent("Картинка не открылась. Поделись текстом"); } };
   const sharePic = () => {
     if (busy) return;
     setSent("");
@@ -296,10 +296,10 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
     setBusy(true);
     recapImage(r, who).then((blob) => {
       setBusy(false);
-      if (!blob) { setSent("Картинка не получилась — поделись текстом"); return; }
+      if (!blob) { setSent("Картинка не получилась. Поделись текстом"); return; }
       setPic({ blob, name: picName });
       preview(blob);   // время нажатия уже ушло — сразу просмотр, оттуда «Скачать» или «Поделиться»
-    }, () => { setBusy(false); setSent("Картинка не получилась — поделись текстом"); });
+    }, () => { setBusy(false); setSent("Картинка не получилась. Поделись текстом"); });
   };
   const pvShare = () => {
     if (!pic) return;
@@ -338,7 +338,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
       <img src={pv.url} alt={"Итоги месяца: " + r.title} />
       <a className="mr-btn" href={pv.url} download={pv.name}>Скачать картинку</a>
       {canFiles ? <button type="button" className="mr-ghost" onClick={pvShare}>Поделиться…</button> : null}
-      <p>Или нажми и удерживай картинку — «Сохранить» или «Поделиться». В Telegram её можно отправить из галереи.</p>
+      <p>Или нажми и удерживай картинку, затем «Сохранить» или «Поделиться». В Telegram её можно отправить из галереи.</p>
       <button type="button" className="mr-ghost" data-sa-back="" onClick={() => setPv(null)}>Готово</button>
     </div>
   ) : null;

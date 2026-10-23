@@ -203,17 +203,17 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
         <div style={{ color: C.text, fontFamily: serif, fontStyle: "italic", fontSize: 17, margin: "14px 0 6px" }}>{W.punch}</div>
         <div style={{ color: C.muted, fontFamily: serif, fontSize: 13.5, lineHeight: 1.55, marginBottom: 12 }}>
           {(rec.exits || 1) > 1
-            ? <>В тесте «{title}» ты {female ? "выходила" : "выходил"} {rec.exits} {((n) => { const d = n % 10, h = n % 100; return (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "раза" : "раз"; })(rec.exits)} — впервые на {rec.answered}-м вопросе — и прошёл его заново.</>
+            ? <>В тесте «{title}» ты {female ? "выходила" : "выходил"} {rec.exits} {((n) => { const d = n % 10, h = n % 100; return (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "раза" : "раз"; })(rec.exits)} (впервые на {rec.answered}-м вопросе) и {female ? "прошла" : "прошёл"} его заново.</>
             : <>В тесте «{title}» ты {female ? "вышла" : "вышел"} на {rec.answered}-м вопросе и {female ? "прошла" : "прошёл"} его заново.</>}
-          {" "}Находчивость засчитана — а ошибки, которые ты {female ? "стёрла" : "стёр"}, мы сохранили:
+          {" "}Находчивость засчитана, а ошибки, которые ты {female ? "стёрла" : "стёр"}, мы сохранили:
         </div>
         {rank && rank.ok && rank.mine > 0 ? (() => {
           // Фразы — владельца: «хитрый», «пока впереди»
           const need = Math.max(0, rank.leader - rank.mine + 1);
           const first = rank.place === 1 && !rank.tied;
           const phrase = first ? "Ты впереди всех хитрецов. Пока впереди 😉"
-            : rank.place === 1 ? "Ты делишь первое место с другими хитрецами. Ещё ключ — и оторвёшься."
-            : `Ты ${female ? "хитрая" : "хитрый"}, но до первого места — ещё ${need} ${kl(need)}.`;
+            : rank.place === 1 ? "Ты делишь первое место с другими хитрецами. Ещё ключ, и оторвёшься."
+            : `Ты ${female ? "хитрая" : "хитрый"}, но до первого места ещё ${need} ${kl(need)}.`;
           const owned = Math.min(rank.mine, 8);
           const missing = first ? 0 : Math.max(0, Math.min(rank.place === 1 ? 1 : need, 8 - owned));
           return (
@@ -250,7 +250,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
         {(rec.wrong || []).length > list.length ? <div style={{ color: C.muted, fontSize: 12, marginBottom: 6 }}>и ещё {(rec.wrong || []).length - list.length}</div> : null}
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", color: C.muted, fontSize: 12.5, lineHeight: 1.5, margin: "6px 0 14px" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2M21 4v5h-5M21 12a9 9 0 0 1-15.5 6.2M3 20v-5h5" /></svg>
-          <span>Эти вопросы уже ждут тебя в «Работе над ошибками» — вернутся через день, три и неделю.</span>
+          <span>Эти вопросы уже ждут тебя в «Работе над ошибками». Они вернутся через день, три и неделю.</span>
         </div>
         {/* Кнопки прилипают к низу: с двумя ошибками и зачётом карточка выше экрана и
             прокручивается внутри — без этого кнопки уезжали вниз, их было не видно */}

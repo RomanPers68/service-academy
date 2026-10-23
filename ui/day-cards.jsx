@@ -30,7 +30,7 @@ export function DayStrip({ a11y, streak, steps = 0, goal = 2, onGoal, today }) {
   const pick = (g) => { vibrate("light"); setOpen(false); onGoal && onGoal(g); };
   return (
     <div className="tbv" style={{ margin: "0 14px 10px", display: "flex", gap: 8 }}>
-      <div title={lit ? "Сегодня занимался — свеча горит" : "Пройди шаг — и свеча загорится"}
+      <div title={lit ? "Сегодня занимался, свеча горит" : "Пройди шаг, и свеча загорится"}
         style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 14, border: `1px solid ${c.line}`, background: c.bg }}>
         <Candle s={22} lit={lit} />
         <span style={{ minWidth: 0 }}>
@@ -98,7 +98,7 @@ export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mas
           <Medal s="var(--dp-m,32px)" pct={0} a11y={a11y}><Flame s="var(--dp-i,19px)" lit={false} a11y={a11y} /></Medal>
           <span className="sa-dp-txt" aria-hidden="true">
             <Val main="Первый день" a11y={a11y} big={17} />
-            <span style={{ fontSize: a11y ? 13 : 12, color: p.sub, marginTop: 4, lineHeight: 1.35 }}>серия, цель дня и значки — с первого урока</span>
+            <span style={{ fontSize: a11y ? 13 : 12, color: p.sub, marginTop: 4, lineHeight: 1.35 }}>серия, цель дня и значки начнутся с первого урока</span>
           </span>
         </span>
       </div>
@@ -123,7 +123,7 @@ export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mas
   return (
     <div className={"tbv sa-dp" + (a11y ? " lt" : "")} data-day-panel=""
       style={{ background: p.panel, border: "1px solid " + p.panelLine, borderTopColor: p.panelTop, boxShadow: p.shadow }}>
-      <span role="img" className="sa-dp-cell st" data-dp-cell="streak" title={lit ? "Серия: сегодня занимался — свеча горит" : "Серия: пройди шаг — и свеча загорится"}
+      <span role="img" className="sa-dp-cell st" data-dp-cell="streak" title={lit ? "Серия: сегодня занимался, свеча горит" : "Серия: пройди шаг, и свеча загорится"}
         aria-label={"Серия " + n + " " + plural(n, "день", "дня", "дней") + (lit ? ", сегодня свеча горит" : "")}>
         <Medal s={M} pct={Math.min(1, n / nextStreakTier(n))} glow={lit} a11y={a11y}><Flame s={I} lit={lit} a11y={a11y} /></Medal>
         <span className="sa-dp-txt" aria-hidden="true"><Val main={n} a11y={a11y} />
@@ -153,8 +153,8 @@ export function DayChips({ a11y, streak, steps = 0, goal = 2, onGoal, today, mas
 }
 
 const GOALS = [
-  { g: 1, t: "1 шаг", s: "лёгкий день — один урок или разминка" },
-  { g: 2, t: "2 шага", s: "обычная смена — урок и практика" },
+  { g: 1, t: "1 шаг", s: "лёгкий день: один урок или разминка" },
+  { g: 2, t: "2 шага", s: "обычная смена: урок и практика" },
   { g: 3, t: "3 шага", s: "хочу быстрее пройти программу" },
 ];
 function GoalSheet({ a11y, goal, onPick, onClose }) {
@@ -167,7 +167,7 @@ function GoalSheet({ a11y, goal, onPick, onClose }) {
           <Wine s={30} pct={0.6} a11y={a11y} />
           <h3 style={{ margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Цель дня</h3>
         </div>
-        <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>Сколько шагов в день: урок, практика, тест или разминка до смены. Бокал наполняется с каждым шагом — на главной, в шапке трека и в чеках.</p>
+        <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>Сколько шагов в день: урок, практика, тест или разминка до смены. Бокал наполняется с каждым шагом. Он виден на главной, в шапке трека и в чеках.</p>
         {GOALS.map((x) => (
           <button key={x.g} type="button" className="sa-btn" onClick={() => onPick(x.g)}
             style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", margin: "0 0 8px", padding: "12px 14px", borderRadius: 14, cursor: "pointer",
@@ -229,7 +229,7 @@ export function WarmupCard({ a11y, shift, known = true, done, onStart, compact =
     return (
       <div className="tbv" style={{ margin: "0 14px 10px", padding: "9px 13px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.45)", background: c.bg, display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ color: a11y ? "#2C6B48" : "#8AD8AF", display: "inline-flex" }}><Ic n="checkC" s={18} /></span>
-        <span style={{ flex: 1, fontSize: 13, color: c.text, fontFamily: "Georgia, serif" }}>Разминка сделана — хорошей смены!</span>
+        <span style={{ flex: 1, fontSize: 13, color: c.text, fontFamily: "Georgia, serif" }}>Разминка сделана. Хорошей смены!</span>
       </div>
     );
   }
@@ -241,8 +241,8 @@ export function WarmupCard({ a11y, shift, known = true, done, onStart, compact =
         <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", color: c.gold, border: `1.5px solid ${c.line}` }}><Ic n="clock" s={22} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...labelStyle(13), color: c.gold }}>Разминка до смены</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, lineHeight: 1.25, marginTop: 2 }}>2 минуты — 3 {what}</div>
-          <div style={{ fontSize: 11.5, color: c.sub, marginTop: 2, lineHeight: 1.35 }}>{shift ? "Сегодня: " + shift : known ? "Сегодня смена по графику" : "Перед сменой — освежить главное"} · из того, что уже прошёл</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, lineHeight: 1.25, marginTop: 2 }}>2 минуты, 3 {what}</div>
+          <div style={{ fontSize: 11.5, color: c.sub, marginTop: 2, lineHeight: 1.35 }}>{shift ? "Сегодня: " + shift : known ? "Сегодня смена по графику" : "Перед сменой освежи главное"}. Всё из того, что уже прошёл</div>
         </div>
         <div style={{ flexShrink: 0, padding: "9px 15px", borderRadius: 999, fontFamily: "Georgia, serif", fontSize: 13, fontWeight: "bold", color: "#1A1008", background: "linear-gradient(180deg,#E4C88C,#C8A96E)" }}>Начать</div>
       </div>
@@ -260,7 +260,7 @@ export function WeekCard({ a11y, onOpen, activeDays }) {
       <span style={{ color: c.gold, display: "inline-flex" }}><Ic n="bill" s={22} /></span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <b style={{ display: "block", fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text }}>Чек недели готов</b>
-        <span style={{ display: "block", fontSize: 11.5, color: c.sub }}>{activeDays ? "в деле " + activeDays + " " + plural(activeDays, "день", "дня", "дней") + " из 7 · можно отправить команде" : "что сделано за 7 дней — можно отправить команде"}</span>
+        <span style={{ display: "block", fontSize: 11.5, color: c.sub }}>{activeDays ? "В деле " + activeDays + " " + plural(activeDays, "день", "дня", "дней") + " из 7. Можно отправить команде" : "Что сделано за 7 дней. Можно отправить команде"}</span>
       </span>
       <span style={{ color: c.sub, fontSize: 20 }}>›</span>
     </div>
@@ -277,11 +277,11 @@ export const inTelegramApp = () => { try { return !!(window.Telegram && window.T
 
 // v31: что ещё присылать (этап 25: notify_prefs / notify_set). Без этапа 25 — блока нет.
 const PREF_ROWS = [
-  ["pair", "Свеча на двоих", "вечером, если напарник уже занимался, а ты — ещё нет"],
+  ["pair", "Свеча на двоих", "вечером, если напарник уже занимался, а ты ещё нет"],
   ["quest", "Квест смены", "когда старший зовёт на разминку"],
-  ["league", "Лига недели", "итоги недели — по понедельникам"],
+  ["league", "Лига недели", "итоги недели по понедельникам"],
   ["fresh", "Свежесть тем", "по четвергам, если темы выдыхаются"],
-  ["month", "Итоги месяца", "первого числа — твой месяц в карточках"],
+  ["month", "Итоги месяца", "первого числа: твой месяц в карточках"],
   ["master", "Мастера заведения", "когда коллега становится мастером роли"],   // v40, этап 26
 ];
 // Строки для ответа notify_prefs. Вид «master» знает только этап 26: сервер этапа 25 его не присылает
@@ -303,8 +303,8 @@ function NotifyPrefs({ a11y, c, onLoad }) {
     setBusy(k); setMsg(""); setP((x) => ({ ...x, [k]: on }));
     rpc("notify_set", { p_token: saToken(), p_kind: k, p_on: on }).then((r) => {
       setBusy("");
-      if (r && r.ok) { setP(r); vibrate("light"); } else { setP((x) => ({ ...x, [k]: !on })); setMsg("Не сохранилось — попробуй ещё раз."); }
-    }).catch(() => { setBusy(""); setP((x) => ({ ...x, [k]: !on })); setMsg("Нет связи — попробуй ещё раз."); });
+      if (r && r.ok) { setP(r); vibrate("light"); } else { setP((x) => ({ ...x, [k]: !on })); setMsg("Не сохранилось. Попробуй ещё раз."); }
+    }).catch(() => { setBusy(""); setP((x) => ({ ...x, [k]: !on })); setMsg("Нет связи. Попробуй ещё раз."); });
   };
   return (
     <div data-notify-prefs="" style={{ marginTop: 14 }}>
@@ -335,17 +335,16 @@ export function stepLine(t) {
   const ch = Array.from(s);
   return ch.length > 140 ? ch.slice(0, 139).join("").replace(/\s+$/, "") + "…" : s;
 }
-// Так выглядит сообщение бота за час до смены. Текст — дословно как у бота (supabase, stage 26), поэтому «✦ SERVICE ACADEMY»
-// и «Хорошей смены ✦» здесь остаются, пока не поменяется само сообщение бота (v73 сервер не трогает). step — текст «Шага дня» (v40): строка под текстом, перед кнопкой.
+// Так выглядит сообщение бота за час до смены. Текст — дословно как у бота: v74 (Доп. 387, этап 29) — без шапки
+// «✦ SERVICE ACADEMY» и звёздочек, кнопка «Разминка». step — текст «Шага дня» (v40): строка под текстом, перед кнопкой.
 export function RemindExample({ c = C(false), when = "час", shift = "", step = "" }) {
   const st = stepLine(step);
   return (
     <div aria-label="Пример сообщения" style={{ padding: "10px 12px", borderRadius: "16px 16px 16px 4px", border: `1px solid ${c.line}`, background: c.bg }}>
-      <div style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: 1.6, color: c.gold }}>✦ SERVICE ACADEMY</div>
-      <div style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.45, color: c.text }}>{"Через " + when + " смена: " + (shift || "Вечер · 16:00–24:00")}</div>
-      <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>Разминка до смены — 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены ✦</div>
+      <div style={{ fontSize: 13.5, lineHeight: 1.45, color: c.text }}>{"Через " + when + " смена: " + (shift || "Вечер · 16:00–24:00")}</div>
+      <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>Разминка до смены: 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены!</div>
       {st ? <div data-remind-step="" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.45, color: c.text }}>{"Шаг дня: " + st}</div> : null}
-      <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 10, textAlign: "center", fontSize: 13, fontWeight: "bold", color: c.gold, border: `1px solid ${c.line}` }}>Разминка ✦</div>
+      <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 10, textAlign: "center", fontSize: 13, fontWeight: "bold", color: c.gold, border: `1px solid ${c.line}` }}>Разминка</div>
     </div>
   );
 }
@@ -365,7 +364,7 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
     rpc("tg_status", { p_token: saToken() }).then((res) => {
       if (!alive) return;
       if (rpcMissing(res)) { setSt({ phase: "missing" }); return; }
-      if (!res || !res.ok) { setSt({ phase: "error", text: res && res.error === "auth" ? "Сессия устарела — перезайди по коду." : "Не получилось узнать, включены ли напоминания." }); return; }
+      if (!res || !res.ok) { setSt({ phase: "error", text: res && res.error === "auth" ? "Сессия устарела. Перезайди по коду." : "Не получилось узнать, включены ли напоминания." }); return; }
       setSt({ phase: "ready", bot: !!res.bot, linked: !!res.linked, remind: !!res.remind, minutes: res.minutes || 60 });
       apply(!!(res.linked && res.remind));
     }).catch(() => { if (alive) setSt({ phase: "offline" }); });
@@ -376,11 +375,11 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
     setBusy(true); setMsg("");
     const link = () => rpc("tg_link", { p_token: saToken(), p_init_data: tg.initData, p_remind: true }).then((res) => {
       setBusy(false);
-      if (res && res.ok) { setSt((x) => ({ ...x, linked: true, remind: true })); apply(true); setMsg("Готово — бот прислал сообщение в чат."); vibrate("success"); return; }
+      if (res && res.ok) { setSt((x) => ({ ...x, linked: true, remind: true })); apply(true); setMsg("Готово, бот прислал сообщение в чат."); vibrate("success"); return; }
       const e = res && res.error;
-      setMsg(e === "no_bot" ? "Бот ещё не подключён на сервере — скажи руководителю." : (e === "bad_init" || e === "stale") ? "Telegram не подтвердил вход. Закрой приложение и открой заново через бота." : e === "auth" ? "Сессия устарела — перезайди по коду." : rpcMissing(res) ? "Сервер ещё не обновлён — скажи руководителю." : "Не получилось включить — попробуй ещё раз.");
+      setMsg(e === "no_bot" ? "Бот ещё не подключён на сервере. Скажи руководителю." : (e === "bad_init" || e === "stale") ? "Telegram не подтвердил вход. Закрой приложение и открой заново через бота." : e === "auth" ? "Сессия устарела. Перезайди по коду." : rpcMissing(res) ? "Сервер ещё не обновлён. Скажи руководителю." : "Не получилось включить. Попробуй ещё раз.");
       vibrate("error");
-    }).catch(() => { setBusy(false); setMsg("Нет связи — попробуй ещё раз."); });
+    }).catch(() => { setBusy(false); setMsg("Нет связи. Попробуй ещё раз."); });
     try {
       if (typeof tg.requestWriteAccess === "function") {
         tg.requestWriteAccess((granted) => { if (granted) link(); else { setBusy(false); setMsg("Без разрешения бот не сможет написать. Нажми «Включить» ещё раз и выбери «Разрешить»."); } });
@@ -393,8 +392,8 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
     rpc("tg_set", { p_token: saToken(), p_remind: false }).then((res) => {
       setBusy(false);
       if (res && res.ok) { setSt((x) => ({ ...x, remind: false })); apply(false); setMsg("Выключено. Включить снова можно здесь же."); }
-      else setMsg("Не получилось выключить — попробуй ещё раз.");
-    }).catch(() => { setBusy(false); setMsg("Нет связи — попробуй ещё раз."); });
+      else setMsg("Не получилось выключить. Попробуй ещё раз.");
+    }).catch(() => { setBusy(false); setMsg("Нет связи. Попробуй ещё раз."); });
   };
   const on = st.phase === "ready" && st.linked && st.remind;
   const mins = st.minutes || 60;
@@ -410,26 +409,26 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
           <h3 style={{ margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Напоминания в Telegram</h3>
         </div>
         <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>
-          За {when} до смены по графику бот напишет и откроет разминку — 2 минуты, 3 задания из пройденного.{lead ? " Старшим ещё приходят запросы на подтверждение навыков в зале." : ""}
+          За {when} до смены по графику бот пришлёт сообщение с кнопкой разминки: 2 минуты, 3 задания из пройденного.{lead ? " Старшим ещё приходят запросы на подтверждение навыков в зале." : ""}
         </p>
         {/* так выглядит сообщение (v40: со строкой «Шаг дня», если App его передал) */}
         {/* v40: строку «Шаг дня» бот добавляет только с этапом 26 — его видно по виду «master» в настройках */}
         <RemindExample c={c} when={when} shift={shift} step={has26 ? step : ""} />
         {st.phase === "load" ? note("Проверяю…") : null}
-        {st.phase === "missing" ? note(serverMissing({ what: "напоминания", many: true, admin, sql: "supabase-stage22b-telegram-reminders.sql" })) : null}   /* v58 (Доп. 371) */
-        {st.phase === "offline" ? note("Нет связи — открой это окно, когда появится сеть.") : null}
+        {st.phase === "missing" ? note(serverMissing({ what: "напоминания", many: true, admin, sql: "supabase-stage22b-telegram-reminders.sql" })) : null}{/* v58 (Доп. 371); v74: комментарий был снаружи фигурных скобок и показывался на экране */}
+        {st.phase === "offline" ? note("Нет связи. Открой это окно, когда появится сеть.") : null}
         {st.phase === "error" ? note(st.text) : null}
-        {st.phase === "ready" && !st.bot ? note(admin ? "Бот ещё не подключён: нужен токен бота в настройках Supabase (этап 22б)." : "Бот ещё не подключён на сервере — скажи владельцу.") : null}
+        {st.phase === "ready" && !st.bot ? note(admin ? "Бот ещё не подключён: нужен токен бота в настройках Supabase (этап 22б)." : "Бот ещё не подключён на сервере. Скажи владельцу.") : null}
         {st.phase === "ready" && st.bot ? (on ? (
           <>
-            <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.5)", color: a11y ? "#2C6B48" : "#8AD8AF", fontSize: 14, fontFamily: "Georgia, serif" }}>✓ Включено — за {when} до смены</div>
+            <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.5)", color: a11y ? "#2C6B48" : "#8AD8AF", fontSize: 14, fontFamily: "Georgia, serif" }}>✓ Включено: за {when} до смены</div>
             <NotifyPrefs a11y={a11y} c={c} onLoad={(p) => setHas26(!!p && p.master !== undefined)} />
             <button type="button" className="sa-btn" onClick={disable} disabled={busy}
               style={{ display: "block", width: "100%", marginTop: 10, padding: 12, borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${c.line}`, color: c.text, fontSize: 14, fontWeight: "bold" }}>{busy ? "Минуту…" : "Выключить"}</button>
           </>
         ) : inTg ? (
           <button type="button" className="sa-btn" onClick={enable} disabled={busy} style={mainBtn}>{busy ? "Минуту…" : "Включить"}</button>
-        ) : note("Напоминания приходят от бота в Telegram. Открой Service Academy через бота — и включи здесь.")) : null}
+        ) : note("Напоминания приходят от бота в Telegram. Открой Service Academy через бота и включи их здесь.")) : null}
         {st.phase !== "ready" && st.phase !== "load" && !inTg ? note("Включить можно в приложении внутри Telegram.") : null}
         {msg ? <p role="status" style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.45, color: c.text }}>{msg}</p> : null}
         <button type="button" data-sa-back="" onClick={onClose} className="sa-btn"

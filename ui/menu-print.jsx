@@ -90,7 +90,7 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
       setShot(out); setPage(0); vibrate("success");
     } catch (e) {
       // Чужое фото без разрешения браузера «пачкает» холст — тогда собираем без фото
-      setHint(withPhoto ? "С фото не вышло — собираю без них" : "Не удалось собрать картинку");
+      setHint(withPhoto ? "С фото не вышло. Собираю без них" : "Не удалось собрать картинку");
       if (withPhoto) { setWithPhoto(false); setBusy(false); setTimeout(() => draw(), 50); return; }
     }
     setBusy(false);
@@ -117,7 +117,7 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
         <span onClick={() => setWithPhoto(v => !v)} {...onActivate(() => setWithPhoto(v => !v))} style={{ padding: "8px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${withPhoto ? gold : gold + "44"}`, background: withPhoto ? "rgba(214,178,102,0.16)" : "transparent", color: withPhoto ? text : sub }}>{withPhoto ? "С фото ✓" : "Без фото"}</span>
       </div>
       {hint && <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: gold }}>{hint}</div>}
-      <div style={{ padding: "0 16px 8px", fontSize: 12.5, color: sub, lineHeight: 1.5 }}>{list.length} блюд, по {PER_PAGE} на страницу. Сохраняется в галерею и уходит в любой мессенджер — коды входа не нужны.</div>
+      <div style={{ padding: "0 16px 8px", fontSize: 12.5, color: sub, lineHeight: 1.5 }}>Блюд: {list.length}, по {PER_PAGE} на страницу. Сохраняется в галерею и уходит в любой мессенджер, коды входа не нужны.</div>
       {shot && shot.length > 0 && (
         <div className="sa-fadein" style={{ margin: "0 16px 14px", padding: 12, borderRadius: 14, border: `1px solid ${gold}55` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>

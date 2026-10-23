@@ -126,6 +126,9 @@ function ScreenLoader({ T }) {
 // Номер в ключе — версия: подняли, и карточки показываются заново всем.
 // Задача — снять тревогу «куда я попал», а не обучить: детали человек
 // узнает по контекстным подсказкам в момент, когда они станут нужны.
+// v74 (Доп. 387): остались только четыре карточки, которые показывает WelcomeIntro. Остальные (тренажёры,
+// справочник, график, найм, «Команда», печать, редактор меню — Доп. 139/140/169/214/267) давно не показывались
+// и описывали экраны, которых уже нет; их рассказывают контекстные подсказки и гид.
 // Карточка AI-наставника — для всех, флагманская фича
 const WELCOME_AI_CARD = {
   icon: (c) => (
@@ -135,135 +138,24 @@ const WELCOME_AI_CARD = {
     </svg>
   ),
   title: "Наставник всегда рядом",
-  text: "Круглая кнопка «AI» посередине нижнего меню (на компьютере — в меню слева) — наставник. Он знает Справочник и меню твоего ресторана: спроси про жалобу гостя, состав блюда или аллергены — ответит как старший коллега и кнопкой отведёт в нужный раздел.",
+  text: "Круглая кнопка «AI» посередине нижнего меню (на компьютере в меню слева) открывает Наставника. Он знает Справочник и меню твоего ресторана: спроси про жалобу гостя, состав блюда или аллергены. Ответит как старший коллега и кнопкой отведёт в нужный раздел.",
 };
 
-// Новые фичи большого обновления — карточки для всех
-const WELCOME_BUILD_CARD = {
-  icon: (c) => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 4h14l-7 8zM12 12v6M8 21h8" /><path d="M8.2 7h7.6" opacity="0.6" />
-    </svg>
-  ),
-  title: "Тренажёры — твой спортзал",
-  text: "В «Сборке» собираешь коктейли шаг за шагом: ошибся — напиток испорчен, как за настоящей стойкой; за чистый прогон — звёзды и печать в Книгу. Тренажёр меню гоняет по составам и аллергенам, диалоги — по разговору с гостем. Ошибаться здесь бесплатно.",
-};
-const WELCOME_REF_CARD = {
-  icon: (c) => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z" /><circle cx="12" cy="12" r="0.8" />
-    </svg>
-  ),
-  title: "Справочник и поиск",
-  text: "Курсы для всей команды: сервировка, вино, кофе, Колода бармена с историями коктейлей. Все возможности приложения расписаны в гиде во вкладке «Я». Строка поиска найдёт что угодно: главу, термин, блюдо. А «глава дня» в Заданиях читает Справочник за тебя — по странице в день.",
-};
-const WELCOME_SCHED_CARD = {
-  icon: (c) => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M8 14.5h3M8 17.5h5" opacity="0.7" />
-    </svg>
-  ),
-  title: "График смен — в кармане",
-  // Обновлено: пожелания теперь отмечаются сеткой месяца (в том числе периодом
-  // за два тапа), а состав смены показывается лицами — «капсулы с трубкой» нет.
-  text: "Свои смены, часы и заработок — без скриншотов из чатов. Ближайшая смена — сразу под именем. Карточка «Мои пожелания» показывает весь месяц: тапни день и выбери «прошу выходной» или «не смогу выйти», а отпуск отметь периодом за два касания. Тап по лицу коллеги в карточке дня открывает его номер.",
-};
-
-// Менеджерам и руководству: график в режиме редактора
-const WELCOME_SCHEDIT_CARD = {
-  icon: (c) => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M14.5 17.5l2-2 2 2M16.5 15.5v4" opacity="0" /><path d="M9 16.8l1.6 1.6 3.4-3.9" />
-    </svg>
-  ),
-  title: "График: режим редактора",
-  // Обновлено: тап по клетке открывает палитру (а не перебирает смены по кругу),
-  // появились отмена, заполнение по должностям и автосборка месяца.
-  text: "Пустой график предложит мастер из четырёх вопросов — и месяц соберётся сам. «Заполнить черновик» закрывает дыры, не трогая расставленное, и продолжает ритм 2/2 из прошлого месяца; выбери должность чипом — заполнится только она. Тап по клетке открывает выбор смены, оттуда же «Кто вместо?» и «Факт часов»; поставленная вручную смена закрепляется, и генератор её не тронет. Ошиблись — «↩» рядом с «Сохранить» вернёт как было. Один и тот же месяц всегда собирается одинаково, а «Перемешать» в «Ещё» даёт другой вариант.",
-};
-
-// Карточка AI-собеседования — менеджерам и руководству
-const WELCOME_HIRE_CARD = {
-  icon: (c) => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-      <path d="M16 3.5a4 4 0 0 1 0 7"/><path d="M19 8h4M21 6v4"/>
-    </svg>
-  ),
-  title: "AI-собеседование",
-  text: "В жетоне «Собеседование» живёт ИИ-интервьюер: дай кандидату телефон — он задаст рабочие ситуации и вернёт оценку по компетенциям с вердиктом. Решение о найме всегда за тобой.",
-};
-
-// Карточка для менеджеров и руководства — добавляется четвёртой
-const WELCOME_ADMIN_CARD = {
-  icon: (c) => NAV_ICONS.team(c, 28),
-  title: "Твой штаб — «Команда»",
-  text: "Сотрудники и коды входа, аналитика прогресса, чек-листы смен и собеседование кандидатов — всё управление живёт во вкладке «Команда».",
-};
-
-const WELCOME_CARDS = [
-  { icon: (c) => UI_SVG.cloche(c, 28), title: "Твой трек",
-    // v58 (Доп. 371): на главной у новичка «НАЧАТЬ», потом «ДАЛЬШЕ» — про кнопку «ДАЛЬШЕ» в первый день было непонятно
-    text: "Учись по шагам: уроки открываются по порядку, а приложение само подскажет, куда дальше. Большая карточка на главной — твой компас: сначала «Начать», потом «Дальше». В тестах ответ подсвечивается сразу — учишься в моменте." },
-  { icon: (c) => UI_SVG.target(c, 28), title: "Ошибки — это план",
-    text: "Неверный ответ — не приговор: вопрос попадёт в «Работу над ошибками» и вернётся сам — через день, три, неделю. Бейдж покажет, когда пора." },
-  { icon: (c) => UI_SVG.sparkle(c, 28), title: "Команда видит твой рост",
-    text: "«Рейтинг» показывает прогресс всех — фильтр должностей сверху, стеклянную линзу можно таскать пальцем. За ступени и собранные коктейли — печати в «Книге отзывов». А если в смене жарко — красная кнопка SOS даст шпаргалку за секунды." },
-];
-
-// Доп. 139: четыре вкладки — карточки в попапе приветствия (вместо отдельного тура)
-const WELCOME_TABS_CARDS = [
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>),
+// Четыре вкладки внизу — карта приложения
+const WELCOME_TABS_CARD = { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>),
     title: "Четыре вкладки внизу",
     // v58 (Доп. 371): карточки видит новичок (один раз на телефоне) — «стало проще» ему не с чем сравнить
-    text: "Учусь — уроки и тесты твоей роли. Смена — рабочий день: график и чек-листы. Команда — коллеги и рейтинг. Я — твой прогресс и настройки." },
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h5"/></svg>),
-    title: "Учусь — твоя программа",
-    text: "Карточка «Твой трек» ведёт к следующему уроку. Ниже — Справочник (в нём же Колода бармена), SOS, Меню и Глоссарий, а дальше вся программа роли с галочками пройденного." },
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>),
-    title: "Смена — рабочий день",
-    text: "График, чек-листы, задание дня и Гость недели. Открывай перед сменой — здесь всё, что пригодится сегодня." },
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M2 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 19c0-2.5 2-4.5 4.5-4.5S23 16.5 23 19"/></svg>),
-    title: "Команда и Я",
-    text: "В «Команде» — рейтинг, наставничество, новички и работа над ошибками, менеджеру — аналитика и найм. В «Я» — прогресс, сертификаты, роли и настройки, включая крупный шрифт." },
-];
+    text: "«Учусь»: уроки и тесты твоей роли. «Смена»: рабочий день, график и чек-листы. «Команда»: коллеги и рейтинг. «Я»: твой прогресс и настройки." };
 
-// Доп. 140: то, чего в попапе не хватало — по замечанию владельца
-const WELCOME_MORE_CARDS = [
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M19 3l-2 6h4l-2-6z" opacity="0.7"/></svg>),
-    title: "Меню и Колода бармена",
-    text: "Колода меню — как у бара: свайп по разделам, переворот, поиск, указатель, «Знаю?». Красная лента «Сегодня нет» — блюдо в стопе. Колода бармена: полсотни коктейлей, спек в мл, история и фраза гостю — и сноски, как наливают у нас." },
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 12h8M8 16h5"/><circle cx="16" cy="8" r="0.5"/></svg>),
-    title: "Книга отзывов и Гость недели",
-    text: "Книга — твоя летопись: страницы за роли, печати за испытания. Гость недели — живой диалог с непростым гостем, новый каждую неделю; за успех — печать." },
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>),
-    title: "SOS, чек-листы и голос",
-    text: "Красная плитка SOS — шпаргалка на экстренный случай за секунду. Чек-листы смены — по пунктам с отметками. Наставнику и AI HR можно говорить голосом — микрофон в поле ввода." },
-  { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>),
+// Твой трек: учись по шагам
+const WELCOME_TRACK_CARD = { icon: (c) => UI_SVG.cloche(c, 28), title: "Твой трек",
+    // v58 (Доп. 371): на главной у новичка «НАЧАТЬ», потом «ДАЛЬШЕ» — про кнопку «ДАЛЬШЕ» в первый день было непонятно
+    text: "Учись по шагам: уроки открываются по порядку, а приложение само подскажет, куда дальше. Большая карточка на главной ведёт к следующему шагу: сначала «Начать», потом «Дальше». В тестах верный ответ подсвечивается сразу." };
+
+// Где искать ответы дальше
+const WELCOME_GUIDE_CARD = { icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>),
     title: "Гид всегда под рукой",
-    text: "Забыл, где что? Вкладка «Я» → «Гид по приложению»: каждая функция с объяснением и кнопкой «Открыть». Это окно больше не покажется, а гид — останется." },   // v58: без слова «попап»
-];
-
-// Доп. 267: что можно унести с собой — меню, карта бара, график
-const WELCOME_PAPER_CARD = {
-  icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>),
-  title: "Унести с собой",
-  text: "Меню и карта бара собираются в лист картинкой: фото, состав, аллергены, КБЖУ — или спеки и порядок сборки. По страницам, сохраняется в галерею и уходит в любой чат — вход и коды при этом не нужны. Удобно учить с бумаги и раздавать новичкам. График так же уходит картинкой всей смене.",
-};
-
-// Доп. 214: тренажёры и колоды — карточка попапа
-const WELCOME_TRAIN_CARD = {
-  icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3h8l-1 7a3 3 0 0 1-6 0z"/><path d="M12 13v6M8 21h8"/><path d="M4 8l2-2M20 8l-2-2" opacity="0.6"/></svg>),
-  title: "Тренажёры, от которых не оторваться",
-  text: "Колоды умеют «Наоборот» (состав без названия) и «Гость спрашивает» (реплики гостя пузырями). «Аллергены на скорость» — 30 секунд свайпов. Бармену — «Сборка руками»: станция, бокал, джиггер, печати за сборку по памяти, «Час пик». На главной, на линии под жетонами, — режим дня и пять карточек на сегодня.",
-};
-
-// Доп. 169: карточка менеджера про редактор меню
-const WELCOME_MENUEDIT_CARD = {
-  icon: (c) => (<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h18M5 17a7 7 0 0 1 14 0"/><path d="M12 8V6M10 6h4"/><path d="M4 20l1-4L16.5 4.5a2.12 2.12 0 0 1 3 3L8 19l-4 1z" opacity="0.6"/></svg>),
-  title: "Меню: редактор, стоп-лист, архив",
-  text: "Меню → Редактор: импорт из PDF с проверкой аллергенов, три AI-варианта описания, предпросмотр «как увидит официант», строка КБЖУ с подстановкой из ведомости. «В стоп» — один тап, и команда видит «Сегодня нет». Удалённое — в архив. В Колоде бармена — «В карту бара» и «Свои ›»: редактор авторских коктейлей с витражом и сборкой.",
-};
+    text: "Забыл, где что? Вкладка «Я» → «Гид по приложению»: каждая функция с объяснением и кнопкой «Открыть». Это окно больше не покажется, а гид останется." };
 
 function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
   // Порядок — путь новичка: учёба → ошибки → тренажёры → знания → наставник
@@ -277,10 +169,10 @@ function WelcomeIntro({ T, a11y, isAdmin, canHire, onClose }) {
   // Карточки руководителя тоже убраны: редактор графика и меню объясняются
   // подсказкой при первом входе туда, а не заранее и не всем подряд.
   const cards = [
-    WELCOME_TABS_CARDS[0],   // четыре вкладки — карта приложения
-    WELCOME_CARDS[0],        // твой трек: учись по шагам
+    WELCOME_TABS_CARD,       // четыре вкладки — карта приложения
+    WELCOME_TRACK_CARD,      // твой трек: учись по шагам
     WELCOME_AI_CARD,         // наставник — то, чего сам не найдёшь
-    WELCOME_MORE_CARDS[3],   // где искать ответы дальше
+    WELCOME_GUIDE_CARD,      // где искать ответы дальше
   ];
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState("r");      // направление листания — карточка въезжает с нужной стороны
@@ -422,7 +314,7 @@ function AiFab({ a11y, onClick, screen }) {
   );
 }
 import { injectStyles } from "./ui/css";
-import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./ui/icons";
+import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG } from "./ui/icons";
 import { S, A, ACCENT_SERIF } from "./ui/styles";
 import { NewPageBanner } from "./ui/guestbook-lite";
 import { weeklyDialogueIdFrom, weeklyLessonId } from "./data/reviews";
@@ -571,7 +463,7 @@ function ServiceAcademy() {
     el.style.setProperty("--sa-rail", (railOn ? RAIL_W + vp.safe.l : vp.safe.l) + "px");
     el.style.setProperty("--sa-colw", colW + "px");
   }, [vp.wide, vp.short, vp.desk, railOn, colW, vp.safe.l, vp.safe.r, vp.safe.b]);
-  const offlineHelp = { key:"offline", icon:"mistakes", label:"Без сети", sub: online ? "Как открывать приложение без связи" : "Сейчас без связи — работаем на сохранённом", onClick:() => navigate("offline") }; // Доп. 170: открыть Колоду меню на блюде (карточка в ответе Наставника)
+  const offlineHelp = { key:"offline", icon:"mistakes", label:"Без сети", sub: online ? "Как открывать приложение без связи" : "Сейчас без связи, работаем на сохранённом", onClick:() => navigate("offline") }; // Доп. 170: открыть Колоду меню на блюде (карточка в ответе Наставника)
   const [completed, setCompleted] = useState({});
   const [completedRoles, setCompletedRoles] = useState(new Set());
   const [quizState, setQuizState] = useState({ step: 0, answers: [], done: false, mistakes: 0 });
@@ -1190,12 +1082,12 @@ function ServiceAcademy() {
       const need = Math.ceil(sits.length * CREDIT_PASS / CREDIT_N);
       // v31: сначала правила; попытка дня тратится только с первым ответом (раньше — при открытии)
       setSpecial({ mode, mod, sits, key: Date.now(), verdict: {
-        ok: "Тема засчитана с пометкой «по опыту» — руководитель увидит это в отчёте.",
-        bad: "Нужно " + need + " из " + sits.length + ". Пройди тему по урокам — или попробуй зачёт завтра." },
+        ok: "Тема засчитана с пометкой «по опыту», руководитель увидит это в отчёте.",
+        bad: "Нужно " + need + " из " + sits.length + ". Пройди тему по урокам или попробуй зачёт завтра." },
         intro: { title: "Зачёт на опыт", sub: mod.title, cta: "Начать зачёт",
-          lines: [sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + " — вопросы теста и ситуации из практики темы",
-            "Без подсказок и второго шанса — как на смене", "Нужно " + need + " из " + sits.length + " — тема засчитана с пометкой «по опыту», её видно в отчёте",
-            "Одна попытка в день. Она начнётся с первого ответа — открыть и закрыть можно без потерь"],
+          lines: [sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + ": вопросы теста и ситуации из практики темы",
+            "Без подсказок и второго шанса, как на смене", "Нужно " + need + " из " + sits.length + ", тогда тема засчитана с пометкой «по опыту». Её видно в отчёте",
+            "Одна попытка в день. Она начнётся с первого ответа, а открыть и закрыть можно без потерь"],
           icons: ["✎", "✕", "✓", "☾"] },
         onBegin: () => { markCreditTry(ukP, mod.id, todayKey); bumpMarks(); } });
     } else if (mode === "gold") {
@@ -1205,11 +1097,11 @@ function ServiceAcademy() {
       const gSits = goldPool(mod);
       const gN = gSits.length || GOLD_N;
       setSpecial({ mode, mod, sits: gSits, timer: GOLD_TIMER, key, verdict: {
-        ok: "Номер темы в треке теперь золотой, в «Книге отзывов» — печать.",
-        bad: "Для золота — не больше одной ошибки. Можно сразу ещё раз." },
+        ok: "Номер темы в треке теперь золотой, а в «Книге отзывов» стоит печать.",
+        bad: "Для золота нужно не больше одной ошибки. Можно сразу ещё раз." },
         intro: { title: "Раунд мастера", sub: mod.title, cta: "Начать раунд",
-          lines: [gN + " " + pl3(gN, "задание", "задания", "заданий") + ", на каждое " + GOLD_TIMER + " секунд — последние 5 тикают", "Без подсказок", "Одна ошибка в запасе — это запасная свеча",
-            "Получилось — номер темы в треке золотой, в «Книге отзывов» печать"],
+          lines: [gN + " " + pl3(gN, "задание", "задания", "заданий") + ", на каждое " + GOLD_TIMER + " секунд (последние 5 тикают)", "Без подсказок", "Одна ошибка в запасе: это запасная свеча",
+            "Если получится, номер темы станет золотым, а в «Книге отзывов» появится печать"],
           icons: ["⏱", "✕", "🕯", "✦"] } });
       // v31: рекорд заведения по теме (этап 25) — в правилах и в чеке
       rpc("gold_records", { p_token: saToken(), p_mod: mod.id }).then((r) => {
@@ -1217,15 +1109,15 @@ function ServiceAcademy() {
         if (!r || !r.ok || !cur || cur.key !== key) return;
         const b = r.best;
         setSpecial({ ...cur, record: r, intro: cur.intro ? { ...cur.intro,
-          note: b && b.sec ? "Рекорд заведения: " + Math.floor(b.sec / 60) + ":" + String(b.sec % 60).padStart(2, "0") + " — " + (b.me ? "твой" : b.name + (b.initial ? " " + b.initial + "." : "")) + (r.mine && r.mine.sec && !b.me ? " · твой — " + Math.floor(r.mine.sec / 60) + ":" + String(r.mine.sec % 60).padStart(2, "0") : "") : "" } : cur.intro });
+          note: b && b.sec ? "Рекорд заведения: " + Math.floor(b.sec / 60) + ":" + String(b.sec % 60).padStart(2, "0") + " (" + (b.me ? "твой" : b.name + (b.initial ? " " + b.initial + "." : "")) + ")" + (r.mine && r.mine.sec && !b.me ? " · твой: " + Math.floor(r.mine.sec / 60) + ":" + String(r.mine.sec % 60).padStart(2, "0") : "") : "" } : cur.intro });
       }).catch(() => {});
     } else {
       if (!canRefresh(mod)) return;
       const rec = readFresh(ukP)[mod.id];
       const nd = INTERVALS[Math.min(((rec && rec.n) || 0) + 1, INTERVALS.length - 1)];
       setSpecial({ mode: "refresh", mod, sits: refreshPick(tablePool(mod), 3, String(Date.now())), key: Date.now(), verdict: {
-        ok: "Тема снова свежая. Следующий повтор — через " + nd + " " + pl3(nd, "день", "дня", "дней") + ".",
-        bad: "Нужно хотя бы 2 верно — тема пока бледная." } });
+        ok: "Тема снова свежая. Следующий повтор через " + nd + " " + pl3(nd, "день", "дня", "дней") + ".",
+        bad: "Нужно хотя бы 2 верных ответа, а пока тема бледная." } });
     }
   }, [ukP, todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v31: «Освежить всё выдохшееся» — 2–3 темы за один заход (по 2 задания, одна тема — 3)
@@ -1239,7 +1131,7 @@ function ServiceAcademy() {
     const mods = list.map((x) => x.mod);
     setSpecial({ mode: "freshall", mods, sits, key: Date.now(), verdict: {
       name: mods.length + " " + pl3(mods.length, "тема", "темы", "тем"),
-      ok: "Освежённые темы снова полные — следующий повтор позже, чем в прошлый раз.",
+      ok: "Освежённые темы снова полные, а следующий повтор будет позже, чем в прошлый раз.",
       bad: "Тема считается освежённой, если верно хотя бы половина её заданий." },
       extra: ({ okMods, sits: used }) => {
         const per2 = {}, ok = {};
@@ -1258,10 +1150,10 @@ function ServiceAcademy() {
     const mods = probeMods;
     setSpecial({ mode: "probe", mods, sits, key: seed, verdict: {
       name: mods.length + " " + pl3(mods.length, "тема", "темы", "тем") + " · " + sits.length + " " + pl3(sits.length, "задание", "задания", "заданий"),
-      ok: "Где оба ответа верные — тема знакома: сдай её на опыт (7 заданий без подсказок). Остальные — по урокам." },
+      ok: "Если оба ответа по теме верные, она тебе знакома: сдай её на опыт (7 заданий без подсказок). Остальные проходи по урокам." },
       intro: { title: "Проверка по треку", sub: "для тех, кто уже работал в сервисе", cta: "Начать проверку",
-        lines: ["По 2 задания из каждой непройденной темы — " + sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + ", минут 10",
-          "Без подсказок — чтобы честно понять, что уже знаешь", "В конце — какие темы можно сдать на опыт, а какие пройти по урокам",
+        lines: ["По 2 задания из каждой непройденной темы, всего " + sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + ", минут 10",
+          "Без подсказок, чтобы честно понять, что уже знаешь", "В конце будет видно, какие темы можно сдать на опыт, а какие пройти по урокам",
           "Ничего не засчитывается само и ничего не теряется"],
         icons: ["✎", "✕", "✓", "☾"] },
       extra: ({ okMods, sits: used }) => {
@@ -2368,10 +2260,10 @@ function ServiceAcademy() {
     const group = TRACK_GROUPS.find(g => g.members.includes(role));
     const nextRoleId = group ? group.members[group.members.indexOf(role) + 1] : null;
     const nextRole = nextRoleId ? ROLES.find(r => r.id === nextRoleId) : null;
-    if (!passed) return { eyebrow: "Все уроки пройдены", title: "Экзамен ступени", sub: "«Слепой» тест без подсказок — как у гостя нет второй попытки на первое впечатление. Сдал — сертификат и печать в Книге.", cta: "Сдать ›", onGo: () => openExam(role) };
-    if (nextRole) return { eyebrow: "Экзамен сдан", title: `Следующая ступень: ${nextRole.label}`, sub: nextRole.desc || nextRole.sublabel || "Трек продолжается — новые модули уже ждут", cta: "Перейти ›", onGo: () => { selectRole(nextRole.id); commitStack([]); }, // selectRole сам открывает программу новой роли
+    if (!passed) return { eyebrow: "Все уроки пройдены", title: "Экзамен ступени", sub: "10 вопросов из тестов роли, для сдачи нужно 80%. За сданный экзамен получишь сертификат и печать в Книге.", cta: "Сдать ›", onGo: () => openExam(role) };
+    if (nextRole) return { eyebrow: "Экзамен сдан", title: `Следующая ступень: ${nextRole.label}`, sub: nextRole.desc || nextRole.sublabel || "Трек продолжается, новые модули уже ждут", cta: "Перейти ›", onGo: () => { selectRole(nextRole.id); commitStack([]); }, // selectRole сам открывает программу новой роли
       secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
-    return { eyebrow: "Экзамен сдан", title: "Трек пройден до конца", sub: "Можно открыть новый трек — или держать форму: «Задание дня» и «Гость недели» во вкладке «Смена».", cta: "Другие треки ›", onGo: () => navigate("roleSelect"),
+    return { eyebrow: "Экзамен сдан", title: "Трек пройден до конца", sub: "Можно открыть новый трек или держать форму: «Задание дня» и «Гость недели» во вкладке «Смена».", cta: "Другие треки ›", onGo: () => navigate("roleSelect"),
       secondary: CERTIFICATES_ENABLED ? { label: "Открыть сертификат", onGo: () => openCertificate(role) } : null };
   };
   // Что Наставник знает о сотруднике (роль, прогресс, ошибки, смена) — вынесено из экрана
@@ -2429,7 +2321,7 @@ function ServiceAcademy() {
       const blocked = !iamAdmin && knownRole && !myRoles.has(lessonRole) && !inCustom;
 
       if (blocked) {
-        setLessonLockMsg("Этот урок из трека, который откроется позже — когда дойдёшь до него по программе. Спрашивай меня по теме сколько угодно, а систематически изучишь его на своём уровне 😊");
+        setLessonLockMsg("Этот урок из трека, который откроется позже, когда дойдёшь до него по программе. Спрашивай меня по теме сколько угодно, а по порядку изучишь его на своём уровне 😊");
         return;
       }
 
@@ -2742,13 +2634,13 @@ function ServiceAcademy() {
               const toks = (a, b) => new Set(norm(a + " " + b).split(" ").filter(Boolean));
               const isSub = (A, B) => [...A].every(x => B.has(x));
               const target = toks(name, surname);
-              if (!target.size) return { ok: false, msg: "Пустое имя — удали через «Команду»" };
+              if (!target.size) return { ok: false, msg: "Пустое имя. Удали через «Команду»" };
               const me = toks(profile?.name, profile?.surname);
               if (me.size && (isSub(target, me) || isSub(me, target))) {
-                return { ok: false, msg: "Себя удалить нельзя — попроси другого руководителя" };
+                return { ok: false, msg: "Себя удалить нельзя. Попроси другого руководителя" };
               }
               const list = await rpc("admin_list_employees", { p_token: saToken() });
-              if (!Array.isArray(list)) return { ok: false, msg: "Не получил список сотрудников — проверь связь" };
+              if (!Array.isArray(list)) return { ok: false, msg: "Не получил список сотрудников. Проверь связь" };
               const hits = list.filter(e => {
                 const et = toks(e.name, e.surname);
                 return et.size && (isSub(target, et) || isSub(et, target));
@@ -2760,9 +2652,9 @@ function ServiceAcademy() {
                 setScores(prev => prev.filter(x => !(x.name === name && x.surname === surname)));
                 setPracticeStars(prev => { const nx = { ...prev }; delete nx[name + "|" + (surname || "")]; return nx; });
                 setAllProfiles(prev => (prev || []).filter(x => !(x.name === name && x.surname === surname)));
-                return { ok: true, note: "Доступа в списке не было (профиль-призрак) — записи и результаты стёрты" };
+                return { ok: true, note: "Доступа в списке не было (профиль-призрак), записи и результаты стёрты" };
               }
-              if (hits.length > 1) return { ok: false, msg: "Нашёл несколько похожих: " + hits.slice(0, 3).map(e => (e.name + " " + (e.surname || "")).trim()).join(", ") + " — удали точечно через «Команду»" };
+              if (hits.length > 1) return { ok: false, msg: "Нашёл несколько похожих: " + hits.slice(0, 3).map(e => (e.name + " " + (e.surname || "")).trim()).join(", ") + ". Удали точечно через «Команду»" };
               const emp = hits[0];
               const res = await rpc("admin_delete_employee", { p_token: saToken(), p_employee_id: emp.id });
           await wipeTraces(emp.name, emp.surname);   // следы по имени остаются и после удаления (этап 20)
@@ -2874,12 +2766,12 @@ function ServiceAcademy() {
               onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
           // v71: группами — «На смене» (дело) и «Потренироваться» (две минуты на практику)
           { key:"sch", group:"На смене", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
-          { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, смена, закрытие", onClick:() => navigate("checklist") },
-          { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено — за час до смены зовёт на разминку" : "За час до смены — разминка в 2 минуты", onClick:() => setRemindOpen(true) },
+          { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, предсменка, закрытие", onClick:() => navigate("checklist") },
+          { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено: за час до смены зовёт на разминку" : "Разминка в 2 минуты за час до смены", onClick:() => setRemindOpen(true) },
           { key:"daily", group:"Потренироваться", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
           { key:"lg", group:"Потренироваться", icon:"guestai", label:"Живой гость", sub: guestSub(role, profile?.position), onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал; v42: подпись — по роли
           { key:"wg", group:"Потренироваться", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest"), badge: isNewFam("dialogue") ? "новое" : null },
-          { key:"rd", group:"Потренироваться", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков — слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319
+          { key:"rd", group:"Потренироваться", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков, чтобы слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319
           role === "seasonal" && { key:"ob", group:"Первая неделя", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },
         ]} /></div>}
         {screen === "teamHub" && profile && (() => {
@@ -2931,32 +2823,32 @@ function ServiceAcademy() {
               ? "Мастер роли · " + mShown.bronze + " из " + mShown.total + " значков"
               : mShown.bronze + " из " + mShown.total + " значков · до «Мастера роли» " + mShown.master.have + " из " + mShown.master.need,
             badge: !mSeen.mastery ? "новое" : null, onClick:() => openMastery() },
-          { key:"guide", group:"Помощь и настройки", icon:"book", label:"Гид по приложению", sub:"Что где и зачем — с кнопками «Открыть»", onClick:() => navigate("guide") },
+          { key:"guide", group:"Помощь и настройки", icon:"book", label:"Гид по приложению", sub:"Что где и зачем, с кнопками «Открыть»", onClick:() => navigate("guide") },
           { key:"st", group:"Мой путь", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
           // Доп. 306: по понедельникам — чек прошлой недели (с главной сюда, чтобы главная была лёгкой)
           weekCardShow
-            ? { key:"week", group:"Итоги и документы", icon:"receipt", label:"Чек недели", sub:`Прошлая неделя: в деле ${prevWeek.activeDays} из 7 — можно отправить команде`, badge:"новый", onClick:() => openWeek("prev") }
-            : { key:"week", group:"Итоги и документы", icon:"receipt", label:"Чек недели", sub:"Что сделано за 7 дней — можно отправить команде", onClick:() => openWeek("last7") },
+            ? { key:"week", group:"Итоги и документы", icon:"receipt", label:"Чек недели", sub:`Прошлая неделя: в деле ${prevWeek.activeDays} из 7. Можно отправить команде`, badge:"новый", onClick:() => openWeek("prev") }
+            : { key:"week", group:"Итоги и документы", icon:"receipt", label:"Чек недели", sub:"Что сделано за 7 дней. Можно отправить команде", onClick:() => openWeek("last7") },
           // v30 (Доп. 320): итоги месяца; первые три дня месяца — итоги прошлого с отметкой «новые»
           (() => {
             const seenR = (() => { try { return localStorage.getItem("sa_recap_seen" + ukP) || ""; } catch (e) { return ""; } })();
             const rc = monthRecap({ act: activity, streak, month: recapWhich.key });
             const fresh = recapWhich.prev && seenR !== recapWhich.key;
-            return { key:"month", group:"Итоги и документы", icon:"month", label:"Итоги месяца", sub: (recapWhich.prev ? "Итоги: " : "") + MONTH[rc.month - 1] + (recapWhich.prev ? "" : " пока") + ": " + rc.active + " " + pl3(rc.active, "день", "дня", "дней") + " в деле — карточки и «поделиться»",
+            return { key:"month", group:"Итоги и документы", icon:"month", label:"Итоги месяца", sub: (recapWhich.prev ? "Итоги: " : "") + MONTH[rc.month - 1] + (recapWhich.prev ? "" : " пока") + ": " + rc.active + " " + pl3(rc.active, "день", "дня", "дней") + " в деле, карточки и «поделиться»",
               badge: fresh ? "новые" : null, onClick:() => openRecap(recapWhich.key) };
           })(),
           // v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека
           { key:"cellar", group:"Мой путь", icon:"cellar", label:"Погреб тем", sub: (() => { const g = Object.keys(marks.gold || {}).length; const f = fadedIds.size; return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? " · золотых " + g : "") + " · освежить, раунд мастера, зачёт"; })(),
             // v40: «новое» — если освежать или играть раунд мастера уже есть что, а ни разу не пробовал
             badge: fadedIds.size >= 3 ? String(fadedIds.size) : (isNewFam("fresh") || isNewFam("gold")) && !mSeen.cellar ? "новое" : null, onClick:() => navigate("cellar") },
-          { key:"myrep", group:"Итоги и документы", icon:"report", label:"Мой отчёт", sub:"Что пройдено, где ошибаюсь, что повторить — PDF", onClick:() => { setReportSelf(true); navigate("report"); } },
+          { key:"myrep", group:"Итоги и документы", icon:"report", label:"Мой отчёт", sub:"Что пройдено, где ошибаюсь, что повторить (PDF)", onClick:() => { setReportSelf(true); navigate("report"); } },
           // v30 (Доп. 318): свеча на двоих
           { key:"pair", group:"Вместе", icon:"pair", label:"Свеча на двоих",
             sub: pairInfo && pairInfo.pair ? "С " + ((pairInfo.pair.partner && pairInfo.pair.partner.name) || "напарником") + " · " + pairInfo.pair.streak + " " + pl3(pairInfo.pair.streak, "день", "дня", "дней") + " вместе"
-              : pairInfo && pairInfo.invites && pairInfo.invites.length ? "Тебя зовут в пару — ответь" : "Общая серия с напарником или наставником",
+              : pairInfo && pairInfo.invites && pairInfo.invites.length ? "Тебя зовут в пару. Ответь" : "Общая серия с напарником или наставником",
             badge: pairInfo && pairInfo.invites && pairInfo.invites.length ? String(pairInfo.invites.length) : null, onClick:() => { vibrate("light"); setPairOpen(true); } },
-          CERTIFICATES_ENABLED && { key:"cert", group:"Итоги и документы", icon:"cert", label:"Сертификаты", sub:"Пройденные роли — с печатью", onClick:() => navigate("certificates") },
-          { key:"acc", group:"Помощь и настройки", icon:"profile", label:"Аккаунт и настройки", sub:"Тренировочная карточка, крупный шрифт, выход", onClick:() => navigate("profile") },
+          CERTIFICATES_ENABLED && { key:"cert", group:"Итоги и документы", icon:"cert", label:"Сертификаты", sub:"Пройденные роли с печатью", onClick:() => navigate("certificates") },
+          { key:"acc", group:"Помощь и настройки", icon:"profile", label:"Аккаунт и настройки", sub:"Карта обучения, «Для чтения», выход", onClick:() => navigate("profile") },
           { key:"roles", group:"Мой путь", icon:"roles", label:"Мои роли", sub:"Сменить трек или открыть новый", onClick:() => navigate("roleSelect") },
           { ...offlineHelp, group:"Помощь и настройки" },
         ]} groupOrder={["Мой путь", "Итоги и документы", "Вместе", "Помощь и настройки"]} compactGroups={["Итоги и документы", "Помощь и настройки"]} /></div>}
@@ -3055,7 +2947,7 @@ function ServiceAcademy() {
             <span className="sa-pulse" style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.target(a11y ? "#7A5D2A" : "#C8A96E", 18)}</span>
             <div onClick={() => closeMistakeHint(true)} {...onActivate(() => closeMistakeHint(true))}
               style={{ flex: 1, cursor: "pointer", color: T.modSub?.color || "#C8B898", fontSize: a11y ? 14 : 12.5, lineHeight: 1.5 }}>
-              Появились вопросы на повторение — загляни в «Работу над ошибками»
+              Появились вопросы на повторение. Загляни в «Работу над ошибками»
             </div>
             <button className="sa-btn" onClick={() => closeMistakeHint(false)}
               style={{ border: "none", background: "transparent", color: T.modSub?.color || "#9A8C74", fontSize: 15, cursor: "pointer", padding: 4, flexShrink: 0 }}>✕</button>
@@ -3074,7 +2966,7 @@ function ServiceAcademy() {
           // v69 (Доп. 382): отступ под строку состояния — сверху (был снизу: под вырезом экрана текст прятался)
           <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:500, padding:"calc(6px + var(--sa-st, env(safe-area-inset-top, 0px))) 12px 6px", textAlign:"center", fontSize:12, letterSpacing:0.5,
             background: a11y ? "rgba(139,106,48,0.92)" : "rgba(60,44,16,0.92)", color:"#EFE4C8", backdropFilter:"blur(6px)" }}>
-            Без сети — работаем на сохранённом, синхронизируем при появлении связи
+            Без сети. Работаем на сохранённом и синхронизируем, когда появится связь
           </div>
         )}
         {/* Доп. 133: четыре вкладки. Экран внутри раздела подсвечивает свою вкладку. */}
@@ -3184,7 +3076,7 @@ class ErrorBoundary extends React.Component {
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>{ROLE_SVG.bar("#C8A96E", 44)}</div>
           <div style={{ color: CREAM, fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>{this.state.updating ? "Приложение обновилось" : this.state.offline ? "Экран не докачался" : "Что-то пошло не так"}</div>
           <div style={{ color: "#7A654C", fontSize: 14, lineHeight: 1.7, maxWidth: 320, marginBottom: 24 }}>
-            {this.state.updating ? "Вышла новая версия — перезагружаю, секунду…" : this.state.offline ? "Похоже, связь оборвалась на полпути. Прогресс на месте — проверь интернет и нажми «Повторить»." : "Произошёл сбой при загрузке экрана. Ваш прогресс сохранён — просто перезагрузите приложение."}
+            {this.state.updating ? "Вышла новая версия. Перезагружаю, секунду…" : this.state.offline ? "Похоже, связь оборвалась на полпути. Прогресс на месте. Проверь интернет и нажми «Повторить»." : "Произошёл сбой при загрузке экрана. Прогресс сохранён, перезагрузи приложение."}
           </div>
           <button onClick={this.handleReload} style={{ background: "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 28px", fontSize: 16, fontFamily: "Georgia, serif", cursor: "pointer", boxShadow: "0 4px 18px rgba(200,160,80,0.3)" }}>
             Перезагрузить

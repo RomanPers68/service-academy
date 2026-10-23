@@ -81,9 +81,10 @@ Deno.serve(async (req) => {
       if (!prof) continue;
       const to = sh.to === 24 ? "24" : String(sh.to);
       const when = sh.from + ":00–" + to + ":00";
-      let text = "✦ SERVICE ACADEMY\n\nЗавтра смена: " + sh.name + " · " + when;
+      // v74 (Доп. 387): без шапки с названием приложения и без звёздочек — от кого сообщение, Telegram и так пишет над чатом
+      let text = "Завтра смена: " + sh.name + " · " + when;
       if (note) text += "\n✎ " + note;
-      text += "\n\nПовтори, что подзабыл, и хорошей смены ✦";
+      text += "\n\nПовтори, что подзабыл, и хорошей смены!";
       out.push({ chat_id: prof.tg_chat_id, name: st.name, text });
     }
   }
@@ -95,7 +96,7 @@ Deno.serve(async (req) => {
         const body = { chat_id: o.chat_id, text: o.text };
         if (appUrl) {
           // web_app — кнопка открывает мини-апп внутри Telegram, а не браузер
-          body.reply_markup = { inline_keyboard: [[{ text: "Открыть график ✦", web_app: { url: appUrl } }]] };
+          body.reply_markup = { inline_keyboard: [[{ text: "Открыть график", web_app: { url: appUrl } }]] };
         }
         const r = await fetch("https://api.telegram.org/bot" + botToken + "/sendMessage", {
           method: "POST",

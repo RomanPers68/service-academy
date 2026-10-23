@@ -472,13 +472,14 @@ if (want("FEED")) {
   await dismissToasts(o.page);
   await o.page.evaluate(() => window.__saNav("teamHub")); await sleep(2200);
   let g = await feedInfo(o.page);
-  ok("FEED: на «Команде» — «ЖИЗНЬ КОМАНДЫ», три строки и «Ещё», новые сверху («спасибо» — сегодня)", g && g.items.length === 3 && g.more && /^thanks:Ольга — спасибо команде ✦ сегодня/.test(g.items[0]) && /ЖИЗНЬ КОМАНДЫ/.test(g.text), JSON.stringify(g));
-  ok("FEED: тест своего заведения — «Ангелина Т. сдала тест «Мышление сервиса» — 92%»", g && g.items.some((x) => /Ангелина Т\. сдала тест «Мышление сервиса» — 92%/.test(x)), JSON.stringify(g && g.items));
+  // v73: подписи строчными, без ✦; v74: глаголом по полу — «Ольга сказала спасибо команде», «сдала тест «…» на 92%»
+  ok("FEED: на «Команде» — «Жизнь команды», три строки и «Ещё», новые сверху («спасибо» — сегодня)", g && g.items.length === 3 && g.more && /^thanks:Ольга сказала спасибо команде сегодня/.test(g.items[0]) && /Жизнь команды/.test(g.text), JSON.stringify(g));
+  ok("FEED: тест своего заведения — «Ангелина Т. сдала тест «Мышление сервиса» на 92%»", g && g.items.some((x) => /Ангелина Т\. сдала тест «Мышление сервиса» на 92%/.test(x)), JSON.stringify(g && g.items));
   await shot(o.page, "feed");
   await o.page.locator("[data-feed-more]").click(); await sleep(500);
   g = await feedInfo(o.page);
   const all = g ? g.items.join(" | ") : "";
-  ok("FEED: «Ещё» — вся лента: рекорд «Час пик», печати Сборки, мастер старше недели", /рекорд «Час пик»: 3 заказа за 74 с/.test(all) && /12 печатей Сборки/.test(all) && /стала мастером роли «Новичок» ✦/.test(all), all);
+  ok("FEED: «Ещё» — вся лента: рекорд «Час пик», печати Сборки, мастер старше недели", /рекорд «Час пик»: 3 заказа за 74 с/.test(all) && /12 печатей Сборки/.test(all) && /стала мастером роли «Новичок»/.test(all), all);
   ok("FEED: чужое заведение, тест ниже 70% и события старше двух недель — не в ленте", !/Пётр/.test(all) && !/Ольга К/.test(all) && !/Олег/.test(all), all);
   await shot(o.page, "feed-more");
   const cached = await o.page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("sa_team_ach")));

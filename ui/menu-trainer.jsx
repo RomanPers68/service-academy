@@ -219,9 +219,9 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   const md = modeOfDay(new Date(), role); const dayKey = md && md.go === "menu" ? (md.key === "allergens" ? "sprint" : "cards") : null;
   const dayCount = Math.min(5, dailyCount(uk)); const dayDone = dayCount >= 5; const dayStreak = dailyStreak(uk);
   const modes = [
-    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Карточки, поиск, разделы, «Знаю?», «Наоборот» — как у бара" },
+    { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Карточки с поиском и разделами, режимы «Знаю?» и «Наоборот»" },
     { key: "sprint", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>, title: "Аллергены на скорость", sub: "30 секунд, свайп «есть / нет», рекорд" },
-    { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Главные ингредиенты и аллергены — без подвохов" },
+    { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Главные ингредиенты и аллергены, без подвохов" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
   ];
   const iconBox = { width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
@@ -244,7 +244,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        В базе: <b style={{ color: gold }}>{dishes.length}</b> блюд{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v73</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v74</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -252,7 +252,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           return (
             <div style={{ marginTop: 4 }}>
               <span style={{ fontSize: 12.5 }}>Пищевая ценность: <b style={{ color: miss.length ? gold : green }}>{have}</b> из {dishes.length}</span>
-              {miss.length > 0 && canEdit && <span onClick={() => setShowNoNut(v => !v)} {...onActivate(() => setShowNoNut(v => !v))} style={{ color: gold, cursor: "pointer", fontSize: 12.5, marginLeft: 8 }}>{showNoNut ? "скрыть" : `у ${miss.length} нет — дописать`}</span>}
+              {miss.length > 0 && canEdit && <span onClick={() => setShowNoNut(v => !v)} {...onActivate(() => setShowNoNut(v => !v))} style={{ color: gold, cursor: "pointer", fontSize: 12.5, marginLeft: 8 }}>{showNoNut ? "скрыть" : `у ${miss.length} нет, дописать`}</span>}
               {showNoNut && miss.length > 0 && (
                 <div className="sa-fadein" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {miss.map(d => (
@@ -265,7 +265,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           );
         })()}
         {shareErr && <div style={{ color: red, fontSize: 12.5, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
-        {shareStale && <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4 }}>Без связи — показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
+        {shareStale && <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4 }}>Нет связи. Показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
 
       <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Тренировка</div>
@@ -276,7 +276,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={{ ...iconBox, background: learned ? "rgba(93,187,138,0.14)" : iconBox.background }}>{learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>Новые позиции{!learned && <span style={{ ...labelStyle(13), color: "#1A1008", background: gold, borderRadius: 6, padding: "1px 6px" }}>новое</span>}</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{learned ? `Выучено ✓ · ${newDishes.length} блюд — повтори при желании` : `${newDishes.length} блюд · выучи к смене`}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{learned ? `Выучено ✓ · блюд: ${newDishes.length}. Можно повторить` : `Блюд: ${newDishes.length}. Выучи к смене`}</div>
             </div>
             <div style={T.modArrow}>›</div>
           </div>
@@ -288,7 +288,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={iconBox}>{m.icon(gold)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={T.modTitle}>{m.title}</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Режим дня — попробуй «Наоборот» внутри: " : md.key === "know-menu" ? "Режим дня — «Знаю?»: " : "") + m.sub : m.sub}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{isDay ? (md.key === "reverse-menu" ? "Нажми на лупу, включи «Наоборот» и угадывай блюда по фото и составу" : md.key === "know-menu" ? "Переключись на «Знаю?» и повтори пять карточек" : m.sub) : m.sub}</div>
               {isDay && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                 <span style={{ display: "inline-flex", gap: 2 }}>{[0,1,2,3,4].map(k => <span key={k} style={{ width: 6, height: 6, borderRadius: 3, background: k < dayCount ? (dayDone ? "#5DBB8A" : gold) : "transparent", border: `1px solid ${dayDone ? "#5DBB8A" : gold + "88"}` }} />)}</span>
                 <span style={{ ...labelStyle(13), color: dayDone ? "#5DBB8A" : gold }}>{dayDone ? "Пять есть ✓" : "Режим дня"}{dayStreak > 1 ? ` · серия ${dayStreak}` : ""}</span>
@@ -304,7 +304,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={iconBox}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={T.modTitle}>Меню для печати</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Лист картинкой: фото, состав, аллергены — учить с бумаги или раздать команде</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Лист с фото, составом и аллергенами: учить с бумаги или раздать команде</div>
             </div>
             <div style={T.modArrow}>›</div>
           </div>
@@ -326,12 +326,12 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={iconBox}>{UI_SVG.eye(gold, 19)}</div>
             <div style={{ flex: 1 }}>
               <div style={T.modTitle}>Кто выучил новинки</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Открыл · выучил — картина по команде</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Статус каждого: открыл или выучил</div>
             </div>
             <div style={T.modArrow}>›</div>
           </div>
         )}
-        {!dishes.length && <div style={{ textAlign: "center", padding: "20px", color: T.modSub.color, fontSize: 12.5 }}>Меню пустое — попроси менеджера добавить блюда в редакторе.</div>}
+        {!dishes.length && <div style={{ textAlign: "center", padding: "20px", color: T.modSub.color, fontSize: 12.5 }}>Меню пустое. Попроси менеджера добавить блюда в редакторе.</div>}
       </div>
     </div>
   );
@@ -363,18 +363,18 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
       {Head("Кто выучил новинки")}
       {err === "forbidden" && (
         <div style={{ textAlign: "center", padding: "44px 24px", fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>
-          Сводка по команде — для своего ресторана. Другие рестораны видят руководящий состав сети и владелец.
+          Сводка доступна только по своему ресторану. Другие рестораны видят руководящий состав сети и владелец.
         </div>
       )}
       {err && err !== "forbidden" && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🔌</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase/supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. docs/UPGRADE_NOTES.md) — и здесь появится картина по каждому сотруднику.</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase/supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. docs/UPGRADE_NOTES.md). После этого здесь появится картина по каждому сотруднику.</div>
         </div>
       )}
       {!err && rows === null && <SkelCards a11y={!!T.a11y} rows={4} h={60} style={{ padding: "16px 16px 24px" }} />}
       {!err && rows && !rows.length && (
-        <div style={{ textAlign: "center", padding: "44px 24px", color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>Пока никто не открывал новинки. Скажи команде на брифинге: «Зайдите в приложение — выучите новые позиции» 😉</div>
+        <div style={{ textAlign: "center", padding: "44px 24px", color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>Пока никто не открывал новинки. Скажи команде на брифинге: «Зайдите в приложение и выучите новые позиции» 😉</div>
       )}
       {!err && rows && rows.length > 0 && (
         <div style={{ padding: "10px 14px" }}>
@@ -443,7 +443,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
         </div>
       </div>
       <div style={{ padding: "4px 16px 100px" }}>
-        {!groups.length && <div style={{ color: sub, fontSize: 12.5, padding: "20px 4px", textAlign: "center" }}>Ничего не нашлось — попробуй другое слово</div>}
+        {!groups.length && <div style={{ color: sub, fontSize: 12.5, padding: "20px 4px", textAlign: "center" }}>Ничего не нашлось. Попробуй другое слово</div>}
         {groups.map(g => (
           <div key={g.cat} style={{ marginTop: 12 }}>
             <div style={{ ...labelStyle(13.5), color: gold, margin: "0 2px 8px" }}>{g.cat} · {g.items.length}</div>
@@ -653,7 +653,7 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
             </div>
           </div>
           <div style={{ ...T.bold, fontSize: 21, marginBottom: 8 }}>{score} из {questions.length}</div>
-          <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>{pct >= 80 ? "Отлично знаешь меню!" : pct >= 50 ? "Неплохо, но повтори флеш-карточки." : "Пройди флеш-карточки — и возвращайся."}</div>
+          <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>{pct >= 80 ? "Отлично знаешь меню!" : pct >= 50 ? "Неплохо, но повтори Колоду меню." : "Пройди Колоду меню и возвращайся."}</div>
           <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "13px 30px" }} onClick={() => { setQuestions(buildQuiz(dishes)); setStep(0); setScore(0); setPick(null); }}>Ещё раз</button>
         </div>
       </div>
@@ -708,7 +708,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
           {phase === "ready" && (
             <div style={{ color: T.para?.color, fontSize: 14, lineHeight: 1.65 }}>
               Представь: гость спрашивает «а что это за блюдо?». У тебя минута, чтобы описать его так, чтобы захотелось заказать.
-              <br /><br />Говори <b style={{ color: gold }}>вслух</b> — как в зале. Про вкус, текстуру и подачу, а не только про состав.
+              <br /><br />Говори <b style={{ color: gold }}>вслух</b>, как в зале. Кроме состава, расскажи про вкус, текстуру и подачу.
             </div>
           )}
 
@@ -724,10 +724,10 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
           {phase === "compare" && (
             <div>
               <div style={{ ...labelStyle(13), color: green, marginBottom: 4 }}>Эталонное описание</div>
-              <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 12, fontStyle: "italic", color: T.para?.color }}>{dish.desc || "Эталон не задан — добавь описание в редакторе меню."}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 12, fontStyle: "italic", color: T.para?.color }}>{dish.desc || "Эталон не задан. Добавь описание в редакторе меню."}</div>
               <DishBack d={{ ...dish, desc: "" }} T={T} gold={gold} />
               <div style={{ color: T.modSub.color, fontSize: 12.5, lineHeight: 1.55, marginTop: 4 }}>
-                Сравни: упомянул(а) вкус? текстуру? сочетание? Чего не хватило — то и запомни.
+                Сравни: упомянул(а) вкус? текстуру? сочетание? Чего не хватило, то и запомни.
               </div>
             </div>
           )}
@@ -772,12 +772,12 @@ function PreviewCard({ d, T, gold, red, glass }) {
         <DishPhoto src={d.img} h={190} />
         <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>{d.cat || "Блюдо"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{d.name || "Без названия"}</div>
-        <div style={{ marginTop: 12, fontSize: 11, color: gold, fontStyle: "italic", textAlign: "center" }}>тапни — состав</div>
+        <div style={{ marginTop: 12, fontSize: 11, color: gold, fontStyle: "italic", textAlign: "center" }}>состав по тапу</div>
       </>) : (<>
         <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 4 }}>{d.cat || "Блюдо"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginBottom: 8 }}>{d.name || "Без названия"}</div>
         {String(d.short || "").trim() ? <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div> : null}
-        {!String(d.desc || "").trim() && <div style={{ fontSize: 12.5, color: T.modSub.color, fontStyle: "italic", marginBottom: 8 }}>Описания для гостя пока нет — официанту придётся импровизировать.</div>}
+        {!String(d.desc || "").trim() && <div style={{ fontSize: 12.5, color: T.modSub.color, fontStyle: "italic", marginBottom: 8 }}>Описания для гостя пока нет, официанту придётся импровизировать.</div>}
         <DishBack d={d} T={T} gold={gold} />
       </>)}
     </div>
@@ -887,21 +887,21 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       .then(res => {
         setPubBusy(false);
         if (res && res.ok === true) {
-          _showPub(true, toPublish.length ? "Опубликовано ✓ — команда увидит меню при следующем открытии тренажёра" : "Опубликовано ✓ — серверное меню очищено");
+          _showPub(true, toPublish.length ? "Опубликовано ✓ Команда увидит меню при следующем открытии тренажёра" : "Опубликовано ✓ Серверное меню очищено");
           if (onPublished) onPublished(toPublish);
           if (setDeleted) setDeleted({ ...deleted, [restaurant]: [] });
           rememberSharedMenu(restaurant, toPublish);
           try { localStorage.setItem("sa_menu_pub_" + restaurant, String(Date.now())); } catch (e) {}
           vibrate("light");
         }
-        else if (res && res.ok === false) _showPub(false, res.error === "auth" ? "Сервер не подтвердил сессию — выйди и зайди по коду заново" : "Сервер отклонил: " + (res.error || "неизвестно"));
+        else if (res && res.ok === false) _showPub(false, res.error === "auth" ? "Сервер не подтвердил сессию. Выйди и зайди по коду заново" : "Сервер отклонил: " + (res.error || "неизвестно"));
         else if (res && res.message) _showPub(false, "Ошибка сервера: " + String(res.message).slice(0, 140));
         else _showPub(false, "Неожиданный ответ сервера");
       })
       .catch(() => {
         setPubBusy(false);
         rpcSync("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(toPublish) });
-        _showPub(false, "Нет сети — публикация отправится автоматически, когда связь появится");
+        _showPub(false, "Нет сети. Публикация отправится сама, когда появится связь");
       });
   };
 
@@ -930,11 +930,11 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     // Доп. 182: причина с сервера — словами, а не общей фразой
     const explain = (status, j) => {
       if (status === 404 || (j && /not found/i.test(String(j.message || j.msg || "")))) return "функция photo-upload не развёрнута в Supabase (Edge Functions → Deploy new function → Via Editor → имя photo-upload)";
-      if (j && j.error === "auth") return "сервер не подтвердил сессию — выйди и войди заново";
+      if (j && j.error === "auth") return "сервер не подтвердил сессию, выйди и войди заново";
       if (j && j.error === "forbidden") return "у этой учётной записи нет права загружать фото (нужен менеджер/старший/владелец)";
-      if (j && j.error === "storage") return "хранилище: " + (j.detail || "ошибка") + (/bucket not found/i.test(String(j.detail || "")) ? " — корзины menu-photos нет, создай в Storage" : "");
+      if (j && j.error === "storage") return "хранилище: " + (j.detail || "ошибка") + (/bucket not found/i.test(String(j.detail || "")) ? ". Корзины menu-photos нет, создай её в Storage" : "");
       if (j && j.error === "too_large") return "фото больше 2 МБ";
-      if (j && (j.error || j.detail)) return String(j.error || "") + (j.detail ? " — " + j.detail : "");
+      if (j && (j.error || j.detail)) return String(j.error || "") + (j.detail ? ": " + j.detail : "");
       return "HTTP " + status;
     };
     for (const d of localPhotos) {
@@ -948,7 +948,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     }
     setCustom({ ...custom, [restaurant]: cur });
     setReupBusy(false);
-    setReupMsg(ok && !fail ? `В облаке ✓ ${ok} фото — память телефона свободна` : ok ? `${ok} ушло, ${fail} не удалось: ${why}` : "Не удалось: " + why);
+    setReupMsg(ok && !fail ? `В облаке ✓ ${ok} фото, память телефона свободна` : ok ? `${ok} ушло, ${fail} не удалось: ${why}` : "Не удалось: " + why);
     if (ok) vibrate("success");
   };
   // Доп. 187: фото, потерянные на телефоне, могли уцелеть в серверной копии (публиковались как текст) — вытащить в облако
@@ -972,7 +972,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       } catch (e) { fail++; if (!why) why = "нет связи"; }
     }
     setCustom({ ...custom, [restaurant]: cur }); setRecBusy(false);
-    setRecMsg(ok && !fail ? `Восстановлено ✓ ${ok} фото — теперь в облаке. Нажми «Опубликовать», чтобы команда увидела.` : ok ? `${ok} восстановлено, ${fail} не удалось: ${why}` : "Не удалось: " + why);
+    setRecMsg(ok && !fail ? `Восстановлено ✓ ${ok} фото, теперь они в облаке. Нажми «Опубликовать», чтобы команда увидела.` : ok ? `${ok} восстановлено, ${fail} не удалось: ${why}` : "Не удалось: " + why);
     if (ok) vibrate("success");
   };
   const [undo, setUndo] = React.useState(null);
@@ -1026,9 +1026,9 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         const parts = raw.split(/\n?\s*(?:^|\n)\s*[1-3][.)]\s*/m).map(x => x.replace(/^["«»\s*]+|["«»\s*]+$/g, "").trim()).filter(x => x.length > 20).slice(0, 3);
         if (parts.length >= 2) { setAiVariants(parts); vibrate("success"); }
         else if (parts.length === 1) { setForm(f => ({ ...f, desc: parts[0] })); vibrate("success"); }
-        else setAiErr("Наставник ответил невнятно — попробуй ещё раз");
+        else setAiErr("Наставник ответил невнятно. Попробуй ещё раз");
       }
-      else setAiErr("Наставник не ответил — попробуй ещё раз");
+      else setAiErr("Наставник не ответил. Попробуй ещё раз");
     }).catch(() => { setAiBusy(false); setAiErr("Нет связи с Наставником"); });
   };
 
@@ -1078,7 +1078,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                 <img src={form.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 14, display: "block", border: `1px solid ${gold}44` }} />
                 <div onClick={() => setForm(f => ({ ...f, img: "" }))} {...onActivate(() => setForm(f => ({ ...f, img: "" })))} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}>✕</div>
                 {photoState && <div style={{ position: "absolute", left: 8, bottom: 8, fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: photoState === "local" ? "#F0B37A" : "#EFE4C8" }}>
-                  {photoState === "uploading" ? "Отправляю в облако…" : photoState === "cloud" ? "В облаке — увидят все" : "Только на этом телефоне"}
+                  {photoState === "uploading" ? "Отправляю в облако…" : photoState === "cloud" ? "В облаке, видно всем" : "Только на этом телефоне"}
                 </div>}
                 <label style={{ position: "absolute", right: 8, bottom: 8, fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "rgba(0,0,0,0.55)", color: "#EFE4C8", cursor: "pointer" }}>Заменить<input type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} /></label>
               </div>
@@ -1103,11 +1103,11 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               </span>
             ))}
           </div>
-          <input className="sa-field" style={{ ...inputSt, marginBottom: 4 }} placeholder={ingList.length ? "Ещё ингредиент — Enter или запятая" : "Ингредиент — Enter или запятая"}
+          <input className="sa-field" style={{ ...inputSt, marginBottom: 4 }} placeholder={ingList.length ? "Ещё ингредиент: Enter или запятая" : "Ингредиент: Enter или запятая"}
             onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
             onBlur={e => { if (e.currentTarget.value.trim()) { addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
             onChange={e => { if (e.target.value.includes(",")) { addIng(e.target.value); e.target.value = ""; } }} />
-          <div style={{ fontSize: 11, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую — разложится на чипы.</div>
+          <div style={{ fontSize: 11, color: T.modSub.color, margin: "0 2px 10px" }}>Можно вставить весь состав через запятую, он разложится на чипы.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
             {ALLERGENS_LIST.map(al => <span key={al} style={chip((form.allergens || []).includes(al), true)} onClick={() => toggleAl(al)} {...onActivate(() => toggleAl(al))}>{allergenLabel(al)}</span>)}
           </div>
@@ -1116,7 +1116,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               <div style={{ ...labelStyle(13.5), color: red, marginBottom: 6 }}>Проверь аллергены</div>
               {hints.map(h => (
                 <div key={h.allergen} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: T.para?.color, marginBottom: 6 }}>
-                  <span style={{ flex: 1 }}>В составе «{h.because}…» — похоже на <b style={{ color: red }}>{h.allergen}</b></span>
+                  <span style={{ flex: 1 }}>В составе «{h.because}…»: похоже на <b style={{ color: red }}>{h.allergen}</b></span>
                   <span style={{ ...chip(false), padding: "4px 10px", color: red, borderColor: red + "88" }} onClick={() => toggleAl(h.allergen)}>Добавить</span>
                 </div>
               ))}
@@ -1124,7 +1124,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           )}
 
           {secLabel("Для гостя")}
-          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Одной фразой — первое, что говорит официант (необязательно)" value={form.short || ""} onChange={v => setForm(f => ({ ...f, short: v }))} style={{ fontStyle: "italic" }} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Одной фразой: первое, что говорит официант (необязательно)" value={form.short || ""} onChange={v => setForm(f => ({ ...f, short: v }))} style={{ fontStyle: "italic" }} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={v => setForm(f => ({ ...f, desc: v }))} rows={3} />
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "-4px 0 10px" }}>
             <span onClick={aiDescribe} {...onActivate(aiDescribe)} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: canSave ? "pointer" : "default", border: `1px solid ${gold}88`, color: gold, opacity: canSave && !aiBusy ? 1 : 0.5 }}>{aiBusy ? "Наставник пишет…" : aiVariants.length ? "Ещё три варианта" : "Три варианта описания"}</span>
@@ -1132,7 +1132,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           </div>
           {aiVariants.length > 0 && (
             <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 12 }}>
-              <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>Выбери — потом можно править</div>
+              <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>Выбери, потом поправишь</div>
               {aiVariants.map((v, i) => (
                 <div key={i} style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, fontSize: 14, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${form.desc === v || form.short === v ? gold : gold + "33"}`, background: form.desc === v || form.short === v ? "rgba(214,178,102,0.12)" : "transparent" }}>
                   <div onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} {...onActivate(() => setForm(f => ({ ...f, desc: v })))} style={{ cursor: "pointer" }}><span style={{ color: gold, marginRight: 6 }}>{i + 1}.</span>{v}</div>
@@ -1165,13 +1165,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                   {table && !own && <span onClick={fill} {...onActivate(fill)} style={{ color: gold, cursor: "pointer" }}>Подставить из ведомости: {nutritionLine(table)}</span>}
                   {table && own && <span onClick={fill} {...onActivate(fill)} style={{ color: gold, cursor: "pointer" }}>Вернуть как в ведомости</span>}
                   {own && <span onClick={clear} {...onActivate(clear)} style={{ color: red, cursor: "pointer" }}>Очистить</span>}
-                  {!table && !own && <span style={{ color: T.modSub.color }}>В ведомости этого блюда нет — впиши руками, если нужно</span>}
+                  {!table && !own && <span style={{ color: T.modSub.color }}>В ведомости этого блюда нет. Впиши руками, если нужно</span>}
                 </div>
               </div>
             );
           })()}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача, выход в граммах…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
-          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder={"Гость спрашивает — по строке «Вопрос — ответ», например:\nМожно без лука? — Да, скажи кухне при заказе"} value={form.faq || ""} onChange={v => setForm(f => ({ ...f, faq: v }))} rows={2} />
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder={"Гость спрашивает: по строке «Вопрос — ответ», например:\nМожно без лука? — Да, скажи кухне при заказе"} value={form.faq || ""} onChange={v => setForm(f => ({ ...f, faq: v }))} rows={2} />
         </div>
         {/* запас снизу: последнее поле можно поднять выше полосы кнопок */}
         <div aria-hidden="true" style={{ height: 160 }} />
@@ -1191,7 +1191,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           return (
             <div onClick={() => setPreview2(false)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18, paddingTop: "max(18px, var(--sa-st, 0px))" }}>
               <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width: "100%", maxWidth: 420 }}>
-                <div style={{ textAlign: "center", ...labelStyle(13.5), color: "#EFE4C8", marginBottom: 8 }}>Так увидит официант · тап — перевернуть</div>
+                <div style={{ textAlign: "center", ...labelStyle(13.5), color: "#EFE4C8", marginBottom: 8 }}>Так увидит официант · переверни тапом</div>
                 <PreviewCard d={d} T={T} gold={gold} red={red} glass={glass} />
                 <button className="sa-btn" onClick={() => setPreview2(false)} style={{ ...T.doneBtn, width: "100%", marginTop: 12, background: gold }}>Вернуться к правке</button>
               </div>
@@ -1209,7 +1209,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         <div style={{ padding: "10px 16px 24px" }}>
           <div style={{ ...glass(T), padding: "14px 15px", marginBottom: 12 }}>
             <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>AI разобрал PDF · проверь до добавления</div>
-            <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.55 }}>Нашёл <b style={{ color: gold }}>{preview.length}</b> блюд. Разделы и аллергены можно поправить прямо здесь: тап по чипу. Блюда без аллергенов подсвечены — ИИ мог пропустить, а у стола это дорого.</div>
+            <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.55 }}>Нашёл блюд: <b style={{ color: gold }}>{preview.length}</b>. Разделы и аллергены можно поправить прямо здесь: тап по чипу. Блюда без аллергенов подсвечены: ИИ мог их пропустить, а у стола это дорого.</div>
           </div>
           {(() => {
             const catsAll = [...CAT_ORDER, ...[...new Set(preview.map(d => normCat(d.cat)).filter(Boolean))].filter(c => !CAT_ORDER.some(x => x.toLowerCase() === c.toLowerCase()))];
@@ -1232,8 +1232,8 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                     {ALLERGENS_LIST.map(al => { const on = als.includes(al); return <span key={al} onClick={() => upd(i, { allergens: on ? als.filter(x => x !== al) : [...als, al] })} style={{ padding: "4px 9px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${on ? red : gold + "44"}`, background: on ? "rgba(224,120,120,0.15)" : "transparent", color: on ? red : T.modSub.color }}>{allergenLabel(al)}</span>; })}
                   </div>
-                  {hints.length > 0 && <div style={{ fontSize: 12.5, color: red, marginTop: 6 }}>Проверь: в составе «{hints[0].because}…» — похоже на {hints.map(h => h.allergen).join(", ")}</div>}
-                  {noAl && !hints.length && <div style={{ fontSize: 12.5, color: T.modSub.color, marginTop: 6 }}>Аллергенов не найдено — если так и есть, всё в порядке.</div>}
+                  {hints.length > 0 && <div style={{ fontSize: 12.5, color: red, marginTop: 6 }}>Проверь: в составе «{hints[0].because}…», похоже на {hints.map(h => h.allergen).join(", ")}</div>}
+                  {noAl && !hints.length && <div style={{ fontSize: 12.5, color: T.modSub.color, marginTop: 6 }}>Аллергенов не найдено. Если так и есть, всё в порядке.</div>}
                 </div>
               );
             });
@@ -1256,7 +1256,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Меню команды · {restaurant}</div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: textColor, lineHeight: 1.2 }}>{teamCount} {teamCount % 10 === 1 && teamCount % 100 !== 11 ? "блюдо" : teamCount % 10 >= 2 && teamCount % 10 <= 4 && (teamCount % 100 < 12 || teamCount % 100 > 14) ? "блюда" : "блюд"}{stopped ? <span style={{ color: red, fontSize: 14 }}> · в стопе {stopped}</span> : null}</div>
               <div style={{ fontSize: 12.5, color: unpublished ? gold : T.modSub.color, marginTop: 4 }}>
-                {unpublished ? `${unpublished} ${unpublished === 1 ? "изменение ждёт" : unpublished < 5 ? "изменения ждут" : "изменений ждут"} публикации — команда видит старую версию` : ago ? `Опубликовано ${ago} — команда видит актуальное` : "Ещё не публиковалось — команда видит примеры"}
+                {unpublished ? `${unpublished} ${unpublished === 1 ? "изменение ждёт" : unpublished < 5 ? "изменения ждут" : "изменений ждут"} публикации. Команда видит старую версию` : ago ? `Опубликовано ${ago}, команда видит актуальное` : "Ещё не публиковалось, команда видит примеры"}
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                 {unpublished
@@ -1282,10 +1282,10 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           <div className="sa-fadein" style={{ ...glass(T), padding: "11px 13px", marginBottom: 10, borderColor: storageFull || lostPhotos.length ? red + "77" : gold + "66" }}>
             <div style={{ ...labelStyle(13.5), color: storageFull || lostPhotos.length ? red : gold, marginBottom: 6 }}>{storageFull ? "Память приложения заполнена" : lostPhotos.length ? "Фото не сохранились" : "Фото только на телефоне"}</div>
             <div style={{ fontSize: 12.5, color: T.para?.color, lineHeight: 1.55 }}>
-              {storageFull ? "Это не память телефона: браузер даёт приложению ~5 МБ на всё, и фото-текст их забил. Блюда сохранены; фото, не ушедшие в облако, на диск не влезли. " : ""}
+              {storageFull ? "Браузер даёт приложению ~5 МБ отдельно от памяти телефона, и фото-текст их забил. Блюда сохранены; фото, не ушедшие в облако, на диск не влезли. " : ""}
               {lostPhotos.length ? `${lostPhotos.length} ${lostPhotos.length === 1 ? "фото потерялось" : "фото потерялись"} при переполнении. ` : ""}
-              {recoverable.length ? `${recoverable.length} из них есть в серверной копии — можно вернуть в облако одним тапом. ` : lostPhotos.length ? "В серверной копии их нет — переснять из редактора; новые фото уходят в облако сразу. " : ""}
-              {localPhotos.length ? `${localPhotos.length} ${localPhotos.length === 1 ? "фото хранится" : "фото хранятся"} только на этом телефоне и весят память. Отправь их в облако — увидит вся команда, а память освободится.` : ""}
+              {recoverable.length ? `${recoverable.length} из них есть в серверной копии, их можно вернуть в облако одним тапом. ` : lostPhotos.length ? "В серверной копии их нет, придётся переснять в редакторе. Новые фото уходят в облако сразу. " : ""}
+              {localPhotos.length ? `${localPhotos.length} ${localPhotos.length === 1 ? "фото хранится" : "фото хранятся"} только на этом телефоне и весят память. Отправь их в облако: их увидит вся команда, а память освободится.` : ""}
             </div>
             {localPhotos.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
@@ -1303,7 +1303,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           </div>
         )}
         {pubMsg && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: pubMsg.ok ? green : red }}>{pubMsg.text}</div>}
-        {!pubMsg && unpublished > 0 && <div style={{ marginTop: 8, fontSize: 12.5, color: T.modSub.color }}>Команда пока видит старую версию — {unpublished} {unpublished === 1 ? "изменение" : unpublished < 5 ? "изменения" : "изменений"} ждут публикации.</div>}
+        {!pubMsg && unpublished > 0 && <div style={{ marginTop: 8, fontSize: 12.5, color: T.modSub.color }}>Команда пока видит старую версию: {unpublished} {unpublished === 1 ? "изменение ждёт" : unpublished < 5 ? "изменения ждут" : "изменений ждут"} публикации.</div>}
         {undo && (
           <div className="sa-fadein" style={{ ...glass(T), marginTop: 10, padding: "10px 13px", display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: T.para?.color }}>
             <span style={{ flex: 1 }}>«{undo.name}» удалено</span>
@@ -1323,7 +1323,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         {importErr && <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: red }}>{importErr}</div>}
         {orphanShared.length > 0 && (
           <div style={{ ...glass(T), padding: "13px 14px", marginTop: 12, fontSize: 12.5, color: T.para?.color, lineHeight: 1.55 }}>
-            На сервере команды опубликовано <b style={{ color: gold }}>{orphanShared.length}</b> блюд, которых нет в твоём редакторе — их нельзя изменить или удалить, пока не заберёшь сюда.
+            На сервере команды есть блюда, которых нет в твоём редакторе: <b style={{ color: gold }}>{orphanShared.length}</b>. Их нельзя изменить или удалить, пока не заберёшь их сюда.
             <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", border: `1px solid ${gold}88`, color: T.para?.color }}
               onClick={() => { setCustom({ ...custom, [restaurant]: [...list, ...orphanShared] }); vibrate("light"); }}
               {...onActivate(() => { setCustom({ ...custom, [restaurant]: [...list, ...orphanShared] }); })}>
@@ -1340,7 +1340,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       </div>
       <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Свои блюда ({vis(list).length}{eq || ecat ? ` из ${list.length}` : ""})</div>
       <div style={{ padding: "0 14px 14px" }}>
-        {!list.length && <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "6px 4px" }}>Пока пусто. Добавь реальные блюда — и команда будет тренироваться на них.</div>}
+        {!list.length && <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "6px 4px" }}>Пока пусто. Добавь реальные блюда, и команда будет тренироваться на них.</div>}
         {groupByCat(vis(list)).map(g => (
           <div key={g.cat}>
             {list.length > 6 && <div style={{ ...labelStyle(13.5), color: gold, margin: "6px 2px 8px" }}>{g.cat} · {g.items.length}</div>}
@@ -1373,7 +1373,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       {orphanShared.length > 0 && (<>
         <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Меню команды на сервере ({orphanShared.length})</div>
         <div style={{ padding: "0 14px 14px" }}>
-          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Тап — поправить (копия появится в своих), ✕ — удалить. Изменения уйдут команде после «Опубликовать».</div>
+          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>По тапу поправишь (копия появится в своих), ✕ удалит. Изменения уйдут команде после «Опубликовать».</div>
           {vis(orphanShared).map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}
@@ -1389,14 +1389,14 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       </>)}
       {(deleted[restaurant] || []).length > 0 && (
         <div style={{ margin: "0 14px 14px", fontSize: 12.5, color: red, lineHeight: 1.5 }}>
-          Помечено к удалению с сервера: {(deleted[restaurant] || []).length}. Нажми «Опубликовать команде», чтобы применить.
+          Помечено к удалению с сервера: {(deleted[restaurant] || []).length}. Нажми «Опубликовать», чтобы применить.
           <span style={{ color: gold, marginLeft: 8, cursor: "pointer" }} onClick={() => setDeleted({ ...deleted, [restaurant]: [] })}>Вернуть</span>
         </div>
       )}
       {archived.length > 0 && (<>
         <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Архив ({archived.length})</div>
         <div style={{ padding: "0 14px 14px" }}>
-          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Убранные позиции. Официанты и Наставник их не видят. «Вернуть» — снова в меню, «Навсегда» — без возврата.</div>
+          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Убранные позиции. Официанты и Наставник их не видят. «Вернуть» вернёт в меню, «Навсегда» удалит без возврата.</div>
           {archived.map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 8px", opacity: 0.8 }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 9, flexShrink: 0, filter: "grayscale(1)" }} />}
@@ -1413,7 +1413,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       {sampleList.length > 0 && (<>
         <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Примеры-заготовки ({sampleList.length})</div>
         <div style={{ padding: "0 14px 24px" }}>
-          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Учебные блюда для старта. Тап — переделать под своё, ✕ — убрать с этого телефона. После публикации меню команды они скроются сами.</div>
+          <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Учебные блюда для старта. По тапу переделаешь под своё, ✕ уберёт с этого телефона. После публикации меню команды они скроются сами.</div>
           {vis(sampleList).map(d => (
             <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: 0.85 }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}

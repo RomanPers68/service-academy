@@ -80,7 +80,7 @@ describe("свежесть тем (Доп. 313)", () => {
     const f = topicFreshness(mod, { s0: rec }, c, q, NOW.getTime());
     expect(f.updated).toBe(true);
     expect(f.level).toBe("fading");
-    expect(freshLabel(f)).toBe("обновлено — освежи");
+    expect(freshLabel(f)).toBe("обновлено, освежи");   // v74: без тире
   });
   it("ревью: свой раздел изменили в редакторе — «обновлено» по отпечатку текста", () => {
     const rec1 = [{ id: 7, role: "seasonal", module: "Наш бар", title: "Вино", content: "Подаём при 16°", questions: [{ q: "Температура?", options: ["8", "16"], correct: 1 }, { kind: "situation", scene: "Гость", options: ["а", "б"], correct: 0 }] }];
@@ -101,7 +101,7 @@ describe("свежесть тем (Доп. 313)", () => {
     expect(m2.rev).not.toBe(m1.rev);
     const f = topicFreshness(m2, s1.map, done.c, done.q, NOW.getTime());
     expect(f.updated).toBe(true);
-    expect(freshLabel(f)).toBe("обновлено — освежи");
+    expect(freshLabel(f)).toBe("обновлено, освежи");   // v74: без тире
     // разминка отпечаток не трогает, целиком освежённая тема — снова «как сейчас»
     expect(touchFresh(s1.map, m2.id, NOW.getTime(), true, m2.rev)[m2.id].h).toBe(m1.rev);
     const fixed = touchFresh(s1.map, m2.id, NOW.getTime(), false, m2.rev);
@@ -309,7 +309,7 @@ describe("итоги месяца (Доп. 320)", () => {
   it("текст «поделиться»", () => {
     const r = monthRecap({ act, month: "2026-10", now: new Date(2026, 10, 2) });
     const t = recapShareText(r, "Анна");
-    expect(t).toContain("Итоги: октябрь — Анна");
+    expect(t).toContain("Итоги за октябрь, Анна");   // v74: без тире
     expect(t).toContain("Дней в деле: 5 из 31");
   });
 });

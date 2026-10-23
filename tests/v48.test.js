@@ -89,7 +89,7 @@ describe("v48: карточка сотрудника в графике (исхо
     expect(body).toContain("постоянный выходной: {offW.join(\", \")}");
     expect(body).toContain("Пожеланий на этот месяц нет");
     expect(body).toContain(">Настройки сотрудника ›</button>");
-    expect(body).toContain("Тап по дню — поставить смену, как в таблице");
+    expect(body).toContain("Тап по дню открывает выбор смены, как в таблице");   // v74
   });
   it("«Настройки сотрудника ›» — вкладка «Настройки», раздел «Сотрудники», карточка человека раскрыта и подведена", () => {
     expect(src).toContain('setPersonSheet(null); setTab("setup"); setOpenSec(5); setOpenEmp(s.id); vibrate("light");');
@@ -115,7 +115,7 @@ describe("v48: «Факт часов» и заметка ко дню — на в
     expect(src).not.toMatch(/\{tab === "setup" \? setupView\(\) : <>\s*\{monthNav\}/);
   });
   it("подсказка руководителя — про тап по имени; метка сборки — v48; CHANGES — «Дополнение 361»", () => {
-    expect(readFileSync("data/hints.js", "utf8")).toContain("Тап по имени — карточка человека: часы, заработок и весь его месяц");   // v49: дальше — «тап по числу — день по часам»
+    expect(readFileSync("data/hints.js", "utf8")).toContain("Тап по имени открывает карточку человека: часы, заработок и весь его месяц");   // v74:   // v49: дальше — «тап по числу — день по часам»
     expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v49 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 361 — график: карточка сотрудника по тапу на имя");
   });

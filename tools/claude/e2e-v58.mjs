@@ -518,7 +518,7 @@ if (want("WELCOME")) {
   const o = await open({ fresh: true, profile: ANNA, storage: { __role: null, ...HINTS_SEEN }, w: W, h: H, dsf: 1, rpcs: baseRpcs(), fixedTime: at(14, 20) });
   const p = o.page; await sleep(1500);
   let t = await text(p);
-  ok("WELCOME: первая карточка — «Учусь — уроки и тесты твоей роли…», без «стало проще»", /Учусь — уроки и тесты твоей роли/.test(t) && !/стало проще/.test(t), t.slice(0, 200));
+  ok("WELCOME: первая карточка — «Учусь»: уроки и тесты твоей роли…, без «стало проще»", /«Учусь»: уроки и тесты твоей роли/.test(t) && !/стало проще/.test(t), t.slice(0, 200));
   await p.locator("button", { hasText: /^Дальше$/ }).last().click(); await sleep(600);
   t = await text(p);
   ok("WELCOME: «Твой трек» — «сначала «Начать», потом «Дальше»»", /сначала «Начать», потом «Дальше»/.test(t), t.slice(0, 200));

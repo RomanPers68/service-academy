@@ -216,7 +216,7 @@ describe("v67: проверка AI HR — для той модели, на ко�
   });
   it("на экране: строка «AI HR» и «Проверка AI HR» говорят, что проверить заново", () => {
     expect(rd("ui/candidate.jsx")).toContain('(hrSt.stale ? "проверить на новой модели" : `${hrSt.ref.match} из ${hrSt.ref.n}`)');
-    expect(rd("ui/hr-eval.jsx")).toContain("а интервью теперь ведёт {shortModel(status.cur)} — запустите проверку ещё раз");
+    expect(rd("ui/hr-eval.jsx")).toContain("а интервью теперь ведёт {shortModel(status.cur)}. Запустите проверку ещё раз");   // v74
   });
 });
 

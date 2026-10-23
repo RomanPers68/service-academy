@@ -212,7 +212,7 @@ describe("v46: календарь месяца и лист дня у сотру�
     expect(cal).toContain('boxShadow: isT ? "0 0 0 2px rgba(214,178,102,0.25), 0 0 12px rgba(214,178,102,0.35)" : "none"');
     expect(cal).toContain("opacity: past && !selOn ? 0.42 : 1");
     expect(cal).toContain("(cfg.shifts || []).filter(s2 => used.has(s2.k))");
-    expect(cal).toContain('"Тапни день — кто с тобой, пожелание, обмен или заметка"');
+    expect(cal).toContain('"Тапни день: кто с тобой, пожелание, обмен или заметка"');   // v74
     expect(cal).toContain('{wishRange ? "Отмена периода" : "Отметить период"}');
   });
   it("лист дня: лица по времени прихода, кто отдыхает, «Отдать смену» / «Возьму», пожелания, заметка", () => {
@@ -223,7 +223,7 @@ describe("v46: календарь месяца и лист дня у сотру�
     expect(sh).toContain("С тобой в смене · {mates.length}");
     expect(sh).toContain("ещё {restOther.length} из других позиций ›");
     expect(sh).toContain('swapCall("swap_create", { p_venue: venueKey, p_month: mkey, p_day: d, p_k: kk, p_staff: String(me.id), p_name: me.name }, "Предложение отправлено")');
-    expect(sh).toContain('swapCall("swap_take", { p_id: offer.id, p_staff: String(me.id), p_name: me.name }, "Ты взял смену — ждём менеджера")');
+    expect(sh).toContain('swapCall("swap_take", { p_id: offer.id, p_staff: String(me.id), p_name: me.name }, "Ты взял смену. Ждём менеджера")');   // v74
     expect(sh).toContain("onClick={() => setWish(me.id, d, !wishOf(me.id, d))}");
     expect(sh).toContain('onClick={() => setWish(me.id, d, !hardOf(me.id, d), "hard")}');
     expect(sh).toContain("onBlur={e => saveNote(d, e.target.value)}");
@@ -291,10 +291,10 @@ describe("v46: в графике (исходник)", () => {
   });
   it("подсказки — про новое место; метка сборки — v46; CHANGES — «Дополнение 359»", () => {
     const hints = readFileSync("data/hints.js", "utf8");
-    expect(hints).toContain("Ближайшая смена — первой карточкой: время, старший и чек-лист.");
-    expect(hints).toContain("Выходные и отпуск отмечай прямо в календаре");
+    expect(hints).toContain("Первая карточка показывает ближайшую смену: время, старшего и чек-лист.");   // v74
+    expect(hints).toContain("Выходные отмечай прямо в календаре");   // v74
     expect(hints).toContain("плашка с этой кнопкой появится внизу");
-    expect(src).toContain("Передумал — «↩» рядом с «Заполнить черновик» вернёт как было.");
+    expect(src).toContain("Передумал? «↩» рядом с «Заполнить черновик» вернёт как было.");   // v74
     expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v47 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 359 — график: карточка смены и медальоны у персонала");
   });

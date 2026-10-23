@@ -57,11 +57,11 @@ describe("v58: трек по должности (неудобство 3)", () =>
 describe("v58: тексты приветствия (неудобства 1–2)", () => {
   const app = rd("App.jsx");
   it("первая карточка — что где, а не «стало проще»; без слова «попап»; про кнопку — «Начать», потом «Дальше»", () => {
-    expect(app).toContain('text: "Учусь — уроки и тесты твоей роли. Смена — рабочий день: график и чек-листы. Команда — коллеги и рейтинг. Я — твой прогресс и настройки." },');
+    expect(app).toContain('text: "«Учусь»: уроки и тесты твоей роли. «Смена»: рабочий день, график и чек-листы. «Команда»: коллеги и рейтинг. «Я»: твой прогресс и настройки." };');   // v74
     expect(app).not.toContain("Приложение стало проще");
-    expect(app).toContain("Это окно больше не покажется, а гид — останется.");
+    expect(app).toContain("Это окно больше не покажется, а гид останется.");
     expect(app).not.toMatch(/"[^"\n]*попап[^"\n]*"/);
-    expect(app).toContain("Большая карточка на главной — твой компас: сначала «Начать», потом «Дальше».");
+    expect(app).toContain("Большая карточка на главной ведёт к следующему шагу: сначала «Начать», потом «Дальше».");   // v74
   });
 });
 
@@ -72,7 +72,7 @@ describe("v58: пустые экраны и дата (неудобства 7–9
     expect(L).toContain("    if (noTests && waiting === 0) return (");
     expect(L).toContain('<div data-mistakes-empty="new"');
     expect(L).toContain("<div style={{ ...T.bold, marginBottom: 6 }}>Пока пусто</div>");
-    expect(L).toContain("Сюда попадут вопросы, где ошибёшься в тестах. Они вернутся через день, три и неделю — пока не запомнятся.");
+    expect(L).toContain("Сюда попадут вопросы, где ошибёшься в тестах. Они вернутся через день, три и неделю, пока не запомнятся.");   // v74
     expect(L).toContain('<div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>');   // праздник остался для тех, у кого тесты были
     expect(rd("App.jsx")).toContain("noTests={!myScores.length && !Object.keys(quizDone || {}).length}");
   });
@@ -163,14 +163,14 @@ describe("v58: надписи «для разработчика» — по-че�
     expect(serverMissing({ what: "отчёты", many: true, admin: true, sql: "supabase-stage23-reports.sql" }))
       .toBe("Отчёты появятся, когда владелец обновит сервер. Для владельца: примени supabase-stage23-reports.sql в Supabase → SQL Editor.");
     expect(serverMissing({ what: "отчёты", many: true, sql: "x.sql" })).not.toContain("x.sql");
-    expect(serverError({ code: "PGRST202" })).toBe("Сервер ещё подхватывает обновление — открой этот экран чуть позже.");
+    expect(serverError({ code: "PGRST202" })).toBe("Сервер ещё подхватывает обновление. Открой этот экран чуть позже.");   // v74: без тире
     expect(serverError({ code: "PGRST202", admin: true })).toContain("notify pgrst, 'reload schema'");
-    expect(serverError({ message: "boom", code: "42" })).toBe("Сервер ответил ошибкой — попробуй позже. Если повторится, скажи владельцу.");
+    expect(serverError({ message: "boom", code: "42" })).toBe("Сервер ответил ошибкой. Попробуй позже. Если повторится, скажи владельцу.");
     expect(serverError({ message: "boom", code: "42", admin: true })).toBe("Сервер ответил ошибкой: boom (42). Пришли этот текст разработчику.");
-    expect(serverError({})).toBe("Нет связи с сервером — попробуй ещё раз.");
-    expect(serverStage({})).toBe("Сервер ещё не обновлён — скажи владельцу.");
-    expect(serverStage({ admin: true, sql: "a.sql" })).toBe("Сервер ещё не обновлён — примени a.sql.");
-    expect(serverStage({ admin: true, stage: 26 })).toBe("Сервер ещё не обновлён — нужен этап 26.");
+    expect(serverError({})).toBe("Нет связи с сервером. Попробуй ещё раз.");
+    expect(serverStage({})).toBe("Сервер ещё не обновлён. Скажи владельцу.");
+    expect(serverStage({ admin: true, sql: "a.sql" })).toBe("Сервер ещё не обновлён: примени a.sql.");
+    expect(serverStage({ admin: true, stage: 26 })).toBe("Сервер ещё не обновлён: нужен этап 26.");
   });
   it("«Рейтинг»: «Рекорды не загрузились · Ещё раз» вместо «Нужен stage14 на сервере»; «Ещё раз» повторяет запрос", () => {
     const G = rd("ui/screens-gamification.jsx");

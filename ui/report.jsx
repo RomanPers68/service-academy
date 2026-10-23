@@ -235,14 +235,14 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
       } else {
         const r = await rpc("report_team", { p_token: saToken() });
         if (rpcMissing(r)) throw new Error(serverStage({ admin: !!(profile && profile.is_admin), sql: "supabase-stage23-reports.sql" }));
-        if (!r || !r.ok) throw new Error(r && r.error === "forbidden" ? "Отчёт по команде — только руководителю" : "Сервер не отдал данные команды");
+        if (!r || !r.ok) throw new Error(r && r.error === "forbidden" ? "Отчёт по команде видит только руководитель" : "Сервер не отдал данные команды");
         const team = teamModel(r, ctx);
         const label = team.scopeLabel || "команда";
         if (what === "team_xlsx") res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: team, name: fileName("команда " + label, "xlsx"), mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", make: async () => (await import("../lib/report-xlsx.js")).teamXlsx(team) });
         else res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: team, name: fileName("команда " + label, "pdf"), mime: "application/pdf", make: async () => (await import("../lib/report-pdf.js")).teamPdf(team) });
       }
       vibrate("success");
-      say(res === "tg" ? "Файл уходит в Telegram — подтверди сохранение, если спросит" : res === "cancel" ? "Скачивание отменено" : "Готово — файл скачан");
+      say(res === "tg" ? "Файл уходит в Telegram. Подтверди сохранение, если спросит" : res === "cancel" ? "Скачивание отменено" : "Готово, файл скачан");
     } catch (e) {
       say((e && e.message) || "Не получилось собрать файл", true);
     } finally { setBusy(""); }
@@ -258,7 +258,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
   const attN = list.rows.filter((r) => r.attention).length;
 
   const problem = (st) => st === "missing" ? serverMissing({ what: "отчёты", many: true, admin: !!(profile && profile.is_admin), sql: "supabase-stage23-reports.sql" })
-    : st === "auth" ? "Сессия не найдена — войди заново." : st === "forbidden" ? "Эта карточка тебе не видна: руководитель видит своих сотрудников." : st === "offline" ? "Нет связи с сервером — попробуй ещё раз." : "Сервер ответил ошибкой — попробуй позже.";
+    : st === "auth" ? "Сессия не найдена. Войди заново." : st === "forbidden" ? "Эта карточка тебе не видна: руководитель видит своих сотрудников." : st === "offline" ? "Нет связи с сервером. Попробуй ещё раз." : "Сервер ответил ошибкой. Попробуй позже.";
 
   // ── Карточка сотрудника ──
   if (sel) {
@@ -315,7 +315,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
                 <button type="button" className="rp-btn main" disabled={!!busy || !list.rows.length} onClick={() => runExport("team_xlsx")}>{busy === "team_xlsx" ? "Собираю Excel…" : "Excel по команде"}</button>
                 <button type="button" className="rp-btn" disabled={!!busy || !list.rows.length} onClick={() => runExport("team_pdf")}>{busy === "team_pdf" ? "Собираю PDF…" : "PDF всех карточек"}</button>
               </div>
-              <p className="rp-note">Excel — сводка по каждому, где ошибается, с чем работать, что не пройдено, что ждёт повтора, навыки. PDF — карточки для разговора один на один.</p>
+              <p className="rp-note">В Excel сводка по каждому: где ошибается, с чем работать, что не пройдено, что ждёт повтора, навыки. В PDF карточки для разговора один на один.</p>
             </>
           ) : null}
           {msg ? <div className={"rp-msg" + (msg.bad ? " bad" : "")} role="status">{msg.text}</div> : null}
@@ -345,7 +345,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
             ))}
             {!rows.length ? <div className="rp-empty">{list.rows.length ? "Никого не нашлось." : "Пока некого показать."}</div> : null}
           </div>
-          <p className="rp-foot">Видно по должности: менеджер — сотрудников своего ресторана, старший — всех ниже себя во всех ресторанах, владелец — всех. «Внимание» — давно не занимался, много ошибок или повторов.</p>
+          <p className="rp-foot">Менеджер видит сотрудников своего ресторана, старший видит всех ниже себя во всех ресторанах, владелец видит всех. Метка «внимание»: давно не занимался, много ошибок или повторов.</p>
         </>
       ) : null}
     </div>
@@ -405,7 +405,7 @@ function PersonView({ m }) {
         <Tile l="Ждут повтора" v={m.hasPhone ? m.repeat.due : "—"} s={m.hasPhone ? "из " + m.repeat.total + " в банке ошибок" : "нет данных с телефона"} tone={m.repeat.due >= 10 ? "w" : ""} />
         <Tile l="Дней занятий" v={m.hasPhone ? m.activity.active14 + " из 14" : "—"} s={"разминок за 30 дней: " + m.activity.warm30} />
         <Tile l="Навыки в зале" v={m.skills.confirmed} s={m.skills.pending ? "+" + m.skills.pending + " ждёт старшего" : "подтверждено наставником"} tone={m.skills.confirmed ? "g" : ""} />
-        <Tile l="Серия" v={m.activity.streak.count + " " + pl(m.activity.streak.count, "день", "дня", "дней")} s={"лучшая — " + m.activity.streak.best} />
+        <Tile l="Серия" v={m.activity.streak.count + " " + pl(m.activity.streak.count, "день", "дня", "дней")} s={"лучшая: " + m.activity.streak.best} />
         <Tile l="Экзамен" v={ex ? (ex.passed ? "сдан" : "не сдан") : "—"} s={ex ? ex.label + (ex.score ? " · " + ex.score + "%" : "") : "ещё не сдавал"} tone={ex ? (ex.passed ? "g" : "w") : ""} />
       </div>
 
@@ -443,7 +443,7 @@ function PersonView({ m }) {
 
       {m.repeat.total ? (
         <section className="rp-sec">
-          <h3>Ждут повтора<span>{m.repeat.due} из {m.repeat.total} — сейчас</span></h3>
+          <h3>Ждут повтора<span>сейчас {m.repeat.due} из {m.repeat.total}</span></h3>
           {m.repeat.list.slice(0, 12).map((r, i) => (
             <div className="rp-li" key={i}>{r.q}<small>{r.a ? <>Верно: <span className="ok">{r.a}</span> · </> : null}{r.isDue ? <span className="bad">ждёт сейчас</span> : (r.stage + 1) + "-й повтор позже"}{r.topic ? " · " + r.topic : ""}</small></div>
           ))}
@@ -456,7 +456,7 @@ function PersonView({ m }) {
           <h3>Живая практика<span>за 30 дней</span></h3>
           {m.live.guests.total ? <div className="rp-li">Живой гость: {m.live.guests.n30} {pl(m.live.guests.n30, "разговор", "разговора", "разговоров")}<small>{m.live.guests.avg != null ? "средний чек разбора " + String(m.live.guests.avg).replace(".", ",") + " из 5 · лучший " + m.live.guests.best : "за месяц разговоров не было"}{m.live.guests.lastFix ? " · поправить: " + m.live.guests.lastFix : ""}</small></div> : null}
           {m.live.fresh.total ? <div className="rp-li">Свежесть тем: {m.live.fresh.fading ? m.live.fresh.fading + " " + pl(m.live.fresh.fading, "выдыхается", "выдыхаются", "выдыхаются") : "все свежие"}<small>{m.live.fresh.list.length ? m.live.fresh.list.map((x) => "«" + x.title + "»" + (x.level === "faded" ? " (выдохлась)" : "")).join(", ") : "пройденных тем: " + m.live.fresh.total}{m.live.refresh30 ? " · освежено за месяц: " + m.live.refresh30 : ""}</small></div> : null}
-          {m.live.credits.length ? <div className="rp-li">Зачтено по опыту<small>{m.live.credits.map((c) => "«" + c.title + "» — " + c.s + " из " + c.t + (c.d ? ", " + shortDate(c.d) : "")).join("; ")}</small></div> : null}
+          {m.live.credits.length ? <div className="rp-li">Зачтено по опыту<small>{m.live.credits.map((c) => "«" + c.title + "»: " + c.s + " из " + c.t + (c.d ? ", " + shortDate(c.d) : "")).join("; ")}</small></div> : null}
           {m.live.gold.length ? <div className="rp-li">Золотые темы: {m.live.gold.length}<small>{m.live.gold.map((g) => "«" + g.title + "»").join(", ")}</small></div> : null}
           {m.live.quests30 ? <div className="rp-li">Квест смены закрыт: {m.live.quests30} {pl(m.live.quests30, "раз", "раза", "раз")}<small>вместе со сменой</small></div> : null}
         </section>
@@ -475,7 +475,7 @@ function PersonView({ m }) {
             {mod.steps.length > 6 ? <div className="rp-step">и ещё {mod.steps.length - 6}</div> : null}
           </div>
         ))}
-        {m.notDone.modules.length > 3 ? <div className="rp-empty">Дальше ещё {m.notDone.modules.length - 3} {pl(m.notDone.modules.length - 3, "тема", "темы", "тем")} — полный список в Excel.</div> : null}
+        {m.notDone.modules.length > 3 ? <div className="rp-empty">Дальше ещё {m.notDone.modules.length - 3} {pl(m.notDone.modules.length - 3, "тема", "темы", "тем")}, полный список в Excel.</div> : null}
       </section>
 
       {m.tests.list.length ? (
@@ -511,7 +511,7 @@ function PersonView({ m }) {
         ) : <div className="rp-empty">Телефон сотрудника ещё не прислал дни занятий.</div>}
       </section>
       {info.map((f) => <p className="rp-foot" key={f.text}>{f.text}</p>)}
-      <p className="rp-foot">{m.phoneAt ? "Данные с телефона: " + shortDate(m.phoneAt) + ". " : ""}Ответы в тестах — за последние полгода.{m.tg ? " Напоминания в Telegram включены." : ""}</p>
+      <p className="rp-foot">{m.phoneAt ? "Данные с телефона: " + shortDate(m.phoneAt) + ". " : ""}Ответы в тестах учтены за последние полгода.{m.tg ? " Напоминания в Telegram включены." : ""}</p>
     </>
   );
 }

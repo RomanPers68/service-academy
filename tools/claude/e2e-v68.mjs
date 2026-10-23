@@ -283,7 +283,7 @@ if (want("HINT")) {
     const cr = c && c.getBoundingClientRect(), br = b && b.getBoundingClientRect();
     return { card: !!c, bubble: !!b, text: b ? b.innerText.replace(/\s+/g, " ").slice(0, 80) : "", below: !!(cr && br && br.top >= cr.top) };
   });
-  ok("HINT: подсказка главной на месте и показывает на карточку: «Карточка сверху — твой следующий шаг…»", r.card && r.bubble && r.below && /Карточка сверху — твой следующий шаг/.test(r.text), JSON.stringify(r));
+  ok("HINT: подсказка главной на месте и показывает на карточку: «Карточка сверху показывает твой следующий шаг…»", r.card && r.bubble && r.below && /Карточка сверху показывает твой следующий шаг/.test(r.text), JSON.stringify(r));
   await shot(o.page, "hint");
   ok("HINT: без ошибок", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();

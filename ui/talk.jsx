@@ -92,12 +92,12 @@ export function TalkSpeaking({ style }) { ensureCss(); return <span className="t
 const STATUS = {
   idle: "",
   opening: "Включаю микрофон…",
-  listening: "Слушаю — говори",
-  hearing: "Слышу — договори и помолчи",
+  listening: "Слушаю, говори",
+  hearing: "Слышу, договори и помолчи",
   recognizing: "Разбираю…",
   thinking: "Думает…",
-  speaking: "Отвечает — можно перебить",
-  paused: "Пауза — коснись волны",
+  speaking: "Отвечает, можно перебить",
+  paused: "Пауза. Коснись волны",
 };
 const N = 36;   // столбиков в волне
 

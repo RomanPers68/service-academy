@@ -138,7 +138,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
       {query.length < 2 && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
           <div style={{ marginBottom: 12, display: "inline-flex", opacity: 0.8 }}>{GAME_SVG.search(gold, 34)}</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>{scopeText || "Введи минимум 2 буквы — найду в меню (и по аллергену), в карте бара, глоссарии, справочнике и уроках твоей роли."}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>{scopeText || "Введи минимум 2 буквы. Ищу в меню (и по аллергену), в карте бара, глоссарии, справочнике и уроках твоей роли."}</div>
         </div>
       )}
 
@@ -184,7 +184,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
                     </div>
                   )}
                   {d.note && <div style={{ fontSize: 12.5, color: T.modSub.color, fontStyle: "italic", lineHeight: 1.5, whiteSpace: "normal" }}>{d.note}</div>}
-                  <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 8, whiteSpace: "normal", display: "flex", gap: 6, alignItems: "flex-start" }}><span style={{ flexShrink: 0, marginTop: 2, display: "inline-flex" }}>{UI_SVG.pin(gold, 12)}</span><span style={{ flex: 1 }}>Сомневаешься в аллергенах — подтверди у шефа. База — подсказка, не замена протоколу.</span></div>
+                  <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 8, whiteSpace: "normal", display: "flex", gap: 6, alignItems: "flex-start" }}><span style={{ flexShrink: 0, marginTop: 2, display: "inline-flex" }}>{UI_SVG.pin(gold, 12)}</span><span style={{ flex: 1 }}>Сомневаешься в аллергенах? Уточни у шефа. База лишь подсказка, работаем по протоколу.</span></div>
                 </div>
               )}
             </div>

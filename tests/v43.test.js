@@ -232,7 +232,7 @@ describe("v43: табличка на главной (DayChips)", () => {
   it("окно «Цель дня» — с бокалом: «Бокал наполняется с каждым шагом»", () => {
     const src = readFileSync("ui/day-cards.jsx", "utf8");
     expect(src).toContain("<Wine s={30} pct={0.6} a11y={a11y} />");
-    expect(src).toContain("Бокал наполняется с каждым шагом — на главной, в шапке трека и в чеках.");
+    expect(src).toContain("Бокал наполняется с каждым шагом. Он виден на главной, в шапке трека и в чеках.");   // v74
     expect(src).not.toContain("Стакан наполняется");
   });
 });

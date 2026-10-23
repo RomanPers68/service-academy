@@ -28,15 +28,15 @@ describe("v57: лента «Жизнь команды» — тесты", () => {
       score("Вера", "Лис", "x-q", 12, 12, 0),                    // теста нет в программе — не показываем
     ] });
     expect(f.map((x) => x.who)).toEqual(["Ангелина Т.", "Иван П."]);
-    expect(f[0]).toMatchObject({ kind: "test", text: "сдала тест «Мышление сервиса» — 92%", me: false });
-    expect(f[1].text).toBe("сдал тест «Первый день» — 75%");
+    expect(f[0]).toMatchObject({ kind: "test", text: "сдала тест «Мышление сервиса» на 92%", me: false });   // v74: без тире
+    expect(f[1].text).toBe("сдал тест «Первый день» на 75%");
   });
   it("один человек и тест — одна строка (последняя); свои — «Ты»", () => {
     const f = buildFeed({ now: NOW, me, restaurant: R, titleOf, scores: [
       score("Иван", "Петров", "s0-q", 9, 12, 3), score("Иван", "Петров", "s0-q", 12, 12, 1), score("Анна", "Смирнова", "s1-q", 10, 12, 0)] });
     expect(f.length).toBe(2);
-    expect(f[0]).toMatchObject({ who: "Ты", me: true, text: "сдал(а) тест «Мышление сервиса» — 83%" });
-    expect(f[1].text).toBe("сдал тест «Первый день» — 100%");
+    expect(f[0]).toMatchObject({ who: "Ты", me: true, text: "сдал(а) тест «Мышление сервиса» на 83%" });
+    expect(f[1].text).toBe("сдал тест «Первый день» на 100%");
   });
 });
 
@@ -57,14 +57,15 @@ describe("v57: лента — мастера, рекорды, «спасибо»
       { name: "Мария", surname: "Ким", key: "stamps", value: 12, at: ago(4) },
       { name: "Олег", surname: "Белов", key: "streak", value: 3, at: ago(5) },
       { name: "Олег", surname: "Белов", key: "streak", value: 0, at: ago(5) }] });
-    expect(f.map((x) => x.text)).toEqual(["— рекорд «Час пик»: 3 заказа за 74 с", "— рекорд «Аллергены на скорость»: 21 верный за 30 с",
-      "— 12 печатей Сборки: коктейли по памяти", "— серия карточек: 3 дня подряд"]);
+    // v74 (Доп. 387): глаголом по полу, как тесты и мастера, — без «Мария К. — рекорд …»
+    expect(f.map((x) => x.text)).toEqual(["поставила рекорд «Час пик»: 3 заказа за 74 с", "поставил рекорд «Аллергены на скорость»: 21 верный за 30 с",
+      "собрала 12 печатей Сборки: коктейли по памяти", "держал серию карточек 3 дня подряд"]);
   });
   it("«спасибо команде» — сегодня, сверху; всё вместе — новые сверху, не больше 15", () => {
     const f = buildFeed({ now: NOW, me, restaurant: R, titleOf, thanks: [{ name: "Ольга", initial: "О", me: false }],
       scores: [score("Иван", "Петров", "s0-q", 9, 12, 1)], achievements: [{ name: "Мария", surname: "Ким", key: "rush_best", value: 74, at: ago(0, 9) }] });
     expect(f.map((x) => x.kind)).toEqual(["thanks", "record", "test"]);
-    expect(f[0]).toMatchObject({ who: "Ольга", text: "— спасибо команде" });
+    expect(f[0]).toMatchObject({ who: "Ольга", text: "сказала спасибо команде" });   // v74
     const many = Array.from({ length: 30 }, (_, i) => score("Имя" + i, "Ф", "s0-q", 12, 12, i % 10));
     expect(buildFeed({ now: NOW, restaurant: R, titleOf, scores: many }).length).toBe(15);
     expect(buildFeed({})).toEqual([]);

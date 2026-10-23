@@ -58,12 +58,12 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates, gold = 
     if (!rv) continue;
     // v30 (Доп. 316): золотая тема — на странице её отзыва золотая печать
     if (moduleDone(m, completed, quizDone)) pages.push({ kind: "earned", key: m.id, ...rv, gold: !!(gold && gold[m.id]), source: `${m.tag} · ${m.title}`, date: dates[m.id] ? ruDate(dates[m.id]) : "" });
-    else pages.push({ kind: "locked", key: m.id, source: `${m.tag} · ${m.title}`, hint: `Пройди «${m.title}» — и этот разворот займёт гость, для которого ты это сделаешь по-настоящему.` });
+    else pages.push({ kind: "locked", key: m.id, source: `${m.tag} · ${m.title}`, hint: `Пройди «${m.title}», и этот разворот займёт гость, для которого ты это сделаешь по-настоящему.` });
   }
   const lg = LEGEND_REVIEWS[roleId];
   if (lg) {
     if (examResults?.[roleId]?.passed) pages.push({ kind: "legend", key: "lg_" + roleId, ...lg, source: "Экзамен роли · сдан", date: dates["lg_" + roleId] ? ruDate(dates["lg_" + roleId]) : "" });
-    else pages.push({ kind: "locked", key: "lg_" + roleId, legend: true, source: "Легендарная страница", hint: "Сдай экзамен роли — и её займёт гость, о котором рассказывают истории. С печатью." });
+    else pages.push({ kind: "locked", key: "lg_" + roleId, legend: true, source: "Легендарная страница", hint: "Сдай экзамен роли, и её займёт гость, о котором рассказывают истории. С печатью." });
   }
   return pages;
 }
@@ -161,7 +161,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   // подставляем заглушку вместо undefined — иначе экран падает на page.kind.
   const page = pages[Math.min(idx, pages.length - 1)] || pages[0] || {
     kind: "locked", key: "empty_" + tab, source: "Страниц пока нет",
-    hint: "Для этой роли отзывы ещё готовятся. Проходи разделы — страницы появятся здесь.",
+    hint: "Для этой роли отзывы ещё готовятся. Проходи разделы, и страницы появятся здесь.",
   };
   const go = (d) => { const n = Math.min(pages.length - 1, Math.max(0, idx + d)); if (n !== idx) vibrate("light"); setDir(d > 0 ? "r" : "l"); setIdx(n); };
   const setTabSafe = (t) => { if (t !== tab) vibrate("light"); setTab(t); setIdx(0); setDir("r"); };
@@ -252,7 +252,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                 <div style={{ ...labelStyle(13), color: BROWN }}>Новое испытание каждую неделю</div>
                 <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.3" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6" /><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z" /><path d="M6.5 14v7M17.5 14v7M7 17.5h10" /></svg>
                 <div style={{ ...SCRIPT, color: INK, fontSize: 25, lineHeight: 1.2 }}>Гость недели уже за столиком…</div>
-                <div style={{ color: BROWN, fontSize: 14, lineHeight: 1.65, maxWidth: 258 }}>Сложный живой диалог. Проведи его достойно — и получи страницу с печатью. Не получится — гость уйдёт без отзыва, но вернётся: попробуешь снова.</div>
+                <div style={{ color: BROWN, fontSize: 14, lineHeight: 1.65, maxWidth: 258 }}>Сложный живой диалог. Проведи его достойно и получи страницу с печатью. Если не получится, гость уйдёт без отзыва, но вернётся: попробуешь снова.</div>
                 <button onClick={onWeekly} {...onActivate(onWeekly)} style={{ fontFamily: "Georgia, serif", marginTop: 4, fontSize: 13.5, color: PAPER, background: `linear-gradient(135deg, ${GOLD_SOFT}, #7A5D2A)`, border: "none", borderRadius: 14, padding: "10px 22px", boxShadow: "0 4px 14px rgba(139,106,48,.4)", cursor: "pointer" }}>Принять стол ›</button>
               </div>
             ) : page.kind === "builds" ? (
@@ -303,7 +303,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                           {stamped.length > 12 && <span style={{ ...MONO, fontSize: 10.5, color: "#7A654C" }}>+{stamped.length - 12}</span>}
                         </div>
                       </div>
-                      {!stamped.length && <div style={{ ...labelStyle(13), color: "#7A654C", marginTop: 4 }}>Собери коктейль по памяти — первая печать ляжет сюда</div>}
+                      {!stamped.length && <div style={{ ...labelStyle(13), color: "#7A654C", marginTop: 4 }}>Собери коктейль по памяти, и первая печать ляжет сюда</div>}
                     </div>
                   );
                 })()}
@@ -369,7 +369,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
           </div>
         )}
         <div style={{ ...labelStyle(13), color: T.modSub.color, textAlign: "center", marginTop: 10, opacity: .8 }}>
-          {tab === "weekly" ? "Новый гость — каждый понедельник" : tab === "builds" ? "Собери все на «безупречно» — три звезды в каждой строке" : `Заполнено в разделе: ${earnedInTab} из ${pages.length}`}
+          {tab === "weekly" ? "Новый гость каждый понедельник" : tab === "builds" ? "Собери все на «безупречно»: три звезды в каждой строке" : `Заполнено в разделе: ${earnedInTab} из ${pages.length}`}
         </div>
         <div style={{ height: 10 }} />
       </div>

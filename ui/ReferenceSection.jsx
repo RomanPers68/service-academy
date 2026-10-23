@@ -182,7 +182,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
       <div style={{ ...T.resultCircle, borderColor: GREEN }}>
         <div style={{ ...T.resultScore, color: GREEN }}>{score}/{qs.length}</div>
       </div>
-      <div style={T.resultTxt}>{score === qs.length ? "Отлично! Всё верно" : "Неплохо — повтори главу"}</div>
+      <div style={T.resultTxt}>{score === qs.length ? "Отлично! Всё верно" : "Неплохо, но повтори главу"}</div>
       <button style={{ ...T.doneBtn, background: gold, marginTop: 4 }} onClick={onNext || onBack}>{onNext ? nextLabel + " →" : "К программе курса"}</button>
     </div>
   </div>);
@@ -252,7 +252,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
     }
   };
   if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
-    scopeText="Введи минимум 2 буквы — найду по главам справочника, глоссарию и меню ресторана."
+    scopeText="Введи минимум 2 буквы. Ищу по главам справочника, глоссарию и меню ресторана."
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
   if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab}
     hintNode={rHint && rSteps.length ? (

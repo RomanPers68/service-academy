@@ -215,7 +215,7 @@ export function ShiftHero({ a11y, onOpen, shift = null }) {
           </div>
         </div>
         <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>
-          {off ? "Отдыхай — а завтра посмотри график" : "Тап — кто в смене с тобой и старший дня"}
+          {off ? "Отдыхай, а завтра загляни в график" : "Тап покажет, кто в смене с тобой и кто старший"}
         </div>
       </>) : (
         /* «Смена не найдена» читалось как ошибка приложения, хотя это просто
@@ -223,7 +223,7 @@ export function ShiftHero({ a11y, onOpen, shift = null }) {
            формулировка вместо технической. */
         <div style={{ marginTop: 8 }}>
           <EmptyState a11y={a11y} title="Сегодня смен нет"
-            hint="Загляни в график — там виден весь месяц и твой ближайший день"
+            hint="В графике виден весь месяц и твой ближайший день"
             action="Открыть график" onAction={go}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>} />
         </div>
@@ -255,7 +255,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
     <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <div style={tagStyle(a11y)}>Лидеры ресторана</div>
-        {me >= 0 && <div style={{ fontSize: 11, color: sub }}>ты — <span style={{ color: gold }}>{me + 1}-й</span>{meNet >= 0 ? <> · в сети <span style={{ color: gold }}>{meNet + 1}-й</span></> : null}</div>}
+        {me >= 0 && <div style={{ fontSize: 11, color: sub }}>ты <span style={{ color: gold }}>{me + 1}-й</span>{meNet >= 0 ? <> · в сети <span style={{ color: gold }}>{meNet + 1}-й</span></> : null}</div>}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         {top.map((p, i) => {
@@ -297,7 +297,7 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
         <div style={tagStyle(a11y)}>{roleLabel || "Твой трек"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 4 }}>{done} из {total} уроков</div>
         <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>
-          {days > 0 ? <><span className="tbv" style={{ color: gold, display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "-2px" }}><Candle s={15} lit={streak.last === ymd(new Date())} />{days} {dword}</span> подряд</> : "Начни серию — заходи каждый день"}
+          {days > 0 ? <><span className="tbv" style={{ color: gold, display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "-2px" }}><Candle s={15} lit={streak.last === ymd(new Date())} />{days} {dword}</span> подряд</> : "Начни серию: заходи каждый день"}
         </div>
       </div>
     </div>

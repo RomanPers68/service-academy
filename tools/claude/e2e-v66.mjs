@@ -262,7 +262,7 @@ async function toHandoff(page, name = "Мария", exp = "До года") {
   await page.evaluate(() => window.__saNav("candidate")); await sleep(1300);
   await btn(page, "Начать собеседование").click(); await sleep(450);
   await page.locator('input[placeholder="Имя кандидата"]').fill(name); await sleep(120);
-  await btn(page, "Дальше — анкета опыта").click(); await sleep(450);
+  await btn(page, "Дальше: анкета опыта").click(); await sleep(450);
   await page.locator(".sa-btn", { hasText: exp }).first().click(); await sleep(150);
   await btn(page, /^Дальше$/).click(); await sleep(450);
 }
@@ -649,7 +649,7 @@ if (want("STALE")) {
   ok("STALE: проверка была на Haiku 4.5, а интервью уже ведёт Haiku 5.5 — «бета» и «эталоны: проверить на новой модели»", (await attr(page, "[data-hr-row]", "data-hr-row")) === "beta" && /эталоны: проверить на новой модели/.test(row), row);
   await page.locator("[data-hr-row]").click(); await page.waitForSelector("[data-hr-eval]", { timeout: 8000 }).catch(() => {});
   const st = await page.evaluate(() => document.querySelector("[data-hr-stale]")?.innerText || "");
-  ok("STALE: на экране проверки — «проверяли на claude-haiku-4.5, а интервью теперь ведёт claude-haiku-5.5 — запустите проверку ещё раз»", /проверяли на claude-haiku-4\.5, а интервью теперь ведёт claude-haiku-5\.5 — запустите проверку ещё раз/.test(st) && (await attr(page, "[data-hr-ref]", "data-hr-ref")) === "no", st);
+  ok("STALE: на экране проверки — «проверяли на claude-haiku-4.5, а интервью теперь ведёт claude-haiku-5.5. Запустите проверку ещё раз»", /проверяли на claude-haiku-4\.5, а интервью теперь ведёт claude-haiku-5\.5\. Запустите проверку ещё раз/.test(st) && (await attr(page, "[data-hr-ref]", "data-hr-ref")) === "no", st);
   await shot(page, "stale1");
   await page.locator("[data-hr-eval-start]").click();
   await page.waitForSelector("[data-hr-eval-result]", { timeout: 60000 }).catch(() => {});

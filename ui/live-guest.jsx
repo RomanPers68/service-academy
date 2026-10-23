@@ -150,7 +150,7 @@ function TableTop({ guest }) {
   const seats = Math.max(1, Math.min(8, Number(guest.seats) || 2));
   if (guest.place === "bar") {
     return (
-      <svg className="lg-top" viewBox="0 0 160 76" role="img" aria-label="Барная стойка, гость — у стойки">
+      <svg className="lg-top" viewBox="0 0 160 76" role="img" aria-label="Барная стойка, гость у стойки">
         <path className="tt-desk" d="M14 12h132a9 9 0 0 1 0 18H14a9 9 0 0 1 0-18z" />
         <text className="tt-cap" x="80" y="24.5" textAnchor="middle">БАР</text>
         {[0, 1, 2, 3, 4].map((i) => <circle key={i} cx={24 + i * 28} cy={50} r={8} className={i === 2 ? "tt-me" : i === 0 ? "tt-seat on" : "tt-seat"} />)}
@@ -241,7 +241,7 @@ function MoodLine({ moods }) {
 }
 
 // v31: свои гости заведения — список и редактор (только руководитель; сервер проверяет сам)
-const ED_ERR = { name: "Нужно имя гостя.", open: "Нужна первая фраза гостя.", limit: "В заведении уже 30 своих гостей — удали лишних.", forbidden: "Добавлять гостей может руководитель.", not_found: "Этого гостя уже нет — обнови список.", auth: "Сессия устарела — войди заново." };
+const ED_ERR = { name: "Нужно имя гостя.", open: "Нужна первая фраза гостя.", limit: "В заведении уже 30 своих гостей. Удали лишних.", forbidden: "Добавлять гостей может руководитель.", not_found: "Этого гостя уже нет. Обнови список.", auth: "Сессия устарела. Войди заново." };
 function PersonaEditor({ rows, myPlace, onClose, onSaved, onDeleted, onPlay }) {
   const [form, setForm] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -256,15 +256,15 @@ function PersonaEditor({ rows, myPlace, onClose, onSaved, onDeleted, onPlay }) {
     rpc("guest_persona_save", { p_token: saToken(), p_data: data }).then((r) => {
       setBusy(false);
       if (r && r.ok && r.row) { onSaved(r.row); setForm(null); vibrate("success"); return; }
-      setMsg(rpcMissing(r) ? "Свои гости появятся, когда владелец обновит сервер." : ED_ERR[(r && r.error) || ""] || "Не сохранилось — проверь связь.");
-    }, () => { setBusy(false); setMsg("Не сохранилось — проверь связь."); });
+      setMsg(rpcMissing(r) ? "Свои гости появятся, когда владелец обновит сервер." : ED_ERR[(r && r.error) || ""] || "Не сохранилось. Проверь связь.");
+    }, () => { setBusy(false); setMsg("Не сохранилось. Проверь связь."); });
   };
   const remove = (id) => {
     if (del !== id) { setDel(id); return; }
     rpc("guest_persona_delete", { p_token: saToken(), p_id: id }).then((r) => {
       setDel("");
-      if (r && r.ok) { onDeleted(id); vibrate("light"); } else setMsg(ED_ERR[(r && r.error) || ""] || "Не удалилось — проверь связь.");
-    }, () => { setDel(""); setMsg("Не удалилось — проверь связь."); });
+      if (r && r.ok) { onDeleted(id); vibrate("light"); } else setMsg(ED_ERR[(r && r.error) || ""] || "Не удалилось. Проверь связь.");
+    }, () => { setDel(""); setMsg("Не удалилось. Проверь связь."); });
   };
   const edit = (row) => { setMsg(""); setForm(row ? { id: row.id, place: row.place, name: row.name, age: row.age, mood: row.mood, who: row.who, occasion: row.occasion, hidden: row.hidden, open: row.open, whisper: row.whisper, tagsText: (row.tags || []).join(", ") }
     : { place: myPlace, name: "", age: 35, mood: 3, who: "", occasion: "", hidden: "", open: "", whisper: "", tagsText: "" }); };
@@ -566,7 +566,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
           </div>
           {/* v42: кто ты в этой сцене — гость и чек разбора ждут именно этого */}
           <p className="lg-role" data-guest-role={guest.place}>{ui.role}</p>
-          <p className="lg-note">Говори как на смене — голосом или текстом. Гость ведёт себя как настоящий: заметит заботу и ошибки. Он может что-то держать в голове и не сказать, пока не спросишь. В конце — чек разбора от Наставника.</p>
+          <p className="lg-note">Говори как на смене, голосом или текстом. Гость ведёт себя как настоящий: заметит заботу и ошибки. Он может что-то держать в голове и не сказать, пока не спросишь. В конце Наставник выдаст чек разбора.</p>
           <label className="lg-opt"><input type="checkbox" checked={voiceOn} onChange={(e) => setVoice(e.target.checked)} />Озвучивать гостя</label>
           {canEdit ? <div className="lg-own">Гости заведения: {own.length}<button type="button" onClick={() => setEditor(true)} data-persona-open="">{own.length ? "Изменить" : "Добавить своих"}</button></div>
             : ownHere ? <p className="lg-own">В подборке есть гости вашего заведения: {ownHere}</p> : null}
@@ -622,7 +622,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
                 <>
                   <div className="lg-sec">ПОВТОРИТЬ</div>
                   <div className="lg-les">{rc.lessons.map((id) => <button key={id} type="button" onClick={() => onOpenLesson && onOpenLesson(id)}><Ic n="book" s={15} /><span>{lessonTitle(id) || "Урок"}</span></button>)}</div>
-                  <p className="r-note"><Ic n="refresh" s={14} /><span>Вопросы по этим урокам — в «Работе над ошибками».</span></p>
+                  <p className="r-note"><Ic n="refresh" s={14} /><span>Вопросы по этим урокам ждут в «Работе над ошибками».</span></p>
                 </>
               ) : null}
               <TableEdge />
@@ -667,7 +667,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
           </div>
         ) : null}
         {/* v42: роли знает только обновлённый ai-chat — без него гость у входа ведёт себя как с официантом */}
-        {oldAi && guest.place !== "hall" ? <p className="lg-note" data-old-ai="">ИИ-гость на сервере ещё прежней версии — может вести себя как с официантом. Руководителю: обновить функцию ai-chat.</p> : null}
+        {oldAi && guest.place !== "hall" ? <p className="lg-note" data-old-ai="">ИИ-гость на сервере ещё прежней версии и может вести себя как с официантом. Руководителю: обновить функцию ai-chat.</p> : null}
         {left != null && left <= 6 ? <p className="lg-note">Живых реплик на сегодня осталось: {left}</p>
           : left != null ? <span className="lg-left" data-left={left}>живых реплик сегодня: {left}</span> : null}
       </div></div>

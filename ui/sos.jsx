@@ -134,9 +134,9 @@ const SOS_CARDS = [
       "✅ Спокойно и твёрдо — к ближайшему выходу. Твоя зона — твои гости.",
       "✅ Помоги уязвимым: детям, пожилым, тем, кому трудно.",
       "✅ В дыму — ниже к полу.",
-      "🚫 Не кричи «пожар!» — это сеет давку.",
+      "🚫 Не кричи «пожар!» — начнётся давка.",
       "🚫 Никого не пускай обратно за вещами — частая причина беды.",
-      "🚫 Не лифт. Никогда не возвращайся внутрь — только спасатели.",
+      "🚫 Лифтом не пользуйся. Никогда не возвращайся внутрь — только спасатели.",
     ],
   },
 ];
@@ -178,7 +178,7 @@ export function SOSScreen({ T, a11y, onBack }) {
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: text, fontSize: 21, fontWeight: "bold", fontFamily: ACCENT_SERIF, lineHeight: 1.15 }}>SOS в смене</div>
-            <div style={{ color: sub, fontSize: 12.5, marginTop: 2 }}>Только действия. Открой нужное — и действуй.</div>
+            <div style={{ color: sub, fontSize: 12.5, marginTop: 2 }}>Только действия. Открой нужное и действуй.</div>
           </div>
         </div>
 
@@ -191,7 +191,7 @@ export function SOSScreen({ T, a11y, onBack }) {
         }}>
           {I.phone(red, 15)}
           <span style={{ color: text, fontSize: 12.5, lineHeight: 1.4 }}>
-            <b style={{ color: red, fontFamily: "monospace" }}>112</b> — единый номер · <b style={{ color: red, fontFamily: "monospace" }}>103</b> — скорая. Вызвал — сообщи менеджеру.
+            <b style={{ color: red, fontFamily: "monospace" }}>112</b> — единый номер · <b style={{ color: red, fontFamily: "monospace" }}>103</b> — скорая. После звонка сообщи менеджеру.
           </span>
         </div>
 

@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const G = "/home/claude/.npm-global/lib/node_modules";
 const { chromium } = require(G + "/playwright");
 const SRC = process.env.SRC || "/home/claude/work/service-academy";
-const SITE = "/home/claude/preview/site", OUT = "/home/claude/preview/shots", PORT = 5210;
+const SITE = process.env.E2E_SITE || "/home/claude/preview/site", OUT = process.env.E2E_OUT || "/home/claude/preview/shots", PORT = Number(process.env.E2E_PORT) || 5210;
 
 const spg = await import(SRC + "/data/modules-spg.js");
 const quiz = Object.values(spg).flat().filter(x => x && x.lessons).flatMap(m => m.lessons).find(l => l.id === "spg-0-q");
@@ -98,13 +98,13 @@ await run("лазейка", async ({ page, calls, toTest, answer, clickText, ls,
   await page.waitForTimeout(1400);
   const card = await page.evaluate(() => document.body.innerText.includes("Ах ты, хитрая жопка") && document.body.innerText.includes("Находчивая жопка"));
   check("тап по баннеру — карточка «Находчивая жопка»", card);
-  check("в карточке — тайный зачёт: «Ты хитр(ый|ая), но до первого места — ещё 3 ключа»", await page.evaluate(() => /Ты хитр(ый|ая), но до первого места — ещё 3 ключа/.test(document.body.innerText) && /2-е место из 4/.test(document.body.innerText)));
+  check("в карточке — тайный зачёт: «Ты хитр(ый|ая), но до первого места — ещё 3 ключа»", await page.evaluate(() => /Ты хитр(ый|ая), но до первого места ещё 3 ключа/.test(document.body.innerText) && /2-е место из 4/.test(document.body.innerText)));
   await page.screenshot({ path: OUT + "/e2e-card.png" });
-  check("родовые окончания по сотруднику: «ПОПАЛАСЬ», «ТЫ ОТВЕТИЛА»", await page.evaluate(() => {
+  check("родовые окончания по сотруднику: «ПОПАЛАСЬ», «Ты ответила»", await page.evaluate(() => {   // v73: бирки строчными курсивом, штамп — прописными
     const t = document.body.innerText;
-    return /ПОПАЛАСЬ/.test(t) && !/ПОПАЛСЯ/.test(t) && /ТЫ ОТВЕТИЛА/.test(t)
+    return /ПОПАЛАСЬ/.test(t) && !/ПОПАЛСЯ/.test(t) && /Ты ответила/.test(t)
       && !/ты вышел|прошёл его|Ты хитрый|ты стёр,/.test(t) && /вышла|выходила/.test(t) && /Ты хитрая/.test(t); }));
-  check("в карточке ошибка первой попытки, верный ответ и штамп", await page.evaluate(() => /ТЫ ОТВЕТИЛ/i.test(document.body.innerText) && /ВЕРНО/.test(document.body.innerText) && /ПОПАЛ(СЯ|АСЬ)/.test(document.body.innerText)));   // род — по сотруднику (правка 169)
+  check("в карточке ошибка первой попытки, верный ответ и штамп", await page.evaluate(() => /Ты ответил/i.test(document.body.innerText) && /Верно/.test(document.body.innerText) && /ПОПАЛ(СЯ|АСЬ)/.test(document.body.innerText)));   // род — по сотруднику (правка 169)
   const qd = JSON.parse(await ls("sa_quiz_done" + UK) || "{}"); check("тест отмечен сданным", !!qd["spg-0-q"]);   // Доп. 286: ключ личный
   await clickText("Понятно");
   check("«Понятно» закрывает карточку", !(await page.evaluate(() => document.body.innerText.includes("Ах ты, хитрая жопка"))));

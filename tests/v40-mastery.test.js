@@ -144,7 +144,7 @@ describe("семейства, ступени и факты", () => {
     expect(FAMILIES.map((f) => f.go)).toEqual(["track", "track", "practice", "dialogue", "refresh", "gold", "warmup", "radio", "guest", "mistakes", "menu", "track", "quest", "mentor"]);
     expect(fam("track").tiers({ sectionsTotal: 7 })).toEqual([1, 4, 7]);
     expect(fam("track").tiers({ sectionsTotal: 2 })).toEqual([1, 1, 2]);
-    expect(fam("radio").how).toBe("Включи «Радио в дорогу» по пути на смену — три коротких выпуска из твоих уроков.");
+    expect(fam("radio").how).toBe("Включи «Радио в дорогу» по пути на смену: три коротких выпуска из твоих уроков.");   // v74
     for (const f of [...FAMILIES, ...FIRST_WEEK]) {
       for (const k of ["id", "title", "how", "go"]) expect(typeof f[k], f.id + "." + k).toBe("string");
       expect(GO, f.id).toContain(f.go);
@@ -243,7 +243,7 @@ describe("«Мастер роли ✦» и «Первая неделя»", () =>
 describe("шаг дня", () => {
   it("1) выдохшаяся тема — освежить (годятся и записи fadedList)", () => {
     const s = step(VET(), { faded: [{ mod: { id: "m1", title: "Встреча гостя" }, f: { level: "faded" } }] });
-    expect(s).toMatchObject({ id: "fresh:m1", text: "Освежи тему «Встреча гостя»", sub: "3 ситуации · 1 мин — тема снова свежая", go: "refresh", payload: { mod: "m1" }, done: false });
+    expect(s).toMatchObject({ id: "fresh:m1", text: "Освежи тему «Встреча гостя»", sub: "3 ситуации · 1 мин, и тема снова свежая", go: "refresh", payload: { mod: "m1" }, done: false });
     expect(step(NEWBIE(), { faded: [{ id: "m2", title: "Заказ" }] }).id).toBe("fresh:m2");   // и новичку — раньше заданий недели
   });
   it("2) новичку — задание «Первой недели», которое ещё не сделано", () => {

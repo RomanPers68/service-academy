@@ -795,7 +795,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
       <div className="dc-load" onClick={e => e.stopPropagation()}>
         <div className="sa-pulse" style={{ color: "var(--gold-ink)", fontFamily: "Georgia, serif", fontWeight: "bold", marginBottom: 6 }}>Диалог загружается…</div>
         <div style={{ color: "var(--sub)", fontSize: 12.5, lineHeight: 1.55, marginBottom: 12 }}>
-          Подтягиваем сценарий. Если сеть медленная — секунду-другую.
+          Подтягиваем сценарий. В медленной сети подожди секунду-другую.
         </div>
         <button type="button" className="dc-again" data-sa-back="" onClick={() => onClose(false, { done: false, walkedOut: false })} style={{ flex: "none", minHeight: 40, padding: "0 20px", fontSize: 13 }}>
           Закрыть
@@ -837,7 +837,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
             {startChoices ? <span className="dc-chip">{startChoices} {plural(startChoices, "выбор", "выбора", "выборов")}</span> : null}
             {pro ? <span className="dc-chip">★ до 3 звёзд</span> : null}
           </div>
-          <p className="dc-howto">Отвечай кнопками внизу. Нажми на переписку — гость ответит без паузы.</p>
+          <p className="dc-howto">Отвечай кнопками внизу. Нажми на переписку, и гость ответит без паузы.</p>
         </div>
       </div>
     );

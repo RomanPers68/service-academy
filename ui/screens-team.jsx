@@ -87,7 +87,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const shareCode = async (code, emp) => {
     // Ссылка ведёт в мини-приложение в Telegram; код зашит в startapp и подставится сам.
     // Код дублируем текстом — на случай входа с другого устройства.
-    const text = `Service Academy — твой код входа: ${code}\n\nОткрой по ссылке — приложение запустится в Telegram, код подставится сам:\n${APP_SHARE_URL}?startapp=${encodeStartParam(code)}`;
+    const text = `Твой код входа в Service Academy: ${code}\n\nПо ссылке приложение откроется в Telegram, код подставится сам:\n${APP_SHARE_URL}?startapp=${encodeStartParam(code)}`;
     try {
       if (navigator.share) { await navigator.share({ text }); return; }
     } catch(e) { if (e && e.name === "AbortError") return; }
@@ -315,8 +315,8 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
           <div style={{ color:"#B8956A", fontSize:12.5, lineHeight:1.7, textAlign:"center", maxWidth:300, margin:"22px 0" }}>
             {issued.permanent
-              ? <>Код показывается <b>только сейчас</b> — сохрани в надёжном месте. Он <b>постоянный</b>: входит сколько угодно раз и на любом устройстве. Утёк — выдай новый: прежний постоянный перестанет работать.</>
-              : <>Код показывается <b>только сейчас</b> — отправь его сразу. Вводится один раз на одном устройстве.</>}
+              ? <>Код показывается <b>только сейчас</b>. Сохрани его в надёжном месте. Он <b>постоянный</b>: работает сколько угодно раз и на любом устройстве. Если утёк, выдай новый: прежний перестанет работать.</>
+              : <>Код показывается <b>только сейчас</b>. Отправь его сразу. Вводится один раз на одном устройстве.</>}
           </div>
 
           <button className="sa-btn" style={{ ...goldBtn, maxWidth:300 }} onClick={() => shareCode(issued.code, issued.emp)}>
@@ -428,11 +428,11 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             <div>
               <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:8, marginBottom:12 }}>
                 <div style={{ ...labelStyle(13.5), color:GOLD }}>Постоянный код входа</div>
-                <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.6 }}>Не сгорает при входе: Telegram, Safari на экране «Домой», новый телефон — один и тот же код. Показывается один раз.</div>
+                <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.6 }}>Не сгорает при входе: один код подходит для Telegram, Safari на экране «Домой» и нового телефона. Показывается один раз.</div>
                 <button className="sa-btn" style={{ ...goldBtn, marginTop:4 }} disabled={busy} onClick={doPermanent}>{busy ? "Выдаю…" : "Выдать себе постоянный код"}</button>
               </div>
               <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", padding:"0 10px" }}>
-                Остальное в своей записи изменить нельзя — чтобы случайно не закрыть себе вход. 😉
+                Остальное в своей записи изменить нельзя, чтобы случайно не закрыть себе вход. 😉
               </div>
             </div>
           ) : confirm === "reset" ? (
@@ -573,7 +573,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
         {list !== null && !loadError && groups.length === 0 && (
           <div style={{ color:T.modSub.color, fontSize:12.5, textAlign:"center", padding:"30px 10px", lineHeight:1.7 }}>
-            {search ? "Никого не нашлось по такому запросу." : "Пока только ты. Нажми «+ Добавить» — и выдай первый код. 🚀"}
+            {search ? "Никого не нашлось по такому запросу." : "Пока только ты. Нажми «+ Добавить» и выдай первый код. 🚀"}
           </div>
         )}
 
@@ -673,7 +673,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         Вход по приглашению
       </div>
       <div style={{ color:"#9A8C74", fontSize:12.5, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:24 }}>
-        Введи код доступа — его выдаёт руководитель. Дальше вход автоматический — код больше не понадобится.
+        Введи код доступа от руководителя. Дальше вход автоматический, код больше не понадобится.
       </div>
       <input
         value={code}
@@ -704,7 +704,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         {busy ? "Проверяем..." : "Войти"}
       </button>
       <div style={{ color:MUTED_2, fontSize:11, marginTop:20, textAlign:"center", lineHeight:1.7 }}>
-        Нет кода? Спроси у руководителя —<br/>он создаст тебя в системе за минуту.
+        Нет кода? Спроси у руководителя:<br/>он создаст тебя в системе за минуту.
       </div>
     </div>
   );
@@ -723,7 +723,7 @@ function MentorPinBlock({ T, gold }) {
     try {
       const resp = await rpc("set_mentor_pin", { p_token: saToken(), p_pin: pin });
       if (resp && resp.ok) { setState("ok"); setPin(""); vibrate("success"); }
-      else setState("err:" + (resp?.error === "not_mentor" ? "PIN доступен только руководящему составу." : resp?.error === "auth" ? "Сессия устарела — перезайди по коду." : "Не получилось. Попробуй ещё раз."));
+      else setState("err:" + (resp?.error === "not_mentor" ? "PIN доступен только руководящему составу." : resp?.error === "auth" ? "Сессия устарела. Перезайди по коду." : "Не получилось. Попробуй ещё раз."));
     } catch (e) {
       setState("err:Функция появится после обновления сервера (stage 6).");
     }
@@ -735,7 +735,7 @@ function MentorPinBlock({ T, gold }) {
         <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold" }}>PIN наставника</span>
       </div>
       <div style={{ color: T.modSub.color, fontSize:12.5, lineHeight:1.55 }}>
-        Этим PIN ты заверяешь допуски сотрудников — вводи его только сам(а) и никому не сообщай. 4–6 цифр.
+        Этим PIN ты заверяешь допуски сотрудников. Вводи его только сам(а) и никому не сообщай. 4–6 цифр.
       </div>
       <div style={{ display:"flex", gap:8 }}>
         <input value={pin}
@@ -778,7 +778,7 @@ function AccountSettings({ T, a11y, onA11y, themeAuto = false, onThemeAuto = nul
   return (
     <div data-settings="" style={{ ...T.modCard, display:"block", padding:"4px 14px", marginBottom:12 }}>
       <div style={{ ...labelStyle(a11y ? 14 : 13), color: gold, padding:"8px 2px 0" }}>Настройки</div>
-      {row("theme", "Для чтения", "светлый фон и текст крупнее — удобно днём и для глаз", !!a11y, () => { vibrate("light"); if (onA11y) onA11y(!a11y); }, true)}
+      {row("theme", "Для чтения", "светлый фон и текст крупнее, удобно читать днём", !!a11y, () => { vibrate("light"); if (onA11y) onA11y(!a11y); }, true)}
       {/* v59 (Доп. 372): тема по системе — светлая у телефона или Telegram включает «Для чтения» сама */}
       {onThemeAuto ? row("auto", "Тема как в системе", "светлая тема телефона или Telegram включит «Для чтения», тёмная — выключит", !!themeAuto, () => { vibrate("light"); onThemeAuto(!themeAuto); }) : null}
       {row("sound", "Звуки", "тихий звон за верный ответ, колокольчик за печать и значок", snd, () => { const v = !snd; setSfx(v); setSnd(v); if (v) sfx("ok"); })}
@@ -824,7 +824,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
         </div>
 
         <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.55, padding:"0 4px", marginBottom:12 }}>
-          Данные профиля привязаны к твоему коду доступа. Если что-то указано неверно — обратись к руководителю.
+          Данные профиля привязаны к твоему коду доступа. Если что-то указано неверно, обратись к руководителю.
         </div>
 
         {/* ═══ v57 (Доп. 370): настройки — тема, звуки, вибрация ═══ */}

@@ -24,8 +24,8 @@ export function OfflineScreen({ T, a11y, onBack }) {
   const openBrowser = () => { vibrate("light"); if (inTg && tg.openLink) tg.openLink(url); else window.open(url, "_blank"); };
   const copy = () => { try { navigator.clipboard.writeText(url).then(() => { setCopied(true); vibrate("success"); setTimeout(() => setCopied(false), 2000); }); } catch (e) {} };
   const status = standalone ? { t: "Приложение на экране «Домой»", d: "Лучший вариант: открывается без сети, обновляется само, когда связь есть." }
-    : swOk ? { t: "Офлайн включён", d: "Приложение сохранено на телефоне. Открывал при связи — откроется и без неё." }
-    : { t: "Здесь офлайн недоступен", d: ios && inTg ? "Telegram на iPhone не даёт сохранять приложение на телефон — это ограничение Apple. Путь ниже — Safari и экран «Домой»." : "Этот браузер не умеет сохранять приложение. Открой в Safari или Chrome." };
+    : swOk ? { t: "Офлайн включён", d: "Приложение сохранено на телефоне. Если открывал его при связи, оно откроется и без неё." }
+    : { t: "Здесь офлайн недоступен", d: ios && inTg ? "Telegram на iPhone не даёт сохранять приложение на телефон, это ограничение Apple. Путь ниже: Safari и экран «Домой»." : "Этот браузер не умеет сохранять приложение. Открой в Safari или Chrome." };
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -53,9 +53,9 @@ export function OfflineScreen({ T, a11y, onBack }) {
           <div style={frost}>
             <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>{ios ? "iPhone: экран «Домой»" : "Браузер: экран «Домой»"}</div>
             <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>
-              1. Нажми «Открыть в браузере» — откроется Safari.<br />
+              1. Нажми «Открыть в браузере», откроется Safari.<br />
               2. В Safari: кнопка «Поделиться» (квадрат со стрелкой) → «На экран “Домой”» → Добавить.<br />
-              3. Войди по своему коду. Иконка SA на экране — приложение открывается без сети, обновляется само.
+              3. Войди по своему коду. С иконки SA на экране приложение открывается без сети и обновляется само.
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button className="sa-btn" onClick={openBrowser} style={{ ...T.doneBtn, flex: 1.4, background: gold }}>Открыть в браузере</button>
@@ -67,7 +67,7 @@ export function OfflineScreen({ T, a11y, onBack }) {
         {!ios && inTg && swOk ? (
           <div style={frost}>
             <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>Android</div>
-            <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>В Telegram на Android офлайн уже работает — ничего делать не нужно. Хочешь иконку на экране — «Открыть в браузере» и «Добавить на главный экран» в Chrome.</div>
+            <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>В Telegram на Android офлайн уже работает, ничего делать не нужно. Хочешь иконку на экране? «Открыть в браузере» и «Добавить на главный экран» в Chrome.</div>
             <button className="sa-btn" onClick={openBrowser} style={{ ...T.doneBtn, marginTop: 12, width: "100%", background: "transparent", border: `1px solid ${gold}88`, color: gold }}>Открыть в браузере</button>
           </div>
         ) : null}

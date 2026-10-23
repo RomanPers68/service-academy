@@ -124,7 +124,7 @@ describe("smoke render", () => {
     expect(line).toContain("разминка 2 мин");
     expect(R(<WarmupCard compact a11y={false} shift="" known done onStart={noop} />)).toBe("");
     expect(R(<WarmupCard a11y={false} shift="" known={false} done={false} onStart={noop} />)).toContain("Перед сменой");
-    expect(R(<WeekCard a11y={false} activeDays={3} onOpen={noop} />)).toContain("в деле 3 дня из 7");
+    expect(R(<WeekCard a11y={false} activeDays={3} onOpen={noop} />)).toContain("В деле 3 дня из 7. Можно отправить команде");   // v74
   });
   it("Разминка до смены и чек недели «у стола» (Доп. 301, 305)", async () => {
     const { TableCheck, WeekReceipt } = await import("../ui/table");
@@ -236,14 +236,14 @@ describe("smoke render", () => {
   it("ревью v30: свеча на двоих — выходной по графику и пропавший напарник", async () => {
     const { pairNudgeText } = await import("../ui/together");
     const base = { partner: { name: "Аня" } };
-    expect(pairNudgeText({ ...base, partner_today: { state: 2, warm: 1 }, me_today: { state: 0 } })).toBe("Аня уже размялась — твоя очередь");
-    expect(pairNudgeText({ ...base, partner_today: { state: 1 }, me_today: { state: 2 } })).toBe("Ты свою часть сделал(а). Аня сегодня не в смене — свеча подождёт");
-    expect(pairNudgeText({ ...base, partner_today: { state: 0 }, me_today: { state: 1 } })).toBe("У тебя выходной по графику — свечу сегодня держит Аня");
-    expect(pairNudgeText({ ...base, partner_today: { state: 2 }, me_today: { state: 1 } })).toBe("У тебя выходной по графику, а Аня свою часть сделала — свеча горит");
-    expect(pairNudgeText({ ...base, partner_today: { state: 1 }, me_today: { state: 1 } })).toBe("Сегодня у обоих выходной — свеча подождёт");
+    expect(pairNudgeText({ ...base, partner_today: { state: 2, warm: 1 }, me_today: { state: 0 } })).toBe("Аня уже размялась, твоя очередь");   // v74: без тире
+    expect(pairNudgeText({ ...base, partner_today: { state: 1 }, me_today: { state: 2 } })).toBe("Ты свою часть сделал(а). Аня сегодня не в смене, свеча подождёт");
+    expect(pairNudgeText({ ...base, partner_today: { state: 0 }, me_today: { state: 1 } })).toBe("У тебя выходной по графику. Свечу сегодня держит Аня");
+    expect(pairNudgeText({ ...base, partner_today: { state: 2 }, me_today: { state: 1 } })).toBe("У тебя выходной по графику, а Аня свою часть сделала. Свеча горит");
+    expect(pairNudgeText({ ...base, partner_today: { state: 1 }, me_today: { state: 1 } })).toBe("Сегодня у обоих выходной, свеча подождёт");
     // напарник не в смене, а я в смене и не занимался — серию держу я (пропуск её погасит)
-    expect(pairNudgeText({ ...base, partner_today: { state: 1 }, me_today: { state: 0 } })).toBe("Аня сегодня не в смене — свечу сегодня держишь ты: хотя бы один шаг");
-    expect(pairNudgeText({ ...base, partner_today: { state: 0 }, me_today: { state: 2 } })).toBe("Ты свою часть сделал(а). Аня — ещё нет: свеча ждёт двоих");
+    expect(pairNudgeText({ ...base, partner_today: { state: 1 }, me_today: { state: 0 } })).toBe("Аня сегодня не в смене, свечу держишь ты: хотя бы один шаг");
+    expect(pairNudgeText({ ...base, partner_today: { state: 0 }, me_today: { state: 2 } })).toBe("Ты свою часть сделал(а), а Аня ещё нет. Свеча ждёт двоих");
     expect(pairNudgeText({ partner: null, partner_today: {}, me_today: {} })).toBe("");
   });
 

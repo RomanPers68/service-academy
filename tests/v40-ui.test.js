@@ -122,7 +122,7 @@ describe("v40 UI: карточка на главной", () => {
     expect(html).toContain("data-ms-open");
     expect(between(html, "data-ms-step", "data-ms-open")).toContain("Шаг дня");
     expect(html).toContain("Освежи тему «Встреча гостя»");
-    expect(html).toContain("3 ситуации · 1 мин — тема снова свежая");
+    expect(html).toContain("3 ситуации · 1 мин, и тема снова свежая");   // v74
     expect(html).toContain(">Сделать<");
     expect(html).toContain("Путь мастера");
     expect(html).toContain("6 из 14 значков · мастер роли 7/13");
@@ -234,8 +234,8 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(hero).toContain("Мастер роли «Ядро»");
     expect(hero).toContain('aria-label="Мастер роли: 7 из 13"');
     expect(hero).toMatch(/>7<\/text><text[^>]*>из 13</);
-    expect(text(hero)).toContain("До звания — ещё 6 из 13. Коллеги-мастера носят знак ✦ у имени в рейтинге и лиге.");
-    expect(hero).toContain(">До звания — ещё 6 из 13.</b>");
+    expect(text(hero)).toContain("До звания ещё 6 из 13. У мастеров в рейтинге и лиге особый знак у имени.");   // v74
+    expect(hero).toContain(">До звания ещё 6 из 13.</b>");
     const parts = [...hero.matchAll(/data-ms-part="(\w+)" aria-label="([^"]+)"/g)].map((m) => [m[1], m[2]]);
     expect(parts).toEqual([["role", "Роль пройдена — 9 из 12 разделов"], ["gold", "5 золотых тем — 0 из 5"], ["streak", "Серия 14 дней — готово"], ["bronze", "Бронза в 10 значках — 6 из 10"]]);
     expect(hero).toContain("лучшая: 14 из 14");
@@ -285,7 +285,7 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(count(first, />сделано</g)).toBe(3);
     expect(count(first, /Открыть ›/g)).toBe(4);
     expect(first).toContain("Обслужи живого гостя");
-    expect(first).toContain("Все семь — значок «Первые шаги».");
+    expect(first).toContain("За все семь дают значок «Первые шаги».");   // v74
     expect(screen("mid")).not.toContain("data-ms-first");   // давно в академии, неделя не собрана — блока нет
     const all = stateOf("newbie", { ...FACTS.newbie, life: { w: 1, d: 1, p: 1, r: 1, g: 1, m: 1, q: 1 }, firstDay: "2026-10-10" });
     expect(R(h(MasteryScreen, { T: S, state: all, role: "core", inline: true }))).toContain("Значок «Первые шаги» получен");
@@ -308,7 +308,7 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(list).toContain(">12 окт<");
     expect(list).toContain(">21 сен<");
     expect(list).toMatch(/Анна Смирнова<\/span><span[^>]*>ты</);
-    expect(screen("mid", { masters: { status: "ok", rows: [], prize: null, can_prize: false } })).toContain("Пока никого. Первый знак ✦ в заведении может быть твоим");
+    expect(screen("mid", { masters: { status: "ok", rows: [], prize: null, can_prize: false } })).toContain("Пока никого. Первым мастером в заведении можешь стать ты");   // v74: без ✦ (Рома, скриншот)
     const loading = screen("mid", { masters: { status: "loading" } });
     expect(loading).toContain('aria-busy="true"');
     expect(loading).toContain("sa-skel");
@@ -376,15 +376,15 @@ describe("v40 UI: экран «Путь мастера»", () => {
     expect(sheet).toContain("Бронза — 3 темы");
     expect(sheet).toContain("Серебро — 15 тем");
     expect(sheet).toContain("Золото — 40 тем");
-    expect(sheet).toContain("До бронзы — ещё 1 тема");
+    expect(sheet).toContain("До бронзы ещё 1 тема");   // v74
     expect(sheet).toContain("Как получить");
-    expect(sheet).toContain("Когда номер темы в треке бледнеет, нажми «Освежить» — три задания, и тема снова свежая.");
+    expect(sheet).toContain("Когда номер темы в треке бледнеет, нажми «Освежить»: три задания, и тема снова свежая.");
     expect(html).toMatch(/data-ms-show=""[^>]*>Показать ›</);
     const gold = screen("master", { focus: "warmup" });
     expect(gold).toContain("Значок · золото");
     expect(gold).toContain("Высшая ступень");
     expect(count(between(gold, 'data-ms-sheet="warmup"', "Высшая ступень"), />есть</g)).toBe(3);
-    expect(screen("mid", { focus: "streak" })).toContain("Лучшая серия — 14 дней подряд");
+    expect(screen("mid", { focus: "streak" })).toContain("Лучшая серия: 14 дней подряд");
     expect(screen("newbie", { focus: "hall" })).toContain("Ещё не начато");
     expect(screen("mid", { focus: "нет" })).not.toContain("data-ms-sheet");
     expect(screen("mid")).not.toContain("data-ms-sheet");

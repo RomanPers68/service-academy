@@ -256,8 +256,8 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
           const redC = a11y ? "#A33A2A" : "#E07878";
           const statusLine = !passed
             ? (eligible ? "Доступен экзамен" : "Сначала пройди роль")
-            : expired ? `Сдано · ${res.score}% · срок истёк — пересдай`
-            : expiring ? `Сдано · ${res.score}% · до ${untilStr} — скоро переаттестация`
+            : expired ? `Сдано · ${res.score}% · срок истёк, пересдай`
+            : expiring ? `Сдано · ${res.score}% · до ${untilStr}, скоро переаттестация`
             : untilStr ? `Сдано · ${res.score}% · действует до ${untilStr}`
             : `Сдано · ${res.score}%`;
           return (

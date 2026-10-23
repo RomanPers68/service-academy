@@ -64,7 +64,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
     const cur = barcard || COCKTAILS.map(x => x.id);
     const ids = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
     const next = withBarcard(shared, ids); setShared(next); vibrate("light");
-    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) }).then(res => setPubMsg(res && res.ok ? "Карта бара обновлена у всех ✓" : "Не сохранилось — проверь связь")).catch(() => setPubMsg("Не сохранилось — нет связи"));
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) }).then(res => setPubMsg(res && res.ok ? "Карта бара обновлена у всех ✓" : "Не сохранилось. Проверь связь")).catch(() => setPubMsg("Не сохранилось. Нет связи"));
     setTimeout(() => setPubMsg(""), 2500);
   };
   const [reverse, setReverse] = React.useState(false);
@@ -256,14 +256,14 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               </span>
             </div>
           ))}
-          {!pool.length ? <div style={{ gridColumn:"1 / -1", color:glass.sub, fontFamily:"Georgia, serif", textAlign:"center", padding:20 }}>Ничего не нашлось — попробуй другое слово</div> : null}
+          {!pool.length ? <div style={{ gridColumn:"1 / -1", color:glass.sub, fontFamily:"Georgia, serif", textAlign:"center", padding:20 }}>Ничего не нашлось. Попробуй другое слово</div> : null}
         </div>
       ) : null}
       <div style={{ display: view === "index" ? "none" : "block" }}>
 
       {!c ? (
         <div style={{ ...card, padding:28, textAlign:"center", color:glass.sub, fontFamily:"Georgia, serif" }}>
-          Всё повторено. Карточки вернутся по кривой памяти — через день, три, неделю, месяц.
+          Всё повторено. Карточки вернутся по кривой памяти: через день, три, неделю, месяц.
         </div>
       ) : (
         <div className="sa-ck-wrap" ref={wrapRef}
@@ -281,7 +281,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 : <>
                     <div style={{ fontFamily:"Georgia, serif", fontSize:25, color:glass.tx, letterSpacing:1.5, textTransform:"uppercase", lineHeight:1.2, marginTop:4 }}>{c.name}</div>
                     <div style={{ ...labelStyle(13), color:glass.sub, marginTop:6 }}>
-                      {mode === "quiz" ? "Вспомни спек · тапни, чтобы проверить" : c.ing.map(i => i[0]).join(" · ")}
+                      {mode === "quiz" ? "Вспомни спек и тапни, чтобы проверить" : c.ing.map(i => i[0]).join(" · ")}
                     </div>
                   </>}
               <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:6, flexWrap:"wrap" }}>
@@ -302,7 +302,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 <span style={{ ...pill(false), ...labelStyle(13), color:GOLD, padding:"5px 13px" }}>крепость {dots(c.strength)}</span>
                 <span style={{ ...pill(false), ...labelStyle(13), color:GOLD, padding:"5px 13px" }}>сладость {dots(c.sweet)}</span>
               </div>
-              <div style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:12.5, color:glass.sub, marginTop:10 }}>тапни — рецепт</div>
+              <div style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:12.5, color:glass.sub, marginTop:10 }}>рецепт по тапу</div>
             </div>
             </div>
             <div className="sa-ck-face sa-ck-back" style={{ ...card, padding:16 }}>
@@ -333,7 +333,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                   </div>
                 ))}
               </div>
-              {c.house && !c.full && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню — фото и описание ›</div>}
+              {c.house && !c.full && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню: фото и описание ›</div>}
               {c.house && canEdit && onEdit && <div onClick={(e) => { e.stopPropagation(); onEdit(c.full ? c.id : null); }} style={{ marginTop:8, fontSize:12.5, color:GOLD, cursor:"pointer" }}>{c.full ? "Править в редакторе ›" : "Дописать спек в редакторе ›"}</div>}
               {(() => { const fam = familyOf(c, ALL); return fam ? (
                 <div style={{ marginTop:10 }}>
@@ -358,7 +358,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                   {st.guest ? <div style={{ marginTop:8, fontStyle:"italic", color:glass.sub, fontSize:12.5 }}>Гостю: «{st.guest}»</div> : null}
                 </div>
               ) : null; })()}
-              {c.house ? <div style={{ color:GOLD, fontSize:11, marginTop:8 }}>авторский коктейль бара — спек по карточке заведения</div> : null}
+              {c.house ? <div style={{ color:GOLD, fontSize:11, marginTop:8 }}>авторский коктейль бара, спек по карточке заведения</div> : null}
             </div>
             </div>
           </div>

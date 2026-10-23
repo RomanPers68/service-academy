@@ -120,7 +120,7 @@ function Note({ ok, title, sign, children }) {
   );
 }
 
-// «А теперь — вслух». Доп. 300: если телефон умеет записывать голос — слушаем
+// «А теперь вслух». Доп. 300: если телефон умеет записывать голос — слушаем
 // микрофон и сверяем ключевые слова фразы; нет — как раньше, «получилось / ещё разок».
 function SayAloud({ phrase, onVoice, a11y }) {
   const [res, setRes] = React.useState(null);
@@ -136,7 +136,7 @@ function SayAloud({ phrase, onVoice, a11y }) {
   React.useEffect(() => { if (chk) { sfx(chk.ok ? "ok" : "bad"); if (onVoice) onVoice(chk); } }, [heard]);   // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="tb-say tb-new">
-      <span className="tb-who">А теперь — вслух</span>
+      <span className="tb-who">А теперь вслух</span>
       <div className="ph">
         {canTts ? <button type="button" className="tb-spk" onClick={speak} aria-label="Прослушать фразу"><Ic n="speaker" s={18} /></button> : null}
         {chk ? (
@@ -146,11 +146,11 @@ function SayAloud({ phrase, onVoice, a11y }) {
       {chk ? (
         <>
           <p className="tb-heard">Услышал: «{heard}»</p>
-          <div className={"res" + (chk.ok ? "" : " again")}>{chk.ok ? "Звучит уверенно — все главные слова на месте." : "Почти. Подчёркнутые слова не прозвучали — попробуй ещё раз."}</div>
+          <div className={"res" + (chk.ok ? "" : " again")}>{chk.ok ? "Звучит уверенно: все главные слова на месте." : "Почти. Подчёркнутые слова не прозвучали. Попробуй ещё раз."}</div>
           <div className="mic-row" style={{ marginTop: 10 }}>
             <MicButton a11y={false} size={40} sttUrl={`${SUPABASE_URL}/functions/v1/stt`} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
               onText={(t) => { setErr(""); setHeard(String(t || "")); }} onError={(m) => setErr(String(m || "Не расслышал"))} />
-            <span>Ещё раз — нажми и скажи</span>
+            <span>Нажми и скажи ещё раз</span>
           </div>
         </>
       ) : res === null ? (
@@ -159,12 +159,12 @@ function SayAloud({ phrase, onVoice, a11y }) {
             <div className="mic-row">
               <MicButton a11y={false} size={44} sttUrl={`${SUPABASE_URL}/functions/v1/stt`} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
                 onText={(t) => { setErr(""); setHeard(String(t || "")); }} onError={(m) => setErr(String(m || "Не расслышал"))} />
-              <span>Нажми и скажи фразу — как живому гостю. Сверю главные слова.</span>
+              <span>Нажми и скажи фразу, как живому гостю. Сверю главные слова.</span>
             </div>
           ) : (
             // v40: размер — как в CSS: в светлой теме («Для чтения», a11y) 13 px — то же, что правило
             // html.sa-light .tb-say>div:not([class]) в ui/table-css-lesson.js; в тёмной — 12,5 px, как было
-            <div style={{ fontSize: a11y ? 13 : 12.5, color: "var(--sub)", margin: "0 0 10px", lineHeight: 1.45 }}>Проговори фразу вслух — как живому гостю. Получилось?</div>
+            <div style={{ fontSize: a11y ? 13 : 12.5, color: "var(--sub)", margin: "0 0 10px", lineHeight: 1.45 }}>Проговори фразу вслух, как живому гостю. Получилось?</div>
           )}
           {err ? <p className="tb-heard">{err}</p> : null}
           <div className="row">
@@ -173,7 +173,7 @@ function SayAloud({ phrase, onVoice, a11y }) {
           </div>
         </>
       ) : (
-        <div className={"res" + (res === "again" ? " again" : "")}>{res === "ok" ? "Отлично! Звучит уверенно." : "Ещё пара повторов — и пойдёт на автомате."}</div>
+        <div className={"res" + (res === "again" ? " again" : "")}>{res === "ok" ? "Отлично! Звучит уверенно." : "Ещё пара повторов, и пойдёт на автомате."}</div>
       )}
     </div>
   );
@@ -356,7 +356,7 @@ function PeekSheet({ data, onClose }) {
             <h4>{data.lesson.title}</h4>
             {renderCardLines(data.lines)}
           </div>
-        ) : <p>Подходящей карточки в уроках раздела не нашлось — ответь по опыту, разбор будет сразу после.</p>}
+        ) : <p>Подходящей карточки в уроках раздела не нашлось. Ответь по опыту, разбор будет сразу после.</p>}
         <button type="button" className="tb-main" data-sa-back="" onClick={onClose}>Понятно, к ситуации</button>
       </div>
     </div>
@@ -403,11 +403,11 @@ function peekLessons(sit, { lesson, mod, modules }) {
 // обещаний записи: выход не «ждёт 12 часов», в чеке нет серии, цели дня и «Работы над ошибками» —
 // вместо них PREVIEW_NOTE; нет «Разобрать с Наставником», «вслух» с микрофоном (запрос к серверу)
 // и переключателя на классический вид; «Продолжить» закрывает пробу (onBack), а не засчитывает практику
-export const PREVIEW_NOTE = "Проба — результат не записывается";
+export const PREVIEW_NOTE = "Проба: результат не записывается";
 export function practiceExitText(preview = false) {
   return preview
     ? { title: "Выйти из пробы?", text: "Ничего не сохраняется." }
-    : { title: "Выйти из практики?", text: "Раунд подождёт: вернёшься в течение 12 часов — продолжишь с этой же ситуации." };
+    : { title: "Выйти из практики?", text: "Раунд подождёт 12 часов: вернёшься и продолжишь с этой же ситуации." };
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -594,7 +594,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
               {CHOICE[g] ? (
                 <div className="tb-chat">
                   {ps.choice === -1
-                    ? <div className="tb-actl tb-new">Ты не успел решить — время вышло</div>
+                    ? <div className="tb-actl tb-new">Ты не успел решить, время вышло</div>
                     : <div className={"tb-mine tb-new " + (ok ? "good" : "bad")}>{sit.options[ps.choice]}</div>}
                 </div>
               ) : null}
@@ -604,7 +604,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
                 <p className="pts">{ok ? "+" + pts + " очков" + (ps.combo >= 2 ? " · комбо ×" + ps.combo : "") : "−1 тарелка · осталось " + Math.max(0, ps.lives)}</p>
                 {!ok && !preview ? <MentorLink onAsk={onAskMentor} sit={sit} pick={ps.choice} /> : null}
               </Note>
-              {!ok && ps.lives <= 0 ? <p className="tb-hint">Три тарелки разбиты — раунд окончен. Следующий раунд перемешает ситуации.</p> : null}
+              {!ok && ps.lives <= 0 ? <p className="tb-hint">Три тарелки разбиты, раунд окончен. Следующий раунд перемешает ситуации.</p> : null}
               {sayPhrase && !preview ? <SayAloud phrase={unquote(sayPhrase)} a11y={a11y} /> : null}
             </>
           ) : null}
@@ -613,7 +613,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
       <div className="tb-foot">{answered ? (
         <div className="tb-col">
           <MainBtn label={last ? "К итогам" : "Дальше"} onClick={() => { cancelAuto(); onPracticeNext(); }} auto={autoOn} />
-          {autoOn ? <p className="tb-autohint">Повтор: дальше само — коснись экрана, чтобы задержаться</p> : null}
+          {autoOn ? <p className="tb-autohint">Повтор: дальше само. Коснись экрана, чтобы задержаться</p> : null}
         </div>
       ) : null}</div>
       {peek ? <PeekSheet data={peek.empty ? null : peek} onClose={() => setPeek(null)} /> : null}
@@ -636,8 +636,8 @@ const REVIEWS_PLACE = {
   manager: ["Разобрались спокойно и по-человечески. Спасибо!", "Вопрос решили быстро и без споров — вернёмся.", "Видно, что здесь умеют признавать ошибки."],
 };
 const GUEST_MODE_PLACE = {
-  door: { done: "Встреча окончена", exitT: "Гость уйдёт без помощи — можно встретить нового." },
-  manager: { done: "Разговор окончен", exitT: "Гость останется без решения — можно встретить нового." },
+  door: { done: "Встреча окончена", exitT: "Гость уйдёт без помощи. Можно встретить нового." },
+  manager: { done: "Разговор окончен", exitT: "Гость останется без решения. Можно встретить нового." },
 };
 const SR_DAYS = [1, 3, 7, 30];   // как в App: 1 → 3 → 7 → 30 дней
 
@@ -661,13 +661,13 @@ export function dueMistake(bank, mod, now = Date.now()) {
 // gold (раунд мастера, Доп. 316), guest («Живой гость» по сценарию, когда ИИ не подключён, Доп. 312).
 // В зачёте и раунде мастера — без подсказок и второго шанса; в раунде мастера — время на каждое задание.
 const MODE = {
-  refresh: { title: "Освежить тему", icon: "refresh", done: "Тема освежена", exitQ: "Выйти?", exitT: "Тема останется как была — освежить можно в любой момент." },
-  credit: { title: "Зачёт на опыт", icon: "check", done: "Зачёт", exitQ: "Выйти из зачёта?", exitT: "Попытка на сегодня будет потрачена: зачёт по теме — раз в день." },
+  refresh: { title: "Освежить тему", icon: "refresh", done: "Тема освежена", exitQ: "Выйти?", exitT: "Тема останется как была. Освежить можно в любой момент." },
+  credit: { title: "Зачёт на опыт", icon: "check", done: "Зачёт", exitQ: "Выйти из зачёта?", exitT: "Попытка на сегодня сгорит: зачёт по теме можно сдать раз в день." },
   gold: { title: "Раунд мастера", icon: "star", done: "Раунд мастера", exitQ: "Выйти из раунда?", exitT: "Раунд можно начать заново в любой момент." },
-  guest: { title: "Живой гость", icon: "guest", done: "Гость рассчитался", exitQ: "Оставить гостя?", exitT: "Гость уйдёт без расчёта — можно встретить нового." },
+  guest: { title: "Живой гость", icon: "guest", done: "Гость рассчитался", exitQ: "Оставить гостя?", exitT: "Гость уйдёт без расчёта. Можно встретить нового." },
   // v31: «Освежить всё выдохшееся» (2–3 темы за один заход) и «Проверка по треку» для опытных
-  freshall: { title: "Освежить всё", icon: "refresh", done: "Темы освежены", exitQ: "Выйти?", exitT: "Темы останутся как были — освежить можно в любой момент." },
-  probe: { title: "Проверка по треку", icon: "check", done: "Проверка", exitQ: "Выйти из проверки?", exitT: "Проверку можно пройти в любой момент — ничего не теряется." },
+  freshall: { title: "Освежить всё", icon: "refresh", done: "Темы освежены", exitQ: "Выйти?", exitT: "Темы останутся как были. Освежить можно в любой момент." },
+  probe: { title: "Проверка по треку", icon: "check", done: "Проверка", exitQ: "Выйти из проверки?", exitT: "Проверку можно пройти в любой момент, ничего не теряется." },
 };
 const fmtSec = (x) => Math.floor(x / 60) + ":" + String(Math.round(x) % 60).padStart(2, "0");
 export function TableCheck({ mode = "check", lesson = null, mod = null, situations = null, modules = null, shift = "",
@@ -858,8 +858,8 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 <ul className="r-lines">
                   <Line label={mode === "guest" ? "Решений с первого раза" : "Верно с первого раза"} value={ok + " из " + total} />
                   {mode === "credit" ? <Line label="Нужно для зачёта" value={Math.ceil(total * CREDIT_PASS / CREDIT_N) + " из " + total} /> : null}
-                  {mode === "gold" ? <Line label="Ошибок" value={wrongN + (wrongN <= GOLD_MAX_WRONG ? " ✓" : " — можно не больше " + GOLD_MAX_WRONG)} /> : null}
-                  {mode === "gold" && passed && pb ? <Line label="Твой рекорд" value={fmtSec(Math.min(pb.sec, secs)) + (secs < pb.sec ? " — новый" : "")} /> : null}
+                  {mode === "gold" ? <Line label="Ошибок" value={wrongN + (wrongN <= GOLD_MAX_WRONG ? " ✓" : " (можно не больше " + GOLD_MAX_WRONG + ")")} /> : null}
+                  {mode === "gold" && passed && pb ? <Line label="Твой рекорд" value={fmtSec(Math.min(pb.sec, secs)) + (secs < pb.sec ? " (новый)" : "")} /> : null}
                   {best ? <Line label="Рекорд заведения" value={fmtSec(best.sec) + " · " + (best.me ? "твой" : best.name + (best.initial ? " " + best.initial + "." : ""))} /> : null}
                   {stat.hinted ? <Line label="С подсказкой из урока" value={stat.hinted} /> : null}
                   {stat.rescued ? <Line label="Спасено ситуаций" value={stat.rescued} /> : null}
@@ -870,7 +870,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 {typeof extra === "function" ? extra({ okMods: stat.okMods, sits: sitsUsed, wrong: stat.wrong }) : null}
                 {note ? <p className="r-note"><Ic n={passed ? "checkC" : "book"} s={14} /><span>{note}</span></p> : null}
                 {review ? <><div className="r-review">«{review}»</div><div className="r-by">— {(guest && guest.name) || "гость"}{guest && guest.table ? ", стол " + guest.table : ""}</div></>
-                  : <div className="r-thanks">{mode === "probe" ? "Учёба — с того, что ещё нужно" : passed ? (mode === "gold" ? "Мастер" : "Так держать!") : "Ещё подход — и получится"}</div>}
+                  : <div className="r-thanks">{mode === "probe" ? "Начни с тем, где были ошибки" : passed ? (mode === "gold" ? "Мастер" : "Так держать!") : "Ещё подход, и получится"}</div>}
                 {mode === "gold" && passed ? <span className="r-goldseal" aria-hidden="true"><span>✦</span><small>ЗОЛОТО</small></span> : null}
                 <Edge />
               </div>
@@ -936,14 +936,14 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                   <GoalLine goal={goal} />
                   {wrongN ? <Line icon={<Ic n="refresh" s={15} />} label="В «Работу над ошибками»" value={wrongN} /> : null}
                 </ul>
-                {frozeYesterday ? <p className="r-note"><Ic n="snow" s={14} /><span>Вчера был выходной по графику — серия не сгорела.</span></p> : null}
-                {offTomorrow ? <p className="r-note"><Ic n="snow" s={14} /><span>Завтра выходной по графику — серия под защитой, можно отдыхать.</span></p> : null}
+                {frozeYesterday ? <p className="r-note"><Ic n="snow" s={14} /><span>Вчера был выходной по графику, серия не сгорела.</span></p> : null}
+                {offTomorrow ? <p className="r-note"><Ic n="snow" s={14} /><span>Завтра выходной по графику: серия под защитой, можно отдыхать.</span></p> : null}
                 {warm ? (
                   <div className="r-thanks">Хорошей смены!</div>
                 ) : review ? (
                   <><div className="r-review">«{review}»</div><div className="r-by">— гость, стол {table}</div></>
                 ) : mood <= 2 ? (
-                  <p className="r-note"><Ic n="guest" s={14} /><span>Гость ушёл без отзыва. Не страшно: ошибки уже ждут в «Работе над ошибками» — повтор закрепит.</span></p>
+                  <p className="r-note"><Ic n="guest" s={14} /><span>Гость ушёл без отзыва. Не страшно: ошибки уже ждут в «Работе над ошибками», там их и повторишь.</span></p>
                 ) : (
                   <div className="r-thanks">Так держать!</div>
                 )}
@@ -988,7 +988,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
               <Note ok={!!c.ok} title={noteTitle} sign={sign}>
                 {!c.ok ? <><span className="na">Правильно</span><p className="nb">{q.options[q.correct]}</p></> : null}
                 {q.explanation ? <p>{q.explanation}</p> : null}
-                <p className="pts">{c.ok ? (st0 > SR_DAYS.length ? "вопрос закреплён — больше не вернётся" : "следующий повтор через " + SR_DAYS[st0 - 1] + " " + plural(SR_DAYS[st0 - 1], "день", "дня", "дней")) : "вопрос остаётся на повторе"}</p>
+                <p className="pts">{c.ok ? (st0 > SR_DAYS.length ? "вопрос закреплён и больше не вернётся" : "следующий повтор через " + SR_DAYS[st0 - 1] + " " + plural(SR_DAYS[st0 - 1], "день", "дня", "дней")) : "вопрос остаётся на повторе"}</p>
               </Note>
             ) : null}
           </>
@@ -1036,7 +1036,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
         <div className="tb-row2">
           <div className="tb-prog" role="progressbar" aria-label="Шаги" aria-valuemin={0} aria-valuemax={n} aria-valuenow={pos + (c.phase === "done" ? 1 : 0)}>
             <div className="tb-k"><b>{isBank ? "Напоследок" : (strict ? "Задание " : "Ситуация ") + (pos + 1) + " из " + sitCount}</b><span>{place}</span>
-              {mode === "gold" ? <span className={"tb-spare" + (stat.wrong.length ? " out" : "")} role="img" aria-label={stat.wrong.length ? (stat.wrong.length > GOLD_MAX_WRONG ? "Ошибок больше одной — на золото не хватит" : "Запасная ошибка потрачена") : "Можно одну ошибку"}><Candle s={14} lit={!stat.wrong.length} /><small>{stat.wrong.length ? (stat.wrong.length > GOLD_MAX_WRONG ? "без золота" : "запас потрачен") : "запас"}</small></span> : null}
+              {mode === "gold" ? <span className={"tb-spare" + (stat.wrong.length ? " out" : "")} role="img" aria-label={stat.wrong.length ? (stat.wrong.length > GOLD_MAX_WRONG ? "Ошибок больше одной, на золото не хватит" : "Запасная ошибка потрачена") : "Можно одну ошибку"}><Candle s={14} lit={!stat.wrong.length} /><small>{stat.wrong.length ? (stat.wrong.length > GOLD_MAX_WRONG ? "без золота" : "запас потрачен") : "запас"}</small></span> : null}
             </div>
             <Beads n={n} pos={pos} marks={marks} curDone={c.phase === "done"} />
           </div>
@@ -1052,14 +1052,14 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
               <>
                 <div className="tb-chat" aria-live="polite">
                   {CHOICE[g] ? (c.pick === -1
-                    ? <div className="tb-actl tb-new">Ты не успел решить — время вышло</div>
+                    ? <div className="tb-actl tb-new">Ты не успел решить, время вышло</div>
                     : <div className={"tb-mine tb-new " + (c.ok ? "good" : "bad")}>{sit.options[c.pick]}</div>) : null}
                   {c.typing ? <div className="tb-typing tb-new" aria-label="Гость реагирует"><i /><i /><i /></div> : null}
                   {c.react ? <div className="tb-actl tb-new">{c.react}</div> : null}
                 </div>
                 {c.phase === "done" ? (
                   <Note ok={!!c.ok} title={noteTitle} sign={sign}>
-                    {c.ok && c.tries > 0 ? <p>Исправил — и гость доволен даже больше: так работает парадокс восстановления.</p> : null}
+                    {c.ok && c.tries > 0 ? <p>Исправил, и гость доволен даже больше: так работает парадокс восстановления.</p> : null}
                     {!c.ok ? <><span className="na">{g === "truefalse" ? "Ответ" : "Лучше так"}</span><p className="nb">{g === "truefalse" ? tfLabel(sit.options[sit.correct]).t : sit.options[sit.correct]}</p></> : null}
                     <p>{stripEm(c.ok ? sit.win : missText(sit, c.pick >= 0 ? sit.options[c.pick] : ""))}</p>
                     {!c.ok && !strict ? <MentorLink onAsk={onAskMentor} sit={sit} pick={c.pick} /> : null}
@@ -1081,13 +1081,13 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
           ) : (
             <>
               <MainBtn label={pos + 1 >= n ? "К итогам" : "Дальше"} onClick={go} auto={autoOn} />
-              {autoOn ? <p className="tb-autohint">Дальше само — коснись экрана, чтобы задержаться</p> : null}
+              {autoOn ? <p className="tb-autohint">Дальше само. Коснись экрана, чтобы задержаться</p> : null}
             </>
           )}
         </div>
       ) : null}</div>
       {peek ? <PeekSheet data={peek.empty ? null : peek} onClose={() => setPeek(null)} /> : null}
-      {sheet ? <ExitSheet title={M ? M.exitQ : warm ? "Выйти из разминки?" : "Выйти из проверки?"} text={M ? M.exitT : warm ? "Разминку можно начать заново в любой момент до конца дня." : "Урок останется непройденным — отметить его можно кнопкой «Урок пройден ✓» в конце урока."} onStay={() => setSheet(false)} onLeave={() => { setSheet(false); onClose(); }} /> : null}
+      {sheet ? <ExitSheet title={M ? M.exitQ : warm ? "Выйти из разминки?" : "Выйти из проверки?"} text={M ? M.exitT : warm ? "Разминку можно начать заново в любой момент до конца дня." : "Урок останется непройденным. Отметить его можно кнопкой «Урок пройден ✓» в конце урока."} onStay={() => setSheet(false)} onLeave={() => { setSheet(false); onClose(); }} /> : null}
     </>, vars, inline);
 }
 
@@ -1127,8 +1127,8 @@ export function WeekReceipt({ a11y, profile, streak, summary, goal = 2, prev = f
     const full = text + (shareUrl ? "\n" + shareUrl : "");
     const copy = () => {
       try {
-        navigator.clipboard.writeText(full).then(() => setSent("Текст скопирован — вставь его в чат команды"), () => setSent("Не получилось скопировать — сделай снимок экрана чека"));
-      } catch (e) { setSent("Не получилось скопировать — сделай снимок экрана чека"); }
+        navigator.clipboard.writeText(full).then(() => setSent("Текст скопирован. Вставь его в чат команды"), () => setSent("Не получилось скопировать. Сделай снимок экрана чека"));
+      } catch (e) { setSent("Не получилось скопировать. Сделай снимок экрана чека"); }
     };
     try {
       // системное «Поделиться»; отказ (не отмена человеком) — копируем текст

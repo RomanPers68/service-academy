@@ -128,7 +128,7 @@ if (want("QUIZ")) {
       step: (document.querySelector("[data-quiz-step]") || {}).textContent, need: (document.querySelector("[data-quiz-need]") || {}).textContent,
       letters: [...document.querySelectorAll("[data-quiz-opt] > span:first-child")].map((s) => s.textContent) }));
     ok(`QUIZ ${T}: шапка — «Тест · 12 вопросов» и тема «Поведение в зале», три целые тарелки`, /Тест · 12 вопросов/i.test(head.kind || "") && head.title === "Поведение в зале" && head.plates === "3", JSON.stringify(head));
-    ok(`QUIZ ${T}: «Вопрос 1 из 12», «зачёт — от 10», 12 бусин, текущая одна`, /Вопрос 1 из 12/i.test(head.step) && /зачёт — от 10/i.test(head.need) && head.beads === 12 && head.cur === 1, JSON.stringify(head));
+    ok(`QUIZ ${T}: «Вопрос 1 из 12», «зачёт: от 10», 12 бусин, текущая одна`, /Вопрос 1 из 12/i.test(head.step) && /зачёт: от 10/i.test(head.need) && head.beads === 12 && head.cur === 1, JSON.stringify(head));
     ok(`QUIZ ${T}: правило словами на первом вопросе, буквы А–Г у ответов`, head.rule && /Для зачёта нужно 10 верных из 12/.test(head.ruleText) && head.letters.join("") === "АБВГ".slice(0, head.letters.length) && head.letters.length >= 2, JSON.stringify({ r: head.ruleText, l: head.letters }));
     await shot(o.page, `quiz-${T.toLowerCase()}-1`);
     // отвечаем, пока не наберём ошибку (последний вариант — чаще неверный); считаем тарелки

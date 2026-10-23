@@ -9,7 +9,7 @@ import { readFileSync, statSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("/home/claude/.npm-global/lib/node_modules/playwright");
-const SITE = "/home/claude/preview/site", PORT = 5199, OUT = "/home/claude/preview/shots-v31";
+const SITE = process.env.E2E_SITE || "/home/claude/preview/site", PORT = Number(process.env.E2E_PORT) || 5199, OUT = process.env.E2E_OUT || "/home/claude/preview/shots-v31";
 mkdirSync(OUT, { recursive: true });
 const SRC = "/home/claude/work/service-academy";
 const { HINTS, HINTS_VERSION } = await import(SRC + "/data/hints.js");
@@ -117,7 +117,7 @@ async function open({ storage = {}, telegram = false, light = false, w = 390, h 
   if (fixedTime) await page.clock.setFixedTime(fixedTime);
   const errors = [];
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
-  page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|ERR_FAILED|net::|xMidYEnd/i.test(m.text())) errors.push("console: " + m.text().slice(0, 200)); });
+  page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|ERR_FAILED|net::|xMidYEnd|Blocked call to navigator\.vibrate/i.test(m.text())) errors.push("console: " + m.text().slice(0, 200)); });
   await page.goto("http://localhost:" + PORT + url, { waitUntil: "load" });
   await page.waitForFunction(() => !document.getElementById("sa-splash"), null, { timeout: 15000 }).catch(() => errors.push("заставка не ушла"));
   await page.waitForTimeout(1600);
@@ -188,28 +188,16 @@ const S3 = SEASONAL_MODULES.find(m => m.id === "s3");
 const ymdD = (d) => ymdL(d);
 const silentWav = (() => { const n = 1600, b = Buffer.alloc(44 + n); b.write("RIFF", 0); b.writeUInt32LE(36 + n, 4); b.write("WAVE", 8); b.write("fmt ", 12); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24); b.writeUInt32LE(8000, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write("data", 36); b.writeUInt32LE(n, 40); b.fill(128, 44); return "data:audio/wav;base64," + b.toString("base64"); })();
 
-// ── FAB. Кнопка ИИ уезжает при листании ──
+// ── FAB. Кнопка ИИ уезжала при листании; с v64 её нет (Наставник в нижнем меню) ──
 if (want("FAB")) {
   const tag = "FAB";
   const { c, q } = doneMap(S0);
   const { ctx, page, errors } = await open({ storage: { "sa_completed{uk}": c, "sa_quiz_done{uk}": q } });
   await page.evaluate(() => window.__saNav("roleSelect")); await sleep(1200);
-  ok(tag + ": кнопка ИИ на месте", (await page.locator('[data-fab="on"]').count()) === 1);
-  const scrollBy = (dir) => page.evaluate(async (dir) => {
-    const cands = [...document.querySelectorAll("*")].filter((el) => el.scrollHeight > el.clientHeight + 120 && /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.clientHeight > 300);
-    const el = cands[0] || document.scrollingElement;
-    const step = (y) => { if (el === document.scrollingElement) window.scrollTo(0, y); else el.scrollTop = y; };
-    const from = el.scrollTop;
-    for (let i = 1; i <= 8; i++) { step(Math.max(0, from + dir * i * 45)); await new Promise((r) => setTimeout(r, 35)); }
-    return (el.className || el.tagName) + ":" + Math.round(el.scrollTop);
-  }, dir);
-  const down = await scrollBy(1); await sleep(450);
-  ok(tag + ": листаешь вниз — кнопка уезжает", (await page.locator('[data-fab="hid"]').count()) === 1, down);
-  await scrollBy(-1); await sleep(450);
-  ok(tag + ": вверх — возвращается", (await page.locator('[data-fab="on"]').count()) === 1);
-  await scrollBy(1); await sleep(300);
+  // v64 (Доп. 377): плавающей кнопки больше нет — Наставник в нижнем меню; проверяем, что она не вернулась
+  ok(tag + ": плавающей кнопки ИИ нет, Наставник в нижнем меню", (await page.locator('[data-fab]').count()) === 0);
   await page.evaluate(() => window.__saNav("me")); await sleep(700);
-  ok(tag + ": другой экран — снова видна", (await page.locator('[data-fab="on"]').count()) === 1);
+  ok(tag + ": и на другом экране её нет", (await page.locator('[data-fab]').count()) === 0);
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
 }
@@ -226,7 +214,7 @@ if (want("CEL")) {
   ok(tag + ": в «Я» — «Погреб тем»", /Погреб тем/.test(t), (t.match(/Погреб тем.{0,60}/) || [""])[0]);
   await page.locator('.sa-card[aria-label="Погреб тем"]').first().click(); await sleep(1000);
   t = await text(page);
-  ok(tag + ": сводка — свежие, выдыхаются, золото; две кнопки", /ТВОЙ ПОГРЕБ/.test(t) && /Освежить всё выдохшееся/.test(t) && /Проверка по треку/.test(t), t.slice(0, 260));
+  ok(tag + ": сводка — свежие, выдыхаются, золото; две кнопки", /Твой погреб/.test(t) && /Освежить всё выдохшееся/.test(t) && /Проверка по треку/.test(t), t.slice(0, 260));
   await shot(page, "cel1");
   await page.locator('button[aria-pressed]', { hasText: "Освежить" }).first().click(); await sleep(400);
   t = await text(page);
@@ -242,7 +230,7 @@ if (want("CEL")) {
   ok(tag + ": свежесть темы обновлена", fr.s0 && fr.s0.t > Date.now() - 600000 && fr.s0.n >= 1, JSON.stringify(fr.s0));
   await page.locator(".tb .tb-foot .tb-main").click(); await sleep(800);
   t = await text(page);
-  ok(tag + ": вернулись в погреб — выдохшихся нет", /Всё свежее — освежать нечего/.test(t) || !/Освежить всё выдохшееся/.test(t), t.slice(0, 200));
+  ok(tag + ": вернулись в погреб — выдохшихся нет", /Всё свежее, освежать нечего/.test(t) || !/Освежить всё выдохшееся/.test(t), t.slice(0, 200));
   await page.locator("button", { hasText: "Проверка по треку" }).click(); await sleep(1200);
   t = await tbText(page);
   ok(tag + ": проверка по треку — сначала правила", /Проверка по треку/.test(t) && /По 2 задания из каждой непройденной темы/.test(t) && (await page.locator(".tb .tb-intro").count()) === 1, t.slice(0, 200));
@@ -297,13 +285,13 @@ if (want("GR")) {
   await page.locator(".tbp-strip .tbp-num").first().click(); await sleep(900);
   await page.locator(".tbp-cur .tbm-act.gold").click(); await sleep(1300);
   let t = await tbText(page);
-  ok(tag + ": в правилах — рекорд заведения и твой", /Рекорд заведения: 0:38 — Пётр Л\./.test(t) && /твой — 5:00/.test(t), t.slice(0, 300));
+  ok(tag + ": в правилах — рекорд заведения и твой", /Рекорд заведения: 0:38 \(Пётр Л\.\)/.test(t) && /твой: 5:00/.test(t), t.slice(0, 300));
   ok(tag + ": запрос рекордов по теме", calls.some((x) => x.fn === "gold_records" && x.body.p_mod === "s0"));
   await page.locator(".tb .tb-main", { hasText: "Начать раунд" }).click(); await sleep(700);
   ok(tag + ": запасная свеча в шапке", (await page.locator(".tb .tb-spare").count()) === 1);
   await playAll(page, true);
   t = await tbText(page);
-  ok(tag + ": в чеке — «Твой рекорд» (новый) и «Рекорд заведения»", /Твой рекорд/.test(t) && /новый ✦/.test(t) && /Рекорд заведения/.test(t) && /Пётр Л\./.test(t), t.slice(0, 400));
+  ok(tag + ": в чеке — «Твой рекорд» (новый) и «Рекорд заведения»", /Твой рекорд/.test(t) && /\(новый\)/.test(t) && /Рекорд заведения/.test(t) && /Пётр Л\./.test(t), t.slice(0, 400));
   await shot(page, "gr1-receipt");
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
@@ -332,15 +320,15 @@ if (want("QT")) {
   const { ctx, page, errors } = await open({ rpcs, calls, profile: { ...prof, position: "senior" }, storage: { "sa_sched_cache_main_{mkey}": SCHED_CACHE } });
   await page.evaluate(() => window.__saNav("shift")); await sleep(1600);
   let t = await text(page);
-  ok(tag + ": квест из сводки дня (один запрос)", calls.some((x) => x.fn === "day_brief") && /Смена вместе/.test(t) && /4 человека в смене/.test(t), (t.match(/КВЕСТ.{0,120}/) || [""])[0]);
-  ok(tag + ": «Спасибо команде ✦» и кто уже сказал", /Спасибо команде ✦/.test(t) && /Спасибо от Илья Б\. ✦/.test(t));
+  ok(tag + ": квест из сводки дня (один запрос)", calls.some((x) => x.fn === "day_brief") && /Смена вместе/.test(t) && /4 человека в смене/.test(t), (t.match(/Квест.{0,120}/) || [""])[0]);
+  ok(tag + ": «Спасибо команде» и кто уже сказал", /Спасибо команде/.test(t) && /Спасибо от Илья Б\./.test(t), (t.match(/Спасибо.{0,80}/) || [""])[0]);
   ok(tag + ": старшему — кто не начал и «Позвать на разминку»", /Ещё не начали: Мария К\., Пётр Л\./.test(t) && /Без Telegram: Пётр Л\./.test(t) && (await page.locator("[data-quest] .tg-chipbtn", { hasText: "Позвать на разминку" }).count()) === 1, (t.match(/Ещё не начали.{0,80}/) || [""])[0]);
   await page.locator("[data-quest] .tg-chipbtn", { hasText: "Спасибо команде" }).click(); await sleep(1200);
   t = await text(page);
   ok(tag + ": спасибо — на сервер и в строку", calls.some((x) => x.fn === "quest_thanks") && /Ты сказал\(а\) спасибо ✓/.test(t) && /Спасибо от тебя, Илья Б\./.test(t), (t.match(/Спасибо от.{0,40}/) || [""])[0]);
   await page.locator("[data-quest] .tg-chipbtn", { hasText: "Позвать на разминку" }).click(); await sleep(1200);
   t = await text(page);
-  ok(tag + ": позвали — сообщение и «(позвали)»", calls.some((x) => x.fn === "quest_call") && /Позвали 1 человека — сообщение в Telegram ✦ · без Telegram: 1/.test(t) && /Мария К\. \(позвали\)/.test(t), (t.match(/Позвали.{0,80}/) || [""])[0]);
+  ok(tag + ": позвали — сообщение и «(позвали)»", calls.some((x) => x.fn === "quest_call") && /Позвали 1 человека через Telegram\. Без Telegram: 1/.test(t) && /Мария К\. \(позвали\)/.test(t), (t.match(/Позвали.{0,80}/) || [""])[0]);
   await shot(page, "qt1-quest");
   await page.evaluate(() => window.__saNav("teamHub")); await sleep(900);
   t = await text(page);
@@ -362,16 +350,16 @@ if (want("PN")) {
   await page.locator('.sa-card[aria-label="Свеча на двоих"]').first().click(); await sleep(1300);
   let t = await text(page);
   ok(tag + ": вехи — 7 и 30 взяты", /Ты и Аня · 30 дней вместе/.test(t) && (await page.locator(".tg-ms span.got").count()) === 2, (t.match(/Ты и.{0,60}/) || [""])[0]);
-  ok(tag + ": веха месяца — поздравление", /Месяц вместе ✦/.test(t));
+  ok(tag + ": веха месяца — поздравление", /Месяц вместе/.test(t));
   ok(tag + ": «Подтолкнуть: Аня получит сообщение»", (await page.locator("button", { hasText: "Подтолкнуть: Аня получит сообщение" }).count()) === 1);
   await page.locator("button", { hasText: "Подтолкнуть" }).click(); await sleep(1000);
   t = await text(page);
-  ok(tag + ": подтолкнули — на сервер ушло", calls.some((x) => x.fn === "pair_nudge") && /Аня получит сообщение в Telegram ✦/.test(t), (t.match(/Аня получит.{0,60}/) || [""])[0]);
+  ok(tag + ": подтолкнули — на сервер ушло", calls.some((x) => x.fn === "pair_nudge") && /Аня получит сообщение в Telegram/.test(t), (t.match(/Аня получит.{0,60}/) || [""])[0]);
   await shot(page, "pn1-pair");
   await page.locator(".tg-sheet .tg-ghost", { hasText: "Закрыть" }).click(); await sleep(500);
   await page.locator('.sa-card[aria-label="Свеча на двоих"]').first().click(); await sleep(1200);
   t = await text(page);
-  ok(tag + ": второй раз — без поздравления, «до вехи «100 дней» — 70 дней»", !/Месяц вместе ✦/.test(t) && /до вехи «100 дней» — 70 дней/.test(t), (t.match(/до вехи.{0,40}/) || [""])[0]);
+  ok(tag + ": второй раз — без поздравления, «ещё 70 дней до вехи «100 дней»»", !/Месяц вместе/.test(t) && /ещё 70 дней до вехи «100 дней»/.test(t), (t.match(/до вехи.{0,40}/) || [""])[0]);
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
 }
@@ -393,11 +381,11 @@ if (want("LGP")) {
   const { ctx, page, errors } = await open({ storage, rpcs: (fn) => fn === "league_week" ? L : fn === "team_scores" ? { ok: true, rows: [] } : undefined });
   await page.evaluate(() => window.__saNav("league")); await sleep(1500);
   let t = await text(page);
-  ok(tag + ": «до 1-го места — 41 очко: это …»", /До 1-го места — 41 очко: это 3 живых гостя или 5 уроков\./.test(t), (t.match(/До \d.{0,80}/) || [""])[0]);
-  ok(tag + ": прошлая неделя и победы", /Прошлая неделя: 1-е место в заведении, 1-е в сети · 210 очков/.test(t) && /Побед недели: в заведении — 2, в сети — 1 ✦/.test(t), (t.match(/Прошлая неделя.{0,120}/) || [""])[0]);
+  ok(tag + ": «до 1-го места не хватает 41 очка: это …»", /До 1-го места не хватает 41 очка: это 3 живых гостя или 5 уроков\./.test(t), (t.match(/До \d.{0,80}/) || [""])[0]);
+  ok(tag + ": прошлая неделя и победы", /Прошлая неделя: 1-е место в заведении, 1-е в сети · 210 очков/.test(t) && /Побед недели в заведении: 2, в сети: 1/.test(t), (t.match(/Прошлая неделя.{0,120}/) || [""])[0]);
   ok(tag + ": подиум из трёх", (await page.locator('[aria-label="Подиум недели"] > div').count()) === 3);
   ok(tag + ": стрелки — Иван ▲1, ты ▼1", (await page.locator('[aria-label="выше на 1"]').count()) >= 1 && (await page.locator('[aria-label="ниже на 1"]').count()) >= 1);
-  ok(tag + ": кубок — серия и история", /Кубок у «Два моря, Океан» — 2 недели подряд/.test(t) && /История кубка:/.test(t), (t.match(/Кубок у.{0,60}/) || [""])[0]);
+  ok(tag + ": кубок — серия и история", /Кубок у «Два моря, Океан» 2 недели подряд/.test(t) && /История кубка:/.test(t), (t.match(/Кубок у.{0,60}/) || [""])[0]);
   await page.getByText("За что очки ›").click(); await sleep(300);
   ok(tag + ": уроки и тесты сверяются с сервером", /сверяются с записями сервера/.test(await text(page)));
   await shot(page, "lgp1");
@@ -491,7 +479,7 @@ if (want("RDV")) {
   await r2.page.locator('.tb button[aria-label="Дальше на фразу"]').click(); await sleep(2500);
   t = await tbText(r2.page);
   const spokenAfter = await r2.page.evaluate(() => (window.__spoken || []).filter((x) => String(x).trim()).length);
-  ok(tag + ": лимит — «дальше читает телефон», голос телефона подхватил", /Живые голоса на сегодня закончились — дальше читает телефон/.test(t) && spokenAfter >= 1, spokenAfter + " · " + t.slice(0, 160));
+  ok(tag + ": лимит — «дальше читает телефон», голос телефона подхватил", /Живые голоса на сегодня закончились\. Дальше читает телефон/.test(t) && spokenAfter >= 1, spokenAfter + " · " + t.slice(0, 160));
   await shot(r2.page, "rdv2-live");
   ok(tag + ": без ошибок (живые голоса)", r2.errors.length === 0, r2.errors.slice(0, 3).join(" | "));
   await r2.ctx.close();
@@ -537,7 +525,7 @@ if (want("GU")) {
   ok(tag + ": «Шёпот наставника» — есть", (await page.locator(".tb [data-whisper]").count()) === 1);
   await page.locator(".tb [data-whisper]").click(); await sleep(300);
   t = await tbText(page);
-  ok(tag + ": шёпот — один раз", /ШЁПОТ НАСТАВНИКА/.test(t) && (await page.locator(".tb [data-whisper][disabled]").count()) === 1, t.slice(-200));
+  ok(tag + ": шёпот — один раз", /Шёпот наставника/.test(t) && (await page.locator(".tb [data-whisper][disabled]").count()) === 1, t.slice(-200));
   await page.locator(".tb .lg-in").fill("Добрый вечер! Столик у окна свободен, присаживайтесь.");
   await page.locator(".tb .lg-send").click(); await sleep(1300);
   const sent = chat[chat.length - 1] || {};
@@ -579,7 +567,7 @@ if (want("RM")) {
   await page.evaluate(() => window.__saNav("shift")); await sleep(1000);
   await page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1200);
   const t = await text(page);
-  ok(tag + ": включено — и «Что ещё присылать» с пятью переключателями", /Включено — за час до смены/.test(t) && /ЧТО ЕЩЁ ПРИСЫЛАТЬ/.test(t) && (await page.locator('[data-notify-prefs] [role="switch"]').count()) === 5, t.slice(0, 200));
+  ok(tag + ": включено — и «Что ещё присылать» с пятью переключателями", /Включено: за час до смены/.test(t) && /Что ещё присылать/i.test(t) && (await page.locator('[data-notify-prefs] [role="switch"]').count()) === 5, t.slice(0, 200));
   const lg = page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Лига недели" });
   ok(tag + ": «Лига недели» выключена", (await lg.getAttribute("aria-checked")) === "false");
   await lg.click(); await sleep(700);
@@ -594,7 +582,7 @@ if (want("DL")) {
   const tag = "DL";
   const { c, q } = doneMap(S0);
   const storage = { "sa_completed{uk}": c, "sa_quiz_done{uk}": q, "sa_fresh{uk}": { s0: { t: Date.now() - 40 * DAY, n: 0 } }, "sa_activity{uk}": { [today]: { st: 2, l: 2 } } };
-  for (const [go, check] of [["cellar", async (p) => /ТВОЙ ПОГРЕБ/.test(await text(p))], ["month", async (p) => (await p.locator(".mr").count()) === 1], ["league", async (p) => /Лига недели/.test(await text(p)) && /у тебя/.test(await text(p))]]) {
+  for (const [go, check] of [["cellar", async (p) => /Твой погреб/.test(await text(p))], ["month", async (p) => (await p.locator(".mr").count()) === 1], ["league", async (p) => /Лига недели/.test(await text(p)) && /у тебя/.test(await text(p))]]) {
     const { ctx, page, errors } = await open({ storage, url: "/?go=" + go });
     await sleep(1500);
     ok(tag + ": ?go=" + go + " — открылось", await check(page));
@@ -617,7 +605,7 @@ if (want("AS")) {
   await sleep(1800);
   ok(tag + ": кнопка «Погреб тем» в ответе", (await page.locator("button", { hasText: "Погреб тем" }).count()) >= 1, (await text(page)).slice(-200));
   await page.locator("button", { hasText: "Погреб тем" }).last().click(); await sleep(1000);
-  ok(tag + ": переход в погреб", /ТВОЙ ПОГРЕБ/.test(await text(page)));
+  ok(tag + ": переход в погреб", /Твой погреб/.test(await text(page)));
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
 }

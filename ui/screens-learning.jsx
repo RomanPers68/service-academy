@@ -133,7 +133,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
           </div>
           <div style={{ ...T.bold, marginBottom: 6 }}>Пока пусто</div>
           <div style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 320, margin: "0 auto" }}>
-            Сюда попадут вопросы, где ошибёшься в тестах. Они вернутся через день, три и неделю — пока не запомнятся.
+            Сюда попадут вопросы, где ошибёшься в тестах. Они вернутся через день, три и неделю, пока не запомнятся.
           </div>
         </div>
       </div>
@@ -146,8 +146,8 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
           <div style={{ ...T.bold, marginBottom: 6 }}>{waiting > 0 ? "Всё повторено по расписанию" : "Ошибок нет"}</div>
           <div style={{ fontSize: 14, lineHeight: 1.6 }}>
             {waiting > 0
-              ? `${waiting} ${plural3(waiting, "вопрос закрепляется", "вопроса закрепляются", "вопросов закрепляются")} по интервалам 1 → 3 → 7 → 30 дней. Следующее повторение — ${nextStr}.`   // v59: склонение по числу
-              : "Заваленные в тестах вопросы будут попадать сюда — прорешаешь их ещё раз и закрепишь."}
+              ? `${waiting} ${plural3(waiting, "вопрос закрепляется", "вопроса закрепляются", "вопросов закрепляются")} по интервалам 1 → 3 → 7 → 30 дней. Следующее повторение: ${nextStr}.`   // v59: склонение по числу
+              : "Вопросы, заваленные в тестах, будут попадать сюда. Прорешаешь их ещё раз и закрепишь."}
           </div>
         </div>
       </div>
@@ -197,7 +197,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
           return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
         })}
         {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
-        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={next}>{pick === q.correct ? "Верно — убрать ✓" : "Дальше →"}</button>}
+        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={next}>{pick === q.correct ? "Верно, убрать ✓" : "Дальше →"}</button>}
       </div>
     </div>
   );
@@ -782,7 +782,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           </span>
           {streak && streak.count > 0 ? (
             // Доп. 288: свеча серии — горит, когда сегодня уже занимался; выходной по графику её не гасит
-            <span className="tbv" title={streak.last === ymd(new Date()) ? "Сегодня занимался — свеча горит" : "Пройди урок — и свеча загорится"} style={chip}>
+            <span className="tbv" title={streak.last === ymd(new Date()) ? "Сегодня занимался, свеча горит" : "Пройди урок, и свеча загорится"} style={chip}>
               {/* v43 (Доп. 356): пламя и бокал — как в табличке на главной */}
               <Flame s={16} lit={streak.last === ymd(new Date())} a11y={a11y} />{streak.count}
             </span>
@@ -1306,13 +1306,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           <span>Закрепить у стола</span><span style={{ ...labelStyle(13), opacity: 0.85 }}>· 2 ситуации{dueN ? " + повтор" : ""}</span>
         </button>
         <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", color: T.modTitle?.color || "#F0E8D8", border: `1px solid ${color}88`, boxShadow: "none" }} onClick={onComplete}>Урок пройден ✓</button>
-        <div style={{ textAlign: "center", fontSize: 12, color: T.modSub.color, marginTop: 8, lineHeight: 1.45 }}>У стола — ситуации из практики этого раздела по теме урока. Можно пропустить.</div>
+        <div style={{ textAlign: "center", fontSize: 12, color: T.modSub.color, marginTop: 8, lineHeight: 1.45 }}>Ситуации берутся из практики этого раздела, по теме урока. Можно пропустить.</div>
       </div>
     );
   };
   const resumeBanner = cardMode && resumeFrom > 0 && cardIdx === resumeFrom && !done ? (
     <div className="sa-fadein" style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 10px", padding: "8px 12px", borderRadius: 12, border: `1px dashed ${color}77`, fontSize: 12.5, color: T.modSub.color }}>
-      <span style={{ flex: 1, minWidth: 0 }}>Продолжаем с того же места — карточка {Math.min(cardIdx, cards.length - 1) + 1} из {cards.length}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>Продолжаем с того же места: карточка {Math.min(cardIdx, cards.length - 1) + 1} из {cards.length}</span>
       <span role="button" tabIndex={0} onClick={() => { setCardDir("l"); setCardIdx(0); setResumeFrom(0); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCardDir("l"); setCardIdx(0); setResumeFrom(0); } }} style={{ color: inkOf(color, !!T.a11y), fontWeight: "bold", cursor: "pointer", whiteSpace: "nowrap" }}>С начала</span>
     </div>
   ) : null;
@@ -1376,7 +1376,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 </div>
               </div>
               <div style={{ color: T.modSub?.color || BROWN, fontSize: T.modSub?.fontSize || 13, lineHeight:1.6, fontFamily:"Georgia, serif" }}>
-                Нажми на <span style={{ color: color||GOLD, borderBottom:`1.5px dotted ${color||GOLD}`, fontWeight:"bold" }}>выделенное слово</span> в тексте — и отработай навык в живом диалоге с гостем
+                Нажми на <span style={{ color: color||GOLD, borderBottom:`1.5px dotted ${color||GOLD}`, fontWeight:"bold" }}>выделенное слово</span> в тексте и отработай навык в живом диалоге с гостем
               </div>
             </div>
           )}

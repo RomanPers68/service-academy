@@ -244,14 +244,14 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
       if (rpcMissing(r)) { setCall({ busy: false, msg: "Позвать в Telegram получится, когда владелец обновит сервер." }); return; }
       if (r && r.ok) {
         const n = r.sent || 0;
-        setCall({ busy: false, msg: n ? "Позвали " + n + " " + plural(n, "человека", "человек", "человек") + " — сообщение в Telegram" + (r.no_tg ? " · без Telegram: " + r.no_tg : "")
-          : r.already ? "Сегодня уже звали — хватит одного раза" : "Некого звать: у остальных нет Telegram или напоминания выключены" });
+        setCall({ busy: false, msg: n ? "Позвали " + n + " " + plural(n, "человека", "человек", "человек") + " через Telegram" + (r.no_tg ? ". Без Telegram: " + r.no_tg : "")
+          : r.already ? "Сегодня уже звали. Хватит одного раза" : "Некого звать: у остальных нет Telegram или напоминания выключены" });
         if (onReload) onReload();
         return;
       }
       const e = r && r.error;
-      setCall({ busy: false, msg: e === "no_bot" ? "Напоминания в Telegram ещё не подключены — скажи владельцу." : e === "forbidden" ? "Звать может старший смены." : "Не получилось — попробуй ещё раз." });
-    }).catch(() => setCall({ busy: false, msg: "Нет связи — попробуй ещё раз." }));
+      setCall({ busy: false, msg: e === "no_bot" ? "Напоминания в Telegram ещё не подключены. Скажи владельцу." : e === "forbidden" ? "Звать может старший смены." : "Не получилось. Попробуй ещё раз." });
+    }).catch(() => setCall({ busy: false, msg: "Нет связи. Попробуй ещё раз." }));
   };
   // v32 (Доп. 335): три шкалы — в одну строку (подпись и счёт над тонкой полосой)
   const bar = (k) => {
@@ -260,7 +260,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
     const segs = questSegments(people, BAR_FIELD[k], need, pal);
     const fallback = !segs.length && have > 0 ? [{ w: Math.min(100, (have / need) * 100), c: pal[0], who: "" }] : segs;
     return (
-      <div key={k} className={"tg-bar" + (have >= need ? " ok" : "")} role="group" title={BAR_LABEL[k]} aria-label={GOAL_WORDS[k][2] + ": " + have + " из " + need + (segs.length ? " — " + segs.map((x) => x.who + " " + x.v).join(", ") : "")}>
+      <div key={k} className={"tg-bar" + (have >= need ? " ok" : "")} role="group" title={BAR_LABEL[k]} aria-label={GOAL_WORDS[k][2] + ": " + have + " из " + need + (segs.length ? " (" + segs.map((x) => x.who + " " + x.v).join(", ") + ")" : "")}>
         <span className="lb">{BAR_SHORT[k]}</span><span className="nv">{Math.min(have, need)}/{need}{have >= need ? " ✓" : ""}</span>
         <i>{fallback.map((x, j) => <b key={j} style={{ width: x.w + "%", background: x.c }} title={x.who} />)}</i>
       </div>
@@ -275,7 +275,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
   const taskRow = (t) => {
     const pg = taskProgress(t, todayRec);
     return (
-      <button key={t.id} type="button" className={"tg-task" + (pg.done ? " done" : "")} onClick={() => { if (!pg.done && onTask) { vibrate("light"); onTask(t); } }} aria-label={t.label + (pg.done ? " — сделано" : " — " + pg.have + " из " + pg.need)}>
+      <button key={t.id} type="button" className={"tg-task" + (pg.done ? " done" : "")} onClick={() => { if (!pg.done && onTask) { vibrate("light"); onTask(t); } }} aria-label={t.label + (pg.done ? ": сделано" : ": " + pg.have + " из " + pg.need)}>
         <span className="ck" aria-hidden="true">{pg.done ? <Ic n="check" s={12} /> : null}</span>
         <span className="tt">{t.label}</span>
         <span className="n">{pg.done ? "✓" : pg.need > 1 ? pg.have + "/" + pg.need : "›"}</span>
@@ -295,7 +295,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
       {team ? (
         <>
           <div className="tg-h">{team.complete ? "Смена отработана" : team.known ? (team.me_on ? "Смена вместе" : "Сегодня у тебя выходной") : "Заведение сегодня"}</div>
-          {team.known && !team.me_on ? <div className="tg-sub">Смена занимается без тебя — отдыхай.</div> : null}
+          {team.known && !team.me_on ? <div className="tg-sub">Смена занимается без тебя. Отдыхай.</div> : null}
           {open ? <div className="tg-sub tg-goal">Цель: {goalLine(team.goal)}</div> : null}
           <div className="tg-bars">{["warm", "steps", "guest"].map(bar)}</div>
           {team.complete ? <div className={"tg-stamp" + (drop ? " drop" : "")}>смена отработана</div> : null}
@@ -328,7 +328,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
               {open ? (
                 <>
                   <div className="tg-sub">Ещё не начали: {notStarted.map((p) => short(p) + (p.called ? " (позвали)" : "")).join(", ")}</div>
-                  {noTg.length ? <div className="tg-sub tg-notg">{noTg.length === notStarted.length && notStarted.length > 1 ? "Без Telegram — все" : "Без Telegram: " + noTg.map(short).join(", ")}</div> : null}
+                  {noTg.length ? <div className="tg-sub tg-notg">{noTg.length === notStarted.length && notStarted.length > 1 ? "Все без Telegram" : "Без Telegram: " + noTg.map(short).join(", ")}</div> : null}
                 </>
               ) : <div className="tg-sub">Ещё не начали: <b>{notStarted.length}</b></div>}
               {team.tg !== false ? <div className="tg-row2"><button type="button" className="tg-chipbtn" onClick={callAll} disabled={call.busy || notStarted.every((p) => p.called || p.tg === false)}>{call.busy ? "Минуту…" : "Позвать на разминку"}</button></div> : null}
@@ -337,11 +337,11 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
           ) : null}
         </>
       ) : restDay ? (
-        <><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены — в рабочий день. Отдыхай.</div></>
+        <><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены будет в рабочий день. Отдыхай.</div></>
       ) : q.status === "loading" ? (
         <div className="tg-sub" style={{ marginTop: 6 }}>Смотрю, кто сегодня в смене…</div>
       ) : (
-        <div className="tg-sub" style={{ marginTop: 6 }}>{q.status === "missing" ? (lead ? "Общий квест смены включится, когда владелец обновит сервер. Пока — личные задания." : "Твои задания на сегодня") : "Общий квест не загрузился — личные задания работают и так."}</div>
+        <div className="tg-sub" style={{ marginTop: 6 }}>{q.status === "missing" ? (lead ? "Общий квест смены включится, когда владелец обновит сервер. Пока только личные задания." : "Твои задания на сегодня") : "Общий квест не загрузился, но личные задания работают."}</div>
       )}
       {myTasks.length ? (
         <>
@@ -370,14 +370,14 @@ export function pairNudgeText(pair) {
   const pt = pair.partner_today || {}, me = pair.me_today || {};
   // 1 — сегодня выходной по графику заведения (сервер, этап 24): такой день серию не рвёт,
   // но и не считается; рвёт её день, когда второй в смене и не занимался
-  if (me.state === 1) return pt.state === 2 ? "У тебя выходной по графику, а " + name + (f ? " свою часть сделала" : " свою часть сделал") + " — свеча горит"
-    : pt.state === 1 ? "Сегодня у обоих выходной — свеча подождёт" : "У тебя выходной по графику — свечу сегодня держит " + name;
-  if (pt.state === 2 && me.state !== 2) return name + (pt.warm ? (f ? " уже размялась" : " уже размялся") : (f ? " уже занималась сегодня" : " уже занимался сегодня")) + " — твоя очередь";
-  if (me.state === 2 && pt.state === 1) return "Ты свою часть сделал(а). " + name + " сегодня не в смене — свеча подождёт";
-  if (me.state === 2 && pt.state !== 2) return "Ты свою часть сделал(а). " + name + " — ещё нет: свеча ждёт двоих";
+  if (me.state === 1) return pt.state === 2 ? "У тебя выходной по графику, а " + name + (f ? " свою часть сделала" : " свою часть сделал") + ". Свеча горит"
+    : pt.state === 1 ? "Сегодня у обоих выходной, свеча подождёт" : "У тебя выходной по графику. Свечу сегодня держит " + name;
+  if (pt.state === 2 && me.state !== 2) return name + (pt.warm ? (f ? " уже размялась" : " уже размялся") : (f ? " уже занималась сегодня" : " уже занимался сегодня")) + ", твоя очередь";
+  if (me.state === 2 && pt.state === 1) return "Ты свою часть сделал(а). " + name + " сегодня не в смене, свеча подождёт";
+  if (me.state === 2 && pt.state !== 2) return "Ты свою часть сделал(а), а " + name + " ещё нет. Свеча ждёт двоих";
   if (me.state === 2 && pt.state === 2) return "Сегодня горите вдвоём";
-  if (pt.state === 1) return name + " сегодня не в смене — свечу сегодня держишь ты: хотя бы один шаг";
-  return "Свеча ждёт вас обоих — хотя бы по шагу за день";
+  if (pt.state === 1) return name + " сегодня не в смене, свечу держишь ты: хотя бы один шаг";
+  return "Свеча ждёт вас обоих: хотя бы по шагу за день";
 }
 
 // Вехи серии на двоих
@@ -417,8 +417,8 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
     try {
       const r = await rpc(fn, { p_token: saToken(), ...args });
       if (r && r.ok) { vibrate("success"); if (okText) setMsg(okText(r)); load(); setCands(null); }
-      else setMsg(ERR[(r && r.error) || ""] || "Не получилось — попробуй ещё раз");
-    } catch (e) { setMsg("Нет связи — попробуй ещё раз"); }
+      else setMsg(ERR[(r && r.error) || ""] || "Не получилось. Попробуй ещё раз");
+    } catch (e) { setMsg("Нет связи. Попробуй ещё раз"); }
     finally { setBusy(false); }
   };
   const pair = st.status === "ok" ? st.pair : null;
@@ -442,9 +442,9 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
       if (rpcMissing(r)) { setNudge({ busy: false, msg: "", hide: true }); return; }
       if (r && r.ok) { vibrate("success"); setNudge({ busy: false, msg: pn + " получит сообщение в Telegram", hide: false, sent: true }); return; }
       const e = r && r.error;
-      setNudge({ busy: false, hide: false, msg: e === "already" ? "Сегодня уже подталкивал(а) — хватит одного раза" : e === "done" ? pn + (fem(pn) ? " уже сделала" : " уже сделал") + " свою часть"
-        : e === "no_tg" ? "У " + (fem(pn) ? "напарницы" : "напарника") + " не включены сообщения в Telegram" : e === "no_bot" ? "Бот ещё не подключён на сервере" : "Не получилось — попробуй ещё раз" });
-    }).catch(() => setNudge({ busy: false, msg: "Нет связи — попробуй ещё раз", hide: false }));
+      setNudge({ busy: false, hide: false, msg: e === "already" ? "Сегодня уже подталкивал(а). Хватит одного раза" : e === "done" ? pn + (fem(pn) ? " уже сделала" : " уже сделал") + " свою часть"
+        : e === "no_tg" ? "У " + (fem(pn) ? "напарницы" : "напарника") + " не включены сообщения в Telegram" : e === "no_bot" ? "Бот ещё не подключён на сервере" : "Не получилось. Попробуй ещё раз" });
+    }).catch(() => setNudge({ busy: false, msg: "Нет связи. Попробуй ещё раз", hide: false }));
   };
   const canNudge = !!pair && !nudge.hide && pair.partner && !(pair.partner_today && pair.partner_today.state === 2) && !(pair.partner_today && pair.partner_today.state === 1);
   return (
@@ -453,11 +453,11 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
         <div className="tg-tag">Свеча на двоих</div>
         {st.status === "loading" ? <SkelLines a11y={a11y} widths={["74%", "52%"]} style={{ marginTop: 10 }} /> : null}
         {st.status === "missing" ? <div className="tg-sub" style={{ marginTop: 8 }}>{serverMissing({ what: "«Свеча на двоих»", admin: !!(profile && profile.is_admin), sql: "supabase-stage24-together.sql" })}</div> : null}
-        {st.status === "offline" || st.status === "error" ? <div className="tg-sub" style={{ marginTop: 8 }}>Нет связи с сервером — попробуй чуть позже.</div> : null}
+        {st.status === "offline" || st.status === "error" ? <div className="tg-sub" style={{ marginTop: 8 }}>Нет связи с сервером. Попробуй чуть позже.</div> : null}
         {pair ? (
           <>
             <div className="tg-h">Ты и {pn} · {pair.streak ? pair.streak + " " + plural(pair.streak, "день", "дня", "дней") + " вместе" : "свеча ждёт первого общего дня"}</div>
-            <div className="tg-sub">Свеча горит, пока занимаетесь оба — хотя бы по шагу в день. Выходной по графику свечу не гасит.</div>
+            <div className="tg-sub">Свеча горит, пока занимаетесь оба: хотя бы по шагу в день. Выходной по графику свечу не гасит.</div>
             <div className="tg-two" aria-label={both ? "Сегодня горите вдвоём" : "Свечи на сегодня"}>
               {both ? <><span className="tg-glow" aria-hidden="true" /><span className="tg-bridge" aria-hidden="true">Вдвоём</span></> : null}
               <div><Candle s={64} lit={pair.me_today && pair.me_today.state === 2} /><span>ты</span></div>
@@ -467,16 +467,16 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
               <span role="columnheader" />
               {days.map((d) => { const dd = new Date(d.d + "T12:00:00"); return <span key={"h" + d.d} role="columnheader">{WD[dd.getDay()]}</span>; })}
               <span className="lb" role="rowheader">ты</span>
-              {days.map((d) => { const dd = new Date(d.d + "T12:00:00"); return <span key={"m" + d.d} className="dc" role="cell" aria-label={WD[dd.getDay()] + ": ты — " + STATE[d.me]}><i className={"tg-dot s" + d.me} /></span>; })}
+              {days.map((d) => { const dd = new Date(d.d + "T12:00:00"); return <span key={"m" + d.d} className="dc" role="cell" aria-label={WD[dd.getDay()] + ", ты: " + STATE[d.me]}><i className={"tg-dot s" + d.me} /></span>; })}
               <span className="lb" role="rowheader">{pn}</span>
-              {days.map((d) => { const dd = new Date(d.d + "T12:00:00"); return <span key={"p" + d.d} className="dc" role="cell" aria-label={WD[dd.getDay()] + ": " + pn + " — " + STATE[d.partner]}><i className={"tg-dot s" + d.partner} /></span>; })}
+              {days.map((d) => { const dd = new Date(d.d + "T12:00:00"); return <span key={"p" + d.d} className="dc" role="cell" aria-label={WD[dd.getDay()] + ", " + pn + ": " + STATE[d.partner]}><i className={"tg-dot s" + d.partner} /></span>; })}
             </div>
             <div className="tg-note" style={{ textAlign: "center", marginTop: 2 }}>пунктир — выходной по графику: такой день свечу не гасит</div>
             <div className="tg-ms" aria-label={ms.next ? "До вехи " + ms.next + " дней осталось " + ms.left : "Все вехи пройдены"}>
               {PAIR_MILESTONES.map((m) => <span key={m} className={pair.streak >= m ? "got" : undefined}>{m} {plural(m, "день", "дня", "дней")}{pair.streak >= m ? " ✦" : ""}</span>)}
             </div>
-            {msNew ? <div className="tg-big" role="status" style={{ fontSize: 22 }}>{MS_WORD[msNew]}<small>Серия на двоих — {pair.streak} {plural(pair.streak, "день", "дня", "дней")}</small></div>
-              : ms.next ? <div className="tg-note" style={{ textAlign: "center", marginTop: 4 }}>до вехи «{ms.next} {plural(ms.next, "день", "дня", "дней")}» — {ms.left} {plural(ms.left, "день", "дня", "дней")}</div> : null}
+            {msNew ? <div className="tg-big" role="status" style={{ fontSize: 22 }}>{MS_WORD[msNew]}<small>Серия на двоих: {pair.streak} {plural(pair.streak, "день", "дня", "дней")}</small></div>
+              : ms.next ? <div className="tg-note" style={{ textAlign: "center", marginTop: 4 }}>ещё {ms.left} {plural(ms.left, "день", "дня", "дней")} до вехи «{ms.next} {plural(ms.next, "день", "дня", "дней")}»</div> : null}
             {nudgeLine ? (
               goTo && onGo ? <button type="button" className="tg-nudge" onClick={() => onGo(goTo)}><Candle s={20} lit /><span style={{ flex: 1 }}>{nudgeLine}</span><span aria-hidden="true">›</span></button>
                 : <div className="tg-nudge" role="status"><Candle s={20} lit={pair.me_today && pair.me_today.state === 2} /><span style={{ flex: 1 }}>{nudgeLine}</span></div>
@@ -505,7 +505,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
             ))}
             {st.outgoing ? (
               <div className="tg-inv">
-                <div>Ты позвал(а) <b>{short(st.outgoing.to)}</b> — ждём ответа.</div>
+                <div>Ты позвал(а) <b>{short(st.outgoing.to)}</b>, ждём ответа.</div>
                 <div className="bb"><button type="button" disabled={busy} onClick={() => act("pair_end", {}, () => "Приглашение отозвано")}>Отозвать</button></div>
               </div>
             ) : (
@@ -516,7 +516,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
                   {list.slice(0, 60).map((c) => (
                     <div key={c.id} className="tg-row">
                       <div className="nm">{c.name} {c.surname}<small>{(POS[c.position] || "сотрудник") + (c.lead ? " · может быть наставником" : "")}{c.busy ? " · уже в паре" : ""}</small></div>
-                      <button type="button" disabled={busy || c.busy} onClick={() => act("pair_invite", { p_emp: c.id }, (r) => (r.status === "active" ? "Свеча на двоих зажжена" : "Приглашение отправлено — " + c.name + " увидит его у себя"))}>Позвать</button>
+                      <button type="button" disabled={busy || c.busy} onClick={() => act("pair_invite", { p_emp: c.id }, (r) => (r.status === "active" ? "Свеча на двоих зажжена" : "Приглашение отправлено. " + c.name + " увидит его у себя"))}>Позвать</button>
                     </div>
                   ))}
                 </div>
@@ -531,7 +531,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
   );
 }
 const STATE = { 0: "пропуск", 1: "выходной", 2: "занимался" };
-const ERR = { have_pair: "У тебя уже есть пара — сначала погаси свою свечу", busy: "Коллега уже в паре с кем-то", other_restaurant: "Пару можно зажечь только в своём заведении",
-  self: "Себя позвать нельзя", not_found: "Не нашёл — обнови список", already: "Приглашение уже не действует" };
+const ERR = { have_pair: "У тебя уже есть пара. Сначала погаси свою свечу", busy: "Коллега уже в паре с кем-то", other_restaurant: "Пару можно зажечь только в своём заведении",
+  self: "Себя позвать нельзя", not_found: "Не нашёл. Обнови список", already: "Приглашение уже не действует" };
 
 export default QuestCard;

@@ -33,7 +33,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
   const tg = typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp;
   const inTelegram = !!(tg && tg.initData !== undefined);
   const [hint, setHint] = React.useState("");
-  const openBrowser = () => { const url = location.origin + location.pathname + "?print=bar"; try { if (tg && tg.openLink) { tg.openLink(url, { try_instant_view: false }); return; } } catch (e) {} try { window.open(url, "_blank"); } catch (e) { setHint("Не удалось открыть браузер — скопируй текстом"); } };
+  const openBrowser = () => { const url = location.origin + location.pathname + "?print=bar"; try { if (tg && tg.openLink) { tg.openLink(url, { try_instant_view: false }); return; } } catch (e) {} try { window.open(url, "_blank"); } catch (e) { setHint("Не удалось открыть браузер. Скопируй текстом"); } };
   // ── Доп. 251: карта картинкой — как «Мои смены» в графике.
   // Ссылка в браузер бесполезна: у сотрудников одноразовые коды входа, повторно
   // они не зайдут. PNG сохраняется в галерею и уходит в любой мессенджер.
@@ -119,8 +119,8 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
     items.forEach(sh => { const a = document.createElement("a"); a.href = sh.url; a.download = sh.name; a.click(); });
   };
   const print = () => {
-    if (inTelegram) { openBrowser(); setHint("Открываю в браузере — там «Поделиться → Печать» и «Сохранить в PDF»"); setTimeout(() => setHint(""), 6000); return; }
-    try { window.print(); } catch (e) { setHint("Печать недоступна — скопируй текстом"); }
+    if (inTelegram) { openBrowser(); setHint("Открываю в браузере. Там есть «Поделиться → Печать» и «Сохранить в PDF»"); setTimeout(() => setHint(""), 6000); return; }
+    try { window.print(); } catch (e) { setHint("Печать недоступна. Скопируй текстом"); }
   };
   return (
     <div style={T.screen} className="sa-screen">
@@ -144,7 +144,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
         <button className="sa-btn" onClick={print} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}55`, color: sub }}>{inTelegram ? "В браузере" : "Печать"}</button>
       </div>
       {hint && <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: gold, lineHeight: 1.5 }} className="sa-noprint">{hint}</div>}
-      <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: sub, lineHeight: 1.5 }} className="sa-noprint">{list.length} коктейлей карты, без стопа. «Картинкой» — лист PNG: сохранить в галерею или отправить в чат, вход не требуется. {inTelegram ? "«В браузере» — если нужен именно PDF (там придётся войти заново)." : "«Печать» — системный диалог печати."}</div>
+      <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: sub, lineHeight: 1.5 }} className="sa-noprint">Коктейлей в карте без стопа: {list.length}. «Картинкой» соберёт лист PNG: сохрани в галерею или отправь в чат, вход не нужен. {inTelegram ? "Для PDF нажми «В браузере» (там придётся войти заново)." : "«Печать» откроет системный диалог."}</div>
       {shot && shot.length > 0 && (
         <div className="sa-fadein sa-noprint" style={{ margin: "0 16px 14px", padding: 12, borderRadius: 14, border: `1px solid ${gold}55` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -160,7 +160,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
             {shot.length > 1 && <button className="sa-btn" onClick={() => shareShot(true)} style={{ ...T.doneBtn, flex: 1.2, marginTop: 2, background: "transparent", border: `1px solid ${gold}88`, color: text }}>Все {shot.length}</button>}
             <button className="sa-btn" onClick={() => { shot.forEach(sh => URL.revokeObjectURL(sh.url)); setShot(null); }} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}66`, color: sub }}>Закрыть</button>
           </div>
-          <div style={{ fontSize: 11, color: sub, marginTop: 10, lineHeight: 1.55 }}>По {PER_PAGE} коктейлей на страницу — удобно печатать и листать. Сохраняется в галерею, уходит в любой мессенджер, коды входа не нужны.</div>
+          <div style={{ fontSize: 11, color: sub, marginTop: 10, lineHeight: 1.55 }}>По {PER_PAGE} коктейлей на страницу: удобно печатать и листать. Сохраняется в галерею, уходит в любой мессенджер, коды входа не нужны.</div>
         </div>
       )}
       <div id="sa-print" style={{ padding: "0 16px 100px" }}>

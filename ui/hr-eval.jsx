@@ -18,8 +18,8 @@ import { vibrate } from "../lib/utils";
 
 const CONC = 2;   // эталонов одновременно (у каждого на сервере 2–3 прогона модели)
 const ROLE_RU = { waiter: "официант", hostess: "хостес", bartender: "бармен", manager: "менеджер" };
-const FATAL = { not_configured: "AI-интервью не подключено на сервере (функция ai-hr).", rate_limit: "Лимит ИИ исчерпан — попробуйте позже.",
-  auth: "Сессия устарела — войдите в приложение заново.", old_server: "На сервере прежняя функция ai-hr — сначала обновите её (Supabase → Edge Functions → ai-hr, код из комплекта v66)." };
+const FATAL = { not_configured: "AI-интервью не подключено на сервере (функция ai-hr).", rate_limit: "Лимит ИИ исчерпан. Попробуйте позже.",
+  auth: "Сессия устарела. Войдите в приложение заново.", old_server: "На сервере прежняя функция ai-hr. Сначала обновите её (Supabase → Edge Functions → ai-hr, код из комплекта v66)." };
 export const pctOf = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long" }); } catch (e) { return ""; } };
 const shortModel = (m) => String(m || "").split("/").pop();
@@ -107,7 +107,7 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
           </span>
         </div>
         <div style={{ ...small, marginBottom: 10 }}>
-          {status.beta ? "«Бета» снимется сама, когда выполнены оба условия:" : "Оба условия выполнены — подпись «бета» снята. Если поменяете модель ИИ — запустите проверку ещё раз."}
+          {status.beta ? "«Бета» снимется сама, когда выполнены оба условия:" : "Оба условия выполнены, подпись «бета» снята. Если поменяете модель ИИ, запустите проверку ещё раз."}
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderTop: `1px solid ${gold}18` }} data-hr-ref={status.refOk ? "ok" : "no"}>
           <span style={{ display: "flex", flexShrink: 0, marginTop: 1 }}>{mark(status.refOk)}</span>
@@ -116,7 +116,7 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
             <div style={small}>
               {ref ? <>совпало <b style={{ color: ref.pass ? GREEN : gold }}>{ref.match} из {ref.n}</b> ({pctOf(ref.match, ref.n)}%) · флагов пропущено: <b style={{ color: ref.missed ? RED : GREEN }}>{ref.missed}</b>{ref.at ? ` · ${fmtDate(ref.at)}` : ""}{ref.model ? ` · ${shortModel(ref.model)}` : ""}{ref.by ? ` · ${ref.by}` : ""}</> : "ещё не запускали"}
               {/* v67: модель сменили — итог прежней модели не считается */}
-              {ref && status.stale ? <><br /><span data-hr-stale="" style={{ color: gold }}>проверяли на {shortModel(ref.model)}, а интервью теперь ведёт {shortModel(status.cur)} — запустите проверку ещё раз</span></> : null}
+              {ref && status.stale ? <><br /><span data-hr-stale="" style={{ color: gold }}>проверяли на {shortModel(ref.model)}, а интервью теперь ведёт {shortModel(status.cur)}. Запустите проверку ещё раз</span></> : null}
               <br /><span style={{ opacity: 0.8 }}>нужно: {Math.round(REF_SHARE * 100)}% и больше, ни одного пропущенного красного флага</span>
             </div>
           </div>
@@ -128,7 +128,7 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
             <div style={small}>
               {real.n ? <>ИИ совпал с вами <b style={{ color: real.pass ? GREEN : gold }}>{real.agree} из {real.n}</b> ({pctOf(real.agree, real.n)}%)</> : "решений пока нет"}
               {real.need > 0 ? ` · нужно ещё ${real.need} ${plural(real.need)} с решением` : ""}
-              <br /><span style={{ opacity: 0.8 }}>нужно: на последних {REAL_N} — {Math.round(REAL_SHARE * 100)}% и больше («Берём / Не берём» в отчёте AI-интервью)</span>
+              <br /><span style={{ opacity: 0.8 }}>нужно: {Math.round(REAL_SHARE * 100)}% и больше на последних {REAL_N} («Берём / Не берём» в отчёте AI-интервью)</span>
             </div>
           </div>
         </div>
@@ -138,10 +138,10 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
       <div style={{ ...glass, marginBottom: 12 }}>
         <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Проверка на эталонах</div>
         <div style={{ ...small, marginBottom: 12 }}>
-          {HR_EVAL.length} собеседований с заранее известным итогом — официанты, хостес, бармены, менеджеры: сильные и слабые,
+          {HR_EVAL.length} собеседований с заранее известным итогом: официанты, хостес, бармены, менеджеры. Есть сильные и слабые,
           краткие верные ответы, ответы голосом с ошибками распознавания, новичок без опыта и «опыт 3+, а ответы новичка»,
           «красиво, но пусто», грубость, обман, попытка повлиять на оценку. ИИ оценивает каждое так же, как живое собеседование.
-          Займёт 3–5 минут и около 50 обращений к модели — не закрывайте экран.
+          Займёт 3–5 минут и около 50 обращений к модели. Не закрывайте экран.
         </div>
         {busy ? (
           <>
@@ -159,7 +159,7 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
         )}
         {fatal ? <div style={{ ...small, color: RED, marginTop: 10 }} data-hr-eval-error="">{fatal}</div> : null}
         {run && !busy && !fatal && sum && !sum.complete ? (
-          <div style={{ ...small, marginTop: 10 }} data-hr-eval-stopped="">Проверка не завершена ({doneN} из {HR_EVAL.length}) — итог не сохранён.</div>
+          <div style={{ ...small, marginTop: 10 }} data-hr-eval-stopped="">Проверка не завершена ({doneN} из {HR_EVAL.length}), итог не сохранён.</div>
         ) : null}
         {run && !busy && sum && sum.complete ? (
           <div data-hr-eval-result={sum.pass ? "pass" : "fail"} style={{ ...small, marginTop: 10, color: sum.pass ? GREEN : text }}>

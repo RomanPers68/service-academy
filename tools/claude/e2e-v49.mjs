@@ -425,7 +425,7 @@ if (want("PICK")) for (const light of [false, true]) {
   await page.screenshot({ path: `${OUT8}/pick-gusev-${light ? "light" : "dark"}.png` });
   await page.locator("[data-pick-fill]").click(); await sleep(700);
   const fs = await page.evaluate(() => { const s = document.querySelector("[data-fill-sheet]"); return s ? s.innerText.replace(/\s+/g, " ") : null; });
-  ok(nm + ": «Кто может выйти…» — лист «Кто может выйти» на раннера, сб 17", fs && /КТО МОЖЕТ ВЫЙТИ · СБ · 17 ОКТЯБРЯ/.test(fs) && /Раннер/.test(fs), (fs || "").slice(0, 90));
+  ok(nm + ": «Кто может выйти…» — лист «Кто может выйти» на раннера, сб 17", fs && /Кто может выйти · сб · 17 октября/i.test(fs) && /Раннер/.test(fs), (fs || "").slice(0, 90));
   ok(nm + ": без ошибок", errors.length === 0, errors.slice(0, 2).join(" | "));
   await ctx.close();
 }
@@ -449,7 +449,7 @@ if (want("DAY")) for (const light of [false, true]) {
   const H = g ? Object.fromEntries(g.hours) : {};
   ok(nm + ": тап по «17» — день по часам: «Пиковый день · 11 из 13 человек», «не хватает: барбек, раннер», на экране", g && g.d === 17 && g.title === "Пиковый день · 11 из 13 человек" && /^не хватает: барбек, раннер/.test(g.miss) && g.top >= 0 && g.bottom <= g.ih && g.sw <= g.iw, JSON.stringify(g && [g.title, g.miss, g.top, g.bottom]));
   ok(nm + ": людей в зале по часам — с 12 до 2 ночи; днём 10–11, после 20:00 — один, после полуночи — никого; часы работы подписаны", g && g.hours[0][0] === 12 && g.hours[g.hours.length - 1][0] === 25 && H[14] >= 10 && H[20] === 1 && H[24] === 0 && /открыты 12:00–2:00/.test(g.text), JSON.stringify(g && g.hours));
-  ok(nm + ": полосы по позициям — все 11 человек, дыры — барбек и раннер", g && g.people === 11 && g.holes.join() === "barback,runner" && g.pos.includes("waiter") && /ОФИЦИАНТ 6 из 6 ✓/.test(g.text) && /БАРБЕК 0 из 1 · −1/.test(g.text), JSON.stringify(g && [g.people, g.holes, g.pos]));
+  ok(nm + ": полосы по позициям — все 11 человек, дыры — барбек и раннер", g && g.people === 11 && g.holes.join() === "barback,runner" && g.pos.includes("waiter") && /Официант 6 из 6 ✓/i.test(g.text) && /Барбек 0 из 1 · −1/i.test(g.text), JSON.stringify(g && [g.people, g.holes, g.pos]));
   await page.screenshot({ path: `${OUT8}/day17-${light ? "light" : "dark"}.png` });
   // тап по человеку — лист его смены поверх дня
   const pid = await page.evaluate(() => document.querySelector("[data-day-person]").getAttribute("data-day-person"));
@@ -461,7 +461,7 @@ if (want("DAY")) for (const light of [false, true]) {
   // дыра — «Кто может выйти?»
   await page.locator('[data-day-hole="runner"]').click(); await sleep(700);
   const fs = await page.evaluate(() => { const s = document.querySelector("[data-fill-sheet]"); return s ? s.innerText.replace(/\s+/g, " ") : null; });
-  ok(nm + ": пунктир «Кто может выйти?» — лист «Кто может выйти» на раннера", fs && /КТО МОЖЕТ ВЫЙТИ · СБ · 17 ОКТЯБРЯ/.test(fs), (fs || "").slice(0, 80));
+  ok(nm + ": пунктир «Кто может выйти?» — лист «Кто может выйти» на раннера", fs && /Кто может выйти · сб · 17 октября/i.test(fs), (fs || "").slice(0, 80));
   await page.locator("[data-fill-sheet] button", { hasText: "Закрыть" }).click(); await sleep(400);
   // заметка ко дню — строкой; тап — окошко поверх, «Готово» — заметка в листе дня
   await page.locator("[data-day-note]").click(); await sleep(500);
@@ -517,7 +517,7 @@ if (want("STRIP")) for (const light of [false, true]) {
   ok(nm + ": тап по 3-му на полоске — неделя 1–4; «‹» у первой недели не нажимается", g && g.week === "1–4 октября" && g.sel === "1-4" && g.heads.join() === "1,2,3,4" && prevDis, JSON.stringify(g && [g.week, g.sel, prevDis]));
   await page.locator("[data-sched-weekmode] button", { hasText: "месяц" }).click(); await sleep(600);
   g = await stripGeo(page);
-  ok(nm + ": «месяц» — вся таблица (31 день, коробкой с прокруткой вбок), рамки и «‹ неделя ›» нет", g && g.heads.length === FX.DAYS && !g.wk && !g.sel && !g.week && /Тап по полоске — неделя/.test(g.body), JSON.stringify(g && [g.heads.length, g.wk, g.sel]));
+  ok(nm + ": «месяц» — вся таблица (31 день, коробкой с прокруткой вбок), рамки и «‹ неделя ›» нет", g && g.heads.length === FX.DAYS && !g.wk && !g.sel && !g.week && /Тап по полоске откроет неделю/.test(g.body), JSON.stringify(g && [g.heads.length, g.wk, g.sel]));
   await page.locator("[data-sched-weekmode] button", { hasText: "неделя" }).click(); await sleep(600);
   g = await stripGeo(page);
   ok(nm + ": «неделя» — снова текущая неделя", g && g.week === "12–18 октября" && g.wk, g && g.week);

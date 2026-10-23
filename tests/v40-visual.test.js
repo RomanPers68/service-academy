@@ -64,7 +64,7 @@ describe("v40: плитки действий темы", () => {
     expect(t[0]).toMatchObject({ cls: "tbm-act", title: "Я это умею", sub: "зачёт на опыт · 7 заданий", icon: true });
     expect(t[0].attrs).not.toContain("disabled");
     t = tiles(R(h(ModuleMenu, { mod: S1, onLesson: noop, embedded: true, topic: { canCredit: true, tried: true }, acts: { onCredit: noop } })));
-    expect(t[0]).toMatchObject({ title: "Зачёт на опыт", sub: "новая попытка — завтра" });
+    expect(t[0]).toMatchObject({ title: "Зачёт на опыт", sub: "новая попытка завтра" });   // v74: без тире
     expect(t[0].attrs).toContain('disabled=""');
   });
 

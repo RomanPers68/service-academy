@@ -10,7 +10,7 @@
 --                          — телефон сообщает: роль пройдена (p_have из p_need, p_have ≥ p_need > 0).
 --                            Запись одна на человека и роль (после сброса прогресса руководителем —
 --                            заново, с новой датой). В первый раз коллеги заведения
---                            получают в Telegram «<Имя> стал(а) мастером роли «…» ✦» с кнопкой
+--                            получают в Telegram «<Имя> стал(а) мастером роли «…».» с кнопкой
 --                            «Путь мастера» — каждому не больше одного такого сообщения в день.
 --                            Ответ: {ok, new, sent}
 --   mastery_list(p_token)  — мастера своего заведения (только действующие сотрудники; сброшенный
@@ -129,17 +129,17 @@ begin
   if rest is not null and _sa_tg_ready() then
     ld := (now() at time zone _sa_tz(rest))::date;
     nm := nullif(btrim(coalesce(c->>'name', '')), '');
-    txt := '✦ SERVICE ACADEMY' || E'\n\n' || coalesce(nm, 'Коллега') ||
+    txt := coalesce(nm, 'Коллега') ||
            case when nm is null then ' стал(а)' when _sa_fem(nm) then ' стала' else ' стал' end ||
-           ' мастером роли «' || title || '» ✦' ||
-           E'\n\nЗагляни в «Путь мастера» — сколько осталось тебе?';
+           ' мастером роли «' || title || '».' ||
+           E'\n\nЗагляни в «Путь мастера»: сколько осталось тебе?';
     for e in select em.id::text as id from employees em
               where em.restaurant = rest and coalesce(em.status, 'active') = 'active' and em.id::text <> c->>'id'
               order by em.name, em.surname, em.id loop
       chat := _sa_tg_chat(e.id, 'master');
       if chat is null then continue; end if;
       if not _sa_tg_once(e.id, ld, 'master') then continue; end if;   -- сегодня уже писали о мастере
-      perform sa_tg_send(chat, txt, 'Путь мастера ✦', 'mastery');
+      perform sa_tg_send(chat, txt, 'Путь мастера', 'mastery');
       sent := sent + 1;
     end loop;
   end if;
@@ -286,11 +286,11 @@ begin
            and (_sa_name_tokens(l.full_name) <@ stoks or stoks <@ _sa_name_tokens(l.full_name));
       end if;
       note := nullif(btrim(coalesce(days->(dnum::text)->>'note', '')), '');
-      txt := '✦ SERVICE ACADEMY' || E'\n\n' || 'Через ' || case when mins = 60 then 'час' else mins || ' мин' end ||
+      txt := 'Через ' || case when mins = 60 then 'час' else mins || ' мин' end ||
              ' смена: ' || coalesce(sh->>'name', 'смена') || ' · ' || _sa_hh((sh->>'from')::numeric) || '–' ||
              _sa_hh(coalesce((sh->>'to')::numeric, 24)) ||
              coalesce(E'\n✎ ' || note, '') ||
-             E'\n\nРазминка до смены — 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены ✦';
+             E'\n\nРазминка до смены: 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены!';
       -- «Шаг дня» из «Пути мастера» (этап 26): телефон кладёт его в копию — mastery.step = {day, t}.
       -- Только на сегодня по часам заведения, одной строкой, не длиннее 140 знаков.
       select el.data->'mastery'->'step' into stp from emp_learning el where el.emp_id = target.emp_id;
@@ -302,7 +302,7 @@ begin
       if p_send then
         insert into tg_sent (emp_id, day, kind) values (target.emp_id, ld, 'warmup') on conflict do nothing;
         if not found then continue; end if;   -- уже напоминали сегодня
-        perform sa_tg_send(target.chat_id, txt, 'Разминка ✦', 'warmup');
+        perform sa_tg_send(target.chat_id, txt, 'Разминка', 'warmup');
       end if;
       out := out || jsonb_build_object('restaurant', v.restaurant, 'name', st->>'name', 'shift', sh->>'name',
         'starts', to_char(start_ts, 'HH24:MI'), 'local_now', to_char(lnow, 'YYYY-MM-DD HH24:MI'), 'text', txt);

@@ -7,7 +7,7 @@ import { readFileSync, statSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("/home/claude/.npm-global/lib/node_modules/playwright");
-const SITE = "/home/claude/preview/site", PORT = 5197, OUT = "/home/claude/preview/shots-v30";
+const SITE = process.env.E2E_SITE || "/home/claude/preview/site", PORT = Number(process.env.E2E_PORT) || 5197, OUT = process.env.E2E_OUT || "/home/claude/preview/shots-v30";
 mkdirSync(OUT, { recursive: true });
 const SRC = "/home/claude/work/service-academy";
 const { HINTS, HINTS_VERSION } = await import(SRC + "/data/hints.js");
@@ -187,7 +187,7 @@ if (want("R")) {
     const { ctx, page, errors } = await open({ rpcs, light, storage: { "sa_hint_v5_leaderboard_scope": "0" } });
     await page.evaluate(() => window.__saNav("leaderboard")); await sleep(1200);
     let t = await text(page);
-    ok(t2 + ": «Твоё место» — два числа", /ТВОЁ МЕСТО · ОФИЦИАНТЫ/.test(t) && /в заведении/.test(t) && /во всей сети/.test(t), t.slice(0, 220));
+    ok(t2 + ": «Твоё место» — два числа", /Твоё место · официанты/i.test(t) && /в заведении/.test(t) && /во всей сети/.test(t), t.slice(0, 220));
     const halves = await page.locator('[aria-label="Какой рейтинг показать"] button').allInnerTexts();
     ok(t2 + ": в заведении 2-я из 3, в сети 4-я из 6", /^2\s*из 3/.test(halves[0] || "") && /^4\s*из 6/.test(halves[1] || ""), JSON.stringify(halves));
     const names = await page.evaluate(() => [...document.querySelectorAll("div")].filter(d => /^(Анна|Иван|Ольга|Пётр|Вера|Кира) /.test(d.textContent || "") && d.children.length === 0).map(d => d.textContent));
@@ -202,7 +202,7 @@ if (want("R")) {
     await page.screenshot({ path: OUT + "/r-net" + (light ? "-l" : "") + ".png" });
     await page.evaluate(() => window.__saNav("teamHub")); await sleep(900);
     t = await text(page);
-    ok(t2 + ": «Команда» — место в ресторане и в сети (все должности)", /ты — 2-й · в сети 5-й/.test(t), (t.match(/ЛИДЕРЫ РЕСТОРАНА.{0,60}/) || [""])[0]);
+    ok(t2 + ": «Команда» — место в ресторане и в сети (все должности)", /ты 2-й · в сети 5-й/.test(t), (t.match(/Лидеры ресторана.{0,60}/i) || [""])[0]);   // v74: «ты 2-й» без тире
     ok(t2 + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
     await ctx.close();
   }
@@ -415,12 +415,12 @@ if (want("Q")) {
   const { ctx, page, errors } = await open({ storage, rpcs });
   await page.evaluate(() => window.__saNav("shift")); await sleep(1500);
   let t = await text(page);
-  ok(tag + ": карточка квеста — цель смены и прогресс", /КВЕСТ СМЕНЫ/.test(t) && /Смена вместе/.test(t) && /3 разминки · 6 шагов · 1 живой гость/.test(t) && (await page.locator("[data-quest] .tg-bar").count()) === 3, (t.match(/КВЕСТ.{0,160}/) || [""])[0]);
+  ok(tag + ": карточка квеста — цель смены и прогресс", /Квест смены/.test(t) && /Смена вместе/.test(t) && /3 разминки · 6 шагов · 1 живой гость/.test(t) && (await page.locator("[data-quest] .tg-bar").count()) === 3, (t.match(/Квест смены.{0,300}/) || [""])[0]);
   // v31: люди — свёрнутой строкой «3 человека в смене · ты 1 шаг», по касанию — с вкладом каждого
   ok(tag + ": люди смены — строкой, раскрываются по касанию", /3 человека в смене · ты 1 шаг/.test(t) && (await page.locator("[data-quest] .tg-p").count()) === 0, (t.match(/\d человек.{0,40}/) || [""])[0]);
   await page.locator("[data-quest] .tg-who").first().click(); await sleep(400);
   ok(tag + ": люди смены с вкладом, я — «ты»", (await page.locator("[data-quest] .tg-p").count()) === 3 && /ты\s*1/.test(await text(page)));
-  ok(tag + ": твоя часть — 3 задания (ошибки, выдохшаяся тема, разминка)", (await page.locator("[data-quest] .tg-task").count()) === 3 && /Повтори вопрос из «Работы над ошибками»/.test(t) && /Освежи тему «Психология первого дня»/.test(t) && /Разминка до смены/.test(t), t.slice(t.indexOf("ТВОЯ ЧАСТЬ"), t.indexOf("ТВОЯ ЧАСТЬ") + 200));
+  ok(tag + ": твоя часть — 3 задания (ошибки, выдохшаяся тема, разминка)", (await page.locator("[data-quest] .tg-task").count()) === 3 && /Повтори вопрос из «Работы над ошибками»/.test(t) && /Освежи тему «Психология первого дня»/.test(t) && /Разминка до смены/.test(t), t.slice(t.indexOf("Твоя часть"), t.indexOf("Твоя часть") + 200));
   await shot(page, "q1-quest");
   await page.locator("[data-quest] .tg-task", { hasText: "Освежи тему" }).click(); await sleep(1200);
   ok(tag + ": задание «Освежи тему» открывает стол освежения", /Освежить тему/i.test(await tbText(page)));
@@ -432,7 +432,8 @@ if (want("Q")) {
   await page.evaluate(() => window.__saNav("me")); await sleep(500);
   await page.evaluate(() => window.__saNav("shift")); await sleep(1500);
   t = await text(page);
-  ok(tag + ": квест закрыт — «Смена отработана ✦» и печать", /Смена отработана ✦/.test(t) && /СМЕНА ОТРАБОТАНА/.test(t));
+  // v73: без ✦ и капса — заголовок «Смена отработана», печать «смена отработана» строчными курсивом
+  ok(tag + ": квест закрыт — «Смена отработана» и печать", /Смена отработана/.test(t) && (await page.locator("[data-quest] .tg-stamp").count()) === 1, (t.match(/Квест смены.{0,200}/) || [""])[0]);
   await shot(page, "q2-complete");
   const qd = await page.evaluate((uk) => JSON.parse(localStorage.getItem("sa_quest_done" + uk) || "[]"), uk);
   ok(tag + ": день записан в «закрытые квесты»", qd.includes(today), JSON.stringify(qd));
@@ -456,7 +457,7 @@ if (want("Q")) {
   await r3.page.evaluate(() => window.__saNav("shift")); await sleep(1600);
   t = await text(r3.page);
   const qd3 = await r3.page.evaluate((uk) => JSON.parse(localStorage.getItem("sa_quest_done" + uk) || "[]"), uk);
-  ok(tag + ": выходной — смена отработана, но себе не засчитано", /Смена отработана ✦/.test(t) && !qd3.includes(today), JSON.stringify(qd3));
+  ok(tag + ": выходной — смена отработана, но себе не засчитано", /Смена отработана/.test(t) && !qd3.includes(today), JSON.stringify(qd3) + " " + (t.match(/Квест смены.{0,200}/) || [""])[0]);
   ok(tag + ": без ошибок (выходной)", r3.errors.length === 0, r3.errors.slice(0, 3).join(" | "));
   await r3.ctx.close();
 }
@@ -475,10 +476,10 @@ if (want("LG")) {
   await page.evaluate(() => window.__saNav("teamHub")); await sleep(900);
   await page.locator('.sa-card[aria-label="Лига недели"]').first().click(); await sleep(1500);
   let t = await text(page);
-  ok(tag + ": мои очки, неделя, «за что очки»", /Лига недели/.test(t) && /85 очков у тебя/.test(t) && /ДО ФИНАЛА|ФИНАЛ СЕГОДНЯ/.test(t), (t.match(/НЕДЕЛЯ.{0,140}/) || [""])[0]);
+  ok(tag + ": мои очки, неделя, «за что очки»", /Лига недели/.test(t) && /85 очков у тебя/.test(t) && /до финала|финал сегодня/i.test(t), (t.match(/Неделя.{0,140}/) || [""])[0]);
   const halves = await page.locator('[aria-label="Какой рейтинг показать"] button').allInnerTexts();
   ok(tag + ": место — 1 в заведении, 2 в сети", /^1\s*из 2/.test(halves[0] || "") && /^2\s*из 4/.test(halves[1] || ""), JSON.stringify(halves));
-  ok(tag + ": кубок заведений — Причал первый, наш отмечен", /КУБОК ЗАВЕДЕНИЙ/.test(t) && /Два моря, Океан · ваше/.test(t) && /31,3/.test(t));
+  ok(tag + ": кубок заведений — Причал первый, наш отмечен", /Кубок заведений/.test(t) && /Два моря, Океан · ваше/.test(t) && /31,3/.test(t), (t.match(/Кубок заведений.{0,200}/) || [""])[0]);
   await shot(page, "lg1-league");
   await page.locator('[aria-label="Какой рейтинг показать"] button', { hasText: "во всей сети" }).click(); await sleep(500);
   t = await text(page);
@@ -516,7 +517,7 @@ if (want("P")) {
   await shot(page, "p1-sheet");
   await page.locator(".tg-row", { hasText: "Аня Ким" }).locator("button").click(); await sleep(900);
   t = await text(page);
-  ok(tag + ": позвал — «ждём ответа»", /Приглашение отправлено/.test(t) && /Ты позвал\(а\) Аня К\. — ждём ответа/.test(t), (t.match(/Ты позвал.{0,60}/) || [""])[0]);
+  ok(tag + ": позвал — «ждём ответа»", /Приглашение отправлено/.test(t) && /Ты позвал\(а\) Аня К\., ждём ответа/.test(t), (t.match(/Ты позвал.{0,60}/) || [""])[0]);
   ok(tag + ": на сервер ушло приглашение Ане", calls.some((x) => x.fn === "pair_invite" && x.body.p_emp === "x2"));
   await page.locator(".tg-sheet .tg-ghost", { hasText: "Закрыть" }).click(); await sleep(500);
   state = "active";
@@ -531,12 +532,12 @@ if (want("P")) {
   t = await text(page);
   // v31: «Ты и Аня · 5 дней вместе», крупные свечи, неделя строками «ты» и «Аня»
   ok(tag + ": пара — серия 5 дней, две свечи, неделя", /Ты и Аня · 5 дней вместе/.test(t) && (await page.locator(".tg-two .candle").count()) === 2 && (await page.locator(".tg-week .dc").count()) === 14, (t.match(/Ты и.{0,80}/) || [""])[0]);
-  ok(tag + ": подсказка — «Аня уже размялась — твоя очередь»", /Аня уже размялась — твоя очередь/.test(t));
+  ok(tag + ": подсказка — «Аня уже размялась, твоя очередь»", /Аня уже размялась, твоя очередь/.test(t));
   await shot(page, "p2-pair");
   await page.locator(".tg-sheet .tg-ghost", { hasText: "Закрыть" }).click(); await sleep(600);
   await page.evaluate(() => window.__saNav("roleSelect")); await sleep(1000);
   t = await text(page);
-  ok(tag + ": на главной — строка «Аня уже размялась — твоя очередь»", /Аня уже размялась — твоя очередь/.test(t));
+  ok(tag + ": на главной — строка «Аня уже размялась, твоя очередь»", /Аня уже размялась, твоя очередь/.test(t));
   await shot(page, "p3-home");
   // ревью v30: строку напарника удалили из команды (старый ответ сервера без partner) — экран не падает
   state = "ghost";
@@ -643,7 +644,7 @@ if (want("RV")) {
   ok(tag + ": тема из одних уроков — без свежести; темы с заданиями — со свежестью", !(kZal in fr) && !(kBar in fr) && ("s0" in fr) && fr[kVina] && fr[kVina].h === "rOld", JSON.stringify(Object.keys(fr)));
   await page.evaluate(() => window.__saNav("shift")); await sleep(1500);
   let t = await text(page);
-  ok(tag + ": свой раздел изменили — в квесте «Освежи тему «Наши вина»»", /Освежи тему «Наши вина»/.test(t), (t.match(/ТВОЯ ЧАСТЬ.{0,200}/) || [""])[0]);
+  ok(tag + ": свой раздел изменили — в квесте «Освежи тему «Наши вина»»", /Освежи тему «Наши вина»/.test(t), (t.match(/Твоя часть.{0,200}/) || [""])[0]);
   await page.locator("[data-quest] .tg-task", { hasText: "Освежи тему" }).click(); await sleep(1200);
   ok(tag + ": открылся стол освежения по разделу", /Освежить тему/i.test(await tbText(page)));
   await playAll(page, true);
@@ -657,7 +658,7 @@ if (want("RV")) {
   await page.locator(".tb .rd-ctl .play").click(); await sleep(4000);
   t = await tbText(page);
   const rd = await page.evaluate((uk) => ({ done: JSON.parse(localStorage.getItem("sa_radio_done" + uk) || "{}"), act: JSON.parse(localStorage.getItem("sa_activity" + uk) || "{}") }), uk);
-  ok(tag + ": выпуск без вопросов дослушан — засчитан, шаг «радио» в журнале", /Выпуск дослушан ✦/.test(t) && rd.done["cms-l-903"] === today && ((rd.act[today] || {}).r || 0) === 1, JSON.stringify(rd.done) + " " + JSON.stringify(rd.act[today]));
+  ok(tag + ": выпуск без вопросов дослушан — засчитан, шаг «радио» в журнале", (await page.locator(".tb .rd-ttl", { hasText: "Выпуск дослушан" }).count()) === 1 && rd.done["cms-l-903"] === today && ((rd.act[today] || {}).r || 0) === 1, JSON.stringify(rd.done) + " " + JSON.stringify(rd.act[today]));
   await shot(page, "rv1-radio");
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
@@ -709,7 +710,7 @@ if (want("K")) {
   }
   // «ЧИТАТЬ ›» в плашке «Книга отзывов» — светлый текст на золотой градиентной кнопке (прежний элемент):
   // проверка измеряет фон без градиента, это ложное срабатывание
-  const uniq = [...new Set(all)].filter((x) => !/«ЧИТАТЬ ›»/.test(x));
+  const uniq = [...new Set(all)].filter((x) => !/«ЧИТАТЬ ›»/i.test(x)); // v73: кнопка «Читать ›» обычными буквами
   ok(tag + ": контраст новых экранов по норме", uniq.length === 0, uniq.slice(0, 12).join(" || "));
 }
 

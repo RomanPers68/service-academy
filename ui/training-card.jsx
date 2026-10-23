@@ -83,7 +83,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
       </div>
 
       <div style={{ padding: "6px 16px 4px", color: T.modSub?.color, fontSize: 12.5, lineHeight: 1.55 }}>
-        Документ для личного дела. «Распечатать» откроет системный диалог — там же сохраняется в PDF.
+        Документ для личного дела. «Распечатать» откроет системный диалог, там же можно сохранить в PDF.
       </div>
 
       {/* ── Лист-документ: всегда светлая «бумага» ── */}
@@ -176,7 +176,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
           </span>Распечатать · сохранить в PDF
         </button>
         <div style={{ textAlign: "center", marginTop: 8, color: T.modSub?.color, fontSize: 11, lineHeight: 1.5 }}>
-          Если диалог печати не открылся (в Telegram такое бывает) — открой приложение в обычном браузере по той же ссылке.
+          Если диалог печати не открылся (в Telegram такое бывает), открой приложение в обычном браузере по той же ссылке.
         </div>
       </div>
     </div>

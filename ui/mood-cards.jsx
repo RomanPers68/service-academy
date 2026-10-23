@@ -49,7 +49,7 @@ export function StreakCard({ streak, a11y }) {
   const count = streak.count || 0;
   const activeToday = streak.last === todayStr;
   const sub = count === 0 ? "Пройди урок, чтобы начать серию"
-    : activeToday ? "Серия идёт — так держать!" : "Загляни сегодня, чтобы не прервать серию";
+    : activeToday ? "Серия идёт, свеча горит" : "Загляни сегодня, чтобы не прервать серию";
   const dot = (st) => {
     const base = { width:24, height:24, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:"bold", margin:"0 auto" };
     if (st === "done") return { ...base, background:C.done, color:C.check };
@@ -118,7 +118,7 @@ export function MoodCheckCard({ a11y }) {
           {faceIcon(f.lvl, C.gold, 28)}
           <div>
             <div style={{ color:C.text, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>Настрой записан</div>
-            <div style={{ color:C.muted, fontSize:12.5, marginTop:2 }}>Спасибо! Ответ анонимный — можно поменять завтра.</div>
+            <div style={{ color:C.muted, fontSize:12.5, marginTop:2 }}>Спасибо! Ответ анонимный, поменять его можно завтра.</div>
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ export function TeamMoodCard({ a11y }) {
           {spark()}
         </>
       )}
-      <div style={{ color:C.dim, fontSize:11, marginTop:12, paddingTop:9, borderTop:`1px solid ${C.border}` }}>🔒 ответы анонимны — только общая картина</div>
+      <div style={{ color:C.dim, fontSize:11, marginTop:12, paddingTop:9, borderTop:`1px solid ${C.border}` }}>🔒 ответы анонимны, видна только общая картина</div>
     </div>
   );
 }

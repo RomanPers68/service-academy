@@ -332,7 +332,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
                 <div style={{ flex: 1, height: 6, borderRadius: 3, background: a11y ? "rgba(139,106,48,0.18)" : "rgba(214,178,102,0.16)" }}><div style={{ width: `${total ? (n / total) * 100 : 0}%`, height: "100%", borderRadius: 3, background: gold, transition: "width .6s" }} /></div>
                 <div style={{ width: 44, textAlign: "right", fontSize: 12.5, color: sub, fontFamily: "monospace" }}>{n}/{total}</div>
               </div>); })}
-            <div style={{ fontSize: 12.5, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать — коктейль собран по памяти. Три раза подряд без ошибок — «мастер».</div>
+            <div style={{ fontSize: 12.5, color: sub, marginTop: 8, lineHeight: 1.5 }}>Печать за чистую сборку по памяти, «мастер» за три таких подряд.</div>
           </>)}
           {tile({ onClick: () => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); vibrate("heavy"); } }, <>
             <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Час пик</div>
@@ -376,11 +376,11 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
           </div>
           <div className="sa-card" onClick={() => startPlay(current, "hint")} {...onActivate(() => startPlay(current, "hint"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>С подсказкой</div>
-            <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Следующий шаг подсвечен, ошибка объясняется словами урока. Учишься телом, не текстом.</div>
+            <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Следующий шаг подсвечен, ошибка объясняется словами урока.</div>
           </div>
           <div className="sa-card" onClick={() => startPlay(current, "memory")} {...onActivate(() => startPlay(current, "memory"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", cursor: "pointer", borderColor: gold + "88" }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>По памяти</div>
-            <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Как за стойкой: подсказок нет, ошибка — «вылил», заново. Собрал чисто — печать на карточке.</div>
+            <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Как за стойкой, без подсказок: ошибся, вылил и собираешь заново. Чистая сборка даёт печать.</div>
           </div>
         </div>
       </div>
@@ -489,7 +489,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         setSpilled(true); playFx("spill", mix(addedIngs.map(s => ING_COLOR(s.name))), 1400);
         // Доп. 237: где споткнулся — номер шага и полка, но не ответ
         const stepNo = done.length + 1; const kindRu = { glass: "стекло", ice: "лёд", ing: "бутылки", tool: "инструмент", garnish: "гарниш" };
-        const where = r.expected ? ` Споткнулся на шаге ${stepNo} из ${sc.steps.length} — полка «${kindRu[r.expected.kind] || ""}».` : "";
+        const where = r.expected ? ` Споткнулся на шаге ${stepNo} из ${sc.steps.length}, полка «${kindRu[r.expected.kind] || ""}».` : "";
         setMsg({ ok: false, text: r.why + where + " Собираем заново." });
         if (rush) onPenalty();
         setTimeout(() => { setDone([]); setSpilled(false); setPending(null); }, 1400);
@@ -576,14 +576,14 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               <div className="sa-fadein">
                 <div style={{ ...labelStyle(13.5), color: "#5DBB8A" }}>{finished.clean ? "Подано · чисто" : "Подано"}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginTop: 4 }}>{c.name}</div>
-                <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.5 }}>{mode === "memory" && finished.clean ? "Печать на карточке твоя." : mistakes ? `Ошибок: ${mistakes}. По памяти и без ошибок — будет печать.` : "Теперь — по памяти."}</div>
+                <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.5 }}>{mode === "memory" && finished.clean ? "Печать на карточке твоя." : mistakes ? `Ошибок: ${mistakes}. Собери по памяти без ошибок, и будет печать.` : "Теперь попробуй по памяти."}</div>
                 {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>}
               </div>
             ) : msg ? (
               <div className="sa-fadein" style={{ padding: narrowW ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2E211A,#1A160F)", border: narrowW ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
                 <div style={{ fontSize: 10.5, letterSpacing: 2, color: "rgba(255,180,170,.7)", fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "memory" ? "вылил" : "не то"}</div>
                 <div style={{ fontFamily: '"Chalkboard SE", "Marker Felt", "Bradley Hand", cursive', fontSize: narrowW ? 14 : 15, color: "rgba(255,200,190,.95)", lineHeight: 1.35, marginTop: 2 }}>{msg.text}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "hint" ? "продолжай — нужное подсвечено" : "заново, с пустого бокала"}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 6, fontFamily: '"Chalkboard SE", "Marker Felt", cursive' }}>{mode === "hint" ? "продолжай, нужное подсвечено" : "заново, с пустого бокала"}</div>
               </div>
             ) : pending ? (
               <div className="sa-fadein">
@@ -621,16 +621,16 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
               <div className="sa-hscroll" style={rowStyle}>{nodes}</div>
               <div style={{ height: 5, borderRadius: "0 0 14px 14px", background: a11y ? "linear-gradient(180deg,#B08A4E,#7A5D2A)" : "linear-gradient(180deg,#6B4A22,#3A2C10)", boxShadow: "0 3px 6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.35)" }} />
             </div>);
-          const doneLine = (text, more = true) => <div className="sa-fadein" style={{ padding: "10px 14px", borderRadius: 14, border: `1px solid ${gold}33`, color: sub, fontSize: 12.5 }}>✓ {text}{more && !finished ? <span style={{ display: "block", marginTop: 4, fontSize: 11, color: gold, opacity: 0.85 }}>{mode === "hint" ? "полка переключится сама" : "дальше — на вкладках выше"}</span> : null}</div>;
+          const doneLine = (text, more = true) => <div className="sa-fadein" style={{ padding: "10px 14px", borderRadius: 14, border: `1px solid ${gold}33`, color: sub, fontSize: 12.5 }}>✓ {text}{more && !finished ? <span style={{ display: "block", marginTop: 4, fontSize: 11, color: gold, opacity: 0.85 }}>{mode === "hint" ? "полка переключится сама" : "дальше на вкладках выше"}</span> : null}</div>;
           const content = tab === "glass"
-            ? (glassDone ? doneLine(`Бокал — ${GLASS_SHORT[c.glass] || GLASS_RU[c.glass]}`) : shelf(sc.station.glasses.map((g, k) => <Item key={"g" + g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_SHORT[g] || GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />)))
+            ? (glassDone ? doneLine(`Бокал: ${GLASS_SHORT[c.glass] || GLASS_RU[c.glass]}`) : shelf(sc.station.glasses.map((g, k) => <Item key={"g" + g} icon={<GlassIcon glass={g} a11y={a11y} />} label={GLASS_SHORT[g] || GLASS_RU[g]} on={hint(glassStep) && g === c.glass} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "glass", id: g })} />)))
             : tab === "ice"
-            ? (iceAllDone ? doneLine(`Лёд — ${ICE_RU[iceSteps[iceSteps.length - 1].id].toLowerCase()}`) : shelf(sc.station.ices.map((i, k) => <Item key={"i" + i} icon={<IceIcon id={i} gold={gold} />} label={ICE_RU[i]} on={expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "ice", id: i })} />)))
+            ? (iceAllDone ? doneLine(`Лёд: ${ICE_RU[iceSteps[iceSteps.length - 1].id].toLowerCase()}`) : shelf(sc.station.ices.map((i, k) => <Item key={"i" + i} icon={<IceIcon id={i} gold={gold} />} label={ICE_RU[i]} on={expected && expected.s.kind === "ice" && hint(expected.s) && expected.s.id === i} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "ice", id: i })} />)))
             : tab === "ing"
             ? shelf([...sc.station.ings.filter(n => !usedIng(n)), ...sc.station.ings.filter(usedIng)].map((n, k) => { const st = sc.steps.find(x => x.kind === "ing" && x.name === n); return <Bottle key={n} color={ING_COLOR(n)} label={n} on={st && hint(st)} dim={usedIng(n)} gold={gold} a11y={a11y} delay={k * 40} lifting={lift === n} onClick={() => tapIng(n)} />; }))
             : tab === "tool"
             ? shelf(sc.station.tools.map((t, k) => <Item key={"t" + t} icon={<ToolIcon id={t} gold={gold} />} label={TOOLS[t]} on={expected && expected.s.kind === "tool" && hint(expected.s) && expected.s.id === t} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "tool", id: t })} />))
-            : (!garnishStep ? doneLine("Без гарниша") : garnishDone ? doneLine(`Гарниш — ${GARNISH_RU[c.garnish]}`) : !restDone ? doneLine("Гарниш — в самом конце, когда напиток собран") : shelf(sc.station.garnishes.map((g, k) => <Item key={"ga" + g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "garnish", id: g })} />)));
+            : (!garnishStep ? doneLine("Без гарниша") : garnishDone ? doneLine(`Гарниш: ${GARNISH_RU[c.garnish]}`) : !restDone ? doneLine("Гарниш в самом конце, когда напиток собран") : shelf(sc.station.garnishes.map((g, k) => <Item key={"ga" + g} icon={<GarnishIcon id={g} />} label={GARNISH_RU[g]} on={expected && expected.s.kind === "garnish" && hint(expected.s) && expected.s.id === g} gold={gold} a11y={a11y} delay={k * 40} onClick={() => act({ kind: "garnish", id: g })} />)));
           return (
             <div data-labstation="" style={{ marginTop: 12 }}>
               <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8 }}>

@@ -111,7 +111,7 @@ NOON="('$T0'::date + time '12:00') at time zone 'Asia/Kamchatka'"
 chk "вечер: Илье — «Анна уже сделала свою часть»" "$(PP "select string_agg((x->>'kind') || ':' || (x->>'emp') || ':' || (x->>'text'), ' | ') from jsonb_array_elements(_sa_nudges_at(false, $EVE)) x where x->>'kind' = 'pair'")" "pair:$EB:.*Анна уже сделала свою часть"
 chk "днём (12:00) свеча не пишет — только с 18 до 21" "$($P -c "select count(*) from jsonb_array_elements(_sa_nudges_at(false, $NOON)) x where x->>'kind' = 'pair'")" '^0$'
 MON="('$WS'::date + time '10:30') at time zone 'Asia/Kamchatka'"
-chk "понедельник: итоги недели Анне — 1-е место в заведении и сети, кубок у Океана" "$(PP "select x->>'text' from jsonb_array_elements(_sa_nudges_at(false, $MON)) x where x->>'kind' = 'league' and x->>'emp' = '$EA'")" '1-е место в заведении \(из 2\) и 1-е в сети — 50 очков.*Кубок заведений — у «Два моря, Океан»'
+chk "понедельник: итоги недели Анне — 1-е место в заведении и сети, кубок у Океана" "$(PP "select x->>'text' from jsonb_array_elements(_sa_nudges_at(false, $MON)) x where x->>'kind' = 'league' and x->>'emp' = '$EA'")" '1-е место в заведении \(из 2\) и 1-е в сети, 50 очков.*Кубок заведений у «Два моря, Океан»'
 chk "понедельник: Марии (0 очков) итогов нет" "$($P -c "select count(*) from jsonb_array_elements(_sa_nudges_at(false, $MON)) x where x->>'kind' = 'league' and x->>'emp' = '$ES'")" '^0$'
 THU="('$WS'::date + 3 + time '13:00') at time zone 'Asia/Kamchatka'"
 chk "четверг: у Анны темы выдыхаются (без точного числа — ревью v31)" "$(PP "select x->>'text' from jsonb_array_elements(_sa_nudges_at(false, $THU)) x where x->>'kind' = 'fresh' and x->>'emp' = '$EA'")" 'Несколько тем начали выдыхаться'
@@ -189,4 +189,6 @@ chk "расписание снаружи не запустить" "$(Q "select s
 chk "просмотр подталкиваний снаружи не вызвать" "$(Q "select sa_nudges_preview()")" 'permission denied'
 chk "таблицы этапа напрямую не прочитать" "$(Q "select count(*) from sa_guest_personas")" 'permission denied'
 chk "историю лиги напрямую не прочитать" "$(Q "select count(*) from sa_league_weeks")" 'permission denied'
+# v74 (этап 29): в сообщениях бота нет шапки «✦ SERVICE ACADEMY» и звёздочек — ни в тексте, ни на кнопках
+chk "v74: всё, что ушло в Telegram за прогон, — без ✦ и шапки" "$($P -c "select count(*) || ' из ' || (select count(*) from net.sent_log) from net.sent_log where body::text like '%✦%' or body::text like '%SERVICE ACADEMY%'")" '^0 из [1-9]'
 echo "Итого: $pass ✓, $fail ✗"

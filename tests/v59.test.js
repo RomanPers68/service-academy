@@ -33,8 +33,8 @@ describe("v59: контраст и слова", () => {
   });
   it("слов «администратор» в экранах больше нет: код выдаёт руководитель, чип владельца — «владелец» (v73: курсивом)", () => {
     const team = rd("ui/screens-team.jsx");
-    expect(team).toContain("Введи код доступа — его выдаёт руководитель.");
-    expect(team).toContain("Нет кода? Спроси у руководителя —<br/>он создаст тебя в системе за минуту.");
+    expect(team).toContain("Введи код доступа от руководителя.");   // v74: без тире
+    expect(team).toContain("Нет кода? Спроси у руководителя:<br/>он создаст тебя в системе за минуту.");
     expect(team).toContain("обратись к руководителю.");
     expect((team.match(/>владелец<\/span>/g) || []).length).toBe(2);
     for (const f of ["App.jsx", "ui/screens-team.jsx", "ui/screens-roleselect.jsx", "ui/screens-admin.jsx", "data/hints.js"]) expect(rd(f)).not.toMatch(/администратор|АДМИН\b/);
@@ -48,14 +48,14 @@ describe("v59: контраст и слова", () => {
     expect(L).not.toContain("вопрос(ов)");
     expect(rd("ui/guestbook.jsx")).toContain("` · до «${stats.next.label}»\\u00a0—\\u00a0${stats.next.min - stats.score}`");
     // v64 (Доп. 377): кнопка AI переехала в нижнее меню — текст карточки вслед за ней
-    expect(rd("App.jsx")).toContain("Круглая кнопка «AI» посередине нижнего меню (на компьютере — в меню слева) — наставник.");
+    expect(rd("App.jsx")).toContain("Круглая кнопка «AI» посередине нижнего меню (на компьютере в меню слева) открывает Наставника.");   // v74
   });
   it("«Квест смены» в выходной: без личных заданий, «Сегодня у тебя выходной» вместо «квест не загрузился»", () => {
     const t = rd("ui/together.jsx");
     expect(t).toContain('lead = false, shift = "", off = false, data, onReload, onTask, onComplete }) {');
     expect(t).toContain("const restDay = off && !(team && team.me_on);");
     expect(t).toContain("const myTasks = restDay ? [] : tasks;");
-    expect(t).toContain('<><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены — в рабочий день. Отдыхай.</div></>');   // v73: без ✦
+    expect(t).toContain('<><div className="tg-h">Сегодня у тебя выходной</div><div className="tg-sub">Квест смены будет в рабочий день. Отдыхай.</div></>');   // v74   // v73: без ✦
     expect(rd("App.jsx")).toContain("shift={shiftText} off={!!(shiftToday && shiftToday.off)}");
   });
 });

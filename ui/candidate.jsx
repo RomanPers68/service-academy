@@ -137,22 +137,22 @@ function verdictOf(pct, level) {
     if (pct >= 75) return { label: "Сильный потенциал", color: GREEN,
       note: "Опыта нет, но голова сервисная: здравый смысл, честность и отношение на месте. Стандартам такой человек обучится быстро." };
     if (pct >= 50) return { label: "Есть задатки", color: GOLD_SOFT,
-      note: "Часть инстинктов верная, часть придётся ставить. Смотри на мотивацию: при желании учиться — рабочий вариант." };
+      note: "Часть инстинктов верная, часть придётся ставить. Смотри на мотивацию: если хочет учиться, вариант рабочий." };
     return { label: "Пока не про сервис", color: RED,
-      note: "Ответы расходятся с самой сутью гостеприимства. Если брать — только с плотным наставничеством и испытательным сроком." };
+      note: "Ответы расходятся с самой сутью гостеприимства. Если брать, то только с плотным наставничеством и испытательным сроком." };
   }
   if (level === "senior") {
     if (pct >= 85) return { label: "Эксперт", color: GREEN,
-      note: "Уровень соответствует заявленным 3+ годам: сложные ситуации решает уверенно. Разговор — о лидерстве, наставничестве и условиях." };
+      note: "Уровень соответствует заявленным 3+ годам: сложные ситуации решает уверенно. На встрече обсуди лидерство, наставничество и условия." };
     if (pct >= 65) return { label: "Профессионал с пробелами", color: GOLD_SOFT,
-      note: "Опыт чувствуется, но часть экспертных кейсов провалена. Уточни, где именно работал и в каком формате — планка «3+ лет» пока не подтверждена полностью." };
+      note: "Опыт чувствуется, но часть экспертных кейсов провалена. Уточни, где именно работал и в каком формате: планка «3+ лет» пока не подтверждена полностью." };
     return { label: "Ниже заявленного опыта", color: RED,
-      note: "Ответы не соответствуют уровню «больше 3 лет». Возможно, опыт в другом формате или завышен — проверь рекомендациями и стажировочной сменой." };
+      note: "Ответы не соответствуют уровню «больше 3 лет». Возможно, опыт в другом формате или завышен. Проверь рекомендациями и стажировочной сменой." };
   }
   if (pct >= 80) return { label: "Уверенный профессионал", color: GREEN,
     note: "Кандидат мыслит как человек из индустрии. На собеседовании можно говорить о личности, мотивации и условиях." };
   if (pct >= 55) return { label: "Крепкая база", color: GOLD_SOFT,
-    note: "Опыт виден, но есть провисания — темы ниже. Уточни их в разговоре: возможно, просто другие стандарты на прошлом месте." };
+    note: "Опыт виден, но есть провисания (темы ниже). Уточни их в разговоре: возможно, просто другие стандарты на прошлом месте." };
   return { label: "Опыт не подтверждается", color: RED,
     note: "Заявленный стаж не бьётся с ответами. Стоит аккуратно расспросить, чем человек реально занимался на прошлых местах." };
 }
@@ -162,11 +162,11 @@ function calibrationOf(selfBand, pct) {
   if (selfBand == null) return null;
   const band = SELF_BANDS.find(b => pct >= b.min && pct <= b.max) || SELF_BANDS[0];
   if (selfBand === band.id) return { label: "реалистичная", color: GREEN,
-    note: "Кандидат трезво оценивает свои знания — хороший признак." };
+    note: "Кандидат трезво оценивает свои знания. Это хороший признак." };
   if (selfBand > band.id) return { label: "завышенная", color: selfBand - band.id > 1 ? RED : GOLD_SOFT,
     note: "Кандидат считает, что знает больше, чем показал. Проверь в разговоре, как он воспринимает обратную связь." };
   return { label: "заниженная", color: GOLD_SOFT,
-    note: "Кандидат недооценивает себя — возможно, волнуется или скромничает. Часто это лечится поддержкой." };
+    note: "Кандидат недооценивает себя: возможно, волнуется или скромничает. Часто это лечится поддержкой." };
 }
 
 // ── Таймер-полоска на вопрос ──
@@ -605,7 +605,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           giveBack(msgs);
           setAiErr(d?.error === "not_configured"
             ? "AI-интервью не подключено на сервере (функция ai-hr). Пока можно пройти обычный тест."
-            : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан — попробуйте позже или пройдите обычный тест."
+            : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан. Попробуйте позже или пройдите обычный тест."
             : "ИИ временно недоступен. Попробуйте ещё раз или пройдите обычный тест.");
         }
       })
@@ -653,9 +653,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     }
     aiMsgsRef.current = before; setAiMsgs(before);
     const msg = d?.error === "not_configured" ? "AI-интервью не подключено на сервере (функция ai-hr). Пока можно пройти обычный тест."
-      : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан — попробуйте позже или пройдите обычный тест."
-      : d?.error === "network" ? "Нет связи с сервером — коснитесь волны и ответьте ещё раз."
-      : "ИИ не ответил — коснитесь волны и ответьте ещё раз.";
+      : d?.error === "rate_limit" ? "Дневной лимит ИИ исчерпан. Попробуйте позже или пройдите обычный тест."
+      : d?.error === "network" ? "Нет связи с сервером. Коснитесь волны и ответьте ещё раз."
+      : "ИИ не ответил. Коснитесь волны и ответьте ещё раз.";
     if (d?.error === "not_configured" || d?.error === "rate_limit") setAiErr(msg);
     throw new Error(msg);
   };
@@ -837,8 +837,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div style={{ marginBottom: 8, display: "flex" }}>{MOD_SVG["🤝"](gold, 26)}</div>
               <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Собеседование в приложении</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
-                Короткая анкета опыта — и тест подстраивается под кандидата: новичка проверяем на здравый смысл
-                и характер, опытного — на профессию. Внутри — рабочие ситуации, вопросы-приоритеты, которые
+                После короткой анкеты опыта тест подстраивается под кандидата: новичка проверяем на здравый смысл
+                и характер, а опытного на знание профессии. В тесте рабочие ситуации, вопросы-приоритеты, которые
                 не угадать, и самооценка в конце. Правильные ответы кандидату не показываются;
                 результат открываешь ты, когда телефон вернётся.
               </div>
@@ -981,7 +981,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             )}
             <button className="sa-btn" style={{ ...goldBtn, marginTop: 12, opacity: name.trim().length < 2 ? 0.5 : 1 }}
               onClick={() => { if (name.trim().length >= 2) { vibrate("light"); setPhase("profile"); } }}>
-              Дальше — анкета опыта
+              Дальше: анкета опыта
             </button>
           </>
         )}
@@ -990,7 +990,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {phase === "profile" && (
           <>
             <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
-              Пара вопросов о кандидате — от этого зависит, какой тест он получит. Можно заполнить вместе с ним.
+              Пара вопросов о кандидате. От ответов зависит, какой тест он получит. Можно заполнить вместе с ним.
             </div>
             <div style={secLabel}>Опыт в гостеприимстве и гастрономии</div>
             {EXPERIENCE.map(x => (
@@ -1037,24 +1037,24 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>{MOD_SVG["🤲"](gold, 30)}</div>
               <div style={{ ...T.bold, marginTop: 2, marginBottom: 8 }}>Передайте телефон кандидату</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.65 }}>
-                <b style={{ color: gold }}>{name.trim()}</b>, вам {level === "none" ? 12 : 15} рабочих ситуаций — роль «{role.label}».
+                <b style={{ color: gold }}>{name.trim()}</b>, вам {level === "none" ? 12 : 15} рабочих ситуаций для роли «{role.label}».
                 В каждой всё описано полностью: читайте спокойно, специальных знаний не нужно.
                 На вопрос даётся до {SECONDS_PER_Q} секунд. В паре вопросов нужно будет расставить
-                действия по порядку — просто нажимайте их в той очерёдности, как поступили бы.
-                Отвечайте честно, как в жизни: здесь проверяется мышление, а не зубрёжка.
+                действия по порядку: нажимайте их в той очерёдности, как поступили бы.
+                Отвечайте честно, как в жизни: здесь важно, как вы рассуждаете.
               </div>
             </div>
-            <button className="sa-btn" style={goldBtn} onClick={startTest}>Я готов(а) — начать</button>
+            <button className="sa-btn" style={goldBtn} onClick={startTest}>Начать тест</button>
             <button className="sa-btn" onClick={startAi}
               style={{ ...goldBtn, marginTop: 10, background: "transparent", color: gold,
                 border: `1px solid ${gold}66`, boxShadow: "none" }}>
               {hrSt.beta ? "AI-интервью · бета" : "AI-интервью"}
             </button>
             <div style={{ ...T.modSub, color: sub, fontSize: 11, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
-              В AI-режиме кандидат отвечает своими словами — текстом или голосом (волна справа от поля:
+              В AI-режиме кандидат отвечает своими словами, текстом или голосом (волна справа от поля:
               вопросы звучат вслух, ответ записывается сам), а ИИ задаёт уточняющие вопросы
               и оценивает по тем же компетенциям.
-              <br /><span style={{ opacity: 0.75 }}>ИИ-помощник — окончательное решение принимает менеджер.</span>
+              <br /><span style={{ opacity: 0.75 }}>ИИ помогает, окончательное решение принимает менеджер.</span>
             </div>
           </>
         )}
@@ -1176,10 +1176,10 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             )}
             {hrInfo.v2 && !hrInfo.done && aiAnswered >= 4 && !aiBusy && (
               <button className="sa-btn" data-hr-early="" onClick={finishAi}
-                style={{ ...ghostBtn, marginTop: 4, padding: "9px", fontSize: 12.5 }}>Завершить раньше — оценка по пройденным темам</button>
+                style={{ ...ghostBtn, marginTop: 4, padding: "9px", fontSize: 12.5 }}>Завершить раньше: оценка по пройденным темам</button>
             )}
             <div style={{ ...T.modSub, ...labelStyle(13.5), color: sub, textAlign: "center", marginTop: 8, opacity: 0.75 }}>
-              ИИ может ошибаться · решение всегда за менеджером
+              ИИ может ошибаться, решение всегда за менеджером
             </div>
           </>
         )}
@@ -1240,9 +1240,9 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           <>
             <div style={{ ...glass, marginBottom: 12 }}>
               <div style={{ marginBottom: 8, display: "flex" }}>{UI_SVG.target(gold, 24)}</div>
-              <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Последний вопрос — о себе</div>
+              <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Последний вопрос: о себе</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
-                {name.trim()}, как вам кажется, на какую часть вопросов вы ответили верно? Здесь нет правильного ответа — отвечайте честно.
+                {name.trim()}, как вам кажется, на какую часть вопросов вы ответили верно? Здесь нет правильного ответа, отвечайте честно.
               </div>
             </div>
             {SELF_BANDS.map(b => (
@@ -1260,12 +1260,12 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           <>
             <div style={{ ...glass, textAlign: "center", padding: "36px 20px", marginBottom: 16 }}>
               <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>{MOD_SVG["🤝"](gold, 30)}</div>
-              <div style={{ ...T.bold, marginTop: 2, marginBottom: 8 }}>Готово — спасибо!</div>
+              <div style={{ ...T.bold, marginTop: 2, marginBottom: 8 }}>Готово, спасибо!</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
                 {name.trim()}, верните телефон менеджеру, пожалуйста.
               </div>
             </div>
-            <button className="sa-btn" style={ghostBtn} onClick={openResult}>Я менеджер — показать результат</button>
+            <button className="sa-btn" style={ghostBtn} onClick={openResult}>Результат для менеджера</button>
           </>
         )}
 
@@ -1290,7 +1290,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               </div>
               <AiReport rec={lastRec} T={T} a11y={a11y} gold={gold} sub={sub} glass={glass} onDecide={decide} beta={hrSt.beta} />
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
-                ИИ может ошибаться — решение всегда за вами. Отметьте его выше: по таким отметкам видно, насколько ИИ совпадает с вами.
+                ИИ может ошибаться, решение всегда за вами. Отметьте его выше: по таким отметкам видно, насколько ИИ совпадает с вами.
               </div>
               <button className="sa-btn" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>
               <button className="sa-btn" style={ghostBtn} onClick={startSetup}>Собеседовать ещё одного</button>
@@ -1355,7 +1355,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
 
               {topics.length > 0 && (
                 <div style={{ ...glass, marginBottom: 12 }}>
-                  <div style={{ ...T.bold, marginTop: 2, marginBottom: 10 }}>По компетенциям — от слабых к сильным</div>
+                  <div style={{ ...T.bold, marginTop: 2, marginBottom: 10 }}>Компетенции от слабых к сильным</div>
                   {topics.map((t, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
                       <span style={{ flex: 1, minWidth: 0, color: T.modTitle.color, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.topic}</span>
@@ -1369,7 +1369,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               )}
 
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
-                Результат сохранён на этом устройстве. Помни: тест меряет мышление, а человека — только разговор.
+                Результат сохранён на этом устройстве. Решение принимай после личного разговора с кандидатом.
               </div>
               <button className="sa-btn" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>
               <button className="sa-btn" style={ghostBtn} onClick={startSetup}>Собеседовать ещё одного</button>

@@ -194,7 +194,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
               <div style={{ marginTop:6, padding:"14px 16px", borderRadius:14, background:a11y?"rgba(42,107,69,0.14)":"rgba(93,187,138,0.16)", border:`1px solid ${C.green}`, display:"flex", alignItems:"center", gap:10 }}>
                 <span style={{ fontSize:21 }}>✓</span>
                 <div>
-                  <div style={{ color:C.green, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>«{(CL_KINDS.find(k=>k[0]===tab)||["","смена"])[1]}» — всё готово</div>
+                  <div style={{ color:C.green, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>«{(CL_KINDS.find(k=>k[0]===tab)||["","смена"])[1]}»: всё готово</div>
                   <div style={{ color:C.muted, fontSize:12.5, marginTop:2 }}>{doneInfo}</div>
                 </div>
               </div>
@@ -321,7 +321,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
             {list === null ? (
               <SkelCards a11y={a11y} rows={3} h={58} style={{ padding:"6px 0" }} />
             ) : list.length === 0 ? (
-              <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Сейчас на онбординге никого нет. Когда новичок начнёт путь — он появится здесь.</div>
+              <div style={{ color:C.muted, fontSize:12.5, padding:"8px 2px", lineHeight:1.5 }}>Сейчас на онбординге никого нет. Когда новичок начнёт путь, он появится здесь.</div>
             ) : list.map((h,i)=>{ const tot=h.total||ONB_TOTAL; const p=Math.round(((h.checked||0)/tot)*100); const ini=((h.name||"?")[0]||"")+((h.surname||"")[0]||""); return (
               <div key={i} style={{ ...card, padding:"14px 16px", marginBottom:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -357,7 +357,7 @@ function BackupCard({ C, cardBase, serif }) {
     setSt("working"); setMsg("");
     rpc("backup_ticket", { p_token: saToken() }).then(j => {
       if (!j || !j.ok || !j.ticket) {
-        const why = j && j.error === "forbidden" ? "Копию может скачать только владелец" : j && j.error === "auth" ? "Сессия не найдена — войди заново" : "Сервер не выдал билет — применён ли supabase-stage10-backup.sql?";
+        const why = j && j.error === "forbidden" ? "Копию может скачать только владелец" : j && j.error === "auth" ? "Сессия не найдена. Войди заново" : "Сервер не выдал билет. Применён ли supabase-stage10-backup.sql?";
         setSt("error"); setMsg(why); return;
       }
       const stamp = new Date().toISOString().slice(0, 10);
@@ -376,12 +376,12 @@ function BackupCard({ C, cardBase, serif }) {
       const when = new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
       setLast(when); try { localStorage.setItem("sa_backup_last", when); } catch (e) {}
       vibrate("success");
-    }).catch(() => { setSt("error"); setMsg("Нет связи с сервером — попробуй ещё раз"); });
+    }).catch(() => { setSt("error"); setMsg("Нет связи с сервером. Попробуй ещё раз"); });
   };
   return (
     <div style={{ ...cardBase, padding: "14px 16px", marginTop: 12 }}>
       <div style={{ color: "#D6A33A", fontSize: 11, letterSpacing: 1.5, fontWeight: "bold", marginBottom: 6 }}>РЕЗЕРВНАЯ КОПИЯ</div>
-      <div style={{ color: C.text, fontSize: 14, lineHeight: 1.5 }}>Все таблицы базы одним файлом JSON: сотрудники, меню, графики, результаты. Раз в неделю — и спокоен.</div>
+      <div style={{ color: C.text, fontSize: 14, lineHeight: 1.5 }}>Все таблицы базы одним файлом JSON: сотрудники, меню, графики, результаты. Скачивай копию раз в неделю.</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
         <button className="sa-btn" onClick={run} disabled={st === "working"} {...onActivate(run)}
           style={{ padding: "10px 16px", borderRadius: 12, border: `1px solid ${C.gold}88`, background: "transparent", color: C.gold,
@@ -390,11 +390,11 @@ function BackupCard({ C, cardBase, serif }) {
         </button>
         <div style={{ color: C.dim, fontSize: 11, lineHeight: 1.45, flex: 1 }}>
           {st === "error" ? <span style={{ color: "#D9764A" }}>{msg}</span>
-            : st === "sent" ? "Файл уходит на телефон — подтверди сохранение, если Telegram спросит"
+            : st === "sent" ? "Файл уходит на телефон. Подтверди сохранение, если Telegram спросит"
             : last ? `Последняя копия: ${last}` : "Копий ещё не было"}
         </div>
       </div>
-      <div style={{ color: C.dim, fontSize: 11, marginTop: 10, lineHeight: 1.45 }}>Файл содержит всё, включая коды входа сотрудников — храни его как пароль. Восстановление: пришли файл разработчику.</div>
+      <div style={{ color: C.dim, fontSize: 11, marginTop: 10, lineHeight: 1.45 }}>Файл содержит всё, включая коды входа сотрудников. Храни его как пароль. Восстановление: пришли файл разработчику.</div>
     </div>
   );
 }
@@ -654,10 +654,10 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
       <div style={{ padding:"0 14px" }}>
         {view === "people" ? (<>
           <SectionLabel a11y={a11y} right="90 дней">Кто и где ошибается</SectionLabel>
-          <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px", lineHeight:1.45 }}>Видны: {peopleScope}. Нажми на человека — раскроются вопросы.</div>
+          <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px", lineHeight:1.45 }}>Видны: {peopleScope}. Нажми на человека, и раскроются вопросы.</div>
           {people === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {people === "off" && note(offText("сотрудники и их ошибки"))}
-          {Array.isArray(people) && peopleList.length === 0 && note("Ошибок за 90 дней нет — или команда ещё не проходила тесты.")}
+          {Array.isArray(people) && peopleList.length === 0 && note("За 90 дней ошибок нет, или команда ещё не проходила тесты.")}
           {peopleList.map((p, i) => {
             const open = openWho === p.who; const toggle = () => setOpenWho(open ? null : p.who);
             const tone = personTone(p.fails);
@@ -686,7 +686,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                   {p.tests.map((t, j) => <span key={j} style={{ flex: t.fails, borderRadius:3,
                     background: j === 0 ? TN[tone] : (a11y ? "rgba(107,78,20,0.28)" : "rgba(214,178,102,0.32)") }} />)}
                 </div>
-                <div style={{ color:muted, fontSize:11.5, marginTop:5 }}>{p.tests.length} {vTeste(p.tests.length)} · больше всего — «{p.tests[0] ? p.tests[0].title : ""}»</div>
+                <div style={{ color:muted, fontSize:11.5, marginTop:5 }}>в {p.tests.length} {vTeste(p.tests.length)} · больше всего в «{p.tests[0] ? p.tests[0].title : ""}»</div>
                 {open ? p.tests.map((t, j) => (
                   <div key={j} style={{ marginTop:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
@@ -713,7 +713,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           </div>
           {retries === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {retries === "off" && note(offText("те, кто нашёл лазейку"))}
-          {Array.isArray(retries) && retryPeople.length === 0 && note("Пока никто не нашёл лазейку — все сдают тесты с первого захода.")}
+          {Array.isArray(retries) && retryPeople.length === 0 && note("Пока никто не нашёл лазейку: все сдают тесты с первого захода.")}
           {retryPeople.some(p => p.keys) ? (<>
             <SectionLabel a11y={a11y}>Тайный зачёт ключей</SectionLabel>
             {Object.entries(retryPeople.filter(p => p.keys).reduce((m, p) => { (m[p.restaurant] = m[p.restaurant] || []).push(p); return m; }, {})).map(([rest, list], i) => (
@@ -754,7 +754,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                       {t.done ? <Chip a11y={a11y} tone="good">сдал · {t.done.pct}%</Chip> : <Chip a11y={a11y} tone="mid">пока не сдал</Chip>}
                     </div>
                     <div style={{ margin:"8px 0 2px" }}><ExitTrack answered={t.answered} total={t.total || (t.done && t.done.total) || 0} a11y={a11y} /></div>
-                    <div style={{ color:muted, fontSize:11 }}>{t.skips > 1 ? `выходил ${t.skips} ${raz(t.skips)} · красным — где впервые` : "красным — где вышел"}</div>
+                    <div style={{ color:muted, fontSize:11 }}>{t.skips > 1 ? `выходил ${t.skips} ${raz(t.skips)} · красным: где впервые` : "красным: где вышел"}</div>
                     {wrong.slice(0, 5).map((w, k) => <MissPlate key={k} q={w.q} picked={w.a} right={w.r} a11y={a11y} />)}
                     {wrong.length > 5 ? <div style={{ color:muted, fontSize:11.5, marginTop:6 }}>и ещё {wrong.length - 5}</div> : null}
                   </div>);
@@ -767,7 +767,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           {hardQ === "off" && note(srvErr && (srvErr.code || srvErr.message) && srvErr.code !== "PGRST202"
             ? offText("вопросы")   // настоящая ошибка сервера — её текст
             : serverMissing({ what: "вопросы с наибольшим процентом ошибок", many: true, admin: !!profile?.is_admin, sql: "supabase-stage7-quiz-analytics.sql" }))}
-          {Array.isArray(hardQ) && hardQ.length === 0 && note("Пока нет трудных вопросов — данных мало (нужно минимум 3 ответа на вопрос) или команда отвечает без ошибок.")}
+          {Array.isArray(hardQ) && hardQ.length === 0 && note("Пока нет трудных вопросов: данных мало (нужно минимум 3 ответа на вопрос) или команда отвечает без ошибок.")}
           {Array.isArray(hardQ) && hardQ.map((q, i) => { const tone = toneOfFail(q.fail_pct); const tt = indexTitle[q.lesson_id] || titleById[q.lesson_id]; return (
             <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
               <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>

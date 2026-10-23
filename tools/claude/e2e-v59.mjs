@@ -475,7 +475,7 @@ if (want("WORDS")) {
   const o = await open({ noToken: true, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null) });
   await sleep(1200);
   const t = await text(o.page);
-  ok("WORDS: вход — «код выдаёт руководитель», без «администратора»", /его выдаёт руководитель/.test(t) && !/администратор/.test(t), t.slice(0, 200));
+  ok("WORDS: вход — «код доступа от руководителя», без «администратора»", /код доступа от руководителя/.test(t) && !/администратор/.test(t), t.slice(0, 200));
   await shot(o.page, "login");
   await o.ctx.close();
   const r = await open({ profile: ANNA, storage: { ...ROMAN44(), __role: "seasonal" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });

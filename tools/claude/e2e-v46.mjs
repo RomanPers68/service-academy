@@ -455,7 +455,7 @@ if (want("CAL")) {
     ok("CAL " + w + ": сегодня — смена «16–24» в золотой рамке; прошедшие бледнее", cell(td) && /^\d+ 16–24$/.test(cell(td).t) && cell(td).ring && cell(td).op === 1 && (td === 1 || cell(1).op < 0.5), JSON.stringify([cell(td), cell(1) && cell(1).op]));
     const wd = FX.wishes.find((x) => x.staff_id === 9 && x.kind === "off" && x.day > td);
     ok("CAL " + w + ": день с просьбой — солнце; смену коллеги можно взять — пунктир и ⇄", (!wd || /прошу выходной/.test(cell(wd.day).al)) && cell(FX.offerDay).dashed && /⇄/.test(cell(FX.offerDay).t), JSON.stringify([wd && cell(wd.day), cell(FX.offerDay)]));
-    ok("CAL " + w + ": легенда и подсказка", /День/.test(g.legend) && /Вечер/.test(g.legend) && /можно взять/.test(g.legend) && /Тапни день — кто с тобой, пожелание, обмен или заметка/.test(g.legend) && /Отметить период/.test(g.legend), g.legend.slice(0, 200));
+    ok("CAL " + w + ": легенда и подсказка", /День/.test(g.legend) && /Вечер/.test(g.legend) && /можно взять/.test(g.legend) && /Тапни день: кто с тобой, пожелание, обмен или заметка/.test(g.legend) && /Отметить период/.test(g.legend), g.legend.slice(0, 200));
     ok("CAL " + w + ": календарь в ширину экрана, без прокрутки вбок", g.sw <= g.iw, g.sw + "/" + g.iw);
     ok("CAL " + w + ": отдельной сетки «Моих пожеланий» и списка дней в виде «месяц» нет", !(await page.locator("text=МОИ ПОЖЕЛАНИЯ").count()) && !(await page.locator("[data-list-day]").count()));
     ok("CAL " + w + ": без ошибок", errors.length === 0, errors.slice(0, 2).join(" | "));
@@ -580,7 +580,7 @@ if (want("FILL")) {
     if (n) opened = await page.evaluate(() => { const s = document.querySelector("[data-fill-sheet]"); return s.innerText.replace(/\s+/g, " "); });
     else { await page.locator("[data-fill-sheet] button", { hasText: "Закрыть" }).click(); await sleep(300); }
   }
-  ok("FILL: «Кто может?» — лист «КТО МОЖЕТ ВЫЙТИ» с позицией, сменой и списками", !!opened && /КТО МОЖЕТ ВЫЙТИ · [А-Я]{2} · \d+ [А-Я]+/.test(opened) && /МОГУТ ВЫЙТИ · \d+/.test(opened) && /нужно \d+, в смене \d+/.test(opened), (opened || "").slice(0, 160));
+  ok("FILL: «Кто может?» — лист «КТО МОЖЕТ ВЫЙТИ» с позицией, сменой и списками", !!opened && /Кто может выйти · [А-Яа-я]{2} · \d+ [А-Яа-я]+/i.test(opened) && /Могут выйти · \d+/i.test(opened) && /нужно \d+, в смене \d+/.test(opened), (opened || "").slice(0, 160));
   if (opened) await page.screenshot({ path: OUT + "/boss-fill-sheet.png" });
   if (opened) {
     const pick = await page.locator("[data-fill-pick]").first().getAttribute("data-fill-pick");
@@ -624,7 +624,7 @@ if (want("CONFLICT")) {
   const row = g.attn && g.attn.rows.find((x) => x.k === "conflict");
   ok("CONFLICT: «Морозова Ксения не сможет выйти · … стоит смена «День 12:00–20:00»» первой строкой, «Кто вместо?»", row && g.attn.rows[0].k === "conflict" && /Морозова Ксения не сможет выйти .* стоит смена «День 12:00–20:00» Кто вместо\?/.test(row.t), row && row.t);
   await page.locator('[data-attn-row="conflict"] button', { hasText: "Кто вместо?" }).click(); await sleep(600);
-  const repl = await page.evaluate(() => /КТО ВМЕСТО · \d+/.test(document.body.innerText));
+  const repl = await page.evaluate(() => /Кто вместо · \d+/i.test(document.body.innerText));
   ok("CONFLICT: «Кто вместо?» открывает прежний подбор замены", repl);
   ok("CONFLICT: без ошибок", errors.length === 0, errors.slice(0, 2).join(" | "));
   await ctx.close();

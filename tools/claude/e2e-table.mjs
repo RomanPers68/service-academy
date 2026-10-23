@@ -6,7 +6,7 @@ import { readFileSync, statSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("/home/claude/.npm-global/lib/node_modules/playwright");
-const SITE = "/home/claude/preview/site", PORT = 5193, OUT = "/home/claude/preview/shots-table";
+const SITE = process.env.E2E_SITE || "/home/claude/preview/site", PORT = Number(process.env.E2E_PORT) || 5193, OUT = process.env.E2E_OUT || "/home/claude/preview/shots-table";
 mkdirSync(OUT, { recursive: true });
 const SRC = "/home/claude/work/service-academy";
 const { HINTS, HINTS_VERSION } = await import(SRC + "/data/hints.js");
@@ -179,7 +179,7 @@ for (const theme of [{ light: false, w: 390, h: 844, tag: "dark-390" }, { light:
   await page.locator(".tbm-node:not(.tbp-side *)", { hasText: "Анатомия смены" }).first().click(); await sleep(1000);
   t = await text(page);
   await shot(page, T + "-10-lesson-resume");
-  ok(T + ": урок открылся с того же места", /Продолжаем с того же места — карточка 3/i.test(t), t.slice(0, 160));
+  ok(T + ": урок открылся с того же места", /Продолжаем с того же места: карточка 3/i.test(t), t.slice(0, 160));
   await page.locator("text=С начала").click(); await sleep(500);
   ok(T + ": «С начала» вернул на первую карточку", !/Продолжаем с того же места/i.test(await text(page)));
   await page.evaluate(() => window.__bb.press()); await sleep(1000);

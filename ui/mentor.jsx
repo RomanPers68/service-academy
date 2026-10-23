@@ -106,14 +106,14 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
     setBusy(true); setHallErr("");
     try {
       const res = await rpc("skill_request", { p_token: saToken(), p_role: role, p_skill: s.id, p_skill_label: s.label });
-      if (rpcMissing(res)) { setHall("missing"); setHallErr("Подтверждение в зале заработает после обновления сервера — пока по PIN."); }
+      if (rpcMissing(res)) { setHall("missing"); setHallErr("Подтверждение в зале заработает после обновления сервера. Пока работает PIN."); }
       else if (res && res.ok) {
         setReqs(r => ({ ...r, [s.id]: { id: res.id, role_id: role, skill_id: s.id, skill_label: s.label, status: "pending", created_at: new Date().toISOString() } }));
-        vibrate("light"); closeModal(); flash("Запрос у старшего — подтвердит у себя в телефоне");
+        vibrate("light"); closeModal(); flash("Запрос у старшего. Он подтвердит у себя в телефоне");
         syncMine();
         return;
-      } else setHallErr(res && res.error === "auth" ? "Сессия устарела — перезайди по коду" : res && res.error === "too_many" ? "Слишком много запросов за день — попробуй завтра" : "Не получилось отправить — попробуй ещё раз");
-    } catch (e) { setHallErr("Нет связи — попробуй позже или подтверди по PIN"); }
+      } else setHallErr(res && res.error === "auth" ? "Сессия устарела. Перезайди по коду" : res && res.error === "too_many" ? "Слишком много запросов за день. Попробуй завтра" : "Не получилось отправить. Попробуй ещё раз");
+    } catch (e) { setHallErr("Нет связи. Попробуй позже или подтверди по PIN"); }
     setBusy(false);
   };
   const cancelHall = async (r) => {
@@ -131,9 +131,9 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
         setInbox(list => (list || []).filter(x => x.id !== row.id));
         if (onInbox) onInbox(Math.max(0, (inbox || []).filter(x => x.id !== row.id).length));
         vibrate(approve ? "success" : "light");
-        flash(res.ok ? (approve ? "Подтверждено: " + (row.emp_name || "").split(" ")[0] + " · «" + (row.skill_label || row.skill_id) + "»" : "Отправлено: ещё рано") : "Уже решено" + (res.mentor_name ? " — " + res.mentor_name : ""));
-      } else flash(res && res.error === "forbidden" ? "Это запрос другого ресторана" : "Не получилось — попробуй ещё раз");
-    } catch (e) { flash("Нет связи — попробуй ещё раз"); }
+        flash(res.ok ? (approve ? "Подтверждено: " + (row.emp_name || "").split(" ")[0] + " · «" + (row.skill_label || row.skill_id) + "»" : "Отправлено: ещё рано") : "Уже решено" + (res.mentor_name ? " (" + res.mentor_name + ")" : ""));
+      } else flash(res && res.error === "forbidden" ? "Это запрос другого ресторана" : "Не получилось. Попробуй ещё раз");
+    } catch (e) { flash("Нет связи. Попробуй ещё раз"); }
     setInboxBusy(null); setArm(null); setDeclineFor(null);
   };
   React.useEffect(() => { if (arm == null) return undefined; const t = setTimeout(() => setArm(null), 4000); return () => clearTimeout(t); }, [arm]);
@@ -163,7 +163,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
         return;
       }
       setBusy(false);
-      setPinErr(resp && resp.error === "auth" ? "Сессия устарела — перезайди по коду" : "Неверный PIN. Проверь и попробуй ещё раз.");
+      setPinErr(resp && resp.error === "auth" ? "Сессия устарела. Перезайди по коду" : "Неверный PIN. Проверь и попробуй ещё раз.");
       vibrate("error");
     } catch (e) {
       // Функции ещё нет на сервере (stage 6 не применён) или нет сети —
@@ -196,7 +196,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
       </div>
 
       <div style={{ padding: "8px 18px 0", color: T.para?.color, fontSize: 14, lineHeight: 1.55 }}>
-        Тесты показывают <b style={{ color: gold }}>знание</b>. Здесь наставник подтверждает <b style={{ color: gold }}>умение</b> — то, что он видел своими глазами в зале.
+        Тесты показывают <b style={{ color: gold }}>знание</b>. Здесь наставник подтверждает <b style={{ color: gold }}>умение</b>: то, что он видел своими глазами в зале.
       </div>
 
       {canRevoke && Array.isArray(inbox) ? (
@@ -205,7 +205,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
             <span style={{ ...labelStyle(13.5), color: gold }}>Ждут подтверждения в зале</span>
             <b style={{ color: inbox.length ? gold : T.modSub.color, fontSize: 13 }}>{inbox.length}</b>
           </div>
-          {!inbox.length ? <div style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, paddingBottom: 8 }}>Запросов нет. Когда сотрудник попросит подтвердить навык, он появится здесь — подтверди, когда увидишь своими глазами.</div> : null}
+          {!inbox.length ? <div style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, paddingBottom: 8 }}>Запросов нет. Когда сотрудник попросит подтвердить навык, запрос появится здесь. Подтверди, когда увидишь своими глазами.</div> : null}
           {inbox.map(r => {
             const ro = ROLES.find(x => x.id === r.role_id);
             const armed = arm === r.id;
@@ -222,7 +222,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
                 ) : (
                   <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                     <button className="sa-btn" disabled={inboxBusy === r.id} onClick={() => { if (armed) decide(r, true); else { setArm(r.id); vibrate("light"); } }}
-                      style={{ flex: 1, padding: "9px 10px", borderRadius: 999, border: 0, cursor: "pointer", fontSize: 13, fontWeight: "bold", color: "#fff", background: armed ? "#3E9A6B" : green }}>{inboxBusy === r.id ? "…" : armed ? "Точно видел(а) — нажми ещё раз" : "Видел(а) — подтвердить ✓"}</button>
+                      style={{ flex: 1, padding: "9px 10px", borderRadius: 999, border: 0, cursor: "pointer", fontSize: 13, fontWeight: "bold", color: "#fff", background: armed ? "#3E9A6B" : green }}>{inboxBusy === r.id ? "…" : armed ? "Точно видел(а)? Нажми ещё раз" : "Видел(а), подтверждаю ✓"}</button>
                     <button className="sa-btn" disabled={inboxBusy === r.id} onClick={() => { setArm(null); setDeclineFor(r.id); }}
                       style={{ flexShrink: 0, padding: "9px 12px", borderRadius: 999, border: `1px solid ${gold}77`, background: "transparent", color: textColor, fontSize: 13, cursor: "pointer" }}>Ещё рано</button>
                   </div>
@@ -260,12 +260,12 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
                 {rec && <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ ...labelStyle(12.5), marginLeft: 6, color: green, border: `1px solid ${green}66`, borderRadius: 6, padding: "0 6px", verticalAlign: "1px" }}>{rec.hall ? "в зале ✓" : "PIN ✓"}</span>}</div>}
                 {!rec && reqs[s.id] && reqs[s.id].status === "pending" ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 6, fontSize: 11.5, color: gold }}>
-                    <span>⏳ Ждёт старшего — подтвердит в зале</span>
+                    <span>⏳ Ждёт подтверждения старшего в зале</span>
                     <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); cancelHall(reqs[s.id]); }} {...onActivate(() => cancelHall(reqs[s.id]))} style={{ color: T.modSub.color, textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" }}>отозвать</span>
                   </div>
                 ) : null}
                 {!rec && reqs[s.id] && reqs[s.id].status === "declined" ? (
-                  <div style={{ marginTop: 6, fontSize: 11.5, color: "#E0A070", lineHeight: 1.4 }}>Старший: ещё рано{reqs[s.id].note ? " — «" + reqs[s.id].note + "»" : ""}. Можно попросить снова.</div>
+                  <div style={{ marginTop: 6, fontSize: 11.5, color: "#E0A070", lineHeight: 1.4 }}>Старший: ещё рано{reqs[s.id].note ? " («" + reqs[s.id].note + "»)" : ""}. Можно попросить снова.</div>
                 ) : null}
               </div>
               {rec && canRevoke
@@ -284,11 +284,11 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
             {/* Доп. 303: старший подтвердит у себя в телефоне */}
             <div style={{ margin: "0 0 14px", padding: "12px 12px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.45)" : "rgba(255,250,238,0.04)" }}>
               <div style={{ fontSize: 14, fontWeight: "bold", color: textColor, marginBottom: 4 }}>Старшего нет рядом с твоим телефоном?</div>
-              <div style={{ fontSize: 12.5, lineHeight: 1.45, color: T.para?.color, marginBottom: 10 }}>Отправь запрос — старший увидит его у себя в «Наставничестве» и подтвердит, когда посмотрит, как у тебя получается в зале.</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.45, color: T.para?.color, marginBottom: 10 }}>Отправь запрос: старший увидит его у себя в «Наставничестве» и подтвердит, когда посмотрит, как у тебя получается в зале.</div>
               {reqs[modal.id] && reqs[modal.id].status === "pending" ? (
-                <div style={{ fontSize: 13, color: gold }}>⏳ Запрос уже у старшего — ждём</div>
+                <div style={{ fontSize: 13, color: gold }}>⏳ Запрос уже у старшего, ждём</div>
               ) : hall === "missing" ? (
-                <div style={{ fontSize: 12.5, color: T.modSub.color }}>Заработает, когда владелец обновит сервер — пока по PIN ниже.</div>
+                <div style={{ fontSize: 12.5, color: T.modSub.color }}>Заработает, когда владелец обновит сервер. Пока есть PIN ниже.</div>
               ) : (
                 <button className="sa-btn" disabled={busy} onClick={() => askHall(modal)}
                   style={{ width: "100%", padding: "11px 14px", borderRadius: 999, border: `1px solid ${gold}`, background: "transparent", color: textColor, fontSize: 14, fontWeight: "bold", cursor: "pointer" }}>{busy ? "Отправляю…" : "Отправить старшему ›"}</button>
@@ -297,7 +297,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
             </div>
             <div style={{ ...labelStyle(13), textAlign: "center", color: T.modSub.color, margin: "0 0 10px" }}>Или по PIN прямо здесь</div>
             <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
-              📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
+              📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык, только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
             </div>
             {!byName ? (
               <>
@@ -311,7 +311,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
                 />
                 {pinErr && <div style={{ color: "#E07878", fontSize: 12.5, marginBottom: 10, textAlign: "center" }}>{pinErr}</div>}
                 <div onClick={() => { setByName(true); setPinErr(""); }} {...onActivate(() => { setByName(true); setPinErr(""); })} style={{ fontSize: 12.5, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                  У наставника нет PIN — подтвердить по фамилии
+                  У наставника нет PIN? Подтвердить по фамилии
                 </div>
               </>
             ) : (

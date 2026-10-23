@@ -25,7 +25,7 @@ export function UpdateToast({ a11y = false }) {
       boxShadow: a11y ? "0 6px 20px rgba(120,90,30,0.14)" : "0 8px 26px rgba(0,0,0,0.5)" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", color: a11y ? "#2A1F0E" : "#F0E8D8" }}>Готова новая версия</div>
-        <div style={{ fontSize: 12, color: a11y ? "#6B5B40" : "#A29679", marginTop: 1 }}>Обновление займёт пару секунд — прогресс не потеряется</div>
+        <div style={{ fontSize: 12, color: a11y ? "#6B5B40" : "#A29679", marginTop: 1 }}>Обновление займёт пару секунд, прогресс не потеряется</div>
       </div>
       <button type="button" data-update-later="" onClick={later} style={{ background: "none", border: "none", color: a11y ? "#6B5B40" : "#A29679", fontSize: 12.5, fontFamily: "Georgia, serif", padding: "8px 6px", cursor: "pointer" }}>Позже</button>
       <button type="button" data-update-now="" onClick={reload} style={{ border: "none", borderRadius: 999, padding: "9px 14px", cursor: "pointer", fontFamily: "Georgia, serif", fontSize: 13.5, fontWeight: "bold",

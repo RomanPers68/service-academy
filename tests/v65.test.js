@@ -57,8 +57,8 @@ describe("v65: AI-интервью в ленте у руководителей",
     expect(rs).toContain('data-tools-row="" data-tools-ring={ring} data-tools-labels={labelsOn ? "on" : "off"}');
   });
   it("тур главной руководителя и «Гид» — про AI-интервью", () => {
-    expect(HINTS.home_admin[1]).toBe("Эта лента всегда под рукой: справочник, меню, глоссарий, чек-листы и AI-интервью для кандидатов. Красный круг справа — SOS, когда всё горит.");
-    expect(rd("ui/guide.jsx")).toContain("Вход — «AI-интервью» в ленте на главной или «Команда» → «Собеседование».");
+    expect(HINTS.home_admin[1]).toBe("Эта лента всегда под рукой: справочник, меню, глоссарий, чек-листы и AI-интервью для кандидатов. Красный круг справа открывает SOS, когда всё горит.");   // v74
+    expect(rd("ui/guide.jsx")).toContain("Вход: «AI-интервью» в ленте на главной или «Команда» → «Собеседование».");
   });
 });
 
@@ -80,7 +80,7 @@ describe("v65: ответ голосом в AI-собеседовании", () =
     // v66: ход голосом уходит с пометкой voice (интервьюер отвечает короче, оценщик знает про распознавание)
     expect(c).toContain('try { d = await callHr("chat", list, { voice: true }); } catch (e) { d = { error: "network" }; }');
     expect(c).toContain("aiMsgsRef.current = before; setAiMsgs(before);");
-    expect(c).toContain('"ИИ не ответил — коснитесь волны и ответьте ещё раз."');
+    expect(c).toContain('"ИИ не ответил. Коснитесь волны и ответьте ещё раз."');   // v74
     // интервьюеру уходят только роль и текст (без пометки voice)
     expect(c).toContain("messages: msgs.map(m => ({ role: m.role, content: m.content })),");
   });
@@ -98,8 +98,8 @@ describe("v65: ответ голосом в AI-собеседовании", () =
     expect(c).toContain('if (phase === "ai" && aiAnswered > 0) { setTalk(false); setConfirmLeave(true); return; }');
   });
   it("тексты: передача телефона и подсказка собеседования — про голос", () => {
-    expect(c).toContain("В AI-режиме кандидат отвечает своими словами — текстом или голосом (волна справа от поля:");
-    expect(HINTS.candidate[1]).toBe("Дальше передай телефон кандидату. Интервью ведёт наставник, ты не участвуешь. Отвечать можно и голосом — вопросы звучат вслух.");
+    expect(c).toContain("В AI-режиме кандидат отвечает своими словами, текстом или голосом (волна справа от поля:");
+    expect(HINTS.candidate[1]).toBe("Дальше передай телефон кандидату. Интервью ведёт наставник, ты не участвуешь. Вопросы звучат вслух, отвечать можно голосом.");   // v74
   });
   it("карточки выбора: рамка выбранного — border и borderTop вместе", () => {
     expect(c).toContain('...(role.id === rl.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E", borderTop: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>');

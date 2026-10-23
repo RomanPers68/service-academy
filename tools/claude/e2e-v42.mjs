@@ -160,7 +160,7 @@ if (want("DOOR")) {
   // звонок проверяем отдельно (PHONE) — здесь гость у двери
   await until(page, async () => (await eyebrow(page)) === "ВХОД");
   const rl = await roleLine(page);
-  ok("DOOR: на карточке — «Ты — хостес…», заказ и аперитив — у официанта", rl && rl.place === "door" && rl.text === "Ты — хостес: встреча, бронь, рассадка и передача официанту. Заказ и аперитив — уже работа официанта.", JSON.stringify(rl));
+  ok("DOOR: на карточке — «Ты — хостес…», заказ и аперитив — у официанта", rl && rl.place === "door" && rl.text === "Ты хостес: встреча, бронь, рассадка и передача официанту. Заказ и аперитив — уже работа официанта.", JSON.stringify(rl));
   ok("DOOR: шапка «гость — ИИ · хостес», надпись «ВХОД»", /гость — ИИ · хостес/.test(await tbText(page)) && (await eyebrow(page)) === "ВХОД");
   ok("DOOR: кнопка «Встретить гостя»", (await page.locator(".tb .tb-main").innerText()).trim() === "Встретить гостя");
   await page.locator(".tb .tb-main").click(); await sleep(600);
@@ -223,13 +223,13 @@ if (want("EXIT")) {
   const got = await until(page, async () => (await eyebrow(page)) === "ВЫХОД", 40);
   ok("EXIT: среди гостей хостес есть проводы на выходе", got);
   if (got) {
-    ok("EXIT: «ВЫХОД», «Подойти к гостю», роль — проводить", (await page.locator(".tb .tb-main").innerText()).trim() === "Подойти к гостю" && /^Ты — хостес: гость уходит после ужина/.test((await roleLine(page) || {}).text || ""));
+    ok("EXIT: «ВЫХОД», «Подойти к гостю», роль — проводить", (await page.locator(".tb .tb-main").innerText()).trim() === "Подойти к гостю" && /^Ты хостес: гость уходит после ужина/.test((await roleLine(page) || {}).text || ""));
     await page.locator(".tb .tb-main").click(); await sleep(600);
     ok("EXIT: «Проводить гостя»", (await ghosts(page)).includes("Проводить гостя"));
     await say(page, "Как вам сегодня у нас? Всё понравилось?");
     await say(page, "Спасибо, что сказали про кондиционер, — передам. Такси вызову, а пальто сейчас принесу.");
     await say(page, "Ваша машина будет через пять минут. Приходите ещё!");
-    ok("EXIT: конец — «Гость ушёл — проводы окончены»", /Гость ушёл — проводы окончены/.test(await tbText(page)));
+    ok("EXIT: конец — «Гость ушёл, проводы окончены»", /Гость ушёл, проводы окончены/.test(await tbText(page)));
     await page.locator(".tb .tb-main", { hasText: "Получить чек разбора" }).click(); await sleep(1400);
     const c = await crit(page);
     ok("EXIT: пункты чека проводов — внимание, такси и ожидание, забота, проводы, спокойствие", c.join(" | ") === "Внимание к гостю | Такси и ожидание | Забота о госте | Проводы | Спокойствие", c.join(" | "));
@@ -276,7 +276,7 @@ if (want("MGR")) {
   const { ctx, page, errors } = await open({ role: "manager", profile: BOSS, chat });
   await openGuest(page);
   const ey = await eyebrow(page);
-  ok("MGR: «СТОЛ N», роль менеджера, «Подойти к гостю»", /^СТОЛ \d+$/.test(ey) && /^Ты — менеджер: гость позвал тебя разобраться/.test((await roleLine(page) || {}).text || "") && (await page.locator(".tb .tb-main").innerText()).trim() === "Подойти к гостю", ey);
+  ok("MGR: «СТОЛ N», роль менеджера, «Подойти к гостю»", /^СТОЛ \d+$/.test(ey) && /^Ты менеджер: гость позвал тебя разобраться/.test((await roleLine(page) || {}).text || "") && (await page.locator(".tb .tb-main").innerText()).trim() === "Подойти к гостю", ey);
   ok("MGR: шапка «гость — ИИ · менеджер»", /гость — ИИ · менеджер/.test(await tbText(page)));
   await shot(page, "manager-card");
   await page.locator(".tb .tb-main").click(); await sleep(600);
@@ -284,7 +284,7 @@ if (want("MGR")) {
   await say(page, "Я менеджер, меня зовут Ольга. Вижу, что ситуация неприятная, — давайте разберусь прямо сейчас.");
   await say(page, "Приношу извинения от лица ресторана. Новый стейк приготовят в приоритете, я прослежу сама.");
   await say(page, "А к десерту позвольте угостить вас от заведения.");
-  ok("MGR: конец — «Гость прощается — разговор окончен»", /Гость прощается — разговор окончен/.test(await tbText(page)));
+  ok("MGR: конец — «Гость прощается, разговор окончен»", /Гость прощается, разговор окончен/.test(await tbText(page)));
   ok("MGR: трек manager", chat.filter((b) => b.mode === "guest").every((b) => b.track === "manager" && b.guest.place === "manager"));
   await page.locator(".tb .tb-main", { hasText: "Получить чек разбора" }).click(); await sleep(1400);
   const c = await crit(page);
@@ -301,9 +301,9 @@ if (want("BAR")) {
   const chat = [];
   const { ctx, page, errors } = await open({ role: "bar", chat });
   await openGuest(page);
-  ok("BAR: «БАРНАЯ СТОЙКА», роль бармена", (await eyebrow(page)) === "БАРНАЯ СТОЙКА" && /^Ты — бармен/.test((await roleLine(page) || {}).text || ""));
+  ok("BAR: «БАРНАЯ СТОЙКА», роль бармена", (await eyebrow(page)) === "БАРНАЯ СТОЙКА" && /^Ты бармен/.test((await roleLine(page) || {}).text || ""));
   const r = await talk(page, ["Добрый вечер! Что любите — посвежее или послаще?", "Безалкогольный «Гарден» — с огурцом и лаймом.", "Счёт сейчас принесу."]);
-  ok("BAR: «Рассчитать гостя» и «Гость попросил счёт»", r.finishLabel.includes("Рассчитать гостя") && /Гость попросил счёт — разговор окончен/.test(r.ended));
+  ok("BAR: «Рассчитать гостя» и «Гость попросил счёт»", r.finishLabel.includes("Рассчитать гостя") && /Гость попросил счёт, разговор окончен/.test(r.ended));
   const c = await crit(page);
   ok("BAR: пункты — контакт у стойки, знание бара, забота и мера, рекомендации, спокойствие", c.join(" | ") === "Контакт у стойки | Знание бара | Забота и мера | Рекомендации | Спокойствие", c.join(" | "));
   ok("BAR: трек bar", chat.filter((b) => b.mode === "guest").every((b) => b.track === "bar"));
@@ -316,10 +316,10 @@ if (want("HALL")) {
   const chat = [];
   const { ctx, page, errors } = await open({ role: "seasonal", chat });
   await openGuest(page);
-  ok("HALL: «СТОЛ N», роль официанта, «Подойти к столу»", /^СТОЛ \d+$/.test(await eyebrow(page)) && /^Ты — официант/.test((await roleLine(page) || {}).text || "") && (await page.locator(".tb .tb-main").innerText()).trim() === "Подойти к столу");
+  ok("HALL: «СТОЛ N», роль официанта, «Подойти к столу»", /^СТОЛ \d+$/.test(await eyebrow(page)) && /^Ты официант/.test((await roleLine(page) || {}).text || "") && (await page.locator(".tb .tb-main").innerText()).trim() === "Подойти к столу");
   await shot(page, "hall-card");
   const r = await talk(page, ["Добрый вечер! Меня зовут Роман. Подскажу, что у нас быстрое.", "Рекомендую борщ — подадим за 10 минут.", "Счёт сейчас принесу."]);
-  ok("HALL: «Рассчитать гостя» и «Гость попросил счёт»", r.finishLabel.includes("Рассчитать гостя") && /Гость попросил счёт — разговор окончен/.test(r.ended));
+  ok("HALL: «Рассчитать гостя» и «Гость попросил счёт»", r.finishLabel.includes("Рассчитать гостя") && /Гость попросил счёт, разговор окончен/.test(r.ended));
   const c = await crit(page);
   ok("HALL: пункты официанта как раньше", c.join(" | ") === "Контакт и встреча | Знание меню | Забота о госте | Рекомендации | Спокойствие", c.join(" | "));
   const sent = chat.filter((b) => b.mode === "guest");
@@ -401,7 +401,7 @@ if (want("SCRIPT")) {
   await r2.page.locator(".tb .tb-actc, .tb .tb-reply, .tb .tb-chip2, .tb .tb-myth button").first().click(); await sleep(1200);
   await r2.page.locator(".tb .tb-x").first().click(); await sleep(600);
   const t2 = (await r2.page.evaluate(() => document.body.innerText)).replace(/\s+/g, " ");
-  ok("SCRIPT: выход — «Гость уйдёт без помощи», а не «без расчёта»", /Гость уйдёт без помощи — можно встретить нового/.test(t2) && !/без расчёта/.test(t2), t2.slice(-200));
+  ok("SCRIPT: выход — «Гость уйдёт без помощи», а не «без расчёта»", /Гость уйдёт без помощи\. Можно встретить нового/.test(t2) && !/без расчёта/.test(t2), t2.slice(-200));
   await r2.ctx.close();
 }
 
@@ -419,7 +419,7 @@ if (want("EDIT")) {
   ok("EDIT: «Сыграть» — у гостя зала (менеджер играет его официантом), не у гостя входа", plays.length === 2 && /Пётр.*Сыграть/.test(plays[0]) && !/Сыграть/.test(plays[1]), plays.join(" || "));
   await page.locator(".tb-sheet[data-persona-editor] li", { hasText: "Пётр" }).locator("button", { hasText: "Сыграть" }).click(); await sleep(600);
   const rl = await roleLine(page);
-  ok("EDIT: свой гость зала — роль официанта, «Подойти к столу»", rl && rl.place === "hall" && /^Ты — официант/.test(rl.text) && /^СТОЛ \d+$/.test(await eyebrow(page)) && (await page.locator(".tb .lg-card h2").innerText()).trim() === "Пётр", JSON.stringify(rl));
+  ok("EDIT: свой гость зала — роль официанта, «Подойти к столу»", rl && rl.place === "hall" && /^Ты официант/.test(rl.text) && /^СТОЛ \d+$/.test(await eyebrow(page)) && (await page.locator(".tb .lg-card h2").innerText()).trim() === "Пётр", JSON.stringify(rl));
   // новый гость в редакторе у менеджера — по умолчанию «Зал» (у сервера нет места «менеджер»)
   await page.locator(".tb [data-persona-open]").click(); await sleep(400);
   await page.locator(".tb-sheet[data-persona-editor] .tb-main", { hasText: "Добавить гостя" }).click(); await sleep(300);

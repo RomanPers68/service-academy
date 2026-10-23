@@ -104,7 +104,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
               </div>
             ))}
           </div>
-          <div style={{ fontSize: small(12.5), color: sub, marginTop: 10, lineHeight: 1.45 }}>Пройденная тема выдыхается, как открытое вино: бокал под номером темы пустеет. Освежил — снова полный, а следующий повтор позже{creditN ? ". По опыту засчитано: " + creditN : ""}.</div>
+          <div style={{ fontSize: small(12.5), color: sub, marginTop: 10, lineHeight: 1.45 }}>Пройденная тема выдыхается, как открытое вино: бокал под номером темы пустеет. Освежил, и он снова полный, а следующий повтор позже{creditN ? ". По опыту засчитано: " + creditN : ""}.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
             {fading.length && onFreshAll ? <button type="button" style={btn(true)} onClick={onFreshAll}>Освежить всё выдохшееся · {Math.min(3, fading.length) === 1 ? "1 мин" : "≈ 3 мин"}</button> : null}
             {probeCount >= 2 && onProbe ? <button type="button" style={btn(false)} onClick={onProbe}>Проверка по треку · {probeCount * 2} {plural(probeCount * 2, "задание", "задания", "заданий")}</button> : null}
@@ -117,7 +117,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
                 background: filter === id ? (a11y ? "rgba(255,255,255,0.6)" : "rgba(226,186,116,0.12)") : "transparent", color: filter === id ? text : sub }}>{l}</button>
           ))}
         </div>
-        {list.length === 0 ? <div style={{ color: sub, fontSize: 13.5, padding: "14px 2px" }}>{filter === "fade" ? "Всё свежее — освежать нечего" : filter === "gold" ? "Пройди тему — и раунд мастера откроется." : "Тем пока нет."}</div> : null}
+        {list.length === 0 ? <div style={{ color: sub, fontSize: 13.5, padding: "14px 2px" }}>{filter === "fade" ? "Всё свежее, освежать нечего" : filter === "gold" ? "Пройди тему, и раунд мастера откроется." : "Тем пока нет."}</div> : null}
         <div role="list" aria-label="Темы трека">
           {list.map((r) => {
             const a = action(r);
@@ -125,7 +125,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
             return (
               <div key={r.m.id} role="listitem" className="sa-card" style={{ ...T.modCard, marginBottom: 8, gap: 10, alignItems: "center" }}>
                 <div role="button" tabIndex={0} onClick={open} {...onActivate(open)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, cursor: "pointer" }}
-                  aria-label={"Тема " + r.label + ": " + r.m.title + " — " + status(r)}>
+                  aria-label={"Тема " + r.label + ": " + r.m.title + ", " + status(r)}>
                   <div style={{ position: "relative", width: 34, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
                     <WineGlass level={r.done ? (r.f ? wineLevel(r.f) : 1) : null} gold={!!r.gold} updated={!!(r.f && r.f.updated)} size={26} color={a11y ? "#8B6A30" : GOLD} a11y={a11y} />
                     <span style={{ fontFamily: "Georgia, serif", fontSize: small(11), color: sub, marginTop: -1 }}>{r.label}</span>

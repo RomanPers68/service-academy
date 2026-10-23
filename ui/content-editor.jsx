@@ -60,12 +60,12 @@ const CUT_COLON = /(^|[\s,])(а|в|он|на|о|в течение)\s*:\s*$/iu;
 export const genreOfS = (x) => { const g = x && (x.genre || x.type); return GENRE_IDS.includes(g) ? g : "action"; };
 // Подсказки в карточке — по docs/ОТВЕТЫ-С-ПОДВОХОМ.md (правила 4, 8, 9)
 const GENRE_HINT = {
-  action: "Сцена из смены — сотрудник выбирает, что сделать. Мысли сотрудника пиши прямо в сцене.",
-  find: "В сцене сотрудник ошибается. Спроси, что не так, — а не «что делаешь?».",
-  empathy: "Мысли гостя — только в этом виде, и они совпадают со сценой. Вопрос — про чувства гостя и про то, что их создаёт.",
-  truefalse: "Утверждение, которое по уроку точно правда или точно миф, — без «иногда» и «зависит».",
+  action: "Сцена из смены: сотрудник выбирает, что сделать. Мысли сотрудника пиши прямо в сцене.",
+  find: "В сцене сотрудник ошибается. Спроси, что не так.",
+  empathy: "Мысли гостя есть только в этом виде, и они совпадают со сценой. Спроси про чувства гостя и про то, что их создаёт.",
+  truefalse: "Утверждение, которое по уроку точно правда или точно миф. Без «иногда» и «зависит».",
   complete: "Начало и любой вариант читаются как одно предложение: без вопроса в конце начала и без двоеточия после «а», «в», «он».",
-  timer: "Как «Что делаешь?», только на ответ — 12 секунд: сцена и варианты короткие.",
+  timer: "Как «Что делаешь?», но на ответ 12 секунд: сцена и варианты короткие.",
 };
 const SCENE_PH = {
   action: "Сцена: «Гость пятый раз зовёт тебя, а у тебя в руках горячее…»",
@@ -118,9 +118,9 @@ export function sitProblem(x) {
   if (g === "complete") {
     const st = t(x.start);
     if (!st) return "нужно начало правила.";
-    if (/\?\s*$/.test(st)) return "начало правила — не вопрос: начало и любой вариант читаются как одно предложение.";
+    if (/\?\s*$/.test(st)) return "начало правила не вопрос: начало и любой вариант читаются как одно предложение.";
     const m = st.match(CUT_COLON);
-    if (m) return `начало правила обрывается на «${m[2]}:» — убери двоеточие, чтобы начало и вариант читались одним предложением.`;
+    if (m) return `начало правила обрывается на «${m[2]}:». Убери двоеточие, чтобы начало и вариант читались одним предложением.`;
   } else {
     if (g === "empathy" && !t(x.guestThought)) return "нужны мысли гостя.";
     if (!t(x.scene)) return "нужна сцена.";
@@ -493,13 +493,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       // всё предложенное — сразу отмечено (и вопросы, и ситуации)
       const list = d && (d.questions || d.situations);
       if (d && d.ok) setAi(a => ({ ...a, busy: false, result: d, picked: list ? Object.fromEntries(list.map((_, i) => [i, true])) : {} }));
-      else setAi(a => ({ ...a, busy: false, err: (d && d.error) || (r.status === 404 ? "Ассистент ещё не развёрнут: залей архив на Vercel (функция /api/lesson-assist)." : "Ассистент не ответил — попробуй ещё раз.") }));
+      else setAi(a => ({ ...a, busy: false, err: (d && d.error) || (r.status === 404 ? "Ассистент ещё не развёрнут: залей архив на Vercel (функция /api/lesson-assist)." : "Ассистент не ответил. Попробуй ещё раз.") }));
     } catch (e) { setAi(a => ({ ...a, busy: false, err: "Нет связи с ассистентом." })); }
   };
   const aiClose = () => setAi(a => ({ ...a, mode: null, busy: false, err: null, result: null }));
   const pickPdf = (file) => {
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setAi(a => ({ ...a, err: "PDF больше 10 МБ — сократи или вставь текст" })); return; }
+    if (file.size > 10 * 1024 * 1024) { setAi(a => ({ ...a, err: "PDF больше 10 МБ. Сократи его или вставь текст" })); return; }
     const fr = new FileReader();
     fr.onload = () => setAi(a => ({ ...a, pdf: { name: file.name, b64: String(fr.result).split(",")[1] }, err: null }));
     fr.readAsDataURL(file);
@@ -570,7 +570,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       // остальные уроки раздела — только текст (старые разделы: части лежали на разных уроках)
       for (const r of recs.slice(anchorIsMe ? 0 : 1)) if ((r.questions || []).length) await rpc("cms_save_lesson", { p_token: token, p_lesson: { ...r, questions: [] } });
       writeDraft(null); await load(); setView("list"); setDraft(null);
-    } catch (e) { setErr("Нет связи. Черновик сохранён на телефоне — попробуй ещё раз."); }
+    } catch (e) { setErr("Нет связи. Черновик сохранён на телефоне. Попробуй ещё раз."); }
     setBusy(false);
   };
   const remove = async (id) => {
@@ -639,14 +639,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       ) : null}
         {header("Редактор контента", onBack)}
         <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "12px 16px 44px" }}>
-          <div style={{ color: muted, fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>Свои уроки под твой ресторан — сотрудники увидят их в своём треке рядом со штатными.</div>
+          <div style={{ color: muted, fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>Свои уроки под твой ресторан. Сотрудники увидят их в своём треке рядом со штатными.</div>
           {loading ? <SkelCards a11y={!!T.a11y} rows={3} h={74} style={{ padding: "12px 0" }} />
           : loadErr ? <div style={{ textAlign: "center", padding: "40px 0", color: muted }}>Не удалось загрузить. <span onClick={load} style={{ color: gold, cursor: "pointer" }}>Повторить</span></div>
           : groups.length === 0 ? (
             <div style={{ ...G({ padding: "34px 22px", marginTop: 12 }), textAlign: "center" }}>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>{MOD_SVG["📘"](gold, 34)}</div>
               <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 16, marginBottom: 6 }}>Пока ни одного своего урока</div>
-              <div style={{ color: muted, fontSize: 13, lineHeight: 1.5 }}>Добавь первый — можно вставить регламент, и ассистент соберёт из него урок.</div>
+              <div style={{ color: muted, fontSize: 13, lineHeight: 1.5 }}>Добавь первый: можно вставить регламент, и ассистент соберёт из него урок.</div>
             </div>
           ) : groups.map(({ t, mine, secs }) => (
             <div key={t.id}>
@@ -704,7 +704,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const editing = !!draft.id;
   // свёрнутая карточка: номер и вид, начало текста, ✓ «заполнено» / «!» — нет; порядок — прямо в строке
   const cardRow = (sec, id, label, text, ok, i, len, move) => (
-    <div key={id} data-card={sec} onClick={() => toggleCard(sec, id)} role="button" aria-label={label + " — раскрыть"}
+    <div key={id} data-card={sec} onClick={() => toggleCard(sec, id)} role="button" aria-label={label + ", раскрыть"}
       style={{ ...G({ padding: "9px 10px 9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...labelStyle(13), color: gold }}>{label}</div>
@@ -745,7 +745,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
     if (!sitsOk.length) { const i = sitsAll.findIndex(x => sitProblem(x)); setPlayMsg(i >= 0 ? `Ситуация ${i + 1}: ${sitProblem(sitsAll[i])}` : "Сначала добавь ситуацию."); return; }
     let m = tbRef.current;
     if (!m) { setPlayBusy(true); try { m = await import("./table"); tbRef.current = m; } catch (e) { m = null; } setPlayBusy(false); }
-    if (!m || !m.TablePractice) { setPlayMsg("Не удалось открыть игру — проверь связь и попробуй ещё раз."); return; }
+    if (!m || !m.TablePractice) { setPlayMsg("Не удалось открыть игру. Проверь связь и попробуй ещё раз."); return; }
     const steps = playSteps(sitsOk);
     const lesson = steps.find(s => s.type === "practice");
     let profile = null; try { profile = JSON.parse(localStorage.getItem("sa_profile") || "null"); } catch (e) {}
@@ -796,10 +796,10 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           {!draft.id ? <button onClick={() => { setNewSection(true); toSection(draft.role, ""); }} style={{ ...pill(typingNew, gold), display: "inline-flex", alignItems: "center", gap: 4 }}>{ico.plus(typingNew && dark ? "#1A1008" : gold, 14)} Новый</button> : null}
         </div>
         {typingNew && !draft.id ? <input style={input} value={draft.module} onChange={e => patch({ module: e.target.value })} placeholder="Напр. «Наше вино»" autoFocus={newSection} /> : null}
-        {draft.id ? <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>Урок остаётся в своём разделе: практика, диалог и тест — общие для раздела.</div> : null}
+        {draft.id ? <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>Урок остаётся в своём разделе: практика, диалог и тест у раздела общие.</div> : null}
         {draft.module.trim() ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, color: muted, fontSize: 12 }}>
-            {MOD_SVG[secIcon] ? MOD_SVG[secIcon](trackInk(track), 18) : null}<span>так раздел будет выглядеть у сотрудников — иконка по смыслу названия, цвет трека</span>
+            {MOD_SVG[secIcon] ? MOD_SVG[secIcon](trackInk(track), 18) : null}<span>так раздел будет выглядеть у сотрудников: иконка по смыслу названия, цвет трека</span>
           </div>) : null}
 
         <SectionLabel a11y={a11y}>Название урока</SectionLabel>
@@ -813,7 +813,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           <button onClick={() => fmt("head")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Заголовок</button>
         </div>
         <textarea ref={taRef} style={{ ...input, minHeight: 140, resize: "none", lineHeight: 1.6, overflow: "hidden" }} value={draft.content}
-          onChange={e => patch({ content: e.target.value })} placeholder={"Напиши текст урока — или собери его ассистентом из регламента ниже.\n\n**Заголовок**\n• пункт списка"} />
+          onChange={e => patch({ content: e.target.value })} placeholder={"Напиши текст урока или собери его ассистентом из регламента ниже.\n\n**Заголовок**\n• пункт списка"} />
         {textTall ? <button onClick={() => setTextFull(v => !v)} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, padding: "6px 2px" }}>{textFull ? "Свернуть текст ▴" : "Показать текст целиком ▾"}</button> : null}
 
         {/* Ассистент */}
@@ -833,7 +833,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           {ai.mode === "lesson" && !ai.result ? (
             <div style={{ marginTop: 10 }}>
               <textarea style={{ ...input, minHeight: 110, lineHeight: 1.5, fontSize: 13 }} value={ai.material} onChange={e => setAi(a => ({ ...a, material: e.target.value }))}
-                placeholder="Вставь регламент, заметки или список правил — ассистент сделает из этого урок в стиле приложения" />
+                placeholder="Вставь регламент, заметки или список правил, и ассистент сделает из этого урок в стиле приложения" />
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                 <label style={{ ...aiBtn, background: "transparent" }}>{ico.file(gold)} {ai.pdf ? ai.pdf.name.slice(0, 24) : "Прикрепить PDF"}
                   <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={e => pickPdf(e.target.files && e.target.files[0])} /></label>
@@ -867,7 +867,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <span style={{ color: txt, fontFamily: SERIF, fontSize: 14.5, fontWeight: "bold" }}>{ai.result.build.title}</span>
                 <span style={{ color: muted, fontSize: 12 }}>· {(GLASSES.find(g => g[0] === ai.result.build.glass) || ["", ""])[1]} · шагов: {ai.result.build.steps.length}</span>
               </div>
-              {ai.result.build.steps.map((st, i) => <div key={i} style={{ color: muted, fontSize: 12.5, lineHeight: 1.45 }}>{i + 1}. <b style={{ color: txt }}>{st.label}</b> — {(st.options.find(o => o.ok) || {}).t}</div>)}
+              {ai.result.build.steps.map((st, i) => <div key={i} style={{ color: muted, fontSize: 12.5, lineHeight: 1.45 }}>{i + 1}. <b style={{ color: txt }}>{st.label}</b>: {(st.options.find(o => o.ok) || {}).t}</div>)}
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={() => { setBld(withBIds(ai.result.build)); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.build ? "Заменить сборку" : "Взять в урок"}</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
@@ -943,15 +943,15 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
 
         {/* Общие части раздела (правка 161): одни на весь раздел, сотрудник проходит их после всех уроков */}
         <div style={{ margin: "22px 0 4px", padding: "12px 14px", borderRadius: 14, border: `1px solid ${track.color}66`, background: `${track.color}12` }}>
-          <div style={{ ...labelStyle(13), color: dark ? track.color : track.ink }}>Раздел «{secLabel}» — для всех уроков</div>
+          <div style={{ ...labelStyle(13), color: dark ? track.color : track.ink }}>Общее для раздела «{secLabel}»</div>
           <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginTop: 4 }}>
-            Практика, диалог{draft.role === "bar" ? ", сборка" : ""} и тест — общие для раздела: сотрудник проходит их после всех уроков.{otherRecs.length ? ` В разделе ещё ${otherRecs.length} ${otherRecs.length === 1 ? "урок" : otherRecs.length < 5 ? "урока" : "уроков"} — ассистент учтёт их текст.` : ""}
+            Практика, диалог{draft.role === "bar" ? ", сборка" : ""} и тест у раздела общие: сотрудник проходит их после всех уроков.{otherRecs.length ? ` В разделе ещё ${otherRecs.length} ${otherRecs.length === 1 ? "урок" : otherRecs.length < 5 ? "урока" : "уроков"}. Ассистент учтёт их текст.` : ""}
           </div>
         </div>
         {/* Практика ситуаций — между текстом и тестом, как шаги в программе (правка 158) */}
         <div ref={secRef.sit} />
         <SectionLabel a11y={a11y} right={(draft.situations || []).length ? `${draft.situations.length}` : "необязательно"}>Практика ситуаций</SectionLabel>
-        {!(draft.situations || []).length ? <div style={{ color: muted, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Шесть видов, как в штатных уроках: «Что делаешь?», «Найди ошибку», «Глазами гостя», «Правда или миф», «Собери правило», «Быстрое решение». В игре — до 6 случайных, со звёздами.</div> : null}
+        {!(draft.situations || []).length ? <div style={{ color: muted, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Шесть видов, как в штатных уроках: «Что делаешь?», «Найди ошибку», «Глазами гостя», «Правда или миф», «Собери правило», «Быстрое решение». В игре до 6 случайных, со звёздами.</div> : null}
         {(draft.situations || []).map((x, si) => { const g = genreOfS(x); return openCard.sit !== x.id
           ? cardRow("sit", x.id, `Ситуация ${si + 1} · ${GENRE_RU[g]}`, sitHead(x), !sitProblem(x), si, draft.situations.length, moveS)
           : (
@@ -987,7 +987,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <button onClick={() => setS(x.id, { isTrue: true })} aria-pressed={x.isTrue === true} style={{ ...pill(x.isTrue === true, TN.good), padding: "6px 14px", fontSize: 13 }}>Правда</button>
                 <button onClick={() => setS(x.id, { isTrue: false })} aria-pressed={x.isTrue === false} style={{ ...pill(x.isTrue === false, TN.bad), padding: "6px 14px", fontSize: 13 }}>Миф</button>
               </div>
-              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "0 2px 9px" }}>Сотрудник нажмёт одну из двух кнопок: «Правда — так и есть» или «Миф — так только кажется».</div>
+              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "0 2px 9px" }}>Сотрудник нажмёт одну из двух кнопок: «Правда» (так и есть) или «Миф» (так только кажется).</div>
             </>) : g === "complete" ? (<>
               <div style={fieldLab}>Начало правила</div>
               <textarea style={{ ...input, minHeight: 52, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.start || ""} onChange={e => setS(x.id, { start: e.target.value })}
@@ -1007,14 +1007,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 </div>); })}
               <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0 8px" }}>
                 {x.options.length < 4 ? <button onClick={() => setS(x.id, { options: [...x.options, ""] })} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: dark ? 12.5 : 13, gap: 4, padding: 2 }}>{ico.plus(gold, 14)} вариант</button> : null}
-                <span style={{ color: muted, fontSize: dark ? 11 : 13 }}>зелёный кружок — верный; неверные — ошибки по уроку</span>
+                <span style={{ color: muted, fontSize: dark ? 11 : 13 }}>зелёный кружок отмечает верный, в остальных ошибка по уроку</span>
               </div>
-              {answerTell(x.options, x.correct) ? <div data-len-tell="sit" style={{ color: TN.mid, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Верный вариант заметно длиннее остальных — его угадают по длине. Допиши неверные до той же длины: правдоподобно, но с ошибкой.</div> : null}
+              {answerTell(x.options, x.correct) ? <div data-len-tell="sit" style={{ color: TN.mid, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Верный вариант заметно длиннее остальных, его угадают по длине. Допиши неверные до той же длины: правдоподобно, но с ошибкой.</div> : null}
               {g === "complete" && String(x.start || "").trim() && String(x.options[x.correct] || "").trim()
                 ? <div data-reads="" style={{ color: muted, fontSize: dark ? 12 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Читается так: <span style={{ color: txt, fontFamily: SERIF }}>«{String(x.start).trim()} {String(x.options[x.correct]).trim()}»</span></div> : null}
             </>) : null}
-            <input style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Если верно — реакция: «🎯 Точно! …»" />
-            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Если мимо — к любому неверному: «💡 …»" />
+            <input style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Реакция, если верно: «🎯 Точно! …»" />
+            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Реакция на любой неверный: «💡 …»" />
           </div>); })}
         <button onClick={addS} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
 
@@ -1023,7 +1023,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <SectionLabel a11y={a11y} right={draft.dialogue ? `${draft.dialogue.steps.length} шагов` : "необязательно"}>Живой диалог</SectionLabel>
         {!draft.dialogue ? (
           <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
-            <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Разговор с гостем по шагам: гость говорит — сотрудник выбирает ответ — настроение гостя меняется. Как штатные «Живые диалоги».</div>
+            <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Разговор с гостем по шагам: гость говорит, сотрудник выбирает ответ, настроение гостя меняется. Как штатные «Живые диалоги».</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} disabled={sectionText.length < 40} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }}>Собрать с ассистентом</button>
               <button onClick={() => setDlg(newDialogue())} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
@@ -1041,7 +1041,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <span style={{ color: muted, fontSize: 12 }}>Настроение в начале:</span>
               {MOODS.map((m, k) => <button key={k} onClick={() => setGuest({ mood: k + 1 })} aria-label={`Настроение ${k + 1}`} style={{ width: 32, height: 32, borderRadius: 10, cursor: "pointer", fontSize: 16, background: draft.dialogue.guest.mood === k + 1 ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.mood === k + 1 ? gold : brd}` }}>{m}</button>)}
             </div>
-            <input style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора — главная мысль, покажется в конце" />
+            <input style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора: главная мысль, покажется в конце" />
             {/* v40: уход гостя — своя фраза и заголовок (guest.walk / guest.walkTitle), как у штатных сценариев */}
             {(() => { const gn = (draft.dialogue.guest.name || "").trim() || "Гость"; const gr = dlgGram(gn); return (<>
               <div style={{ ...fieldLab, marginTop: 12 }}>Если гость уйдёт · необязательно</div>
@@ -1049,7 +1049,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 onChange={e => setGuest({ walk: e.target.value })} placeholder={"Что происходит: «" + dlgWalkText(gn) + "»"} aria-label="Что происходит, когда гость уходит" />
               <input style={{ ...input, fontSize: 13.5 }} value={draft.dialogue.guest.walkTitle || ""} maxLength={60} onChange={e => setGuest({ walkTitle: e.target.value })}
                 placeholder={"Заголовок в конце: «" + gn + " " + (gr === "pl" ? "ушли" : gr === "f" ? "ушла" : "ушёл") + "»"} aria-label="Заголовок, когда гость ушёл" />
-              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "6px 2px 0" }}>Гость уходит, если после неверного ответа его настроение падает до 😠. Не заполнишь — будет то, что написано серым.</div>
+              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "6px 2px 0" }}>Гость уходит, если после неверного ответа его настроение падает до 😠. Пустые поля заменит серый текст.</div>
             </>); })()}
           </div>
           {draft.dialogue.steps.map((st, i) => openCard.st !== st.id
@@ -1081,8 +1081,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                           background: (o.moodDelta | 0) === dv ? (dv > 0 ? TN.good : dv < 0 ? TN.bad : muted) + "22" : "transparent", border: `1px solid ${(o.moodDelta | 0) === dv ? (dv > 0 ? TN.good : dv < 0 ? TN.bad : muted) : brd}` }}>{dv > 0 ? "+1" : dv < 0 ? "−1" : "0"}</button>)}
                     </div>
                   </div>))}
-                <div style={{ color: muted, fontSize: 11, paddingLeft: 2 }}>зелёный — верный ответ · ±1 — как ответ меняет настроение гостя</div>
-                {answerTell(st.options) ? <div data-len-tell="" style={{ color: TN.mid, fontSize: 11.5, lineHeight: 1.45, padding: "5px 2px 0" }}>Верный ответ заметно длиннее остальных — его угадают по длине. Сделай неверные такими же подробными: вежливо, уверенно, но с одной ошибкой.</div> : null}
+                <div style={{ color: muted, fontSize: 11, paddingLeft: 2 }}>зелёный у верного · ±1: как ответ меняет настроение гостя</div>
+                {answerTell(st.options) ? <div data-len-tell="" style={{ color: TN.mid, fontSize: 11.5, lineHeight: 1.45, padding: "5px 2px 0" }}>Верный ответ заметно длиннее остальных, его угадают по длине. Сделай неверные такими же подробными: вежливо, уверенно, но с одной ошибкой.</div> : null}
               </>)}
             </div>
           ))}
@@ -1100,7 +1100,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <SectionLabel a11y={a11y} right={draft.build ? `${draft.build.steps.length} шагов` : "необязательно"}>Сборка</SectionLabel>
         {!draft.build ? (
           <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
-            <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 8 }}>Собрать напиток по шагам: бокал, лёд, дозы, метод, гарниш — бокал на экране наполняется, ошибка тянет за собой вкус. Как штатные «Сборки».</div>
+            <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 8 }}>Собрать напиток по шагам: бокал, лёд, дозы, метод, гарниш. Бокал на экране наполняется, ошибка тянет за собой вкус. Как штатные «Сборки».</div>
             <input style={{ ...input, fontSize: 13.5 }} value={ckQuery} onChange={e => setCkQuery(e.target.value)} placeholder="Найти коктейль из карты бара: «негрони»" />
             {ckQuery.trim().length >= 2 ? (() => {
               const qq = ckQuery.trim().toLowerCase().replace(/ё/g, "е");
@@ -1110,7 +1110,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                   <span style={{ width: 14, height: 14, borderRadius: 4, flexShrink: 0, background: Array.isArray(c.color) ? c.color[0] : GOLD }} />
                   <span style={{ flex: 1, color: txt, fontFamily: SERIF, fontSize: 14 }}>{c.name}</span>
                   <span style={{ color: muted, fontSize: 11.5 }}>{c.own ? "своё · " : ""}{GLASS_RU[c.glass] || ""}</span>
-                </div>)) : <div style={{ color: muted, fontSize: 12.5, padding: "8px 2px" }}>Не нашёл — проверь название или составь вручную.</div>;
+                </div>)) : <div style={{ color: muted, fontSize: 12.5, padding: "8px 2px" }}>Не нашёл. Проверь название или составь вручную.</div>;
             })() : null}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
               <button onClick={() => setBld(newBuild())} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
@@ -1127,7 +1127,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <span style={{ color: muted, fontSize: 12 }}>Цвет напитка:</span>
               {TINTS.map(c => <button key={c} onClick={() => setBld(b => ({ ...b, tint: c }))} aria-label={"Цвет " + c} style={{ width: 26, height: 26, borderRadius: 8, cursor: "pointer", background: c, border: `2px solid ${draft.build.tint === c ? txt : brd}` }} />)}
             </div>
-            <input style={{ ...input, marginBottom: 8, fontSize: 13.5 }} value={draft.build.win} onChange={e => setBld(b => ({ ...b, win: e.target.value }))} placeholder="Если собрано чисто: «Негрони как надо — и завтра такой же»" />
+            <input style={{ ...input, marginBottom: 8, fontSize: 13.5 }} value={draft.build.win} onChange={e => setBld(b => ({ ...b, win: e.target.value }))} placeholder="Если собрано чисто: «Негрони как надо. И завтра такой же»" />
             <input style={{ ...input, fontSize: 13.5 }} value={draft.build.lose} onChange={e => setBld(b => ({ ...b, lose: e.target.value }))} placeholder="Если были ошибки: «Одна ошибка тянет за собой вкус»" />
           </div>
           {draft.build.steps.map((st, i) => openCard.bst !== st.id
@@ -1183,9 +1183,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               </div>); })}
             <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0 8px" }}>
               {q.options.length < 4 ? <button onClick={() => setQ(q.id, { options: [...q.options, ""] })} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, gap: 4, padding: 2 }}>{ico.plus(gold, 14)} вариант</button> : null}
-              <span style={{ color: muted, fontSize: 11 }}>зелёный кружок — верный ответ</span>
+              <span style={{ color: muted, fontSize: 11 }}>зелёный кружок: верный ответ</span>
             </div>
-            {answerTell(q.options, q.correct) ? <div data-len-tell="" style={{ color: TN.mid, fontSize: 11.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Верный вариант заметно длиннее остальных — его угадают по длине. Допиши неверные до той же длины: правдоподобно, но с ошибкой.</div> : null}
+            {answerTell(q.options, q.correct) ? <div data-len-tell="" style={{ color: TN.mid, fontSize: 11.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Верный вариант заметно длиннее остальных, его угадают по длине. Допиши неверные до той же длины: правдоподобно, но с ошибкой.</div> : null}
             <input style={{ ...input, fontSize: 13.5 }} value={q.explanation || ""} onChange={e => setQ(q.id, { explanation: e.target.value })} placeholder="Пояснение: почему верно именно так" />
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <span style={{ flexShrink: 0 }}>{ico.photo(muted)}</span>
@@ -1226,7 +1226,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {/* Доп. 310: навыки раздела — наставник подтверждает их в зале, как штатные */}
         <SectionLabel a11y={a11y} right={(draft.skills || []).length ? String((draft.skills || []).length) : "необязательно"}>Навыки в зале</SectionLabel>
         <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
-          <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: (draft.skills || []).length ? 10 : 8 }}>Что старший должен увидеть своими глазами в зале. Навык появится в «Наставничестве» у сотрудников этого трека: «Отправить старшему» или PIN — как у штатных навыков.</div>
+          <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: (draft.skills || []).length ? 10 : 8 }}>Что старший должен увидеть своими глазами в зале. Навык появится в «Наставничестве» у сотрудников этого трека: «Отправить старшему» или PIN, как у штатных навыков.</div>
           {(draft.skills || []).map((sk, i) => (
             <div key={sk.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -1244,12 +1244,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <SectionLabel a11y={a11y}>Как увидит сотрудник</SectionLabel>
         {/* v40: проба на настоящих экранах игры — с черновиком, без записи прогресса */}
         <div data-play-card="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
-          <div style={{ color: muted, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, marginBottom: 10 }}>Пройди практику и диалог так, как их пройдёт сотрудник, — на тех же экранах. Это проба: звёзды, ошибки и прогресс не записываются.</div>
+          <div style={{ color: muted, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, marginBottom: 10 }}>Пройди практику и диалог на тех же экранах, что и сотрудник. Это проба: звёзды, ошибки и прогресс не записываются.</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={playPractice} disabled={!sitsAll.length || playBusy} style={{ ...aiBtn, flex: 1, minWidth: 0, justifyContent: "center", padding: "10px 6px", fontSize: 13.5, opacity: sitsAll.length ? 1 : 0.45 }}>{ico.play(gold)} {playBusy ? "Открываю…" : "Сыграть практику"}</button>
             <button onClick={playDialogue} disabled={!draft.dialogue} style={{ ...aiBtn, flex: 1, minWidth: 0, justifyContent: "center", padding: "10px 6px", fontSize: 13.5, opacity: draft.dialogue ? 1 : 0.45 }}>{ico.play(gold)} Сыграть диалог</button>
           </div>
-          {!sitsAll.length && !draft.dialogue ? <div style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, marginTop: 8 }}>Добавь ситуации или диалог выше — их можно будет сыграть здесь.</div>
+          {!sitsAll.length && !draft.dialogue ? <div style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, marginTop: 8 }}>Добавь ситуации или диалог выше, чтобы сыграть их здесь.</div>
             : sitsOk.length && sitsOk.length < sitsAll.length ? <div style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, marginTop: 8 }}>В пробу попадут заполненные ситуации: {sitsOk.length} из {sitsAll.length}.</div> : null}
           {playMsg ? <div role="status" data-play-msg="" style={{ color: TN.bad, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, marginTop: 8 }}>{playMsg}</div> : null}
         </div>
@@ -1265,7 +1265,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
           <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 17, marginBottom: 8 }}>{draft.title.trim() || "Название урока"}</div>
           {draft.content.trim() ? <Rich text={draft.content} T={T} color={track.color} a11y={a11y} /> : <div style={{ color: muted, fontSize: 13 }}>Здесь появится текст урока.</div>}
-          {draft.questions.length ? <div style={{ color: muted, fontSize: 12, marginTop: 10 }}>В конце — тест: {draft.questions.length} вопр.</div> : null}
+          {draft.questions.length ? <div style={{ color: muted, fontSize: 12, marginTop: 10 }}>В конце тест: {draft.questions.length} вопр.</div> : null}
         </div>
 
         {(draft.situations || []).length ? (() => { const x = draft.situations[0]; const g = genreOfS(x); return (
@@ -1279,7 +1279,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               {g === "truefalse" ? "«" + (unq(String(x.statement || "").trim()) || "Утверждение") + "»" : g === "complete" ? (String(x.start || "").trim() || "Начало правила") + " ___" : (x.scene || "Сцена ситуации")}</div>
             <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14, marginBottom: 8 }}>{g === "truefalse" ? "Правда или миф?" : g === "complete" ? SIT_Q.complete : (x.question || SIT_Q[g])}</div>
             {(g === "truefalse" ? ["Правда", "Миф"] : x.options.filter(o => (o || "").trim())).map((o, k) => <div key={k} style={{ padding: "9px 12px", borderRadius: 12, marginBottom: 6, border: `1px solid ${brd}`, color: txt, fontSize: 13.5, fontFamily: SERIF }}>{o}</div>)}
-            <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре — до 6 случайных ситуаций, варианты перемешаны, 3 жизни и звёзды.</div>
+            <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре до 6 случайных ситуаций, варианты перемешаны, 3 жизни и звёзды.</div>
           </div>); })() : null}
         {draft.dialogue ? (
           <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
@@ -1297,7 +1297,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                   <div style={{ color: gold, fontSize: 12.5, fontWeight: "bold", marginBottom: 5 }}>{st.prompt}</div>
                   {st.options.filter(o => (o.text || "").trim()).map((o, k) => <div key={k} style={{ padding: "7px 11px", borderRadius: 12, marginBottom: 5, border: `1px solid ${brd}`, color: txt, fontSize: 13, fontFamily: SERIF }}>{o.text}</div>)}
                 </div>)}
-            <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре варианты перемешаны; после выбора — объяснение, настроение гостя меняется, при плохом — он уходит.</div>
+            <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре варианты перемешаны. После выбора видно объяснение, настроение гостя меняется, при плохом он уходит.</div>
           </div>) : null}
         {draft.build ? (
           <div style={G({ padding: "14px 14px", marginBottom: 16, display: "flex", gap: 12, alignItems: "center" })}>

@@ -7,7 +7,7 @@ import { readFileSync, statSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("/home/claude/.npm-global/lib/node_modules/playwright");
-const SITE = "/home/claude/preview/site", PORT = 5196, OUT = "/home/claude/preview/shots-v28";
+const SITE = process.env.E2E_SITE || "/home/claude/preview/site", PORT = Number(process.env.E2E_PORT) || 5196, OUT = process.env.E2E_OUT || "/home/claude/preview/shots-v28";
 mkdirSync(OUT, { recursive: true });
 const SRC = "/home/claude/work/service-academy";
 const { HINTS, HINTS_VERSION } = await import(SRC + "/data/hints.js");
@@ -204,7 +204,7 @@ const baseStorage = {
   // 3-я — верно; автопереход в разминке
   ok(tag + ": ответ 3", await answer(page, true));
   t = await text(page);
-  const sayBlock = /А теперь — вслух/i.test(t);
+  const sayBlock = /А теперь вслух/i.test(t);
   if (!sayBlock) {
     ok(tag + ": в разминке после верного — «дальше само»", /Дальше само/i.test(t));
     await sleep(3200);
@@ -267,7 +267,7 @@ const baseStorage = {
   ok(tag + ": снимок экрана «График» не тронут", (await page.evaluate((m) => localStorage.getItem("sa_sched_cache_main_" + m), MKEY)) === null);
   await page.locator(".tb .tb-x").click(); await sleep(700);
   t = await text(page);
-  ok(tag + ": строка разминки со сменой из подгрузки", /Сегодня вечер, 16:00–24:00/.test(t) && /Хорошей смены ✦/.test(t));
+  ok(tag + ": строка разминки со сменой из подгрузки", /Сегодня вечер, 16:00–24:00/.test(t) && /Хорошей смены/.test(t));
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
 }
@@ -320,7 +320,7 @@ const baseStorage = {
   ok(tag + ": повтор практики помечен", /· повтор/.test(t));
   ok(tag + ": ответ в повторе", await answer(page, true));
   t = await text(page);
-  const say = /А теперь — вслух/i.test(t);
+  const say = /А теперь вслух/i.test(t);
   if (!say) {
     ok(tag + ": «Повтор: дальше само»", /Повтор: дальше само/i.test(t));
     const before = (t.match(/Ситуация (\d+) из/i) || [])[1];
@@ -498,7 +498,7 @@ const baseStorage = {
   await shot(page, "G1-modal");
   await page.locator("button", { hasText: "Отправить старшему" }).click(); await sleep(900);
   t = await text(page);
-  ok(tag + ": запрос ушёл, на навыке — «Ждёт старшего»", calls.some(c => c.fn === "skill_request" && c.body.p_skill === "sea1") && /Ждёт старшего — подтвердит в зале/.test(t));
+  ok(tag + ": запрос ушёл, на навыке — «Ждёт старшего»", calls.some(c => c.fn === "skill_request" && c.body.p_skill === "sea1") && /Ждёт подтверждения старшего в зале/.test(t));
   await shot(page, "G2-pending");
   ok(tag + ": сотруднику входящие не запрашиваются", !calls.some(c => c.fn === "skill_requests_inbox"));
   await ctx.close();
@@ -513,8 +513,8 @@ const baseStorage = {
   t = await text(page);
   ok(tag + ": входящие: Анна, «Встреча и приветствие»", /ЖДУТ ПОДТВЕРЖДЕНИЯ В ЗАЛЕ/i.test(t) && /Анна Смирнова/.test(t) && /«Встреча и приветствие»/.test(t));
   await shot(page, "G3-inbox");
-  await page.locator("button", { hasText: "Видел(а) — подтвердить ✓" }).click(); await sleep(300);
-  ok(tag + ": первое нажатие только «взводит»", /Точно видел\(а\) — нажми ещё раз/.test(await text(page)) && !calls2.some(c => c.fn === "skill_request_decide"));
+  await page.locator("button", { hasText: "Видел(а), подтверждаю ✓" }).click(); await sleep(300);
+  ok(tag + ": первое нажатие только «взводит»", /Точно видел\(а\)\? Нажми ещё раз/.test(await text(page)) && !calls2.some(c => c.fn === "skill_request_decide"));
   await page.locator("button", { hasText: "Точно видел(а)" }).click(); await sleep(900);
   t = await text(page);
   ok(tag + ": подтверждено — строка ушла, подсказка внизу", calls2.some(c => c.fn === "skill_request_decide" && c.body.p_approve === true) && /Подтверждено: Анна/.test(t) && /Запросов нет/.test(t));
@@ -551,18 +551,18 @@ const baseStorage = {
   await shot(page, "H1-remind");
   await page.locator('[role="dialog"] button', { hasText: "Включить" }).click(); await sleep(900);
   t = await text(page);
-  ok(tag + ": спросили разрешение и привязали чат с подписью initData", (await page.evaluate(() => window.__wa)) === 1 && calls.some(c => c.fn === "tg_link" && /hash=abc/.test(c.body.p_init_data)) && /Включено — за час до смены/.test(t));
+  ok(tag + ": спросили разрешение и привязали чат с подписью initData", (await page.evaluate(() => window.__wa)) === 1 && calls.some(c => c.fn === "tg_link" && /hash=abc/.test(c.body.p_init_data)) && /Включено: за час до смены/.test(t));
   await page.locator('[role="dialog"] button', { hasText: "Закрыть" }).click(); await sleep(500);
   ok(tag + ": после включения ссылка под разминкой ушла", !/Напоминать в Telegram за час до смены/.test(await text(page)));
   await page.evaluate(() => window.__saNav("shift")); await sleep(900);
-  ok(tag + ": в «Смене» — «Напоминания в Telegram: включено»", /Включено — за час до смены зовёт на разминку/.test(await text(page)));
+  ok(tag + ": в «Смене» — «Напоминания в Telegram: включено»", /Включено: за час до смены зовёт на разминку/.test(await text(page)));
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
   linked = false;
   ({ ctx, page, errors } = await open({ storage: baseStorage, rpcs }));
   await page.evaluate(() => window.__saNav("shift")); await sleep(900);
   await page.locator(".sa-card", { hasText: "Напоминания в Telegram" }).click(); await sleep(700);
-  ok(tag + ": вне Telegram — объясняем, где включить", /Открой Service Academy через бота — и включи здесь/.test(await text(page)) && (await page.locator('[role="dialog"] button', { hasText: "Включить" }).count()) === 0);
+  ok(tag + ": вне Telegram — объясняем, где включить", /Открой Service Academy через бота и включи их здесь/.test(await text(page)) && (await page.locator('[role="dialog"] button', { hasText: "Включить" }).count()) === 0);
   ok(tag + ": без ошибок (браузер)", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
 }

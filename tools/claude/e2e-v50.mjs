@@ -607,7 +607,7 @@ if (want("DESK")) {
       const heads = g ? [...g.querySelectorAll("tr:first-child th")].length - 1 : 0;
       return { two: !!document.querySelector(".sa-two"), heads, over: g ? g.scrollWidth - g.clientWidth : -1, cardL: Math.round(card.getBoundingClientRect().left), attnR: Math.round(attn.getBoundingClientRect().right) }; });
     ok("DESK график руководителя: две колонки; весь месяц в таблице без прокрутки вбок", mg.two && mg.cardL >= mg.attnR - 2 && mg.heads >= 28 && mg.over <= 1, JSON.stringify(mg));
-    ok("DESK график: подпись — «Весь месяц — целиком», без обещания прокрутки вбок", /Весь месяц — целиком/.test(await text(s.page)) && !/таблица листается вбок/.test(await text(s.page)));
+    ok("DESK график: подпись — «Весь месяц целиком», без обещания прокрутки вбок", /Весь месяц целиком/.test(await text(s.page)) && !/таблица листается вбок/.test(await text(s.page)));
     await shot(s.page, "desk-sched-boss-month");
     ok("DESK график: без ошибок", !s.errors.length, s.errors.join(" | "));
     await s.ctx.close(); }
@@ -622,7 +622,7 @@ if (want("DESK")) {
     ok("DESK: Наставник — панелью 780 px по центру, вокруг притемнение", a.w === 780 && Math.abs(a.l - 330) <= 1 && a.shadow, JSON.stringify(a));
     await s.page.mouse.click(60, 450); await sleep(700);
     ok("DESK: нажатие мимо панели Наставника не уходит в экран под ней", /Наставник/.test(await text(s.page)) && (await s.page.locator(".sa-layer").count()) === 1);
-    await s.page.locator("text=Гость недоволен блюдом — что говорить?").first().click(); await sleep(2500);
+    await s.page.locator("text=Гость недоволен блюдом. Что говорить?").first().click(); await sleep(2500);
     await shot(s.page, "desk-assistant");
     await nav(s.page, "me", 1400); await s.page.locator('.sa-card[aria-label="Итоги месяца"]').first().click(); await sleep(1500);
     const m = await s.page.evaluate(() => { const el = document.querySelector(".mr.sa-layer"); if (!el) return null; const b = el.getBoundingClientRect(); return { l: Math.round(b.left), w: Math.round(b.width) }; });

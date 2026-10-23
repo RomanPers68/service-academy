@@ -21,11 +21,11 @@ describe("v49: лист смены подсказывает до выбора", 
     expect(pick).toContain(': status(true, on ? "стоит сейчас · правила соблюдены" : `подходит · станет ${after} из ${enW} ч`)}');
     expect(pick).toContain(": w ? status(false, w)");
     expect(pick).toContain("const after = hNow - curH + (on ? curH : len(sh2));");
-    expect(pick).toContain("отдельная смена — в потребность не идёт");
+    expect(pick).toContain("отдельная смена, в потребность не идёт");   // v74
   });
   it("сверху — часы человека и капсулы: покрытие позиции в этот день, просьба, «не смогу», отпуск", () => {
     expect(pick).toContain('data-pick-hours="" ');
-    expect(pick).toContain("⚠ {posName(who.pos)}: в этот день {nHave} из {nNeed} — не хватает {nNeed - nHave === 1 ? \"одного\" : nNeed - nHave}");
+    expect(pick).toContain("⚠ {posName(who.pos)}: в этот день {nHave} из {nNeed}, не хватает {nNeed - nHave === 1 ? \"одного\" : nNeed - nHave}");
     expect(pick).toContain("✓ {posName(who.pos)}: в этот день {nHave} из {nNeed}");
     expect(pick).toContain("просил(а) выходной");
     expect(pick).toContain("отметил(а) «не смогу»");
@@ -37,8 +37,8 @@ describe("v49: лист смены подсказывает до выбора", 
     expect(pick).toContain(">Кто может выйти в этот день ›</button>");
   });
   it("решение — за руководителем: поставить можно и с ⚠; прежняя подсказка про закрепление осталась", () => {
-    expect(pick).toContain("Выбранная вручную смена закрепляется — генератор её не тронет.");
-    expect(pick).toContain("Подсказки — по тем же правилам, что у «Заполнить черновик»: поставить можно и с ⚠, тогда это будет в «Проверке».");
+    expect(pick).toContain("Выбранная вручную смена закрепляется, генератор её не тронет.");   // v74
+    expect(pick).toContain("Подсказки строятся по тем же правилам, что у «Заполнить черновик»: поставить можно и с ⚠, тогда это будет в «Проверке».");
     expect(pick).toContain("onClick={() => setCell(who.id, d, sh2.k)}");                     // нажать можно любую смену
     expect(pick).toMatch(/\.\.\.ghostInk, flex:"1 1 46%", fontSize:12\.5, padding:"9px 8px" \}\}\s+onClick=\{\(\) => \{ setPick\(null\); setReplAsk/);
   });
@@ -126,7 +126,7 @@ describe("v49: месяц полоской, неделя во всю высот�
 
 describe("v49: подсказки, метка, CHANGES", () => {
   it("подсказка руководителя — про тап по числу; метка сборки — v49; CHANGES — «Дополнение 362»", () => {
-    expect(readFileSync("data/hints.js", "utf8")).toContain("тап по числу — день по часам.");
+    expect(readFileSync("data/hints.js", "utf8")).toContain("Тап по числу показывает день по часам.");   // v74
     expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v50 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 362 — график руководителя: месяц полоской, день по часам, подсказки в листе смены (v49)");
   });

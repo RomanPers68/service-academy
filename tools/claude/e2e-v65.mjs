@@ -214,7 +214,7 @@ async function toAi(page) {
   await page.evaluate(() => window.__saNav("candidate")); await sleep(1300);
   await btn(page, "Начать собеседование").click(); await sleep(500);
   await page.locator('input[placeholder="Имя кандидата"]').fill("Мария"); await sleep(150);
-  await btn(page, "Дальше — анкета опыта").click(); await sleep(500);
+  await btn(page, "Дальше: анкета опыта").click(); await sleep(500);
   await page.locator(".sa-btn", { hasText: "До года" }).first().click(); await sleep(200);
   await btn(page, /^Дальше$/).click(); await sleep(500);
   await btn(page, "AI-интервью · бета").click();
@@ -247,7 +247,7 @@ if (want("DOCK")) {
     if (w === 393) {
       const t = await open({ profile: P, role: "manager", w, h: 852, dsf: 1 });
       await t.page.locator('[data-tools-row] [title="AI-интервью"]').click(); await sleep(1600);
-      const head = await t.page.evaluate(() => document.body.innerText.slice(0, 400));
+      const head = await t.page.evaluate(() => document.body.innerText.slice(0, 900));   // v74: вступление стало на фразу длиннее
       ok("DOCK: тап по «AI-интервью» открывает «Собеседование»", /Собеседование/.test(head) && /Начать собеседование/.test(head), head.slice(0, 80));
       await t.ctx.close();
     }
@@ -388,7 +388,7 @@ if (want("ERR")) {
   await waitSt(page, "paused", 12000);
   const note = await noteText(page);
   const c = await chat(page);
-  ok("ERR: интервьюер не ответил — пауза и причина «коснитесь волны и ответьте ещё раз», ответ убран из переписки", /коснитесь волны и ответьте ещё раз/.test(note) && c.user.length === 0 && c.ai.length === 1, JSON.stringify({ note, c }));
+  ok("ERR: интервьюер не ответил — пауза и причина «Коснитесь волны и ответьте ещё раз», ответ убран из переписки", /Коснитесь волны и ответьте ещё раз/.test(note) && c.user.length === 0 && c.ai.length === 1, JSON.stringify({ note, c }));
   await shot(page, "err-paused");
   ok("ERR: без ошибок страницы", !errors.length, errors.join(" | "));
   await ctx.close();
@@ -410,7 +410,7 @@ if (want("TEXT")) {
   await b.page.evaluate(() => window.__saNav("candidate")); await sleep(1300);
   await btn(b.page, "Начать собеседование").click(); await sleep(400);
   await b.page.locator('input[placeholder="Имя кандидата"]').fill("Мария");
-  await btn(b.page, "Дальше — анкета опыта").click(); await sleep(400);
+  await btn(b.page, "Дальше: анкета опыта").click(); await sleep(400);
   await b.page.locator(".sa-btn", { hasText: "До года" }).first().click(); await btn(b.page, /^Дальше$/).click(); await sleep(500);
   const hand = await b.page.evaluate(() => document.body.innerText);
   ok("TEXT: передача телефона — «текстом или голосом (волна справа от поля…)»", /текстом или голосом/.test(hand) && /вопросы звучат вслух/.test(hand));

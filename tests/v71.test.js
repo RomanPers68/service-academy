@@ -79,7 +79,7 @@ describe("v71: тест — правила на виду, сами правил�
     expect(first).toContain("Тест · 12 вопросов");
     expect(first).toContain(">Поведение в зале<");
     expect(first).toContain("Вопрос 1 из 12");
-    expect(first).toContain("зачёт — от 10");
+    expect(first).toContain("зачёт: от 10");   // v74: без тире
     expect(first).toContain("data-quiz-rule");
     expect(first).toContain("Для зачёта нужно 10 верных из 12.");
     expect((first.match(/data-quiz-opt=/g) || []).length).toBe(4);

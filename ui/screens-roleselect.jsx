@@ -83,7 +83,7 @@ export const TRACK_GROUPS = [
 // v56 (Доп. 369): «что сейчас» — на месте карточки трека (lib/now-card.js): до смены — разминка, на смене — ошибки или
 // SOS, после смены — «как прошла?», после перерыва — «С возвращением». v68 (Доп. 381): карточка — «Приглашение»
 // (ui/now-hero.jsx NowInvitation), и в обычный день тоже — приглашение к следующему шагу трека.
-const MOOD_TITLE = { good: "Хорошая смена", ok: "Ровная смена", hard: "Тяжёлая смена — бывает" };
+const MOOD_TITLE = { good: "Хорошая смена", ok: "Ровная смена", hard: "Тяжёлая смена, бывает" };
 
 export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false }) {
   const isAdmin = !!profile?.is_admin;
@@ -298,7 +298,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             cta = "ДАЛЬШЕ"; go = () => onContinueLesson(next.lesson, next.mod);
           }
           else if (dueM > 0 && onMistakes) { const _d10 = dueM % 10, _d100 = dueM % 100; const _q = (_d10 === 1 && _d100 !== 11) ? "вопрос вернулся" : (_d10 >= 2 && _d10 <= 4 && (_d100 < 12 || _d100 > 14)) ? "вопроса вернулись" : "вопросов вернулись"; title = "Трек пройден · закрепи"; sub = `${dueM} ${_q} на повторение`; cta = "ОТВЕТИТЬ"; go = onMistakes; }
-          else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком — испытание ждёт"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
+          else { title = "Путь пройден · держи форму"; sub = "Гость недели уже за столиком"; cta = "ПРИНЯТЬ"; go = onGuestBook; gold = true; }
           // v56 (Доп. 369): «что сейчас» — действие по времени и смене (App, lib/now-card.js); трек — строкой «Дальше»
           // внизу карточки. Самый первый день (App: firstDay) — «сейчас» нет: одно главное действие, первый урок.
           const tier = moodReply ? moodTier(moodReply) : null;

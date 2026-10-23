@@ -3,7 +3,7 @@
 --
 -- Что делает:
 --   • за час до смены по графику бот пишет сотруднику: «Через час смена: Вечер ·
---     16:00–24:00. Разминка до смены — 2 минуты» с кнопкой, которая открывает
+--     16:00–24:00. Разминка до смены: 2 минуты…» с кнопкой, которая открывает
 --     приложение сразу на разминке;
 --   • старшему приходит сообщение, когда его просят подтвердить навык в зале (этап 22),
 --     а сотруднику — когда навык подтвердили или сказали «ещё рано».
@@ -239,10 +239,10 @@ begin
          full_name = excluded.full_name, remind = excluded.remind, updated_at = now();
   mins := coalesce((select value::int from sa_settings where key = 'remind_minutes'), 60);
   if coalesce(p_remind, true) then
-    perform sa_tg_send(chat, '✦ SERVICE ACADEMY' || E'\n\n' || 'Готово! За ' ||
+    perform sa_tg_send(chat, 'Готово! За ' ||
       case when mins = 60 then 'час' else mins || ' мин' end ||
-      ' до смены по графику напомню о разминке — 2 минуты, 3 ситуации.' ||
-      E'\n\nВыключить: «Смена» → «Напоминания в Telegram».', null, null);
+      ' до смены по графику напомню о разминке: 2 минуты, 3 ситуации.' ||
+      E'\n\nВыключить можно в «Смена» → «Напоминания в Telegram».', null, null);
   end if;
   return json_build_object('ok', true, 'linked', true, 'remind', coalesce(p_remind, true));
 end; $$;
@@ -321,15 +321,15 @@ begin
            and (_sa_name_tokens(l.full_name) <@ stoks or stoks <@ _sa_name_tokens(l.full_name));
       end if;
       note := nullif(btrim(coalesce(days->(dnum::text)->>'note', '')), '');
-      txt := '✦ SERVICE ACADEMY' || E'\n\n' || 'Через ' || case when mins = 60 then 'час' else mins || ' мин' end ||
+      txt := 'Через ' || case when mins = 60 then 'час' else mins || ' мин' end ||
              ' смена: ' || coalesce(sh->>'name', 'смена') || ' · ' || _sa_hh((sh->>'from')::numeric) || '–' ||
              _sa_hh(coalesce((sh->>'to')::numeric, 24)) ||
              coalesce(E'\n✎ ' || note, '') ||
-             E'\n\nРазминка до смены — 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены ✦';
+             E'\n\nРазминка до смены: 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены!';
       if p_send then
         insert into tg_sent (emp_id, day, kind) values (target.emp_id, ld, 'warmup') on conflict do nothing;
         if not found then continue; end if;   -- уже напоминали сегодня
-        perform sa_tg_send(target.chat_id, txt, 'Разминка ✦', 'warmup');
+        perform sa_tg_send(target.chat_id, txt, 'Разминка', 'warmup');
       end if;
       out := out || jsonb_build_object('restaurant', v.restaurant, 'name', st->>'name', 'shift', sh->>'name',
         'starts', to_char(start_ts, 'HH24:MI'), 'local_now', to_char(lnow, 'YYYY-MM-DD HH24:MI'), 'text', txt);
@@ -369,16 +369,16 @@ begin
                 and tl.restaurant is not distinct from new.restaurant
                 and lower(coalesce(to_jsonb(e)->>'position', '')) in ('senior', 'manager')
                 and coalesce(to_jsonb(e)->>'status', 'active') = 'active' loop
-      perform sa_tg_send(l.chat_id, '✦ SERVICE ACADEMY' || E'\n\n' || new.emp_name || ' просит подтвердить навык в зале:' ||
-        E'\n«' || lbl || '»' || E'\n\nПосмотри, как это получается на смене, и ответь в «Наставничестве».', 'Открыть ✦', 'mentor');
+      perform sa_tg_send(l.chat_id, new.emp_name || ' просит подтвердить навык в зале:' ||
+        E'\n«' || lbl || '»' || E'\n\nПосмотри, как это получается на смене, и ответь в «Наставничестве».', 'Открыть', 'mentor');
     end loop;
   elsif tg_op = 'UPDATE' and old.status = 'pending' and new.status in ('approved', 'declined') then
     for l in select tl.chat_id from tg_links tl where tl.emp_id = new.emp_id and tl.remind loop
-      perform sa_tg_send(l.chat_id, '✦ SERVICE ACADEMY' || E'\n\n' ||
+      perform sa_tg_send(l.chat_id,
         case when new.status = 'approved'
-          then 'Навык подтверждён: «' || lbl || '» — ' || coalesce(new.mentor_name, 'наставник') || ' видел(а) в зале ✓'
+          then 'Навык подтверждён: «' || lbl || '». ' || coalesce(new.mentor_name, 'Наставник') || ' видел(а) в зале ✓'
           else 'Пока не подтверждено: «' || lbl || '»' || coalesce(E'\n' || coalesce(new.mentor_name, 'Старший') || ': «' || new.note || '»', '') ||
-               E'\nПопроси ещё раз, когда будешь готов(а).' end, 'Открыть ✦', 'mentor');
+               E'\nПопроси ещё раз, когда будешь готов(а).' end, 'Открыть', 'mentor');
     end loop;
   end if;
   return new;

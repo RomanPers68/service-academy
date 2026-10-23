@@ -62,14 +62,14 @@ function TopicActs({ topic, acts, passive, n }) {
     }
     if (acts.onGold && canGold) {
       items.push(gold
-        ? tile("g", " gold got", UI_SVG.crown("currentColor", 18), "Золото" + NB + "· ещё" + NB + "раз", "побей свой рекорд", "Золото · ещё раз — побей свой рекорд", acts.onGold)
+        ? tile("g", " gold got", UI_SVG.crown("currentColor", 18), "Золото" + NB + "· ещё" + NB + "раз", "побей свой рекорд", "Золото · ещё раз, побей свой рекорд", acts.onGold)
         : tile("g", " gold", UI_SVG.crown("currentColor", 18), "Раунд мастера", tasks(n.gold, true) + NB + "→ тема золотая",
-          "Раунд мастера · " + tasks(n.gold) + " — тема станет золотой", acts.onGold));
+          "Раунд мастера · " + tasks(n.gold) + ", тема станет золотой", acts.onGold));
     }
   } else if (acts.onCredit && canCredit) {
     items.push(tried
-      ? tile("c", "", <Ic n="clock" s={18} />, "Зачёт на опыт", "новая попытка" + NB + "— завтра", "Зачёт на опыт — новая попытка завтра", undefined, true)
-      : tile("c", "", <Ic n="check" s={18} />, "Я это умею", "зачёт на опыт" + NB + "· " + tasks(n.credit, true), "Я это умею — зачёт на опыт · " + tasks(n.credit), acts.onCredit));
+      ? tile("c", "", <Ic n="clock" s={18} />, "Зачёт на опыт", "новая попытка" + NB + "завтра", "Зачёт на опыт · новая попытка завтра", undefined, true)
+      : tile("c", "", <Ic n="check" s={18} />, "Я это умею", "зачёт на опыт" + NB + "· " + tasks(n.credit, true), "Я это умею: зачёт на опыт · " + tasks(n.credit), acts.onCredit));
   }
   const line = done ? freshLine(f) : null;
   const marks = [credit ? "зачтено по опыту" : "", gold ? "золотая тема" : ""].filter(Boolean).join(" · ");
@@ -95,7 +95,7 @@ function topicCounts(mod) {
 }
 function freshLine(f) {
   if (!f) return "";
-  if (f.updated) return "урок обновили — освежи";
+  if (f.updated) return "урок обновили, освежи";
   if (f.level === "faded") return "тема выдохлась";
   if (f.level === "fading") return "тема выдыхается";
   return "тема свежая" + (f.dueIn ? " · ещё " + f.dueIn + " " + plural(f.dueIn, "день", "дня", "дней") : "");

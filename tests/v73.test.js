@@ -88,8 +88,9 @@ describe("v73: главная и вкладки", () => {
     expect(dc).toContain(".sa-dp.lt .sa-dp-cap{font-size:13.5px}");
     expect(dc).toContain('mm.mode === "master" ? "мастер" :');
     expect(dc).toContain(">Что ещё присылать</div>");
-    // пример сообщения бота — как у бота дословно (сервер в v73 не трогаем)
-    expect(dc).toContain(">✦ SERVICE ACADEMY</div>");
+    // пример сообщения бота — как у бота дословно; v74 (этап 29): без шапки «✦ SERVICE ACADEMY» и звёздочек
+    expect(dc).not.toContain("SERVICE ACADEMY</div>");
+    expect(dc).toContain(">Разминка до смены: 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены!</div>");
   });
 });
 
@@ -176,7 +177,7 @@ describe("v73: логотип не пропадает при переходах"
 
 describe("v73: метка и журнал", () => {
   it("«сборка v73», «Дополнение 386»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v73</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(7[3-9]|[89]\d)<\/span>/);   // v74: метка идёт дальше
     expect(rd("CHANGES.md")).toContain("# Дополнение 386 — без примет нейросети: подписи курсивом, без ✦, бликов и полосок (v73)");
   });
 });

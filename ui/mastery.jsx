@@ -99,7 +99,7 @@ function partValue(p, state) {
   if (p.id === "streak") { const s = ((state && state.families) || []).find((f) => f && f.id === "streak"); return "лучшая: " + Math.min(p.need || 14, Math.max(p.value || 0, (s && s.value) || 0)) + " из " + (p.need || 14); }
   return p.value + " из " + p.need;
 }
-const PRIZE_ERR = { offline: "Нет связи — попробуй ещё раз", missing: "Сервер ещё не обновлён — скажи владельцу (приз — этап 26)", forbidden: "Назначать приз может только руководитель заведения" };
+const PRIZE_ERR = { offline: "Нет связи. Попробуй ещё раз", missing: "Сервер ещё не обновлён. Скажи владельцу: для приза нужен этап 26", forbidden: "Назначать приз может только руководитель заведения" };
 
 // кольцо «Мастера роли»: 13 долей — роль, золото, серия и десять бронз
 function MasterRing({ have, need, a11y, c }) {
@@ -157,7 +157,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
       if (r && r.ok) {
         setPrizeOwn(r.prize !== undefined ? (r.prize || null) : (v || null));
         setEdit(false); setPmsg({ ok: true, t: v ? "Сохранено ✓" : "Приз убран ✓" }); vibrate("success");
-      } else { setPmsg({ ok: false, t: PRIZE_ERR[r && r.error] || "Не сохранилось — попробуй ещё раз" }); vibrate("error"); }
+      } else { setPmsg({ ok: false, t: PRIZE_ERR[r && r.error] || "Не сохранилось. Попробуй ещё раз" }); vibrate("error"); }
     }, () => { setBusy(false); setPmsg({ ok: false, t: PRIZE_ERR.offline }); });
   };
   const fams = st ? st.families : FAMILIES.map((f) => ({ id: f.id, title: f.title, how: f.how, go: f.go, value: 0, tiers: [1, 1, 1], tier: 0, next: 1, left: 1, pct: 0 }));
@@ -183,7 +183,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
           {achieved && sinceYmd ? <div style={{ fontSize: small(13), color: c.sub, marginTop: 4 }}>{"с " + sinceDay(sinceYmd)}</div> : null}
         </div>
       </div>
-      {!achieved ? <p style={{ margin: "12px 0 0", fontSize: small(13.5), lineHeight: 1.5, color: c.sub }}><b style={{ color: c.text }}>{"До звания — ещё " + left + "\u00A0из\u00A0" + ((ms && ms.need) || 13) + "."}</b>{" Коллеги-мастера носят знак\u00A0✦ у имени в рейтинге и лиге."}</p> : null}
+      {!achieved ? <p style={{ margin: "12px 0 0", fontSize: small(13.5), lineHeight: 1.5, color: c.sub }}><b style={{ color: c.text }}>{"До звания ещё " + left + "\u00A0из\u00A0" + ((ms && ms.need) || 13) + "."}</b>{" У мастеров в рейтинге и лиге особый знак у имени."}</p> : null}
       <div role="list" aria-label="Условия" style={{ marginTop: 10 }}>
         {ms.parts.map((p, i) => {
           const done = achieved || p.done;
@@ -321,7 +321,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
             );
           })}
         </div>
-        <div style={{ fontSize: small(13), lineHeight: 1.45, color: c.sub, marginTop: 8 }}>Все семь — значок «Первые шаги».</div>
+        <div style={{ fontSize: small(13), lineHeight: 1.45, color: c.sub, marginTop: 8 }}>За все семь дают значок «Первые шаги».</div>
       </section>
     );
   }
@@ -362,7 +362,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
     mastersBlock = (
       <section data-ms-masters="" aria-label="Мастера заведения" style={card(a11y, false)}>
         <div style={{ ...eye, color: c.gold }}>{"Мастера заведения" + (rows.length ? " · " + rows.length : "")}</div>
-        {!rows.length ? <div style={{ fontFamily: BODY, fontSize: a11y ? 16 : 15, color: c.text, marginTop: 8 }}>Пока никого. Первый знак ✦ в заведении может быть твоим</div> : null}
+        {!rows.length ? <div style={{ fontFamily: BODY, fontSize: a11y ? 16 : 15, color: c.text, marginTop: 8 }}>Пока никого. Первым мастером в заведении можешь стать ты</div> : null}
         {rows.length ? (
           <div role="list" style={{ marginTop: 4 }}>
             {rows.map((r, i) => (
@@ -434,8 +434,8 @@ function BadgeSheet({ a11y, fam, fresh, onClose, onShow }) {
   const unit = F.unit || ["", "", ""];
   const tiers = Array.isArray(fam.tiers) ? fam.tiers : [];
   const n = (k) => tiers[k - 1] || 0;
-  const count = fam.value > 0 ? (fam.id === "streak" ? "Лучшая серия — " : "") + familyCount(fam.id, fam.value) : "Ещё не начато";
-  const nextLine = fam.tier >= 3 || fam.next == null ? "Высшая ступень" : "До " + TIERS_OF[fam.tier + 1] + " — ещё " + fam.left + " " + plural(fam.left, unit[0], unit[1], unit[2]);
+  const count = fam.value > 0 ? (fam.id === "streak" ? "Лучшая серия: " : "") + familyCount(fam.id, fam.value) : "Ещё не начато";
+  const nextLine = fam.tier >= 3 || fam.next == null ? "Высшая ступень" : "До " + TIERS_OF[fam.tier + 1] + " ещё " + fam.left + " " + plural(fam.left, unit[0], unit[1], unit[2]);
   const T3 = ["Бронза", "Серебро", "Золото"];
   return (
     <div className="ms-sheet-wrap" onClick={onClose} style={{ background: a11y ? "rgba(70,52,24,0.35)" : "rgba(8,6,3,0.62)" }}>
@@ -511,7 +511,7 @@ function MasterCertificate({ a11y, profile, role, state, earned, shareUrl, onClo
     return () => { dead = true; };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => () => { if (pv && pv.url) { try { URL.revokeObjectURL(pv.url); } catch (e) {} } }, [pv]);
-  const preview = (blob) => { try { setPv({ url: URL.createObjectURL(blob) }); } catch (e) { setSent("Картинка не открылась — поделись текстом"); } };
+  const preview = (blob) => { try { setPv({ url: URL.createObjectURL(blob) }); } catch (e) { setSent("Картинка не открылась. Поделись текстом"); } };
   const sharePic = () => {
     if (busy) return;
     setSent("");
@@ -527,10 +527,10 @@ function MasterCertificate({ a11y, profile, role, state, earned, shareUrl, onClo
     setBusy(true);
     masterImage(data).then((blob) => {
       setBusy(false);
-      if (!blob) { setSent("Картинка не получилась — поделись текстом"); return; }
+      if (!blob) { setSent("Картинка не получилась. Поделись текстом"); return; }
       setPic(blob);
       preview(blob);   // время нажатия ушло — сразу просмотр, оттуда «Скачать» или «Поделиться»
-    }, () => { setBusy(false); setSent("Картинка не получилась — поделись текстом"); });
+    }, () => { setBusy(false); setSent("Картинка не получилась. Поделись текстом"); });
   };
   const shareText = () => {
     vibrate("light");
@@ -540,7 +540,7 @@ function MasterCertificate({ a11y, profile, role, state, earned, shareUrl, onClo
       if (tg && tg.initData && typeof tg.openTelegramLink === "function") { tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(shareUrl || "") + "&text=" + encodeURIComponent(text)); setSent("Выбери чат в Telegram"); return; }
     } catch (e) {}
     const full = text + (shareUrl ? "\n" + shareUrl : "");
-    const copy = () => { try { navigator.clipboard.writeText(full).then(() => setSent("Текст скопирован"), () => setSent("Не получилось скопировать — сделай снимок экрана")); } catch (e) { setSent("Не получилось скопировать — сделай снимок экрана"); } };
+    const copy = () => { try { navigator.clipboard.writeText(full).then(() => setSent("Текст скопирован"), () => setSent("Не получилось скопировать. Сделай снимок экрана")); } catch (e) { setSent("Не получилось скопировать. Сделай снимок экрана"); } };
     try { if (navigator.share) { navigator.share({ text: full }).then(() => setSent("Отправлено"), (e) => { if (!(e && e.name === "AbortError")) copy(); }); return; } } catch (e) {}
     copy();
   };
@@ -593,7 +593,7 @@ function MasterCertificate({ a11y, profile, role, state, earned, shareUrl, onClo
       <img src={pv.url} alt={"Сертификат мастера роли" + roleQ} />
       <a href={pv.url} download={picName} className="sa-btn" style={{ ...msPrimary, width: "100%", maxWidth: 360, minHeight: 52, fontSize: 16, textDecoration: "none" }}>Скачать картинку</a>
       {canFiles ? <button type="button" onClick={pvShare} style={{ ...ghostBtn(false, msPal(false)), width: "100%", maxWidth: 360, color: "#F3E9D2" }}>Поделиться…</button> : null}
-      <p>Или нажми и удерживай картинку — «Сохранить» или «Поделиться». В Telegram её можно отправить из галереи.</p>
+      <p>Или нажми и удерживай картинку, затем «Сохранить» или «Поделиться». В Telegram её можно отправить из галереи.</p>
       <button type="button" data-sa-back="" onClick={() => setPv(null)} style={{ minHeight: 46, padding: "0 20px", border: 0, background: "none", cursor: "pointer", color: "rgba(243,233,210,0.84)", fontFamily: BODY, fontWeight: "bold", fontSize: 15 }}>Готово</button>
     </div>
   ) : null;

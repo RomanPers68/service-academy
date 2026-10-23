@@ -174,7 +174,7 @@ function SayAloud({ phrase, onVoice, a11y }) {
           </div>
         </>
       ) : (
-        <div className={"res" + (res === "again" ? " again" : "")}>{res === "ok" ? "Отлично! Звучит уверенно." : "Ещё пара повторов, и пойдёт на автомате."}</div>
+        <div className={"res" + (res === "again" ? " again" : "")}>{res === "ok" ? "Звучит уверенно." : "Ещё пара повторов, и пойдёт на автомате."}</div>
       )}
     </div>
   );
@@ -489,7 +489,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
     results.forEach((r) => { run = r ? run + 1 : 0; best = Math.max(best, run); });
     const wrong = results.filter((r) => r === false).length;
     const st = streak || { count: 0, last: "" };   // серию App отмечает, когда раунд доигран
-    const verdict = stars === 3 ? "Мастер сервиса!" : stars === 2 ? "Хороший результат!" : "Тренируйся ещё!";
+    const verdict = stars === 3 ? "Сильный раунд" : stars === 2 ? "Хороший раунд" : "Есть что повторить";   // v76: без «Мастер сервиса!»
     return shell(
       <>
         <div className="tb-head"><div className="tb-col tb-top">
@@ -601,7 +601,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
               ) : null}
               <Note ok={ok} title={noteTitle} sign={signOf(mentorName)}>
                 {!ok ? <><span className="na">{g === "truefalse" ? "Ответ" : "Лучше так"}</span><p className="nb">{g === "truefalse" ? tfLabel(sit.options[sit.correct]).t : sit.options[sit.correct]}</p></> : null}
-                <p>{stripEm(ok ? sit.win : (missText(sit, ps.choice >= 0 ? sit.options[ps.choice] : "") || "Попробуй ещё раз в следующем раунде!"))}</p>
+                <p>{stripEm(ok ? sit.win : (missText(sit, ps.choice >= 0 ? sit.options[ps.choice] : "") || "Попробуй ещё раз в следующем раунде."))}</p>
                 <p className="pts">{ok ? "+" + pts + " очков" + (ps.combo >= 2 ? " · комбо ×" + ps.combo : "") : "−1 тарелка · осталось " + Math.max(0, ps.lives)}</p>
                 {!ok && !preview ? <MentorLink onAsk={onAskMentor} sit={sit} pick={ps.choice} /> : null}
               </Note>
@@ -871,7 +871,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 {typeof extra === "function" ? extra({ okMods: stat.okMods, sits: sitsUsed, wrong: stat.wrong }) : null}
                 {note ? <p className="r-note"><Ic n={passed ? "checkC" : "book"} s={14} /><span>{note}</span></p> : null}
                 {review ? <><div className="r-review">«{review}»</div><div className="r-by">— {(guest && guest.name) || "гость"}{guest && guest.table ? ", стол " + guest.table : ""}</div></>
-                  : <div className="r-thanks">{mode === "probe" ? "Начни с тем, где были ошибки" : passed ? (mode === "gold" ? "Мастер" : "Так держать!") : "Ещё подход, и получится"}</div>}
+                  : <div className="r-thanks">{mode === "probe" ? "Начни с тем, где были ошибки" : passed ? (mode === "gold" ? "Мастер" : "Засчитано") : "Ещё подход, и получится"}</div>}
                 {mode === "gold" && passed ? <span className="r-goldseal" aria-hidden="true"><span><Sign n="crown" s={17} sw={1.9} /></span><small>ЗОЛОТО</small></span> : null}
                 <Edge />
               </div>
@@ -946,7 +946,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 ) : mood <= 2 ? (
                   <p className="r-note"><Ic n="guest" s={14} /><span>Гость ушёл без отзыва. Не страшно: ошибки уже ждут в «Работе над ошибками», там их и повторишь.</span></p>
                 ) : (
-                  <div className="r-thanks">Так держать!</div>
+                  <div className="r-thanks">Раунд пройден</div>
                 )}
                 <Edge />
               </div>
@@ -955,7 +955,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
         </div></div>
         <div className="tb-foot"><div className="tb-col">
           {warm ? (
-            <button type="button" className="tb-main" onClick={onClose}>На смену!</button>
+            <button type="button" className="tb-main" onClick={onClose}>На смену</button>
           ) : (
             <>
               <button type="button" className="tb-main" onClick={() => { onClose(); onNext && onNext(); }}>{nextTitle ? "Дальше: " + nextTitle : "Дальше"}</button>
@@ -1107,7 +1107,7 @@ export function WeekReceipt({ a11y, profile, streak, summary, goal = 2, prev = f
   const goalDays = (sum.days || []).filter((d) => d.steps >= goal).length;
   const questN = (quests || []).filter((d) => d >= (sum.from || "") && d <= (sum.to || "")).length;
   const name = profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : "";
-  const verdict = sum.activeDays >= 5 ? "Сильная неделя!" : sum.activeDays >= 3 ? "Хороший ритм" : sum.activeDays >= 1 ? "Начало положено" : "Неделя отдыха";
+  const verdict = sum.activeDays >= 5 ? "Сильная неделя" : sum.activeDays >= 3 ? "Хороший ритм" : sum.activeDays >= 1 ? "Начало положено" : "Неделя отдыха";
   const rows = [
     ["Уроки", t.l], ["Практики", t.p], ["Ситуации у стола", t.s], ["Разминки до смены", t.w],
     ["Тесты", t.q], ["Живые диалоги", t.d], ["Сборки", t.b], ["Тренажёры", t.m], ["Экзамены", t.x], ["Ошибок исправлено", t.f],

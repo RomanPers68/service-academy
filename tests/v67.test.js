@@ -190,7 +190,7 @@ describe("v67: запрос Наставнику — кэш у Claude", () => {
     expect(src).toContain(": { model: m, ...genOpts(m, 180, 0.8),");
     expect(src).toContain(": mentorRequest(m, buildSystemParts(emp, reglaments), !!voice, history)),");
     expect(src).not.toMatch(/temperature: 0\.[0-9],?\s*$/m);
-    expect(chat.AI_CHAT_V).toBe(67);
+    expect(chat.AI_CHAT_V).toBeGreaterThanOrEqual(67);   // v76 — 76 (правила стиля ответа)
   });
 });
 

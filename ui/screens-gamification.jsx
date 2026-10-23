@@ -121,12 +121,12 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
 
   const isLast = !nextRole;
   const achivements = {
-    seasonal: { title:"Новичок пройден!", badge:"Стажёр сервиса", desc:"Ты освоил базовые стандарты и готов к реальным сменам.", color:"#7C9E87" },
-    core:     { title:"Ядро пройдено!", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Новички будут учиться по твоему примеру.", color:GOLD },
-    manager:  { title:"Менеджер пройден!", badge:"Лидер зала", desc:"Ты прошёл управление командой, разбор конфликтов и финансы смены.", color:"#8B7BAB" },
-    service_manager: { title:"Мастер сервиса!", badge:"Архитектор сервиса", desc:"Весь путь пройден. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
-    bar: { title:"Бар пройден!", badge:"Мастер стойки", desc:"Станция, техника, продукт и гость за стойкой теперь твои. Бар держится на таких людях.", color:GOLD },
-    spg: { title:"Хостес пройдена!", badge:"Лицо ресторана", desc:"Ты — первое и последнее впечатление гостя. Встреча, поток и атмосфера у входа теперь твоя стихия.", color:"#C8917A" },
+    seasonal: { title:"Новичок пройден", badge:"Стажёр сервиса", desc:"Ты освоил базовые стандарты и готов к реальным сменам.", color:"#7C9E87" },
+    core:     { title:"Ядро пройдено", badge:"Опора команды", desc:"Ты стал частью постоянной команды. Новички будут учиться по твоему примеру.", color:GOLD },
+    manager:  { title:"Менеджер пройден", badge:"Лидер зала", desc:"Ты прошёл управление командой, разбор конфликтов и финансы смены.", color:"#8B7BAB" },
+    service_manager: { title:"Сервис-менеджер пройден", badge:"Архитектор сервиса", desc:"Весь путь пройден. Теперь ты строишь культуру сервиса для других.", color:"#7B8FAB" },
+    bar: { title:"Бар пройден", badge:"Мастер стойки", desc:"Станция, техника, продукт и гость за стойкой теперь твои. Бар держится на таких людях.", color:GOLD },
+    spg: { title:"Хостес пройдена", badge:"Лицо ресторана", desc:"Ты — первое и последнее впечатление гостя. Встреча, поток и атмосфера у входа теперь твоя стихия.", color:"#C8917A" },
   };
   const ach = achivements[role?.id] || achivements.seasonal;
 
@@ -1372,7 +1372,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
           <div style={{ textAlign:"center", padding:"32px 0", color:T.modSub.color }}>
             <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}>{UI_SVG.inbox(GOLD, 40)}</div>
             <div>Пока нет результатов</div>
-            <div style={{ fontSize:12.5, marginTop:4 }}>Пройди первый тест!</div>
+            <div style={{ fontSize:12.5, marginTop:4 }}>Результат появится после первого теста</div>
           </div>
         )}
 

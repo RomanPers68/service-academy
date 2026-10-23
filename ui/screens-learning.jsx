@@ -1751,7 +1751,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div className="sa-fast" style={{ marginTop:10 }}>
               <div style={{ background:isCorrectAnswer?"rgba(93,187,138,0.15)":"rgba(224,120,120,0.15)", border:`1.5px solid ${isCorrectAnswer?GREEN:RED}`, borderRadius:14, padding:"12px 14px", marginBottom:10 }}>
                 <div style={{ fontSize:18, marginBottom:4 }}>
-                  {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock(RED, 15)}Время вышло!</span> : isCorrectAnswer ? `+${practiceState.combo>=2?20:10} очков` : `Минус жизнь, осталось ${practiceState.lives}`}
+                  {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock(RED, 15)}Время вышло</span> : isCorrectAnswer ? `+${practiceState.combo>=2?20:10} очков` : `Минус жизнь, осталось ${practiceState.lives}`}
                 </div>
                 <div style={{ color:isCorrectAnswer?GREEN:RED, fontSize:12.5, lineHeight:1.6 }}>
                   {isCorrectAnswer ? stripEm(sit.win) : missText(sit, practiceState.choice >= 0 ? (sit.options || [])[practiceState.choice] : "")||"Попробуй ещё раз в следующем раунде"}

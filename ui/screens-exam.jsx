@@ -106,7 +106,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit, extraQu
         <div style={{ ...T.lessBody, padding:"48px 24px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
           <div style={{ display:"flex", color }}>{passed ? UI_SVG.gradcap(color, 56) : UI_SVG.book(a11y ? "#8B3020" : "#E07878", 52)}</div>
           <div style={{ color: passed ? color : (a11y ? "#8B3020" : "#E07878"), fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:25 }}>
-            {passed ? "Экзамен сдан!" : "Почти получилось"}
+            {passed ? "Экзамен сдан" : "Почти получилось"}
           </div>
           <div style={{ ...T.para, fontSize:18 }}>Результат: <b style={{ color }}>{score}%</b> ({correctCount} из {total})</div>
           <div style={{ ...T.para, opacity:0.7, fontSize:14, maxWidth:300 }}>

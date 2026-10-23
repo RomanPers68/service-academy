@@ -224,7 +224,7 @@ const baseStorage = {
   const st = await page.evaluate((uk) => ({ w: localStorage.getItem("sa_warmup" + uk), a: JSON.parse(localStorage.getItem("sa_activity" + uk) || "{}"), s: JSON.parse(localStorage.getItem("sa_streak" + uk) || "{}"), m: JSON.parse(localStorage.getItem("sa_mistakes" + uk) || "[]") }), uk);
   ok(tag + ": день отмечен (разминка, журнал, серия)", st.w === today && (st.a[today] || {}).w === 1 && (st.a[today] || {}).st === 1 && st.s.count === 5 && st.s.last === today, JSON.stringify(st.a[today]));
   ok(tag + ": промах разминки — в «Работе над ошибками»", st.m.length >= 1 && st.m.some(m => m.from === "practice"));
-  await page.locator(".tb .tb-foot .tb-main", { hasText: "На смену!" }).click(); await sleep(900);
+  await page.locator(".tb .tb-foot .tb-main", { hasText: "На смену" }).click(); await sleep(900);
   t = await text(page);
   ok(tag + ": после разминки строка ушла, стакан 1/1 ✓, свеча горит", (await page.locator("[data-tb-warmup]").count()) === 0 && /1\/1 ✓/.test(t) && (await page.locator('[aria-label*="сегодня свеча горит"]').count()) === 1);
   ok(tag + ": Telegram «Назад» снова скрыт на главной", !(await page.evaluate(() => window.__bb.visible)));

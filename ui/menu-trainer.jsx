@@ -245,7 +245,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v75</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v76</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -530,7 +530,7 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
           <div style={{ width: 76, height: 76, borderRadius: "50%", background: `${gold}1F`, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>{UI_SVG.trophy(gold, 38)}</div>
         </div>
-        <div style={{ ...T.bold, marginBottom: 8 }}>Колода пройдена!</div>
+        <div style={{ ...T.bold, marginBottom: 8 }}>Колода пройдена</div>
         <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>Знал сразу: {known} из {total}{repeats ? ` · повторов: ${repeats}` : ""}</div>
         {onLearned && (
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: green, width: "100%", marginBottom: 10 }} onClick={onLearned}>Выучил новинки ✓</button>
@@ -654,7 +654,7 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
             </div>
           </div>
           <div style={{ ...T.bold, fontSize: 21, marginBottom: 8 }}>{score} из {questions.length}</div>
-          <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>{pct >= 80 ? "Отлично знаешь меню!" : pct >= 50 ? "Неплохо, но повтори Колоду меню." : "Пройди Колоду меню и возвращайся."}</div>
+          <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>{pct >= 80 ? "Меню знаешь хорошо." : pct >= 50 ? "Неплохо, но повтори Колоду меню." : "Пройди Колоду меню и возвращайся."}</div>
           <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "13px 30px" }} onClick={() => { setQuestions(buildQuiz(dishes)); setStep(0); setScore(0); setPick(null); }}>Ещё раз</button>
         </div>
       </div>

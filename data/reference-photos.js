@@ -1,6 +1,8 @@
 // data/reference-photos.js
 // Фото школ/вина теперь статические файлы в public/reference/ (вынесены из JS-бандла).
 // Ключи прежние — меняются только значения (base64 -> URL). Загрузка ленивая (loading="lazy").
+// v76 (Доп. 389): убраны school_english_1 (снимок сгенерирован нейросетью, сервировка на нём неверная) и wine_taste_map
+// («карта языка» — опровергнутый миф; в главе «Бокалы» вместо неё абзац о мифе).
 
 export const REFERENCE_PHOTOS = {
   school_russian_1: "/reference/school_russian_1.jpg",
@@ -15,12 +17,10 @@ export const REFERENCE_PHOTOS = {
   school_italian_2: "/reference/school_italian_2.jpg",
   school_american_1: "/reference/school_american_1.jpg",
   school_american_2: "/reference/school_american_2.jpg",
-  school_english_1: "/reference/school_english_1.jpg",
   school_english_2: "/reference/school_english_2.jpg",
   school_french_1: "/reference/school_french_1.jpg",
   school_french_2: "/reference/school_french_2.jpg",
   wine_hold: "/reference/wine_hold.jpg",
-  wine_taste_map: "/reference/wine_taste_map.jpg",
   wine_present: "/reference/wine_present.jpg",
   wine_foil: "/reference/wine_foil.jpg",
   wine_cork: "/reference/wine_cork.jpg",

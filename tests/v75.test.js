@@ -206,7 +206,7 @@ describe("v75: Наставник, картинки и метка", () => {
     expect(said.some((s) => emojiIn(s).length)).toBe(false);
   });
   it("«сборка v75», «Дополнение 388»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v75</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(7[5-9]|[89]\d|\d{3,})<\/span>/);   // v75 и дальше
     expect(rd("CHANGES.md")).toContain("# Дополнение 388 — свои значки вместо эмодзи и звёздочек ✦ (v75)");
   });
 });

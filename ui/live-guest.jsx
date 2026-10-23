@@ -27,6 +27,7 @@ import { vibrate } from "../lib/utils";
 import { ymd } from "../lib/streak";
 import { speakText, audioWake, audioSleep, stopSpeech } from "../lib/speech";   // v32 (Доп. 336)
 import { LABEL_CSS } from "./tokens";
+import { splitActions } from "../lib/reply-clean";   // v76 (Доп. 389): *действие* гостя — без звёздочек
 
 // v73 (Доп. 386): имя гостя над репликой, «Шёпот наставника» и теги гостя — курсивом, обычными буквами.
 // Моноширинный остался там, где он часть бумаги: чек разбора (.lg-sec, .lg-was), шапка карточки стола (.ey),
@@ -48,6 +49,8 @@ const CSS = `
 .lg-g,.lg-gp{align-self:flex-start;max-width:88%;padding:10px 13px;border-radius:16px;border-bottom-left-radius:5px;background:var(--glass-2);border:1px solid var(--edge);font-size:15px;line-height:1.45}
 .lg-g b,.lg-gp b{display:block;${LABEL_CSS};font-size:13px;color:var(--sub);margin-bottom:2px}
 .lg-gp span::after{content:"▍";margin-left:1px;opacity:.6;animation:tbBlink 1s infinite}
+/* v76 (Доп. 389): действие гостя («смотрит на часы») — серой строкой курсивом, без звёздочек ролевого чат-бота */
+.lg-act{display:block;font-style:italic;color:var(--sub);font-size:13.5px;line-height:1.4;margin:1px 0 2px}
 .lg-row{display:flex;align-items:flex-end;gap:8px}
 .lg-in{flex:1;min-width:0;min-height:46px;max-height:120px;resize:none;box-sizing:border-box;padding:12px 14px;border-radius:22px;border:1px solid var(--edge);background:var(--glass);color:var(--text);font:15px/1.35 var(--font-body)}
 .lg-in:focus{outline:2px solid #C8A96E;outline-offset:1px}
@@ -206,6 +209,13 @@ function TableTop({ guest }) {
       {chairs.map(([x, y], k) => <circle key={k} cx={x} cy={y} r={7} className={k === 0 ? "tt-me" : k < seats ? "tt-seat on" : "tt-seat"} />)}
     </svg>
   );
+}
+
+// v76 (Доп. 389): реплика гостя — действия в звёздочках отдельной серой строкой курсивом, эмодзи убраны
+function GuestLine({ text }) {
+  return splitActions(text).map((p, k) => p.act
+    ? <i key={k} className="lg-act">{p.t}</i>
+    : <React.Fragment key={k}>{p.t}</React.Fragment>);
 }
 
 // v31: настроение гостя крупно — лицо, слово, пять делений; при перемене — лёгкий толчок
@@ -648,11 +658,11 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
         <MoodStrip moods={moods} />
         <div className="tb-chat" aria-live="polite">
           {msgs.map((m, i) => m.who === "guest"
-            ? <div key={i} className="lg-g tb-new"><b>{guest.name}{talk && talkState === "speaking" && i === msgs.length - 1 ? <TalkSpeaking style={{ marginLeft: 8, color: "var(--gold-ink)" }} /> : null}</b>{m.text}</div>
+            ? <div key={i} className="lg-g tb-new"><b>{guest.name}{talk && talkState === "speaking" && i === msgs.length - 1 ? <TalkSpeaking style={{ marginLeft: 8, color: "var(--gold-ink)" }} /> : null}</b><GuestLine text={m.text} /></div>
             : <div key={i} className="tb-mine tb-new">{m.text}</div>)}
           {/* v35: ты говоришь — твой пузырь с точками, пока фраза записывается и распознаётся */}
           {talk && (talkState === "hearing" || talkState === "recognizing") ? <div className="tb-mine tb-new" data-talk-pending=""><TalkDots /></div> : null}
-          {busy && partial ? <div className="lg-gp" aria-busy="true"><b>{guest.name}</b><span>{partial}</span></div>
+          {busy && partial ? <div className="lg-gp" aria-busy="true"><b>{guest.name}</b><span><GuestLine text={partial} /></span></div>
             : busy ? <div className="tb-typing tb-new" aria-label="Гость отвечает"><i /><i /><i /></div> : null}
           {ended ? <div className="tb-actl tb-new">{ui.ended}</div> : null}
         </div>

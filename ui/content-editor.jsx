@@ -24,6 +24,9 @@ import { createPortal } from "react-dom";
 import { rpc, saToken } from "../api/supabase";
 import { TRACKS, trackOf, customIcon } from "../lib/tracks";
 import { MOD_SVG, UI_SVG } from "./icons";
+import { faceIcon } from "./icons-extra";   // v75 (Доп. 388): настроение гостя — лицами, не эмодзи
+import { SitIcon } from "./table-bits";
+import { iconForEmoji, LEAD_EMOJI_RE } from "../lib/situation-icons";
 import { glass as glassOf, SectionLabel, tones } from "./analytics-kit";
 import { GOLD, labelStyle } from "./tokens";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
@@ -167,8 +170,11 @@ const blankChoice = () => ({ id: uid(), type: "choice", prompt: "Что отве
 const newDialogue = () => ({ tip: "", guest: { name: "", avatar: "🙂", context: "", mood: 3 }, steps: [{ id: uid(), type: "guest", text: "" }, blankChoice()] });
 const withIds = (d) => d ? { tip: d.tip || "", guest: { name: "", avatar: "🙂", context: "", mood: 3, ...(d.guest || {}) },
   steps: (d.steps || []).map(st => ({ ...st, id: st.id || uid(), options: st.options ? st.options.map(o => ({ ...o })) : undefined })) } : null;
-const GUEST_AVATARS = ["🙂", "👔", "👩", "🧔", "👵", "👩‍💼", "🙋", "👨‍👩‍👧"];
-const MOODS = ["😠", "😕", "😐", "🙂", "😊"];
+// v75 (Доп. 388): выбор эмодзи-аватара убран — в диалоге у гостя первая буква имени. Старое значение avatar
+// в данных остаётся (по нему уточняется род: «ушла»). Настроение — лица 1…5 (faceIcon), как в самом диалоге.
+const MOOD_WORDS = ["на взводе", "не в духе", "в порядке", "в хорошем настроении", "в восторге"];
+const MOOD_FACE_C = ["#E07878", "#C8905A", "#C8A96E", "#8FB890", "#5DBB8A"];
+const moodFace = (k, s = 18) => faceIcon(k, MOOD_FACE_C[Math.max(1, Math.min(5, k || 3)) - 1], s);
 // Сервер хранит у урока текст и вопросы; отдельного места для ситуаций нет. Чтобы не
 // трогать серверные функции, ситуации лежат в том же списке questions с пометкой
 // kind: "situation" (правка 158); приложение и редактор разделяют их при чтении.
@@ -199,7 +205,9 @@ const sectionExtras = (recs) => {
   };
 };
 const noExtras = () => ({ questions: [], situations: [], dialogue: null, build: null, review: null, skills: [] });
+// Значок сцены: в данных — эмодзи (как у штатных ситуаций), на экране — линейный значок (lib/situation-icons.js)
 const SIT_EMOJI = ["🔥", "💬", "🍷", "🙋", "⚠️", "🤝", "🍽", "⏱"];
+const SIT_EMOJI_WORD = { "🔥": "срочно", "💬": "разговор", "🍷": "напитки", "🙋": "гость", "⚠️": "внимание", "🤝": "команда", "🍽": "блюдо", "⏱": "время" };
 const readDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch (e) { return null; } };
 const writeDraft = (v) => { try { v ? localStorage.setItem(DRAFT_KEY, JSON.stringify(v)) : localStorage.removeItem(DRAFT_KEY); } catch (e) {} };
 const hhmm = (t) => { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
@@ -234,6 +242,12 @@ function Rich({ text, T, color, a11y }) {
     if (line.startsWith("✅")) return row(T.good || T.para, UI_SVG.checkCircle(TN.good, 14), line, i);
     if (line.startsWith("❌")) return row(T.bad || T.para, UI_SVG.xCircle(TN.bad, 14), line, i);
     if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...(T.quote || T.para), borderLeftColor: color }}>{line}</div>;
+    // v75 (Доп. 388): прочие эмодзи в начале строки — значком, как на экране урока (без значка — просто без эмодзи)
+    const lead = line.match(LEAD_EMOJI_RE);
+    if (lead) {
+      const ic = iconForEmoji(lead[1]), rest = line.slice(lead[0].length);
+      return row(T.para, ic ? <span style={{ color, display: "inline-flex" }}><SitIcon name={ic} s={14} /></span> : null, rest, i);
+    }
     return <div key={i} style={T.para}>{inline(line)}</div>;
   });
 }
@@ -819,7 +833,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {/* Ассистент */}
         <div style={G({ padding: "12px 12px", marginTop: 10 })}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            {UI_SVG.sparkle ? UI_SVG.sparkle(gold, 17) : null}
+            {UI_SVG.ai(gold, 17)}
             <span style={{ ...labelStyle(13), color: gold }}>Ассистент</span>
             <span style={{ color: muted, fontSize: 11.5 }}>· всё черновиком, сохраняешь ты</span>
           </div>
@@ -875,7 +889,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>) : null}
           {ai.result && ai.mode === "dialogue" ? (
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
-              <div style={{ color: txt, fontFamily: SERIF, fontSize: 14, fontWeight: "bold", marginBottom: 6 }}>{ai.result.dialogue.guest.avatar} {ai.result.dialogue.guest.name} · {MOODS[ai.result.dialogue.guest.mood - 1]}</div>
+              <div style={{ color: txt, fontFamily: SERIF, fontSize: 14, fontWeight: "bold", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>{ai.result.dialogue.guest.name} · {moodFace(ai.result.dialogue.guest.mood, 16)}<span style={{ fontWeight: "normal", color: muted, fontSize: 12.5 }}>{MOOD_WORDS[(ai.result.dialogue.guest.mood || 3) - 1]}</span></div>
               <div style={{ color: muted, fontSize: 12.5, marginBottom: 8 }}>{ai.result.dialogue.guest.context}</div>
               <div style={{ color: muted, fontSize: 12.5 }}>{ai.result.dialogue.steps.length} шагов · выборов: {ai.result.dialogue.steps.filter(x => x.type === "choice").length}</div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -969,9 +983,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                   style={{ ...pill(g === gg, gold), padding: "6px 11px", fontSize: dark ? 12.5 : 13 }}>{lab}</button>))}
             </div>
             <div data-genre-hint={g} style={{ color: muted, fontSize: dark ? 11.5 : 13, lineHeight: 1.45, margin: "0 2px 9px" }}>{GENRE_HINT[g]}</div>
-            <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }} aria-label="Эмодзи сцены">
-              {SIT_EMOJI.map(e => <button key={e} onClick={() => setS(x.id, { emoji: x.emoji === e ? "" : e })}
-                style={{ width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 17, background: x.emoji === e ? `${gold}22` : "transparent", border: `1px solid ${x.emoji === e ? gold : brd}` }}>{e}</button>)}
+            <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }} role="group" aria-label="Значок сцены">
+              {SIT_EMOJI.map(e => <button key={e} onClick={() => setS(x.id, { emoji: x.emoji === e ? "" : e })} aria-label={SIT_EMOJI_WORD[e]} aria-pressed={x.emoji === e} title={SIT_EMOJI_WORD[e]}
+                style={{ width: 34, height: 34, borderRadius: 10, cursor: "pointer", display: "grid", placeItems: "center", color: x.emoji === e ? gold : muted, background: x.emoji === e ? `${gold}22` : "transparent", border: `1px solid ${x.emoji === e ? gold : brd}` }}><SitIcon name={iconForEmoji(e) || "guest"} s={18} /></button>)}
             </div>
             {g === "empathy" ? (<>
               <div style={fieldLab}>Мысли гостя</div>
@@ -1013,8 +1027,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               {g === "complete" && String(x.start || "").trim() && String(x.options[x.correct] || "").trim()
                 ? <div data-reads="" style={{ color: muted, fontSize: dark ? 12 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Читается так: <span style={{ color: txt, fontFamily: SERIF }}>«{String(x.start).trim()} {String(x.options[x.correct]).trim()}»</span></div> : null}
             </>) : null}
-            <input style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Реакция, если верно: «🎯 Точно! …»" />
-            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Реакция на любой неверный: «💡 …»" />
+            <input style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Реакция, если верно: «Точно! …»" />
+            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Реакция на любой неверный ответ: подсказка" />
           </div>); })}
         <button onClick={addS} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
 
@@ -1032,14 +1046,11 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         ) : (<>
           <div style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ ...labelStyle(13), color: gold, marginBottom: 8 }}>Гость</div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }} aria-label="Аватар гостя">
-              {GUEST_AVATARS.map(a => <button key={a} onClick={() => setGuest({ avatar: a })} style={{ width: 34, height: 34, borderRadius: 10, cursor: "pointer", fontSize: 17, background: draft.dialogue.guest.avatar === a ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.avatar === a ? gold : brd}` }}>{a}</button>)}
-            </div>
             <input style={{ ...input, marginBottom: 8 }} value={draft.dialogue.guest.name} onChange={e => setGuest({ name: e.target.value })} placeholder="Имя гостя: «Михаил»" />
             <textarea style={{ ...input, minHeight: 56, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={draft.dialogue.guest.context} onChange={e => setGuest({ context: e.target.value })} placeholder="Кто он и зачем пришёл: «Деловой ужин, ждёт коллегу, устал»" />
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: muted, fontSize: 12 }}>Настроение в начале:</span>
-              {MOODS.map((m, k) => <button key={k} onClick={() => setGuest({ mood: k + 1 })} aria-label={`Настроение ${k + 1}`} style={{ width: 32, height: 32, borderRadius: 10, cursor: "pointer", fontSize: 16, background: draft.dialogue.guest.mood === k + 1 ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.mood === k + 1 ? gold : brd}` }}>{m}</button>)}
+              {[1, 2, 3, 4, 5].map((k) => <button key={k} onClick={() => setGuest({ mood: k })} aria-label={"Настроение: " + MOOD_WORDS[k - 1]} aria-pressed={draft.dialogue.guest.mood === k} style={{ width: 32, height: 32, borderRadius: 10, cursor: "pointer", display: "grid", placeItems: "center", background: draft.dialogue.guest.mood === k ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.mood === k ? gold : brd}` }}>{moodFace(k, 19)}</button>)}
             </div>
             <input style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора: главная мысль, покажется в конце" />
             {/* v40: уход гостя — своя фраза и заголовок (guest.walk / guest.walkTitle), как у штатных сценариев */}
@@ -1049,7 +1060,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 onChange={e => setGuest({ walk: e.target.value })} placeholder={"Что происходит: «" + dlgWalkText(gn) + "»"} aria-label="Что происходит, когда гость уходит" />
               <input style={{ ...input, fontSize: 13.5 }} value={draft.dialogue.guest.walkTitle || ""} maxLength={60} onChange={e => setGuest({ walkTitle: e.target.value })}
                 placeholder={"Заголовок в конце: «" + gn + " " + (gr === "pl" ? "ушли" : gr === "f" ? "ушла" : "ушёл") + "»"} aria-label="Заголовок, когда гость ушёл" />
-              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "6px 2px 0" }}>Гость уходит, если после неверного ответа его настроение падает до 😠. Пустые поля заменит серый текст.</div>
+              <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "6px 2px 0" }}>Гость уходит, если после неверного ответа его настроение падает до самого низкого. Пустые поля заменит серый текст.</div>
             </>); })()}
           </div>
           {draft.dialogue.steps.map((st, i) => openCard.st !== st.id
@@ -1285,9 +1296,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
               <span style={{ ...labelStyle(13), color: track.color }}>Живой диалог</span>
-              <span style={{ fontSize: 16 }}>{MOODS[(draft.dialogue.guest.mood || 3) - 1]}</span>
+              <span style={{ display: "inline-flex" }} aria-label={"Настроение: " + MOOD_WORDS[(draft.dialogue.guest.mood || 3) - 1]}>{moodFace(draft.dialogue.guest.mood || 3, 18)}</span>
             </div>
-            <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14.5 }}>{draft.dialogue.guest.avatar} {draft.dialogue.guest.name || "Гость"}</div>
+            <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 14.5 }}>{draft.dialogue.guest.name || "Гость"}</div>
             {draft.dialogue.guest.context ? <div style={{ color: muted, fontSize: 12.5, fontStyle: "italic", margin: "3px 0 8px" }}>{draft.dialogue.guest.context}</div> : null}
             {draft.dialogue.steps.slice(0, 4).map(st => st.type === "action"
               ? <div key={st.id} style={{ color: muted, fontSize: 12.5, fontStyle: "italic", margin: "6px 0" }}>{st.text}</div>

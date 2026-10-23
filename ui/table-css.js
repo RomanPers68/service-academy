@@ -7,6 +7,7 @@
 // с хэшем, сервис-воркер его кэширует — работает и офлайн.
 
 import { LABEL_CSS } from "./tokens";   // v73 (Доп. 386): подписи — курсивом с засечками, без капса
+import { signUrl } from "./signs";      // v75 (Доп. 388): домик своего раздела в «монете» оглавления
 
 const HAND_FONT_URL = new URL("../assets/fonts/marck-script.woff", import.meta.url).href;
 
@@ -212,6 +213,9 @@ html.sa-light .tbp-cap{background:rgba(250,242,222,.62);border-color:rgba(139,10
 .tbp-ind-row{position:absolute;left:0;top:0;height:100%;will-change:transform}
 .tbp-ind-row span{position:absolute;top:0;width:40px;margin-left:-20px;height:100%;text-align:center;font:700 14px/26px Georgia,serif;font-variant-numeric:tabular-nums;letter-spacing:-.2px;color:#24180A;white-space:nowrap}
 .tbp-ind-row span::before{content:attr(data-n)}   /* текст — из атрибута: копия номеров не попадает в текст страницы */
+/* v75 (Доп. 388): свой раздел ресторана — домик (маской, цвет от текста) и номер */
+.tbp-ind-row span[data-own]::before{content:"";display:inline-block;width:12px;height:12px;vertical-align:-1px;background:currentColor;-webkit-mask:${signUrl("own")} center/contain no-repeat;mask:${signUrl("own")} center/contain no-repeat}
+.tbp-ind-row span[data-own]::after{content:attr(data-n)}
 html.sa-light .tbp-ind{background:linear-gradient(180deg,#EBD39B 0%,#CDA862 52%,#A8843F 100%);box-shadow:inset 0 1px 0 rgba(255,250,232,.85),0 2px 7px rgba(120,85,25,.32)}
 html.sa-light .tbp-ind-row span{color:#1E1407}
 .tbp-num.on.done{color:#F3E2B8}

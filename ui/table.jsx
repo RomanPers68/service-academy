@@ -23,6 +23,7 @@ import { createPortal } from "react-dom";
 import { ensureTableCss } from "./table-css";
 import { ensureLessonCss } from "./table-css-lesson";
 import { Ic, Candle, SitIcon, plural } from "./table-bits";
+import { Sign, SIGN_KEYS } from "./signs";   // v75 (Доп. 388): значки правил и печать «Золото» вместо ✦ и эмодзи
 // v43 (Доп. 356): в строках «Серия» и «Цель дня» — пламя и бокал, как на главной; чек — бумага, палитра светлая
 import { Flame, Wine } from "./day-emblems";
 import { MicButton } from "./mic";
@@ -871,7 +872,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 {note ? <p className="r-note"><Ic n={passed ? "checkC" : "book"} s={14} /><span>{note}</span></p> : null}
                 {review ? <><div className="r-review">«{review}»</div><div className="r-by">— {(guest && guest.name) || "гость"}{guest && guest.table ? ", стол " + guest.table : ""}</div></>
                   : <div className="r-thanks">{mode === "probe" ? "Начни с тем, где были ошибки" : passed ? (mode === "gold" ? "Мастер" : "Так держать!") : "Ещё подход, и получится"}</div>}
-                {mode === "gold" && passed ? <span className="r-goldseal" aria-hidden="true"><span>✦</span><small>ЗОЛОТО</small></span> : null}
+                {mode === "gold" && passed ? <span className="r-goldseal" aria-hidden="true"><span><Sign n="crown" s={17} sw={1.9} /></span><small>ЗОЛОТО</small></span> : null}
                 <Edge />
               </div>
             </div></div>
@@ -1009,7 +1010,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
         <div className="tb-body"><div className="tb-col">
           <div className="tb-intro" role="group" aria-label="Правила">
             <div className="tb-intro-t">{intro.title || "Правила"}</div>
-            <ul>{(intro.lines || []).map((x, i) => <li key={i}><span aria-hidden="true">{intro.icons && intro.icons[i] ? intro.icons[i] : ""}</span><span>{x}</span></li>)}</ul>
+            <ul>{(intro.lines || []).map((x, i) => { const ic = intro.icons && intro.icons[i]; return <li key={i}><span aria-hidden="true">{ic ? (SIGN_KEYS.includes(ic) ? <Sign n={ic} s={15} /> : ic) : ""}</span><span>{x}</span></li>; })}</ul>
             {intro.note ? <p className="tb-intro-n">{intro.note}</p> : null}
           </div>
         </div></div>

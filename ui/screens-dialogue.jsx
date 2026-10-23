@@ -13,8 +13,8 @@
 //   в уроке при ошибке — «Лучше так».
 // • Ответы — как клавиатура бота внизу: крупный вопрос, «N из M» с точками ✓/✗, кнопки
 //   со стрелкой «отправить». Выбрал — кнопки уходят вниз, реплика улетает в чат.
-// • Финал — тоже в чате: отзыв гостя (звёзды в уроке) и итог наставника (один ✦ — раньше
-//   было «✦✦»), внизу «Ещё раз» и «Дальше».
+// • Финал — тоже в чате: отзыв гостя (звёзды в уроке) и итог наставника (без значка в тексте —
+//   раньше было «✦✦»), внизу «Ещё раз» и «Дальше».
 // • Гость «печатает» тем дольше, чем длиннее реплика; нажми на переписку — ответит сразу.
 //   Тихие звуки отправки и ответа (выключатель общий с уроком «у стола»), по желанию —
 //   голос гостя (голос телефона). Ушёл вверх по переписке — кнопка «вниз».
@@ -38,6 +38,7 @@ import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
+import { Sign } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи и ✦
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, LABEL_CSS } from "./tokens";
 // v37: переписка — звуки, голос гостя, род имени
@@ -49,9 +50,11 @@ const dlgLastByTerm = {};
 
 // ── v37: настроение, ритм и слова переписки ─────────────────────────────────
 // Палитра настроения — запасная: свой диалог из редактора открывается раньше, чем
-// подгрузились данные диалогов (там MOOD_EMOJI_D / MOOD_COLORS_D пока пустые).
-const MOOD_E = ["😞", "😕", "😐", "🙂", "😊"];
+// подгрузились данные диалогов (там MOOD_COLORS_D пока пустой).
+// v75 (Доп. 388): настроение и реакции гостя — лицами (ui/icons-extra.jsx faceIcon, как в «Как прошла смена?»),
+// было — эмодзи 😞 😕 😐 🙂 😊 и ❤️ 👍 👌 🤔 😠. Аватар гостя — первая буква имени, было — эмодзи.
 const MOOD_C = ["#E07878", "#C8905A", "#C8A96E", "#8FB890", "#5DBB8A"];
+const MOOD_C_LT = ["#B4382A", "#A0582A", "#8A6A2E", "#3F7A4E", "#2E7D52"];   // светлая тема: темнее, на пергаменте
 // Настроение словами — без рода и числа: подходит и «Михаилу», и «Паре», и «Гостям»
 export const DLG_MOOD_WORDS = ["на взводе", "не в духе", "в порядке", "в хорошем настроении", "в восторге"];
 // Настроение 1…5. Не число — 3. Ноль — это 1 (ревью v37: «0 || 3» поднимал гостя до «в порядке»,
@@ -59,8 +62,8 @@ export const DLG_MOOD_WORDS = ["на взводе", "не в духе", "в по
 const clampMood = (m) => { const n = Math.round(Number(m)); return Number.isFinite(n) ? Math.max(1, Math.min(5, n)) : 3; };
 // Настроение после ответа — как раньше: прибавить moodDelta и удержать в 1…5
 export const dlgNextMood = (mood, delta) => clampMood(clampMood(mood) + (Number(delta) || 0));
-const moodEmoji = (m) => (MOOD_EMOJI_D && MOOD_EMOJI_D[m - 1]) || MOOD_E[m - 1];
 const moodColor = (m) => (MOOD_COLORS_D && MOOD_COLORS_D[m - 1]) || MOOD_C[m - 1];
+const moodFace = (m, size, lt) => faceIcon(clampMood(m), lt ? MOOD_C_LT[clampMood(m) - 1] : moodColor(clampMood(m)), size);
 
 // «Печатает» тем дольше, чем длиннее реплика (0,75–1,8 с); сколько дать прочитать
 export const dlgTypingMs = (t) => Math.round(Math.max(750, Math.min(1800, 500 + String(t || "").length * 14)));
@@ -68,14 +71,11 @@ const readMs = (t) => Math.round(Math.max(380, Math.min(1100, 260 + String(t || 
 const sceneMs = (t) => Math.round(Math.max(650, Math.min(1500, 420 + String(t || "").length * 9)));
 const coachMs = (t) => Math.round(Math.max(900, Math.min(2200, 600 + String(t || "").length * 14)));
 
-// Реакция гостя на твою реплику — по тому, как она сдвинула его настроение
+// Реакция гостя на твою реплику — по тому, как она сдвинула его настроение: лицо 1…5 (5 — восторг)
+export const DLG_REACT_WORDS = ["раздражение", "сомнение", "спокойно", "одобрение", "восторг"];
 export function dlgReaction(opt) {
   const d = Number(opt && opt.moodDelta) || 0;
-  if (d >= 2) return "❤️";
-  if (d === 1) return opt.correct ? "👍" : "🙂";
-  if (d === 0) return opt.correct ? "👌" : "🤔";
-  if (d === -1) return "😕";
-  return "😠";
+  return d >= 2 ? 5 : d === 1 ? 4 : d === 0 ? 3 : d === -1 ? 2 : 1;
 }
 
 // Род и число гостя для «ушёл / ушла / ушли»: «Гости» — множественное, «Пара», «Семья
@@ -101,7 +101,7 @@ export function dlgWalkLine(guest) {
   const own = guest && typeof guest.walk === "string" ? guest.walk.trim() : "";
   return own || dlgWalkText(guest && guest.name);
 }
-// Итог наставника: в данных он уже начинается с «✦» — второй не добавляем (было «✦✦»)
+// Итог наставника: в старых данных и своих диалогах он может начинаться с «✦» — снимаем (v75: в данных их нет)
 export const dlgTip = (tip) => String(tip || "").replace(/^\s*✦\s*/, "").trim();
 // Сколько выборов впереди по пути верных ответов (верный → его goto или следующий шаг), начиная с шага from.
 // Ветки «спасения» после ошибки заранее в счётчик не входят: «N из M» не обещает вопрос, которого не будет
@@ -262,7 +262,7 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .dc-name{font-family:'Piazzolla',Georgia,serif;font-size:16.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dc-st{font-size:14px;line-height:1.3;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dc-st.ty{color:var(--gold-ink);font-style:italic}
-.dc-st-e{display:inline-block;animation:dcFade .4s ease}
+.dc-st-e{display:inline-block;vertical-align:-2px;animation:dcFade .4s ease}
 .dc-dots{display:inline-flex;gap:2px;margin-left:3px;vertical-align:middle}
 .dc-dots i{width:3.5px;height:3.5px;border-radius:50%;background:currentColor;animation:dcBlink 1.2s infinite}
 .dc-dots i:nth-child(2){animation-delay:.2s}.dc-dots i:nth-child(3){animation-delay:.4s}
@@ -324,7 +324,7 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
 .dc-coach.bad{border-color:var(--bad-edge);background-image:linear-gradient(var(--bad-wash),var(--bad-wash))}
 .dc-coach.tip{border-color:var(--edge-gold)}
 .dc-coach-h{display:flex;align-items:center;gap:7px;margin-bottom:5px;${LABEL_CSS};font-size:13px;color:var(--gold-ink)}
-.dc-coach-av{width:20px;height:20px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold);font-size:11px;font-style:normal;letter-spacing:0}
+.dc-coach-av{width:20px;height:20px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold);font:700 8.5px/1 Georgia,serif;font-style:normal;letter-spacing:.2px}
 .dc-coach-h i{font-family:Georgia,serif;font-style:italic;text-transform:none;letter-spacing:0;font-size:12px;color:var(--faint)}
 .dc-verdict{margin-left:auto;padding:1px 8px;border-radius:999px;font-size:13px;white-space:nowrap}
 .dc-coach.ok .dc-verdict{color:var(--ok-ink);background:var(--ok-wash);box-shadow:inset 0 0 0 1px var(--ok-edge)}
@@ -336,7 +336,7 @@ html.sa-light .sa-dlg.dc,.sa-dlg.dc.lt{${LIGHT}}
   background:#F7EEDB;color:#3A2A14;box-shadow:0 10px 28px rgba(0,0,0,0.34)}
 html.sa-light .dc-review,.sa-dlg.dc.lt .dc-review{box-shadow:0 0 0 1px rgba(139,106,48,0.3),0 8px 22px rgba(120,85,25,0.2);background:#FFFBF1}
 .dc-review .dc-ey{color:#8A6A2E}
-.dc-rv-face{font-size:40px;line-height:1;margin:8px 0 6px}
+.dc-rv-face{display:flex;justify-content:center;line-height:1;margin:8px 0 6px}
 .dc-rv-t{display:block;font-family:'Piazzolla',Georgia,serif;font-size:19px;line-height:1.25}
 .dc-stars{font-size:22px;letter-spacing:4px;margin:6px 0 0;line-height:1.2}
 .dc-stars .on{color:#C2923A}.dc-stars .off{color:rgba(58,42,20,0.16)}
@@ -807,7 +807,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
   const D = dialogue;
   const guest = D.guest || {};
   const name = String(guest.name || "Гость");
-  const avatar = guest.avatar || name.trim().charAt(0).toUpperCase() || "?";
+  const avatar = name.trim().charAt(0).toUpperCase() || "?";   // v75: первая буква имени (эмодзи guest.avatar — только для рода)
   const m = clampMood(mood);
   const m0 = clampMood(guest.mood || 3);
   const totalChoices = D.steps.filter(s => s.type === "choice").length;
@@ -833,7 +833,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
           <div className="dc-intro-n">{name}</div>
           {guest.context ? <p className="dc-intro-p">{guest.context}</p> : null}
           <div className="dc-chips">
-            <span className="dc-chip">{moodEmoji(m0)} {DLG_MOOD_WORDS[m0 - 1]}</span>
+            <span className="dc-chip"><span style={{ display: "inline-flex" }}>{moodFace(m0, 16, a11y)}</span>{DLG_MOOD_WORDS[m0 - 1]}</span>
             {startChoices ? <span className="dc-chip">{startChoices} {plural(startChoices, "выбор", "выбора", "выборов")}</span> : null}
             {pro ? <span className="dc-chip">★ до 3 звёзд</span> : null}
           </div>
@@ -843,7 +843,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
     );
     if (mm.type === "action") return (
       <div key={"m" + mm.id} className="dc-row mid" data-dlg-msg={mm.walk ? "walk" : "action"}>
-        <div className={"dc-svc" + (mm.walk ? " bad" : "")}>{mm.walk ? "🚪 " : ""}{mm.text}</div>
+        <div className={"dc-svc" + (mm.walk ? " bad" : "")}>{mm.walk ? <Sign n="door" s={14} style={{ marginRight: 5, verticalAlign: "-2px" }} /> : null}{mm.text}</div>
       </div>
     );
     if (mm.type === "guest" || mm.type === "me") {
@@ -867,7 +867,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
           <div className={"dc-b dc-out" + (mm.read ? " read" : "") + (mm.correct ? "" : " miss")}>
             <span className="dc-tx">{mm.text}<i className="dc-sp" aria-hidden="true" /></span>
             <span className="dc-meta" aria-hidden="true">{hhmm(mm.t)}{TICKS}</span>
-            {mm.react ? <span className="dc-react" data-dlg-react={mm.react} role="img" aria-label={"Реакция гостя: " + mm.react}>{mm.react}</span> : null}
+            {mm.react ? <span className="dc-react" data-dlg-react={mm.react} role="img" aria-label={"Реакция гостя: " + (DLG_REACT_WORDS[mm.react - 1] || "")}>{moodFace(mm.react, 18, a11y)}</span> : null}
           </div>
         </div>
       );
@@ -875,7 +875,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
     if (mm.type === "coach") return (
       <div key={"m" + mm.id} className="dc-row mid" data-dlg-msg="coach" data-dlg-mentor={mm.correct ? "ok" : "bad"}>
         <div className={"dc-coach " + (mm.correct ? "ok" : "bad")}>
-          <div className="dc-coach-h"><span className="dc-coach-av" aria-hidden="true">✦</span><span>Наставник</span><i>шёпотом</i><em className="dc-verdict">{mm.correct ? "✓ верно" : "✗ неверно"}</em></div>
+          <div className="dc-coach-h"><span className="dc-coach-av" aria-hidden="true">AI</span><span>Наставник</span><i>шёпотом</i><em className="dc-verdict">{mm.correct ? "✓ верно" : "✗ неверно"}</em></div>
           <p>{mm.text}</p>
           {mm.best ? <p className="dc-best">Лучше так: <b>{dlgQuote(mm.best)}</b></p> : null}
         </div>
@@ -891,7 +891,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
         <div key={"m" + mm.id} className="dc-row mid" data-dlg-review={walkedOut ? "walked" : String(m)}>
           <div className="dc-review">
             <div className="dc-ey">{walkedOut ? "Без отзыва" : "Отзыв гостя"}</div>
-            <div className="dc-rv-face" aria-hidden="true">{walkedOut ? "🚪" : moodEmoji(m)}</div>
+            <div className="dc-rv-face" aria-hidden="true">{walkedOut ? <Sign n="door" s={40} c={a11y ? "#B4382A" : "#E07878"} /> : moodFace(m, 40, a11y)}</div>
             <b className="dc-rv-t" style={{ color: tc }}>{title}</b>
             {pro ? (
               <div className="dc-stars" role="img" aria-label={stars + " из 3 звёзд"}><span className="on">{"★".repeat(stars)}</span><span className="off">{"★".repeat(3 - stars)}</span></div>
@@ -904,7 +904,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
     if (mm.type === "tip") return (
       <div key={"m" + mm.id} className="dc-row mid" data-dlg-msg="tip">
         <div className="dc-coach tip">
-          <div className="dc-coach-h"><span className="dc-coach-av" aria-hidden="true">✦</span><span>Наставник</span><i>итог</i></div>
+          <div className="dc-coach-h"><span className="dc-coach-av" aria-hidden="true">AI</span><span>Наставник</span><i>итог</i></div>
           <p>{mm.text}</p>
         </div>
       </div>
@@ -926,7 +926,7 @@ export function LiveDialogue({ dialogueId, inline, T, onClose, color, pro, hintK
               <span className={"dc-st" + (typing ? " ty" : "")} data-dlg-status={typing ? "typing" : String(m)}>
                 {typing
                   ? <>печатает<span className="dc-dots" aria-hidden="true"><i /><i /><i /></span></>
-                  : <><span key={"e" + m} className="dc-st-e">{moodEmoji(m)}</span> {DLG_MOOD_WORDS[m - 1]}</>}
+                  : <><span key={"e" + m} className="dc-st-e">{moodFace(m, 14, a11y)}</span> {DLG_MOOD_WORDS[m - 1]}</>}
               </span>
             </div>
           </div>

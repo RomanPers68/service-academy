@@ -22,10 +22,10 @@ class BootBoundary extends React.Component {
         <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center",
           justifyContent:"center", padding:32, textAlign:"center", background:"#171208",
           fontFamily:"Georgia, serif", color:"#C8A96E" }}>
-          <div style={{ fontSize:15, letterSpacing:5, marginBottom:14 }}>✦ SA</div>
+          <div style={{ fontSize:15, letterSpacing:5, marginBottom:14 }}>SA</div>
           <div style={{ fontSize:15, fontWeight:"bold", marginBottom:8 }}>Приложение не запустилось</div>
           <div style={{ fontSize:12, opacity:.85, lineHeight:1.65, maxWidth:280 }}>
-            Закрой мини-приложение полностью и открой заново. Если повторится — покажи менеджеру этот экран.
+            Закрой мини-приложение полностью и открой заново. Если повторится, покажи менеджеру этот экран.
             <br /><br />
             <span style={{ fontSize:10, opacity:.7 }}>Техдетали: {this.state.err}</span>
           </div>

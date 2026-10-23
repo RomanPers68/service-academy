@@ -298,15 +298,18 @@ export const injectStyles = () => {
     @keyframes saCelebIn { 0%{opacity:0;transform:scale(.7)} 18%{opacity:1;transform:scale(1.04)}
       30%{transform:scale(1)} 78%{opacity:1} 100%{opacity:0;transform:scale(1.02)} }
     @keyframes saCelebSpark { 0%{opacity:0;transform:translate(0,0) scale(.4)}
-      25%{opacity:1} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1)} }
+      25%{opacity:1} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1) rotate(150deg)} }
     .sa-celeb { position:fixed; inset:0; z-index:1200; display:grid; place-items:center;
       pointer-events:none; animation: saCelebIn 1.5s ease both; }
     .sa-celeb .c-core { position:relative; text-align:center; font-family:Georgia,serif;
       color:#EFE4C8; font-size:21px; padding:18px 30px; border-radius:18px;
       background:rgba(28,21,10,0.88); border:1px solid rgba(210,168,65,0.5);
       box-shadow:inset 0 0 22px rgba(255,248,230,0.08), inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 40px rgba(0,0,0,0.5); }
-    .sa-celeb .c-spark { position:absolute; left:50%; top:50%; color:#D2A85A; font-size:15px;
-      animation: saCelebSpark 1.3s ease-out both; }
+    /* v75 (Доп. 388): конфетти вместо звёздочек — кружок, полоска и квадратик трёх оттенков золота */
+    .sa-celeb .c-spark { position:absolute; left:50%; top:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
+      border-radius:50%; background:#D2A85A; animation: saCelebSpark 1.3s ease-out both; }
+    .sa-celeb .c-spark.k1 { width:4px; height:11px; margin:-5.5px 0 0 -2px; border-radius:2px; background:#E8C56A; }
+    .sa-celeb .c-spark.k2 { border-radius:1.5px; background:#B8862A; }
     /* Мерцающий скелетон стеклянных карточек на время ленивой подгрузки */
     @keyframes saShimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
     .sa-skel { background: linear-gradient(100deg, rgba(200,169,110,0.07) 40%, rgba(230,200,140,0.16) 50%, rgba(200,169,110,0.07) 60%); background-size:200% 100%; animation: saShimmer 1.4s linear infinite; }

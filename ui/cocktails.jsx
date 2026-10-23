@@ -4,6 +4,7 @@ import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, co
 import { rpc, saToken } from "../api/supabase";
 import { loadMastery, buildScenario } from "../lib/bar-lab";
 import { CocktailArt } from "./cocktail-art";
+import { Sign } from "./signs";   // v75 (Доп. 388): лёд и гарниш в порядке сборки — значками вместо ❄ ✿
 import { COCKTAIL_STORIES } from "../data/cocktail-stories";
 import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, INK_DEEP, labelStyle } from "./tokens";
@@ -315,7 +316,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 </div>
               ))}
               {/* Доп. 230: порядок сборки — тот же, что проверяет «Сборка руками» (один источник, без расхождений) */}
-              {!c.house ? (() => { const seq = buildScenario(c, COCKTAILS).steps; const glyph = (s) => s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? "▸" : s.kind === "garnish" ? "✿" : "●"; return (
+              {!c.house ? (() => { const seq = buildScenario(c, COCKTAILS).steps; const glyph = (s) => s.kind === "glass" ? "▽" : s.kind === "ice" ? <Sign n="ice" s={11} sw={2.2} style={{ verticalAlign: "-1px" }} /> : s.kind === "tool" ? "▸" : s.kind === "garnish" ? <Sign n="garnish" s={12} sw={2.2} style={{ verticalAlign: "-1px" }} /> : "●"; return (
                 <div style={{ margin:"10px 0 8px" }}>
                   <div style={{ ...labelStyle(13), color:GOLD, marginBottom:4 }}>Сборка · {seq.length} шагов · как в тренажёре</div>
                   <ol style={{ margin:0, paddingLeft:20, color:glass.tx }}>{seq.map((s, k) => <li key={k} style={{ paddingLeft:2 }}><span style={{ color:GOLD, marginRight:6, fontSize:11 }}>{glyph(s)}</span>{s.label}</li>)}</ol>

@@ -4,6 +4,7 @@
 // чтобы сама книга (тяжёлый интерфейс) подгружалась лениво.
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
+import { Sign } from "./signs";   // v75 (Доп. 388): книга значком вместо 📖
 import { onActivate, vibrate } from "../lib/utils";
 import { MODULES } from "../data/modules";
 import { MODULE_REVIEWS, reviewOf, bookModules, LEGEND_REVIEWS, moduleDone } from "../data/reviews";
@@ -51,10 +52,10 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
       opacity: leaving ? 0 : undefined,
       transition: "transform 0.35s ease, opacity 0.35s ease" }}>
       <div style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 21,
+        color: lt ? "#7A5D2A" : GOLD,
         background: lt ? "radial-gradient(circle at 35% 30%, rgba(200,160,80,0.25), rgba(200,169,110,0.08))" : "radial-gradient(circle at 35% 30%, rgba(220,180,95,0.28), rgba(200,169,110,0.08))",
         border: lt ? "1px solid rgba(139,106,48,0.4)" : `1px solid ${GOLD}55`,
-        boxShadow: lt ? "0 0 14px rgba(180,140,60,0.25)" : `0 0 18px ${GOLD}30` }}>📖</div>
+        boxShadow: lt ? "0 0 14px rgba(180,140,60,0.25)" : `0 0 18px ${GOLD}30` }}><Sign n="book" s={22} /></div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...labelStyle(13), color: lt ? "#7A5D2A" : GOLD_SOFT }}>Книга отзывов</div>
         <div style={{ color: T?.modTitle?.color || "#F0E8D8", fontFamily: "Georgia, serif", fontSize: 14, marginTop: 2 }}>Гость оставил тебе новую страницу</div>

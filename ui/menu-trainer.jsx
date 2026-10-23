@@ -21,6 +21,7 @@ import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты �
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GAME_SVG, UI_SVG } from "./icons";
+import { Sign } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи
 import { TimerBar, LiquidSegment } from "./widgets";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): тренировки меню — плитками в две колонки на широком экране
 // v73 (Доп. 386): подписи — курсивом обычными буквами (было: моноширинный капс); у T.secTitle / T.quizProgress
@@ -244,7 +245,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v74</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v75</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -264,7 +265,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             </div>
           );
         })()}
-        {shareErr && <div style={{ color: red, fontSize: 12.5, marginTop: 4 }}>⚠ Меню команды не загрузилось: {shareErr}</div>}
+        {shareErr && <div style={{ color: red, fontSize: 12.5, marginTop: 4 }}><Sign n="alert" s={14} style={{ marginRight: 5, verticalAlign: "-2px" }} />Меню команды не загрузилось: {shareErr}</div>}
         {shareStale && <div style={{ color: T.modSub.color, fontSize: 12.5, marginTop: 4 }}>Нет связи. Показываю меню, сохранённое при прошлом открытии. Обновится, когда появится сеть.</div>}
       </div>
 
@@ -368,13 +369,13 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
       )}
       {err && err !== "forbidden" && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🔌</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12, color: gold }}><Sign n="plug" s={34} /></div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: T.para?.color }}>Серверная часть ещё не подключена. Выполни <b style={{ color: gold }}>supabase/supabase-stage4.sql</b> в Supabase → SQL Editor (5 минут, см. docs/UPGRADE_NOTES.md). После этого здесь появится картина по каждому сотруднику.</div>
         </div>
       )}
       {!err && rows === null && <SkelCards a11y={!!T.a11y} rows={4} h={60} style={{ padding: "16px 16px 24px" }} />}
       {!err && rows && !rows.length && (
-        <div style={{ textAlign: "center", padding: "44px 24px", color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>Пока никто не открывал новинки. Скажи команде на брифинге: «Зайдите в приложение и выучите новые позиции» 😉</div>
+        <div style={{ textAlign: "center", padding: "44px 24px", color: T.para?.color, fontSize: 14, lineHeight: 1.6 }}>Пока никто не открывал новинки. Скажи команде на брифинге: «Зайдите в приложение и выучите новые позиции».</div>
       )}
       {!err && rows && rows.length > 0 && (
         <div style={{ padding: "10px 14px" }}>
@@ -452,7 +453,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
                 style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
                 {d.img
                   ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
-                  : <div style={{ width: 54, height: 54, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 18 }}>🍽</div>}
+                  : <div style={{ width: 54, height: 54, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", color: gold }}><Sign n="cloche" s={24} /></div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                   <div style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
@@ -716,7 +717,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
             <div>
               <TimerBar key={timerKey} duration={60} color={gold} onExpire={() => setPhase("compare")} />
               <div style={{ color: T.para?.color, fontSize: 14, lineHeight: 1.6, marginTop: 12 }}>
-                🎙 Говори! Вкус → текстура → из чего → с чем сочетается.
+                <Sign n="mic" s={16} style={{ marginRight: 6, verticalAlign: "-3px", color: gold }} />Рассказывай по порядку: вкус → текстура → из чего → с чем сочетается.
               </div>
             </div>
           )}
@@ -1265,13 +1266,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                 {unpublished
                   ? <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setForm({ ...empty })}>+ Блюдо</button>
                   : <label className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
-                      {importing ? "Читаю PDF…" : "⚡ PDF"}
+                      {importing ? "Читаю PDF…" : "Из PDF"}
                       <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
                     </label>}
               </div>
               {unpublished ? (
                 <label className="sa-btn" style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: 12.5, color: T.modSub.color, cursor: "pointer" }}>
-                  {importing ? "Читаю PDF…" : "⚡ Импорт из PDF"}
+                  {importing ? "Читаю PDF…" : "Импорт из PDF"}
                   <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
                 </label>
               ) : null}

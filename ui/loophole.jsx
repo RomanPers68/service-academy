@@ -82,7 +82,7 @@ export const skipPayload = (skip) => ({ p_answered: skip.answered, p_total: skip
 export const loopWords = (n = 1, female = false) => ({
   teaser: n <= 1 ? (female ? "Кажется, ты кое-что нашла…" : "Кажется, ты кое-что нашёл…") : n === 2 ? "Снова ты? Ещё один ключ в копилке…"
         : n === 3 ? "Третий ключ. Это уже привычка?" : `Ключ №${n}. Копилка тяжелеет…`,
-  punch: n <= 1 ? "Ах ты, хитрая жопка ☺️" : n === 2 ? "Опять ты, хитрая жопка ☺️" : "И снова здравствуй, хитрая жопка ☺️",
+  punch: n <= 1 ? "Ах ты, хитрая жопка" : n === 2 ? "Опять ты, хитрая жопка" : "И снова здравствуй, хитрая жопка",
   stamp: female ? "ПОПАЛАСЬ" : "ПОПАЛСЯ",
   stampTop: n <= 1 ? null : n === 2 ? "СНОВА" : `${n}-Й РАЗ`,
 });
@@ -211,7 +211,7 @@ export function LoopholeCard({ rec, rank, a11y, female = false, onClose, onMista
           // Фразы — владельца: «хитрый», «пока впереди»
           const need = Math.max(0, rank.leader - rank.mine + 1);
           const first = rank.place === 1 && !rank.tied;
-          const phrase = first ? "Ты впереди всех хитрецов. Пока впереди 😉"
+          const phrase = first ? "Ты впереди всех хитрецов. Пока впереди."
             : rank.place === 1 ? "Ты делишь первое место с другими хитрецами. Ещё ключ, и оторвёшься."
             : `Ты ${female ? "хитрая" : "хитрый"}, но до первого места ещё ${need} ${kl(need)}.`;
           const owned = Math.min(rank.mine, 8);

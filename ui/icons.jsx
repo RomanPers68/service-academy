@@ -3,6 +3,7 @@
 // NAV_ICONS и регэксп MARKER_RE. Из App.jsx (4219–4233 и 4259–4569). Содержит JSX.
 
 import React from "react";
+import { Sign, SIGN_KEYS } from "./signs";
 
 // Картинки-эмоции уроков лежат отдельно (ui/mm-images.js) и грузятся по требованию.
 // MM наполняется после загрузки — старые проверки MM[id] продолжают работать.
@@ -192,12 +193,8 @@ export const UI_SVG = {
       <path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1-5.4-2.9-5.4 2.9 1.1-6.1L3.2 9.4l6.1-.8z" />
     </svg>
   ),
-  sparkle: (c, s=20) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2.5c.9 5.2 3.4 7.7 8.5 8.5-5.1.8-7.6 3.3-8.5 8.5-.9-5.2-3.4-7.7-8.5-8.5 5.1-.8 7.6-3.3 8.5-8.5z" />
-      <path d="M19 15.5c.4 2.1 1.4 3.1 3.5 3.5-2.1.4-3.1 1.4-3.5 3.5-.4-2.1-1.4-3.1-3.5-3.5 2.1-.4 3.1-1.4 3.5-3.5z" />
-    </svg>
-  ),
+  // v75 (Доп. 388): значок-искра «sparkle» (две четырёхлучевые звёздочки) убран — примета сгенерированных
+  // интерфейсов; вместо него «ai» (Наставник, ассистент), «laurel», «party», «cloche» — ui/signs.jsx
   rocket: (c, s=20) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
@@ -243,6 +240,9 @@ export const UI_SVG = {
     </svg>
   ),
 };
+// v75 (Доп. 388): свои значки из ui/signs.jsx — тем же видом (c, s), что UI_SVG. Так их находят все места,
+// где значок берут по имени (ачивки, статистика, карточка «что сейчас»): laurel, master, ai, lock, party…
+for (const k of SIGN_KEYS) if (!UI_SVG[k]) UI_SVG[k] = (c, s = 20) => <Sign n={k} c={c} s={s} />;
 // Иконки должностей
 export const POS_SVG = { waiter: UI_SVG.cloche, hostess: (c,s)=>ROLE_SVG.spg(c,s), bartender: (c,s)=>ROLE_SVG.bar(c,s), manager: (c,s)=>ROLE_SVG.manager(c,s), senior: (c,s)=>ROLE_SVG.service_manager(c,s) };
 

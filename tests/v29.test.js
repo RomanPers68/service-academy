@@ -272,7 +272,7 @@ describe("у стола и разминка из вопросов тестов (
     expect(pool.length).toBe(1);
     expect(pool[0].genre).toBe("quiz");
     expect(pool[0].question).toBe("Бокал для мартини?");
-    expect(pool[0].win).toBe("🎯 V-образная рюмка.");
+    expect(pool[0].win).toBe("V-образная рюмка.");   // v75: без эмодзи в начале (на экране его и так срезали)
     expect(pool[0]._quiz).toBe(true);
     expect(practicePool(bar[0]).length).toBe(0);
     expect(tablePool(bar[0]).length).toBe(1);

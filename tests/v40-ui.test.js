@@ -209,10 +209,10 @@ describe("v40 UI: поздравления", () => {
     expect(html).toContain("data-ms-toast");
     expect(html).toContain("Главная награда");
     expect(html).toContain(">Мастер роли «Ядро»<");
-    expect(html).toContain("Роль пройдена, 5 золотых тем, серия 14 дней и 10 значков. Коллеги увидят знак ✦ у твоего имени.");
+    expect(html).toContain("Роль пройдена, 5 золотых тем, серия 14 дней и 10 значков. Коллеги увидят знак мастера у твоего имени.");   // v75: словами, знак — медаль
     expect(html).toContain("Сертификат мастера ›");
     expect(html).toMatch(/data-sa-back=""[^>]*>Позже</);
-    expect(count(html, /<i style="--dx:/g)).toBe(12);
+    expect(count(html, /<i class="k[012]" style="--dx:/g)).toBe(12);   // v75: конфетти трёх видов вместо ✦
     expect(R(h(BadgeToast, { item: { kind: "master", role: "x" }, inline: true }))).toContain(">Мастер роли<");
   });
 

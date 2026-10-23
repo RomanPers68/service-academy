@@ -16,6 +16,7 @@ import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
 import { sfx } from "../lib/sfx";   // v57 (Доп. 370): звуки ответов
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
+import { Sign, TopicNo, topicNoText } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи и ✦
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
 import { bookStats, countNewDishes } from "../data/reviews";
@@ -32,6 +33,10 @@ import { LiveDialogue } from "./screens-dialogue";
 import { practiceRound } from "../lib/practice-round";
 import { lessonCards } from "../lib/lesson-cards";
 import { missText } from "../lib/practice-mistake";
+import { SitIcon } from "./table-bits";
+import { iconForSituation, iconForEmoji, LEAD_EMOJI_RE as LEAD_EM_RE, ONE_EMOJI_RE as ONE_EM_RE } from "../lib/situation-icons";
+// v75 (Доп. 388): эмодзи в начале реакции («🎯 Верно…», «💡 …») — не показываем, как формат «у стола»
+const stripEm = (t) => String(t || "").replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "").trim();
 import { ensureTableCss } from "./table-css";
 import { ModuleMenu } from "./module-menu";
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
@@ -142,7 +147,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
       <div style={T.screen}>
         {Head}
         <div style={{ textAlign: "center", padding: "60px 24px", color: T.modSub.color }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>{UI_SVG.checkCircle(GREEN, 44)}</div>
           <div style={{ ...T.bold, marginBottom: 6 }}>{waiting > 0 ? "Всё повторено по расписанию" : "Ошибок нет"}</div>
           <div style={{ fontSize: 14, lineHeight: 1.6 }}>
             {waiting > 0
@@ -229,9 +234,10 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     [modules, customModules, completed, quizDone]);
   // ── Доп. 307: трек — меню тем, листаются свайпом; номера тем — оглавление ──
   const pages = React.useMemo(() => [...modules, ...customModules], [modules, customModules]);
-  // Доп. 310: свои разделы ресторана в оглавлении — «✦1», «✦2»… (раньше все были одинаковым «✦»)
+  // Доп. 310: свои разделы ресторана в оглавлении — номером по порядку. v75 (Доп. 388): домик и номер вместо «✦1», «✦2»:
+  // labelOf отдаёт «own2» (или «own», если свой раздел один), рисует TopicNo, словами — topicNoText («свой раздел 2»)
   const customNo = React.useMemo(() => { const map = {}; let k = 0; pages.forEach((m) => { if (m && m.custom) map[m.id] = ++k; }); return { map, n: k }; }, [pages]);
-  const labelOf = (m, i) => { const d = String((m && m.tag) || "").match(/\d+/); if (d) return d[0]; if (m && m.custom) return customNo.n > 1 ? "✦" + customNo.map[m.id] : "✦"; return String(i + 1); };
+  const labelOf = (m, i) => { const d = String((m && m.tag) || "").match(/\d+/); if (d) return d[0]; if (m && m.custom) return customNo.n > 1 ? "own" + customNo.map[m.id] : "own"; return String(i + 1); };
   const isDoneL = (l) => (l.type === "quiz" ? !!quizDone[l.id] : !!completed[l.id]);
   const stepsOf = (m) => ((m && m.lessons) || []).filter((l) => l && l.type !== "result");
   const idxOf = (id) => (id ? pages.findIndex((m) => m.id === id) : -1);
@@ -660,7 +666,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     return (
       <div className="tbp-peek" ref={peekRef} role="tooltip">
         <i className="ar" aria-hidden="true" />
-        <b>{labelOf(m, peek.i) + " · " + m.title}</b>
+        <b><TopicNo label={labelOf(m, peek.i)} />{" · " + m.title}</b>
         {line ? <span>{line}</span> : null}
       </div>
     );
@@ -713,7 +719,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         {/* Доп. 308: в конце меню — тихая ссылка на следующую тему (для тех, кто листает вниз, а не вбок) */}
         {nx && !nextCardFor(m) ? (
           <button type="button" className="tbp-nextlink" tabIndex={passive ? -1 : undefined} onClick={passive ? undefined : () => goTo(i + 1)}>
-            <span>Дальше:</span><b>{labelOf(nx, i + 1) + " · " + nx.title}</b><span className="ar" aria-hidden="true">›</span>
+            <span>Дальше:</span><b><TopicNo label={labelOf(nx, i + 1)} />{" · " + nx.title}</b><span className="ar" aria-hidden="true">›</span>
           </button>
         ) : null}
       </>
@@ -737,7 +743,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
             style={{ "--dot": shadeAt(i) }} onClick={() => numClick(i)} onTouchStart={(e) => peekStart(e, i, pin)} onContextMenu={(e) => e.preventDefault()}
             onMouseEnter={() => hoverIn(i, pin)} onMouseLeave={hoverOut} onFocus={pin ? undefined : (e) => focusIn(e, i)} onBlur={pin ? undefined : hoverOut}
             aria-label={pin ? undefined : (m.tag ? m.tag + " · " : "") + m.title + " · пройдено " + dn + " из " + st.length + (i === curIdx ? " · ты здесь" : "") + (tp && tp.gold ? " · золотая тема" : tp && tp.f && tp.f.level !== "fresh" ? " · " + freshLabel(tp.f) : "")}>
-            <span className="n">{labelOf(m, i)}</span>
+            <span className="n"><TopicNo label={labelOf(m, i)} /></span>
             {tp && tp.f && !tp.gold && !tp.f.updated
               ? <i className="wl" aria-hidden="true"><b style={{ height: Math.round(wineLevel(tp.f) * 100) + "%" }} /></i>
               : <i className="st" aria-hidden="true" />}
@@ -745,7 +751,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         );
       })}
       <i className="tbp-ind" ref={pin ? indPin : indMain} aria-hidden="true">
-        <span className="tbp-ind-row" ref={pin ? indPinRow : indMainRow}>{pages.map((m, i) => <span key={m.id} data-n={labelOf(m, i)} />)}</span>
+        <span className="tbp-ind-row" ref={pin ? indPinRow : indMainRow}>{pages.map((m, i) => { const lb = labelOf(m, i), own = lb.startsWith("own"); return <span key={m.id} data-n={own ? lb.slice(3) : lb} data-own={own ? "" : undefined} />; })}</span>
       </i>
     </div>
     </div>
@@ -776,7 +782,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           <button style={{ ...T.changeRoleBtn, flexShrink: 0 }} onClick={onChangeRole}>Сменить</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 9 }}>
-          <span style={{ fontSize: 11.5, color: sub, flexShrink: 0 }}>{doneCount} из {totalLessons} · {leftMins > 0 ? `≈ ${_fmtMins(leftMins)}` : "пройдено 🎓"}</span>
+          <span style={{ fontSize: 11.5, color: sub, flexShrink: 0 }}>{doneCount} из {totalLessons} · {leftMins > 0 ? `≈ ${_fmtMins(leftMins)}` : "пройдено"}</span>
           <span style={{ flex: 1, height: 3, borderRadius: 999, overflow: "hidden", background: a11y ? "rgba(120,90,30,0.14)" : "rgba(255,255,255,0.07)" }}>
             <i style={{ display: "block", height: "100%", borderRadius: 999, width: `${Math.max(progress, progress > 0 ? 2 : 0)}%`, background: role.color }} />
           </span>
@@ -844,8 +850,8 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
                   <button key={"tab-" + side + "-" + m.id} type="button" data-k={k} data-side={side}
                     className={"tbp-tab " + (side === "prev" ? "pv" : "nx") + (on ? " " + side : "")}
                     onClick={on ? () => goTo(i) : undefined} tabIndex={on ? undefined : -1} aria-hidden={on ? undefined : "true"}
-                    aria-label={on ? (side === "prev" ? "Предыдущая тема: " : "Следующая тема: ") + labelOf(m, i) + " · " + m.title : undefined}
-                    style={{ "--k": k, opacity: op, pointerEvents: on ? "auto" : "none", background: shadeAt(i), color: inkOnColor(shadeAt(i)) }}>{labelOf(m, i)}</button>
+                    aria-label={on ? (side === "prev" ? "Предыдущая тема: " : "Следующая тема: ") + topicNoText(labelOf(m, i)) + " · " + m.title : undefined}
+                    style={{ "--k": k, opacity: op, pointerEvents: on ? "auto" : "none", background: shadeAt(i), color: inkOnColor(shadeAt(i)) }}><TopicNo label={labelOf(m, i)} /></button>
                 );
               }))}
             </div>
@@ -858,7 +864,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
                 {numsRow(true)}
                 <button type="button" className="tbp-view" tabIndex={-1} onClick={() => switchView("list")}>{listIcon}</button>
               </div>
-              <button type="button" className="tbp-pin-t" tabIndex={-1} onClick={toTop}><b>{labelOf(pageMod, pg) + " · " + pageMod.title}</b>{statOf(pageMod) ? " · " + statOf(pageMod) : ""}</button>
+              <button type="button" className="tbp-pin-t" tabIndex={-1} onClick={toTop}><b><TopicNo label={labelOf(pageMod, pg)} />{" · " + pageMod.title}</b>{statOf(pageMod) ? " · " + statOf(pageMod) : ""}</button>
               {peekBubble(true)}
             </div>, document.body) : null}
           {/* Доп. 308: смотришь другую тему — «К уроку: …» над нижним меню, одно касание — туда, где остановился */}
@@ -973,7 +979,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           return (
             <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => openPage(mi)} {...onActivate(() => openPage(mi))}>
               {/* v73 (Доп. 386): цветная полоска слева убрана — цвет темы и так у значка, подписи и процента */}
-              <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{MOD_SVG[m.icon] ? MOD_SVG[m.icon](m.color, 28) : m.icon}</div>
+              <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{(MOD_SVG[m.icon] || UI_SVG.book)(m.color, 28)}</div>
               <div style={T.modInfo}>
                 <div style={{ ...T.modTag, color: inkOf(m.color, a11y) }}>{m.tag} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
                 <div style={T.modTitle}>{m.title}</div>
@@ -1150,7 +1156,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
         {skipped && (
           <div onClick={onSkipped} {...onActivate(onSkipped)} style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${color}44`, background: `${color}12`, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ color, flexShrink: 0, fontSize: 14 }}>⚑</span>
+            <span style={{ color, flexShrink: 0, display: "inline-flex" }}><Sign n="flag" s={15} /></span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ ...labelStyle(13.5), display: "block", color }}>{skipped.count > 1 ? `Позади ${skipped.count} непройденных` : "Позади остался"}</span>
               <span style={{ display: "block", fontSize: 14, color: T.modTitle.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{skipped.lesson.title}</span>
@@ -1247,7 +1253,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     const seenTerms = new Set();
     return lesson.content.split("\n").map((line, lineIdx) => {
       // Нормализуем строку — убираем ** для bold и прочие маркеры чтобы совпадало с тем что рендерится
-      const stripped = line.replace(MARKER_RE, "");
+      const stripped = line.replace(MARKER_RE, "").replace(LEAD_EM_RE, "");   // v75: и прочие эмодзи в начале строки
       const normalizedLine = stripped.startsWith("**") && stripped.endsWith("**") ? stripped.replace(/\*\*/g,"") : stripped;
       const parts = normalizedLine.split(pattern);
       if (parts.length === 1) return { lineIdx, parts: [{ text: normalizedLine, isPlain: true }] };
@@ -1370,7 +1376,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
             <div style={{ background: T.modCard?.background || "rgba(255,250,238,0.05)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:16, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
-                <div style={{ fontSize:30 }}>💬</div>
+                <div style={{ display:"flex", color: color || GOLD }}><Sign n="dialog" s={30} /></div>
                 <div style={{ flex:1 }}>
                   <div style={{ color: color || GOLD, fontSize: T.para?.fontSize || 15, fontWeight:"bold", fontFamily:"Georgia, serif" }}>В этом уроке есть живой диалог</div>
                 </div>
@@ -1387,13 +1393,15 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               const id = line.trim().slice(4,-1);
               return <div key={i} style={{ textAlign:"center", margin:"16px 0 8px" }}><Mm id={id} size={130}/></div>;
             }
-            // Строка только из эмодзи — отображается как крупный стикер
+            // Строка только из эмодзи — разделитель со значком по центру. v75 (Доп. 388): значок в стиле приложения
+            // (lib/situation-icons.js); эмодзи, для которого значка нет, — ромбик
             if (/^[\p{Extended_Pictographic}\s\uFE0F\u200D]+$/u.test(line.trim()) && line.trim().length <= 12) {
-              const one = (line.trim().match(/^\p{Extended_Pictographic}\uFE0F?/u) || [line.trim()])[0];
+              const one = (line.trim().match(ONE_EM_RE) || [line.trim()])[0];
+              const ic = iconForEmoji(one);
               return (
-                <div key={i} style={{ display:"flex", alignItems:"center", gap:12, margin:"14px 0 6px" }}>
+                <div key={i} data-lesson-sticker={ic || ""} style={{ display:"flex", alignItems:"center", gap:12, margin:"14px 0 6px" }}>
                   <div style={{ flex:1, height:1, background:`linear-gradient(to right, transparent, ${color}55)` }} />
-                  <span style={{ fontSize:25, lineHeight:1 }}>{one}</span>
+                  <span style={{ display:"inline-flex", color }} aria-hidden="true">{ic ? <SitIcon name={ic} s={24} /> : <span style={{ width:7, height:7, margin:"0 3px", transform:"rotate(45deg)", background:color, opacity:0.75, display:"inline-block" }} />}</span>
                   <div style={{ flex:1, height:1, background:`linear-gradient(to left, transparent, ${color}55)` }} />
                 </div>
               );
@@ -1429,6 +1437,18 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               <svg width="14" height="14" viewBox="0 0 24 24" fill={GOLD} stroke={GOLD} strokeWidth="1" strokeLinejoin="round" style={{ marginTop:2 }}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 21.4l1.4-6.8L2.2 9.9l6.9-.8z"/></svg>);
             if (line.startsWith("🔹")) return markerRow(T.principle,
               <span style={{ width:8, height:8, background:"#5B8DD9", transform:"rotate(45deg)", borderRadius:3, marginTop:4, boxShadow:"0 0 6px #5B8DD955", display:"inline-block" }} />);
+            // v75 (Доп. 388): прочие эмодзи в начале строки («🦶 1. Встреча…», «🌱 **Новичок**») — значком, как маркеры выше;
+            // если значка для эмодзи нет — строка без него
+            const lead = line.match(LEAD_EM_RE);
+            if (lead) {
+              const ic = iconForEmoji(lead[1]);
+              return (
+                <div key={i} data-lesson-lead={ic || ""} style={{ ...T.para, display:"flex", gap:8, alignItems:"flex-start" }}>
+                  {ic ? <span style={{ flexShrink:0, marginTop:3, display:"inline-flex", color }}><SitIcon name={ic} s={15} /></span> : null}
+                  <span style={{ flex:1 }}>{inline(line.slice(lead[0].length), T.para)}</span>
+                </div>
+              );
+            }
             if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
             return <div key={i} style={T.para}>{inline(line, T.para)}</div>;
           })}
@@ -1533,18 +1553,18 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           </div>
           <div style={{ flex:1, padding:"20px 18px 40px", overflowY:"auto" }}>
             <div style={{ textAlign:"center", marginBottom:20 }} className="sa-pop">
-              <div style={{ fontSize:54, marginBottom:6, letterSpacing:6 }}>
-                {[1,2,3].map(s => <span key={s} style={{ opacity:s<=stars?1:0.2, filter:s<=stars?"none":"grayscale(1)", transition:"opacity 0.3s, filter 0.3s" }}>⭐</span>)}
+              <div style={{ display:"flex", justifyContent:"center", gap:10, marginBottom:6, color:GOLD }}>
+                {[1,2,3].map(s => <span key={s} style={{ display:"inline-flex", opacity:s<=stars?1:0.22, transition:"opacity 0.3s" }}><Sign n={s<=stars ? "star" : "starLine"} s={46} /></span>)}
               </div>
               <div style={{ color:color, fontSize:36, fontWeight:"bold", marginBottom:4 }}>{practiceState.score}</div>
               <div style={{ color:T.modSub.color, fontSize:12.5, marginBottom:4 }}>очков</div>
               <div style={{ color:T.para.color, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 {stars===3 ? UI_SVG.trophy(GOLD, 16) : stars===2 ? ROLE_SVG.core(GOLD, 16) : UI_SVG.book(GOLD, 16)}
-                <span>{stars===3?"Мастер сервиса!":stars===2?"Хороший результат!":"Тренируйся ещё!"}</span>
+                <span>{stars===3?"Раунд без потерь":stars===2?"Хороший раунд":"Есть что повторить"}</span>
               </div>
             </div>
             <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-              {[{l:"Правильно",v:`${correct}/${total}`,c:GREEN},{l:"Жизни",v:`${practiceState.lives}❤️`,c:RED},{l:"Очков",v:practiceState.score,c:color}].map((s,i)=>(
+              {[{l:"Правильно",v:`${correct}/${total}`,c:GREEN},{l:"Жизни",v:practiceState.lives,c:RED},{l:"Очков",v:practiceState.score,c:color}].map((s,i)=>(
                 <div key={i} style={{ flex:1, background:T.simOpt.background, borderRadius:14, padding:"10px 6px", textAlign:"center", border:`2px solid ${T.simOpt.border}` }}>
                   <div style={{ color:s.c, fontSize:18, fontWeight:"bold" }}>{s.v}</div>
                   <div style={{ color:T.modSub.color, fontSize:10.5, marginTop:2 }}>{s.l}</div>
@@ -1556,14 +1576,14 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"8px 12px", background:practiceState.results[i]?"rgba(93,187,138,0.1)":"rgba(224,120,120,0.1)", borderRadius:12, marginBottom:6, border:`1px solid ${practiceState.results[i]?"#5DBB8A44":"#E0787844"}` }}>
                   <div style={{ flexShrink:0, display:"flex", marginTop:2 }}>{practiceState.results[i] ? UI_SVG.checkCircle(GREEN, 16) : UI_SVG.xCircle(RED, 16)}</div>
                   <div style={{ flex:1 }}>
-                    <div style={{ color:T.modTitle.color, fontSize:12.5 }}>{s.emoji} {((t)=>t.length>45?t.slice(0,45)+"…":t)(s.scene||s.statement||"")}</div>
-                    <div style={{ color:practiceState.results[i]?GREEN:RED, fontSize:11, marginTop:2 }}>{((t)=>t.length>55?t.slice(0,55)+"…":t)((practiceState.results[i]?s.win:s.fail)||"")}</div>
+                    <div style={{ color:T.modTitle.color, fontSize:12.5 }}>{((t)=>t.length>45?t.slice(0,45)+"…":t)(s.scene||s.statement||"")}</div>
+                    <div style={{ color:practiceState.results[i]?GREEN:RED, fontSize:11, marginTop:2 }}>{((t)=>t.length>55?t.slice(0,55)+"…":t)(stripEm(practiceState.results[i]?s.win:s.fail))}</div>
                   </div>
                 </div>
               ))}
             </div>
             <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:"rgba(255,255,255,0.12)", border:"1px solid rgba(255,255,255,0.2)", color:T.para.color, marginTop:2, marginBottom:10 }} onClick={restartGame}>
-              🔄 Сыграть ещё раз
+              <span style={{ display:"inline-flex", alignItems:"center", gap:8 }}><Sign n="refresh" s={16} />Сыграть ещё раз</span>
             </button>
             <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:2 }} onClick={onComplete}>
               Продолжить →
@@ -1600,12 +1620,12 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div className="sa-tophead" style={{ padding:"44px 18px 10px", background:"transparent" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
             <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
-            <div style={{ display:"flex", gap:2 }}>
-              {[1,2,3].map(h=><span key={h} style={{ fontSize:16, opacity:h<=practiceState.lives?1:0.2, transition:"opacity 0.3s" }}>❤️</span>)}
+            <div style={{ display:"flex", gap:2 }} data-practice-lives={practiceState.lives} role="img" aria-label={"Жизни: " + practiceState.lives + " из 3"}>
+              {[1,2,3].map(h=><span key={h} style={{ display:"inline-flex", color:RED, opacity:h<=practiceState.lives?1:0.25, transition:"opacity 0.3s" }}><Sign n="heartFull" s={17} /></span>)}
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <div style={{ background:"rgba(212,168,90,0.2)", borderRadius:18, padding:"4px 12px", border:"1px solid rgba(212,168,90,0.4)" }}>
-                <span style={{ color:GOLD_SOFT, fontSize:12.5, fontWeight:"bold" }}>⭐ {practiceState.score}</span>
+                <span style={{ color:GOLD_SOFT, fontSize:12.5, fontWeight:"bold", display:"inline-flex", alignItems:"center", gap:4 }}><Sign n="star" s={13} />{practiceState.score}</span>
               </div>
               {tb ? <button className="sa-btn" onClick={() => switchView(true)} aria-label="Вид «у стола»" style={{ background:"transparent", border:`1px solid ${color}88`, borderRadius:18, padding:"4px 10px", color: T.modSub.color, fontSize:11.5, cursor:"pointer", fontFamily:"Georgia, serif" }}>у стола</button> : null}
             </div>
@@ -1622,7 +1642,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {practiceState.combo>=2 && (
             <div style={{ textAlign:"center", marginBottom:8 }} className="sa-fast">
               <span style={{ background:`linear-gradient(135deg,#D2A85A,#E8C56A)`, borderRadius:18, padding:"3px 14px", fontSize:11, fontWeight:"bold", color:"#fff" }}>
-                🔥 КОМБО x{practiceState.combo}! +20
+                <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}><Sign n="flame" s={12} sw={2} />Комбо ×{practiceState.combo} · +20</span>
               </span>
             </div>
           )}
@@ -1636,7 +1656,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           </div>
 
           {/* Эмодзи */}
-          <div style={{ fontSize:44, textAlign:"center", marginBottom:10 }} className="sa-pop">{sit.emoji}</div>
+          <div style={{ display:"flex", justifyContent:"center", marginBottom:10, color }} className="sa-pop"><SitIcon name={iconForSituation(sit)} s={44} /></div>
 
           {/* ── ЖАНР: TRUE/FALSE ── */}
           {genre==="truefalse" && (
@@ -1719,8 +1739,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const chosen = practiceState.choice===i;
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color,prefix="";
-                if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";prefix="❌ ";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";prefix="✅ ";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix}{opt}</div>;
+                if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";prefix="ok";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";prefix="bad";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";prefix="ok";}}
+                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix ? <Sign n={prefix === "ok" ? "checkC" : "xC"} s={16} style={{ marginRight: 6, verticalAlign: "-3px" }} /> : null}{opt}</div>;
               })}
             </>
           )}
@@ -1731,10 +1751,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <div className="sa-fast" style={{ marginTop:10 }}>
               <div style={{ background:isCorrectAnswer?"rgba(93,187,138,0.15)":"rgba(224,120,120,0.15)", border:`1.5px solid ${isCorrectAnswer?GREEN:RED}`, borderRadius:14, padding:"12px 14px", marginBottom:10 }}>
                 <div style={{ fontSize:18, marginBottom:4 }}>
-                  {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock(RED, 15)}Время вышло!</span> : isCorrectAnswer ? `🎉 +${practiceState.combo>=2?20:10} очков!` : `😬 −1 ❤️ (осталось ${practiceState.lives})`}
+                  {practiceState.choice===-1 ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{GAME_SVG.clock(RED, 15)}Время вышло!</span> : isCorrectAnswer ? `+${practiceState.combo>=2?20:10} очков` : `Минус жизнь, осталось ${practiceState.lives}`}
                 </div>
                 <div style={{ color:isCorrectAnswer?GREEN:RED, fontSize:12.5, lineHeight:1.6 }}>
-                  {isCorrectAnswer ? sit.win : missText(sit, practiceState.choice >= 0 ? (sit.options || [])[practiceState.choice] : "")||"Попробуй ещё раз в следующем раунде!"}
+                  {isCorrectAnswer ? stripEm(sit.win) : missText(sit, practiceState.choice >= 0 ? (sit.options || [])[practiceState.choice] : "")||"Попробуй ещё раз в следующем раунде"}
                 </div>
               </div>
               {sayPhrase && <SayAloud phrase={sayPhrase} T={T} color={color} />}
@@ -1765,8 +1785,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               </div>
               <div style={T.resultTxt}>
                 {quizState.blocked?"Это третья ошибка, тест закончился. Посмотри разбор ниже и попробуй снова: пересдать можно сразу.":
-                  score===lesson.questions.length?<span><Mm id="star_eyes" size={24} style={{marginRight:4}}/>Отлично! Всё верно</span>:
-                  score>=lesson.questions.length*0.7?<span><Mm id="thumbs_up" size={24} style={{marginRight:4}}/>Хорошо! Есть над чем поработать</span>:<span><Mm id="pensive" size={24} style={{marginRight:4}}/>Нужно повторить материал</span>}
+                  score===lesson.questions.length?<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="checkC" s={20} c={GREEN} />Всё верно</span>:
+                  score>=lesson.questions.length*0.7?<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="check" s={20} c={GREEN} />Тест сдан, ошибки разобраны ниже</span>:<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="book" s={20} c={color} />Стоит перечитать урок</span>}
               </div>
             </div>
             {wrongAnswers.length > 0 && (
@@ -1776,8 +1796,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                   <div key={i} style={{ background:T.progCard.background, borderRadius:14, padding:"14px 16px", marginBottom:12, border:`1px solid ${color}44` }}>
                     <div style={{ ...T.para, fontWeight:"bold", marginBottom:8 }}>{a.question.q}</div>
                     {a.question.img && <img src={a.question.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:150, objectFit:"cover", borderRadius:9, display:"block", marginBottom:8 }} />}
-                    <div style={{ ...T.bad, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}><Mm id="thumbs_down" size={36}/> Твой ответ: {a.question.options[a.idx]}</div>
-                    <div style={{ ...T.good, marginBottom:8, display:"flex", alignItems:"center", gap:8 }}><Mm id="thumbs_up" size={36}/> Правильно: {a.question.options[a.question.correct]}</div>
+                    <div style={{ ...T.bad, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}><Sign n="xC" s={20} />Твой ответ: {a.question.options[a.idx]}</div>
+                    <div style={{ ...T.good, marginBottom:8, display:"flex", alignItems:"center", gap:8 }}><Sign n="checkC" s={20} />Правильно: {a.question.options[a.question.correct]}</div>
                     <div style={{ ...T.note, fontStyle:"normal", borderLeft:`2px solid ${color}`, paddingLeft:10 }}>{a.question.explanation}</div>
                   </div>
                 ))}

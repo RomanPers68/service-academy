@@ -11,9 +11,11 @@ import { topicFreshness, freshLabel, wineLevel, moduleDone } from "../lib/freshn
 import { canRefresh, canGold, canCredit } from "../lib/marks";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
+import { TopicNo, topicNoText } from "./signs";
 
 const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; if (m10 === 1 && m100 !== 11) return a; if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return b; return c; };
-const labelOf = (m, i, customNo) => { const d = String((m && m.tag) || "").match(/\d+/); if (d) return d[0]; if (m && m.custom) return customNo > 1 ? "✦" : "✦"; return String(i + 1); };
+// v75 (Доп. 388): свой раздел ресторана — домик с номером («own2» → значок и «2»), как в оглавлении трека
+const labelOf = (m, i, customNo) => { const d = String((m && m.tag) || "").match(/\d+/); if (d) return d[0]; if (m && m.custom) return customNo && customNo.n > 1 ? "own" + customNo.map[m.id] : "own"; return String(i + 1); };
 
 // бокал со «свежестью»: level — от 0 до 1, null — тема не пройдена (пустой контур)
 export function WineGlass({ level, size = 26, color = GOLD, gold = false, updated = false, a11y = false }) {
@@ -42,7 +44,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
   const hsteps = hintsFor("cellar");
   const gold = goldText(a11y);
   const text = T.modTitle.color, sub = T.modSub.color;
-  const customN = modules.filter((m) => m && m.custom).length;
+  const customN = React.useMemo(() => { const map = {}; let k = 0; modules.forEach((m) => { if (m && m.custom) map[m.id] = ++k; }); return { map, n: k }; }, [modules]);
   const rows = React.useMemo(() => modules.map((m, i) => {
     const steps = (m.lessons || []).filter((l) => l && l.type !== "result");
     const dn = steps.filter((l) => (l.type === "quiz" ? !!quizDone[l.id] : !!completed[l.id])).length;
@@ -125,10 +127,10 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
             return (
               <div key={r.m.id} role="listitem" className="sa-card" style={{ ...T.modCard, marginBottom: 8, gap: 10, alignItems: "center" }}>
                 <div role="button" tabIndex={0} onClick={open} {...onActivate(open)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, cursor: "pointer" }}
-                  aria-label={"Тема " + r.label + ": " + r.m.title + ", " + status(r)}>
+                  aria-label={"Тема " + topicNoText(r.label) + ": " + r.m.title + ", " + status(r)}>
                   <div style={{ position: "relative", width: 34, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
                     <WineGlass level={r.done ? (r.f ? wineLevel(r.f) : 1) : null} gold={!!r.gold} updated={!!(r.f && r.f.updated)} size={26} color={a11y ? "#8B6A30" : GOLD} a11y={a11y} />
-                    <span style={{ fontFamily: "Georgia, serif", fontSize: small(11), color: sub, marginTop: -1 }}>{r.label}</span>
+                    <span style={{ fontFamily: "Georgia, serif", fontSize: small(11), color: sub, marginTop: -1 }}><TopicNo label={r.label} /></span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div data-cellar-title="" style={title2}>{r.m.title}</div>

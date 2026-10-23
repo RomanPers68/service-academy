@@ -25,14 +25,14 @@ describe("переписка: слова, ритм, реакции (Доп. 348)
     expect(dlgTypingMs("а".repeat(50))).toBe(1200);
     expect(dlgTypingMs("а".repeat(500))).toBe(1800);
   });
-  it("реакция гостя — по сдвигу настроения", () => {
-    expect(dlgReaction({ moodDelta: 2, correct: true })).toBe("❤️");
-    expect(dlgReaction({ moodDelta: 1, correct: true })).toBe("👍");
-    expect(dlgReaction({ moodDelta: 1, correct: false })).toBe("🙂");
-    expect(dlgReaction({ moodDelta: 0, correct: true })).toBe("👌");
-    expect(dlgReaction({ correct: false })).toBe("🤔");
-    expect(dlgReaction({ moodDelta: -1 })).toBe("😕");
-    expect(dlgReaction({ moodDelta: -2 })).toBe("😠");
+  it("реакция гостя — по сдвигу настроения (v75: лицо 1…5 вместо эмодзи)", () => {
+    expect(dlgReaction({ moodDelta: 2, correct: true })).toBe(5);
+    expect(dlgReaction({ moodDelta: 1, correct: true })).toBe(4);
+    expect(dlgReaction({ moodDelta: 1, correct: false })).toBe(4);
+    expect(dlgReaction({ moodDelta: 0, correct: true })).toBe(3);
+    expect(dlgReaction({ correct: false })).toBe(3);
+    expect(dlgReaction({ moodDelta: -1 })).toBe(2);
+    expect(dlgReaction({ moodDelta: -2 })).toBe(1);
   });
   it("род и число гостя: ушёл / ушла / ушли", () => {
     expect(dlgGram("Михаил")).toBe("m");

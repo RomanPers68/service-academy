@@ -171,7 +171,7 @@ describe("из редактора — в приложение: ничего не
     expect(dl.guest.walk).toBe("Ольга молча уходит к выходу.");
     expect(dl.guest.walkTitle).toBe("Ольга ушла к конкурентам");
     expect(dlgWalkLine(dl.guest)).toBe("Ольга молча уходит к выходу.");
-    expect(dl.steps[dl.steps.length - 1]).toEqual({ type: "result", tip: "✦ Старший решает" });
+    expect(dl.steps[dl.steps.length - 1]).toEqual({ type: "result", tip: "Старший решает" });   // v75: без ✦ в начале итога
   });
   it("уход гостя — в guest, только если написан; старые диалоги сохраняются как раньше", async () => {
     const { serializeExtras } = await ed();

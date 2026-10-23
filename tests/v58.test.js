@@ -73,7 +73,7 @@ describe("v58: пустые экраны и дата (неудобства 7–9
     expect(L).toContain('<div data-mistakes-empty="new"');
     expect(L).toContain("<div style={{ ...T.bold, marginBottom: 6 }}>Пока пусто</div>");
     expect(L).toContain("Сюда попадут вопросы, где ошибёшься в тестах. Они вернутся через день, три и неделю, пока не запомнятся.");   // v74
-    expect(L).toContain('<div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>');   // праздник остался для тех, у кого тесты были
+    expect(L).toContain('{UI_SVG.checkCircle(GREEN, 44)}</div>');   // праздник остался для тех, у кого тесты были (v75: значок вместо 🎉)
     expect(rd("App.jsx")).toContain("noTests={!myScores.length && !Object.keys(quizDone || {}).length}");
   });
   it("«Статистика» без прогресса — подсказка и кнопка «К первому уроку» вместо шести нулей; подсказка экрана ждёт", () => {

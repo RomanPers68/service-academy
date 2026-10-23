@@ -287,12 +287,16 @@ if (want("GR")) {
   let t = await tbText(page);
   ok(tag + ": в правилах — рекорд заведения и твой", /Рекорд заведения: 0:38 \(Пётр Л\.\)/.test(t) && /твой: 5:00/.test(t), t.slice(0, 300));
   ok(tag + ": запрос рекордов по теме", calls.some((x) => x.fn === "gold_records" && x.body.p_mod === "s0"));
+  // v75 (Доп. 388): значки правил — свои (секундомер, крестик, свеча, корона), не эмодзи и не ✦
+  const rulesIc = await page.evaluate(() => [...document.querySelectorAll(".tb .tb-intro li > span:first-child")].map((s) => ({ svg: !!s.querySelector("svg"), t: s.textContent.trim() })));
+  ok(tag + ": значки правил — svg, без текста-эмодзи", rulesIc.length === 4 && rulesIc.every((x) => x.svg && !x.t), JSON.stringify(rulesIc));
   await page.locator(".tb .tb-main", { hasText: "Начать раунд" }).click(); await sleep(700);
   ok(tag + ": запасная свеча в шапке", (await page.locator(".tb .tb-spare").count()) === 1);
   await playAll(page, true);
   t = await tbText(page);
   ok(tag + ": в чеке — «Твой рекорд» (новый) и «Рекорд заведения»", /Твой рекорд/.test(t) && /\(новый\)/.test(t) && /Рекорд заведения/.test(t) && /Пётр Л\./.test(t), t.slice(0, 400));
   await shot(page, "gr1-receipt");
+  ok(tag + ": печать «Золото» в чеке — с короной (svg), без ✦", (await page.locator(".tb .r-goldseal svg").count()) === 1 && !/✦/.test(await page.locator(".tb .r-goldseal").innerText().catch(() => "✦")));
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();
 }

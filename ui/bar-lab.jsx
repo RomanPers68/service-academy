@@ -1,6 +1,7 @@
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
+import { Sign } from "./signs";   // v75 (Доп. 388): лёд и гарниш в цепочке шагов — значками вместо ❄ ✿
 import { COCKTAILS } from "../data/cocktails";
 import { buildScenario, checkAction, loadMastery, saveMastery, recordRun, tierOf, TIER_LABEL, MASTERY_LABEL, dailyPick, rushOrders, GLASS_RU, GARNISH_RU, TOOLS, jiggerFor } from "../lib/bar-lab";
 import { emitActivity } from "../lib/activity";
@@ -536,7 +537,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
         {/* Доп. 225: цепочка шагов — значки в порядке сборки; по памяти — только счёт, без подсказки видов */}
         <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 10, flexWrap: "wrap" }}>
           {sc.steps.map((s, i) => { const isDone = done.includes(i); const cur = !finished && expected && expected.i === i; const dim = a11y ? "rgba(139,106,48,0.35)" : "rgba(214,178,102,0.28)";
-            const glyph = mode === "memory" && !isDone ? "·" : s.kind === "glass" ? "▽" : s.kind === "ice" ? "❄" : s.kind === "tool" ? (TOOL_ICON[s.id] || "•") : s.kind === "garnish" ? "✿" : "●";
+            const glyph = mode === "memory" && !isDone ? "·" : s.kind === "glass" ? "▽" : s.kind === "ice" ? <Sign n="ice" s={11} sw={2.2} /> : s.kind === "tool" ? (TOOL_ICON[s.id] || "•") : s.kind === "garnish" ? <Sign n="garnish" s={12} sw={2.2} /> : "●";
             const col = isDone ? gold : cur ? gold : dim;
             return <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
               <span style={{ width: 18, height: 18, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: s.kind === "ing" ? 10.5 : 11, color: s.kind === "ing" && (isDone || (cur && mode === "hint")) ? ING_COLOR(s.name) : col, border: `1px solid ${isDone ? gold : cur ? gold : dim}`, background: isDone ? "rgba(214,178,102,0.16)" : "transparent", animation: cur && mode === "hint" ? "saLabPulse 1.2s ease-in-out infinite" : "none" }}>{glyph}</span>

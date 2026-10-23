@@ -107,8 +107,8 @@ describe("v73: App и верхняя строка", () => {
     expect((app.match(/eyebrow: "Экзамен сдан",/g) || []).length).toBe(2);
     expect(app).toContain('intro: { title: "Раунд мастера", sub: mod.title,');
     expect(app).toContain('? "Мастер роли · " + mShown.bronze');
-    // оставшиеся ✦ в App — искры праздника и знак в правилах раунда (их заменят свои значки в v75)
-    expect(code(app).match(/✦/g).length).toBe(2);
+    // v73 оставляла две ✦ — искры праздника и знак в правилах раунда; v75 заменила их конфетти и значком короны
+    expect(code(app)).not.toContain("✦");
   });
 });
 

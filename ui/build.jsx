@@ -16,6 +16,7 @@ import { shuffleArray, vibrate } from "../lib/utils";
 import { Confetti } from "./widgets";
 import { GOLD, GOLD_SOFT, CREAM, SAND, GREEN, RED, MUTED, MUTED_2, CLAY, INK_DEEP, RADIUS, labelStyle } from "./tokens";
 import { UI_SVG, BUILD_SVG } from "./icons";
+import { Sign } from "./signs";   // v75 (Доп. 388): звёзды, книга — значками вместо эмодзи
 
 const serif = "Georgia, serif";
 const mono = "ui-monospace, Menlo, monospace";
@@ -553,9 +554,9 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
               <span className="sa-bld-sealtext">{verdict.label}</span>
             </div>
             <div style={{ ...labelStyle(13), color: P.sub, marginTop: 12 }}>шагов без ошибки</div>
-            <div style={{ fontSize: 16, letterSpacing: 4, marginTop: 10 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10, color: GOLD }}>
               {[1, 2, 3].map(s => (
-                <span key={s} style={{ opacity: s <= stars ? 1 : 0.22, filter: s <= stars ? "none" : "grayscale(1)" }}>⭐</span>
+                <span key={s} style={{ display: "inline-flex", opacity: s <= stars ? 1 : 0.25 }}><Sign n={s <= stars ? "star" : "starLine"} s={18} /></span>
               ))}
             </div>
             <div style={{ ...labelStyle(13), color: P.faint, marginTop: 4 }}>
@@ -563,10 +564,10 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
             </div>
           </div>
           {!missed.length ? (
-            <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: GREEN }}>🎯 {sc.win}</div>
+            <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: GREEN }}>{sc.win}</div>
           ) : (
             <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: RED }}>
-              <div>💡 {sc.lose}</div>
+              <div>{sc.lose}</div>
               <div style={{ margin: "12px 0 6px", ...labelStyle(13), color: P.sub }}>
                 Что из этого получит гость
               </div>
@@ -616,7 +617,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
 
         {picked && (
           <div className="sa-bld-fb" style={{ ...(T.simFb || {}), borderLeftColor: picked.ok ? GREEN : RED }}>
-            {(picked.ok ? "🎯 " : "💡 ") + picked.fb}
+            {picked.fb}
             {!picked.ok && cur.cost && (
               <div style={{ marginTop: 8, paddingTop: 9, borderTop: "1px dashed rgba(224,120,120,0.3)", fontSize: 12.5, color: a11y ? "#8B3020" : "#E8B5B5" }}>
                 Дойдёт до гостя так: {cur.cost}
@@ -630,7 +631,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
               return (<>
                 <button className={"sa-bld-term" + (openTerm ? " open" : "")}
                   onClick={() => setOpenTerm(v => !v)}>
-                  📖 {cur.term} {openTerm ? "▴" : "▾"}
+                  <Sign n="book" s={14} style={{ marginRight: 5, verticalAlign: "-2px" }} />{cur.term} {openTerm ? "▴" : "▾"}
                 </button>
                 {openTerm && (
                   <div className="sa-bld-article">

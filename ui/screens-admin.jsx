@@ -290,7 +290,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
         {view === "me" ? (
           <>
             <div style={{ ...card, padding:"14px 16px", marginBottom:12 }}>
-              <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>Добро пожаловать в команду 👋</div>
+              <div style={{ color:C.text, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>Добро пожаловать в команду</div>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:12 }}>
                 <div style={{ flex:1, height:8, borderRadius:6, background:trackBg, overflow:"hidden" }}>
                   <div style={{ width:`${pct}%`, height:"100%", borderRadius:6, background:"linear-gradient(90deg,#C8A96E,#7A5D2A)", transition:"width .3s" }} />
@@ -311,7 +311,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
             ))}
             {pct===100 && (
               <div style={{ padding:"16px", borderRadius:14, background:a11y?"rgba(42,107,69,0.14)":"rgba(93,187,138,0.16)", border:`1px solid ${C.green}`, textAlign:"center" }}>
-                <div style={{ color:C.green, fontFamily:serif, fontSize:16, fontWeight:"bold" }}>🎉 Онбординг пройден!</div>
+                <div style={{ color:C.green, fontFamily:serif, fontSize:16, fontWeight:"bold", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>{UI_SVG.checkCircle(C.green, 19)}Онбординг пройден</div>
                 <div style={{ color:C.muted, fontSize:12.5, marginTop:4 }}>Добро пожаловать в команду. Открыт путь к роли «Ядро».</div>
               </div>
             )}

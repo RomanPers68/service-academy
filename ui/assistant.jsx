@@ -411,7 +411,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     // v31
     cellar: "Погреб тем", freshall: "Освежить выдохшееся", probe: "Проверка по треку",
     analytics: "Аналитика", report: "Отчёты по сотрудникам", candidate: "Собеседование", staff: "Сотрудники",
-    // v40: значки, «Мастер роли ✦», шаг дня, первые шаги
+    // v40: значки, «Мастер роли», шаг дня, первые шаги
     mastery: "Путь мастера",
   };
   // Разделы руководителей: сотруднику кнопку не показываем, даже если модель ошиблась
@@ -612,7 +612,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
             ) : null}
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
               <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
-                {UI_SVG.sparkle(gold, 26)}
+                {UI_SVG.ai(gold, 26)}
               </div>
             </div>
             <div style={{ color: T.lessHeadTitle?.color, fontFamily: ACCENT_SERIF, fontSize: a11y ? 20 : 18, fontWeight: "bold", textAlign: "center", marginBottom: 8 }}>

@@ -54,6 +54,9 @@ P.mentor = <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6"
 P.share = <><circle cx="18" cy="5.5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="18.5" r="2.5" /><path d="M8.3 10.8l7.4-4M8.3 13.2l7.4 4" /></>;
 P.mic = <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" /></>;
 P.bell = <><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>;
+// v75 (Доп. 388): для эмодзи в текстах уроков — щит (безопасность) и маршрут (шаги сервиса)
+P.shield = <><path d="M12 3l7 2.6v5c0 4.6-3 8.6-7 10.2-4-1.6-7-5.6-7-10.2v-5z" /><path d="M9.2 11.8l2.1 2.1 3.7-4" /></>;
+P.steps = <><circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" /><path d="M8.2 18H14a4 4 0 0 0 0-8h-3.5" /></>;
 
 // Стакан — цель дня: наполняется шагами (Доп. 298)
 export function Glass({ pct = 0, s = 22 }) {
@@ -74,8 +77,10 @@ export function SitIcon({ name, s = 20 }) {
   return <Ic n={P[name] ? name : "guest"} s={s} />;
 }
 
+// v75: обводка задана и атрибутами — значок рисуется верно и там, где стили «у стола» ещё не подключены
 export function Ic({ n, s = 20 }) {
-  return <svg className="tb-ic" width={s} height={s} viewBox="0 0 24 24" aria-hidden="true">{P[n] || null}</svg>;
+  return <svg className="tb-ic" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{P[n] || null}</svg>;
 }
 
 let seq = 0;

@@ -4,6 +4,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { MOD_SVG } from "./icons";
+import { Sign } from "./signs";   // v75 (Доп. 388): значок вместо 🗣
 import { CREAM, GOLD, GOLD_SOFT, GREEN, RED, labelStyle } from "./tokens";
 import { vibrate } from "../lib/utils";
 import { HINTS_VERSION } from "../data/hints";
@@ -443,7 +444,7 @@ export function SayAloud({ phrase, T, color }) {
   return (
     <div style={{ background:"rgba(200,169,110,0.1)", border:"1.5px solid rgba(200,169,110,0.4)", borderRadius:14, padding:"13px 14px", marginBottom:10 }}>
       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-        <span style={{ fontSize:16 }}>🗣</span>
+        <span style={{ display:"inline-flex", color:gold }}><Sign n="speech" s={16} /></span>
         <span style={{ ...labelStyle(13.5), color:gold }}>А теперь вслух</span>
       </div>
       <div style={{ color:T.para.color, fontSize:14, lineHeight:1.6, fontStyle:"italic", marginBottom:done===null?12:10 }}>«{phrase}»</div>
@@ -457,7 +458,7 @@ export function SayAloud({ phrase, T, color }) {
         </>
       ) : (
         <div style={{ color:done==="ok"?GREEN:gold, fontSize:12.5, fontWeight:"bold", lineHeight:1.5 }}>
-          {done==="ok" ? "🔥 Отлично! Звучит уверенно." : "💪 Ещё пара повторов, и пойдёт на автомате."}
+          {done==="ok" ? "Звучит уверенно. Так и говори гостю." : "Ещё пара повторов, и фраза пойдёт сама."}
         </div>
       )}
     </div>

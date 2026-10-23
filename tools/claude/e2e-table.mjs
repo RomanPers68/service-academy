@@ -214,7 +214,8 @@ for (const theme of [{ light: false, w: 390, h: 844, tag: "dark-390" }, { light:
   // классический вид и обратно
   await page.locator("[aria-label='Классический вид практики']").click(); await sleep(600);
   await shot(page, T + "-15-practice-classic");
-  ok(T + ": классический вид — прежний экран практики (сердечки, очки)", (await page.locator(".tb").count()) === 0 && /❤️/i.test(await text(page)));
+  // v75: сердечки — значками (svg) вместо ❤️
+  ok(T + ": классический вид — прежний экран практики (сердечки, очки)", (await page.locator(".tb").count()) === 0 && (await page.locator("[data-practice-lives] svg").count()) === 3);
   await page.locator("[aria-label='Вид «у стола»']").click(); await sleep(600);
   ok(T + ": обратно «у стола»", (await page.locator(".tb").count()) === 1);
   // доигрываем раунд верными ответами

@@ -1,6 +1,6 @@
 // ui/mastery.jsx — v40: экран «Путь мастера» (лениво, из App).
 //
-// Сверху — главная награда «Мастер роли ✦»: печать с кольцом «7 из 13», четыре условия с прогрессом,
+// Сверху — главная награда «Мастер роли»: печать с кольцом «7 из 13», четыре условия с прогрессом,
 // приз заведения (руководитель назначает его здесь же). Ниже — «Шаг дня», «Первые шаги в академии»
 // для новичков, коллекция из 14 значков (тап — шторка «как получить» и «Показать ›»), мастера
 // заведения. У мастера — «Сертификат мастера»: картинкой (lib/master-image.js) или текстом.
@@ -170,7 +170,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
   const small = (px) => msSmall(a11y, px);
   const eye = msEye(a11y);
 
-  // ── HERO «Мастер роли ✦» ──
+  // ── HERO «Мастер роли» ──
   const hero = ms ? (
     <section data-ms-hero="" aria-label="Мастер роли" style={card(a11y, true)}>
       <div style={{ ...eye, color: c.gold, marginBottom: 8 }}>Главная награда</div>
@@ -367,7 +367,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
           <div role="list" style={{ marginTop: 4 }}>
             {rows.map((r, i) => (
               <div key={(r.who || r.name || "") + ":" + r.role + ":" + i} role="listitem" data-ms-master="" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i ? "1px solid " + c.line : "none" }}>
-                <span aria-hidden="true" style={{ color: tierColor(3, a11y), fontSize: 18, width: 22, textAlign: "center", flexShrink: 0 }}>✦</span>
+                <span aria-hidden="true" style={{ color: tierColor(3, a11y), width: 22, display: "inline-flex", justifyContent: "center", flexShrink: 0 }}><FamIcon id="master" size={19} color={tierColor(3, a11y)} strokeWidth={1.8} /></span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                     <span style={{ fontFamily: BODY, fontSize: a11y ? 16 : 15, color: c.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.who || r.name || "Коллега"}</span>

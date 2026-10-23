@@ -320,6 +320,7 @@ import { NewPageBanner } from "./ui/guestbook-lite";
 import { weeklyDialogueIdFrom, weeklyLessonId } from "./data/reviews";
 import { Confetti, TimerBar, SayAloud } from "./ui/widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./ui/icons-extra";
+import { Sign } from "./ui/signs";   // v75 (Доп. 388): свои значки вместо эмодзи и ✦
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette, readMood, recordMood } from "./ui/mood-cards";
 import { BG_DARK, CREAM, GOLD, GOLD_LOGO, SAND, toolColor, labelStyle } from "./ui/tokens";
 import { hintsFor, hintKey } from "./data/hints";
@@ -493,7 +494,7 @@ function ServiceAcademy() {
       }).catch(() => {}), [profile]); // свой контент (редактор)
   const [saved, setSaved] = useState({}); // #5 — избранные термины и заметки: { termKey: { fav?: bool, note?: string } }
   const [examResults, setExamResults] = useState({}); // #2 — результаты экзаменов: { roleId: { passed, score, correct, total, date } }
-  // Празднование побед: золотая вспышка ✦ на большие моменты (экзамен).
+  // Празднование побед: золотая вспышка с конфетти на большие моменты (экзамен).
   // null | текст; живёт полторы секунды и гаснет сама.
   const [celebrate, setCelebrate] = useState(null);
   const cheer = useCallback((text) => {
@@ -778,7 +779,7 @@ function ServiceAcademy() {
             const alreadyShown = localStorage.getItem(`sa_ach_pioneer_${profile.name}_${normSurname(profile.surname)}`);
             if (!alreadyShown && myDates[0] === allDates[0] && mapped.length > myScores.length) {
               setTimeout(() => {
-                setNewAchievement({ icon: "🚀", label: "Первопроходец" });
+                setNewAchievement({ icon: "rocket", label: "Первопроходец" });
                 vibrate("heavy");
                 try { localStorage.setItem(`sa_ach_pioneer_${profile.name}_${normSurname(profile.surname)}`, "1"); } catch(e) {}
                 setTimeout(() => setNewAchievement(null), 3000);
@@ -1088,7 +1089,7 @@ function ServiceAcademy() {
           lines: [sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + ": вопросы теста и ситуации из практики темы",
             "Без подсказок и второго шанса, как на смене", "Нужно " + need + " из " + sits.length + ", тогда тема засчитана с пометкой «по опыту». Её видно в отчёте",
             "Одна попытка в день. Она начнётся с первого ответа, а открыть и закрыть можно без потерь"],
-          icons: ["✎", "✕", "✓", "☾"] },
+          icons: ["pencil", "x", "check", "moon"] },
         onBegin: () => { markCreditTry(ukP, mod.id, todayKey); bumpMarks(); } });
     } else if (mode === "gold") {
       const key = Date.now();
@@ -1102,7 +1103,7 @@ function ServiceAcademy() {
         intro: { title: "Раунд мастера", sub: mod.title, cta: "Начать раунд",
           lines: [gN + " " + pl3(gN, "задание", "задания", "заданий") + ", на каждое " + GOLD_TIMER + " секунд (последние 5 тикают)", "Без подсказок", "Одна ошибка в запасе: это запасная свеча",
             "Если получится, номер темы станет золотым, а в «Книге отзывов» появится печать"],
-          icons: ["⏱", "✕", "🕯", "✦"] } });
+          icons: ["stopwatch", "x", "candle", "crown"] } });
       // v31: рекорд заведения по теме (этап 25) — в правилах и в чеке
       rpc("gold_records", { p_token: saToken(), p_mod: mod.id }).then((r) => {
         const cur = specialRef.current;
@@ -1155,7 +1156,7 @@ function ServiceAcademy() {
         lines: ["По 2 задания из каждой непройденной темы, всего " + sits.length + " " + pl3(sits.length, "задание", "задания", "заданий") + ", минут 10",
           "Без подсказок, чтобы честно понять, что уже знаешь", "В конце будет видно, какие темы можно сдать на опыт, а какие пройти по урокам",
           "Ничего не засчитывается само и ничего не теряется"],
-        icons: ["✎", "✕", "✓", "☾"] },
+        icons: ["pencil", "x", "check", "moon"] },
       extra: ({ okMods, sits: used }) => {
         const per2 = {}, ok = {};
         (used || []).forEach((x) => { if (x && x._mod) per2[x._mod] = (per2[x._mod] || 0) + 1; });
@@ -1554,7 +1555,7 @@ function ServiceAcademy() {
     // 🌟 Бог сервиса — все 4 роли пройдены + все тесты 100%
     const allRolesDone = ROLE_ORDER.every(r => newCompletedRoles.has(r));
     const allPerfect = myScores.length > 0 && myScores.every(s => s.pct === 100);
-    if (allRolesDone && allPerfect) achieved.push({ icon:"sparkle", label:"Бог сервиса", key:"god" });
+    if (allRolesDone && allPerfect) achieved.push({ icon:"laurel", label:"Бог сервиса", key:"god" });
 
     // 🏆 Мастер практики — больше всех звёздочек
     if (myStars > 0 && myStars === maxStars && Object.keys(newPracticeStars).length > 1) {
@@ -2321,7 +2322,7 @@ function ServiceAcademy() {
       const blocked = !iamAdmin && knownRole && !myRoles.has(lessonRole) && !inCustom;
 
       if (blocked) {
-        setLessonLockMsg("Этот урок из трека, который откроется позже, когда дойдёшь до него по программе. Спрашивай меня по теме сколько угодно, а по порядку изучишь его на своём уровне 😊");
+        setLessonLockMsg("Этот урок из трека, который откроется позже, когда дойдёшь до него по программе. Спрашивай меня по теме сколько угодно, а по порядку изучишь его на своём уровне.");
         return;
       }
 
@@ -2579,7 +2580,7 @@ function ServiceAcademy() {
           <div className="sa-celeb">
             <div className="c-core">
               {[[-96,-74],[92,-80],[-120,18],[118,26],[-58,-108],[64,96],[0,-118],[-10,104]].map(([dx, dy], i) => (
-                <span key={i} className="c-spark" style={{ "--dx": dx + "px", "--dy": dy + "px", animationDelay: (i * 0.04) + "s" }}>✦</span>
+                <span key={i} className={"c-spark k" + (i % 3)} aria-hidden="true" style={{ "--dx": dx + "px", "--dy": dy + "px", animationDelay: (i * 0.04) + "s" }} />
               ))}
               {celebrate}
             </div>
@@ -2876,7 +2877,7 @@ function ServiceAcademy() {
               background: a11y ? "rgba(250,242,222,0.96)" : "rgba(28,20,8,0.96)",
               border: a11y ? "1px solid rgba(139,106,48,0.4)" : "1px solid rgba(255,255,255,0.16)",
               boxShadow: a11y ? "inset 0 0 26px rgba(255,250,235,0.6), 0 12px 40px rgba(70,50,15,0.3)" : "inset 0 0 26px rgba(255,248,230,0.08), 0 12px 40px rgba(0,0,0,0.55)" }}>
-              <div style={{ fontSize: 30, marginBottom: 10 }}>🔒</div>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 10, color: a11y ? "#7A5D2A" : "#C8A96E" }}><Sign n="lock" s={30} /></div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 15, lineHeight: 1.6, color: a11y ? "#3A2E1C" : "#EFE6D2", marginBottom: 16 }}>{lessonLockMsg}</div>
               <button onClick={() => setLessonLockMsg(null)} style={{ padding: "10px 24px", borderRadius: 999, border: "none", cursor: "pointer",
                 background: "linear-gradient(135deg, #C8A96E, #7A5D2A)", color: "#fff", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold" }}>Понятно</button>

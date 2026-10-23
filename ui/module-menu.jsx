@@ -155,7 +155,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
         <div className="tbm-head">
           {/* v32 (Доп. 334): значок темы — в одной строке с меткой (меню компактнее, без лишней прокрутки) */}
           <div className="tbm-top">
-            {MOD_SVG[mod.icon] ? <div className="tbm-icon">{MOD_SVG[mod.icon](deco, 20)}</div> : (mod.icon ? <div className="tbm-icon" style={{ fontSize: 18 }}>{mod.icon}</div> : null)}
+            {mod.icon ? <div className="tbm-icon">{(MOD_SVG[mod.icon] || UI_SVG.book)(deco, 20)}</div> : null}   {/* v75: неизвестный значок темы — книгой, не эмодзи */}
             <div className="tbm-eyebrow" style={{ color: ink }}>{[mod.tag, real.length + " " + plural(real.length, "шаг", "шага", "шагов"), "≈ " + fmt(total)].filter(Boolean).join(" · ")}</div>
           </div>
           <h2 className="tbm-title">{mod.title}</h2>

@@ -19,6 +19,7 @@ import { rpc, rpcSync, saToken, rpcMissing } from "../api/supabase";
 import { Confetti } from "./widgets";
 import { ROLES } from "../data/roles";
 import { labelStyle } from "./tokens";
+import { Sign } from "./signs";   // v75 (Доп. 388): значки вместо 🎓 ⏳ 📲
 
 const keyFor = (profile) => `sa_skills_${(profile?.name || "guest")}|${(profile?.surname || "")}`.toLowerCase();
 const load = (profile) => { try { return JSON.parse(localStorage.getItem(keyFor(profile)) || "{}"); } catch (e) { return {}; } };
@@ -241,7 +242,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
         <div style={{ height: 7, borderRadius: 3, background: "rgba(128,128,128,0.22)", overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${pct}%`, background: allDone ? green : gold, transition: "width .4s" }} />
         </div>
-        {allDone && <div style={{ marginTop: 10, color: green, fontWeight: "bold", fontSize: 14 }}>🎓 Допущен(а) к самостоятельной работе</div>}
+        {allDone && <div style={{ marginTop: 10, color: green, fontWeight: "bold", fontSize: 14, display: "flex", alignItems: "center", gap: 7 }}><Sign n="gradcap" s={18} />Допущен(а) к самостоятельной работе</div>}
       </div>
 
       <div style={{ ...T.secTitle, ...labelStyle(a11y ? 15 : 13) }}>Навыки</div>
@@ -260,7 +261,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
                 {rec && <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 4 }}>Подтвердил(а): <b style={{ color: gold }}>{rec.mentor}</b> · {rec.date}{rec.verified && <span style={{ ...labelStyle(12.5), marginLeft: 6, color: green, border: `1px solid ${green}66`, borderRadius: 6, padding: "0 6px", verticalAlign: "1px" }}>{rec.hall ? "в зале ✓" : "PIN ✓"}</span>}</div>}
                 {!rec && reqs[s.id] && reqs[s.id].status === "pending" ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 6, fontSize: 11.5, color: gold }}>
-                    <span>⏳ Ждёт подтверждения старшего в зале</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Sign n="hourglass" s={13} />Ждёт подтверждения старшего в зале</span>
                     <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); cancelHall(reqs[s.id]); }} {...onActivate(() => cancelHall(reqs[s.id]))} style={{ color: T.modSub.color, textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" }}>отозвать</span>
                   </div>
                 ) : null}
@@ -286,7 +287,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
               <div style={{ fontSize: 14, fontWeight: "bold", color: textColor, marginBottom: 4 }}>Старшего нет рядом с твоим телефоном?</div>
               <div style={{ fontSize: 12.5, lineHeight: 1.45, color: T.para?.color, marginBottom: 10 }}>Отправь запрос: старший увидит его у себя в «Наставничестве» и подтвердит, когда посмотрит, как у тебя получается в зале.</div>
               {reqs[modal.id] && reqs[modal.id].status === "pending" ? (
-                <div style={{ fontSize: 13, color: gold }}>⏳ Запрос уже у старшего, ждём</div>
+                <div style={{ fontSize: 13, color: gold, display: "flex", alignItems: "center", gap: 6 }}><Sign n="hourglass" s={14} />Запрос уже у старшего, ждём</div>
               ) : hall === "missing" ? (
                 <div style={{ fontSize: 12.5, color: T.modSub.color }}>Заработает, когда владелец обновит сервер. Пока есть PIN ниже.</div>
               ) : (
@@ -297,7 +298,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
             </div>
             <div style={{ ...labelStyle(13), textAlign: "center", color: T.modSub.color, margin: "0 0 10px" }}>Или по PIN прямо здесь</div>
             <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.5, marginBottom: 16 }}>
-              📲 Передай телефон наставнику. Наставник, ты подтверждаешь навык, только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
+              <Sign n="phone" s={15} style={{ marginRight: 5, verticalAlign: "-2px" }} />Передай телефон наставнику. Наставник, ты подтверждаешь навык, только если <b style={{ color: gold }}>лично видел</b> его выполнение в зале.
             </div>
             {!byName ? (
               <>

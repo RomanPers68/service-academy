@@ -473,7 +473,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
             </div>
             <div className="tg-note" style={{ textAlign: "center", marginTop: 2 }}>пунктир — выходной по графику: такой день свечу не гасит</div>
             <div className="tg-ms" aria-label={ms.next ? "До вехи " + ms.next + " дней осталось " + ms.left : "Все вехи пройдены"}>
-              {PAIR_MILESTONES.map((m) => <span key={m} className={pair.streak >= m ? "got" : undefined}>{m} {plural(m, "день", "дня", "дней")}{pair.streak >= m ? " ✦" : ""}</span>)}
+              {PAIR_MILESTONES.map((m) => <span key={m} className={pair.streak >= m ? "got" : undefined}>{m} {plural(m, "день", "дня", "дней")}{pair.streak >= m ? " ✓" : ""}</span>)}
             </div>
             {msNew ? <div className="tg-big" role="status" style={{ fontSize: 22 }}>{MS_WORD[msNew]}<small>Серия на двоих: {pair.streak} {plural(pair.streak, "день", "дня", "дней")}</small></div>
               : ms.next ? <div className="tg-note" style={{ textAlign: "center", marginTop: 4 }}>ещё {ms.left} {plural(ms.left, "день", "дня", "дней")} до вехи «{ms.next} {plural(ms.next, "день", "дня", "дней")}»</div> : null}

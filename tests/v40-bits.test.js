@@ -28,7 +28,8 @@ const ROWS = [
   { who: "Заяц Екатерина", name: "Заяц", role: "seasonal", at: iso(3 * DAY), me: false },
 ];
 // имя, после которого стоит знак, и подпись знака
-const marks = (html) => [...html.matchAll(/>([^<>]+)<\/(?:div|span)><span data-master-mark="" role="img" title="([^"]*)" aria-label="([^"]*)"[^>]*>✦<\/span>/g)].map((m) => ({ name: m[1].trim(), title: m[2], label: m[3] }));
+// v75: внутри знака — медаль на ленте (svg), было ✦
+const marks = (html) => [...html.matchAll(/>([^<>]+)<\/(?:div|span)><span data-master-mark="" role="img" title="([^"]*)" aria-label="([^"]*)"[^>]*><svg[^>]*>[\s\S]*?<\/svg><\/span>/g)].map((m) => ({ name: m[1].trim(), title: m[2], label: m[3] }));
 const count = (html, s) => html.split(s).length - 1;
 
 describe("v40: «Мастер роли ✦» в рейтинге", () => {
@@ -60,14 +61,14 @@ describe("v40: «Мастер роли ✦» в рейтинге", () => {
     expect(count(html, "data-master-mark")).toBe(2);   // тёзка из «Причала» и Иван — без знака
     expect(count(html, ">Анна Смирнова</div>")).toBe(2);
     // знак — сразу после имени, перед значками достижений; цвет — золото надписи
-    expect(html).toMatch(/>Анна Смирнова<\/div><span data-master-mark="" role="img" title="Мастер роли «Ядро»" aria-label="Мастер роли «Ядро»" style="[^"]*color:#C8A96E[^"]*">✦<\/span><span title="Ядро команды"/);
+    expect(html).toMatch(/>Анна Смирнова<\/div><span data-master-mark="" role="img" title="Мастер роли «Ядро»" aria-label="Мастер роли «Ядро»" style="[^"]*color:#C8A96E[^"]*"><svg[^>]*>[\s\S]*?<\/svg><\/span><span title="Ядро команды"/);
   });
 
   it("моё заведение (по умолчанию): знаки у своих; светлая тема — тёмное золото", async () => {
     const { mastersIndex } = await import("../lib/mastery");
     const html = await render({ masters: mastersIndex(ROWS), T: { ...T, a11y: true } });
     expect(marks(html).map((m) => m.name)).toEqual(["Анна Смирнова", "Екатерина Заяц"]);
-    expect(html).toContain('style="display:inline-flex;align-items:center;flex-shrink:0;color:#7A5A1E;font-size:14px;line-height:1">✦</span>');
+    expect(html).toContain('style="display:inline-flex;align-items:center;flex-shrink:0;color:#7A5A1E;line-height:1"><svg width="14" height="14"');   // v75: медаль
   });
 
   it("без masters, с пустым списком и без заведения в профиле — как было, без знака", async () => {
@@ -83,7 +84,7 @@ describe("v40: «Мастер роли ✦» в рейтинге", () => {
   it("карточка игрока: строка «Мастер роли «Ядро»» под именем (разметка в исходнике; клик — в браузере)", () => {
     const src = readFileSync("ui/screens-gamification.jsx", "utf8");
     expect(src).toContain('{selMaster ? <div data-master-line=""');
-    expect(src).toContain('{masterTitle(selMaster).replace(/\\s*✦$/, "")}</div>');   // v73: без «✦ » впереди
+    expect(src).toContain('{masterTitle(selMaster)}</div>');   // v73: без «✦ » впереди; v75: и без срезания ✦ в конце
   });
 
   it("MasterMark: несколько ролей — «Мастер ролей …», пусто — ничего", async () => {

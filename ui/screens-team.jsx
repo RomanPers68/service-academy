@@ -432,7 +432,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 <button className="sa-btn" style={{ ...goldBtn, marginTop:4 }} disabled={busy} onClick={doPermanent}>{busy ? "Выдаю…" : "Выдать себе постоянный код"}</button>
               </div>
               <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", padding:"0 10px" }}>
-                Остальное в своей записи изменить нельзя, чтобы случайно не закрыть себе вход. 😉
+                Остальное в своей записи изменить нельзя, чтобы случайно не закрыть себе вход.
               </div>
             </div>
           ) : confirm === "reset" ? (
@@ -573,7 +573,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
         {list !== null && !loadError && groups.length === 0 && (
           <div style={{ color:T.modSub.color, fontSize:12.5, textAlign:"center", padding:"30px 10px", lineHeight:1.7 }}>
-            {search ? "Никого не нашлось по такому запросу." : "Пока только ты. Нажми «+ Добавить» и выдай первый код. 🚀"}
+            {search ? "Никого не нашлось по такому запросу." : "Пока только ты. Нажми «+ Добавить» и выдай первый код."}
           </div>
         )}
 

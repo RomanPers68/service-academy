@@ -317,7 +317,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           const warmWhen = (p) => "2 мин · " + (p.shift ? String(p.shift).split("·")[0].trim().toLowerCase() : p.known ? "сегодня смена" : "перед сменой");
           const GUEST = (c, sz) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><path d="M5.5 11h13a1.5 1.5 0 0 1 0 3h-13a1.5 1.5 0 0 1 0-3z"/><path d="M6.5 14v7M17.5 14v7"/></svg>;
           const card = ctx || { mode: "track", action: "go", cta: cta.charAt(0) + cta.slice(1).toLowerCase(),
-            glyph: gold ? GUEST : (ROLE_SVG[role] ? (c, sz) => ROLE_SVG[role](c, sz) : "sparkle"),
+            glyph: gold ? GUEST : (ROLE_SVG[role] ? (c, sz) => ROLE_SVG[role](c, sz) : "cloche"),
             lead: (roleObj ? roleObj.label + " · " : "") + (!next ? "пройдено 100%" : done ? "пройдено " + prog + "%" : "первый шаг"),
             title: next ? nextTitle : title, sub: String(sub || "").replace(/\s*·\s*пройдено \d+%/, "") };
           const rows = ctx
@@ -627,7 +627,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             })()}
             {newbie && (
               <div style={{ textAlign:"center", padding:"0 24px 12px", marginTop:-4 }}>
-                <span style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic" }}>✨ Остальные инструменты откроются после первого урока</span>
+                <span style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic" }}>Остальные инструменты откроются после первого урока</span>
               </div>
             )}
             </>

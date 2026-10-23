@@ -48,7 +48,8 @@ export function nowLead(ctx) {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
 }
 
-const ICON = { warmup: "clock", mistakes: "target", sos: "bulb", ask: "sparkle", mood: "moon", go: "sparkle" };
+// v75 (Доп. 388): «спросить Наставника» — облачко «AI», «дальше по треку» — флажок (было — значок-искра)
+const ICON = { warmup: "clock", mistakes: "target", sos: "bulb", ask: "ai", mood: "moon", go: "flag" };
 // значок на корешке: имя значка (UI_SVG) или своя отрисовка (c, s) => svg — в обычный день это значок роли
 const glyph = (icon, c, s) => (typeof icon === "function" ? icon(c, s) : UI_SVG[icon] ? UI_SVG[icon](c, s) : null);
 

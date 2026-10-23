@@ -16,6 +16,7 @@ import { rpc, saToken } from "../api/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS, labelStyle } from "./tokens";
+import { Sign } from "./signs";   // v75 (Доп. 388): треугольник-предупреждение значком вместо ⚠
 // v46 (Доп. 359): верх графика сотрудника — ближайшая смена карточкой и медальоны месяца; у руководителя —
 // «Требует внимания» наверху и плашка «Сохранить» внизу
 import { ShiftHero, NoShiftHero, MonthMedals, nextShift, staffMonthCells, personMonthCells } from "./schedule-hero";
@@ -4192,7 +4193,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         background: tone === "bad" ? (a11y ? "rgba(255,240,236,0.8)" : "rgba(224,120,120,0.10)") : tone === "ok" ? (a11y ? "rgba(236,248,240,0.8)" : "rgba(93,187,138,0.08)") : "transparent" });
       const status = (ok, t) => (
         <span data-pick-status={ok ? "ok" : "warn"} style={{ display:"flex", alignItems:"flex-start", gap:4, fontSize:11, lineHeight:1.35, marginTop:2, color: ok ? okC : P.warn }}>
-          <span style={{ flexShrink:0 }}>{ok ? "✓" : "⚠"}</span><span>{t}</span>
+          <span style={{ flexShrink:0 }} data-warn={ok ? undefined : ""}>{ok ? "✓" : <Sign n="alert" s={13} sw={2} style={{ verticalAlign: "-1px" }} />}</span><span>{t}</span>
         </span>
       );
       // «Морозный лёд»: стекло, изморозь-свечение изнутри и блик по верхней
@@ -4229,7 +4230,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div style={{ fontSize:12.5, color:P.sub, marginTop:2, marginBottom:8 }}>{posName(who.pos)}</div>
             <div data-pick-ctx="" style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
               {nNeed > 0 ? (shortHere
-                ? <span style={chip("bad")}>⚠ {posName(who.pos)}: в этот день {nHave} из {nNeed}, не хватает {nNeed - nHave === 1 ? "одного" : nNeed - nHave}</span>
+                ? <span style={chip("bad")}><Sign n="alert" s={13} sw={2} style={{ marginRight: 4, verticalAlign: "-1px" }} />{posName(who.pos)}: в этот день {nHave} из {nNeed}, не хватает {nNeed - nHave === 1 ? "одного" : nNeed - nHave}</span>
                 : <span style={chip("ok")}>✓ {posName(who.pos)}: в этот день {nHave} из {nNeed}</span>) : null}
               {wishOf(who.id, d) ? <span style={chip("")}><IcoSun size={11} color={P.acc} />просил(а) выходной</span> : null}
               {hardOf(who.id, d) ? <span style={chip("bad")}><IcoBan size={11} color={P.warn} />отметил(а) «не смогу»</span> : null}
@@ -4289,7 +4290,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div style={{ fontSize:11, color:P.sub, marginTop:10, fontStyle:"italic", lineHeight:1.5 }}>
               Выбранная вручную смена закрепляется, генератор её не тронет.
               Передумал? «↩» рядом с «Заполнить черновик» вернёт как было.
-              {why ? " Подсказки строятся по тем же правилам, что у «Заполнить черновик»: поставить можно и с ⚠, тогда это будет в «Проверке»." : ""}
+              {why ? " Подсказки строятся по тем же правилам, что у «Заполнить черновик»: поставить можно и с предупреждением, тогда это будет в «Проверке»." : ""}
             </div>
           </div>
         </div>

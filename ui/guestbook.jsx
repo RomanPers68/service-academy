@@ -11,6 +11,7 @@ import { GOLD, goldText, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { ROLE_SVG } from "./icons";
+import { Sign } from "./signs";   // v75 (Доп. 388): печати — корона, лавровый венок, галочка вместо ✦
 import { loadMastery } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";
 import { MODULES } from "../data/modules";
@@ -273,7 +274,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                           border: st ? "none" : `1.5px dashed ${col}`, color: st ? PAPER : col,
                           background: st ? `radial-gradient(circle at 34% 30%, ${col}, ${col} 58%, rgba(0,0,0,.3))` : "transparent",
                           boxShadow: st ? "inset 0 1px 2px rgba(255,255,255,.3), 0 2px 5px rgba(0,0,0,.25)" : "none" }}>
-                          {st ? "✦" : "·"}
+                          {st ? <Sign n="check" s={15} sw={2.4} /> : "·"}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ color: INK, fontSize: 12.5, fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -314,7 +315,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
             ) : page.kind === "locked" ? (
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 10, opacity: .88 }}>
                 {page.legend
-                  ? <div style={{ width: 52, height: 52, borderRadius: "50%", border: `1.5px dashed ${BROWN}`, display: "flex", alignItems: "center", justifyContent: "center", color: BROWN, fontSize: 21 }}>✦</div>
+                  ? <div style={{ width: 52, height: 52, borderRadius: "50%", border: `1.5px dashed ${BROWN}`, display: "flex", alignItems: "center", justifyContent: "center", color: BROWN }}><Sign n="laurel" s={28} sw={1.5} /></div>
                   : <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke={BROWN} strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>}
                 <div style={{ ...SCRIPT, color: BROWN, fontSize: 25 }}>Здесь появится отзыв</div>
                 <div style={{ color: BROWN, fontSize: 14, lineHeight: 1.65, maxWidth: 250 }}>{page.hint}</div>
@@ -333,7 +334,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                   {page.kind === "earned" && page.gold ? (
                     <div className="gb-seal" aria-label="Золотая тема" style={{ width: 54, height: 54, borderRadius: "50%", flexShrink: 0, background: "radial-gradient(circle at 34% 30%, #F6DD8C, #C99A2E 60%, #7A5612)", boxShadow: "0 4px 10px rgba(122,86,18,.45), inset 0 2px 4px rgba(255,255,255,.35), inset 0 -3px 6px rgba(0,0,0,.3)", display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-10deg)" }}>
                       <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(255,245,210,.55)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
-                        <span style={{ fontSize: 12.5, color: "#3B2A08" }}>✦</span>
+                        <span style={{ color: "#3B2A08", display: "inline-flex" }}><Sign n="crown" s={15} sw={1.9} /></span>
                         <span style={{ ...MONO, color: "#3B2A08", fontSize: 10.5, letterSpacing: 1 }}>ЗОЛОТО</span>
                       </div>
                     </div>
@@ -341,7 +342,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                   {page.kind === "legend" && (
                     <div className="gb-seal" style={{ width: 58, height: 58, borderRadius: "50%", flexShrink: 0, background: `radial-gradient(circle at 34% 30%, #B0492F, ${WAX} 62%, #5E1F12)`, boxShadow: "0 4px 10px rgba(94,31,18,.45), inset 0 2px 4px rgba(255,255,255,.22), inset 0 -3px 6px rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <div style={{ width: 43, height: 43, borderRadius: "50%", border: "1px solid rgba(255,220,190,.4)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
-                        <span style={{ fontSize: 12.5 }}>✦</span>
+                        <span style={{ color: "#EFE4C8", display: "inline-flex" }}><Sign n="laurel" s={18} sw={1.4} /></span>
                         <span style={{ ...MONO, color: "#EFE4C8", fontSize: 10.5, letterSpacing: 1 }}>{page.seal}</span>
                       </div>
                     </div>

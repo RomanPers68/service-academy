@@ -18,7 +18,8 @@ import { shuffleArray, vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v65 (Доп. 378): ответ голосом
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
-import { MOD_SVG, UI_SVG } from "./icons";
+import { MOD_SVG, UI_SVG, ROLE_SVG } from "./icons";
+import { Sign } from "./signs";   // v75 (Доп. 388): значки вместо ⭐ и ☁
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { aiCatOf, DECISIONS, hrStatus, REAL_N } from "../lib/hr-quality";   // v66 (Доп. 379): когда снимаем «бету»
 // v66: «Проверка AI HR» — отдельный кусок (эталоны ≈25 КБ), грузится, только когда её открыли
@@ -38,7 +39,7 @@ const TEST_ROLES = [
 // Перерисованные иконки ролей из фирменного набора
 const ROLE_ICO = {
   waiter: (c) => UI_SVG.cloche(c, 20),
-  hostess: (c) => UI_SVG.sparkle(c, 20),
+  hostess: (c) => ROLE_SVG.spg(c, 20),   // v75: значок хостес, как у роли (было — значок-искра)
   bartender: (c) => UI_SVG.shaker(c, 20),
   manager: (c) => UI_SVG.target(c, 20),
 };
@@ -87,7 +88,7 @@ function customPool(customLessons, testRole) {
     (Array.isArray(c.questions) ? c.questions : []).forEach(q => {
       if (q && q.q && Array.isArray(q.options) && typeof q.correct === "number")
         out.push({ scene: null, text: q.q, options: q.options, correct: q.correct,
-          topic: "⭐ " + ((c.module || c.title || "Регламент ресторана").trim() || "Регламент ресторана") });
+          topic: "Свой раздел: " + ((c.module || c.title || "Регламент ресторана").trim() || "Регламент ресторана") });
     });
   });
   return out;
@@ -899,7 +900,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                       {open && (
                         <div style={{ marginTop: 12, borderTop: "1px solid rgba(200,160,80,0.2)", paddingTop: 10 }}>
                           <div style={{ color: sub, fontSize: 12.5, marginBottom: 8 }}>
-                            {isAiRec(r) ? `балл ${r.pct} из 100` : `${r.score} из ${r.total}`} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}{r.by ? ` · провёл(а): ${r.by}` : ""}{r.srvId ? " · ☁" : ""}
+                            {isAiRec(r) ? `балл ${r.pct} из 100` : `${r.score} из ${r.total}`} · опыт: {r.expLabel || "не указан"}{r.place ? ` (${r.place})` : ""}{r.age ? ` · ${r.age}` : ""}{r.by ? ` · провёл(а): ${r.by}` : ""}{r.srvId ? <> · <Sign n="cloud" s={13} title="сохранено на сервере" style={{ verticalAlign: "-2px" }} /></> : null}
                             {cal ? <> · самооценка: <b style={{ color: cal.color }}>{cal.label}</b></> : null}
                           </div>
                       {r.aiScores ? (

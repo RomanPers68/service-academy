@@ -234,7 +234,7 @@ if (want("HW")) {
   await page.waitForSelector(".sa-dlg[data-dlg]", { timeout: 8000 }).catch(() => {});
   const r = await playDialogue(page, worst, { hurry: true });
   ok(tag + ": наставник — «неверно» и «Лучше так: «…»» (урок)", r.coach.length > 0 && r.coach.every((c) => c === "bad") && r.best === r.coach.length, JSON.stringify({ c: r.coach, best: r.best }));
-  if (r.walk) ok(tag + ": гость ушёл — плашка 🚪, «Без отзыва», 0 звёзд, «Закрыть»", r.review === "walked" && r.ey === "Без отзыва" && r.stars === "0 из 3 звёзд" && r.next === "Закрыть", JSON.stringify({ rv: r.review, ey: r.ey, st: r.stars, nx: r.next }));
+  if (r.walk) ok(tag + ": гость ушёл — плашка с дверью, «Без отзыва», 0 звёзд, «Закрыть»", r.review === "walked" && r.ey === "Без отзыва" && r.stars === "0 из 3 звёзд" && r.next === "Закрыть", JSON.stringify({ rv: r.review, ey: r.ey, st: r.stars, nx: r.next }));
   else ok(tag + ": гость дослушал — отзыв «не в духе», «Дальше»", r.review !== "walked" && r.next === "Дальше", JSON.stringify(r.review));
   await shot(page, "hw-walkout");
   await page.locator("[data-dlg-next]").click(); await sleep(1000);
@@ -252,9 +252,10 @@ if (want("HE")) {
   await page.waitForSelector(".sa-dlg[data-dlg]", { timeout: 8000 }).catch(() => {});
   ok(tag + ": урок «Живой диалог: эвакуация у дверей» — сценарий spg-b9-1", (await dlgId(page)) === "spg-b9-1");
   const r = await playDialogue(page, worst, { hurry: true });
-  const fin = await page.evaluate(() => ({ walk: (document.querySelector("[data-dlg-msg=walk]") || {}).textContent, title: (document.querySelector("[data-dlg-review] .dc-rv-t") || {}).textContent }));
-  ok(tag + ": ушёл «Зал» — «🚪 Зал в панике: …», в отзыве «Зал в панике» (а не «не дождавшись хорошего приёма»)",
-    r.walk && fin.walk === "🚪 Зал в панике: люди толпятся у дверей, эвакуация идёт без тебя." && fin.title === "Зал в панике" && r.next === "Закрыть", JSON.stringify(fin));
+  // v75: дверь — значком (svg) перед текстом, а не эмодзи 🚪
+  const fin = await page.evaluate(() => ({ walk: (document.querySelector("[data-dlg-msg=walk]") || {}).textContent, door: !!document.querySelector("[data-dlg-msg=walk] svg"), title: (document.querySelector("[data-dlg-review] .dc-rv-t") || {}).textContent }));
+  ok(tag + ": ушёл «Зал» — дверь и «Зал в панике: …», в отзыве «Зал в панике» (а не «не дождавшись хорошего приёма»)",
+    r.walk && fin.door && fin.walk === "Зал в панике: люди толпятся у дверей, эвакуация идёт без тебя." && fin.title === "Зал в панике" && r.next === "Закрыть", JSON.stringify(fin));
   await shot(page, "he-evac-walk");
   ok(tag + ": без ошибок", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();

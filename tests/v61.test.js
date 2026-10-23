@@ -51,8 +51,8 @@ describe("v61: ряд треков в коде", () => {
     expect(row).not.toContain("translate(${dx}px, ${dy}px)");
     expect(row).toContain("el.animate(from ? [{ height: from + \"px\" }, { height: to + \"px\" }]");
   });
-  it("v62–v63: первый заход — не раскрытая карточка, а ярлычок «Твоя роль. Тапни 😉» над своим кружком, сразу за туром главной", () => {
-    expect(HINTS.track_orb).toEqual(["Твоя роль. Тапни 😉"]);
+  it("v62–v63: первый заход — не раскрытая карточка, а ярлычок «Твоя роль. Тапни» над своим кружком, сразу за туром главной", () => {
+    expect(HINTS.track_orb).toEqual(["Твоя роль. Тапни"]);   // v75: без эмодзи
     expect(row).toContain("React.useState(null)");
     expect(row).not.toContain("firstMeet");
     expect(row).toContain('id={"sa-orb-" + x.r.id}');

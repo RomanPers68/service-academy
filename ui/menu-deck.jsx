@@ -1,6 +1,7 @@
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
+import { Sign } from "./signs";   // v75 (Доп. 388): блюдо без фото — значком вместо 🍽
 import { groupByCat, dishMatches, normCat } from "../lib/menu-sections";
 import { dishFaq, cocktailLinks, bumpDaily, allergenLabel } from "../lib/deck-extras";
 import { emitActivity } from "../lib/activity";
@@ -163,7 +164,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                   <div key={x.id} className="sa-card" onClick={() => { const i = list.indexOf(x); if (i >= 0) { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); } else { setMode("deck"); setTimeout(() => { setIdx(pool.indexOf(x)); setView("cards"); }, 0); } }}
                     {...onActivate(() => { const i = list.indexOf(x); if (i >= 0) { setIdx(i); setView("cards"); } })}
                     style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
-                    {x.img ? <img src={x.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0, filter: x.stop ? "grayscale(1)" : "none" }} /> : <div style={{ width: 54, height: 54, borderRadius: 12, border: `1px dashed ${bd}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: gold, fontSize: 18 }}>🍽</div>}
+                    {x.img ? <img src={x.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0, filter: x.stop ? "grayscale(1)" : "none" }} /> : <div style={{ width: 54, height: 54, borderRadius: 12, border: `1px dashed ${bd}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: gold }}><Sign n="cloche" s={24} /></div>}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "Georgia, serif" }}>{x.name}{x.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                       <div style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(x.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>

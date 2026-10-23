@@ -301,7 +301,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
             background: a11y ? "rgba(246,238,220,0.98)" : "rgba(40,31,16,0.97)", border: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`,
             boxShadow: a11y ? "0 6px 18px rgba(60,42,10,0.22), inset 0 1px 0 rgba(255,255,255,0.9)" : `0 8px 22px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 18px ${GOLD}22`,
             color: text, fontFamily: "Georgia, serif", fontSize: 13, whiteSpace: "nowrap", zIndex: 3 }}>
-          <span>Твоя роль. <b style={{ color: gold, fontWeight: "bold" }}>Тапни</b> 😉</span>
+          <span>Твоя роль. <b style={{ color: gold, fontWeight: "bold" }}>Тапни</b></span>
           <span aria-hidden style={{ position: "absolute", left: Math.max(10, Math.min(ncx - nleft - 6, NW - 22)), bottom: -6, width: 12, height: 12, transform: "rotate(45deg)",
             background: a11y ? "rgba(246,238,220,0.98)" : "rgba(40,31,16,0.97)", borderRight: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}`, borderBottom: `1px solid ${a11y ? "rgba(150,112,40,0.45)" : "rgba(214,178,102,0.45)"}` }} />
         </button>

@@ -161,7 +161,7 @@ export const TABLE_LESSON_CSS = `
 .tb-receipt.gold{box-shadow:0 10px 26px var(--drop),inset 0 0 0 2px rgba(201,154,46,.55)}
 .r-goldseal{position:absolute;right:12px;bottom:16px;width:58px;height:58px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transform:rotate(-12deg);
   background:radial-gradient(circle at 34% 30%,#F6DD8C,#C99A2E 58%,#7A5612);box-shadow:0 4px 10px rgba(122,86,18,.45),inset 0 2px 4px rgba(255,255,255,.35),inset 0 -3px 6px rgba(0,0,0,.3);color:#3B2A08;animation:tbPop .6s .5s both}
-.r-goldseal span{font-size:16px;line-height:1}
+.r-goldseal span{line-height:1;display:inline-flex}
 .r-goldseal small{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px}
 .r-stamp{width:max-content;max-width:100%;margin:10px auto 0;padding:5px 12px;border:1.5px solid #9A3B25;border-radius:6px;color:#9A3B25;font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.8px;transform:rotate(-3deg)}
 .r-week{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:12px 0 2px;text-align:center}
@@ -191,6 +191,7 @@ export const TABLE_LESSON_CSS = `
 .tb-intro li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px dashed var(--edge);font-size:15px;line-height:1.45;color:var(--text)}
 .tb-intro li:first-child{border-top:0}
 .tb-intro li>span:first-child{flex:0 0 22px;text-align:center;color:var(--gold-ink);font-size:15px}
+.tb-intro li>span:first-child svg{margin-top:2px}   /* v75: значки правил — свои (секундомер, свеча, корона…) */
 .tb-intro-n{margin:10px 0 0;font-size:13px;line-height:1.45;color:var(--sub);font-style:italic}
 /* v31: «запасная свеча» в раунде мастера — одна ошибка в запасе */
 .tb-spare{flex:0 0 auto;margin-left:auto;display:inline-flex;align-items:center;gap:4px;${LABEL_CSS};font-size:12.5px;color:var(--gold-ink)}

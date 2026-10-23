@@ -144,7 +144,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
 
       {nothing && (
         <div style={{ textAlign: "center", padding: "44px 24px" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🤔</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12, color: T.modSub?.color || "#9A865F" }}>{GAME_SVG.search("currentColor", 34)}</div>
           <div style={{ fontSize: 14, color: T.para?.color }}>Ничего не нашлось. Попробуй другое слово или его часть.</div>
         </div>
       )}

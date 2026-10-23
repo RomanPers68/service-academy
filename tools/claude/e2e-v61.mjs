@@ -591,7 +591,7 @@ if (want("HINT")) {
       clearOfTitle: t && title ? t.top >= title.bottom - 1 : null, aboveOrb: t && orb ? t.bottom <= orb.top + 2 : null, inRow: t ? t.left >= 0 && t.right <= innerWidth : null };
   });
   let s = await hs();
-  ok("HINT: бывалый после обновления — над своим кружком ярлычок «Твоя роль. Тапни 😉», без затемнения, кружок дышит, карточка не раскрыта", s.tag && /Твоя роль\. Тапни/.test(s.text) && !s.dim && s.breathe && !s.open && s.key !== "1", JSON.stringify(s));
+  ok("HINT: бывалый после обновления — над своим кружком ярлычок «Твоя роль. Тапни», без затемнения, кружок дышит, карточка не раскрыта", s.tag && /Твоя роль\. Тапни/.test(s.text) && !s.dim && s.breathe && !s.open && s.key !== "1", JSON.stringify(s));
   ok("HINT: ярлычок стоит над кружком, не закрывает строку «Треки обучения» и не выходит за экран", s.clearOfTitle && s.aboveOrb && s.inRow, JSON.stringify({ c: s.clearOfTitle, a: s.aboveOrb, r: s.inRow }));
   await shot(p, "hint-tag");
   await p.locator('[data-track-nudge="tag"]').click(); await sleep(900);

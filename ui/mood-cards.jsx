@@ -3,6 +3,7 @@
 
 import React from "react";
 import { faceIcon, flameIcon, trophyIcon } from "./icons-extra";
+import { Sign } from "./signs";   // v75 (Доп. 388): значки вместо 📊 и 🔒
 import { rpc, saToken } from "../api/supabase";
 import { vibrate, hapticsOn } from "../lib/utils";
 import { BROWN, GOLD, GREEN, GREEN_DARK, INK, labelStyle } from "./tokens";
@@ -169,7 +170,7 @@ export function TeamMoodCard({ a11y }) {
   };
   return (
     <div style={_moodBase(C, a11y)}>
-      <div style={{ ...labelStyle(13.5), color:C.gold, marginBottom:10 }}>📊 Пульс команды · сегодня</div>
+      <div style={{ ...labelStyle(13.5), color:C.gold, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}><Sign n="chart" s={15} />Пульс команды · сегодня</div>
       {total === 0 ? (
         <div style={{ color:C.muted, fontSize:12.5, lineHeight:1.5 }}>Сегодня ещё нет ответов. Команда отметит настрой в течение дня.</div>
       ) : (
@@ -193,7 +194,7 @@ export function TeamMoodCard({ a11y }) {
           {spark()}
         </>
       )}
-      <div style={{ color:C.dim, fontSize:11, marginTop:12, paddingTop:9, borderTop:`1px solid ${C.border}` }}>🔒 ответы анонимны, видна только общая картина</div>
+      <div style={{ color:C.dim, fontSize:11, marginTop:12, paddingTop:9, borderTop:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:6 }}><Sign n="lock" s={12} sw={2} />ответы анонимны, видна только общая картина</div>
     </div>
   );
 }

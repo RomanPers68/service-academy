@@ -104,7 +104,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit, extraQu
     return (
       <div style={T.screen}>
         <div style={{ ...T.lessBody, padding:"48px 24px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-          <div style={{ fontSize:54 }}>{passed ? "🎓" : "📚"}</div>
+          <div style={{ display:"flex", color }}>{passed ? UI_SVG.gradcap(color, 56) : UI_SVG.book(a11y ? "#8B3020" : "#E07878", 52)}</div>
           <div style={{ color: passed ? color : (a11y ? "#8B3020" : "#E07878"), fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:25 }}>
             {passed ? "Экзамен сдан!" : "Почти получилось"}
           </div>
@@ -189,7 +189,7 @@ export function CertificateScreen({ T, a11y, profile, roleObj, result, onExit, o
           background: a11y ? "rgba(245,238,220,0.7)" : "linear-gradient(160deg, rgba(58,42,16,0.5) 0%, rgba(30,22,10,0.6) 100%)",
           border:`2px solid ${color}`, boxShadow:`0 8px 30px ${color}22, inset 0 1px 0 ${color}33`,
           display:"flex", flexDirection:"column", alignItems:"center", gap:12, textAlign:"center" }}>
-          <div style={{ fontSize:44 }}>🎓</div>
+          <div style={{ display:"flex" }}>{UI_SVG.gradcap(color, 44)}</div>
           <div style={{ letterSpacing:3, fontSize:11, color, fontFamily:"Georgia, serif", textTransform:"uppercase" }}>Service Academy</div>
           <div style={{ width:40, height:2, background:color, borderRadius:3 }} />
           <div style={{ fontSize:12.5, color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", opacity:0.8 }}>Настоящим подтверждается, что</div>

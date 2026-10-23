@@ -30,20 +30,21 @@ import { bookStats, countNewDishes } from "../data/reviews";
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
+import { Sign } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи и ✦
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, goldText, labelStyle } from "./tokens";
 // v73 (Доп. 386): подписи разделов и бейджи — курсивом, обычными буквами (labelStyle); моноширинный — только цифрам
 import { masterRolesOf, masterTitle } from "../lib/mastery";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): рейтинг шире, сотрудники — в две колонки
 
-// v40: знак «Мастер роли ✦» у имени — в рейтинге и в лиге недели (ui/league.jsx).
+// v40: знак «Мастер роли» у имени — в рейтинге и в лиге недели (ui/league.jsx). v75: медаль на ленте вместо ✦.
 // roles — из masterRolesOf(mastersIndex(строки mastery_list), имя, фамилия); нет ролей — ничего.
 export function MasterMark({ roles, a11y = false, size = 14 }) {
   if (!roles || !roles.length) return null;
   const t = masterTitle(roles);
   return (
     <span data-master-mark="" role="img" title={t} aria-label={t}
-      style={{ display:"inline-flex", alignItems:"center", flexShrink:0, color: goldText(!!a11y), fontSize:size, lineHeight:1 }}>✦</span>
+      style={{ display:"inline-flex", alignItems:"center", flexShrink:0, color: goldText(!!a11y), lineHeight:1 }}><Sign n="master" s={size} sw={1.9} /></span>
   );
 }
 
@@ -157,7 +158,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
       {/* Звёзды */}
       <div className="sa-fast" style={{ display:"flex", gap:8, marginBottom:24, animationDelay:"0.3s" }}>
         {[1,2,3].map(s => (
-          <div key={s} style={{ fontSize:30, filter:`drop-shadow(0 0 8px #C8A96E)`, animationDelay:`${s*0.15}s` }} className="sa-pop"><span style={{ color:"#E4C88C" }}>✦</span></div>
+          <div key={s} style={{ fontSize:30, filter:`drop-shadow(0 0 8px #C8A96E)`, animationDelay:`${s*0.15}s` }} className="sa-pop"><span style={{ color:"#E4C88C", display:"inline-flex" }}><Sign n="star" s={30} /></span></div>
         ))}
       </div>
 
@@ -189,7 +190,7 @@ export function RoleCompleteScreen({ role, nextRole, T, onNext, onExam }) {
           className="sa-btn sa-btn-pulse"
           style={{ width:"100%", maxWidth:340, padding:"16px", borderRadius:18, border:"none", background:"linear-gradient(135deg, #D2A85A 0%, #7A5D2A 100%)", color:"#1A1008", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia, serif", letterSpacing:0.3, marginBottom:12 }}
         >
-          🎓 Сдать экзамен роли
+          <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8 }}><Sign n="gradcap" s={19} sw={1.8} />Сдать экзамен роли</span>
         </button>
       )}
       <button
@@ -341,11 +342,11 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
     const key = `${player.name}|${player.surname}`;
     const playerScores = allScores.filter(s => s.name === player.name && s.surname === player.surname);
 
-    // 🌟 Бог сервиса — все 4 роли + все тесты 100%
+    // «Бог сервиса» — все 4 роли + все тесты 100% (v75: лавровый венок вместо значка-искры)
     const rolesWithScores = new Set(playerScores.map(s => s.role));
     const allRolesCovered = ["seasonal","core","manager","service_manager"].every(r => rolesWithScores.has(r));
     if (allRolesCovered && playerScores.length > 0 && playerScores.every(s => s.pct === 100)) {
-      achievements.push({ icon:"sparkle", label:"Бог сервиса" });
+      achievements.push({ icon:"laurel", label:"Бог сервиса" });
     }
 
     // 🏆 Мастер практики — больше всех звёздочек практики
@@ -547,7 +548,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
                 {myBadges.length > 0 && (
                   <div style={{ paddingTop:10, borderTop:`1px solid ${GOLD}22` }}>
                     <div style={{ ...labelStyle(13.5), color:GOLD, marginBottom:6 }}>Твои ачивки</div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{myBadges.map((b, i) => <span key={i} title={b.desc} style={{ padding:"5px 10px", borderRadius:999, border:`1px solid ${GOLD}66`, fontSize:12.5, color:T.modTitle.color }}><span style={{ color:GOLD, marginRight:5 }}>{b.sign}</span>{b.title}</span>)}</div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{myBadges.map((b, i) => <span key={i} title={b.desc} style={{ padding:"5px 10px", borderRadius:999, border:`1px solid ${GOLD}66`, fontSize:12.5, color:T.modTitle.color }}><span style={{ color:GOLD, marginRight:5, display:"inline-flex", verticalAlign:"-2px" }}><Sign n={b.icon} s={14} /></span>{b.title}</span>)}</div>
                   </div>
                 )}
                 <div style={{ fontSize:11, color:T.modSub.color, marginTop:8, lineHeight:1.5 }}>Дальше: {BADGES.filter(b => !myBadges.includes(b)).slice(0, 2).map(b => `«${b.title}» — ${b.desc}`).join("; ") || "все ачивки собраны"}.</div>
@@ -605,7 +606,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ ...T.modTitle }}>{selected?.name} {selected ? shownSurname(selected) : ""}</div>
-                {selMaster ? <div data-master-line="" style={{ color: goldText(!!T.a11y), fontSize: T.a11y ? 13 : 12.5, fontFamily:"Georgia, serif", lineHeight:1.35, margin:"1px 0 1px" }}>{masterTitle(selMaster).replace(/\s*✦$/, "")}</div> : null}
+                {selMaster ? <div data-master-line="" style={{ color: goldText(!!T.a11y), fontSize: T.a11y ? 13 : 12.5, fontFamily:"Georgia, serif", lineHeight:1.35, margin:"1px 0 1px" }}>{masterTitle(selMaster)}</div> : null}
                 <div style={{ color:T.modSub.color, fontSize:12.5 }}>{selected?.restaurant}</div>
               </div>
             </div>
@@ -762,9 +763,9 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
         {/* Задания */}
         {tasks.length === 0 ? (
           <div style={{ textAlign:"center", padding:"40px 0", color:T.modSub.color }}>
-            <div style={{ fontSize:44, marginBottom:8 }}>🏆</div>
-            <div style={{ fontSize:16, color:T.modTitle.color, fontFamily:"Georgia, serif" }}>Все уроки пройдены!</div>
-            <div style={{ fontSize:12.5, marginTop:4 }}>Ты настоящий мастер сервиса</div>
+            <div style={{ display:"flex", justifyContent:"center", marginBottom:8 }}>{trophyIcon(GOLD, 44)}</div>
+            <div style={{ fontSize:16, color:T.modTitle.color, fontFamily:"Georgia, serif" }}>Все уроки пройдены</div>
+            <div style={{ fontSize:12.5, marginTop:4 }}>Новые задания появятся вместе с новыми уроками</div>
           </div>
         ) : tasks.map((task, i) => {
           const isDone = task.type === "quiz" ? quizDone[task.id] : completed[task.id];

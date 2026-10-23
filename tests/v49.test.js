@@ -25,7 +25,8 @@ describe("v49: лист смены подсказывает до выбора", 
   });
   it("сверху — часы человека и капсулы: покрытие позиции в этот день, просьба, «не смогу», отпуск", () => {
     expect(pick).toContain('data-pick-hours="" ');
-    expect(pick).toContain("⚠ {posName(who.pos)}: в этот день {nHave} из {nNeed}, не хватает {nNeed - nHave === 1 ? \"одного\" : nNeed - nHave}");
+    expect(pick).toContain("{posName(who.pos)}: в этот день {nHave} из {nNeed}, не хватает {nNeed - nHave === 1 ? \"одного\" : nNeed - nHave}");   // v75: треугольник — значком
+    expect(pick).toContain('<Sign n="alert" s={13} sw={2} style={{ marginRight: 4, verticalAlign: "-1px" }} />{posName(who.pos)}');
     expect(pick).toContain("✓ {posName(who.pos)}: в этот день {nHave} из {nNeed}");
     expect(pick).toContain("просил(а) выходной");
     expect(pick).toContain("отметил(а) «не смогу»");
@@ -36,9 +37,9 @@ describe("v49: лист смены подсказывает до выбора", 
     expect(pick).toContain('data-pick-fill="" onClick={() => { setPick(null); setFillAsk({ d, pos: who.pos }); vibrate("light"); }}');
     expect(pick).toContain(">Кто может выйти в этот день ›</button>");
   });
-  it("решение — за руководителем: поставить можно и с ⚠; прежняя подсказка про закрепление осталась", () => {
+  it("решение — за руководителем: поставить можно и с предупреждением; прежняя подсказка про закрепление осталась", () => {
     expect(pick).toContain("Выбранная вручную смена закрепляется, генератор её не тронет.");   // v74
-    expect(pick).toContain("Подсказки строятся по тем же правилам, что у «Заполнить черновик»: поставить можно и с ⚠, тогда это будет в «Проверке».");
+    expect(pick).toContain("Подсказки строятся по тем же правилам, что у «Заполнить черновик»: поставить можно и с предупреждением, тогда это будет в «Проверке».");   // v75: словами вместо ⚠
     expect(pick).toContain("onClick={() => setCell(who.id, d, sh2.k)}");                     // нажать можно любую смену
     expect(pick).toMatch(/\.\.\.ghostInk, flex:"1 1 46%", fontSize:12\.5, padding:"9px 8px" \}\}\s+onClick=\{\(\) => \{ setPick\(null\); setReplAsk/);
   });

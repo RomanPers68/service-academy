@@ -51,7 +51,7 @@ export function cupStreak(hist = []) {
   }
   return { restaurant: r, weeks: n };
 }
-// v40: «Мастер роли ✦» у имени в лиге — роли мастера (или null). masters — mastersIndex(строки mastery_list):
+// v40: знак «Мастер роли» у имени в лиге (v75: медаль на ленте) — роли мастера (или null). masters — mastersIndex(строки mastery_list):
 // там мастера только своего заведения, поэтому знак — только у строк своего заведения. Своя строка
 // («ты» на подиуме) — по имени из профиля.
 export function leagueMasterRoles(masters, r, profile) {
@@ -181,7 +181,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
                   const r = podium[k]; const h = [74, 56, 44][k];
                   const nameSt = { fontSize: 12.5, color: r.me ? text : sub, fontWeight: r.me ? "bold" : "normal", textAlign: "center", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
                   const nm = r.me ? "ты" : r.name + (r.surname ? " " + r.surname[0] + "." : "");
-                  const mr = leagueMasterRoles(masters, r, profile);   // v40: «Мастер роли ✦» после имени
+                  const mr = leagueMasterRoles(masters, r, profile);   // v40: знак «Мастер роли» после имени
                   return (
                     <div key={r.id} style={{ flex: "0 1 110px", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
                       {mr ? (
@@ -203,7 +203,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
               {sorted.slice(0, 100).map((r, i) => {
                 const med = medal[i];
                 const m = mv(r, i);
-                const mr = leagueMasterRoles(masters, r, profile);   // v40: «Мастер роли ✦» после имени
+                const mr = leagueMasterRoles(masters, r, profile);   // v40: знак «Мастер роли» после имени
                 return (
                   <div key={r.id} role="listitem" style={{ ...T.modCard, marginBottom: 8, gap: 12, alignItems: "center", ...(r.me ? { boxShadow: `inset 0 0 0 1.5px ${GOLD}AA` } : null) }}>
                     <div style={{ width: 27, height: 27, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: "bold",

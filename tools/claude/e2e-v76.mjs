@@ -2,8 +2,8 @@
 // Разделы:
 //   REF     — Справочник: глава «Бокалы» — «Карта вкуса — миф», без «зон языка» и картинки-карты; Ридель по фактам;
 //             «Школы сервировки мира» — у Английской один настоящий снимок, сгенерированного нет;
-//   MENTOR  — Наставник: пустой экран без «Привет, Анна!» и значка в круге; ответ ИИ с «###», «-», «1️⃣», эмодзи,
-//             «Отличный вопрос!» и «Надеюсь, помог» — на экране чистый: жирная строка, «•», «1.», без эмодзи и дежурных фраз;
+//   MENTOR  — Наставник: ответ ИИ с «###», «-», «1️⃣» — на экране жирная строка, «•», «1.», без «#», «---» и звёздочек
+//             (v77: пустой экран с «Привет, Анна!», смайлики и тёплые фразы вернули — их проверяет e2e-v77);
 //   GUEST   — живой гость: «*смотрит на часы*» — серой строкой курсивом без звёздочек, эмодзи в реплике нет; гостю уходит
 //             меню команды без заготовок, а без меню команды — заготовки;
 //   PRAISE  — на 30 экранах у сотрудника и руководителя нет похвал с «!» («Так держать!», «Экзамен сдан!» и т. п.);
@@ -139,10 +139,8 @@ if (want("MENTOR")) {
     const chat = [];
     const o = await open({ light, chat });
     await nav(o.page, "assistant", 1500);
-    const empty = await o.page.evaluate(() => ({ t: (document.querySelector("[data-mentor-empty]") || {}).textContent || "", body: document.body.innerText }));
     if (!light) await shot(o.page, "mentor-empty");
-    ok(tag + ": пустой экран — «Наставник знает уроки, Справочник и меню…», без «Привет, Анна!» и «помогу с любой»",
-      empty.t.trim() === "Наставник знает уроки, Справочник и меню твоего ресторана." && !/Привет, Анна/.test(empty.body) && !/помогу с любой/.test(empty.body), empty.t);
+    // v77: пустой экран снова с приветствием — проверка в e2e-v77 (HUMAN)
     await o.page.locator("button", { hasText: "Гость недоволен блюдом. Что говорить?" }).first().click({ timeout: 6000 }).catch(() => {});
     await sleep(1600);
     const r = await o.page.evaluate((src) => {
@@ -156,7 +154,7 @@ if (want("MENTOR")) {
     ok(tag + ": ИИ ответил, вопрос ушёл", !!r && chat.length === 1 && !chat[0].mode, JSON.stringify(chat.map((b) => b.mode || "mentor")));
     ok(tag + ": заголовок «###» — жирной строкой, «1️⃣» — «1.», «-» — «•»",
       !!r && r.bold.includes("Что делать") && r.bold.includes("Извинись") && /^1\. Извинись/m.test(r.text) && /^• Позови менеджера/m.test(r.text) && !/#|---/.test(r.text), r && r.text.slice(0, 200));
-    ok(tag + ": без эмодзи, «Отличный вопрос!», «Надеюсь, помог» и звёздочек", !!r && !r.emoji && !/Отличный вопрос|Надеюсь|\*/.test(r.text), r && r.text.replace(/\n/g, " / ").slice(0, 200));
+    ok(tag + ": без звёздочек разметки (v77: смайлики и тёплые фразы остаются — e2e-v77)", !!r && !/\*/.test(r.text), r && r.text.replace(/\n/g, " / ").slice(0, 200));
     ok(tag + ": без ошибок в консоли", !o.errors.length, o.errors.slice(0, 3).join(" | "));
     await o.ctx.close();
   }
@@ -210,7 +208,7 @@ if (want("GUEST")) {
 const SCREENS = ["roleSelect", "shift", "teamHub", "me", "home", "reference", "glossary", "menuTrainer", "cocktails", "guestbook", "mastery", "cellar",
   "stats", "league", "leaderboard", "mentor", "search", "daily", "checklist", "onboarding", "guide", "offline", "mistakes", "certificates",
   "weeklyGuest", "analytics", "team", "candidate", "contentEditor", "profile"];
-const PRAISE = "(?:Отлично|Так держать|Мастер сервиса|Хороший результат|Тренируйся ещё|Сильная неделя|Экзамен сдан|пройден[аоы]?|Время вышло|Колода пройдена|знаешь меню|первый тест|много ответов)!";
+const PRAISE = "(?:Отлично|Так держать|Мастер сервиса|Хороший результат|Тренируйся ещё|Сильная неделя|Экзамен сдан|пройден[аоы]?|Время вышло|Колода пройдена|знаешь меню|первый тест)!";   // v77: «…много ответов!» — снова голос Наставника
 if (want("PRAISE")) {
   for (const who of ["staff", "admin"]) {
     const o = await open({ who, menu: true });

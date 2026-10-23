@@ -16,9 +16,10 @@ import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
 import { withRefContext, rememberSharedMenu, dishesOf } from "../lib/reference-context";
-import { cleanReply } from "../lib/reply-clean";   // v76: ответ ИИ без «###», «-», эмодзи и «Отличный вопрос!»
+import { cleanReply } from "../lib/reply-clean";   // v76–v77: разметка, которую чат не показывает («###», «-», «---»), — обычным текстом
 import { COCKTAILS } from "../data/cocktails";
 import { CocktailArt } from "./cocktail-art";
+import { UI_SVG } from "./icons";
 import { ACCENT_SERIF } from "./styles";
 
 const STORE = "sa_ai_chats_v2"; // сессии чатов: { uid: { sessions: [...], activeId } }
@@ -115,7 +116,7 @@ const ERRORS = {
       const now = new Date();
       const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
       const hhmm = next.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-      return `На сегодня лимит вопросов Наставнику исчерпан (20 в сутки). Обновится примерно в ${hhmm} по твоему времени. Загляни в уроки или SOS: там тоже есть ответы.`;
+      return `На сегодня лимит вопросов Наставнику исчерпан (20 в сутки). Обновится примерно в ${hhmm} по твоему времени. Загляни в уроки или SOS: там тоже много ответов!`;
     } catch (e) {
       return "На сегодня лимит вопросов Наставнику исчерпан (20 в сутки). Попробуй завтра или загляни в уроки и SOS.";
     }
@@ -610,13 +611,19 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
                 onNext={aStep >= aSteps.length - 1 ? null : () => setAStep(v => v + 1)}
                 onClose={aHintDone} style={{ margin:"0 0 12px" }} />
             ) : null}
-            {/* v76 (Доп. 389): без значка в круге, «Привет, Анна!» и «помогу с любой ситуацией» — так выглядит
-                пустой экран любого чат-бота. Одна строка о том, что Наставник знает, и как его спрашивать. */}
-            <div data-mentor-empty="" style={{ color: T.lessHeadTitle?.color, fontFamily: ACCENT_SERIF, fontSize: a11y ? 17.5 : 16.5, lineHeight: 1.5 }}>
-              Наставник знает уроки, Справочник и меню твоего ресторана.
+            {/* v77 (Доп. 390): владелец вернул Наставнику человеческое приветствие — по имени и от первого лица
+                (в v76 была безличная строка «Наставник знает уроки…»). */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
+                {UI_SVG.ai(gold, 26)}
+              </div>
             </div>
-            <div style={{ color: sub, fontSize: a11y ? 15 : 14, lineHeight: 1.6, marginTop: 6 }}>
-              Спрашивай так, как спросил бы старшего в зале. Или начни с вопроса ниже.
+            <div data-mentor-hello="" style={{ color: T.lessHeadTitle?.color, fontFamily: ACCENT_SERIF, fontSize: a11y ? 20 : 18, fontWeight: "bold", textAlign: "center", marginBottom: 8 }}>
+              Привет, {profile?.name || "коллега"}!
+            </div>
+            <div style={{ color: sub, fontSize: a11y ? 15 : 14, lineHeight: 1.65, textAlign: "center", marginBottom: 4 }}>
+              Я знаю стандарты Service Academy и помогу с любой рабочей ситуацией:
+              гости, конфликты, подача, запара. Спрашивай как коллегу или начни с готового вопроса:
             </div>
           </div>
         )}

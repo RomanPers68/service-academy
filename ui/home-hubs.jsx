@@ -102,7 +102,9 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
             <div key={it.key} className="sa-card sa-pagein" onClick={go} {...onActivate(go)} aria-label={it.label}
               style={{ ...frost, animationDelay: `${Math.min(idx, 8) * 45}ms`, borderRadius: 18, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", position: "relative", overflow: "hidden", WebkitTapHighlightColor: "transparent" }}>
               {/* v73 (Доп. 386): косого блика поверх плитки больше нет — примета сгенерированных интерфейсов */}
-              <div style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(139,106,48,0.10)" : "rgba(214,178,102,0.10)", border: `1px solid ${c}44` }}>
+              {/* v78 (Доп. 391): значок без плашки — квадрат со значком, заголовок, подпись и «›» на каждом экране был
+                  самым узнаваемым шаблоном сгенерированных интерфейсов; цвет, свечение карточки и сам значок — прежние */}
+              <div data-hub-ic="" style={{ width: 32, height: 44, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {(ICON[it.icon] || ICON.book)(c)}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>

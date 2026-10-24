@@ -76,11 +76,11 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
   const appChapters = REFERENCE_APP_COURSE.lessons.filter(l => l.type === "lesson" && (!l.leaderOnly || isLeader)).length;
   const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
   const cards = [
-    { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} · с фото`, icon: Ico.serving, on: true },
+    { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} с фото`, icon: Ico.serving, on: true },
     { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
-    { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} · со схемами`, icon: Ico.coffee, on: true },
+    { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} со схемами`, icon: Ico.coffee, on: true },
       // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
-    { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} карточек · состав, метод, история · основы бара`, icon: Ico.cocktail, on: true, deck: true },
+    { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} ${((n) => n % 10 === 1 && n % 100 !== 11 ? "коктейль" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "коктейля" : "коктейлей")(COCKTAILS.length)}: состав, метод и история`, icon: Ico.cocktail, on: true, deck: true },
   ];
   return (<div style={T.screen}>
       {hintNode}
@@ -110,7 +110,8 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
             ? <RefArt kind={c.id} light={!!a11y} size={56} /> /* Доп. 147: витражи для курсов */
             : <div style={T.modIcon}>{c.icon(gold, 24)}</div>}
           <div style={{ flex: 1 }}>
-            <div style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>{c.tag || (c.deck ? "Колода" : c.on ? "Курс" : "Скоро")}</div>
+            {/* v78 (Доп. 391): метки «Курс» и «Колода» над названием убраны — и так понятно; «Скоро» — у закрытого */}
+            {c.tag || !c.on ? <div style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>{c.tag || "Скоро"}</div> : null}
             <div style={T.modTitle}>{c.t}</div>
             <div style={{ ...T.modSub, display: "flex", alignItems: "center", gap: 4 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
           </div>

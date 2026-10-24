@@ -57,7 +57,7 @@
          бери её (local), нет — скачай PT Serif (ParaType, OFL, /assets/fonts) под тем же именем. iPhone не качает
          ничего; Android — только нужные части (кириллица, латиница), шрифт подменяется без мигания (swap). -->
     <style>
-      /* знаки вне кириллицы и латиницы (✦, стрелки) — своя Georgia, где она есть; иначе следующий шрифт из списка.
+      /* знаки вне кириллицы и латиницы (стрелки и др.) — своя Georgia, где она есть; иначе следующий шрифт из списка.
          Эти правила первыми: при совпадении кодов побеждают объявленные ниже, с диапазонами */
       @font-face{font-family:"Georgia";font-style:normal;font-weight:400;src:local("Georgia")}
       @font-face{font-family:"Georgia";font-style:normal;font-weight:700;src:local("Georgia Bold"),local("Georgia-Bold")}
@@ -79,7 +79,8 @@
       #sa-splash.light .mark{color:#8B6A30}
       @keyframes saSplashPulse{0%,100%{opacity:.45}50%{opacity:1}}
     </style>
-    <div id="sa-splash"><div class="mark">✦ SA</div></div>
+    <!-- v78 (Доп. 391): без звёздочки-искры — её убрали из приложения в v75, а заставка до загрузки скрипта оставалась -->
+    <div id="sa-splash"><div class="mark">SA</div></div>
     <script>
       try{if(localStorage.getItem("sa_a11y")==="1")document.getElementById("sa-splash").className="light"}catch(e){}
       /* Диагностика запуска: любая ранняя ошибка записывается, а если за
@@ -98,7 +99,7 @@
           if (sp && root && !root.firstChild) {
             var light = sp.className === "light";
             sp.innerHTML = '<div style="max-width:280px;text-align:center;font-family:Georgia,serif;line-height:1.65;color:' + (light ? "#5A431B" : "#C8A96E") + '">' +
-              '<div style="font-size:15px;letter-spacing:5px;margin-bottom:14px">✦ SA</div>' +
+              '<div style="font-size:15px;letter-spacing:5px;margin-bottom:14px">SA</div>' +
               '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">Не удалось запустить приложение</div>' +
               '<div style="font-size:12px;opacity:.85">Закрой мини-приложение полностью и открой заново. Если повторится — скажи менеджеру.' +
               (window.__saErr ? '<br><br><span style="font-size:10px;opacity:.7">Техдетали: ' + window.__saErr.slice(0,140) + '</span>' : '') +

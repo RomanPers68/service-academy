@@ -86,10 +86,8 @@ export function RefArt({ kind, light = false, size = 56 }) {
   const C = ART[kind];
   if (!C) return null;
   return (
-    <div style={{ width: size, height: size, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-      borderRadius: 14, background: light ? "rgba(139,106,48,0.08)" : "rgba(214,178,102,0.08)",
-      border: light ? "1px solid rgba(139,106,48,0.28)" : "1px solid rgba(255,255,255,0.12)",
-      boxShadow: light ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(255,248,230,0.06)" }}>
+    // v78 (Доп. 391): рисунок курса без плашки-квадрата — сам витраж остаётся
+    <div data-ref-art={kind} style={{ width: size, height: size, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: size - 10, height: size - 10 }}><C light={light} /></div>
     </div>
   );

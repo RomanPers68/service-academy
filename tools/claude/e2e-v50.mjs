@@ -477,7 +477,7 @@ if (want("LAND")) {
   await shot(p, "land-home");
   // переходы по меню
   await p.locator('[data-rail-tab="shift"]').click(); await sleep(1300); g = await lay(p);
-  ok("LAND: тап по «Смена» в меню — экран «Смена», вкладка подсвечена", g.active === "shift" && /Всё для рабочего дня/.test(await text(p)), g.active);
+  ok("LAND: тап по «Смена» в меню — экран «Смена», вкладка подсвечена", g.active === "shift" && /На смене/.test(await text(p)), g.active);   // v78: слогана «Всё для рабочего дня» нет — группа «На смене»
   await p.locator('[data-rail-tab="me"]').click(); await sleep(1300); g = await lay(p);
   ok("LAND: тап по «Я» — экран «Я»", g.active === "me", g.active);
   await p.locator("[data-rail-ai]").click(); await sleep(1500);

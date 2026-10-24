@@ -2758,7 +2758,7 @@ function ServiceAcademy() {
               onGo={(go, payload) => runMasteryGo(go, payload)} onPrize={setMasterPrize} onReloadMasters={loadMasters} onBack={() => goBack("me")} /></Suspense></div>
           : <ScreenLoader T={T} />)}
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
-        {screen === "shift" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Смена" subtitle="Всё для рабочего дня"
+        {screen === "shift" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Смена" /* v78 (Доп. 391): без слогана под названием */
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
           hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} onOpen={() => navigate("schedule")} />
             {/* v30 (Доп. 314): квест смены и твоя часть */}
@@ -2779,7 +2779,7 @@ function ServiceAcademy() {
           const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
           const dueM = (mistakeBank || []).filter(m => !m.due || m.due <= Date.now()).length;
           return <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Команда" hintKey={hintKey("team", staff)}
-            hintSteps={hintsFor(hintKey("team", staff))} subtitle={staff ? "Люди, цифры и найм" : "Рейтинг и наставничество"} hero={<><TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />
+            hintSteps={hintsFor(hintKey("team", staff))} /* v78: без слогана под названием */ hero={<><TeamHero a11y={a11y} leaderboard={leaderboard} profile={profile} onOpen={() => navigate("leaderboard")} />
               {/* v40: коллега стал мастером роли за последнюю неделю — команда видит */}
               <MastersBanner a11y={a11y} rows={masters && masters.status === "ok" ? masters.rows : []} onOpen={() => openMastery()} />
               {/* v57 (Доп. 370): «Жизнь команды» — тесты, мастера, рекорды и «спасибо» коллег за две недели */}
@@ -2788,10 +2788,10 @@ function ServiceAcademy() {
             staff && { key:"an", group:"Управление", icon:"analytics", label:"Аналитика", sub:"Сводка по команде и резервная копия", onClick:() => navigate("analytics") },
             profile?.is_admin && { key:"tm", group:"Управление", icon:"team", label:"Сотрудники", sub:"Карточки, коды, роли", onClick:() => navigate("team") },
             staff && { key:"hire", group:"Управление", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
-            staff && { key:"rep", group:"Управление", icon:"report", label:"Отчёты по сотрудникам", sub:"Где ошибается, что не пройдено · Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
+            staff && { key:"rep", group:"Управление", icon:"report", label:"Отчёты по сотрудникам", sub:"Кто где ошибается и что не прошёл, в Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
             staff && { key:"ce", group:"Управление", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
             { key:"lb", group:"Команда", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
-            { key:"lg", group:"Команда", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника · заведение, сеть и кубок", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
+            { key:"lg", group:"Команда", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника: в заведении и в сети", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
             { key:"mt", group:"Команда", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },
             role !== "seasonal" && { key:"ob", group:"Команда", icon:"onboarding", label:"Новички", sub:"План первой недели и прогресс новых сотрудников", onClick:() => navigate("onboarding") },
             { key:"mis", group:"Моё обучение", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
@@ -2839,7 +2839,7 @@ function ServiceAcademy() {
               badge: fresh ? "новые" : null, onClick:() => openRecap(recapWhich.key) };
           })(),
           // v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека
-          { key:"cellar", group:"Мой путь", icon:"cellar", label:"Погреб тем", sub: (() => { const g = Object.keys(marks.gold || {}).length; const f = fadedIds.size; return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? " · золотых " + g : "") + " · освежить, раунд мастера, зачёт"; })(),
+          { key:"cellar", group:"Мой путь", icon:"cellar", label:"Погреб тем", sub: (() => { const g = Object.keys(marks.gold || {}).length; const f = fadedIds.size; return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? ", золотых " + g : ""); })(),   // v78: без перечня «освежить, раунд мастера, зачёт»
             // v40: «новое» — если освежать или играть раунд мастера уже есть что, а ни разу не пробовал
             badge: fadedIds.size >= 3 ? String(fadedIds.size) : (isNewFam("fresh") || isNewFam("gold")) && !mSeen.cellar ? "новое" : null, onClick:() => navigate("cellar") },
           { key:"myrep", group:"Итоги и документы", icon:"report", label:"Мой отчёт", sub:"Что пройдено, где ошибаюсь, что повторить (PDF)", onClick:() => { setReportSelf(true); navigate("report"); } },

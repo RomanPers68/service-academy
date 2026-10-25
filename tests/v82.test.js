@@ -156,13 +156,14 @@ describe("v82: брифинг целиком и текст для Telegram", () 
   it("порядок, заголовки; блок с данными включён, пустой — выключен", () => {
     // v83: после «Вопроса команде» — «Случай из зала» (этап 33); v84: после «Спасибо» — «Спасибо от гостей» (этап 34);
     // без данных эти блоки выключены, остальное как было
-    expect(BRIEF_ORDER).toEqual(["roster", "stop", "fresh", "focus", "ask", "case", "thanks", "guests", "note"]);
-    expect(BRIEF_ORDER.map((k) => BRIEF_TITLE[k])).toEqual(["Кто сегодня", "Стоп-лист", "Новинки меню", "Фокус смены", "Вопрос команде", "Случай из зала", "Спасибо", "Спасибо от гостей", "Своё"]);
+    // v85: после «Кто сегодня» — «Брони сегодня» (этап 35)
+    expect(BRIEF_ORDER).toEqual(["roster", "res", "stop", "fresh", "focus", "ask", "case", "thanks", "guests", "note"]);
+    expect(BRIEF_ORDER.map((k) => BRIEF_TITLE[k])).toEqual(["Кто сегодня", "Брони сегодня", "Стоп-лист", "Новинки меню", "Фокус смены", "Вопрос команде", "Случай из зала", "Спасибо", "Спасибо от гостей", "Своё"]);
     expect(b).toMatchObject({ v: 1, day: "2026-10-25", dayLabel: "25 октября", restaurant: REST, author: "Глеб Гусев" });
-    expect(b.on).toEqual({ roster: true, stop: true, fresh: true, focus: true, ask: true, case: false, thanks: true, guests: false, note: true });
+    expect(b.on).toEqual({ roster: true, res: false, stop: true, fresh: true, focus: true, ask: true, case: false, thanks: true, guests: false, note: true });
     expect(b.blocks.note).toBe("Банкет на 12 в 19:00");
     const empty = buildBrief({ now: NOW });
-    expect(empty.on).toEqual({ roster: false, stop: false, fresh: false, focus: false, ask: false, case: false, thanks: false, guests: false, note: false });
+    expect(empty.on).toEqual({ roster: false, res: false, stop: false, fresh: false, focus: false, ask: false, case: false, thanks: false, guests: false, note: false });
     expect(BRIEF_ORDER.filter((k) => briefShown(empty, k))).toEqual([]);
     expect(briefDayLabel(new Date(2026, 0, 1))).toBe("1 января");
   });

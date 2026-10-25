@@ -365,6 +365,7 @@ const BriefCard = lazyOf(loadBriefing, "BriefCard");
 const BriefView = lazyOf(loadBriefing, "BriefView");
 const CasesScreen = lazyOf(() => import("./ui/cases"), "CasesScreen");   // v83 (Доп. 396): случаи из нашего зала
 const ThanksScreen = lazyOf(() => import("./ui/thanks"), "ThanksScreen");   // v84 (Доп. 397): спасибо от гостей по QR
+const SeatingScreen = lazyOf(() => import("./ui/seating"), "SeatingScreen");   // v85 (Доп. 398): рассадка для хостес
 
 
 
@@ -1433,6 +1434,8 @@ function ServiceAcademy() {
     }).catch(() => { st.at = 0; });
   }, [screen, storageLoaded, profile, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
   const openThanks = (tab) => { vibrate("light"); setThanksTab(tab); navigate("thanks"); };
+  // v85 (Доп. 398): рассадка — пункт в «Смене»; без этапа 35 (экран ответил, что его нет) пункт пропадает до перезапуска
+  const [seatOn, setSeatOn] = useState(true);
   // ссылка «Брифинг смены» из Telegram (?go=brief): открыть, как только брифинг пришёл
   useEffect(() => { if (briefAskRef.current.open && teamBrief) { briefAskRef.current.open = false; openTeamBrief(); } }, [teamBrief, openTeamBrief]);
   // v31: ссылки из подталкиваний бота: ?go=pair|league|cellar|month|shift|radio|guest|probe (или startapp=go_…)
@@ -1442,7 +1445,7 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»
     } catch (e) { goLinkRef.current = ""; }
   }
   React.useEffect(() => {
@@ -1464,6 +1467,7 @@ function ServiceAcademy() {
     else if (g === "brief") { navigate("shift"); briefAskRef.current.open = true; loadTeamBrief(true); }
     else if (g === "cases") navigate("cases");   // v83: «Разобрать» / «Открыть» из сообщений о случаях
     else if (g === "thanks") { setThanksTab("mine"); navigate("thanks"); }   // v84: «Гость сказал тебе спасибо»
+    else if (g === "seat") navigate("seat");   // v85: «Стол 6: посадили…»
   }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
@@ -2898,6 +2902,8 @@ function ServiceAcademy() {
           </WarmupCard> : null} /></div>}
         {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
+        {screen === "seat" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SeatingScreen T={T} a11y={a11y} profile={profile}
+          onMissing={() => setSeatOn(false)} onBack={() => goBack("shift")} /></Suspense></div>}
         {screen === "thanks" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ThanksScreen T={T} a11y={a11y} profile={profile} lead={isLead} startTab={thanksTab}
           onLoaded={(r) => { setThanksInfo(r); setThanksOn(true); try { localStorage.setItem("sa_thanks_on" + ukP, "1"); } catch (e) {} }}
           onBack={() => goBack(thanksTab === "team" ? "teamHub" : "me")} /></Suspense></div>}
@@ -2929,6 +2935,7 @@ function ServiceAcademy() {
               onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
           // v71: группами — «На смене» (дело) и «Потренироваться» (две минуты на практику)
           isLead && { key:"brief", group:"На смене", icon:"brief", label:"Брифинг смены", sub: teamBrief ? "Сегодня отправлен" + (teamBrief.author && !teamBrief.mine ? ": " + teamBrief.author : "") + ". Можно поправить" : "Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды", onClick:() => navigate("brief") },   // v82
+          seatOn && { key:"seat", group:"На смене", icon:"seat", label:"Рассадка", sub:"Схема зала: кто где сидит, брони и уборка", onClick:() => navigate("seat") },   // v85
           { key:"sch", group:"На смене", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
           { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, предсменка, закрытие", onClick:() => navigate("checklist") },
           { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено: за час до смены зовёт на разминку" : "Разминка в 2 минуты за час до смены", onClick:() => setRemindOpen(true) },

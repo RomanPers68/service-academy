@@ -284,11 +284,13 @@ const PREF_ROWS = [
   ["month", "Итоги месяца", "первого числа: твой месяц в карточках"],
   ["master", "Мастера заведения", "когда коллега становится мастером роли"],   // v40, этап 26
   ["qday", "Вопрос дня", "в 12:00 вопрос с кнопками ответа: из твоих ошибок и пройденных тем"],   // v81, этап 31
+  ["brief", "Брифинг смены", "когда руководитель отправляет брифинг команде"],   // v82, этап 32
 ];
 // Строки для ответа notify_prefs. Вид «master» знает только этап 26: сервер этапа 25 его не присылает
 // и не принял бы (notify_set → kind) — тогда строки нет.
-// v81: так же «Вопрос дня» — только с этапом 31; час — от сервера (qday_hour)
-export const prefRows = (p) => PREF_ROWS.filter(([k]) => (k !== "master" && k !== "qday") || (!!p && p[k] !== undefined))
+// v81: так же «Вопрос дня» — только с этапом 31; час — от сервера (qday_hour). v82: «Брифинг смены» — с этапом 32
+const LATER_KINDS = new Set(["master", "qday", "brief"]);
+export const prefRows = (p) => PREF_ROWS.filter(([k]) => !LATER_KINDS.has(k) || (!!p && p[k] !== undefined))
   .map(([k, t, sub]) => (k === "qday" && p && Number.isInteger(p.qday_hour) ? [k, t, sub.replace("12:00", p.qday_hour + ":00")] : [k, t, sub]));
 function NotifyPrefs({ a11y, c, onLoad }) {
   const [p, setP] = React.useState(null);

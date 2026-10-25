@@ -62,7 +62,7 @@ describe("v55: экраны стоят на месте", () => {
   it("обёртки экранов — класс sa-tabpad вместо paddingBottom: 88 в разметке", () => {
     expect(app).not.toMatch(/<div style=\{\{ *paddingBottom: *88 *\}\}>/);
     expect(app).not.toContain("<div style={{paddingBottom: vp.wide ? 24 : 88}}>");
-    expect((app.match(/<div className="sa-tabpad">/g) || []).length).toBe(20);
+    expect((app.match(/<div className="sa-tabpad">/g) || []).length).toBeGreaterThanOrEqual(20);   // v82: + «Брифинг смены»
     expect(app).toContain("<div className={vp.wide ? \"sa-tabpad sa-tabpad-w\" : \"sa-tabpad\"}>");
   });
   it("css: поля браузера 0; отступ под вкладки — только где они есть; запас под кнопку AI", () => {

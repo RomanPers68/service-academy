@@ -283,6 +283,10 @@ export const injectStyles = () => {
     @keyframes saCkInL { from { transform: translateX(-110%) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
     .sa-ck-outL { animation: saCkOutL .24s ease-in forwards; } .sa-ck-outR { animation: saCkOutR .24s ease-in forwards; }
     .sa-ck-inR { animation: saCkInR .32s cubic-bezier(.16,1,.3,1) both; } .sa-ck-inL { animation: saCkInL .32s cubic-bezier(.16,1,.3,1) both; }
+    /* v80 (Доп. 393): идёт запись голоса / звук грузится — точка мерцает */
+    @keyframes saRecDot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.75); } }
+    .sa-rec-dot, .sa-voice-dot { animation: saRecDot 1.1s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .sa-rec-dot, .sa-voice-dot { animation: none; } }
     @keyframes saMicPulse { 0%,100%{ box-shadow: inset 0 0 0 1px rgba(220,90,80,0.6), 0 0 0 4px rgba(220,90,80,0.10) } 50%{ box-shadow: inset 0 0 0 1px rgba(220,90,80,0.8), 0 0 0 10px rgba(220,90,80,0.04) } }
     /* Каскад: верхние блоки экрана въезжают друг за другом (карточки
        движутся ЦЕЛИКОМ — изморозь на них статична, канон льда цел) */

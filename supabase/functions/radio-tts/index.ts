@@ -24,7 +24,9 @@
 // без счёта), админ — без лимита. Счёт — атомарно на сервере (этап 25: sa_tts_take); нет этапа 25 —
 // живых голосов нет.
 // Голоса (who): host — ведущий радио, guest / guest_f — гость / гостья, staff — официант, mentor —
-// Наставник. Поменять — секрет RADIO_TTS_VOICES, например: host:nova,guest:onyx,guest_f:shimmer,mentor:sage
+// Наставник; v80 (Доп. 393): say — «как произносить» по-русски (название со знаком ударения), say_o — то же
+// название в оригинале (французском, итальянском…). Произношение кэшируется так же, как фразы радио.
+// Поменять — секрет RADIO_TTS_VOICES, например: host:nova,guest:onyx,guest_f:shimmer,mentor:sage,say:sage
 // Деплой: Supabase → Edge Functions → radio-tts → вставить код → Deploy
 // (новая функция: Deploy a new function → Via Editor → имя radio-tts; или CLI: supabase functions deploy radio-tts).
 
@@ -42,8 +44,8 @@ const keyHeaders = (k: string): Record<string, string> => isJwt(k) ? { apikey: k
 
 const BUCKET = "radio-voice";
 const MAX_TEXT = 900;
-const WHO = ["host", "guest", "staff", "guest_f", "mentor"];
-const VOICE_DEFAULT: Record<string, string> = { host: "nova", guest: "onyx", staff: "coral", guest_f: "shimmer", mentor: "sage" };
+const WHO = ["host", "guest", "staff", "guest_f", "mentor", "say", "say_o"];
+const VOICE_DEFAULT: Record<string, string> = { host: "nova", guest: "onyx", staff: "coral", guest_f: "shimmer", mentor: "sage", say: "sage", say_o: "sage" };
 // манера — подсказка модели (gpt-4o-mini-tts понимает instructions; tts-1 их не знает — не шлём)
 const MANNER: Record<string, string> = {
   host: "Тёплый спокойный ведущий утреннего радио. Говори по-русски, живо, без спешки.",
@@ -51,6 +53,9 @@ const MANNER: Record<string, string> = {
   guest_f: "Гостья ресторана за столиком. Естественная разговорная речь по-русски, с лёгкой эмоцией.",
   staff: "Вежливый уверенный официант. Доброжелательно и чётко, по-русски.",
   mentor: "Опытный наставник ресторана. Спокойно, доброжелательно и по делу, по-русски, без спешки.",
+  // v80: произношение названий — только само название, медленно и чётко
+  say: "Диктор учит официантов произносить названия блюд и вин. Произнеси только это название по-русски, медленно и чётко, с ударением на гласную со знаком ударения. Без пояснений.",
+  say_o: "Носитель языка оригинала. Произнеси только это название так, как его говорят на родном языке (определи язык по написанию: французский, итальянский, испанский, немецкий, японский и т. д.), медленно и чётко. Без пояснений.",
 };
 const MANNER_V = "m1";   // поменяли манеру — меняем версию, чтобы не брать старый кэш
 

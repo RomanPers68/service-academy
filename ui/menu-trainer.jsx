@@ -27,6 +27,11 @@ import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): тре�
 // v73 (Доп. 386): подписи — курсивом обычными буквами (было: моноширинный капс); у T.secTitle / T.quizProgress
 // шрифт перекрыт здесь же. Цветные полоски слева у карточек убраны: статус виден в тексте, рамке и значке.
 import { labelStyle } from "./tokens";
+// v80 (Доп. 393): голос шефа и сомелье к блюду и «как произносить»
+import { VoicePill, VoiceRecorder, VoicesList } from "./voice-note";
+import { SayLine, PronounceScreen } from "./pronounce";
+import { VOICE_KINDS, dishVoices, clipTime, sweepVoices } from "../lib/voice-note";
+import { stressText, hasStress } from "../lib/pronounce";
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
 const HIDE_SAMPLES_KEY = "sa_menu_hide_samples"; // { [restaurant]: true|false } (нет ключа — авто: скрыты, если есть меню команды)
@@ -206,6 +211,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
   if (mode === "team") return <TeamProgress T={T} gold={gold} green={green} Head={Head} restaurant={restaurant} />;
+  if (mode === "say") return <PronounceScreen T={T} a11y={a11y} gold={gold} dishes={dishes} Head={Head} glass={glass} />;   // v80
+  if (mode === "voices") return <VoicesList T={T} a11y={a11y} gold={gold} dishes={dishes} Head={Head} glass={glass} />;      // v80
   if (mode === "edit") return (
     <MenuEditor startEditId={editStart} T={T} gold={gold} red={red} green={green} textColor={textColor} a11y={a11y} Head={Head} restaurant={restaurant}
       custom={custom} setCustom={(v) => { setCustom(v); saveCustom(v); }}
@@ -219,11 +226,17 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // Доп. 218: режим дня — не отдельная карточка, а пометка на нужном пункте списка (без дублей)
   const md = modeOfDay(new Date(), role); const dayKey = md && md.go === "menu" ? (md.key === "allergens" ? "sprint" : "cards") : null;
   const dayCount = Math.min(5, dailyCount(uk)); const dayDone = dayCount >= 5; const dayStreak = dailyStreak(uk);
+  const voiceCount = (() => { let n = 0, sec = 0; for (const d of dishes) for (const v of dishVoices(d)) { n++; sec += Number(v.sec) || 0; } return n ? { n, sec } : null; })();   // v80
   const modes = [
     { key: "cards", icon: (c) => GAME_SVG.cards(c, 20), title: "Колода меню", sub: "Карточки с поиском и разделами, режимы «Знаю?» и «Наоборот»" },
     { key: "sprint", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>, title: "Аллергены на скорость", sub: "30 секунд, свайп «есть / нет», рекорд" },
     { key: "quiz", icon: (c) => UI_SVG.quiz(c, 20), title: "Викторина по меню", sub: "Главные ингредиенты и аллергены, без подвохов" },
     { key: "60sec", icon: (c) => GAME_SVG.clock(c, 20), title: "Опиши за 60 секунд", sub: "Расскажи о блюде вслух, сравни с эталоном" },
+    // v80 (Доп. 393): голоса шефа и сомелье (если записаны) и словарь произношения
+    ...(voiceCount ? [{ key: "voices", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>,
+      title: "Голоса шефа и сомелье", sub: `${voiceCount.n} ${voiceCount.n % 10 === 1 && voiceCount.n % 100 !== 11 ? "запись" : voiceCount.n % 10 >= 2 && voiceCount.n % 10 <= 4 && (voiceCount.n % 100 < 10 || voiceCount.n % 100 >= 20) ? "записи" : "записей"} · ${clipTime(voiceCount.sec)}: как шеф рассказывает о блюдах и что советует сомелье`, any: true }] : []),
+    { key: "say", icon: (c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>,
+      title: "Как произносить", sub: "Вино, кухня, бар: ударение, звучание в оригинале, повторить за голосом", any: true },
   ];
   const iconBox = { width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
   return (
@@ -245,7 +258,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v79</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v80</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -283,8 +296,8 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           </div>
         )}
         {/* Доп. 282: колода всегда открывается обычной — «Наоборот» включают руками */}
-        {modes.map(m => { const isDay = dayKey === m.key; const open = () => { if (!dishes.length) return; if (isDay && m.key === "cards") setFocusNew(false); setMode(m.key); }; return (
-          <div key={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: dishes.length ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
+        {modes.map(m => { const isDay = dayKey === m.key; const live = dishes.length || m.any; const open = () => { if (!live) return; if (isDay && m.key === "cards") setFocusNew(false); setMode(m.key); }; return (
+          <div key={m.key} data-menu-mode={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: live ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
             onClick={open} {...onActivate(open)}>
             <div style={iconBox}>{m.icon(gold)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -471,6 +484,9 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
 
 // ── Карточка блюда (обратная сторона) ────────────────────────────────────────
 function DishBack({ d, T, gold }) {
+  // v80 (Доп. 393): как произносить и голос шефа / сомелье — кнопки не переворачивают карточку
+  const text = T.modTitle?.color, sub = T.modSub?.color, a11y = !!T.a11y;
+  const voices = dishVoices(d);
   const Row = ({ label, children }) => (
     <div style={{ marginBottom: 10 }}>
       <div style={{ ...labelStyle(13), color: gold, marginBottom: 2 }}>{label}</div>
@@ -479,6 +495,7 @@ function DishBack({ d, T, gold }) {
   );
   return (
     <div>
+      <SayLine d={d} gold={gold} text={text} sub={sub} a11y={a11y} />
       <Row label="Состав">{(d.ingredients || []).join(", ") || "—"}</Row>
       {/* Доп. 264/270: КБЖУ — не строка цифр, а панель: калории крупно, рядом Б · Ж · У */}
       {(() => {
@@ -510,6 +527,14 @@ function DishBack({ d, T, gold }) {
       )) : <span style={{ color: "#5DBB8A" }}>нет из «большой восьмёрки»</span>}</Row>
       {String(d.desc || "").trim() && <Row label="Как описать гостю">{d.desc}</Row>}
       {String(d.pairing || "").trim() && <Row label="Сочетание">{d.pairing}</Row>}
+      {voices.length > 0 && (
+        <div data-dish-voices="" style={{ marginBottom: 10 }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ ...labelStyle(13), color: gold, marginBottom: 6 }}>{voices.length > 1 ? "Голоса шефа и сомелье" : voices[0].kind === "chef" ? "Голос шефа" : "Голос сомелье"}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+            {voices.map(v => <VoicePill key={v.kind} v={v} gold={gold} text={text} sub={sub} a11y={a11y} />)}
+          </div>
+        </div>
+      )}
       {String(d.note || "").trim() && <Row label="Важно знать">{d.note}</Row>}
     </div>
   );
@@ -817,8 +842,11 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   const sampleList = samplesShown ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !(custom[restaurant] || []).some(x => x.id === d.id) && !hidSet.has(d.id)) : [];
   // Доп. 154: править чужое = забрать копию в свои (та же id — своя версия побеждает); удалить серверное = пометить до публикации; удалить пример = скрыть id
   const srvById = new Map((shared || []).filter(x => x && x.id).map(x => [x.id, x]));
-  // jsonb на сервере переставляет ключи — сравниваем в каноническом виде (ключи по алфавиту)
-  const canon = (o) => o ? JSON.stringify(o, Object.keys(o).sort()) : "";
+  // jsonb на сервере переставляет ключи — сравниваем в каноническом виде (ключи по алфавиту).
+  // v80: на всех уровнях — список ключей в JSON.stringify отбрасывал вложенные поля, и перезапись голоса
+  // (voice.chef.url) не считалась неопубликованной правкой
+  const canonSort = (v) => Array.isArray(v) ? v.map(canonSort) : v && typeof v === "object" ? Object.keys(v).sort().reduce((a, k) => { a[k] = canonSort(v[k]); return a; }, {}) : v;
+  const canon = (o) => o ? JSON.stringify(canonSort(o)) : "";
   const sameAsServer = (d) => canon(d) === canon(srvById.get(d.id));
   const unpublished = [...list, ...archived].filter(d => !sameAsServer(d)).length + (deleted[restaurant] || []).length;
   const editForeign = (d) => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") });
@@ -890,6 +918,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         if (res && res.ok === true) {
           _showPub(true, toPublish.length ? "Опубликовано ✓ Команда увидит меню при следующем открытии тренажёра" : "Опубликовано ✓ Серверное меню очищено");
           if (onPublished) onPublished(toPublish);
+          sweepVoices(restaurant);   // v80: записи, которые перезаписали или убрали, — с сервера (старше 14 дней)
           if (setDeleted) setDeleted({ ...deleted, [restaurant]: [] });
           rememberSharedMenu(restaurant, toPublish);
           try { localStorage.setItem("sa_menu_pub_" + restaurant, String(Date.now())); } catch (e) {}
@@ -1090,6 +1119,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
 
           {secLabel("Основное")}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Название блюда *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} style={{ fontSize: 16, fontFamily: "Georgia, serif" }} />
+          {/* v80 (Доп. 393): как произносить — ударение «+» перед гласной или заглавной гласной; на карточке — со знаком ударения */}
+          <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Как произносить: «+» перед ударной гласной, например бурр+ата" value={form.say || ""} onChange={v => setForm(f => ({ ...f, say: v }))} />
+          {String(form.say || "").trim() ? (
+            <div data-say-preview="" style={{ fontSize: 12.5, color: T.modSub.color, margin: "-4px 2px 10px", lineHeight: 1.45 }}>
+              {hasStress(form.say) ? <>На карточке: <b style={{ color: textColor, fontFamily: "Georgia, serif", fontSize: 14 }}>{stressText(form.say)}</b></> : "Отметь ударение: «+» перед гласной (бурр+ата) или заглавной гласной (буррАта)"}
+            </div>
+          ) : null}
           <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "2px 0 8px", WebkitOverflowScrolling: "touch" }}>
             {cats.map(c => <span key={c} style={chip(normCat(form.cat).toLowerCase() === c.toLowerCase())} onClick={() => setForm(f => ({ ...f, cat: normCat(f.cat).toLowerCase() === c.toLowerCase() ? "" : c }))}>{c}</span>)}
             <span style={chip(!!form.cat && !cats.some(c => c.toLowerCase() === normCat(form.cat).toLowerCase()))} onClick={() => { const v = window.prompt("Название раздела", form.cat || ""); if (v != null) setForm(f => ({ ...f, cat: v.trim() })); }}>＋ свой раздел</span>
@@ -1173,6 +1209,16 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           })()}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Важно знать (прожарки, подача, выход в граммах…)" value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))} rows={2} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder={"Гость спрашивает: по строке «Вопрос — ответ», например:\nМожно без лука? — Да, скажи кухне при заказе"} value={form.faq || ""} onChange={v => setForm(f => ({ ...f, faq: v }))} rows={2} />
+
+          {/* v80 (Доп. 393): голос шефа и сомелье — запись уходит в облако сразу, в блюде остаётся ссылка; команда
+              услышит её после «Сохранить» и «Опубликовать», как фото */}
+          {secLabel("Голос шефа и сомелье")}
+          <div style={{ fontSize: 12, color: T.modSub.color, margin: "-4px 2px 10px", lineHeight: 1.45 }}>Команда услышит запись в карточке блюда после «Сохранить» и «Опубликовать», как фото.</div>
+          {Object.keys(VOICE_KINDS).map(k => (
+            <VoiceRecorder key={k} kind={k} value={(form.voice || {})[k] || null} restaurant={restaurant} dishId={form.id || "new-" + String(form.name || "").trim().slice(0, 24)}
+              gold={gold} red={red} text={textColor} sub={T.modSub.color} a11y={a11y} inputSt={inputSt}
+              onChange={(val) => setForm(f => { const v = { ...(f.voice || {}) }; if (val) v[k] = val; else delete v[k]; return { ...f, voice: v }; })} />
+          ))}
         </div>
         {/* запас снизу: последнее поле можно поднять выше полосы кнопок */}
         <div aria-hidden="true" style={{ height: 160 }} />

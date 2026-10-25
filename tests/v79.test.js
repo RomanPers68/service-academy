@@ -171,7 +171,7 @@ describe("v79: кэш картинок на Vercel", () => {
 
 describe("v79: метка и журнал", () => {
   it("«сборка v79», «Дополнение 392»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v79</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(79|[89]\d|\d{3,})<\/span>/);   // v79 и дальше
     expect(rd("CHANGES.md")).toContain("# Дополнение 392 — лёгкий старт: только нужное на главной, свой шрифт заголовков, кэш картинок (v79)");
   });
 });

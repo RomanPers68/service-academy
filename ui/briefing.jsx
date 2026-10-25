@@ -91,6 +91,10 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
   if (k === "thanks") return (
     <div>{b.map((t, i) => (
       <div key={i} style={{ ...row, marginBottom: 4 }}>{t.name}{t.surname ? " " + t.surname : ""} <span style={{ fontSize: small, color: c.sub }}>· {t.pts} {plural(t.pts, "очко", "очка", "очков")} за неделю</span></div>))}</div>);
+  // v84: спасибо от гостей по QR за неделю — кому и за что
+  if (k === "guests") return (
+    <div>{b.map((g, i) => (
+      <div key={i} style={{ ...row, marginBottom: 4 }}>{g.name} <span style={{ fontSize: small, color: c.sub }}>· {g.n} за неделю{g.tags && g.tags.length ? " · " + g.tags.join(", ") : ""}</span></div>))}</div>);
   if (k === "note") return <div style={{ ...row, whiteSpace: "pre-wrap" }}>{b}</div>;
   return null;
 }
@@ -139,7 +143,7 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
 export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
   const c = C(a11y);
   const contentVer = useAllModules();   // фокус и вопрос ищутся по программе всех ролей
-  const [src, setSrc] = React.useState({ menu: null, hard: null, sched: null, league: null, cases: null });
+  const [src, setSrc] = React.useState({ menu: null, hard: null, sched: null, league: null, cases: null, guests: null });
   const [today, setToday] = React.useState(null);   // уже отправленный сегодня
   const [note, setNote] = React.useState("");
   const [on, setOn] = React.useState({});
@@ -161,6 +165,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
     rpc("league_week", { p_token: tok }).then((r) => put("league")(r || false)).catch(() => put("league")(false));
     // v83: свежий случай из зала (этап 33); нет этапа — блока нет
     rpc("case_list", { p_token: tok, p_mode: "counts" }).then((r) => put("cases")(r && r.ok ? r : false)).catch(() => put("cases")(false));
+    // v84: спасибо от гостей за неделю (этап 34); нет этапа — блока нет
+    rpc("thanks_team", { p_token: tok }).then((r) => put("guests")(r && r.ok ? r : false)).catch(() => put("guests")(false));
     // уже отправленный сегодня: «Своё» и выключатели — как в нём, чтобы правка начиналась с отправленного
     rpc("brief_today", { p_token: tok }).then((r) => {
       if (!alive || !r || !r.ok || !r.brief || !r.brief.data) return;
@@ -174,7 +180,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
   const loading = Object.values(src).some((v) => v === null);
   const author = profile ? (profile.name + (profile.surname ? " " + profile.surname : "")).trim() : "";
   const base = React.useMemo(() => buildBrief({ menu: src.menu || [], hard: src.hard || [], programs: programAll(), sched: src.sched, league: src.league,
-    caseTop: src.cases ? src.cases.top : null, restaurant, author, note }),
+    caseTop: src.cases ? src.cases.top : null, guests: src.guests || null, restaurant, author, note }),
     [src, restaurant, author, note, contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
   const brief = { ...base, on: { ...base.on, ...on, note: on.note !== undefined ? on.note : !!note.trim() } };
   const toggle = (k) => { vibrate("light"); setOn((o) => ({ ...o, [k]: !(o[k] !== undefined ? o[k] : brief.on[k]) })); };
@@ -200,7 +206,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
   };
   const empty = { roster: "В графике на сегодня никого: график не заполнен или выходной.", stop: "Стоп-листа нет.", fresh: "Новинок за месяц нет.",
     focus: "Пока мало ответов команды за 30 дней.", ask: "Вопроса нет: программа ещё грузится.", thanks: "На этой неделе очков пока нет.",
-    case: "За две недели новых случаев из зала нет. Их рассказывают в «Смене» → «Случаи из нашего зала»." };
+    case: "За две недели новых случаев из зала нет. Их рассказывают в «Смене» → «Случаи из нашего зала».",
+    guests: "За неделю гости по QR спасибо не говорили. Свой QR у каждого в «Я» → «Спасибо от гостей»." };
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
@@ -233,7 +240,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
                   <span style={{ position: "absolute", top: 2, left: 2, width: 18, height: 18, borderRadius: "50%", background: isOn ? (a11y ? "#8B6A30" : "#E4C88C") : c.sub, transform: isOn ? "translateX(16px)" : "none", transition: "transform .2s" }} />
                 </button> : null}
               </div>
-              {has ? <BlockBody k={k} b={b} c={c} /> : <div style={{ fontSize: 12.5, color: c.sub }}>{src[{ roster: "sched", stop: "menu", fresh: "menu", focus: "hard", ask: "hard", case: "cases", thanks: "league" }[k]] === null ? "Собираю…" : empty[k]}</div>}
+              {has ? <BlockBody k={k} b={b} c={c} /> : <div style={{ fontSize: 12.5, color: c.sub }}>{src[{ roster: "sched", stop: "menu", fresh: "menu", focus: "hard", ask: "hard", case: "cases", thanks: "league", guests: "guests" }[k]] === null ? "Собираю…" : empty[k]}</div>}
             </div>);
         })}
         {msg ? <div role="status" style={{ fontSize: 13, color: msg.ok ? c.text : c.red, lineHeight: 1.5, margin: "4px 2px 10px" }}>{msg.text}</div> : null}

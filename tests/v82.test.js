@@ -154,14 +154,15 @@ describe("v82: блоки брифинга", () => {
 describe("v82: брифинг целиком и текст для Telegram", () => {
   const b = buildBrief({ menu: MENU, hard: HARD, programs: PROGRAMS, sched: SCHED, league: LEAGUE, restaurant: REST, author: "Глеб Гусев", note: "  Банкет на 12 в 19:00  ", now: NOW });
   it("порядок, заголовки; блок с данными включён, пустой — выключен", () => {
-    // v83: после «Вопроса команде» — «Случай из зала» (этап 33); без случая блок выключен, остальное как было
-    expect(BRIEF_ORDER).toEqual(["roster", "stop", "fresh", "focus", "ask", "case", "thanks", "note"]);
-    expect(BRIEF_ORDER.map((k) => BRIEF_TITLE[k])).toEqual(["Кто сегодня", "Стоп-лист", "Новинки меню", "Фокус смены", "Вопрос команде", "Случай из зала", "Спасибо", "Своё"]);
+    // v83: после «Вопроса команде» — «Случай из зала» (этап 33); v84: после «Спасибо» — «Спасибо от гостей» (этап 34);
+    // без данных эти блоки выключены, остальное как было
+    expect(BRIEF_ORDER).toEqual(["roster", "stop", "fresh", "focus", "ask", "case", "thanks", "guests", "note"]);
+    expect(BRIEF_ORDER.map((k) => BRIEF_TITLE[k])).toEqual(["Кто сегодня", "Стоп-лист", "Новинки меню", "Фокус смены", "Вопрос команде", "Случай из зала", "Спасибо", "Спасибо от гостей", "Своё"]);
     expect(b).toMatchObject({ v: 1, day: "2026-10-25", dayLabel: "25 октября", restaurant: REST, author: "Глеб Гусев" });
-    expect(b.on).toEqual({ roster: true, stop: true, fresh: true, focus: true, ask: true, case: false, thanks: true, note: true });
+    expect(b.on).toEqual({ roster: true, stop: true, fresh: true, focus: true, ask: true, case: false, thanks: true, guests: false, note: true });
     expect(b.blocks.note).toBe("Банкет на 12 в 19:00");
     const empty = buildBrief({ now: NOW });
-    expect(empty.on).toEqual({ roster: false, stop: false, fresh: false, focus: false, ask: false, case: false, thanks: false, note: false });
+    expect(empty.on).toEqual({ roster: false, stop: false, fresh: false, focus: false, ask: false, case: false, thanks: false, guests: false, note: false });
     expect(BRIEF_ORDER.filter((k) => briefShown(empty, k))).toEqual([]);
     expect(briefDayLabel(new Date(2026, 0, 1))).toBe("1 января");
   });

@@ -2,6 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import { loadRoleModules } from "./data/modules";
+import { thanksCode, isThanksLink } from "./lib/guest-thanks";
+
+// v84 (Доп. 397): страница гостя «Сказать спасибо» по QR сотрудника (?thanks=код) — без входа, без приложения и без
+// сервис-воркера: гость в зале открывает её с мобильного интернета, ждать загрузки всего приложения ему незачем.
+const GUEST_THANKS = typeof location !== "undefined" && isThanksLink(location.search);
 
 // v79 (Доп. 392): уроки своей роли просим сразу, параллельно с запуском React. Главной карточке нужно название урока,
 // а раньше запрос уходил, только когда App дочитает профиль из хранилища. Повторный вызов из App — тот же промис.
@@ -46,17 +51,26 @@ class BootBoundary extends React.Component {
   }
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <BootBoundary>
-      <App />
-    </BootBoundary>
-  </React.StrictMode>
-);
+if (GUEST_THANKS) {
+  import("./ui/guest-thanks.jsx").then(({ GuestThanksPage }) => {
+    try { document.body.style.margin = "0"; document.body.style.background = "#14110A"; } catch (e) {}
+    ReactDOM.createRoot(document.getElementById("root")).render(<GuestThanksPage code={thanksCode(location.search)} />);
+  }).catch(() => {
+    try { const sp = document.getElementById("sa-splash"); if (sp) sp.remove(); document.getElementById("root").textContent = "Страница не загрузилась. Обновите её."; } catch (e) {}
+  });
+} else {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <BootBoundary>
+        <App />
+      </BootBoundary>
+    </React.StrictMode>
+  );
+}
 
 // Доп. 173: сервис-воркер — приложение открывается без сети (Android-Telegram, Safari/Chrome,
 // экран «Домой»). В iOS-Telegram serviceWorker недоступен — регистрация тихо пропускается.
-if ("serviceWorker" in navigator) {
+if (!GUEST_THANKS && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then(reg => {
       // Доп. 279: свежая версия приезжает сама — новый воркер сразу берёт управление

@@ -70,7 +70,7 @@ describe("v78: вкладки — без слоганов, подписи раз
 
 describe("v78: метка и журнал", () => {
   it("«сборка v78», «Дополнение 391»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v78</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(7[8-9]|[89]\d|\d{3,})<\/span>/);   // v78 и дальше
     expect(rd("CHANGES.md")).toContain("# Дополнение 391 — вид без шаблонных приёмов: значки без плашек, без меток и слоганов (v78)");
   });
 });

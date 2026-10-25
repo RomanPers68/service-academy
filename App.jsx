@@ -36,7 +36,7 @@ import { BadgeToast, StepLine, masteryChip } from "./ui/mastery-card";
 import { tablePool } from "./lib/table-pick";
 import { tasksFor, markQuestDone, questDays } from "./lib/quest";
 import { playlist } from "./lib/radio";
-import { readGuestRuns, guestSub } from "./lib/live-guest";
+import { readGuestRuns, guestSub } from "./lib/guest-lite";   // v79: лёгкая часть «Живого гостя» — без персонажей и сцен
 import { recapMonth, monthRecap, MONTH } from "./lib/month-recap";
 import { Flame } from "./ui/day-emblems";   // v70 (Доп. 383): пламя в строке напарника (была свеча из ./ui/table-bits)
 import { DayChips, WarmupCard, RemindSheet, readRemindFlag, inTelegramApp } from "./ui/day-cards";
@@ -46,7 +46,6 @@ import { LiquidTabBar, NavRail } from "./ui/tabbar";
 import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";   // v50 (Доп. 363): горизонталь и компьютер
 import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
-import { GLOSSARY } from "./data/glossary";
 import { LOGO_SRC, LOGO_SRC_DARK } from "./assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions, isFemaleName, isTelegram, clickScreenBack } from "./lib/utils";
 
@@ -83,6 +82,11 @@ const BarCardPrint = lazy(() => retryImport(() => import("./ui/bar-card-print"))
 const GuideScreen = lazy(() => retryImport(() => import("./ui/guide")).then(m => ({ default: m.GuideScreen })));   // Доп. 280: 73 КБ мимо старта // Доп. 244
 // Лёгкий старт: редактор контента нужен только руководителю — грузится при открытии
 const ContentEditorScreen = lazy(() => retryImport(() => import("./ui/content-editor")).then(m => ({ default: m.ContentEditorScreen })));
+
+// v79 (Доп. 392): бережная или медленная сеть (экономия трафика, 2G) — фоновые загрузки не делаем
+const thriftyNet = () => { try { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); } catch (e) { return false; } };
+// профиль с телефона: фоновые загрузки идут после показа главной, а эффект запуска видит профиль ещё пустым
+const storedProfile = () => { try { return JSON.parse(localStorage.getItem("sa_profile") || "null"); } catch (e) { return null; } };
 
 // Заглушка на время подгрузки ленивого экрана
 function ScreenLoader({ T }) {
@@ -324,42 +328,34 @@ import { Sign } from "./ui/signs";   // v75 (Доп. 388): свои значки
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette, readMood, recordMood } from "./ui/mood-cards";
 import { BG_DARK, CREAM, GOLD, GOLD_LOGO, SAND, toolColor, labelStyle } from "./ui/tokens";
 import { hintsFor, hintKey } from "./data/hints";
-import {
-  AchievementPopup,
-  RoleCompleteScreen,
-  WeekStar,
-  LeaderboardScreen,
-  DailyScreen,
-  PlayerDetailScreen,
-  StatsScreen,
-  PS,
-  ProfileScreen,
-  APP_SHARE_URL,
-  POS_LABELS,
-  TeamScreen,
-  CodeLoginScreen,
-  AccountScreen,
-  RoleSelect,
-  DEFAULT_CHECKLISTS,
-  CL_KINDS,
-  _clYmd,
-  _clId,
-  ChecklistScreen,
-  DEFAULT_ONBOARDING,
-  ONB_TOTAL,
-  OnboardingScreen,
-  AnalyticsScreen,
-  MistakesScreen,
-  HomeScreen,
-  ModuleScreen,
-  LessonScreen,
-  GlossaryScreen,
-  LiveDialogue,
-  ExamScreen,
-  CertificateScreen,
-  CertificatesScreen,
-  loadTable, useTableModule,
-} from "./ui/screens";
+// v79 (Доп. 392): на старте — только то, что нужно главной и уроку. Раньше всё шло через ui/screens.jsx, и в стартовый
+// файл попадали экраны руководителя, «Команды», экзамена, рейтинга и живого диалога (около 250 КБ кода); теперь они
+// грузятся при первом открытии, а фоновый прогрев (ниже) подтягивает их заранее, когда главная уже на экране.
+import { RoleSelect } from "./ui/screens-roleselect";
+import { MistakesScreen, HomeScreen, ModuleScreen, LessonScreen, GlossaryScreen, loadTable, useTableModule } from "./ui/screens-learning";
+import { APP_SHARE_URL } from "./lib/app-url";
+const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
+const loadGamification = () => import("./ui/screens-gamification");
+const loadTeamScreens = () => import("./ui/screens-team");
+const loadAdminScreens = () => import("./ui/screens-admin");
+const loadExamScreens = () => import("./ui/screens-exam");
+const loadDialogueScreen = () => import("./ui/screens-dialogue");
+const AchievementPopup = lazyOf(loadGamification, "AchievementPopup");
+const RoleCompleteScreen = lazyOf(loadGamification, "RoleCompleteScreen");
+const LeaderboardScreen = lazyOf(loadGamification, "LeaderboardScreen");
+const DailyScreen = lazyOf(loadGamification, "DailyScreen");
+const PlayerDetailScreen = lazyOf(loadGamification, "PlayerDetailScreen");
+const StatsScreen = lazyOf(loadGamification, "StatsScreen");
+const TeamScreen = lazyOf(loadTeamScreens, "TeamScreen");
+const CodeLoginScreen = lazyOf(loadTeamScreens, "CodeLoginScreen");
+const AccountScreen = lazyOf(loadTeamScreens, "AccountScreen");
+const ChecklistScreen = lazyOf(loadAdminScreens, "ChecklistScreen");
+const OnboardingScreen = lazyOf(loadAdminScreens, "OnboardingScreen");
+const AnalyticsScreen = lazyOf(loadAdminScreens, "AnalyticsScreen");
+const ExamScreen = lazyOf(loadExamScreens, "ExamScreen");
+const CertificateScreen = lazyOf(loadExamScreens, "CertificateScreen");
+const CertificatesScreen = lazyOf(loadExamScreens, "CertificatesScreen");
+const LiveDialogue = lazyOf(loadDialogueScreen, "LiveDialogue");
 
 
 
@@ -981,9 +977,16 @@ function ServiceAcademy() {
   const liveQuizDone = useMemo(() => Object.fromEntries(Object.entries(quizDone || {}).filter(([k]) => !deadCms(k))), [quizDone, deadCms]);
   // Банк ошибок: вопросы, которых больше нет нигде (удалённый свой урок, вопрос, убранный из
   // программы) — убираем. Только когда загружена вся программа и список своих уроков.
+  // v79 (Доп. 392): для этого нужна программа всех ролей (сотни КБ), и раньше её грузили на каждом запуске, вместе
+  // с главной. Теперь уборка — только если в банке есть ошибки, не чаще раза в день, через 6 с и не на бережной сети;
+  // программу всех ролей после главной подтягивает фоновый прогрев (не успел — уборка ждёт тот же промис).
+  const hasMistakes = mistakeBank.length > 0;
   React.useEffect(() => {
-    if (!customLoaded) return; let alive = true;
-    loadAllModules().then(() => {
+    if (!customLoaded || !hasMistakes) return; let alive = true;
+    const day = ymd(new Date()), key = "sa_mb_clean" + ukP;
+    try { if (localStorage.getItem(key) === day) return; } catch (e) {}
+    if (thriftyNet()) return;
+    const t = setTimeout(() => loadAllModules().then(() => {
       if (!alive) return;
       const allMods = [...Object.values(MODULES).flat(), ...Object.values(customByRole).flat()];
       const liveQ = new Set(allMods.flatMap(m => (m.lessons || []).filter(l => l.type === "quiz").flatMap(l => (l.questions || []).map(q => q.q))));
@@ -991,9 +994,10 @@ function ServiceAcademy() {
       // Доп. 291: ошибки практики живут, пока такая ситуация есть в программе
       const livePQ = practiceQuestionTexts(allMods);
       setMistakeBank(prev => { const next = prev.filter(m => (m.from === "practice" ? livePQ.has(m.q) : liveQ.has(m.q))); return next.length === prev.length ? prev : next; });
-    }).catch(() => {});
-    return () => { alive = false; };
-  }, [customLoaded, customByRole]);
+      try { localStorage.setItem(key, day); } catch (e) {}
+    }).catch(() => {}), 6000);
+    return () => { alive = false; clearTimeout(t); };
+  }, [customLoaded, customByRole, hasMistakes, ukP]);
   // Гость недели: свои живые диалоги трека — в том же пуле, что штатные (правка 168)
   const weeklyOwn = useMemo(() => (customModules || []).filter(m => !m.hidden).flatMap(m => m.lessons.filter(l => l.type === "dialogue" && l.dialogue)), [customModules]);
   const weeklyId = useMemo(() => weeklyDialogueIdFrom(weeklyOwn.map(l => l.dialogue.id)), [weeklyOwn]);
@@ -2409,11 +2413,28 @@ function ServiceAcademy() {
     //    скелетон остаётся только для очень медленной сети в первые секунды.
     // Доп. 280: на бережной или медленной сети фоновый прогрев не делаем вовсе —
     // экраны доедут по требованию, зато трафик человека остаётся при нём.
-    const thrifty = (() => { try { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); } catch (e) { return false; } })();
-    const warm = thrifty ? null : setTimeout(() => {
+    // v79 (Доп. 392): прогрев начинается, когда главная уже на экране (карточка «Дальше» с названием урока; нет её —
+    // не позже 12 с), через 1,5 с и в свободную минуту браузера. Раньше — через 1,5 с после запуска, и на медленной
+    // сети прогрев отнимал канал у самой главной. Профиль — с телефона (эффект запуска видит его ещё пустым):
+    // открытые роли и собеседование (только руководителям) — по нему. Экраны, которые v79 убрала со старта
+    // (рейтинг, статистика, «Команда», экзамен, чек-листы, живой диалог), тоже прогреваются — для работы без сети.
+    let warm = null, alive = true;
+    const startWarm = () => {
+      if (!alive) return;
+      const pf = storedProfile();
+      const boss = !!(pf && (pf.is_admin || ["manager", "senior"].includes(pf.position)));
       [
         () => loadDialogues().then(() => bumpLazyData(x => x + 1)),
-        () => loadOpenModules(profile), // Доп. 280: фоном — только роли, открытые этому человеку
+        () => loadOpenModules(pf), // Доп. 280: сначала — роли, открытые этому человеку
+        // v79 (Доп. 392): затем остальные. Книга отзывов, её плитка («N/всего», звание), статистика и карточка сотрудника
+        // считают по программе всех ролей; до v79 её на каждом старте подтягивала уборка банка ошибок — вместе с главной.
+        // Теперь — после главной; на бережной сети прогрева нет, такие экраны догружают роли сами (lib/use-content.js)
+        () => loadAllModules(),
+        () => loadDialogueScreen(),
+        () => loadGamification(),
+        () => loadAdminScreens(),
+        () => loadTeamScreens(),
+        () => loadExamScreens(),
         () => import("./ui/menu-trainer"),
         () => import("./ui/guestbook"),
         () => import("./ui/ReferenceSection"),
@@ -2421,13 +2442,21 @@ function ServiceAcademy() {
         () => import("./ui/sos"),
         () => import("./ui/mentor"),
         () => import("./ui/training-card"),
-        () => import("./ui/candidate"),
+        boss && (() => import("./ui/candidate")),
         () => import("./ui/assistant"),
         () => import("./ui/mm-images"),   // картинки-эмоции уроков — для работы без сети
         () => import("./ui/table"),       // Доп. 289: формат «у стола» — практика и проверка после урока
-      ].reduce((p, load) => p.then(() => load().catch(() => {})), Promise.resolve());
-    }, 1500);
-    return () => { if (warm) clearTimeout(warm); };
+      ].filter(Boolean).reduce((p, load) => p.then(() => (alive ? load().catch(() => {}) : null)), Promise.resolve());
+    };
+    const t0 = Date.now();
+    const waitHome = () => {
+      if (!alive) return;
+      const shown = !document.getElementById("sa-splash") && !!document.querySelector("[data-now-title]");
+      if (!shown && Date.now() - t0 < 12000) { warm = setTimeout(waitHome, 400); return; }
+      warm = setTimeout(() => { const ric = typeof window !== "undefined" && window.requestIdleCallback; if (ric) ric(startWarm, { timeout: 2000 }); else startWarm(); }, 1500);
+    };
+    if (!thriftyNet()) warm = setTimeout(waitHome, 400);
+    return () => { alive = false; if (warm) clearTimeout(warm); };
   }, []);
 
   // v55 (Доп. 368): экраны «твёрдые» — не листаются, если всё помещается.
@@ -2472,7 +2501,7 @@ function ServiceAcademy() {
     <div style={T.app}>
       {/* 🏆 Achievement popup */}
       {newAchievement && (
-        <AchievementPopup ach={newAchievement} a11y={a11y} onClose={() => setNewAchievement(null)} />
+        <Suspense fallback={null}><AchievementPopup ach={newAchievement} a11y={a11y} onClose={() => setNewAchievement(null)} /></Suspense>
       )}
       {/* v40: новый значок «Пути мастера» или «Мастер роли» — по одному, не поверх урока и слоёв */}
       {mToast ? <BadgeToast a11y={a11y} item={mToast} state={mState}
@@ -2586,11 +2615,11 @@ function ServiceAcademy() {
             </div>
           </div>, document.body) : null}
         <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
-        {screen === "login" && <CodeLoginScreen T={S} onSuccess={handleLogin} />}
+        {screen === "login" && <Suspense fallback={<ScreenLoader T={S} />}><CodeLoginScreen T={S} onSuccess={handleLogin} /></Suspense>}
         {/* ── Книга отзывов ── */}
         {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} focusId={bookFocus} onBack={() => { setBookFocus(null); goBack(); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}
         {/* «Гость недели»: живой диалог из книги; завершение = страница в книге */}
-        {screen === "weeklyGuest" && <LiveDialogue key={weeklyLessonId()} dialogueId={weeklyId} inline={weeklyInline} hintKey="weeklyGuest" T={T} color={"#C8A96E"} onClose={(finished) => {
+        {screen === "weeklyGuest" && <Suspense fallback={<ScreenLoader T={T} />}><LiveDialogue key={weeklyLessonId()} dialogueId={weeklyId} inline={weeklyInline} hintKey="weeklyGuest" T={T} color={"#C8A96E"} onClose={(finished) => {
           try {
             const uk = profile ? `_${profile.name}_${profile.surname||""}` : "";
             const wid = weeklyLessonId();
@@ -2606,22 +2635,22 @@ function ServiceAcademy() {
           // Доп. 158: успех — показать печать в Книге, но диалог из истории убрать (иначе Книга ↔ диалог по кругу);
           // вышел без финала — просто назад, откуда пришёл
           if (finished === true) navigate("guestbook", { replace: true }); else goBack();
-        }} pro={true} />}
+        }} pro={true} /></Suspense>}
         {screen === "schedule" && <Suspense fallback={<ScreenLoader T={T} />}>
           <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack()}
             dueCount={dueMistakes} onMistakes={() => navigate("mistakes")} onChecklist={() => navigate("checklist")} />
         </Suspense>}
-        {screen === "team" && profile?.is_admin && <TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} />}
+        {screen === "team" && profile?.is_admin && <Suspense fallback={<ScreenLoader T={T} />}><TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} /></Suspense>}
         {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => navigate(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
-        {screen === "checklist" && <div className="sa-tabpad"><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></div>}
-        {screen === "onboarding" && <div className="sa-tabpad"><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></div>}
+        {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></Suspense></div>}
+        {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={customLessons} startSelf={reportSelf}
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
-        {screen === "analytics" && <div className="sa-tabpad"><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></div>}
+        {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
-        {screen === "profile" && <AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} themeAuto={themeAuto} onThemeAuto={setAutoTheme} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} />}
-        {screen === "playerDetail" && selectedPlayer && <PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} />}
-        {screen === "stats" && <div className="sa-tabpad"><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+        {screen === "profile" && <Suspense fallback={<ScreenLoader T={T} />}><AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} themeAuto={themeAuto} onThemeAuto={setAutoTheme} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} /></Suspense>}
+        {screen === "playerDetail" && selectedPlayer && <Suspense fallback={<ScreenLoader T={T} />}><PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} /></Suspense>}
+        {screen === "stats" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
             // Удаление сотрудника из «Управления данными»: находим его id в
             // списке доступа по имени, себя удалить нельзя. Серверная функция
@@ -2715,8 +2744,8 @@ function ServiceAcademy() {
             }).catch(e => say("Не получилось: нет связи с сервером" + (e && e.message ? ` (${e.message})` : "")));
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
-        /></div>}
-        {screen === "daily" && <DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} />}
+        /></Suspense></div>}
+        {screen === "daily" && <Suspense fallback={<ScreenLoader T={T} />}><DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} /></Suspense>}
         {screen === "roleSelect" && <div className={vp.wide ? "sa-tabpad sa-tabpad-w" : "sa-tabpad"}><RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short} hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
           dayStrip={profile ? <DayChips a11y={a11y} streak={streakLive} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
             firstDay={firstDay}
@@ -2744,7 +2773,7 @@ function ServiceAcademy() {
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
           </WarmupCard> : null} /></div>}
         {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div className="sa-tabpad"><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></div>}
+        {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
         {screen === "league" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} masters={mastersIdx} onBack={() => goBack("teamHub")} /></Suspense></div>}
         {/* v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека */}
         {screen === "cellar" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CellarScreen T={T} a11y={a11y} modules={programModules} completed={completed} quizDone={quizDone} marks={marks}
@@ -2892,13 +2921,13 @@ function ServiceAcademy() {
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
         {screen === "lesson" && activeLesson?.type === "dialogue" && createPortal(
-          <LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} inline={activeLesson.dialogue} T={T} color={activeModule?.color} pro={true}
+          <Suspense fallback={<ScreenLoader T={T} />}><LiveDialogue key={"dlg-" + gameKey} dialogueId={activeLesson.dialogueId} inline={activeLesson.dialogue} T={T} color={activeModule?.color} pro={true}
             onClose={(finished, st) => {
               // v37: урок засчитывается, когда разговор дошёл до конца (и когда гость ушёл — как раньше).
               // Вышел посреди разговора — стрелкой в шапке или кнопкой «Назад» Telegram — просто назад,
               // без отметки (ревью v37: «Назад» Telegram теперь жмёт стрелку диалога и засчитывал урок)
               if (finished === true || (st && st.done)) completeLesson(); else goBack("module");
-            }} />
+            }} /></Suspense>
         , document.body)}
         {screen === "lesson" && activeLesson?.type === "build" && createPortal(
           <Suspense fallback={<ScreenLoader T={T} />}>
@@ -2911,11 +2940,11 @@ function ServiceAcademy() {
           wasCompleted={!!(activeLesson && completed[activeLesson.id])}
           modules={programModules} mentorName={mentorName} goal={{ steps: todaySteps, goal }} onAskMentor={askMentor} onActivity={logActivity}
           onContents={activeModule ? () => navigate("module") : undefined} />}
-        {screen === "roleComplete" && <RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} />}
+        {screen === "roleComplete" && <Suspense fallback={<ScreenLoader T={T} />}><RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} /></Suspense>}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} /></Suspense>}
-        {screen === "certificates" && <CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} />}
-        {screen === "exam" && <ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} extraQuestions={examExtra} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} />}
-        {screen === "certificate" && <CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} />}
+        {screen === "certificates" && <Suspense fallback={<ScreenLoader T={T} />}><CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} /></Suspense>}
+        {screen === "exam" && <Suspense fallback={<ScreenLoader T={T} />}><ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} extraQuestions={examExtra} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} /></Suspense>}
+        {screen === "certificate" && <Suspense fallback={<ScreenLoader T={T} />}><CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} /></Suspense>}
         </div>
 
         {/* Онбординг: приветствие при первом входе */}

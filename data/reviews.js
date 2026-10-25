@@ -1,5 +1,4 @@
 // data/reviews.js
-import { RESTAURANT_MENUS } from "./menu";
 // «Книга отзывов» — сердце мотивации. Каждый пройденный модуль превращается
 // в отзыв благодарного гостя. Экзамен роли — в легендарную страницу с печатью.
 // Тексты привязаны к сути модуля: человек видит, ЗАЧЕМ он это учил.
@@ -108,8 +107,9 @@ export const countNewDishes = (restaurant) => {
   if (!restaurant) return 0;
   let custom = [];
   try { custom = (JSON.parse(localStorage.getItem("sa_menu_custom") || "{}")[restaurant]) || []; } catch (e) {}
-  const base = RESTAURANT_MENUS[restaurant] || [];
-  return [...base, ...custom].filter(d => d.isNew && d.addedAt && Date.now() - d.addedAt < 30 * 864e5).length;
+  // v79 (Доп. 392): только свои блюда — у заготовок меню (data/menu.js) пометки «новинка» нет, а сам файл (53 КБ) тянулся
+  // ради этого в стартовый набор
+  return custom.filter(d => d.isNew && d.addedAt && Date.now() - d.addedAt < 30 * 864e5).length;
 };
 
 // ── Звания ──────────────────────────────────────────────────────────

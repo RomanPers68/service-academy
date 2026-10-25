@@ -15,9 +15,10 @@ import { Sign } from "./signs";   // v75 (Доп. 388): печати — кор�
 import { loadMastery } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";
 import { MODULES } from "../data/modules";
-import { useContentVersion } from "../lib/use-content";
+import { useAllModules } from "../lib/use-content";   // v79: книга считает по всем ролям — догружает их сама
 import { ROLES } from "../data/roles";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): книга шире и крупнее на широком экране
+import { ensureTableCss } from "./table-css";   // v79 (Доп. 392): рукописный Marck Script — свой файл (не Google Fonts)
 import {
   MODULE_REVIEWS, reviewOf, bookModules, LEGEND_REVIEWS, WEEKLY_REVIEW, RANKS,
   moduleDone, bookStats, weeklyLessonId, weeklyDialogueId, countNewDishes,
@@ -32,7 +33,6 @@ const MONO = { fontFamily: "ui-monospace, Menlo, monospace" };
 const SCRIPT = { fontFamily: "'Marck Script', 'Caveat', 'Segoe Script', cursive" };
 
 const BOOK_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Marck+Script&family=Caveat:wght@500&display=swap');
   @keyframes gbPageR { from { opacity:0; transform:translateX(24px) rotate(.5deg);} to { opacity:1; transform:none;} }
   @keyframes gbPageL { from { opacity:0; transform:translateX(-24px) rotate(-.5deg);} to { opacity:1; transform:none;} }
   @keyframes gbSeal { 0% { transform:scale(0) rotate(-18deg);} 70% { transform:scale(1.12) rotate(3deg);} 100% { transform:scale(1);} }
@@ -72,6 +72,10 @@ function buildRolePages(roleId, completed, quizDone, examResults, dates, gold = 
 
 // ── Экран книги ──
 export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDone = {}, examResults = {}, practiceStars = {}, onBack, onWeekly, focusId }) {
+  ensureTableCss();   // v79: @font-face Marck Script живёт в общих стилях стола — подключаем, если книгу открыли первой
+  // Доп. 132: пересчёт, когда роли догрузились. v79 (Доп. 392): вкладки ролей, страницы и «N/всего» — по программе всех
+  // ролей; книга сама просит её загрузить (раньше это делала уборка банка ошибок на старте)
+  const contentVer = useAllModules();
   const [gbHint, gbHintDone] = useHintOnce("guestbook");
   const [gbStep, setGBStep] = React.useState(0);
   // v52 (Доп. 365): на широком экране книга шире, а где окно высокое — ещё и крупнее (ui/css.js, .sa-gbbook)
@@ -132,9 +136,8 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
     if (completed[weeklyLessonId()] && !d[weeklyLessonId()]) { d[weeklyLessonId()] = Date.now(); changed = true; }
     if (changed) try { localStorage.setItem("sa_book_dates", JSON.stringify(d)); } catch (e) {}
     return d;
-  }, [completed, quizDone, examResults]);
+  }, [completed, quizDone, examResults, contentVer]);
 
-  const contentVer = useContentVersion(); // Доп. 132: пересчёт, когда роли догрузились
   const stats = React.useMemo(() => bookStats(MODULES, completed, quizDone, examResults), [completed, quizDone, examResults, contentVer]);
 
   // Страницы текущей вкладки
@@ -147,7 +150,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
     }
     if (tab === "builds") return [{ kind: "builds", key: "builds_page" }];
     return buildRolePages(tab, completed, quizDone, examResults, dates, gold);
-  }, [tab, completed, quizDone, examResults, dates, wid, gold]);
+  }, [tab, completed, quizDone, examResults, dates, wid, gold, contentVer]);
 
   // Страница считается прочитанной только когда реально показана на экране
   React.useEffect(() => {
@@ -173,7 +176,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
   // Витрина сборки: build-уроки роли «Бар» и лучшие звёзды по каждому.
   // Данные — из общего контура practice_stars, отдельного хранилища нет.
   const buildLessons = React.useMemo(() =>
-    (BM().bar || []).flatMap(m => (m.lessons || []).filter(l => l.type === "build")), []);
+    (BM().bar || []).flatMap(m => (m.lessons || []).filter(l => l.type === "build")), [contentVer]);
   const myBuildStars = practiceStars[`${profile?.name}|${profile?.surname ?? ""}`] || {};
   // В каких вкладках есть непрочитанные страницы — для золотой точки на вкладке
   const unreadByTab = React.useMemo(() => {
@@ -184,7 +187,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       map[r.id] = p.some(pg => (pg.kind === "earned" || pg.kind === "legend") && !readList.includes(pg.key));
     }
     return map;
-  }, [completed, quizDone, examResults, readList]);
+  }, [completed, quizDone, examResults, readList, contentVer]);
   const earnedInTab = pages.filter(p => p.kind !== "locked" && p.kind !== "challenge").length;
 
   return (

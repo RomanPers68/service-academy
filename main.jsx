@@ -1,6 +1,16 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import { loadRoleModules } from "./data/modules";
+
+// v79 (Доп. 392): уроки своей роли просим сразу, параллельно с запуском React. Главной карточке нужно название урока,
+// а раньше запрос уходил, только когда App дочитает профиль из хранилища. Повторный вызов из App — тот же промис.
+try {
+  const p = JSON.parse(localStorage.getItem("sa_profile") || "null");
+  const uk = p && p.name ? `_${p.name}_${p.surname || ""}` : "";
+  const r = uk ? JSON.parse(localStorage.getItem("sa_last_role" + uk) || "null") : null;
+  if (typeof r === "string" && r) loadRoleModules(r).catch(() => {});
+} catch (e) {}
 
 // Внешний рубеж: внутренний ErrorBoundary живёт ВНУТРИ App и не ловит
 // краш самого верхнего уровня App — тогда #root пустел молча, а заставка

@@ -214,7 +214,8 @@ if (want("R")) {
     const t = await text(page);
     ok(tag + ": одно заведение — без «Твоё место», как раньше", !/ТВОЁ МЕСТО/.test(t) && /Иван Петров/.test(t));
     await page.evaluate(() => window.__saNav("teamHub")); await sleep(800);
-    ok(tag + ": одно заведение — в «Команде» без «в сети»", !/в сети/.test(await text(page)));
+    // v79: место «в сети N-й» — не подпись «Лиги недели» («…в заведении и в сети», v78), её не считаем
+    ok(tag + ": одно заведение — в «Команде» без «в сети»", !/в сети \d/.test(await text(page)));
     ok(tag + ": без ошибок (одно заведение)", errors.length === 0, errors.slice(0, 3).join(" | "));
     await ctx.close();
   }

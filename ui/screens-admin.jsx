@@ -12,7 +12,7 @@ import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase
 import { MODULES, MODULES_INDEX } from "../data/modules";
 import { cmsTitleMap } from "../lib/custom-modules";
 import { tones, toneOfFail, toneOfScore, glass, Avatar, Chip, Ring, Bar, ExitTrack, MissPlate, SectionLabel, Icon, Spark } from "./analytics-kit";
-import { useContentVersion } from "../lib/use-content";
+import { useAllModules } from "../lib/use-content";   // v79 (Доп. 392): названия уроков всех ролей — экран сам догружает программу
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
@@ -429,7 +429,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
   }, [view, hardQ]);
   const allScope = !!(profile && (profile.is_admin || profile.position === "senior"));
   const scoped = React.useMemo(() => (scores||[]).filter(s => allScope || s.restaurant === profile?.restaurant), [scores, allScope, profile]);
-  const contentVerA = useContentVersion(); // Доп. 132
+  const contentVerA = useAllModules(); // Доп. 132; v79 — и просит догрузить все роли
   // Свои уроки из редактора контента: в аналитике — их названия, а не служебные
   // номера cms-q-12 (правка 157). Уроки — те же, что видят сотрудники заведения.
   React.useEffect(() => {

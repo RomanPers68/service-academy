@@ -16,6 +16,7 @@ import { glass, Avatar, tones } from "./analytics-kit";
 import { rpc, saToken, rpcSync, flushQueue, rpcMissing } from "../api/supabase";
 import { MODULES, programOf, programAll } from "../data/modules";
 import { MODULES_INDEX } from "../data/modules-index";
+import { useAllModules } from "../lib/use-content";   // v79 (Доп. 392): счёт по всем ролям — экран сам догружает их программу
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { SkelCards, SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
@@ -800,6 +801,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
 }
 
 export function PlayerDetailScreen({ player, T, onBack }) {
+  useAllModules();   // v79: тесты и уроки сотрудника раскладываются по ролям всей программы
   // Подсказка экрана — один раз при первом входе (правка 171)
   const [pdHint, pdHintDone] = useHintOnce("playerDetail");
   const [pdStep, setPDStep] = React.useState(0);
@@ -1226,6 +1228,7 @@ function PlayerSheet({ p, stat, T, a11y, onClose, onResetPlayer, onUnlockQuiz, o
 }
 
 export function StatsScreen({ T, a11y, profile, scores, completedRoles, completed, quizDone = {}, examResults = {}, practiceStars, allProfiles = [], onBack, onResetPlayer, onUnlockQuiz, onViewPlayer, onDeleteEmployee, onStart = null }) {
+  useAllModules();   // v79: звание из книги отзывов и «N стр.» — по программе всех ролей
   const ROLE_ORDER = ["seasonal", "core", "manager", "service_manager"];
   const STAT_ROLES = ["spg", "bar", ...ROLE_ORDER]; // хостес — параллельный трек, в статистике тоже показываем
   const roleLabel = ROLE_LABEL, roleColor = ROLE_COLOR;   // v59: названия и цвета ролей — data/roles.js
@@ -1585,6 +1588,7 @@ export function ProfileScreen({ onDone, T }) {
   );
 }
 
-export const APP_SHARE_URL = "https://t.me/SA_RestaurantBot";
+// v79 (Доп. 392): ссылка — в lib/app-url.js (App берёт её оттуда, не загружая этот экран на старте); имя экспорта прежнее
+export { APP_SHARE_URL } from "../lib/app-url";
 
 export { POS_LABELS };   // v59: должности — data/positions.js (имя экспорта прежнее, его берут «Команда» и App)

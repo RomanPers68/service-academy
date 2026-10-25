@@ -29,7 +29,8 @@ import { hintsFor } from "../data/hints";
 import { frostOf } from "./home-hubs";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
 // v73 (Доп. 386): подписи и бейджи — курсивом, обычными буквами (labelStyle); счётчики «3 / 12» — моноширинным
-import { LiveDialogue } from "./screens-dialogue";
+// v79 (Доп. 392): живой диалог (~50 КБ) — при первом открытии, а не в стартовом файле вместе с уроками
+const LiveDialogue = React.lazy(() => import("./screens-dialogue").then((m) => ({ default: m.LiveDialogue })));
 import { practiceRound } from "../lib/practice-round";
 import { lessonCards } from "../lib/lesson-cards";
 import { missText } from "../lib/practice-mistake";
@@ -1482,7 +1483,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             Портал в body — только у поппапа термина ниже: ему нужен настоящий
             viewport из-за transform свайп-страниц. */}
         {dialogueScreen && createPortal(
-          <LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} />
+          <React.Suspense fallback={null}><LiveDialogue dialogueId={dialogueScreen} T={T} onClose={() => setDialogueScreen(null)} color={color} /></React.Suspense>
         , document.body)}
         {checkLayer}
         {termPopup && createPortal(

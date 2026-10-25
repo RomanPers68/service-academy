@@ -335,6 +335,7 @@ import { RoleSelect } from "./ui/screens-roleselect";
 import { MistakesScreen, HomeScreen, ModuleScreen, LessonScreen, GlossaryScreen, loadTable, useTableModule } from "./ui/screens-learning";
 import { APP_SHARE_URL } from "./lib/app-url";
 import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQdaySeen, applyQdayToBank } from "./lib/qday";   // v81: вопрос дня в Telegram
+import { casesSub, isCaseMistake, markPlayed, readSince, markSince } from "./lib/cases";   // v83: случаи из нашего зала
 const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
 const loadGamification = () => import("./ui/screens-gamification");
 const loadTeamScreens = () => import("./ui/screens-team");
@@ -361,6 +362,7 @@ const loadBriefing = () => import("./ui/briefing");   // v82 (Доп. 395): бр
 const BriefScreen = lazyOf(loadBriefing, "BriefScreen");
 const BriefCard = lazyOf(loadBriefing, "BriefCard");
 const BriefView = lazyOf(loadBriefing, "BriefView");
+const CasesScreen = lazyOf(() => import("./ui/cases"), "CasesScreen");   // v83 (Доп. 396): случаи из нашего зала
 
 
 
@@ -998,7 +1000,8 @@ function ServiceAcademy() {
       if (liveQ.size < 50) return;   // программа загрузилась не вся — лучше не трогать
       // Доп. 291: ошибки практики живут, пока такая ситуация есть в программе
       const livePQ = practiceQuestionTexts(allMods);
-      setMistakeBank(prev => { const next = prev.filter(m => (m.from === "practice" ? livePQ.has(m.q) : liveQ.has(m.q))); return next.length === prev.length ? prev : next; });
+      // v83: ошибка из случая зала (lessonId case-…) в программе не значится — живёт, пока не исправлена
+      setMistakeBank(prev => { const next = prev.filter(m => (isCaseMistake(m) || (m.from === "practice" ? livePQ.has(m.q) : liveQ.has(m.q)))); return next.length === prev.length ? prev : next; });
       try { localStorage.setItem(key, day); } catch (e) {}
     }).catch(() => {}), 6000);
     return () => { alive = false; clearTimeout(t); };
@@ -1387,6 +1390,30 @@ function ServiceAcademy() {
     setBriefSeen(k); try { localStorage.setItem("sa_brief_seen" + ukP, k); } catch (e) {}
     setBriefView(true);
   }, [teamBrief, ukP, setBriefView]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v83 (Доп. 396): случаи из нашего зала — числа для пункта «Смены» (этап 33, case_list counts): ждут разбора, новые,
+  // ответ на свой. Как брифинг: при входе во вкладку, не чаще раза в пять минут; без этапа 33 пункта нет.
+  const [caseCounts, setCaseCounts] = useState(null);
+  const [casesOn, setCasesOn] = useState(true);
+  const [casesPlayed, setCasesPlayed] = useState(0);   // раунд случаев закончился — экран пересчитывает «новые»
+  const caseAskRef = useRef({ at: 0, off: false });
+  const loadCaseCounts = useCallback((force) => {
+    const st = caseAskRef.current;
+    if (!profile || !profile.restaurant || st.off || (!force && Date.now() - st.at < 5 * 60e3)) return;
+    st.at = Date.now();
+    rpc("case_list", { p_token: saToken(), p_mode: "counts", p_since: readSince(ukP) || null }).then((r) => {
+      if (rpcMissing(r)) { st.off = true; setCasesOn(false); return; }
+      if (r && r.ok) setCaseCounts(r);
+    }).catch(() => { st.at = 0; });
+  }, [profile, ukP]);
+  useEffect(() => { if (screen === "shift" && storageLoaded) loadCaseCounts(false); }, [screen, storageLoaded, loadCaseCounts]);
+  const openCases = useCallback((sits) => {
+    if (!sits || !sits.length) return;
+    loadTable();
+    const n = sits.length;
+    setSpecial({ mode: "cases", sits, key: Date.now(),
+      mod: { id: "cases", title: ((profile && profile.restaurant) || "Наш зал") + " · " + n + " " + pl3(n, "случай", "случая", "случаев"), lessons: sits.map((s) => ({ id: s._from })) } });
+  }, [profile]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const casesOpened = useCallback(() => { markSince(ukP, new Date().toISOString()); setCaseCounts((c) => (c ? { ...c, fresh: 0, mine_new: 0 } : c)); }, [ukP]);
   // ссылка «Брифинг смены» из Telegram (?go=brief): открыть, как только брифинг пришёл
   useEffect(() => { if (briefAskRef.current.open && teamBrief) { briefAskRef.current.open = false; openTeamBrief(); } }, [teamBrief, openTeamBrief]);
   // v31: ссылки из подталкиваний бота: ?go=pair|league|cellar|month|shift|radio|guest|probe (или startapp=go_…)
@@ -1396,7 +1423,7 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»
     } catch (e) { goLinkRef.current = ""; }
   }
   React.useEffect(() => {
@@ -1416,6 +1443,7 @@ function ServiceAcademy() {
     else if (g === "mastery") openMastery();
     else if (g === "mistakes") navigate("mistakes");
     else if (g === "brief") { navigate("shift"); briefAskRef.current.open = true; loadTeamBrief(true); }
+    else if (g === "cases") navigate("cases");   // v83: «Разобрать» / «Открыть» из сообщений о случаях
   }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
@@ -1796,6 +1824,8 @@ function ServiceAcademy() {
       let m = readFresh(ukP), n = 0;
       (sp.mods || []).forEach((md) => { if ((ok[md.id] || 0) >= Math.ceil((per[md.id] || 1) / 2)) { m = touchFresh(m, md.id, Date.now(), false, md.rev); n++; } });
       if (n) { saveFresh(ukP, m); bumpMarks(); touchStreak(); logActivity("refresh", n); }
+    } else if (mode === "cases") {   // v83: сыгранные случаи — «не новые» на этом телефоне
+      markPlayed(ukP, (sp.sits || []).map((x) => x && x._case)); setCasesPlayed((v) => v + 1); touchStreak();
     } else if (mode === "gold") {
       if (goldPassed(res.firstOk, res.total)) {
         saveGold(ukP, mod.id, { d: todayKey, w: res.wrongN, sec: res.secs });
@@ -2629,7 +2659,7 @@ function ServiceAcademy() {
             color={TRACK_COLOR[role] || "#C8A96E"} a11y={a11y} profile={profile} streak={streak} mistakeBank={mistakeBank} mentorName={mentorName}
             goal={{ steps: todaySteps, goal }} verdict={special.verdict} onFinish={finishSpecial} onActivity={logActivity}
             onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake} onAskMentor={askMentor}
-            onAgain={special.mode === "credit" || special.mode === "probe" ? null : special.mode === "freshall" ? openFreshAll : () => openTopicRun(special.mode, special.mod)}
+            onAgain={special.mode === "credit" || special.mode === "probe" || special.mode === "cases" ? null : special.mode === "freshall" ? openFreshAll : () => openTopicRun(special.mode, special.mod)}
             onClose={() => setSpecial(null)} />
         ) : null}
         {/* v30 (Доп. 319): «Радио в дорогу» */}
@@ -2848,6 +2878,8 @@ function ServiceAcademy() {
           </WarmupCard> : null} /></div>}
         {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
+        {screen === "cases" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CasesScreen T={T} a11y={a11y} profile={profile} uk={ukP} playedVer={casesPlayed}
+          onPlay={openCases} onOpened={casesOpened} onBack={() => { caseAskRef.current.at = 0; goBack("shift"); }} /></Suspense></div>}
         {screen === "brief" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BriefScreen T={T} a11y={a11y} profile={profile}
           onSent={() => loadTeamBrief(true)} onBack={() => goBack("shift")} /></Suspense></div>}
         {screen === "league" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} masters={mastersIdx} onBack={() => goBack("teamHub")} /></Suspense></div>}
@@ -2878,6 +2910,8 @@ function ServiceAcademy() {
           { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, предсменка, закрытие", onClick:() => navigate("checklist") },
           { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено: за час до смены зовёт на разминку" : "Разминка в 2 минуты за час до смены", onClick:() => setRemindOpen(true) },
           { key:"daily", group:"Потренироваться", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
+          casesOn && { key:"cases", group:"Потренироваться", icon:"cases", label:"Случаи из нашего зала", sub: casesSub(caseCounts, isLead),   // v83
+            badge: caseCounts && isLead && caseCounts.inbox ? String(caseCounts.inbox) : caseCounts && (caseCounts.fresh || caseCounts.mine_new) ? "новое" : null, onClick:() => navigate("cases") },
           { key:"lg", group:"Потренироваться", icon:"guestai", label:"Живой гость", sub: guestSub(role, profile?.position), onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал; v42: подпись — по роли
           { key:"wg", group:"Потренироваться", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest"), badge: isNewFam("dialogue") ? "новое" : null },
           { key:"rd", group:"Потренироваться", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков, чтобы слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319

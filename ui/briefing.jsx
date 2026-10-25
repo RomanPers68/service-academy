@@ -16,6 +16,7 @@ import { cachedShared } from "../lib/deck-extras";
 import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel } from "../lib/briefing";
 
 const LETTERS = ["А", "Б", "В", "Г"];
+const HIDDEN = { ask: true, case: true };   // в показе и у сотрудника ответ открывается кнопкой «Показать ответ»
 const C = (a11y) => ({
   gold: a11y ? "#7A5D2A" : "#D2A85A",
   text: a11y ? "#2A1F0E" : "#EFE4C8",
@@ -42,7 +43,7 @@ const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 
 // ── Содержимое блока (одно и то же — в списке, в показе и у сотрудника) ──────────
 function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
   // данные приходят и с сервера (брифинг дня): чужой формат не роняет экран, блок просто пустой
-  if (k === "note" ? typeof b !== "string" : k === "ask" ? !(b && typeof b === "object" && Array.isArray(b.options)) : !Array.isArray(b)) return null;
+  if (k === "note" ? typeof b !== "string" : k === "ask" || k === "case" ? !(b && typeof b === "object" && Array.isArray(b.options)) : !Array.isArray(b)) return null;
   const fs = big ? 21 : 14.5, small = big ? 15 : 12.5;
   const row = { fontFamily: "Georgia, serif", fontSize: fs, color: c.text, lineHeight: 1.45 };
   if (k === "roster") return (
@@ -73,6 +74,20 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
         : <button type="button" data-brief-reveal="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onReveal && onReveal(); }}
             style={{ marginTop: 10, padding: "8px 16px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent", color: c.gold, fontFamily: "Georgia, serif", fontSize: small, cursor: "pointer" }}>Показать ответ</button>}
     </div>);
+  // v83: случай из зала — сцена, вопрос и варианты; ответ, разбор и «как было у нас» — по кнопке, как у вопроса команде
+  if (k === "case") return (
+    <div>
+      <div style={row}>{b.q}</div>
+      <div style={{ fontSize: small + 1, color: c.text, marginTop: 6, fontStyle: "italic" }}>{b.question}</div>
+      <div style={{ marginTop: 8 }}>{b.options.map((o, i) => (
+        <div key={i} style={{ fontSize: small + 1, color: reveal && i === b.correct ? c.gold : c.text, fontWeight: reveal && i === b.correct ? "bold" : "normal", marginBottom: 3 }}>{LETTERS[i]}. {o}</div>))}</div>
+      {reveal ? <>
+        {b.why ? <div style={{ fontSize: small, color: c.sub, marginTop: 6, lineHeight: 1.45 }}>{b.why}</div> : null}
+        {b.real ? <div style={{ fontSize: small, color: c.text, marginTop: 6, lineHeight: 1.45 }}><span style={{ color: c.gold }}>Как было у нас:</span> {b.real}</div> : null}
+      </> : <button type="button" data-brief-reveal="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onReveal && onReveal(); }}
+          style={{ marginTop: 10, padding: "8px 16px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent", color: c.gold, fontFamily: "Georgia, serif", fontSize: small, cursor: "pointer" }}>Показать ответ</button>}
+      {b.author ? <div style={{ fontSize: small - 1, color: c.sub, marginTop: 6 }}>Рассказал(а) {b.author}</div> : null}
+    </div>);
   if (k === "thanks") return (
     <div>{b.map((t, i) => (
       <div key={i} style={{ ...row, marginBottom: 4 }}>{t.name}{t.surname ? " " + t.surname : ""} <span style={{ fontSize: small, color: c.sub }}>· {t.pts} {plural(t.pts, "очко", "очка", "очков")} за неделю</span></div>))}</div>);
@@ -86,7 +101,7 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
   const pages = BRIEF_ORDER.filter((k) => briefShown(brief, k));
   const [i, setI] = React.useState(0);
   const [sec, setSec] = React.useState(0);
-  const [reveal, setReveal] = React.useState(false);
+  const [shown, setShown] = React.useState({});   // ответ открыт: вопрос команде, случай из зала (v83) — каждый своей кнопкой
   React.useEffect(() => { const t = setInterval(() => setSec((s) => s + 1), 1000); return () => clearInterval(t); }, []);
   const go = (d) => { const n = Math.max(0, Math.min(pages.length - 1, i + d)); if (n !== i) { vibrate("light"); setI(n); } };
   const tx = React.useRef(null);
@@ -107,7 +122,7 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
       <div style={{ flex: 1, overflowY: "auto", padding: "8px 22px 20px" }}>
         {k ? <>
           <div data-brief-page={k} style={{ ...labelStyle(18), color: c.gold, marginBottom: 14 }}>{BRIEF_TITLE[k]}</div>
-          <BlockBody k={k} b={brief.blocks[k]} c={c} big reveal={k !== "ask" || reveal} onReveal={() => setReveal(true)} />
+          <BlockBody k={k} b={brief.blocks[k]} c={c} big reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
         </> : <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: c.sub }}>В брифинге пока пусто.</div>}
       </div>
       <div style={{ display: "flex", gap: 10, padding: "10px 16px 14px" }}>
@@ -124,7 +139,7 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
 export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
   const c = C(a11y);
   const contentVer = useAllModules();   // фокус и вопрос ищутся по программе всех ролей
-  const [src, setSrc] = React.useState({ menu: null, hard: null, sched: null, league: null });
+  const [src, setSrc] = React.useState({ menu: null, hard: null, sched: null, league: null, cases: null });
   const [today, setToday] = React.useState(null);   // уже отправленный сегодня
   const [note, setNote] = React.useState("");
   const [on, setOn] = React.useState({});
@@ -144,6 +159,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
     // нет связи — false («не пришло»), а не null («ещё собираю»): иначе «Отправить команде» ждала бы вечно
     rpc("schedule_load", { p_token: tok, p_restaurant: restaurant, p_month: mkey }).then((r) => put("sched")(r || false)).catch(() => put("sched")(false));
     rpc("league_week", { p_token: tok }).then((r) => put("league")(r || false)).catch(() => put("league")(false));
+    // v83: свежий случай из зала (этап 33); нет этапа — блока нет
+    rpc("case_list", { p_token: tok, p_mode: "counts" }).then((r) => put("cases")(r && r.ok ? r : false)).catch(() => put("cases")(false));
     // уже отправленный сегодня: «Своё» и выключатели — как в нём, чтобы правка начиналась с отправленного
     rpc("brief_today", { p_token: tok }).then((r) => {
       if (!alive || !r || !r.ok || !r.brief || !r.brief.data) return;
@@ -156,7 +173,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
   }, [restaurant]);
   const loading = Object.values(src).some((v) => v === null);
   const author = profile ? (profile.name + (profile.surname ? " " + profile.surname : "")).trim() : "";
-  const base = React.useMemo(() => buildBrief({ menu: src.menu || [], hard: src.hard || [], programs: programAll(), sched: src.sched, league: src.league, restaurant, author, note }),
+  const base = React.useMemo(() => buildBrief({ menu: src.menu || [], hard: src.hard || [], programs: programAll(), sched: src.sched, league: src.league,
+    caseTop: src.cases ? src.cases.top : null, restaurant, author, note }),
     [src, restaurant, author, note, contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
   const brief = { ...base, on: { ...base.on, ...on, note: on.note !== undefined ? on.note : !!note.trim() } };
   const toggle = (k) => { vibrate("light"); setOn((o) => ({ ...o, [k]: !(o[k] !== undefined ? o[k] : brief.on[k]) })); };
@@ -181,7 +199,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
     }).catch(() => { setBusy(false); setMsg({ ok: false, text: "Нет связи. Провести брифинг можно и так, отправишь потом." }); });
   };
   const empty = { roster: "В графике на сегодня никого: график не заполнен или выходной.", stop: "Стоп-листа нет.", fresh: "Новинок за месяц нет.",
-    focus: "Пока мало ответов команды за 30 дней.", ask: "Вопроса нет: программа ещё грузится.", thanks: "На этой неделе очков пока нет." };
+    focus: "Пока мало ответов команды за 30 дней.", ask: "Вопроса нет: программа ещё грузится.", thanks: "На этой неделе очков пока нет.",
+    case: "За две недели новых случаев из зала нет. Их рассказывают в «Смене» → «Случаи из нашего зала»." };
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
@@ -214,7 +233,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
                   <span style={{ position: "absolute", top: 2, left: 2, width: 18, height: 18, borderRadius: "50%", background: isOn ? (a11y ? "#8B6A30" : "#E4C88C") : c.sub, transform: isOn ? "translateX(16px)" : "none", transition: "transform .2s" }} />
                 </button> : null}
               </div>
-              {has ? <BlockBody k={k} b={b} c={c} /> : <div style={{ fontSize: 12.5, color: c.sub }}>{src[{ roster: "sched", stop: "menu", fresh: "menu", focus: "hard", ask: "hard", thanks: "league" }[k]] === null ? "Собираю…" : empty[k]}</div>}
+              {has ? <BlockBody k={k} b={b} c={c} /> : <div style={{ fontSize: 12.5, color: c.sub }}>{src[{ roster: "sched", stop: "menu", fresh: "menu", focus: "hard", ask: "hard", case: "cases", thanks: "league" }[k]] === null ? "Собираю…" : empty[k]}</div>}
             </div>);
         })}
         {msg ? <div role="status" style={{ fontSize: 13, color: msg.ok ? c.text : c.red, lineHeight: 1.5, margin: "4px 2px 10px" }}>{msg.text}</div> : null}
@@ -259,7 +278,7 @@ export function BriefCard({ a11y, brief, seen, onOpen }) {
 
 export function BriefView({ a11y, brief, onClose }) {
   const c = C(a11y);
-  const [reveal, setReveal] = React.useState(false);
+  const [shown, setShown] = React.useState({});
   const d = brief && brief.data;
   if (!d) return null;
   const pages = BRIEF_ORDER.filter((k) => briefShown(d, k));
@@ -276,7 +295,7 @@ export function BriefView({ a11y, brief, onClose }) {
         {pages.map((k) => (
           <div key={k} data-brief-block={k} style={{ ...c.frost, padding: "12px 14px", marginBottom: 10 }}>
             <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 8 }}>{BRIEF_TITLE[k]}</div>
-            <BlockBody k={k} b={d.blocks[k]} c={c} reveal={k !== "ask" || reveal} onReveal={() => setReveal(true)} />
+            <BlockBody k={k} b={d.blocks[k]} c={c} reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
           </div>))}
         <button type="button" onClick={onClose} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Понятно</button>
       </div>

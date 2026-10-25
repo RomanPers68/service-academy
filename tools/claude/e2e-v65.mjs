@@ -303,7 +303,8 @@ if (want("HR")) {
       const um = (lastHr && lastHr.messages || []).filter((m) => m.role === "user");
       ok(tag + ": ответ голосом лёг в переписку и ушёл интервьюеру (ai-hr, режим chat) — без служебных полей", c.user.length === 1 && c.user[0] === HR_SAY[0] && lastHr.mode === "chat" && um.length === 1 && um[0].content === HR_SAY[0] && Object.keys(um[0]).join(",") === "role,content", JSON.stringify({ c, um }));
       ok(tag + ": следующий вопрос — в переписке и вслух", c.ai.length === 2 && C.tts.some((b) => b.talk && /шумная компания/.test(String(b.text))), JSON.stringify(c.ai));
-      const s = await seen(page);
+      // v83: слежка пишет раз в 25 мс — ждём, пока она запишет и последнее «слушаю» (снимок сразу иногда её опережал)
+      const s = await waitSeen(page, (x) => passed(x, TURN), 3000);
       ok(tag + ": круг разговора: слушаю → слышу → разбираю → думает → говорит → слушаю", passed(s, TURN), states(s).join(" → "));
       await shot(page, "hr1-voice");
     }

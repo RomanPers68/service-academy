@@ -669,6 +669,8 @@ const MODE = {
   // v31: «Освежить всё выдохшееся» (2–3 темы за один заход) и «Проверка по треку» для опытных
   freshall: { title: "Освежить всё", icon: "refresh", done: "Темы освежены", exitQ: "Выйти?", exitT: "Темы останутся как были. Освежить можно в любой момент." },
   probe: { title: "Проверка по треку", icon: "check", done: "Проверка", exitQ: "Выйти из проверки?", exitT: "Проверку можно пройти в любой момент, ничего не теряется." },
+  // v83: случаи из нашего зала — ситуации, которые разобрал руководитель (lib/cases.js)
+  cases: { title: "Случаи из нашего зала", icon: "guest", done: "Случаи разобраны", exitQ: "Выйти?", exitT: "Случаи останутся в «Смене», вернуться можно в любой момент." },
 };
 const fmtSec = (x) => Math.floor(x / 60) + ":" + String(Math.round(x) % 60).padStart(2, "0");
 export function TableCheck({ mode = "check", lesson = null, mod = null, situations = null, modules = null, shift = "",

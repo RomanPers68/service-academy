@@ -51,7 +51,7 @@ describe("v40: App.jsx — «Путь мастера» подключён", () =
     expect(app).toMatch(/"sa_master_claim" \+ ukP/);
   });
   it("ссылки: из бота ?go=mastery, из Наставника [[go:mastery]], из гида; шаг дня — в напоминании", () => {
-    expect(app).toMatch(/"probe", "mastery"\]\.includes\(v\)/);
+    expect(app).toMatch(/"probe", "mastery"[^\]]*\]\.includes\(v\)/);   // v81: дальше в списке — "mistakes", v82 — "brief"
     expect(app).toMatch(/else if \(g === "mastery"\) openMastery\(\);/);
     expect(app).toMatch(/if \(k === "mastery"\)/);
     expect(app).toMatch(/else if \(dest === "mastery"\) openMastery\(\);/);

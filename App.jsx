@@ -334,6 +334,7 @@ import { hintsFor, hintKey } from "./data/hints";
 import { RoleSelect } from "./ui/screens-roleselect";
 import { MistakesScreen, HomeScreen, ModuleScreen, LessonScreen, GlossaryScreen, loadTable, useTableModule } from "./ui/screens-learning";
 import { APP_SHARE_URL } from "./lib/app-url";
+import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQdaySeen, applyQdayToBank } from "./lib/qday";   // v81: вопрос дня в Telegram
 const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
 const loadGamification = () => import("./ui/screens-gamification");
 const loadTeamScreens = () => import("./ui/screens-team");
@@ -1364,7 +1365,7 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня
     } catch (e) { goLinkRef.current = ""; }
   }
   React.useEffect(() => {
@@ -1382,6 +1383,7 @@ function ServiceAcademy() {
     else if (g === "guest") openGuest();
     else if (g === "probe") { navigate("cellar"); openProbe(); }
     else if (g === "mastery") openMastery();
+    else if (g === "mistakes") navigate("mistakes");
   }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
@@ -1839,6 +1841,44 @@ function ServiceAcademy() {
     if (!storageLoaded || !profile) return;
     try { const uk = `_${profile.name}_${profile.surname||""}`; localStorage.setItem("sa_mistakes"+uk, JSON.stringify(mistakeBank)); } catch(e) {}
   }, [mistakeBank, storageLoaded, profile]);
+  // v81 (Доп. 394): «Вопрос дня» в Telegram. Ответы из чата (этап 31: qday_inbox) — в банк ошибок, ответ сегодня
+  // зажигает свечу; раз в день — очередь своих вопросов на сервер (qday_push): ошибки к повтору, потом пройденные темы.
+  // Через 8 с после старта, чтобы не мешать главной; нет этапа 31 — до перезапуска не спрашиваем.
+  const mistakeBankRef = useRef(mistakeBank); mistakeBankRef.current = mistakeBank;
+  const quizDoneRef = useRef(quizDone); quizDoneRef.current = quizDone;
+  const qdayOffRef = useRef(false);
+  const progCount = programModules.length;
+  React.useEffect(() => {
+    if (!profile || !storageLoaded || !role || qdayOffRef.current || !saToken()) return;
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await rpc("qday_inbox", { p_token: saToken() });
+        if (!alive) return;
+        if (rpcMissing(r)) { qdayOffRef.current = true; return; }
+        const fresh = r && r.ok ? newQdayAnswers(ukP, r.items) : [];
+        if (fresh.length) {
+          setMistakeBank((prev) => applyQdayToBank(prev, fresh, SR_DAYS));
+          markQdaySeen(ukP, fresh.map((a) => a.id));
+          const today = ymd(new Date());
+          const n = fresh.filter((a) => a.at && ymd(new Date(a.at)) === today).length;
+          if (n) logActivity("fix", n);   // ответ в чате сегодня — как работа над ошибками: свеча горит
+        }
+      } catch (e) {}
+      if (!alive || !progCount) return;
+      try {
+        const day = ymd(new Date());
+        const label = (ROLES.find((x) => x.id === role) || {}).label || "";
+        const items = buildQdayQueue({ mistakeBank: mistakeBankRef.current, programModules, quizDone: quizDoneRef.current, roleLabel: label, day, uk: ukP });
+        if (items.length && qdayNeedsPush(ukP, day, items)) {
+          const r2 = await rpc("qday_push", { p_token: saToken(), p_items: items });
+          if (r2 && r2.ok) qdayMarkPushed(ukP, day, items);
+          else if (rpcMissing(r2)) qdayOffRef.current = true;
+        }
+      } catch (e) {}
+    }, 8000);
+    return () => { alive = false; clearTimeout(t); };
+  }, [profile, storageLoaded, role, ukP, todayKey, progCount]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Доп. 309: копия «телефонных» данных (ошибки, экзамены, дни занятий, разминки, навыки)
   // уходит на сервер для отчёта руководителя — через 20 с после изменений и при сворачивании.
   // Нет этапа 23 или сети — тихо, ничего не ломается.

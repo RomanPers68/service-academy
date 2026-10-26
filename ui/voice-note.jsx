@@ -3,11 +3,15 @@
 // VoicePill — кнопка «▶ Шеф · Алексей · 0:42» с полоской прогресса; играет один звук за раз во всём приложении.
 // VoiceRecorder — запись в форме блюда: «Записать» → идёт запись (время, уровень микрофона) → «Послушать» и
 // «Сохранить» → файл уходит в облако (voice-upload), в блюде остаётся ссылка. Перезапись заменяет прежний файл.
+// v86 (Доп. 399): скорость 1× / 1,5× (одна на все записи, помнит телефон), «прослушано» у каждой записи; в «Голосах
+// шефа и сомелье» — плеер внизу экрана: полоса, пауза, назад и вперёд по очереди, скорость; «Только новые».
 import React from "react";
+import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { silentUrl } from "../lib/radio-voice";
-import { VOICE_KINDS, VOICE_MAX_SEC, canRecord, recordClip, uploadClip, clipTime, dishVoices } from "../lib/voice-note";
+import { VOICE_KINDS, VOICE_MAX_SEC, canRecord, recordClip, uploadClip, clipTime, dishVoices,
+  voiceRate, setVoiceRate, nextRate, rateLabel, heardSet, isHeard, markHeard } from "../lib/voice-note";
 
 // ── Один звук за раз: новый останавливает прежний ─────────────────────────────
 // url — ссылка или обещание ссылки (голос произношения сначала спрашивают у сервера). Во втором случае
@@ -15,7 +19,7 @@ import { VOICE_KINDS, VOICE_MAX_SEC, canRecord, recordClip, uploadClip, clipTime
 // а ответ сервера приходит позже (так же делает радио).
 let playing = null;   // { audio, stop }
 export function stopVoice() { const p = playing; playing = null; if (p) { try { p.stop(); } catch (e) {} } }
-export function playUrl(url, { onStart, onTime, onEnd, onError } = {}) {
+export function playUrl(url, { onStart, onTime, onEnd, onError, rate = 1 } = {}) {
   stopVoice();
   let audio;
   try { audio = new Audio(); } catch (e) { onError && onError(); return null; }
@@ -32,6 +36,8 @@ export function playUrl(url, { onStart, onTime, onEnd, onError } = {}) {
     audio.onended = () => finish(true);
     audio.onerror = () => fail();
     audio.src = src;
+    // скорость: defaultPlaybackRate — её не сбрасывает загрузка звука (Chrome возвращает playbackRate к ней)
+    if (rate && rate !== 1) { try { audio.defaultPlaybackRate = rate; audio.playbackRate = rate; } catch (e) {} }
     const p = audio.play();
     if (p && p.then) p.then(() => onStart && onStart(), () => fail());
     else onStart && onStart();
@@ -46,14 +52,18 @@ export function playUrl(url, { onStart, onTime, onEnd, onError } = {}) {
 
 const Ic = {
   play: (c) => <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill={c} /></svg>,
+  check: (c) => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>,
+  prev: (c) => <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2.5v14H6zM20 5v14L9.5 12z" fill={c} /></svg>,
+  next: (c) => <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5H18v14h-2.5zM4 5v14l10.5-7z" fill={c} /></svg>,
   pause: (c) => <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill={c} /></svg>,
   mic: (c) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>,
 };
 
 /** Кнопка-плеер записи. v = { kind, url, sec, name }; label — своя подпись вместо «Шеф · имя». */
-export function VoicePill({ v, gold, text, sub, a11y, label, onPlayed, style }) {
+export function VoicePill({ v, gold, text, sub, a11y, label, onPlayed, style, heard: heardProp }) {
   const [st, setSt] = React.useState("idle");   // idle | load | play | err
   const [p, setP] = React.useState(0);
+  const [heardNow, setHeardNow] = React.useState(false);
   const me = React.useRef(null);
   React.useEffect(() => () => { if (me.current && playing === me.current) stopVoice(); }, []);
   React.useEffect(() => { setSt("idle"); setP(0); }, [v && v.url]);
@@ -63,20 +73,27 @@ export function VoicePill({ v, gold, text, sub, a11y, label, onPlayed, style }) 
     if (e) { e.stopPropagation(); e.preventDefault(); }
     if (st === "play" || st === "load") { stopVoice(); return; }
     vibrate("light"); setSt("load"); setP(0);
+    let far = 0;   // дослушал почти до конца — тоже «прослушано»
     me.current = playUrl(v.url, {
+      rate: voiceRate(),
       onStart: () => setSt("play"),
-      onTime: (t, d) => { const len = d && isFinite(d) ? d : v.sec; if (len) setP(Math.min(1, t / len)); },
-      onEnd: (done) => { setSt("idle"); setP(0); if (done && onPlayed) onPlayed(); },
+      onTime: (t, d) => { const len = d && isFinite(d) ? d : v.sec; if (len) { far = Math.max(far, t / len); setP(Math.min(1, t / len)); } },
+      onEnd: (done) => {
+        setSt("idle"); setP(0);
+        if ((done || far >= 0.85) && !String(v.url).startsWith("blob:")) { markHeard(v); setHeardNow(true); }
+        if (done && onPlayed) onPlayed();
+      },
       onError: () => { setSt("err"); setP(0); },
     });
   };
   const on = st === "play" || st === "load";
+  const heard = heardProp !== undefined ? heardProp : heardNow || isHeard(v, heardSet());
   // «Шеф · Алексей»; если имя уже начинается со слова «шеф» / «сомелье» — без повтора: «Шеф Алексей»
   const nm = String(v.name || "").trim();
   const txt = label || (!nm ? meta.label : nm.toLowerCase().startsWith(meta.label.toLowerCase()) ? nm.charAt(0).toUpperCase() + nm.slice(1) : meta.label + " · " + nm);
   return (
     <button type="button" onClick={toggle} data-voice={v.kind} data-voice-state={st}
-      aria-label={(on ? "Остановить: " : "Слушать: ") + meta.title + (v.name ? ", " + v.name : "")}
+      aria-label={(on ? "Остановить: " : "Слушать: ") + meta.title + (v.name ? ", " + v.name : "") + (heard ? ", прослушано" : "")}
       style={{ position: "relative", overflow: "hidden", display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: "5px 12px 5px 5px",
         borderRadius: 999, border: `1px solid ${gold}${on ? "CC" : "77"}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(255,248,230,0.06)",
         color: text, cursor: "pointer", font: "inherit", textAlign: "left", WebkitTapHighlightColor: "transparent", ...style }}>
@@ -86,6 +103,7 @@ export function VoicePill({ v, gold, text, sub, a11y, label, onPlayed, style }) 
       </span>
       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5, fontFamily: "Georgia, serif" }}>{txt}</span>
       <span style={{ fontSize: 11, color: st === "err" ? "#D9776A" : sub, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{st === "err" ? "не играет" : clipTime(v.sec)}</span>
+      {heard && st !== "err" ? <span data-voice-heard="" title="Прослушано" style={{ display: "inline-flex", flexShrink: 0, marginLeft: -2 }}>{Ic.check(gold)}</span> : null}
       <span aria-hidden="true" style={{ position: "absolute", left: 0, bottom: 0, height: 2, width: `${p * 100}%`, background: gold, transition: "width .25s linear" }} />
     </button>
   );
@@ -196,50 +214,67 @@ export function VoiceRecorder({ kind, value, onChange, restaurant, dishId, gold,
 // Занять «эфир» своим проигрывателем (очередь «слушать подряд»): прежний звук смолкает, а новый плеер — остановит этот
 function claimVoice(stop) { stopVoice(); const me = { stop }; playing = me; return me; }
 
-/** «Голоса шефа и сомелье»: все записи меню, по одной или подряд, как подкаст. */
+const portal = (el) => (typeof document !== "undefined" && document.body && document.body.nodeType === 1 ? createPortal(el, document.body) : el);
+
+/** «Голоса шефа и сомелье»: все записи меню, по одной или подряд, как подкаст. v86: плеер внизу, скорость, «прослушано». */
 export function VoicesList({ T, a11y, gold, dishes = [], Head, glass }) {
   const text = T.modTitle.color, sub = T.modSub.color;
   const items = React.useMemo(() => (dishes || []).filter((d) => d && !d.archived).map((d) => ({ d, voices: dishVoices(d) })).filter((x) => x.voices.length), [dishes]);
-  const queue = React.useMemo(() => items.flatMap((x) => x.voices.map((v) => ({ d: x.d, v }))), [items]);
-  const total = queue.reduce((s, q) => s + (Number(q.v.sec) || 0), 0);
+  const all = React.useMemo(() => items.flatMap((x) => x.voices.map((v) => ({ d: x.d, v }))), [items]);
+  const [heard, setHeard] = React.useState(() => heardSet());
+  const [queue, setQueue] = React.useState([]);   // что играет сейчас: все записи или только новые
   const [cur, setCur] = React.useState(-1);
-  const [st, setSt] = React.useState("idle");   // idle | load | play
+  const [st, setSt] = React.useState("idle");   // idle | load | play | pause
+  const [pos, setPos] = React.useState({ t: 0, d: 0 });
+  const [rate, setRate] = React.useState(() => voiceRate());
   const aRef = React.useRef(null);
   const meRef = React.useRef(null);
-  const halt = () => { const a = aRef.current; if (a) { a.onended = null; a.onerror = null; a.onplaying = null; try { a.pause(); } catch (e) {} } setCur(-1); setSt("idle"); };
+  const qRef = React.useRef([]);
+  const fresh = all.filter((q) => !isHeard(q.v, heard));
+  const total = all.reduce((s, q) => s + (Number(q.v.sec) || 0), 0);
+  const halt = () => { const a = aRef.current; if (a) { a.onended = null; a.onerror = null; a.onplaying = null; a.ontimeupdate = null; try { a.pause(); } catch (e) {} } setCur(-1); setSt("idle"); setPos({ t: 0, d: 0 }); };
   const playAt = (i) => {
-    if (i >= queue.length) { if (meRef.current && playing === meRef.current) playing = null; meRef.current = null; halt(); return; }
+    const q = qRef.current;
+    if (i < 0 || i >= q.length) { if (meRef.current && playing === meRef.current) playing = null; meRef.current = null; halt(); return; }
     // один и тот же <audio> на всю очередь: iPhone пускает следующую запись без нового касания
     if (!aRef.current) { try { aRef.current = new Audio(); aRef.current.preload = "auto"; } catch (e) { return; } }
     const a = aRef.current;
     if (!meRef.current || playing !== meRef.current) meRef.current = claimVoice(halt);   // пусто и пусто — тоже «не наш эфир»
-    setCur(i); setSt("load");
+    setCur(i); setSt("load"); setPos({ t: 0, d: Number(q[i].v.sec) || 0 });
     a.onplaying = () => setSt("play");
-    a.onended = () => playAt(i + 1);
+    a.ontimeupdate = () => setPos({ t: a.currentTime || 0, d: a.duration && isFinite(a.duration) ? a.duration : Number(q[i].v.sec) || 0 });
+    a.onended = () => { markHeard(q[i].v); setHeard(heardSet()); playAt(i + 1); };
     a.onerror = () => playAt(i + 1);
-    a.src = queue[i].v.url;
+    a.src = q[i].v.url;
+    try { const r = voiceRate(); a.defaultPlaybackRate = r; a.playbackRate = r; } catch (e) {}
     const p = a.play(); if (p && p.catch) p.catch(() => halt());
   };
+  const start = (list) => { vibrate("light"); qRef.current = list; setQueue(list); playAt(0); };
+  const pause = () => { const a = aRef.current; if (!a) return; vibrate("light"); if (st === "pause") { const p = a.play(); if (p && p.catch) p.catch(() => {}); setSt("play"); } else { try { a.pause(); } catch (e) {} setSt("pause"); } };
+  const speed = () => { const r = nextRate(rate); vibrate("light"); setRate(r); setVoiceRate(r); const a = aRef.current; if (a) { try { a.defaultPlaybackRate = r; a.playbackRate = r; } catch (e) {} } };
   React.useEffect(() => () => { if (meRef.current && playing === meRef.current) stopVoice(); else halt(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const on = cur >= 0;
   const now = on ? queue[cur] : null;
+  const heardCount = all.length - fresh.length;
+  const btnRound = (lbl, onClick, icon, dis) => (
+    <button type="button" aria-label={lbl} onClick={onClick} disabled={dis} style={{ width: 38, height: 38, borderRadius: 19, border: `1px solid ${gold}88`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", opacity: dis ? 0.35 : 1, flexShrink: 0 }}>{icon}</button>);
   return (
     <div style={T.screen} className="sa-screen">
       {Head("Голоса шефа и сомелье")}
-      <div style={{ padding: "6px 16px 100px" }}>
+      <div style={{ padding: "6px 16px 150px" }}>
         <div style={{ fontSize: 13, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
           Шеф рассказывает о блюдах, сомелье советует, что к ним налить. Своими словами и своим голосом. Слушай по одной записи или подряд, хоть по дороге на смену.
         </div>
-        <button type="button" data-voices-all={on ? "on" : "off"} onClick={() => { vibrate("light"); if (on) stopVoice(); else playAt(0); }}
-          style={{ ...T.doneBtn, width: "100%", marginBottom: 14, background: on ? "transparent" : gold, color: on ? text : "#1A1008", border: `1px solid ${gold}${on ? "AA" : ""}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          {on ? Ic.pause(text) : Ic.play("#1A1008")}
-          <span>{on ? "Стоп" : `Слушать подряд · ${clipTime(total)}`}</span>
-        </button>
-        {now && (
-          <div aria-live="polite" style={{ fontSize: 12.5, color: gold, margin: "-6px 2px 12px", fontStyle: "italic" }}>
-            {st === "load" ? "Загружаю: " : "Звучит: "}{(VOICE_KINDS[now.v.kind] || {}).label}{now.v.name ? " · " + now.v.name : ""} — «{now.d.name}» · {cur + 1} из {queue.length}
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 8, marginBottom: heardCount ? 8 : 14 }}>
+          <button type="button" data-voices-all={on ? "on" : "off"} onClick={() => { if (on) stopVoice(); else start(all); }}
+            style={{ ...T.doneBtn, flex: 1, margin: 0, background: on ? "transparent" : gold, color: on ? text : "#1A1008", border: `1px solid ${gold}${on ? "AA" : ""}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            {on ? Ic.pause(text) : Ic.play("#1A1008")}
+            <span>{on ? "Стоп" : `Слушать подряд · ${clipTime(total)}`}</span>
+          </button>
+          {!on && heardCount && fresh.length ? <button type="button" data-voices-new="" onClick={() => start(fresh)}
+            style={{ ...T.doneBtn, margin: 0, flex: "0 0 auto", padding: "0 16px", background: "transparent", color: text, border: `1px solid ${gold}AA` }}>Только новые · {fresh.length}</button> : null}
+        </div>
+        {heardCount ? <div data-voices-heard="" style={{ fontSize: 12.5, color: sub, margin: "0 2px 14px" }}>Прослушано {heardCount} из {all.length}{fresh.length ? "" : ": всё послушал(а)"}</div> : null}
         {items.map(({ d, voices }) => {
           const playingHere = now && now.d === d;
           return (
@@ -249,13 +284,40 @@ export function VoicesList({ T, a11y, gold, dishes = [], Head, glass }) {
                 <div style={{ ...labelStyle(12.5), color: gold, marginBottom: 2 }}>{d.cat || "Блюдо"}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 15.5, color: text, marginBottom: 8, lineHeight: 1.3 }}>{d.name}</div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-                  {voices.map((v) => <VoicePill key={v.kind} v={v} gold={gold} text={text} sub={sub} a11y={a11y} />)}
+                  {voices.map((v) => <VoicePill key={v.kind} v={v} gold={gold} text={text} sub={sub} a11y={a11y} heard={isHeard(v, heard)} onPlayed={() => setHeard(heardSet())} />)}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+      {/* плеер — порталом, как полоса брифинга: внутри .sa-screen (анимация с transform) fixed прилипает к экрану, а не к окну */}
+      {now ? portal(<>
+        {/* для экранного диктора — одна строка на запись (не время: оно меняется четыре раза в секунду) */}
+        <span data-voices-now="" aria-live="polite" style={{ position: "absolute", width: 1, height: 1, margin: -1, padding: 0, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 }}>
+          {"Звучит: " + now.d.name + ". " + ((VOICE_KINDS[now.v.kind] || {}).label || "") + (now.v.name ? ", " + now.v.name : "") + ". " + (cur + 1) + " из " + queue.length}</span>
+        <div data-voices-player={st} style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, fontFamily: "Georgia, serif",
+          padding: "0 14px calc(12px + env(safe-area-inset-bottom, 0px))", background: a11y ? "rgba(245,238,222,0.96)" : "rgba(21,17,11,0.96)", borderTop: `1px solid ${gold}44`,
+          boxShadow: "0 -8px 24px rgba(0,0,0,0.35)" }}>
+          <div role="progressbar" aria-label="Сколько прослушано" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pos.d ? Math.round((pos.t / pos.d) * 100) : 0}
+            style={{ height: 3, margin: "0 -14px 10px", background: `${gold}26` }}>
+            <div style={{ height: "100%", width: `${pos.d ? Math.min(100, (pos.t / pos.d) * 100) : 0}%`, background: gold, transition: "width .25s linear" }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 560, margin: "0 auto" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{now.d.name}</div>
+              <div style={{ fontSize: 11.5, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontVariantNumeric: "tabular-nums" }}>
+                {(VOICE_KINDS[now.v.kind] || {}).label}{now.v.name ? " · " + now.v.name : ""} · {st === "load" ? "загружаю" : clipTime(pos.t) + " из " + clipTime(pos.d)} · {cur + 1}/{queue.length}</div>
+            </div>
+            {btnRound("Предыдущая запись", () => playAt(cur - 1), Ic.prev(gold), cur <= 0)}
+            <button type="button" data-voices-pause="" aria-label={st === "pause" ? "Дальше слушать" : "Пауза"} onClick={pause}
+              style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+              {st === "pause" ? Ic.play("#1A1008") : Ic.pause("#1A1008")}</button>
+            {btnRound("Следующая запись", () => playAt(cur + 1), Ic.next(gold), cur >= queue.length - 1)}
+            <button type="button" data-voices-rate={rate} aria-label={"Скорость: " + rateLabel(rate)} onClick={speed}
+              style={{ minWidth: 46, height: 30, borderRadius: 15, border: `1px solid ${gold}88`, background: rate !== 1 ? `${gold}33` : "transparent", color: text, fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>{rateLabel(rate)}</button>
+          </div>
+        </div></>) : null}
     </div>
   );
 }

@@ -6,13 +6,15 @@
 // обычное следующее действие (свободный — посадить, с гостями — на уборку, после уборки — свободен). Под схемой — у кого
 // из официантов какие столы и кто в графике без столов. Руководителю — «Схема зала»: столы на сетке (номер, места, форма),
 // и «Очистить доску». Сервер — этап 35; без него экран говорит, что этапа нет.
+// v86 (Доп. 399): статус «Счёт» (этап 36) — гости попросили счёт, стол скоро освободится: на схеме — терракотой,
+// в подборе компании — «Скоро освободится».
 import React from "react";
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { briefRoster } from "../lib/briefing";
-import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
+import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan } from "../lib/seating";
 
 const POLL_MS = 15000;
@@ -29,6 +31,8 @@ const C = (a11y) => ({
     free: { bg: "transparent", bd: a11y ? "rgba(139,106,48,0.55)" : "rgba(214,178,102,0.55)", fg: a11y ? "#2A1F0E" : "#EFE4C8", dash: false },
     res: { bg: a11y ? "rgba(60,110,160,0.16)" : "rgba(126,180,220,0.18)", bd: a11y ? "#3C6E9F" : "#8FBCE0", fg: a11y ? "#1E4E70" : "#CFE6F5", dash: false },
     seat: { bg: a11y ? "rgba(139,106,48,0.30)" : "rgba(210,168,90,0.42)", bd: a11y ? "#8B6A30" : "#E4C88C", fg: a11y ? "#2A1F0E" : "#FFF4DC", dash: false },
+    // v86: «Счёт» — терракота: стол скоро освободится
+    bill: { bg: a11y ? "rgba(160,65,47,0.18)" : "rgba(224,138,122,0.32)", bd: a11y ? "#A0412F" : "#EBA595", fg: a11y ? "#5A1E12" : "#FFE9E2", dash: false },
     clean: { bg: a11y ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)", bd: a11y ? "rgba(90,70,40,0.45)" : "rgba(200,190,170,0.45)", fg: a11y ? "#6B5B40" : "#A99A7C", dash: true },
   },
   frost: {
@@ -83,7 +87,7 @@ export function Floor({ a11y, c = C(a11y), plan, map, now, hi = [], sel, edit = 
         const fs = need > avail ? Math.max(7.5, avail / (sub.length * 0.6)) : fs0;
         return (
           <button key={t.id} type="button" data-table={t.id} data-status={r.status} data-hi={on ? "1" : "0"} onClick={() => onTable && onTable(t)}
-            aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + STATUS[r.status].toLowerCase() + (r.status === "seat" ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")}
+            aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")}
             style={{ position: "absolute", left: t.x * cell + pad, top: t.y * cell + pad, width: wide * cell - 2 * pad, height: cell - 2 * pad, boxSizing: "border-box",
               borderRadius: t.shape === "rd" ? "50%" : Math.max(4, cell * 0.16), border: `${isSel || on ? 2 : 1.2}px ${s.dash ? "dashed" : "solid"} ${isSel ? (a11y ? "#2A1F0E" : "#FFF4DC") : on ? c.gold : s.bd}`,
               background: s.bg, color: s.fg, cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -122,10 +126,11 @@ export function TableSheet({ a11y, c = C(a11y), t, row, staff, shiftMap = {}, lo
     if (busy) return;
     if (status === "res" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(rtime)) { setErr("Укажи время брони, например 19:30"); return; }
     setBusy(true); setErr("");
-    onSave(t, { status, cnt: status === "seat" || status === "res" ? cnt : 0, name: status === "res" ? name.trim() : "", rtime: status === "res" ? rtime : "", waiter: status === "seat" ? waiter || null : null })
-      .then((ok) => { setBusy(false); if (!ok) setErr("Не сохранилось. Проверь связь."); });
+    onSave(t, { status, cnt: status === "seat" || status === "bill" || status === "res" ? cnt : 0, name: status === "res" ? name.trim() : "", rtime: status === "res" ? rtime : "",
+      waiter: status === "seat" || status === "bill" ? waiter || null : null })
+      .then((ok) => { setBusy(false); if (ok !== true) setErr(ok === "need36" ? "Статус «Счёт» появится, когда на сервер добавят этап 36." : "Не сохранилось. Проверь связь."); });
   };
-  const min = row.status === "seat" ? minutesSince(row.since, now) : 0;
+  const min = isBusy(row) ? minutesSince(row.since, now) : 0;
   return portal(
     <div className="sa-layer" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: a11y ? "rgba(70,52,24,0.35)" : "rgba(8,6,3,0.62)", display: "flex", alignItems: "flex-end", justifyContent: "center", fontFamily: "Georgia, serif" }}>
       <div data-table-sheet={t.id} role="dialog" aria-modal="true" aria-label={"Стол " + t.n} onClick={(e) => e.stopPropagation()}
@@ -134,12 +139,12 @@ export function TableSheet({ a11y, c = C(a11y), t, row, staff, shiftMap = {}, lo
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 21, color: c.text }}>Стол {t.n}</div>
-            <div style={{ fontSize: 13, color: c.sub }}>{t.seats} {pl(t.seats, "место", "места", "мест")} · сейчас: {STATUS[row.status].toLowerCase()}{row.status === "seat" ? ", " + (row.cnt || 0) + " " + pl(row.cnt || 0, "гость", "гостя", "гостей") + ", " + sinceLabel(min) : ""}{row.status === "res" && row.rtime ? " на " + row.rtime : ""}</div>
+            <div style={{ fontSize: 13, color: c.sub }}>{t.seats} {pl(t.seats, "место", "места", "мест")} · сейчас: {STATUS[row.status].toLowerCase()}{isBusy(row) ? ", " + (row.cnt || 0) + " " + pl(row.cnt || 0, "гость", "гостя", "гостей") + ", " + sinceLabel(min) : ""}{row.status === "res" && row.rtime ? " на " + row.rtime : ""}</div>
           </div>
           <button type="button" data-sa-back="" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.sub, fontSize: 26, cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
         <div role="radiogroup" aria-label="Что со столом" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0 14px" }}>
-          {[["seat", "Гости"], ["res", "Бронь"], ["clean", "Уборка"], ["free", "Свободен"]].map(([k, l]) => (
+          {[["seat", "Гости"], ["bill", "Счёт"], ["clean", "Уборка"], ["free", "Свободен"], ["res", "Бронь"]].map(([k, l]) => (
             <button key={k} type="button" role="radio" aria-checked={st === k} data-sheet-status={k} onClick={() => { vibrate("light"); setErr(""); setSt(k); }} style={chip(c, st === k, a11y)}>{l}</button>))}
         </div>
         {st === "seat" || st === "res" ? (
@@ -172,7 +177,7 @@ export function TableSheet({ a11y, c = C(a11y), t, row, staff, shiftMap = {}, lo
           </div>) : null}
         {err ? <div role="alert" style={{ fontSize: 13, color: c.red, marginBottom: 10 }}>{err}</div> : null}
         <button type="button" data-sheet-save="" onClick={() => save(st)} disabled={busy} style={{ ...btn(c, true), width: "100%", opacity: busy ? 0.6 : 1 }}>
-          {busy ? "Сохраняю…" : st === "seat" ? (row.status === "seat" ? "Сохранить" : "Посадить") : st === "res" ? (row.status === "res" ? "Сохранить бронь" : "Забронировать") : st === "clean" ? "На уборку" : "Освободить стол"}</button>
+          {busy ? "Сохраняю…" : st === "seat" ? (isBusy(row) ? "Сохранить" : "Посадить") : st === "bill" ? "Попросили счёт" : st === "res" ? (row.status === "res" ? "Сохранить бронь" : "Забронировать") : st === "clean" ? "На уборку" : "Освободить стол"}</button>
       </div>
     </div>
   );
@@ -282,6 +287,8 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const now = ok ? Date.parse(st.now) + (Date.now() - st.at) : Date.now();
   const sum = summary(plan, ok ? st.tables : []);
   const hi = party ? suggest(plan, ok ? st.tables : [], party) : [];
+  const soon = party ? soonFree(plan, ok ? st.tables : [], party) : [];
+  const tn = (id) => "стол " + ((plan.tables || []).find((q) => q.id === id) || {}).n;
   const res = reservations(plan, ok ? st.tables : []);
   const team = waiterLoad(plan, ok ? st.tables : [], st.staff || [], shiftMap);
   const selT = plan && sel ? (plan.tables || []).find((q) => q.id === sel) : null;
@@ -290,10 +297,10 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
       vibrate("success");
       setSt((s) => ({ ...s, tables: [...(s.tables || []).filter((x) => x.tid !== t.id), r.table] }));
       setSel(null); setParty(0);
-      setMsg(f.status === "seat" ? "Стол " + t.n + ": посадили." : f.status === "res" ? "Стол " + t.n + ": бронь на " + f.rtime + "." : f.status === "clean" ? "Стол " + t.n + ": на уборку." : "Стол " + t.n + " свободен.");
+      setMsg(f.status === "seat" ? "Стол " + t.n + ": посадили." : f.status === "bill" ? "Стол " + t.n + ": попросили счёт." : f.status === "res" ? "Стол " + t.n + ": бронь на " + f.rtime + "." : f.status === "clean" ? "Стол " + t.n + ": на уборку." : "Стол " + t.n + " свободен.");
       return true;
     }
-    return false;
+    return r && r.error === "bad_request" && f.status === "bill" ? "need36" : false;   // этап 35 без 36 «Счёт» не знает
   }).catch(() => false);
   // «Очистить доску»: второе нажатие в течение 4 секунд, потом кнопка снова обычная
   React.useEffect(() => { if (!sure) return undefined; const t = setTimeout(() => setSure(false), 4000); return () => clearTimeout(t); }, [sure]);
@@ -327,8 +334,9 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
           ) : <>
             <div data-seat-summary="" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "2px 0 10px", fontSize: 13, color: c.sub }}>
               <span>Свободно <b style={{ color: c.text }}>{sum.free}</b> из {sum.total}</span><span>·</span>
-              <span>Занято <b style={{ color: c.text }}>{sum.seat}</b></span><span>·</span>
+              <span>Занято <b style={{ color: c.text }}>{(sum.seat || 0) + (sum.bill || 0)}</b></span><span>·</span>
               <span>Гостей <b style={{ color: c.text }}>{sum.guests}</b></span>
+              {sum.bill ? <><span>·</span><span>Счёт <b style={{ color: c.text }}>{sum.bill}</b></span></> : null}
               {sum.res ? <><span>·</span><span>Брони <b style={{ color: c.text }}>{sum.res}</b></span></> : null}
               {sum.clean ? <><span>·</span><span>Уборка <b style={{ color: c.text }}>{sum.clean}</b></span></> : null}
             </div>
@@ -336,13 +344,14 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
               <span style={{ ...labelStyle(13), color: c.gold }}>Посадить:</span>
               {PARTY.map(([n, l]) => <button key={n} type="button" data-party={n} onClick={() => { vibrate("light"); setParty(party === n ? 0 : n); }} style={chip(c, party === n, a11y)}>{l}</button>)}
             </div>
-            {party ? <div data-suggest="" style={{ fontSize: 13, color: hi.length ? c.text : c.red, margin: "0 2px 10px" }}>
-              {hi.length ? "Подойдут: " + hi.map((id) => "стол " + plan.tables.find((q) => q.id === id).n).join(", ") + ". Они подсвечены." : "Свободных столов на столько гостей нет."}</div> : null}
+            {party ? <div data-suggest="" style={{ fontSize: 13, color: hi.length || soon.length ? c.text : c.red, margin: "0 2px 10px", lineHeight: 1.45 }}>
+              {hi.length ? "Подойдут: " + hi.map(tn).join(", ") + ". Они подсвечены." : "Свободных столов на столько гостей нет."}
+              {soon.length ? <span data-soon=""> Скоро освободится: {soon.map(tn).join(", ")} (попросили счёт).</span> : null}</div> : null}
             <div style={{ ...c.frost, padding: 10 }}>
               <Floor c={c} a11y={a11y} plan={plan} map={map} now={now} hi={hi} sel={sel} onTable={(t) => { vibrate("light"); setMsg(""); setSel(t.id); }} />
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "10px 2px 0", fontSize: 12, color: c.sub }}>
-              {["free", "res", "seat", "clean"].map((k) => <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              {["free", "res", "seat", "bill", "clean"].map((k) => <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <span style={{ width: 12, height: 12, borderRadius: 3, background: c.st[k].bg, border: `1.2px ${c.st[k].dash ? "dashed" : "solid"} ${c.st[k].bd}` }} />{STATUS[k].toLowerCase()}</span>)}
             </div>
             {team.busy.length || team.idle.length ? <div data-waiters="" style={{ marginTop: 16 }}>

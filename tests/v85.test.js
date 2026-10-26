@@ -118,7 +118,7 @@ describe("v85: доска на сегодня", () => {
     expect(tableSub(PLAN.tables[0], stateOf(map, "t1"), NOW)).toBe("4 м.");
   });
   it("в карточке стола сразу выбрано обычное следующее; гостей — как в брони, по компании или двое (не больше мест)", () => {
-    expect(NEXT).toEqual({ free: "seat", res: "seat", seat: "clean", clean: "free" });
+    expect(NEXT).toEqual({ free: "seat", res: "seat", seat: "bill", bill: "clean", clean: "free" });   // v86: + «Счёт»
     expect(defaultCnt({ seats: 4 }, { cnt: 0 }, 0)).toBe(2);
     expect(defaultCnt({ seats: 4 }, { cnt: 0 }, 4)).toBe(4);
     expect(defaultCnt({ seats: 4 }, { cnt: 0 }, 8)).toBe(4);
@@ -180,13 +180,13 @@ describe("v85: экран", () => {
     expect(html).toContain(">Посадить</button>");
     expect(html).toContain("4 места · сейчас: свободен");
   });
-  it("карточка стола с гостями: сразу «Уборка», сколько гостей и сколько сидят; бронь: время и на кого", async () => {
+  it("карточка стола с гостями: сразу «Счёт» (v86; было «Уборка»), сколько гостей и сколько сидят; бронь: время и на кого", async () => {
     const { TableSheet } = await import("../ui/seating.jsx");
     const map = boardMap(ROWS);
     const s2 = R(h(TableSheet, { a11y: true, t: PLAN.tables[1], row: stateOf(map, "t2"), staff: STAFF, now: NOW, onSave: async () => true, onClose: () => {} }));
-    expect(s2).toContain('aria-checked="true" data-sheet-status="clean"');
+    expect(s2).toContain('aria-checked="true" data-sheet-status="bill"');
     expect(s2).toContain("4 места · сейчас: гости, 4 гостя, 25 мин");
-    expect(s2).toContain(">На уборку</button>");
+    expect(s2).toContain(">Попросили счёт</button>");
     const s4 = R(h(TableSheet, { a11y: false, t: PLAN.tables[3], row: stateOf(map, "t4"), staff: STAFF, now: NOW, onSave: async () => true, onClose: () => {} }));
     expect(s4).toContain('aria-checked="true" data-sheet-status="free"');
     expect(s4).toContain(">Освободить стол</button>");
@@ -207,7 +207,8 @@ describe("v85: в приложении", () => {
   const app = rd("App.jsx");
   it("«Смена» → «На смене» → «Рассадка» (после брифинга, перед графиком); экран лениво; ?go=seat; без этапа 35 пункт пропадает", () => {
     expect(app).toContain('const SeatingScreen = lazyOf(() => import("./ui/seating"), "SeatingScreen");');
-    expect(app).toContain('seatOn && { key:"seat", group:"На смене", icon:"seat", label:"Рассадка", sub:"Схема зала: кто где сидит, брони и уборка", onClick:() => navigate("seat") },');
+    // v86: подпись — «Твои столы: …», если официанту посадили гостей
+    expect(app).toContain('seatOn && { key:"seat", group:"На смене", icon:"seat", label:"Рассадка", sub: myTablesSub(myTables) || "Схема зала: кто где сидит, брони и уборка", onClick:() => navigate("seat") },');
     expect(app.indexOf('seatOn && { key:"seat"')).toBeLessThan(app.indexOf('{ key:"sch", group:"На смене"'));
     expect(app.indexOf('isLead && { key:"brief"')).toBeLessThan(app.indexOf('seatOn && { key:"seat"'));
     expect(app).toMatch(/"thanks", "seat"[^\]]*\]\.includes\(v\)/);

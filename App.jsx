@@ -337,6 +337,7 @@ import { APP_SHARE_URL } from "./lib/app-url";
 import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQdaySeen, applyQdayToBank } from "./lib/qday";   // v81: вопрос дня в Telegram
 import { casesSub, isCaseMistake, markPlayed, readSince, markSince } from "./lib/cases";   // v83: случаи из нашего зала
 import { thanksSub } from "./lib/guest-thanks";   // v84: спасибо от гостей по QR
+import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
 const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
 const loadGamification = () => import("./ui/screens-gamification");
 const loadTeamScreens = () => import("./ui/screens-team");
@@ -1372,6 +1373,7 @@ function ServiceAcademy() {
   // спрашиваем при входе во вкладку, не чаще раза в пять минут; без этапа 32 — больше не спрашиваем до перезапуска.
   const [teamBrief, setTeamBrief] = useState(null);   // { data, author, mine, sent, at } | null
   const [briefSeen, setBriefSeen] = useState("");
+  const [briefReads, setBriefReads] = useState(null);   // v86: руководителю на карточке — сколько прочитали (этап 36)
   const briefView = layerData(layers, "brief"), setBriefView = layerSet.brief;
   const briefAskRef = useRef({ at: 0, off: false, open: false });
   const briefKeyOf = (b) => (b && b.data ? (b.data.day || "") + "|" + (b.at || "") : "");
@@ -1382,7 +1384,13 @@ function ServiceAcademy() {
     st.at = Date.now();
     rpc("brief_today", { p_token: saToken() }).then((r) => {
       if (rpcMissing(r)) { st.off = true; return; }
-      if (r && r.ok) setTeamBrief(r.brief && r.brief.data ? r.brief : null);
+      if (r && r.ok) {
+        const b = r.brief && r.brief.data ? r.brief : null;
+        setTeamBrief(b);
+        const lead = !!profile.is_admin || ["manager", "senior"].includes(profile.position);
+        if (b && lead) rpc("brief_reads", { p_token: saToken() }).then((x) => setBriefReads(x && x.ok && x.brief ? x : null)).catch(() => {});
+        else setBriefReads(null);
+      }
     }).catch(() => { st.at = 0; });
   }, [profile]);
   useEffect(() => { if (screen === "shift" && storageLoaded) loadTeamBrief(false); }, [screen, storageLoaded, loadTeamBrief]);
@@ -1436,6 +1444,24 @@ function ServiceAcademy() {
   const openThanks = (tab) => { vibrate("light"); setThanksTab(tab); navigate("thanks"); };
   // v85 (Доп. 398): рассадка — пункт в «Смене»; без этапа 35 (экран ответил, что его нет) пункт пропадает до перезапуска
   const [seatOn, setSeatOn] = useState(true);
+  // v86 (Доп. 399): «Твои столы» в пункте «Рассадка» — у официанта, которому посадили гостей (seat_board, этап 35):
+  // при входе в «Смену» и раз в минуту, пока она открыта
+  const [myTables, setMyTables] = useState(null);
+  const seatAskRef = useRef(0);
+  useEffect(() => {
+    if (screen !== "shift" || !storageLoaded || !profile || !profile.restaurant || !seatOn) return undefined;
+    const ask = () => {
+      if (Date.now() - seatAskRef.current < 55e3) return;
+      seatAskRef.current = Date.now();
+      rpc("seat_board", { p_token: saToken() }).then((r) => {
+        if (rpcMissing(r)) { setSeatOn(false); return; }
+        if (r && r.ok) setMyTables(myTablesOf(r, profile.id));
+      }).catch(() => { seatAskRef.current = 0; });
+    };
+    ask();
+    const t = setInterval(ask, 60e3);
+    return () => clearInterval(t);
+  }, [screen, storageLoaded, profile, seatOn]);
   // ссылка «Брифинг смены» из Telegram (?go=brief): открыть, как только брифинг пришёл
   useEffect(() => { if (briefAskRef.current.open && teamBrief) { briefAskRef.current.open = false; openTeamBrief(); } }, [teamBrief, openTeamBrief]);
   // v31: ссылки из подталкиваний бота: ?go=pair|league|cellar|month|shift|radio|guest|probe (или startapp=go_…)
@@ -2928,14 +2954,14 @@ function ServiceAcademy() {
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
           hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} onOpen={() => navigate("schedule")} />
             {/* v82 (Доп. 395): брифинг смены от руководителя */}
-            {teamBrief ? <Suspense fallback={null}><BriefCard a11y={a11y} brief={teamBrief} seen={!!teamBrief.mine || briefSeen === briefKeyOf(teamBrief)} onOpen={openTeamBrief} /></Suspense> : null}
+            {teamBrief ? <Suspense fallback={null}><BriefCard a11y={a11y} brief={teamBrief} seen={!!teamBrief.mine || briefSeen === briefKeyOf(teamBrief)} reads={isLead ? briefReads : null} onOpen={openTeamBrief} /></Suspense> : null}
             {/* v30 (Доп. 314): квест смены и твоя часть */}
             <Suspense fallback={null}><QuestCard a11y={a11y} tasks={questTasks} todayRec={activity[todayKey] || {}} tick={questTick} lead={isLead} shift={shiftText} off={!!(shiftToday && shiftToday.off)}
               data={briefStatus === "ok" ? (brief && brief.quest) || { ok: false } : briefStatus === "pending" ? null : undefined} onReload={() => refreshDay(true)}
               onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
           // v71: группами — «На смене» (дело) и «Потренироваться» (две минуты на практику)
           isLead && { key:"brief", group:"На смене", icon:"brief", label:"Брифинг смены", sub: teamBrief ? "Сегодня отправлен" + (teamBrief.author && !teamBrief.mine ? ": " + teamBrief.author : "") + ". Можно поправить" : "Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды", onClick:() => navigate("brief") },   // v82
-          seatOn && { key:"seat", group:"На смене", icon:"seat", label:"Рассадка", sub:"Схема зала: кто где сидит, брони и уборка", onClick:() => navigate("seat") },   // v85
+          seatOn && { key:"seat", group:"На смене", icon:"seat", label:"Рассадка", sub: myTablesSub(myTables) || "Схема зала: кто где сидит, брони и уборка", onClick:() => navigate("seat") },   // v85; v86: «Твои столы»
           { key:"sch", group:"На смене", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
           { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, предсменка, закрытие", onClick:() => navigate("checklist") },
           { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено: за час до смены зовёт на разминку" : "Разминка в 2 минуты за час до смены", onClick:() => setRemindOpen(true) },

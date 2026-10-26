@@ -4,12 +4,16 @@
 // ссылкой», «Картинка для печати», сколько спасибо за неделю, месяц и всего, последние с отметками и словами гостя;
 // «Сменить QR» — старый код перестаёт работать. Руководителю и старшему — вкладка «Команда»: кого и за что благодарят,
 // неуместный текст можно скрыть. Сервер — этап 34; без него экран честно говорит, что этапа нет.
+// v86 (Доп. 399): «Показать гостю» — QR на весь экран на светлом фоне, экран не гаснет, пока он открыт; руководителю во
+// вкладке «Команда» — «Отзывы о заведении»: ссылки на Яндекс Карты, 2ГИС, Google Карты (этап 36), их гость видит
+// после «Спасибо передано».
 import React from "react";
+import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { qrMatrix, qrPath } from "../lib/qr";
-import { tagLabel, thanksUrl, posLabel, tagsLine } from "../lib/guest-thanks";
+import { tagLabel, thanksUrl, posLabel, tagsLine, reviewKind, REVIEW_KINDS } from "../lib/guest-thanks";
 
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const dayOf = (iso) => { const d = new Date(iso || 0); return isNaN(d) ? "" : d.getDate() + " " + MONTHS[d.getMonth()]; };
@@ -70,11 +74,54 @@ function QrCard({ c, url, name, pos, restaurant }) {
   );
 }
 
+const portal = (el) => (typeof document !== "undefined" && document.body && document.body.nodeType === 1 ? createPortal(el, document.body) : el);
+
+/** v86: QR на весь экран — показать гостю. Светлый фон (так ярче и камера читает быстрее), экран не гаснет (Wake Lock). */
+export function QrFull({ url, name, pos, restaurant, onClose }) {
+  const qr = React.useMemo(() => qrMatrix(url, { ecl: "M" }), [url]);
+  React.useEffect(() => {
+    let lock = null, dead = false;
+    const get = () => {
+      try {
+        if (!navigator.wakeLock || document.visibilityState !== "visible") return;
+        navigator.wakeLock.request("screen").then((l) => {
+          if (dead) { l.release().catch(() => {}); return; }
+          lock = l; try { l.addEventListener("release", () => { lock = null; }); } catch (e) {}
+        }).catch(() => {});
+      } catch (e) {}
+    };
+    get();
+    const vis = () => { if (document.visibilityState === "visible" && !lock) get(); };   // свёрнутое приложение отпускает «не гаснуть»
+    try { document.addEventListener("visibilitychange", vis); } catch (e) {}
+    return () => { dead = true; try { document.removeEventListener("visibilitychange", vis); } catch (e) {} try { if (lock) lock.release().catch(() => {}); } catch (e) {} };
+  }, []);
+  if (!qr) return null;
+  const n = qr.size + 8;
+  return portal(
+    <div data-thanks-full="" role="dialog" aria-modal="true" aria-label="QR для гостя" className="sa-layer"
+      style={{ position: "fixed", inset: 0, zIndex: 1100, background: PAPER, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        padding: "max(16px, var(--sa-st, env(safe-area-inset-top, 0px))) 18px calc(18px + env(safe-area-inset-bottom, 0px))", boxSizing: "border-box", fontFamily: "Georgia, serif", textAlign: "center" }}>
+      <button type="button" data-sa-back="" aria-label="Закрыть" onClick={onClose}
+        style={{ position: "absolute", top: "max(10px, var(--sa-st, env(safe-area-inset-top, 0px)))", right: 12, width: 44, height: 44, border: 0, background: "none", color: "#8B6A30", fontSize: 30, lineHeight: 1, cursor: "pointer" }}>×</button>
+      <div style={{ fontStyle: "italic", fontSize: 17, color: "#8B6A30" }}>{restaurant}</div>
+      <div style={{ fontSize: 30, color: INK, margin: "6px 0 16px" }}>Скажите спасибо</div>
+      <svg viewBox={"0 0 " + n + " " + n} shapeRendering="crispEdges" role="img" aria-label={"QR-код: спасибо для " + (name || "сотрудника")}
+        style={{ width: "min(84vw, 56vh)", height: "min(84vw, 56vh)", display: "block", background: "#fff", borderRadius: 8 }}>
+        <path d={qrPath(qr, 4)} fill={INK} />
+      </svg>
+      <div style={{ fontSize: 30, color: INK, marginTop: 16 }}>{name}</div>
+      {pos ? <div style={{ fontStyle: "italic", fontSize: 17, color: "#8B6A30" }}>{pos}</div> : null}
+      <div style={{ fontSize: 15, color: "#5A4628", marginTop: 12 }}>Наведите камеру телефона на код</div>
+    </div>
+  );
+}
+
 function Mine({ c, a11y, st, profile, onRotate, rotating }) {
   const url = thanksUrl(typeof location !== "undefined" ? location.origin : "", st.code);
   const pos = posLabel(profile && profile.position);
   const [msg, setMsg] = React.useState("");
   const [sure, setSure] = React.useState(false);
+  const [full, setFull] = React.useState(false);
   const share = () => {
     vibrate("light");
     const data = { title: "Сказать спасибо", text: "Скажите спасибо: " + (st.name || ""), url };
@@ -99,10 +146,11 @@ function Mine({ c, a11y, st, profile, onRotate, rotating }) {
   return (
     <div>
       <QrCard c={c} url={url} name={st.name} pos={pos} restaurant={st.restaurant} />
+      <button type="button" data-thanks-show="" onClick={() => { vibrate("light"); setFull(true); }} style={{ ...btn(c, true), width: "100%", marginTop: 12 }}>Показать гостю на весь экран</button>
       <div style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, margin: "12px 2px" }}>Покажи гостю или поставь распечатку на стол: гость наводит камеру и говорит спасибо лично тебе. Без регистрации, за пару секунд.</div>
       <div style={{ display: "flex", gap: 10 }}>
         <button type="button" data-thanks-share="" onClick={share} style={{ ...btn(c), flex: 1 }}>Поделиться ссылкой</button>
-        <button type="button" data-thanks-print="" onClick={save} style={{ ...btn(c, true), flex: 1 }}>Картинка для печати</button>
+        <button type="button" data-thanks-print="" onClick={save} style={{ ...btn(c), flex: 1 }}>Картинка для печати</button>
       </div>
       {msg ? <div role="status" style={{ fontSize: 13, color: c.text, margin: "10px 2px 0", lineHeight: 1.45, wordBreak: "break-all" }}>{msg}</div> : null}
       <div style={{ ...c.frost, padding: "14px 16px", margin: "16px 0 10px", display: "flex", textAlign: "center" }} data-thanks-stats="">
@@ -124,6 +172,52 @@ function Mine({ c, a11y, st, profile, onRotate, rotating }) {
           style={{ border: 0, background: "none", color: sure ? c.red : c.sub, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer", padding: "6px 2px" }}>
           {rotating ? "Меняю…" : sure ? "Старый QR перестанет работать. Нажми ещё раз" : "Сменить QR"}</button>
       </div>
+      {full ? <QrFull url={url} name={st.name} pos={pos} restaurant={st.restaurant} onClose={() => setFull(false)} /> : null}
+    </div>
+  );
+}
+
+/** v86: «Отзывы о заведении» — руководителю: ссылки на Яндекс Карты, 2ГИС, Google Карты (этап 36). */
+function ReviewLinks({ c, a11y }) {
+  const [st, setSt] = React.useState("loading");   // loading | ok | missing | error
+  const [vals, setVals] = React.useState(["", ""]);
+  const [busy, setBusy] = React.useState(false);
+  const [msg, setMsg] = React.useState(null);   // { ok, text }
+  React.useEffect(() => {
+    let alive = true;
+    rpc("review_links", { p_token: saToken() }).then((r) => {
+      if (!alive) return;
+      if (rpcMissing(r)) { setSt("missing"); return; }
+      if (r && r.ok) { const l = (r.links || []).map((x) => String((x && x.url) || "")); setVals([l[0] || "", l[1] || ""]); setSt("ok"); } else setSt("error");
+    }).catch(() => alive && setSt("error"));
+    return () => { alive = false; };
+  }, []);
+  if (st === "loading" || st === "error") return null;
+  const save = () => {
+    const list = vals.map((v) => v.trim()).filter(Boolean);
+    const bad = list.find((u) => !reviewKind(u));
+    if (bad) { setMsg({ ok: false, text: "Это не страница заведения в Яндекс Картах, 2ГИС или Google Картах: " + bad.slice(0, 60) }); return; }
+    if (list.length === 2 && reviewKind(list[0]) === reviewKind(list[1])) { setMsg({ ok: false, text: "Обе ссылки на одни и те же карты. Оставь одну." }); return; }
+    setBusy(true); setMsg(null);
+    rpc("review_links_set", { p_token: saToken(), p_links: list }).then((r) => {
+      setBusy(false);
+      if (r && r.ok) { vibrate("success"); setMsg({ ok: true, text: list.length ? "Сохранено. После «Спасибо передано» гость увидит: " + list.map((u) => REVIEW_KINDS[reviewKind(u)]).join(", ") + "." : "Ссылок нет: гость отзыв не увидит." }); }
+      else if (r && r.error === "forbidden") setMsg({ ok: false, text: "Ссылки меняет руководитель или старший." });
+      else setMsg({ ok: false, text: "Не сохранилось. Проверь ссылки и связь." });
+    }).catch(() => { setBusy(false); setMsg({ ok: false, text: "Нет связи. Попробуй ещё раз." }); });
+  };
+  const field = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: `1px solid ${c.line}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)",
+    color: c.text, fontFamily: "Georgia, serif", fontSize: 13.5, outline: "none", marginBottom: 8 };
+  return (
+    <div data-review-links="" style={{ ...c.frost, padding: "14px 14px 12px", marginTop: 18 }}>
+      <div style={{ ...labelStyle(15), color: c.gold, marginBottom: 6 }}>Отзывы о заведении</div>
+      {st === "missing" ? <div style={{ fontSize: 13, color: c.sub, lineHeight: 1.5 }}>Ссылки на отзывы появятся, когда на сервер добавят этап 36 (supabase-stage36-comfort.sql).</div> : <>
+        <div style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.5, marginBottom: 10 }}>Ссылка на ваше заведение в Яндекс Картах, 2ГИС или Google Картах. После «Спасибо передано» гость увидит кнопку и, если захочет, оставит отзыв.</div>
+        {[0, 1].map((i) => <input key={i} data-review-input={i} value={vals[i]} onChange={(e) => { setMsg(null); const v = e.target.value; setVals((a) => a.map((x, k) => (k === i ? v : x))); }}
+          placeholder={i ? "https://2gis.ru/…/firm/…" : "https://yandex.ru/maps/org/…"} inputMode="url" autoCapitalize="off" autoCorrect="off" spellCheck={false} style={field} />)}
+        {msg ? <div role={msg.ok ? "status" : "alert"} style={{ fontSize: 12.5, color: msg.ok ? c.text : c.red, lineHeight: 1.45, margin: "0 2px 8px", wordBreak: "break-word" }}>{msg.text}</div> : null}
+        <button type="button" data-review-save="" onClick={save} disabled={busy} style={{ ...btn(c), width: "100%", padding: "10px 14px", opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить ссылки"}</button>
+      </>}
     </div>
   );
 }
@@ -170,6 +264,7 @@ function Team({ c, a11y }) {
             {x.text ? <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text, marginTop: 4, lineHeight: 1.45 }}>{x.hidden ? "Скрыто: не видно сотруднику и не считается." : "«" + x.text + "»"}</div> : null}
           </div>))}
       </> : null}
+      <ReviewLinks c={c} a11y={a11y} />
     </div>
   );
 }

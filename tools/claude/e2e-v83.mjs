@@ -335,8 +335,9 @@ if (want("PREFS")) {
   await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Случаи из зала" });
   const t = await txt(row);
-  ok("PREFS: строка «Случаи из зала» — последней, включена", /Случаи из зала когда разобрали твой случай, а старшим о новых случаях/.test(t) && (await row.getAttribute("aria-checked")) === "true"
-    && (await o.page.locator('[data-notify-prefs] [role="switch"]').last().innerText()).includes("Случаи из зала"), t);
+  // v86: строки группами — «Случаи из зала» в группе «Смена»
+  ok("PREFS: строка «Случаи из зала» — в группе «Смена», включена", /Случаи из зала когда разобрали твой случай, а старшим о новых случаях/.test(t) && (await row.getAttribute("aria-checked")) === "true"
+    && (await o.page.locator('[data-notify-group="shift"] [role="switch"]', { hasText: "Случаи из зала" }).count()) === 1, t);
   await row.click(); await sleep(700);
   const set = o.calls.filter((c) => c.fn === "notify_set").map((c) => c.body);
   ok("PREFS: переключатель — notify_set cases выкл", set.length === 1 && set[0].p_kind === "cases" && set[0].p_on === false, JSON.stringify(set));

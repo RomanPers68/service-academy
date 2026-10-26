@@ -224,10 +224,10 @@ if (want("BOARD")) {
     ok(tag + ": стол на уборке — сразу «Свободен», кнопка «Освободить стол»", (await sh4.locator('[data-sheet-status="free"]').getAttribute("aria-checked")) === "true" && (await txt(sh4.locator("[data-sheet-save]"))) === "Освободить стол");
     await sh4.locator("[data-sheet-save]").click(); await sleep(700);
     ok(tag + ": «Освободить стол» → seat_set free", (B.sets[2] || {}).p_status === "free" && (await o.page.locator('[data-table="t4"]').getAttribute("data-status")) === "free");
-    // стол с гостями: сразу «Уборка»; крестик закрывает карточку
+    // стол с гостями: сразу «Счёт» (v86; было «Уборка»); крестик закрывает карточку
     await o.page.locator('[data-table="t2"]').click(); await sleep(300);
-    ok(tag + ": стол с гостями — сразу «Уборка», в шапке гостей и сколько сидят", (await o.page.locator('[data-table-sheet="t2"] [data-sheet-status="clean"]').getAttribute("aria-checked")) === "true"
-      && /сейчас: гости, 4 гостя, 25 мин/.test(await txt(o.page.locator('[data-table-sheet="t2"]'))) && (await txt(o.page.locator('[data-table-sheet="t2"] [data-sheet-save]'))) === "На уборку");
+    ok(tag + ": стол с гостями — сразу «Счёт», в шапке гостей и сколько сидят", (await o.page.locator('[data-table-sheet="t2"] [data-sheet-status="bill"]').getAttribute("aria-checked")) === "true"
+      && /сейчас: гости, 4 гостя, 25 мин/.test(await txt(o.page.locator('[data-table-sheet="t2"]'))) && (await txt(o.page.locator('[data-table-sheet="t2"] [data-sheet-save]'))) === "Попросили счёт");
     await o.page.locator('[data-table-sheet="t2"] [data-sa-back]').click(); await sleep(300);
     ok(tag + ": крестик закрывает карточку без изменений", !(await o.page.locator("[data-table-sheet]").count()) && B.sets.length === 3);
     if (!light) {
@@ -310,8 +310,9 @@ if (want("PREFS")) {
   await sleep(1500); await nav(o.page, "shift");
   await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Рассадка" });
-  ok("PREFS: строка «Рассадка» — последней, включена", /Рассадка когда тебе посадили гостей за стол/.test(await txt(row)) && (await row.getAttribute("aria-checked")) === "true"
-    && (await o.page.locator('[data-notify-prefs] [role="switch"]').last().innerText()).includes("Рассадка"), await txt(row));
+  // v86: строки группами — «Рассадка» в группе «Смена»
+  ok("PREFS: строка «Рассадка» — в группе «Смена», включена", /Рассадка когда тебе посадили гостей за стол/.test(await txt(row)) && (await row.getAttribute("aria-checked")) === "true"
+    && (await o.page.locator('[data-notify-group="shift"] [role="switch"]', { hasText: "Рассадка" }).count()) === 1, await txt(row));
   await row.click(); await sleep(700);
   const set = o.calls.filter((c) => c.fn === "notify_set").map((c) => c.body);
   ok("PREFS: переключатель — notify_set seat выкл", set.length === 1 && set[0].p_kind === "seat" && set[0].p_on === false, JSON.stringify(set));

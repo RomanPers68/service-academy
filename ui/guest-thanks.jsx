@@ -3,9 +3,10 @@
 // Открывается по ссылке <приложение>/?thanks=<код> — без входа и без остального приложения (main.jsx грузит только её):
 // имя и должность сотрудника, заведение, «за что спасибо» (отметки), пара слов и «Сказать спасибо». С одного телефона
 // одному сотруднику — раз в 12 часов (номер браузера — случайный, не личные данные). Сервер — этап 34.
+// v86 (Доп. 399): после «Спасибо передано» — «Отзыв на Яндекс Картах / в 2ГИС», если руководитель дал ссылки (этап 36).
 import React from "react";
 import { rpc } from "../api/supabase";
-import { THANKS_TAGS, THANKS_TEXT_MAX, posLabel, deviceId } from "../lib/guest-thanks";
+import { THANKS_TAGS, THANKS_TEXT_MAX, posLabel, deviceId, reviewButtons } from "../lib/guest-thanks";
 
 const GOLD = "#D2A85A", CREAM = "#EFE4C8", SUB = "#A99A7C", LINE = "rgba(214,178,102,0.24)";
 const shell = { minHeight: "100vh", boxSizing: "border-box", display: "flex", justifyContent: "center", padding: "max(28px, var(--sa-st, env(safe-area-inset-top, 0px))) 18px 32px",
@@ -27,6 +28,14 @@ export function GuestThanksPage({ code }) {
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState("");   // "" | "ok" | "dup" | "limit"
   const [err, setErr] = React.useState("");
+  const [reviews, setReviews] = React.useState([]);
+  // ссылки на отзывы спрашиваем, когда спасибо уже ушло: без этапа 36 их просто нет
+  React.useEffect(() => {
+    if (!code || (done !== "ok" && done !== "dup")) return undefined;
+    let alive = true;
+    rpc("guest_review_links", { p_code: code }).then((r) => { if (alive && r && r.ok) setReviews(reviewButtons(r.links)); }).catch(() => {});
+    return () => { alive = false; };
+  }, [code, done]);
   React.useEffect(() => {
     try { const sp = document.getElementById("sa-splash"); if (sp) sp.remove(); } catch (e) {}
     try { document.title = "Сказать спасибо"; } catch (e) {}
@@ -74,6 +83,11 @@ export function GuestThanksPage({ code }) {
                 : "Сегодня спасибо для этого сотрудника уже очень много. Мы передадим и ваше на словах."}
             </div>
             {st.restaurant ? <div style={{ ...label, marginTop: 16 }}>{st.restaurant}</div> : null}
+            {reviews.length ? <div data-guest-reviews="" style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${LINE}` }}>
+              <div style={{ fontSize: 14, color: SUB, marginBottom: 10 }}>Если хотите, расскажите о нас другим:</div>
+              {reviews.map((r) => <a key={r.kind} href={r.url} target="_blank" rel="noopener noreferrer" data-guest-review={r.kind}
+                style={{ display: "block", padding: "12px 14px", marginTop: 8, borderRadius: 16, border: `1px solid ${GOLD}`, color: CREAM, textDecoration: "none", fontSize: 15.5 }}>{r.label}</a>)}
+            </div> : null}
           </div>) : null}
         {st.status === "ok" && !done ? (
           <div style={card} data-guest-form="">

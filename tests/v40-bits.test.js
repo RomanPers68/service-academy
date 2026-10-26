@@ -243,7 +243,9 @@ describe("v40: напоминания — «Мастера заведения» 
     expect(rows[5]).toEqual(["master", "Мастера заведения", "когда коллега становится мастером роли"]);
     expect(prefRows({ ...st25, master: true })).toHaveLength(6);
     const src = readFileSync("ui/day-cards.jsx", "utf8");
-    expect(src).toContain("{prefRows(p).map(([k, t, sub]) => {");
+    // v86: строки prefRows — группами («Учёба / Смена / Команда»): prefGroups берёт их из prefRows
+    expect(src).toContain("export const prefGroups = (p) => { const rows = prefRows(p);");
+    expect(src).toContain("{rows.map(([k, t, sub]) => {");
   });
   it("пример сообщения: «Шаг дня: …» под текстом, перед кнопкой; без шага — как было", async () => {
     const { RemindExample } = await import("../ui/day-cards");

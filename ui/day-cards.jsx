@@ -295,13 +295,21 @@ const PREF_ROWS = [
 const LATER_KINDS = new Set(["master", "qday", "brief", "cases", "thanks", "seat"]);
 export const prefRows = (p) => PREF_ROWS.filter(([k]) => !LATER_KINDS.has(k) || (!!p && p[k] !== undefined))
   .map(([k, t, sub]) => (k === "qday" && p && Number.isInteger(p.qday_hour) ? [k, t, sub.replace("12:00", p.qday_hour + ":00")] : [k, t, sub]));
+// v86 (Доп. 399): видов стало много — группами «Учёба / Смена / Команда» (строки внутри — в порядке группы)
+export const PREF_GROUPS = [["study", "Учёба", ["pair", "qday", "fresh", "month"]], ["shift", "Смена", ["quest", "brief", "seat", "cases"]], ["team", "Команда", ["league", "master", "thanks"]]];
+export const prefGroups = (p) => { const rows = prefRows(p); return PREF_GROUPS.map(([id, t, ks]) => [id, t, ks.map((k) => rows.find((r) => r[0] === k)).filter(Boolean)]).filter((g) => g[2].length); };
+// v86: тихие часы (этап 36) — в это время бот молчит, кроме напоминания о смене; часы заведения
+export const QUIET = [[null, null, "Нет"], [22, 8, "22:00–8:00"], [23, 9, "23:00–9:00"], [0, 10, "0:00–10:00"], [2, 12, "2:00–12:00"]];
+export const quietLabel = (f, t) => (f == null || t == null ? "Нет" : f + ":00–" + t + ":00");
 function NotifyPrefs({ a11y, c, onLoad }) {
   const [p, setP] = React.useState(null);
   const [busy, setBusy] = React.useState("");
   const [msg, setMsg] = React.useState("");
+  const [quiet, setQuiet] = React.useState(null);   // { from, to } или null — этапа 36 нет
   React.useEffect(() => {
     let alive = true;
     rpc("notify_prefs", { p_token: saToken() }).then((r) => { if (alive && r && r.ok) { setP(r); if (onLoad) onLoad(r); } }).catch(() => {});
+    rpc("notify_quiet", { p_token: saToken() }).then((r) => { if (alive && r && r.ok) setQuiet({ from: r.from == null ? null : Number(r.from), to: r.to == null ? null : Number(r.to) }); }).catch(() => {});
     return () => { alive = false; };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   if (!p) return null;
@@ -314,10 +322,21 @@ function NotifyPrefs({ a11y, c, onLoad }) {
       if (r && r.ok) { setP(r); vibrate("light"); } else { setP((x) => ({ ...x, [k]: !on })); setMsg("Не сохранилось. Попробуй ещё раз."); }
     }).catch(() => { setBusy(""); setP((x) => ({ ...x, [k]: !on })); setMsg("Нет связи. Попробуй ещё раз."); });
   };
+  const setQ = (f, t) => {
+    if (busy || !quiet) return;
+    const was = quiet;
+    setBusy("quiet"); setMsg(""); setQuiet({ from: f, to: t });
+    rpc("notify_quiet_set", { p_token: saToken(), p_from: f, p_to: t }).then((r) => {
+      setBusy("");
+      if (r && r.ok) vibrate("light"); else { setQuiet(was); setMsg("Не сохранилось. Попробуй ещё раз."); }
+    }).catch(() => { setBusy(""); setQuiet(was); setMsg("Нет связи. Попробуй ещё раз."); });
+  };
   return (
     <div data-notify-prefs="" style={{ marginTop: 14 }}>
       <div style={{ ...labelStyle(13.5), color: c.gold, margin: "0 0 4px" }}>Что ещё присылать</div>
-      {prefRows(p).map(([k, t, sub]) => {
+      {prefGroups(p).map(([gid, gt, rows]) => <div key={gid} data-notify-group={gid}>
+      <div style={{ fontSize: 12, color: c.sub, letterSpacing: 0.3, margin: "12px 2px 0", fontStyle: "italic" }}>{gt}</div>
+      {rows.map(([k, t, sub]) => {
         const on = !!p[k];
         return (
           <button key={k} type="button" role="switch" aria-checked={on} onClick={() => flip(k)} disabled={busy === k} className="sa-btn"
@@ -332,6 +351,18 @@ function NotifyPrefs({ a11y, c, onLoad }) {
           </button>
         );
       })}
+      </div>)}
+      {quiet ? <div data-notify-quiet="" style={{ marginTop: 14 }}>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, fontWeight: "bold", color: c.text }}>Тихие часы</div>
+        <div style={{ fontSize: 12.5, lineHeight: 1.4, color: c.sub, margin: "2px 0 8px" }}>В это время бот молчит. Напоминание о смене приходит всегда.</div>
+        <div role="group" aria-label="Тихие часы" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {QUIET.map(([f, t, l]) => { const on = quiet.from === f && quiet.to === t;
+            return <button key={l} type="button" aria-pressed={on} data-quiet={l} onClick={() => setQ(f, t)} disabled={busy === "quiet"}
+              style={{ padding: "6px 11px", borderRadius: 999, border: `1px solid ${on ? c.gold : c.line}`, background: on ? (a11y ? "rgba(139,106,48,0.18)" : "rgba(200,169,110,0.22)") : "transparent",
+                color: on ? c.text : c.sub, fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer" }}>{l}</button>; })}
+          {quiet.from != null && !QUIET.some(([f, t]) => f === quiet.from && t === quiet.to) ? <span style={{ padding: "6px 4px", fontSize: 12.5, color: c.text }}>{quietLabel(quiet.from, quiet.to)}</span> : null}
+        </div>
+      </div> : null}
       {msg ? <p role="status" style={{ margin: "8px 0 0", fontSize: 13, color: c.text }}>{msg}</p> : null}
     </div>
   );

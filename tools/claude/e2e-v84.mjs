@@ -282,8 +282,9 @@ if (want("PREFS")) {
   await sleep(1500); await toTab(o.page, "shift");
   await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Спасибо от гостей" });
-  ok("PREFS: строка «Спасибо от гостей» — последней, включена", /Спасибо от гостей когда гость сказал тебе спасибо по QR \(первые три за день\)/.test(await txt(row)) && (await row.getAttribute("aria-checked")) === "true"
-    && (await o.page.locator('[data-notify-prefs] [role="switch"]').last().innerText()).includes("Спасибо от гостей"), await txt(row));
+  // v86: строки группами — «Спасибо от гостей» последней в группе «Команда»
+  ok("PREFS: строка «Спасибо от гостей» — в группе «Команда», включена", /Спасибо от гостей когда гость сказал тебе спасибо по QR \(первые три за день\)/.test(await txt(row)) && (await row.getAttribute("aria-checked")) === "true"
+    && (await o.page.locator('[data-notify-group="team"] [role="switch"]').last().innerText()).includes("Спасибо от гостей"), await txt(row));
   await row.click(); await sleep(700);
   const set = o.calls.filter((c) => c.fn === "notify_set").map((c) => c.body);
   ok("PREFS: переключатель — notify_set thanks выкл", set.length === 1 && set[0].p_kind === "thanks" && set[0].p_on === false, JSON.stringify(set));

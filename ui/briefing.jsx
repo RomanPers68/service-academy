@@ -5,6 +5,9 @@
 //   включает и выключает блоки, дописывает «Своё» и: «Провести» — крупным шрифтом по одному блоку с секундомером
 //   (пять минут), «Отправить команде» — этап 32: брифинг дня в «Смене» у всех и сообщение в Telegram.
 // BriefCard / BriefView — сотруднику: опубликованный брифинг дня в «Смене», открывается тем же показом.
+// v86 (Доп. 399): на карточке — главное из брифинга («Стоп-лист: … · брони: 3 · новинка: …»), внизу чтения —
+//   «Прочитал(а)» (этап 36), руководителю — «Прочитали 4 из 6 в графике» и кто ещё не отметил; голос шефа и сомелье
+//   к новинке — прямо в блоке «Новинки меню».
 import React from "react";
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
@@ -13,11 +16,13 @@ import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { programAll } from "../data/modules";
 import { useAllModules } from "../lib/use-content";
 import { cachedShared } from "../lib/deck-extras";
-import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel } from "../lib/briefing";
+import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel, briefPreview, readStats, readLine } from "../lib/briefing";
+import { VoicePill } from "./voice-note";
 
 const LETTERS = ["А", "Б", "В", "Г"];
 const HIDDEN = { ask: true, case: true };   // в показе и у сотрудника ответ открывается кнопкой «Показать ответ»
 const C = (a11y) => ({
+  a11y,
   gold: a11y ? "#7A5D2A" : "#D2A85A",
   text: a11y ? "#2A1F0E" : "#EFE4C8",
   sub: a11y ? "#6B5B40" : "#A99A7C",
@@ -60,7 +65,12 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
   if (k === "stop") return <div style={row}>{b.join(", ")}</div>;
   if (k === "fresh") return (
     <div>{b.map((d) => (
-      <div key={d.id} style={{ ...row, marginBottom: 4 }}>{d.name}{d.voice ? <span style={{ fontSize: small, color: c.sub }}> · есть {voiceLabel(d.voice)}</span> : null}</div>))}</div>);
+      <div key={d.id} style={{ marginBottom: 6 }}>
+        <div style={row}>{d.name}{d.voice && !(Array.isArray(d.voices) && d.voices.length) ? <span style={{ fontSize: small, color: c.sub }}> · есть {voiceLabel(d.voice)}</span> : null}</div>
+        {Array.isArray(d.voices) && d.voices.length ? <div data-brief-voices={d.id} style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 5 }} onClick={(e) => e.stopPropagation()}>
+          {d.voices.filter((v) => v && /^https?:\/\//.test(String(v.url || ""))).map((v) => <VoicePill key={v.kind} v={v} gold={c.gold} text={c.text} sub={c.sub} a11y={c.a11y} />)}
+        </div> : null}
+      </div>))}</div>);
   if (k === "focus") return (
     <div>{b.map((f, i) => (
       <div key={i} style={{ marginBottom: big ? 18 : 10 }}>
@@ -155,7 +165,11 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState(null);   // { ok, text }
   const [typing, setTyping] = React.useState(false);
+  const [reads, setReads] = React.useState(null);   // v86: brief_reads (этап 36) — кто отметил «Прочитал(а)»
   const restaurant = (profile && profile.restaurant) || "";
+  const loadReads = React.useCallback(() => {
+    rpc("brief_reads", { p_token: saToken() }).then((r) => setReads(r && r.ok && r.brief ? r : null)).catch(() => {});
+  }, []);
   React.useEffect(() => {
     let alive = true;
     const tok = saToken();
@@ -177,6 +191,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
     rpc("brief_today", { p_token: tok }).then((r) => {
       if (!alive || !r || !r.ok || !r.brief || !r.brief.data) return;
       setToday(r.brief);
+      loadReads();
       const d0 = r.brief.data, n = d0.blocks && d0.blocks.note;
       if (n && typeof n === "string") setNote(n);
       if (d0.on && typeof d0.on === "object") { const o = {}; BRIEF_ORDER.forEach((k) => { if (typeof d0.on[k] === "boolean") o[k] = d0.on[k]; }); setOn(o); }
@@ -201,6 +216,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
         vibrate("success");
         setToday({ data, author, mine: true, sent: (today ? today.sent : 0) + (r.sent || 0), at: new Date().toISOString() });
         if (onSent) onSent();
+        loadReads();
         const tg = r.sent ? ` В Telegram ушло ${r.sent} ${plural(r.sent, "сотруднику", "сотрудникам", "сотрудникам")}.` : "";
         setMsg({ ok: true, text: r.again
           ? "Брифинг обновлён: команда увидит правку в «Смене»." + (tg ? tg.replace("ушло", "ушло тем, кто ещё не получал:") : " Второй раз в Telegram не пишем.")
@@ -226,7 +242,9 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
           {brief.dayLabel}{restaurant ? " · " + restaurant : ""}. Собрано из графика, меню, ошибок команды и лиги недели. Лишнее выключи, своё допиши.
         </div>
         {today ? <div data-brief-sent="" style={{ ...c.frost, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: c.text, lineHeight: 1.45 }}>
-          Сегодня уже отправлен{today.mine ? "" : " (" + (today.author || "руководитель") + ")"}: команда видит его в «Смене»{today.sent ? ", в Telegram ушло " + today.sent : ""}. Новая отправка заменит его правкой.
+          Сегодня уже отправлен{today.mine ? "" : " (" + (today.author || "руководитель") + ")"}: команда видит его в «Смене»{today.sent ? ", в Telegram ушло " + today.sent : ""}. Новая отправка заменит его правкой, и прочитать её нужно будет заново.
+          {reads ? (() => { const s = readStats(today.data, reads.rows, today.author); return <div data-brief-reads="" style={{ marginTop: 6 }}>
+            <span style={{ color: c.gold }}>{readLine(s, reads.n)}.</span>{s.missing.length ? " Ещё не отметили: " + s.missing.join(", ") + "." : s.total ? " Отметили все." : ""}</div>; })() : null}
         </div> : null}
         {BRIEF_ORDER.map((k) => {
           const b = brief.blocks[k];
@@ -269,30 +287,51 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
 
 // ── Сотруднику: карточка в «Смене» и чтение ──────────────────────────────────────
 // Карточка — сегодняшний брифинг заведения (brief_today), пока он есть; прочитанный — без золотой точки.
-export function BriefCard({ a11y, brief, seen, onOpen }) {
+export function BriefCard({ a11y, brief, seen, reads, onOpen }) {
   const c = C(a11y);
   if (!brief || !brief.data) return null;
   const d = brief.data;
   const pts = BRIEF_ORDER.filter((k) => briefShown(d, k));
   if (!pts.length) return null;
+  const st = reads ? readStats(d, reads.rows, brief.author) : null;
   return (
-    <div data-brief-card="" data-seen={seen ? "1" : "0"} role="button" tabIndex={0} aria-label={"Брифинг смены" + (brief.author ? " от " + brief.author : "") + ": открыть"}
+    <div data-brief-card="" data-seen={seen ? "1" : "0"} role="button" tabIndex={0} aria-label={"Брифинг смены" + (brief.author ? ", отправил(а) " + brief.author : "") + ": открыть"}
       onClick={onOpen} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       style={{ ...c.frost, margin: "0 0 12px", padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...labelStyle(13), color: c.gold, display: "flex", alignItems: "center", gap: 7 }}>
           {!seen ? <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: c.gold, boxShadow: `0 0 8px ${c.gold}` }} /> : null}
           Брифинг смены{brief.author ? " · " + brief.author : ""}</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text, marginTop: 4, lineHeight: 1.4 }}>{pts.map((k) => BRIEF_TITLE[k]).join(", ")}</div>
+        <div data-brief-preview="" style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text, marginTop: 4, lineHeight: 1.4 }}>{briefPreview(d)}</div>
+        {st ? <div data-brief-card-reads="" style={{ fontSize: 12.5, color: c.sub, marginTop: 4 }}>{readLine(st, reads.n)}</div> : null}
       </div>
       <span aria-hidden="true" style={{ color: c.gold, fontSize: 22, lineHeight: 1 }}>›</span>
     </div>
   );
 }
 
-export function BriefView({ a11y, brief, onClose }) {
+export function BriefView({ a11y, brief, onClose, onRead }) {
   const c = C(a11y);
   const [shown, setShown] = React.useState({});
+  const [me, setMe] = React.useState(null);   // v86: null — этапа 36 нет или не знаем; false — ещё не отметил; true — отметил
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const mine = !!(brief && brief.mine);
+  React.useEffect(() => {
+    if (mine) return undefined;
+    let alive = true;
+    rpc("brief_reads", { p_token: saToken() }).then((r) => { if (alive && r && r.ok && r.brief) setMe(!!r.me); }).catch(() => {});
+    return () => { alive = false; };
+  }, [mine, brief && brief.at]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const read = () => {
+    if (busy) return;
+    setBusy(true); setErr("");
+    rpc("brief_read", { p_token: saToken() }).then((r) => {
+      setBusy(false);
+      if (r && r.ok) { vibrate("success"); setMe(true); if (onRead) onRead(); onClose(); }
+      else setErr("Не отметилось. Проверь связь и нажми ещё раз.");
+    }).catch(() => { setBusy(false); setErr("Нет связи. Отметишь, когда появится сеть."); });
+  };
   const d = brief && brief.data;
   if (!d) return null;
   const pages = BRIEF_ORDER.filter((k) => briefShown(d, k));
@@ -302,7 +341,7 @@ export function BriefView({ a11y, brief, onClose }) {
         <button type="button" data-sa-back="" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.gold, fontSize: 26, cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: "Georgia, serif" }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...labelStyle(13), color: c.sub }}>Брифинг смены · {d.dayLabel}</div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text }}>{brief.author ? "От " + brief.author : "От руководителя"}</div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text }}>{brief.author ? "Отправил(а): " + brief.author : "Брифинг от руководителя"}</div>
         </div>
       </div>
       <div style={{ padding: "4px 16px 28px" }}>
@@ -311,7 +350,11 @@ export function BriefView({ a11y, brief, onClose }) {
             <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 8 }}>{BRIEF_TITLE[k]}</div>
             <BlockBody k={k} b={d.blocks[k]} c={c} reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
           </div>))}
-        <button type="button" onClick={onClose} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Понятно</button>
+        {me === true ? <div data-brief-read-done="" style={{ fontSize: 12.5, color: c.sub, textAlign: "center", margin: "4px 0 2px" }}>Отметка «Прочитал(а)» уже стоит.</div> : null}
+        {err ? <div role="alert" style={{ fontSize: 13, color: c.red, textAlign: "center", margin: "4px 0 2px" }}>{err}</div> : null}
+        {me === false
+          ? <button type="button" data-brief-read="" onClick={read} disabled={busy} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "Отмечаю…" : "Прочитал(а)"}</button>
+          : <button type="button" onClick={onClose} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Понятно</button>}
       </div>
     </div>
   );

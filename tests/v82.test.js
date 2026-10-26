@@ -81,7 +81,7 @@ describe("v82: блоки брифинга", () => {
   });
   it("новинки: за 30 дней, не в стопе, свежие первыми; голос — если шеф или сомелье записали", () => {
     expect(briefFresh(MENU, NOW)).toEqual([
-      { id: "d2", name: "Тартар из говядины", cat: "Закуски", voice: "chef" },
+      { id: "d2", name: "Тартар из говядины", cat: "Закуски", voice: "chef", voices: [{ kind: "chef", url: "https://x/v.m4a", sec: 0, name: "" }] },   // v86: + сами записи
       { id: "d6", name: "Паста", cat: "", voice: false },
     ]);
     const both = briefFresh([{ ...MENU[1], voice: { chef: { url: "a" }, som: { url: "b" } } }, { ...MENU[7], voice: { som: { url: "c" }, chef: { url: "" } } }], NOW);
@@ -174,7 +174,7 @@ describe("v82: брифинг целиком и текст для Telegram", () 
   });
   it("текст: по блокам в том же порядке, вопрос команде без ответа, своё в конце", () => {
     const t = briefText(b);
-    expect(t.startsWith("Брифинг смены · 25 октября\nот Глеб Гусев\n\nКто сегодня:\nДень 12:00–20:00. Менеджер: Глеб · Официант: Вера · Ева\nВечер 16:00–2:00. Бар: Борис · Официант: Анна")).toBe(true);
+    expect(t.startsWith("Брифинг смены · 25 октября\nОтправил(а): Глеб Гусев\n\nКто сегодня:\nДень 12:00–20:00. Менеджер: Глеб · Официант: Вера · Ева\nВечер 16:00–2:00. Бар: Борис · Официант: Анна")).toBe(true);
     const at = (s) => t.indexOf(s);
     expect(at("Стоп-лист: Борщ, Негрони, Новинка в стопе")).toBeGreaterThan(0);
     expect(at("Новинки: Тартар из говядины (есть голос шефа), Паста")).toBeGreaterThan(at("Стоп-лист"));
@@ -203,7 +203,8 @@ describe("v82: экран и карточка", () => {
     const { BriefCard } = await import("../ui/briefing.jsx");
     const html = R(h(BriefCard, { a11y: false, brief: { data: b, author: "Глеб Гусев" }, seen: false, onOpen: () => {} }));
     expect(html).toContain("Брифинг смены · Глеб Гусев");
-    expect(html).toContain("Кто сегодня, Стоп-лист, Новинки меню, Фокус смены, Вопрос команде, Спасибо, Своё");
+    // v86: на карточке — главное из брифинга, а не названия блоков
+    expect(html).toContain("Стоп-лист: Борщ, Негрони и ещё 1 · новинки: Тартар из говядины и ещё 1 · Банкет");
     expect(html).toContain('data-seen="0"');
     expect(R(h(BriefCard, { a11y: true, brief: { data: b, author: "" }, seen: true, onOpen: () => {} }))).toContain('data-seen="1"');
     expect(R(h(BriefCard, { a11y: false, brief: { data: buildBrief({ now: NOW }) }, seen: false, onOpen: () => {} }))).toBe("");
@@ -212,7 +213,7 @@ describe("v82: экран и карточка", () => {
   it("чтение у сотрудника: все включённые блоки по порядку; ответ на вопрос команде — по кнопке", async () => {
     const { BriefView } = await import("../ui/briefing.jsx");
     const html = R(h(BriefView, { a11y: false, brief: { data: { ...b, on: { ...b.on, thanks: false } }, author: "Глеб Гусев" }, onClose: () => {} }));
-    expect(html).toContain("От Глеб Гусев");
+    expect(html).toContain("Отправил(а): Глеб Гусев");   // v86: было «От Глеб Гусев»
     const ks = [...html.matchAll(/data-brief-block="([a-z]+)"/g)].map((m) => m[1]);
     expect(ks).toEqual(["roster", "stop", "fresh", "focus", "ask", "note"]);
     expect(html).toContain("Показать ответ");

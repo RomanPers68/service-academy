@@ -152,7 +152,9 @@ if (want("LEAD")) {
     const block = (k) => o.page.locator(`[data-brief-block="${k}"]`);
     const roster = await txt(block("roster"));
     ok(tag + ": «Кто сегодня» — по сменам и позициям, как в графике", /День · 12:00–20:00 Менеджер: Мария Ким Хостес: Ольга Ли Официант: Анна Смирнова Вечер · 16:00–24:00 Бар: Илья Белов Официант: Пётр Орлов/.test(roster), roster);
-    ok(tag + ": стоп-лист и новинки (с пометкой о голосе шефа)", /Борщ с уткой/.test(await txt(block("stop"))) && /Тартар из тунца · есть голос шефа Паста с крабом/.test(await txt(block("fresh"))), await txt(block("fresh")));
+    // v86: вместо пометки «есть голос шефа» — сама запись, послушать прямо в брифинге
+    ok(tag + ": стоп-лист и новинки (с голосом шефа)", /Борщ с уткой/.test(await txt(block("stop"))) && /Тартар из тунца Шеф 0:12 Паста с крабом/.test(await txt(block("fresh")))
+      && (await block("fresh").locator('[data-brief-voices="d2"] [data-voice="chef"]').count()) === 1, await txt(block("fresh")));
     const focus = await txt(block("focus"));
     ok(tag + ": фокус смены — два трудных вопроса из программы с верным ответом и долей ошибок; вопроса не из программы нет",
       focus.includes(M1.q.replace(/\s+/g, " ").trim()) && focus.includes("Верно: " + String(M1.options[M1.correct]).replace(/\s+/g, " ").trim()) && /Ошибаются 60% · ответов за 30 дней: 10/.test(focus)
@@ -199,7 +201,7 @@ if (want("LEAD")) {
     const d = p.p_data || {}, tx = String(p.p_text || "");
     ok(tag + ": brief_publish — токен, блоки и выключатели как на экране, своё", p.p_token === "tok-preview" && d.v === 1 && d.day === "2026-10-23" && d.on && d.on.thanks === false && d.on.roster === true && d.blocks && d.blocks.note === "Банкет на 12 человек в 19:00" && Array.isArray(d.blocks.focus) && d.blocks.focus.length === 2, JSON.stringify(d.on));
     ok(tag + ": текст для Telegram — блоки по порядку, без «Спасибо», вопрос команде без ответа",
-      tx.startsWith("Брифинг смены · 23 октября\nот Мария Ким\n\nКто сегодня:\nДень 12:00–20:00. Менеджер: Мария Ким · Хостес: Ольга Ли · Официант: Анна Смирнова") && !/Спасибо:/.test(tx)
+      tx.startsWith("Брифинг смены · 23 октября\nОтправил(а): Мария Ким\n\nКто сегодня:\nДень 12:00–20:00. Менеджер: Мария Ким · Хостес: Ольга Ли · Официант: Анна Смирнова") && !/Спасибо:/.test(tx)
       && tx.includes("Вопрос команде: «") && tx.includes("» Ответ в приложении.") && !tx.includes(String(M3.explanation || "").trim().slice(0, 30)) && tx.endsWith("Банкет на 12 человек в 19:00"), tx.slice(0, 260));
     const st = await txt(o.page.locator('[role="status"]'));
     ok(tag + ": итог отправки — сколько получили в Telegram", /Отправлено: брифинг в «Смене» у всей команды\. В Telegram ушло 3 сотрудникам\./.test(st), st);
@@ -224,8 +226,9 @@ if (want("STAFF")) {
     await sleep(1200);
     await toShift(o.page);
     const card = o.page.locator("[data-brief-card]");
-    ok(tag + ": вверху «Смены» — карточка брифинга: от кого и что внутри, непрочитанная",
-      (await card.count()) === 1 && (await card.getAttribute("data-seen")) === "0" && /Брифинг смены · Мария Ким Кто сегодня, Стоп-лист, Новинки меню, Фокус смены, Вопрос команде, Своё/.test(await txt(card)), await txt(card));
+    // v86: на карточке — главное из брифинга, а не названия блоков
+    ok(tag + ": вверху «Смены» — карточка брифинга: от кого и главное, непрочитанная",
+      (await card.count()) === 1 && (await card.getAttribute("data-seen")) === "0" && /Брифинг смены · Мария Ким Стоп-лист: Борщ с уткой · новинка: Тартар из тунца · Банкет на 12 человек в 19:00/.test(await txt(card)), await txt(card));
     ok(tag + ": пункта «Брифинг смены» у сотрудника нет", !(await o.page.locator('.sa-card[aria-label="Брифинг смены"]').count()));
     const pos = await o.page.evaluate(() => { const c = document.querySelector("[data-brief-card]"); const q = [...document.querySelectorAll("*")].find((e) => /Квест смены|Твоя часть/.test(e.textContent || "") && e.children.length === 0); return c && q ? !!(c.compareDocumentPosition(q) & Node.DOCUMENT_POSITION_FOLLOWING) : null; });
     ok(tag + ": карточка — над квестом смены", pos !== false, String(pos));
@@ -236,7 +239,7 @@ if (want("STAFF")) {
     ok(tag + ": чтение — включённые блоки по порядку («Спасибо» выключено)", ks.join(",") === "roster,stop,fresh,focus,ask,note", ks.join(","));
     const v1 = await txt(view);
     const why = String(M3.explanation || "").replace(/\s+/g, " ").trim().slice(0, 30);
-    ok(tag + ": от кого, верный ответ фокуса виден, ответ на вопрос команде — по кнопке", /Брифинг смены · 23 октября От Мария Ким/.test(v1) && v1.includes("Верно: " + String(M1.options[M1.correct]).replace(/\s+/g, " ").trim()) && /Показать ответ/.test(v1) && !v1.includes(why), v1.slice(0, 120));
+    ok(tag + ": от кого, верный ответ фокуса виден, ответ на вопрос команде — по кнопке", /Брифинг смены · 23 октября Отправил\(а\): Мария Ким/.test(v1) && v1.includes("Верно: " + String(M1.options[M1.correct]).replace(/\s+/g, " ").trim()) && /Показать ответ/.test(v1) && !v1.includes(why), v1.slice(0, 120));
     await shot(o.page, "staff-view" + (light ? "-light" : ""));
     await view.locator("[data-brief-reveal]").click(); await sleep(250);
     ok(tag + ": «Показать ответ» — разбор", (await txt(view)).includes(why));
@@ -256,7 +259,7 @@ if (want("LINK")) {
     const o = await open({ who: STAFF, path: "/?go=brief", rpcs: (fn) => (fn === "brief_today" ? TODAY : undefined) });
     await sleep(2500);
     const view = o.page.locator("[data-brief-view]");
-    ok("LINK: ?go=brief — сразу чтение брифинга", (await view.count()) === 1 && /От Мария Ким/.test(await txt(view)));
+    ok("LINK: ?go=brief — сразу чтение брифинга", (await view.count()) === 1 && /Отправил\(а\): Мария Ким/.test(await txt(view)));
     await view.locator("[data-sa-back]").click(); await sleep(600);
     ok("LINK: под ним — «Смена» с карточкой (уже прочитанной)", (await o.page.locator("[data-brief-card]").getAttribute("data-seen")) === "1");
     await shot(o.page, "link-brief");
@@ -338,8 +341,9 @@ if (want("PREFS")) {
   await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Брифинг смены" });
   const t = await txt(row);
-  ok("PREFS: строка «Брифинг смены» — последней, включена", /Брифинг смены когда руководитель отправляет брифинг команде/.test(t) && (await row.getAttribute("aria-checked")) === "true"
-    && (await o.page.locator('[data-notify-prefs] [role="switch"]').last().innerText()).includes("Брифинг смены"), t);
+  // v86: строки группами — «Брифинг смены» в группе «Смена» (раньше была последней в общем списке)
+  ok("PREFS: строка «Брифинг смены» — в группе «Смена», включена", /Брифинг смены когда руководитель отправляет брифинг команде/.test(t) && (await row.getAttribute("aria-checked")) === "true"
+    && (await o.page.locator('[data-notify-group="shift"] [role="switch"]', { hasText: "Брифинг смены" }).count()) === 1, t);
   await row.scrollIntoViewIfNeeded(); await shot(o.page, "prefs");
   await row.click(); await sleep(700);
   const set = o.calls.filter((c) => c.fn === "notify_set").map((c) => c.body);

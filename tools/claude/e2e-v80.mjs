@@ -187,11 +187,12 @@ if (want("VOICES")) {
   ok("VOICES: два блюда с записями, в порядке меню", list.join() === "t1,t2", list.join());
   await shot(o.page, "voices");
   await o.page.locator("[data-voices-all]").click();
-  // записи по 0,8 с: следим за строкой «Звучит: … · N из 3», пока очередь не кончится
+  // записи по 0,8 с: следим за строкой «Звучит: … N из 3», пока очередь не кончится. v86 (Доп. 399): строка для
+  // экранного диктора — своя, [data-voices-now] (плеер внизу показывает «1/3» и время, его не зачитываем каждую секунду)
   const seen = [];
   for (let k = 0; k < 25; k++) {
     await sleep(200);
-    const s = await o.page.evaluate(() => ({ on: document.querySelector("[data-voices-all]").getAttribute("data-voices-all"), now: (document.querySelector("[aria-live]") || {}).innerText || "" }));
+    const s = await o.page.evaluate(() => ({ on: document.querySelector("[data-voices-all]").getAttribute("data-voices-all"), now: (document.querySelector("[data-voices-now]") || {}).textContent || "" }));
     const n = (s.now.match(/(\d) из 3/) || [])[1];
     if (n && seen[seen.length - 1] !== n) seen.push(n);
     if (s.on === "off" && seen.length) break;

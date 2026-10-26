@@ -5,11 +5,12 @@
 // SayLine — строка «Как произносить» на обороте карточки блюда: ударение, которое записал менеджер, или слова
 //   из словаря, найденные в названии.
 // PronounceScreen — словарь целиком: поиск, разделы, послушать, повторить и сравнить со своей записью.
+// v86 (Доп. 399): «медленно» — тот же голос медленнее; под словом — оно же по слогам, ударный слог заглавными.
 import React from "react";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { liveVoiceAvailable, voiceUrl } from "../lib/radio-voice";
-import { stressText, plainText, findPronounce, searchPronounce, hasStress } from "../lib/pronounce";
+import { stressText, plainText, findPronounce, searchPronounce, hasStress, syllables } from "../lib/pronounce";
 import { PRON_CATS } from "../data/pronounce";
 import { recordClip, canRecord } from "../lib/voice-note";
 import { playUrl, stopVoice } from "./voice-note";
@@ -22,19 +23,20 @@ const LANG = { "фр.": "fr-FR", "ит.": "it-IT", "исп.": "es-ES", "ката
 let live = null;
 export function probeLive() { if (live === null) { live = false; liveVoiceAvailable().then((ok) => { live = !!ok; }, () => { live = false; }); } }
 
-function phoneSay(text, lang, onEnd) {
+function phoneSay(text, lang, onEnd, slow) {
   try {
     const ss = window.speechSynthesis; if (!ss) { onEnd && onEnd(false); return false; }
     ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang || "ru-RU"; u.rate = 0.85;
+    u.lang = lang || "ru-RU"; u.rate = slow ? 0.55 : 0.85;
     u.onend = () => onEnd && onEnd(true); u.onerror = () => onEnd && onEnd(false);
     ss.speak(u); return true;
   } catch (e) { onEnd && onEnd(false); return false; }
 }
 
-/** Кнопка «послушать». w — слово с разметкой ударения; orig — если задан, звучит оригинал (o) на языке lang. */
-export function SayButton({ w, o, lang, orig = false, gold, sub, a11y, label, size = 30 }) {
+/** Кнопка «послушать». w — слово с разметкой ударения; orig — если задан, звучит оригинал (o) на языке lang;
+ *  slow (v86) — медленнее: живой голос на 0,7 скорости, голос телефона — 0,55. */
+export function SayButton({ w, o, lang, orig = false, slow = false, gold, sub, a11y, label, size = 30 }) {
   const [st, setSt] = React.useState("idle");   // idle | load | play
   React.useEffect(() => { probeLive(); }, []);
   React.useEffect(() => () => { if (st !== "idle") stopVoice(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -47,19 +49,20 @@ export function SayButton({ w, o, lang, orig = false, gold, sub, a11y, label, si
     if (live) {
       setSt("load");
       playUrl(voiceUrl(orig ? "say_o" : "say", text), {
+        rate: slow ? 0.7 : 1,
         onStart: () => setSt("play"),
         onEnd: () => setSt("idle"),
-        onError: () => { setSt("idle"); live = false; phoneSay(orig ? text : plainText(w), orig ? LANG[lang] : "ru-RU"); },
+        onError: () => { setSt("idle"); live = false; phoneSay(orig ? text : plainText(w), orig ? LANG[lang] : "ru-RU", null, slow); },
       });
     } else {
       setSt("play");
-      if (!phoneSay(orig ? text : plainText(w), orig ? LANG[lang] : "ru-RU", () => setSt("idle"))) setSt("idle");
+      if (!phoneSay(orig ? text : plainText(w), orig ? LANG[lang] : "ru-RU", () => setSt("idle"), slow)) setSt("idle");
     }
   };
   const on = st !== "idle";
   return (
-    <button type="button" onClick={tap} data-say={orig ? "orig" : "ru"} data-say-state={st}
-      aria-label={(orig ? "Послушать в оригинале: " + (o || "") : "Послушать, как произносить: " + plainText(w))}
+    <button type="button" onClick={tap} data-say={orig ? "orig" : slow ? "slow" : "ru"} data-say-state={st}
+      aria-label={(orig ? "Послушать в оригинале: " + (o || "") : (slow ? "Послушать медленно: " : "Послушать, как произносить: ") + plainText(w))}
       style={{ display: "inline-flex", alignItems: "center", gap: 6, height: size, padding: label ? "0 11px 0 4px" : 0, width: label ? "auto" : size, justifyContent: "center",
         borderRadius: size / 2, border: `1px solid ${gold}${on ? "" : "88"}`, background: on ? gold : "transparent", color: on ? "#1A1008" : sub,
         cursor: "pointer", font: "inherit", fontSize: 11.5, flexShrink: 0, WebkitTapHighlightColor: "transparent" }}>
@@ -166,7 +169,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
       {Head("Как произносить")}
       <div style={{ padding: "6px 16px 0" }}>
         <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginBottom: 10 }}>
-          Знак над гласной показывает ударение. Динамик включает голос, «ориг.» звучит на языке оригинала, «повторить» запишет тебя, чтобы сравнить.
+          Знак над гласной показывает ударение, ниже слово по слогам: ударный слог заглавными. Динамик включает голос, «медленно» повторит его не спеша, «ориг.» звучит на языке оригинала, «повторить» запишет тебя, чтобы сравнить.
         </div>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти: шардоне, burrata, апероль…" className="sa-field"
           style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none", marginBottom: 10 }} />
@@ -184,6 +187,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div data-pron-word="" style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, lineHeight: 1.25 }}>{stressText(e.w)}</div>
+                {syllables(e.w) ? <div data-pron-syll="" aria-label={"По слогам: " + syllables(e.w)} style={{ fontSize: 13, color: gold, letterSpacing: 0.6, marginTop: 2 }}>{syllables(e.w)}</div> : null}
                 <div style={{ fontSize: 12, color: sub, marginTop: 2 }}>
                   {e.o ? <><i>{e.o}</i>{e.lang ? " · " + e.lang : ""}</> : null}
                   {e.dish && cat === "menu" ? <>{e.o ? " · " : ""}в блюде «{e.dish}»</> : null}
@@ -194,6 +198,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
             {e.tip ? <div style={{ fontSize: 12.5, color: T.para?.color || text, marginTop: 6, lineHeight: 1.45 }}>{e.tip}</div> : null}
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
               {e.o ? <SayButton w={e.w} o={e.o} lang={e.lang} orig gold={gold} sub={sub} a11y={a11y} label="ориг." /> : null}
+              <SayButton w={e.w} slow gold={gold} sub={sub} a11y={a11y} label="медленно" />
               <Repeat e={e} gold={gold} text={text} sub={sub} a11y={a11y} red={red} />
             </div>
           </div>

@@ -31,6 +31,10 @@
 --   • chat_clear(p_token, p_chat) — очистить чат целиком у всех (v91): «Вся команда» и «Старшие» — руководитель и старший
 --     заведения, «Руководители сети» — владелец и руководящий состав, личную переписку — любой из двоих. Стирается всё,
 --     без строки «кто очистил»; личная переписка уходит из списка чатов у обоих.
+--   • свои чаты (v92): chat_group_create(p_token, p_title, p_emps) — руководитель или старший заводит чат с названием и
+--     выбранными коллегами своего заведения; chat_group_edit(p_token, p_chat, p_title, p_add, p_remove) — переименовать,
+--     добавить, убрать (руководитель или старший из участников); chat_group_leave(p_token, p_chat) — выйти самому;
+--     chat_group_delete(p_token, p_chat) — удалить чат у всех. Видят только участники; добавленному пишет бот.
 -- Удалённое сообщение (v91) исчезает из переписки целиком, без «Сообщение удалено»: в первой странице и раньше его нет,
 -- в опросе оно приходит с del, чтобы открытые чаты убрали его у себя; в списке чатов — последнее неудалённое.
 -- Переписка и фото хранятся 30 дней (закреплённое — пока закреплено). Тексты и фото видят только сотрудники
@@ -42,6 +46,7 @@
 -- чтения», а проверка входа (whoami) на сервере отмечает визит записью — chat_unread, chat_people и chat_photo в v90
 -- были STABLE и молча падали: пустой список «Написать», нет числа на значке и баннера вызова, фото не открывались.
 -- Перезапуск этапа заменяет их; переписка не трогается. Ещё в v91: chat_clear — «Очистить чат» (16 функций).
+-- v92: свои чаты с выбором участников (kind group, таблица sa_chat_members) — 20 функций.
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -84,8 +89,10 @@ alter table sa_chats add column if not exists pin_id bigint;
 alter table sa_chats add column if not exists pin_by text;
 alter table sa_chats add column if not exists pin_at timestamptz;
 alter table sa_chats add column if not exists cleared_at timestamptz;   -- v91: когда чат очищали (открытые у других — перечитать)
+alter table sa_chats add column if not exists title text;               -- v92: название своего чата
+alter table sa_chats add column if not exists created_by text;          -- v92: кто завёл свой чат
 alter table sa_chats drop constraint if exists sa_chats_kind_check;
-alter table sa_chats add constraint sa_chats_kind_check check (kind in ('team', 'leads', 'dm', 'net'));
+alter table sa_chats add constraint sa_chats_kind_check check (kind in ('team', 'leads', 'dm', 'net', 'group'));
 create unique index if not exists sa_chats_group on sa_chats (restaurant, kind) where kind in ('team', 'leads');
 create unique index if not exists sa_chats_net on sa_chats (kind) where kind = 'net';
 create unique index if not exists sa_chats_dm on sa_chats (restaurant, a, b) where kind = 'dm';
@@ -122,6 +129,16 @@ create index if not exists sa_chat_msgs_chat on sa_chat_msgs (chat_id, id);
 create index if not exists sa_chat_msgs_emp on sa_chat_msgs (emp_id, created_at);
 create index if not exists sa_chat_msgs_at on sa_chat_msgs (created_at);
 create index if not exists sa_chat_msgs_upd on sa_chat_msgs (chat_id, updated_at);
+
+-- v92: участники своих чатов (kind group): кто и кем добавлен.
+create table if not exists sa_chat_members (
+  chat_id bigint not null references sa_chats(id) on delete cascade,
+  emp_id text not null,
+  added_by text,
+  added_at timestamptz not null default now(),
+  primary key (chat_id, emp_id)
+);
+create index if not exists sa_chat_members_emp on sa_chat_members (emp_id);
 
 -- Прочитано: до какого сообщения; notified_at — когда бот последний раз писал об этой переписке.
 create table if not exists sa_chat_reads (
@@ -166,7 +183,9 @@ alter table sa_chat_msgs enable row level security;
 alter table sa_chat_reads enable row level security;
 alter table sa_chat_reacts enable row level security;
 alter table sa_chat_photos enable row level security;
+alter table sa_chat_members enable row level security;
 revoke all on table sa_chats, sa_chat_msgs, sa_chat_reads, sa_chat_reacts, sa_chat_photos from public, anon, authenticated;
+revoke all on table sa_chat_members from public, anon, authenticated;
 
 -- вид сообщений «Чат» (личные сообщения, ответы и вызовы) в «Напоминаниях в Telegram»: колонка — значит вид
 alter table sa_notify_prefs add column if not exists chat boolean;
@@ -190,15 +209,17 @@ returns text language sql immutable as $$
     from (select btrim(regexp_replace(coalesce(p, ''), '\s+', ' ', 'g')) t) x
 $$;
 
--- виден ли чат сотруднику (c — из _sa_caller): чаты своего заведения; «Руководители сети» — любому руководителю
+-- виден ли чат сотруднику (c — из _sa_caller): чаты своего заведения; «Руководители сети» — любому руководителю;
+-- свой чат (v92) — только участникам
 create or replace function _sa_chat_ok(c jsonb, ch sa_chats)
-returns boolean language sql stable as $$
+returns boolean language sql stable security definer set search_path to public as $$
   select ch.id is not null and c is not null and (
     (ch.kind = 'net' and coalesce((c->>'lead')::boolean, false) and coalesce(c->>'restaurant', '') <> '')
     or (ch.restaurant is not distinct from (c->>'restaurant') and (
       ch.kind = 'team'
       or (ch.kind = 'leads' and coalesce((c->>'lead')::boolean, false))
-      or (ch.kind = 'dm' and (c->>'id') in (ch.a, ch.b)))))
+      or (ch.kind = 'dm' and (c->>'id') in (ch.a, ch.b))
+      or (ch.kind = 'group' and exists (select 1 from sa_chat_members m where m.chat_id = ch.id and m.emp_id = (c->>'id'))))))
 $$;
 
 -- заведений в сети два и больше — тогда есть «Руководители сети»
@@ -220,7 +241,8 @@ returns table (id text, name text, pos text, rest text) language sql stable secu
        or (e.restaurant is not distinct from ch.restaurant
            and (ch.kind = 'team'
                 or (ch.kind = 'leads' and (coalesce(e.is_admin, false) or lower(coalesce(e.position, '')) = any(_sa_chat_lead_pos())))
-                or (ch.kind = 'dm' and e.id::text in (ch.a, ch.b)))))
+                or (ch.kind = 'dm' and e.id::text in (ch.a, ch.b))
+                or (ch.kind = 'group' and exists (select 1 from sa_chat_members m where m.chat_id = ch.id and m.emp_id = e.id::text)))))
    order by 2
 $$;
 
@@ -296,7 +318,8 @@ begin
       into peer from employees e where e.id::text = pid;
   end if;
   return jsonb_build_object('id', ch.id, 'kind', ch.kind, 'members', n, 'shift', case when p_today is not null and ch.kind in ('team', 'leads') then sh end,
-    'peer', peer, 'last', case when lm.id is not null then _sa_chat_msg_json(lm) end, 'unread', _sa_chat_unread(ch.id, c->>'id'), 'cleared', ch.cleared_at);
+    'peer', peer, 'last', case when lm.id is not null then _sa_chat_msg_json(lm) end, 'unread', _sa_chat_unread(ch.id, c->>'id'), 'cleared', ch.cleared_at,
+    'title', case when ch.kind = 'group' then ch.title end, 'owner', case when ch.kind = 'group' then ch.created_by end);
 end; $$;
 
 -- вызовы мне за 10 минут без ответа
@@ -359,7 +382,7 @@ begin
     select x.* from sa_chats x
      where (x.restaurant = rest or (x.kind = 'net' and multi)) and _sa_chat_ok(c, x)
        and (x.kind <> 'dm' or exists (select 1 from sa_chat_msgs m where m.chat_id = x.id and not m.deleted))
-     order by case x.kind when 'team' then 0 when 'leads' then 1 when 'net' then 2 else 3 end,
+     order by case x.kind when 'team' then 0 when 'leads' then 1 when 'net' then 2 when 'group' then 3 else 4 end,
               (select max(m.id) from sa_chat_msgs m where m.chat_id = x.id and not m.deleted) desc nulls last
   loop
     v := _sa_chat_view(c, ch, today);
@@ -464,7 +487,7 @@ begin
     if q.id is not null and q.emp_id <> c->>'id' and q.kind in ('text', 'photo', 'call')
        and exists (select 1 from _sa_chat_members(ch) x where x.id = q.emp_id) then
       perform _sa_chat_ping(ch, q.emp_id, coalesce(c->>'who', '') || ' отвечает тебе в «' || case ch.kind when 'team' then 'Вся команда' when 'leads' then 'Старшие'
-        else 'Руководители сети' end || '»:' || chr(10) || what);
+        when 'group' then coalesce(ch.title, 'Чат') else 'Руководители сети' end || '»:' || chr(10) || what);
     end if;
   end if;
 end; $$;
@@ -604,7 +627,7 @@ begin
   if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
   select * into ch from sa_chats where id = p_chat;
   if ch.id is null or ch.kind = 'dm' or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
-  if ch.kind = 'team' and not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  if ch.kind in ('team', 'group') and not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
   if p_msg is null then
     update sa_chats set pin_id = null, pin_by = c->>'id', pin_at = now() where id = ch.id;
     return jsonb_build_object('ok', true, 'pin', null);
@@ -737,7 +760,7 @@ begin
   select * into m from sa_chat_msgs where id = p_msg;
   select * into ch from sa_chats where id = m.chat_id;
   if m.id is null or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
-  if m.emp_id <> c->>'id' and not ((coalesce((c->>'lead')::boolean, false) and ch.kind in ('team', 'leads'))
+  if m.emp_id <> c->>'id' and not ((coalesce((c->>'lead')::boolean, false) and ch.kind in ('team', 'leads', 'group'))
                                    or (coalesce((c->>'network')::boolean, false) and ch.kind = 'net')) then
     return jsonb_build_object('ok', false, 'error', 'forbidden');
   end if;
@@ -759,7 +782,7 @@ begin
   if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
   select * into ch from sa_chats where id = p_chat;
   if ch.id is null or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
-  if not (ch.kind = 'dm' or (coalesce((c->>'lead')::boolean, false) and ch.kind in ('team', 'leads'))
+  if not (ch.kind = 'dm' or (coalesce((c->>'lead')::boolean, false) and ch.kind in ('team', 'leads', 'group'))
           or (coalesce((c->>'network')::boolean, false) and ch.kind = 'net')) then
     return jsonb_build_object('ok', false, 'error', 'forbidden');
   end if;
@@ -767,6 +790,124 @@ begin
   get diagnostics n = row_count;
   update sa_chats set pin_id = null, pin_by = c->>'id', pin_at = t, cleared_at = t where id = ch.id;
   return jsonb_build_object('ok', true, 'removed', n, 'cleared', t);
+end; $$;
+
+-- ── 5б) Свои чаты (v92) ─────────────────────────────────────────────────────────
+-- Владелец: «нужно добавить функцию «создать чат», что бы выбрать кого добавить», заводят «Только руководители».
+-- Свой чат (kind group): название и участники из своего заведения; видят только участники; переименовать, добавить,
+-- убрать, очистить и удалить — руководитель и старший из участников; выйти может каждый. Добавленному пишет бот.
+
+-- название: одна строка, до 40 знаков (пусто — null)
+create or replace function _sa_chat_title(p text)
+returns text language sql immutable as $$ select nullif(left(btrim(regexp_replace(coalesce(p, ''), '\s+', ' ', 'g')), 40), '') $$;
+
+-- кого можно добавить: действующие сотрудники своего заведения, без себя
+create or replace function _sa_chat_pick(c jsonb, p_emps text[])
+returns text[] language sql stable security definer set search_path to public as $$
+  select coalesce(array_agg(distinct e.id::text), array[]::text[]) from employees e
+   where e.id::text = any(coalesce(p_emps, array[]::text[])) and e.id::text <> (c->>'id')
+     and e.restaurant is not distinct from nullif(btrim(coalesce(c->>'restaurant', '')), '') and coalesce(e.status, 'active') = 'active'
+$$;
+
+-- добавленные: переписка до них — прочитана (видна, но не «непрочитанные»); бот: «Роман Перс добавляет тебя в чат «Бар»»
+create or replace function _sa_chat_added(c jsonb, ch sa_chats, p_emps text[])
+returns void language plpgsql security definer set search_path to public as $$
+declare e text; top bigint;
+begin
+  select coalesce(max(id), 0) into top from sa_chat_msgs where chat_id = ch.id;
+  foreach e in array coalesce(p_emps, array[]::text[]) loop
+    insert into sa_chat_members (chat_id, emp_id, added_by) values (ch.id, e, c->>'id') on conflict do nothing;
+    insert into sa_chat_reads (chat_id, emp_id, last_id, at) values (ch.id, e, top, now() - interval '1 day')
+      on conflict (chat_id, emp_id) do update set last_id = greatest(sa_chat_reads.last_id, excluded.last_id);
+    perform _sa_chat_ping(ch, e, coalesce(c->>'who', '') || ' добавляет тебя в чат «' || coalesce(ch.title, 'Чат') || '»');
+  end loop;
+end; $$;
+
+create or replace function _sa_chat_group_out(c jsonb, ch sa_chats)
+returns jsonb language sql stable security definer set search_path to public as $$
+  select jsonb_build_object('ok', true, 'chat', _sa_chat_view(c, ch, _sa_chat_today(ch.restaurant)),
+    'members', (select coalesce(jsonb_agg(jsonb_build_object('id', x.id, 'name', x.name, 'pos', x.pos) order by x.name), '[]'::jsonb) from _sa_chat_members(ch) x))
+$$;
+
+create or replace function chat_group_create(p_token text, p_title text, p_emps text[])
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; rest text; t text; who text[]; ch sa_chats;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  rest := nullif(btrim(coalesce(c->>'restaurant', '')), '');
+  if rest is null then return jsonb_build_object('ok', false, 'error', 'no_restaurant'); end if;
+  if not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  t := _sa_chat_title(p_title);
+  who := _sa_chat_pick(c, p_emps);
+  if t is null or cardinality(who) = 0 then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+  if cardinality(who) > 100 then return jsonb_build_object('ok', false, 'error', 'too_many'); end if;
+  if (select count(*) from sa_chats x where x.kind = 'group' and x.created_by = c->>'id' and x.created_at > now() - interval '1 day') >= 20 then
+    return jsonb_build_object('ok', false, 'error', 'too_fast');
+  end if;
+  insert into sa_chats (restaurant, kind, title, created_by) values (rest, 'group', t, c->>'id') returning * into ch;
+  insert into sa_chat_members (chat_id, emp_id, added_by) values (ch.id, c->>'id', c->>'id');
+  insert into sa_chat_reads (chat_id, emp_id, last_id, at) values (ch.id, c->>'id', 0, now());
+  perform _sa_chat_added(c, ch, who);
+  return _sa_chat_group_out(c, ch);
+end; $$;
+
+-- переименовать, добавить, убрать (себя — нельзя: для этого «Выйти»)
+create or replace function chat_group_edit(p_token text, p_chat bigint, p_title text default null, p_add text[] default null, p_remove text[] default null)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; ch sa_chats; t text; adds text[];
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  select * into ch from sa_chats where id = p_chat;
+  if ch.id is null or ch.kind <> 'group' or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  if p_title is not null then
+    t := _sa_chat_title(p_title);
+    if t is null then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+    update sa_chats set title = t where id = ch.id returning * into ch;
+  end if;
+  if p_remove is not null then
+    delete from sa_chat_members m where m.chat_id = ch.id and m.emp_id = any(p_remove) and m.emp_id <> (c->>'id');
+  end if;
+  if p_add is not null then
+    select coalesce(array_agg(x), array[]::text[]) into adds from unnest(_sa_chat_pick(c, p_add)) x
+     where not exists (select 1 from sa_chat_members m where m.chat_id = ch.id and m.emp_id = x);
+    if (select count(*) from sa_chat_members m where m.chat_id = ch.id) + cardinality(adds) > 101 then
+      return jsonb_build_object('ok', false, 'error', 'too_many');
+    end if;
+    perform _sa_chat_added(c, ch, adds);
+  end if;
+  return _sa_chat_group_out(c, ch);
+end; $$;
+
+-- выйти самому; вышел последний — чата нет
+create or replace function chat_group_leave(p_token text, p_chat bigint)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; ch sa_chats;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  select * into ch from sa_chats where id = p_chat;
+  if ch.id is null or ch.kind <> 'group' or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  delete from sa_chat_members where chat_id = ch.id and emp_id = c->>'id';
+  delete from sa_chat_reads where chat_id = ch.id and emp_id = c->>'id';
+  if not exists (select 1 from sa_chat_members where chat_id = ch.id) then delete from sa_chats where id = ch.id; end if;
+  return jsonb_build_object('ok', true);
+end; $$;
+
+-- удалить свой чат у всех: сообщения, фото, реакции, прочтения и участники — вместе с ним
+create or replace function chat_group_delete(p_token text, p_chat bigint)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; ch sa_chats;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  select * into ch from sa_chats where id = p_chat;
+  if ch.id is null or ch.kind <> 'group' or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  delete from sa_chats where id = ch.id;
+  return jsonb_build_object('ok', true);
 end; $$;
 
 -- v91: та же причина, что у chat_people, у двух функций прошлых этапов: my_reset_at (этап 20, метка «Сбросить
@@ -793,6 +934,10 @@ grant execute on function chat_call(text, text, text, text, text, text) to anon,
 grant execute on function chat_go(text, bigint) to anon, authenticated;
 grant execute on function chat_delete(text, bigint) to anon, authenticated;
 grant execute on function chat_clear(text, bigint) to anon, authenticated;
+grant execute on function chat_group_create(text, text, text[]) to anon, authenticated;
+grant execute on function chat_group_edit(text, bigint, text, text[], text[]) to anon, authenticated;
+grant execute on function chat_group_leave(text, bigint) to anon, authenticated;
+grant execute on function chat_group_delete(text, bigint) to anon, authenticated;
 revoke all on function _sa_chat_lead_pos() from public, anon, authenticated;
 revoke all on function _sa_chat_role_pos(text) from public, anon, authenticated;
 revoke all on function _sa_chat_cut(text, int) from public, anon, authenticated;
@@ -814,15 +959,21 @@ revoke all on function _sa_chat_ping(sa_chats, text, text) from public, anon, au
 revoke all on function _sa_chat_notify(jsonb, sa_chats, sa_chat_msgs) from public, anon, authenticated;
 revoke all on function _sa_chat_reply_ok(sa_chats, bigint) from public, anon, authenticated;
 revoke all on function _sa_chat_img(bytea) from public, anon, authenticated;
+revoke all on function _sa_chat_title(text) from public, anon, authenticated;
+revoke all on function _sa_chat_pick(jsonb, text[]) from public, anon, authenticated;
+revoke all on function _sa_chat_added(jsonb, sa_chats, text[]) from public, anon, authenticated;
+revoke all on function _sa_chat_group_out(jsonb, sa_chats) from public, anon, authenticated;
 
 notify pgrst, 'reload schema';
 
 select 'чат смены: ' ||
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
      and p.proname in ('chat_list', 'chat_unread', 'chat_open', 'chat_read', 'chat_send', 'chat_photo_send', 'chat_photo', 'chat_edit', 'chat_react', 'chat_pin',
-                       'chat_dm', 'chat_people', 'chat_call', 'chat_go', 'chat_delete', 'chat_clear')) ||
-  ' функций из 16 · таблицы: ' || case when to_regclass('public.sa_chats') is not null and to_regclass('public.sa_chat_msgs') is not null
+                       'chat_dm', 'chat_people', 'chat_call', 'chat_go', 'chat_delete', 'chat_clear',
+                       'chat_group_create', 'chat_group_edit', 'chat_group_leave', 'chat_group_delete')) ||
+  ' функций из 20 · таблицы: ' || case when to_regclass('public.sa_chats') is not null and to_regclass('public.sa_chat_msgs') is not null
     and to_regclass('public.sa_chat_reads') is not null and to_regclass('public.sa_chat_reacts') is not null and to_regclass('public.sa_chat_photos') is not null
+    and to_regclass('public.sa_chat_members') is not null
     then 'есть' else 'НЕТ' end ||
   ' · вид «Чат» в напоминаниях: ' || case when 'chat' = any(_sa_notify_kinds()) then 'да' else 'нет' end ||
   ' · Telegram: ' || case when _sa_tg_ready() then 'бот на месте' else 'нет (чат работает, без сообщений)' end as result;

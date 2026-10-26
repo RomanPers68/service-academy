@@ -128,8 +128,8 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
     reacts: (m.reacts || []).map((x) => ({ ...x })), body: m.del ? "" : m.body } : null);
   const view = (c) => ({ id: c.id, kind: c.kind, members: c.members.length, shift: c.kind === "team" ? all.filter((p) => p.id === me.id || p.shift).length : undefined,
     peer: c.kind === "dm" ? (() => { const p = byId(c.members.find((e) => e !== me.id)); return p && { id: p.id, name: p.name, pos: p.pos, shift: !!p.shift }; })() : undefined,
-    last: J(last(c.id)), unread: unread(c.id), cleared: c.cleared || null });
-  const RANK = { team: 0, leads: 1, net: 2, dm: 3 };
+    last: J(last(c.id)), unread: unread(c.id), cleared: c.cleared || null, title: c.kind === "group" ? c.title : undefined, owner: c.kind === "group" ? c.owner : undefined });
+  const RANK = { team: 0, leads: 1, net: 2, group: 3, dm: 4 };
   const order = (a, b) => RANK[a.kind] - RANK[b.kind] || ((last(b.id) || { id: 0 }).id - (last(a.id) || { id: 0 }).id);
   const members = (c) => c.members.map((e) => ({ id: e, name: byId(e).name, rest: restOf(byId(e)), read: (reads[c.id] || {})[e] || 0 }));
   const pinOf = (c) => { const m = c.pin ? msgOf(c.pin) : null; return m && !m.del ? J(m) : null; };
@@ -153,6 +153,12 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
     }
     const others = c.members.filter((e) => e !== me.id && (c.kind !== "team" || (byId(e) || {}).shift));
     others.forEach((e, i) => later(900 + i * 650, () => { reads[c.id] = reads[c.id] || {}; reads[c.id][e] = seq; }));
+    if (c.kind === "group") {   // v92: в своём чате отвечают только его участники
+      if (!others.length) return;
+      later(2000, () => react(mine, others[0], photo ? "fire" : "ok"));
+      if (!photo) later(3400, () => put(c.id, others[others.length - 1], q ? "Сейчас уточню и напишу" : ["Принято", "Хорошо, сделаю", "Договорились"][ri++ % 3], 0, q ? { reply: quote(mine) } : {}));
+      return;
+    }
     const pool = REPLY[c.kind] || REPLY.team;
     if (photo) { later(2200, () => react(mine, "p3", "fire")); later(3000, () => react(mine, "p4", "heart")); return; }
     later(2200, () => react(mine, pool[0][0], "ok"));
@@ -203,6 +209,36 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
     },
     read: (cid, upto) => { reads[cid] = reads[cid] || {}; reads[cid][me.id] = Math.max(reads[cid][me.id] || 0, Number(upto) || 0); return ok({}); },
     people: () => ok({ people: PEOPLE.map((p) => ({ ...p })) }),
+    // v92: свои чаты — завести, поправить, выйти, удалить (руководитель — я)
+    groupCreate: (title, emps) => {
+      const t = String(title || "").replace(/\s+/g, " ").trim().slice(0, 40), who = [...new Set((emps || []).map(String))].filter((e) => e !== me.id && PEOPLE.some((p) => p.id === e));
+      if (!t || !who.length) return no("bad_request");
+      const c = { id: "g" + (++seq), kind: "group", title: t, owner: me.id, members: [me.id, ...who], pin: null };
+      chats.push(c);
+      later(2400, () => put(c.id, who[0], "Привет! Я на месте", 0));
+      return ok({ chat: view(c), members: members(c) });
+    },
+    groupEdit: (cid, { title = null, add = null, remove = null } = {}) => {
+      const c = chatOf(cid);
+      if (!visible(c) || c.kind !== "group") return no("not_found");
+      if (title != null) { const t = String(title).replace(/\s+/g, " ").trim().slice(0, 40); if (!t) return no("bad_request"); c.title = t; }
+      if (remove) c.members = c.members.filter((e) => e === me.id || !remove.map(String).includes(e));
+      if (add) add.map(String).forEach((e) => { if (!c.members.includes(e) && PEOPLE.some((p) => p.id === e)) c.members.push(e); });
+      return ok({ chat: view(c), members: members(c) });
+    },
+    groupLeave: (cid) => {
+      const c = chatOf(cid);
+      if (!visible(c) || c.kind !== "group") return no("not_found");
+      c.members = c.members.filter((e) => e !== me.id);
+      return ok({});
+    },
+    groupDelete: (cid) => {
+      const c = chatOf(cid);
+      if (!visible(c) || c.kind !== "group") return no("not_found");
+      chats.splice(chats.indexOf(c), 1);
+      for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].chat === c.id) msgs.splice(i, 1);
+      return ok({});
+    },
     dm: (emp) => {
       let c = chats.find((x) => x.kind === "dm" && x.members.includes(String(emp)) && x.members.includes(me.id));
       if (!c) { c = { id: "dm-" + emp, kind: "dm", members: [me.id, String(emp)] }; chats.push(c); }

@@ -62,7 +62,7 @@ describe("v91: функции с токеном — VOLATILE (PostgREST зовё
     const t = rd("tools/claude/sql/test38.sh");
     expect(t).toContain("update sessions set seen_at = now() where token = p_token;");
     expect(t).toContain('[ "$vol" != "v" ] && mode="read only"');
-    expect(t).toContain('chk "все 16 функций чата — VOLATILE: PostgREST не запирает их «только для чтения»"');
+    expect(t).toMatch(/chk "все (16|20) функций чата — VOLATILE: PostgREST не запирает их «только для чтения»"/);   // v92: 20 (свои чаты)
   });
 });
 
@@ -70,13 +70,13 @@ describe("v91: «Очистить чат» и удалённое без след
   const sql = rd("supabase/supabase-stage38-chat.sql");
   const clr = sql.slice(sql.indexOf("create or replace function chat_clear("), sql.indexOf("end; $$;", sql.indexOf("create or replace function chat_clear(")));
   it("chat_clear: группа — кто удаляет чужое, личная — любой из двоих; стирает всё, закреп снимает, метка cleared_at; строки «кто очистил» нет", () => {
-    expect(clr).toContain("if not (ch.kind = 'dm' or (coalesce((c->>'lead')::boolean, false) and ch.kind in ('team', 'leads'))\n          or (coalesce((c->>'network')::boolean, false) and ch.kind = 'net')) then");
+    expect(clr).toMatch(/if not \(ch\.kind = 'dm' or \(coalesce\(\(c->>'lead'\)::boolean, false\) and ch\.kind in \('team', 'leads'(, 'group')?\)\)\n {10}or \(coalesce\(\(c->>'network'\)::boolean, false\) and ch\.kind = 'net'\)\) then/);   // v92: и свой чат
     expect(clr).toContain("delete from sa_chat_msgs where chat_id = ch.id;");
     expect(clr).toContain("update sa_chats set pin_id = null, pin_by = c->>'id', pin_at = t, cleared_at = t where id = ch.id;");
     expect(clr).not.toContain("insert into sa_chat_msgs");
     expect(clr).not.toContain("очищает");
     expect(sql).toContain("alter table sa_chats add column if not exists cleared_at timestamptz;");
-    expect(sql).toContain("'unread', _sa_chat_unread(ch.id, c->>'id'), 'cleared', ch.cleared_at);");
+    expect(sql).toContain("'unread', _sa_chat_unread(ch.id, c->>'id'), 'cleared', ch.cleared_at");   // v92: дальше — название своего чата
     expect(sql).toContain("grant execute on function chat_clear(text, bigint) to anon, authenticated;");
   });
   it("удалённое: в первой странице и раньше его нет (в опросе — с del), в списке — последнее неудалённое, личная из одних удалённых не видна", () => {
@@ -110,7 +110,8 @@ describe("v91: экран чата", () => {
   it("«Написать»: список не пришёл — «Список коллег не загрузился», пусто — «Пока здесь никого», по поиску — «Никого не нашёл»", () => {
     const src = rd("ui/chat.jsx");
     expect(src).toContain('bad ? <div className="ch-empty" role="alert" data-chat-people-bad="">Список коллег не загрузился. Проверь связь и открой ещё раз.</div>');
-    expect(src).toContain('{q.trim() ? "Никого не нашёл." : "Пока здесь никого."}');
+    expect(src).toMatch(/\{q\.trim\(\) \? "Никого не нашёл\." : ("Пока здесь никого\."|emptyText)\}/);   // v92: «Пока здесь никого.» — по умолчанию emptyText
+    expect(src).toContain('emptyText = "Пока здесь никого."');
   });
   it("очистить: кто может; метка cleared сменилась — переписку перечитать; в ленте удалённого нет", async () => {
     const C = await import("../lib/chat.js");
@@ -208,7 +209,7 @@ describe("v91: документы", () => {
   it("README: e2e-v91, test38 — 110 проверок; supabase/README — перезапуск этапа 38; CHANGES: Дополнение 404; «сборка v91»", () => {
     const readme = rd("tools/claude/README.md");
     expect(readme).toContain("`e2e-v91.mjs` — v91 (Доп. 404)");
-    expect(readme).toContain("110 проверок");
+    expect(readme).toMatch(/\((110 проверок|1[2-9]\d проверк[иа])\)/);   // v92: 124 проверки (свои чаты)
     expect(rd("supabase/README.md")).toContain("v91: перезапусти `supabase-stage38-chat.sql`");
     expect(rd("CHANGES.md")).toContain("# Дополнение 404 — Чат смены: починка, круг у меню, «Очистить чат» (v91)");
     expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(9[1-9]|\d{3,})<\/span>/);

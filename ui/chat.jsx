@@ -20,6 +20,8 @@
 // уходила под скруглённые углы экрана); клавиатура — по низу самого слоя (окно Telegram сжимается, а innerHeight
 // прежний); «Написать» отличает «не загрузилось» от «пусто»; корзина в шапке — «Очистить чат» (lib/chat.js, canClear);
 // удалённое исчезает целиком; открытая переписка не закрывается опросом списка.
+// v92 (Доп. 405): свои чаты — руководитель и старший заводят чат с названием и выбранными коллегами («Написать» →
+// «Новый чат»); нажатие на шапку своего чата — участники, переименовать, добавить, убрать, выйти, удалить.
 import React from "react";
 import { createPortal } from "react-dom";
 import { vibrate, onActivate } from "../lib/utils";
@@ -27,7 +29,7 @@ import { LABEL_CSS } from "./tokens";
 import { MicButton } from "./mic";
 import { CHAT_MAX, CALL_WHO, CALL_WHY, CALL_OWN_MAX, POLL_OPEN_MS, POLL_HOT_MS, REACTS, chatInitials, bubbleName, hhmm, listTime, feedRows, previewText, callLine,
   isCallForMe, callState, callProblem, cleanBody, readBy, readLine, badge, peopleWord, quoteText, replyOf, canEdit, canPin, canDelOthers, pinnable, reactGroups, myReact,
-  withReact, reactName, photoBox, restShort, canClear, clearedChanged } from "../lib/chat";
+  withReact, reactName, photoBox, restShort, canClear, clearedChanged, canGroup, canManage, groupTitle, GROUP_TITLE_MAX } from "../lib/chat";
 import { compressPhoto } from "../lib/chat-photo";
 
 // ── вид: та же палитра, что у «Живого диалога» (ui/screens-dialogue.jsx), свой корень .sa-dlg.ch ──
@@ -262,6 +264,19 @@ export const CHAT_CSS = `
 .ch-person{display:flex;align-items:center;gap:12px;width:100%;padding:9px 4px;border:0;background:none;text-align:left;cursor:pointer;border-radius:12px}
 .ch-person[aria-pressed="true"]{background:rgba(214,178,102,0.16)}
 .ch-person-n{font-size:15.5px;color:var(--text)}
+.ch-tick{width:24px;height:24px;flex:0 0 auto;margin-left:auto;border-radius:50%;border:1.5px solid var(--opt-edge);display:grid;place-items:center;color:var(--on-gold)}
+.ch-tick.on{border-color:transparent;background:linear-gradient(180deg,var(--gold-hi),var(--gold))}
+.ch-tick svg{width:15px;height:15px}
+.ch-new .ch-ava svg{width:22px;height:22px}
+.ch-foot{flex:0 0 auto;position:relative;z-index:3;padding:10px 14px calc(10px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line)}
+.ch-foot .ch-main{max-width:612px;margin:0 auto}
+.sa-dlg.ch.kb .ch-foot{padding-bottom:10px}
+.ch-whob{border:0;background:none;padding:0;margin:0;text-align:left;color:inherit;font:inherit;cursor:pointer;border-radius:12px}
+.ch-gm{display:flex;align-items:center;gap:12px;padding:8px 2px;border-bottom:1px solid var(--edge)}
+.ch-gm:last-child{border-bottom:0}
+.ch-gm-b{display:flex;flex-direction:column;min-width:0;flex:1}
+.ch-gm-x{flex:0 0 auto;border:1px solid var(--opt-edge);background:none;color:var(--sub);border-radius:999px;padding:6px 12px;font-size:13.5px;font-family:inherit;cursor:pointer}
+.ch-gm-x:disabled{opacity:.5}
 .ch-person-p{font-size:12.5px;color:var(--sub)}
 .ch-shot{display:block;width:100%;max-height:46vh;object-fit:contain;border-radius:14px;background:rgba(0,0,0,0.25)}
 .ch-shotwait{display:grid;place-items:center;height:180px;border-radius:14px;background:rgba(0,0,0,0.18);color:var(--sub);font-size:14.5px;font-style:italic}
@@ -325,6 +340,7 @@ const IC = {
   pinS: svg(<><path d="M9.5 4h5l-.8 5.2 3.3 3.3H7l3.3-3.3z" /><path d="M12 12.5V20" /></>, 14, 2.1),
   photo: svg(<><rect x="3.5" y="5" width="17" height="14" rx="2.5" /><circle cx="9" cy="10" r="1.7" /><path d="M20.5 15.5l-4.6-4.6-8.4 8.1" /></>, 21),
   save: svg(<><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5" /><path d="M5 19.5h14" /></>, 21),
+  plus: svg(<path d="M12 5v14M5 12h14" />, 22),
 };
 // реакции — линией, как остальные значки (без эмодзи)
 const RP = {
@@ -343,7 +359,9 @@ const TICKS = (
 
 const TITLE = { team: "Вся команда", leads: "Старшие", net: "Руководители сети" };
 export const chatTitle = (c) => (c && (c.kind === "dm" ? (c.peer && c.peer.name) || "Коллега" : TITLE[c.kind] || c.title || "Чат")) || "Чат";
-const Ava = ({ c, big }) => (c && c.kind !== "dm"
+const Ava = ({ c, big }) => (c && c.kind === "group"
+  ? <span className={"ch-ava team" + (big ? " big" : "")} aria-hidden="true">{chatInitials(c.title || "Чат")}</span>
+  : c && c.kind !== "dm"
   ? <span className={"ch-ava team" + (big ? " big" : "")} aria-hidden="true">{c.kind === "leads" ? IC.star : c.kind === "net" ? IC.net : IC.team}</span>
   : <span className={"ch-ava" + (big ? " big" : "")} aria-hidden="true">{chatInitials(c && c.peer ? c.peer.name : "")}</span>);
 const POSN = { waiter: "Официант", hostess: "Хостес", bartender: "Бармен", senior_bartender: "Старший бармен", manager: "Менеджер", senior: "Руководящий состав",
@@ -419,7 +437,7 @@ function PhotoImg({ api, id, local = null, alt = "" }) {
 // ── экран ─────────────────────────────────────────────────────────────────────────
 /**
  * me: { id, name, pos, lead, restaurant }; api: { list, open, send, read, dm, people, call, go, del, edit, react, pin,
- * photoSend, photo } — каждый возвращает Promise с ответом сервера; stt: { url, headers } — распознавание речи для
+ * photoSend, photo, clear (v91), groupCreate, groupEdit, groupLeave, groupDelete (v92) } — каждый возвращает Promise с ответом сервера; stt: { url, headers } — распознавание речи для
  * микрофона (нет — без микрофона). openId — сразу открыть этот чат (из баннера вызова или ссылки).
  */
 export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = null, onUnread }) {
@@ -430,8 +448,9 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   const [chats, setChats] = React.useState(null);
   const [err, setErr] = React.useState("");
   const [curId, setCurId] = React.useState(openId);
-  const [picker, setPicker] = React.useState(false);
+  const [picker, setPicker] = React.useState(false);   // true — «Написать» (личное), "group" — новый свой чат (v92)
   const [callOpen, setCallOpen] = React.useState(false);
+  const [note, setNote] = React.useState("");          // v92: «Этого чата у тебя больше нет» и т. п. — над списком
   // v91: открытая переписка остаётся открытой, даже если её нет в списке с сервера: пустую личную (ещё не написали)
   // и очищенную список не показывает, и раньше через 10 секунд опрос списка закрывал такую переписку
   const keepRef = React.useRef(null);
@@ -455,11 +474,26 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   const openDm = (p) => Promise.resolve(api.dm(p.id)).then((r) => {
     if (r && r.ok && r.chat) { setChats((cs) => (cs || []).some((c) => String(c.id) === String(r.chat.id)) ? cs : [...(cs || []), r.chat]); setPicker(false); setCurId(r.chat.id); }
   });
+  // v92: свой чат заведён — сразу в него
+  const openNew = (chat) => { setChats((cs) => [...(cs || []).filter((c) => String(c.id) !== String(chat.id)), chat]); setPicker(false); setNote(""); setCurId(chat.id); load(); };
+  const gone = (why) => {
+    keepRef.current = null; setCurId(null);
+    setNote(why === "left" ? "Ты больше не в этом чате." : why === "deleted" ? "Чат удалён у всех." : "Этого чата у тебя больше нет: его удалили или тебя убрали из участников.");
+    load();
+  };
+  const newRow = canGroup(me) ? (
+    <div style={{ maxWidth: 640, margin: "8px auto 0", padding: "0 10px" }}>
+      <button type="button" className="ch-person ch-new" data-chat-newgroup="" onClick={() => { vibrate("light"); setPicker("group"); }}>
+        <span className="ch-ava team" aria-hidden="true">{IC.plus}</span>
+        <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}><span className="ch-person-n">Новый чат</span><span className="ch-person-p">название и несколько коллег</span></span>
+      </button>
+    </div>) : null;
   return portal(
     <div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb > 0 ? " kb" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат" style={{ paddingBottom: kb }}>
-      {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} chat={cur} stt={stt} onBack={() => { keepRef.current = null; setCurId(null); load(); }} onSent={load} />
-        : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} />
-        : <List chats={chats} me={me} err={err} onBack={onBack} onOpen={(c) => { vibrate("light"); setCurId(c.id); }} onWrite={() => { vibrate("light"); setPicker(true); }}
+      {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} chat={cur} stt={stt} onBack={() => { keepRef.current = null; setCurId(null); load(); }} onSent={load} onGone={gone} />
+        : picker === "group" ? <GroupNew me={me} api={api} onBack={() => setPicker(true)} onDone={openNew} />
+        : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} top={newRow} />
+        : <List chats={chats} me={me} err={err} note={note} onBack={onBack} onOpen={(c) => { vibrate("light"); setNote(""); setCurId(c.id); }} onWrite={() => { vibrate("light"); setNote(""); setPicker(true); }}
             onCall={team ? () => { vibrate("light"); setCallOpen(true); } : null} back={!callOpen} />}
       {callOpen && !cur && team ? <CallSheet me={me} api={api} chat={team} onClose={() => setCallOpen(false)} onDone={() => { setCallOpen(false); setCurId(team.id); }} /> : null}
     </div>
@@ -467,7 +501,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
 }
 
 // ── список чатов ──
-function List({ chats, me, err, onBack, onOpen, onWrite, onCall, back = true }) {
+function List({ chats, me, err, note = "", onBack, onOpen, onWrite, onCall, back = true }) {
   const now = new Date();
   return (<>
     <header className="ch-head">
@@ -481,6 +515,7 @@ function List({ chats, me, err, onBack, onOpen, onWrite, onCall, back = true }) 
     <div className="ch-scroll sa-dlgscroll">
       <div className="ch-list" role="list">
         {err ? <div className="ch-empty" role="alert">{err}</div> : null}
+        {note ? <div className="ch-empty" role="status" data-chat-note="">{note}</div> : null}
         {!chats && !err ? <div className="ch-empty">Загружаю переписку…</div> : null}
         {(chats || []).map((c) => {
           const last = c.last, call = last && last.kind === "call" && !last.del;
@@ -502,8 +537,9 @@ function List({ chats, me, err, onBack, onOpen, onWrite, onCall, back = true }) 
   </>);
 }
 
-// ── коллеги (личное сообщение или вызов человека) ──
-function People({ me, api, title, hint, onBack, onPick, picked, inline = false }) {
+// ── коллеги (личное сообщение, вызов человека; v92: несколько — в свой чат) ──
+// multi — Set выбранных (галочки), exclude — Set тех, кого не показывать (уже в чате), top — над поиском, foot — внизу
+function People({ me, api, title, sub = "Коллеги вашего заведения", hint, onBack, onPick, picked, inline = false, multi = null, exclude = null, top = null, foot = null, emptyText = "Пока здесь никого." }) {
   const [list, setList] = React.useState(null);
   const [bad, setBad] = React.useState(false);   // список не пришёл (не «никого нет»)
   const [q, setQ] = React.useState("");
@@ -514,17 +550,22 @@ function People({ me, api, title, hint, onBack, onPick, picked, inline = false }
     return () => { alive = false; };
   }, [api]);   // eslint-disable-line react-hooks/exhaustive-deps
   const norm = (s) => String(s || "").toLowerCase().replace(/ё/g, "е");
-  const shown = (list || []).filter((p) => !q.trim() || norm(p.name).includes(norm(q.trim())));
+  const shown = (list || []).filter((p) => (!exclude || !exclude.has(String(p.id))) && (!q.trim() || norm(p.name).includes(norm(q.trim()))));
   const onShift = shown.filter((p) => p.shift), rest = shown.filter((p) => !p.shift);
-  const row = (p) => (
-    <button key={p.id} type="button" className="ch-person" data-chat-person={p.id} aria-pressed={picked != null ? String(picked) === String(p.id) : undefined} onClick={() => { vibrate("light"); onPick(p); }}>
-      <span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}</span>
-      <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}><span className="ch-person-n">{p.name}</span><span className="ch-person-p">{[posName(p.pos), p.shift ? "сегодня в смене" : ""].filter(Boolean).join(" · ")}</span></span>
-    </button>);
+  const row = (p) => {
+    const on = multi ? multi.has(String(p.id)) : picked != null ? String(picked) === String(p.id) : undefined;
+    return (
+      <button key={p.id} type="button" className="ch-person" data-chat-person={p.id} aria-pressed={on} onClick={() => { vibrate("light"); onPick(p); }}>
+        <span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}</span>
+        <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}><span className="ch-person-n">{p.name}</span><span className="ch-person-p">{[posName(p.pos), p.shift ? "сегодня в смене" : ""].filter(Boolean).join(" · ")}</span></span>
+        {multi ? <span className={"ch-tick" + (on ? " on" : "")} aria-hidden="true">{on ? IC.check : null}</span> : null}
+      </button>);
+  };
   const body = (<>
+    {top}
     <input className="ch-search sa-field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени" data-chat-search="" />
     {!list ? <div className="ch-empty">Загружаю команду…</div> : bad ? <div className="ch-empty" role="alert" data-chat-people-bad="">Список коллег не загрузился. Проверь связь и открой ещё раз.</div>
-      : !shown.length ? <div className="ch-empty">{q.trim() ? "Никого не нашёл." : "Пока здесь никого."}</div> : null}
+      : !shown.length ? <div className="ch-empty">{q.trim() ? "Никого не нашёл." : emptyText}</div> : null}
     {onShift.length ? <div className="ch-sec">Сегодня в смене</div> : null}
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 10px" }}>{onShift.map(row)}</div>
     {rest.length && onShift.length ? <div className="ch-sec">Остальные</div> : null}
@@ -535,10 +576,111 @@ function People({ me, api, title, hint, onBack, onPick, picked, inline = false }
   return (<>
     <header className="ch-head"><div className="ch-head-in">
       <button type="button" className="ch-back" data-sa-back="" aria-label="Назад" onClick={onBack}>{IC.back}</button>
-      <div className="ch-id" style={{ flex: 1 }}><b className="ch-title">{title}</b><span className="ch-st">Коллеги вашего заведения</span></div>
+      <div className="ch-id" style={{ flex: 1 }}><b className="ch-title">{title}</b><span className="ch-st">{sub}</span></div>
     </div></header>
     <div className="ch-scroll sa-dlgscroll" data-chat-people="">{body}</div>
+    {foot}
   </>);
+}
+
+// ── v92 (Доп. 405): свой чат — название и коллеги (заводят руководитель и старший) ──
+const pickToggle = (set, p) => { const n = new Set(set), k = String(p.id); if (n.has(k)) n.delete(k); else n.add(k); return n; };
+const groupErr = (r) => (r && r.error === "forbidden" ? "Это могут руководитель и старший." : r && r.error === "too_fast" ? "Сегодня новых чатов уже много. Завтра можно снова."
+  : r && r.error === "too_many" ? "В чате может быть до 100 человек." : r && r.error === "net" ? "Нет связи. Попробуй ещё раз." : "Не получилось. Проверь связь.");
+function GroupNew({ me, api, onBack, onDone }) {
+  const [title, setTitle] = React.useState("");
+  const [sel, setSel] = React.useState(() => new Set());
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const t = groupTitle(title);
+  const can = !!t && sel.size > 0 && !busy;
+  const create = () => {
+    if (!can) return;
+    vibrate("light"); setBusy(true); setErr("");
+    Promise.resolve(api.groupCreate(t, [...sel])).then((r) => { setBusy(false); if (r && r.ok && r.chat) onDone(r.chat); else setErr(groupErr(r)); })
+      .catch(() => { setBusy(false); setErr(groupErr({ error: "net" })); });
+  };
+  const top = (<>
+    <div className="ch-sec">Название</div>
+    <input className="ch-search sa-field" value={title} maxLength={GROUP_TITLE_MAX + 10} onChange={(e) => setTitle(e.target.value)} placeholder="Например: Бар, Веранда, Банкет в субботу"
+      aria-label="Название чата" data-chat-gtitle="" />
+    <div className="ch-sec" data-chat-gcount={sel.size}>Кого добавить{sel.size ? " · " + sel.size : ""}</div>
+  </>);
+  const foot = (
+    <div className="ch-foot">
+      {err ? <div className="ch-err" role="alert" data-chat-gerr="">{err}</div> : null}
+      <button type="button" className="ch-main" data-chat-gcreate="" disabled={!can} onClick={create}>
+        {busy ? "Создаю…" : !t ? "Дай чату название" : !sel.size ? "Отметь коллег" : "Создать чат · " + peopleWord(sel.size + 1)}</button>
+    </div>);
+  return <People me={me} api={api} title="Новый чат" sub="Название и коллеги вашего заведения" onBack={onBack} onPick={(p) => setSel((s) => pickToggle(s, p))} multi={sel} top={top} foot={foot}
+    hint="Чат видят только его участники. Добавлять и убирать людей, переименовать и удалить чат могут руководитель и старший." />;
+}
+// добавить людей в свой чат: коллеги, которых в нём ещё нет
+function GroupAdd({ me, api, chat, members, onBack, onDone }) {
+  const [sel, setSel] = React.useState(() => new Set());
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const inChat = React.useMemo(() => new Set((members || []).map((p) => String(p.id))), [members]);
+  const add = () => {
+    if (!sel.size || busy) return;
+    vibrate("light"); setBusy(true); setErr("");
+    Promise.resolve(api.groupEdit(chat.id, { add: [...sel] })).then((r) => { setBusy(false); if (r && r.ok) onDone(r); else setErr(groupErr(r)); })
+      .catch(() => { setBusy(false); setErr(groupErr({ error: "net" })); });
+  };
+  const foot = (
+    <div className="ch-foot">
+      {err ? <div className="ch-err" role="alert" data-chat-gerr="">{err}</div> : null}
+      <button type="button" className="ch-main" data-chat-gaddgo="" disabled={!sel.size || busy} onClick={add}>{busy ? "Добавляю…" : sel.size ? "Добавить · " + sel.size : "Отметь коллег"}</button>
+    </div>);
+  return <People me={me} api={api} title={"Добавить в «" + chatTitle(chat) + "»"} onBack={onBack} onPick={(p) => setSel((s) => pickToggle(s, p))} multi={sel} exclude={inChat}
+    emptyText="Все коллеги уже в этом чате." foot={foot} />;
+}
+// о своём чате: участники; руководитель и старший — переименовать, добавить, убрать, удалить; каждый — выйти
+function GroupInfo({ chat, me, api, members, onClose, onChanged, onAdd, onGone }) {
+  const manage = canManage(chat, me);
+  const meId = me && me.id;
+  const [title, setTitle] = React.useState(chat.title || "");
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const [sure, setSure] = React.useState(null);   // "leave" | "delete" — переспросить
+  const t = groupTitle(title), renamed = manage && !!t && t !== chat.title;
+  const run = (q, after) => {
+    setBusy(true); setErr("");
+    Promise.resolve(q).then((r) => { setBusy(false); if (r && r.ok) after(r); else setErr(groupErr(r)); }).catch(() => { setBusy(false); setErr(groupErr({ error: "net" })); });
+  };
+  const list = [...(members || [])].sort((a, b) => (String(a.id) === String(meId) ? -1 : String(b.id) === String(meId) ? 1 : String(a.name).localeCompare(String(b.name), "ru")));
+  return (
+    <div className="ch-veil" onClick={onClose}>
+      <div className="ch-sheet" role="dialog" aria-modal="true" aria-label={"О чате «" + chatTitle(chat) + "»"} data-chat-ginfo="" onClick={stop}>
+        <div className="ch-grip" aria-hidden="true" />
+        <div className="ch-sheet-h"><span className="ch-sheet-t">{chatTitle(chat)}</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
+        {manage ? (<>
+          <div className="ch-lbl" style={{ marginTop: 0 }}>Название</div>
+          <input className="ch-field sa-field" style={{ marginTop: 0 }} value={title} maxLength={GROUP_TITLE_MAX + 10} onChange={(e) => setTitle(e.target.value)} placeholder="Название чата" aria-label="Название чата" data-chat-grename="" />
+          {renamed ? <button type="button" className="ch-main" data-chat-gsave="" disabled={busy} onClick={() => run(api.groupEdit(chat.id, { title: t }), onChanged)}>Сохранить название</button> : null}
+        </>) : null}
+        <div className="ch-lbl" data-chat-gmembers={list.length}>Участники · {list.length}</div>
+        {manage ? <button type="button" className="ch-act" data-chat-gadd="" onClick={onAdd}>{IC.plus}Добавить людей</button> : null}
+        <div>{list.map((p) => {
+          const self = String(p.id) === String(meId);
+          return (
+            <div key={p.id} className="ch-gm" data-chat-gm={p.id}>
+              <span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}</span>
+              <span className="ch-gm-b"><span className="ch-person-n">{p.name}{self ? " (ты)" : ""}</span>
+                <span className="ch-person-p">{[posName(p.pos), String(p.id) === String(chat.owner) ? "создатель чата" : ""].filter(Boolean).join(" · ")}</span></span>
+              {manage && !self ? <button type="button" className="ch-gm-x" data-chat-gremove={p.id} disabled={busy} aria-label={"Убрать из чата: " + p.name}
+                onClick={() => run(api.groupEdit(chat.id, { remove: [p.id] }), onChanged)}>Убрать</button> : null}
+            </div>);
+        })}</div>
+        {err ? <div className="ch-err" role="alert" data-chat-gerr="" style={{ marginTop: 8 }}>{err}</div> : null}
+        <button type="button" className="ch-act bad" data-chat-gleave="" disabled={busy} style={{ marginTop: 6 }}
+          onClick={() => { if (sure !== "leave") { vibrate("light"); setSure("leave"); return; } run(api.groupLeave(chat.id), () => onGone("left")); }}>
+          {IC.back}{sure === "leave" ? "Точно выйти? Нажми ещё раз" : "Выйти из чата"}</button>
+        {manage ? <button type="button" className="ch-act bad" data-chat-gdelete="" disabled={busy}
+          onClick={() => { if (sure !== "delete") { vibrate("light"); setSure("delete"); return; } run(api.groupDelete(chat.id), () => onGone("deleted")); }}>
+          {IC.trash}{sure === "delete" ? "Удалить у всех? Нажми ещё раз" : "Удалить чат"}</button> : null}
+      </div>
+    </div>);
 }
 
 // ── переписка ──
@@ -648,7 +790,7 @@ function CallCard({ row, me, now, busyGo, hl, onGo, onMenu, onReply, onReact }) 
     </div>);
 }
 
-function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
+function Thread({ a11y, me, api, chat, stt, onBack, onSent, onGone }) {
   const group = chat.kind !== "dm";
   const meId = me && me.id;
   const [msgs, setMsgs] = React.useState([]);
@@ -691,6 +833,7 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
     msgsRef.current = next; setMsgs(next);
   };
   const pull = React.useCallback((first) => Promise.resolve(api.open(chat.id, first ? {} : { after: lastId.current, since: since.current })).then((r) => {
+    if (r && r.error === "not_found") { if (onGone) onGone("gone"); return; }   // v92: чат удалили или меня убрали из участников
     if (!r || !r.ok) { if (first) setErr("Переписка не загрузилась. Проверь связь."); return; }
     // v91: чат очистили у всех, пока он открыт: стёртого на сервере больше нет — лента заново
     const cl = r.chat ? r.chat.cleared || null : undefined;
@@ -899,11 +1042,17 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
     return <Bubble key={row.key} row={row} me={me} api={api} reads={reads} myLastId={myLast && myLast.id} othersN={others.length} group={group} net={chat.kind === "net"} hl={isHl}
       onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} onJump={jumpTo} onView={setView} />;
   };
+  // v92: добавить людей в свой чат — на весь экран вместо переписки (хуки — выше)
+  if (sheet === "add") return <GroupAdd me={me} api={api} chat={chat} members={members} onBack={() => setSheet("info")}
+    onDone={() => { setSheet(null); if (onSent) onSent(); if (pullRef.current) pullRef.current(false); }} />;
   return (<>
     <header className="ch-head">
       <div className="ch-head-in">
         <button type="button" className="ch-back" data-sa-back={layer ? undefined : ""} aria-label="К списку чатов" onClick={onBack}>{IC.back}</button>
-        <div className="ch-who"><Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></div>
+        {chat.kind === "group"
+          ? <button type="button" className="ch-who ch-whob" data-chat-info="" aria-label={"О чате «" + chatTitle(chat) + "»: участники"} onClick={() => { vibrate("light"); setSheet("info"); }}>
+              <Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}{status ? " · участники" : ""}</span></div></button>
+          : <div className="ch-who"><Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></div>}
         {canClear(chat, me) ? <button type="button" className="ch-tool" data-chat-clear="" aria-label={group ? "Очистить чат" : "Очистить переписку"}
           onClick={() => { vibrate("light"); setClearErr(""); setSheet("clear"); }}>{IC.trash}</button> : null}
       </div>
@@ -972,6 +1121,8 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
       </div>
     </div>
     {sheet === "call" ? <CallSheet me={me} api={api} chat={chat} onClose={() => setSheet(null)} onDone={(msg) => { setSheet(null); if (msg) { stick.current = true; addMsgs([msg], { quiet: true }); heat(); } }} /> : null}
+    {sheet === "info" ? <GroupInfo chat={chat} me={me} api={api} members={members} onClose={() => setSheet(null)} onAdd={() => setSheet("add")} onGone={(why) => { setSheet(null); if (onGone) onGone(why); }}
+      onChanged={() => { if (onSent) onSent(); if (pullRef.current) pullRef.current(false); }} /> : null}
     {sheet === "clear" ? <ClearSheet chat={chat} busy={clearBusy} err={clearErr} onClear={clearChat} onClose={() => { if (!clearBusy) setSheet(null); }} /> : null}
     {sheet && sheet.msg ? <MsgSheet me={me} msg={msgs.find((x) => String(x.id) === String(sheet.msg.id)) || sheet.msg} chat={chat} members={others} reads={reads} pinned={pin}
       onClose={() => setSheet(null)} onDelete={del} onReply={startReply} onEdit={startEdit} onPin={pinMsg} onReact={react} /> : null}

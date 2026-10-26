@@ -228,27 +228,27 @@ describe("v90: чат в приложении", () => {
 
 describe("v90: этап 38 на сервере (статично; живые проверки — tools/claude/sql/test38.sh)", () => {
   const sql = rd("supabase/supabase-stage38-chat.sql");
-  it("16 функций (v91: + chat_clear) — anon, служебные — нет; таблицы закрыты", () => {
+  it("20 функций (v91: + chat_clear; v92: + свои чаты) — anon, служебные — нет; таблицы закрыты", () => {
     const fns = ["chat_list(text)", "chat_unread(text)", "chat_open(text, bigint, bigint, bigint, timestamptz)", "chat_read(text, bigint, bigint)", "chat_send(text, bigint, text, bigint)",
       "chat_photo_send(text, bigint, text, text, int, int, text, bigint)", "chat_photo(text, bigint, boolean)", "chat_edit(text, bigint, text)", "chat_react(text, bigint, text)",
       "chat_pin(text, bigint, bigint)", "chat_dm(text, text)", "chat_people(text)", "chat_call(text, text, text, text, text, text)", "chat_go(text, bigint)", "chat_delete(text, bigint)",
-      "chat_clear(text, bigint)"];
+      "chat_clear(text, bigint)", "chat_group_create(text, text, text[])", "chat_group_edit(text, bigint, text, text[], text[])", "chat_group_leave(text, bigint)", "chat_group_delete(text, bigint)"];
     for (const f of fns) expect([f, sql.includes("grant execute on function " + f + " to anon, authenticated;")]).toEqual([f, true]);
-    expect((sql.match(/^grant execute on function /gm) || []).length).toBe(16);
-    expect((sql.match(/^revoke all on function _sa_chat/gm) || []).length).toBe(21);
+    expect((sql.match(/^grant execute on function /gm) || []).length).toBe(20);
+    expect((sql.match(/^revoke all on function _sa_chat/gm) || []).length).toBe(25);   // v92: + _sa_chat_title, _pick, _added, _group_out
     expect(sql).toContain("revoke all on table sa_chats, sa_chat_msgs, sa_chat_reads, sa_chat_reacts, sa_chat_photos from public, anon, authenticated;");
-    expect(sql).toContain("' функций из 16 · таблицы: '");
+    expect(sql).toContain("' функций из 20 · таблицы: '");
   });
   it("правила: сутки на правку, реакции шести видов, закреп в группе, фото до 450 КБ, 10 за 10 минут, 60 в день и 200 МБ, 30 дней хранения (закреп — остаётся)", () => {
     expect(sql).toContain("if m.created_at < now() - interval '24 hours' then return jsonb_build_object('ok', false, 'error', 'too_late'); end if;");
     expect(sql).toContain("r text not null check (r in ('ok', 'like', 'heart', 'lol', 'wow', 'fire')),");
-    expect(sql).toContain("if ch.kind = 'team' and not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;");
+    expect(sql).toContain("if ch.kind in ('team', 'group') and not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;");   // v92: и в своём чате
     expect(sql).toContain("if octet_length(full_b) > 450 * 1024 or octet_length(thumb_b) > 80 * 1024 then return jsonb_build_object('ok', false, 'error', 'too_big'); end if;");
     expect(sql).toContain("x.created_at > now() - interval '10 minutes') >= 10 then");
     expect(sql).toContain("(now() at time zone tz)::date) >= 60");
     expect(sql).toContain("> 200 * 1024 * 1024 then");
     expect(sql).toContain("x.created_at < now() - interval '30 days' and x.id is distinct from y.pin_id;");
-    expect(sql).toContain("' отвечает тебе в «' || case ch.kind when 'team' then 'Вся команда' when 'leads' then 'Старшие'\n        else 'Руководители сети' end || '»:'");
+    expect(sql).toContain("' отвечает тебе в «' || case ch.kind when 'team' then 'Вся команда' when 'leads' then 'Старшие'\n        when 'group' then coalesce(ch.title, 'Чат') else 'Руководители сети' end || '»:'");   // v92: свой чат — по названию
     // «Руководители сети»: любой руководитель, заведений два и больше; чужое удаляет руководящий состав
     expect(sql).toContain("(ch.kind = 'net' and coalesce((c->>'lead')::boolean, false) and coalesce(c->>'restaurant', '') <> '')");
     expect(sql).toContain("where (x.restaurant = rest or (x.kind = 'net' and multi)) and _sa_chat_ok(c, x)");

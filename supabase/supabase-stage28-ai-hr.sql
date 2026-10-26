@@ -182,8 +182,9 @@ begin
   return json_build_object('ok', true);
 end $$;
 
+-- v91: VOLATILE, как функции этапа 21: проверка входа (whoami) может записывать, а STABLE PostgREST зовёт «только для чтения»
 create or replace function public.hr_quality_get(p_token text, p_restaurant text)
-returns json language plpgsql stable security definer set search_path to public as $$
+returns json language plpgsql volatile security definer set search_path to public as $$
 declare w jsonb; r record;
 begin
   w := _sa_hire_staff(p_token);

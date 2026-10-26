@@ -1,6 +1,6 @@
 // Сборка демо чата в одну страницу: node tools/claude/chat-demo/build.mjs <выход.html> [--local]
 // React — с cdnjs (UMD), всё остальное — внутри страницы, со снимками главной (home-dark.webp, home-light.webp: настоящая
-// сборка v90, 393 × 852, без числа на значке — число рисует демо). --local — React внутри страницы (из глобальных
+// сборка v91, 393 × 852, без числа на круге чата — число рисует демо). --local — React внутри страницы (из глобальных
 // пакетов): для проверки в Chromium без сети (cdnjs из песочницы не открывается).
 import { createRequire } from "node:module";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -12,8 +12,8 @@ const esbuild = (() => { for (const p of [G + "/tsx/node_modules/esbuild", "/opt
 const HERE = dirname(fileURLToPath(import.meta.url));
 const out = process.argv[2] || join(HERE, "chat-demo.html");
 const local = process.argv.includes("--local");
-// где на снимке значок чата (верхняя строка; «Для чтения» и «Тёмная» разной ширины — значок левее или правее)
-const HOME_BOX = { dark: { x: 199.5625, y: 8, w: 28, h: 26 }, light: { x: 220.15625, y: 8, w: 28, h: 26 } };
+// где на снимке круг чата (v91: рядом с нижним меню, в обеих темах на одном месте; число — ярлык на кромке круга)
+const HOME_BOX = { dark: { x: 325, y: 777, w: 58, h: 58, round: true }, light: { x: 325, y: 777, w: 58, h: 58, round: true } };
 const img = (f) => (existsSync(join(HERE, f)) ? "data:image/webp;base64," + readFileSync(join(HERE, f)).toString("base64") : "");
 const home = img("home-dark.webp") && img("home-light.webp")
   ? { w: 393, h: 852, dark: { src: img("home-dark.webp"), box: HOME_BOX.dark }, light: { src: img("home-light.webp"), box: HOME_BOX.light } } : null;

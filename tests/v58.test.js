@@ -103,7 +103,10 @@ describe("v58: пустые экраны и дата (неудобства 7–9
 describe("v58: мелкий текст (неудобство 12)", () => {
   it("подписи вкладок — 11 px (были 9); на компьютере в меню слева — тоже 11", () => {
     const tb = rd("ui/tabbar.jsx");
-    expect((tb.match(/fontSize:11, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold"/g) || []).length).toBe(2);
+    expect((tb.match(/fontSize:11, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold"/g) || []).length).toBe(1);   // меню слева
+    // нижняя панель: 11 px; v91 — 10 px только на узком экране (320 px), когда рядом круг чата и «Команда» иначе не входит
+    expect(tb).toContain('fontSize: tight ? 10 : 11, fontFamily:"Georgia, serif", letterSpacing: tight ? 0 : 0.3, fontWeight:"bold"');
+    expect(tb).toContain("const tight = cellW > 0 && cellW < 52;");
     expect(tb).not.toMatch(/fontSize:(9|10), fontFamily:"Georgia, serif"/);
   });
   it("в экранах приложения нет меток мельче 10,5 px (кроме печатных листов, графика и игрового стола «Сборки»)", () => {

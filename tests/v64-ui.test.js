@@ -115,7 +115,7 @@ describe("v64: ряд треков — кружки на местах, пане�
 describe("v64: Наставник — круг посередине нижнего меню", () => {
   const tb = rd("ui/tabbar.jsx"), app = rd("App.jsx");
   it("панель вкладок: ячейка AI между «Сменой» и «Командой»; тап и перетаскивание линзы на неё открывают Наставника", () => {
-    expect(tb).toContain('export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode = "center" })');
+    expect(tb).toContain('export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode = "center", chat = null })');   // v91: + круг чата рядом
     expect(tb).toContain("const AI_AT = Math.floor(n0 / 2);");
     expect(tb).toContain("if (ti === -1) { ai(); return; }");
     expect(tb).toContain('<div key="ai" data-tab-ai="" role="button" tabIndex={0} aria-label="AI-наставник"');
@@ -127,10 +127,10 @@ describe("v64: Наставник — круг посередине нижнег
     expect(tb).toContain('{pulse ? <span className="sa-pulse" data-ai-pulse=""');
   });
   it("App: в портрете — меню с AI посередине, плавающей кнопки нет; на компьютере — меню слева, как было", () => {
-    expect(app).toContain('onAi={() => navigate("assistant")} aiMode="center" />;');
+    expect(app).toContain('onAi={() => navigate("assistant")} aiMode="center" chat={chatDockProps} />;');   // v91: + круг чата рядом с панелью
     expect(app).toContain("const fabOn = false;");
     expect(app).toContain("function AiFab({ a11y, onClick, screen }) {");   // сама кнопка в коде осталась
-    expect(app).toContain("? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate(\"assistant\")} />");
+    expect(app).toContain("? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate(\"assistant\")} chat={chatDockProps} />");   // v91: + чат
     expect(app).not.toContain("sa_ai_place");
   });
   it("тексты вслед за кнопкой: карточка приветствия, тур главной; на компьютере — «слева» и «внизу меню»", () => {

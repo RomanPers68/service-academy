@@ -1517,6 +1517,9 @@ function ServiceAcademy() {
   };
   const openChat = (id) => { vibrate("light"); setChatOpen(id != null ? { id } : true); };
   const chatStt = useMemo(() => chatSttOf(), []);
+  // v91 (Доп. 404): круг чата рядом с нижней панелью (лёжа и на компьютере — в меню слева, под Наставником);
+  // есть, когда у сотрудника заведение и на сервере этап 38
+  const chatDockProps = profile && profile.restaurant && chatOn ? { n: chatUnread, label: chatBadge(chatUnread), onOpen: () => openChat(null) } : null;
   // v87 (Доп. 400): «Смена» под роль — руководителю брифинг и зал, хостес зал и ближайшая бронь, официанту его столы
   const shiftRole = useMemo(() => roleCard({ role: shiftRoleOf(profile), board: seatOn ? seatBoard : null, empId: profile && profile.id,
     briefKnown, briefSent: !!teamBrief, dayOff: !!(shiftToday && shiftToday.off) }), [profile, seatOn, seatBoard, briefKnown, teamBrief, shiftToday]);
@@ -2768,22 +2771,8 @@ function ServiceAcademy() {
             {/* v73 (Доп. 386): «SA» — шрифтом с засечками, без звёздочки ✦ и моноширинного */}
             <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:14, letterSpacing:2.5, fontFamily:"Georgia, serif" }}>SA</span>
             <span style={{ flex: 1 }} data-sa-topspace="" />
-            {/* v90 (Доп. 403): чат смены — с любого экрана, как поиск; число — непрочитанные. В тесте, на экзамене и в
-                собеседовании кандидата чата нет: спросить ответ у коллеги там было бы подсказкой */}
-            {profile && profile.restaurant && chatOn && !["exam", "certificate", "candidate"].includes(screen) && !(screen === "lesson" && activeLesson && activeLesson.type === "quiz") ? (
-              <button className="sa-btn sa-hit" data-top-chat="" aria-label={"Чат смены" + (chatUnread ? ": непрочитанных " + chatUnread : "")} onClick={() => openChat(null)}
-                style={{ position: "relative", width: 28, height: 26, marginRight: 10, borderRadius: 11, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
-                  background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.10)",
-                  boxShadow: a11y ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 1px 0 rgba(255,255,255,0.16)" }}>
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke={a11y ? "#6B4E1A" : "#D2A85A"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-                  <path d="M14.6 8.4V6.3a1.6 1.6 0 0 0-1.6-1.6H4.7a1.6 1.6 0 0 0-1.6 1.6v5.4a1.6 1.6 0 0 0 1.6 1.6h.9v2.4l2.4-2" />
-                  <path d="M8.7 10.6A1.6 1.6 0 0 1 10.3 9h8.4a1.6 1.6 0 0 1 1.6 1.6v5a1.6 1.6 0 0 1-1.6 1.6h-.9v2.5l-3.1-2.5h-4.4a1.6 1.6 0 0 1-1.6-1.6z" />
-                </svg>
-                {chatUnread ? <span data-top-chat-n={chatUnread} aria-hidden="true" style={{ position: "absolute", top: -6, right: -7, boxSizing: "border-box", minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8,
-                  display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", fontSize: 10, fontWeight: 700, lineHeight: 1,
-                  color: "#1A1008", background: "linear-gradient(180deg, #E4C88C, #C8A96E)", boxShadow: a11y ? "0 0 0 2px #F3EBDA" : "0 0 0 2px #16110A", fontVariantNumeric: "tabular-nums" }}>{chatBadge(chatUnread)}</span> : null}
-              </button>
-            ) : null}
+            {/* v91 (Доп. 404): значок чата из этой строки переехал вниз, к панели вкладок (ui/tabbar.jsx, ChatDisc): наверху он
+                уезжал при прокрутке. В тесте, на экзамене и в собеседовании кандидата панели нет, а значит, и чата */}
             {/* v71: поиск с любого экрана — меню и аллергены, карта бара, глоссарий, справочник, уроки */}
             {/* в тесте, на экзамене и в собеседовании кандидата поиска нет: он стал бы подсказкой (и обходом учёта «лазеек») */}
             {profile && !["search", "exam", "certificate", "candidate"].includes(screen) && !(screen === "lesson" && activeLesson && activeLesson.type === "quiz") ? (
@@ -3311,9 +3300,9 @@ function ServiceAcademy() {
           ];
           // v50 (Доп. 363): шире 600 px — меню слева (телефон лёжа, планшет, компьютер); в портрете — как было
           return vp.wide
-            ? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate("assistant")} />
+            ? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate("assistant")} chat={chatDockProps} />
             : <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate("light"); navigate(id); }} tabs={tabs}
-                onAi={() => navigate("assistant")} aiMode="center" />;
+                onAi={() => navigate("assistant")} aiMode="center" chat={chatDockProps} />;
         })()}
       </div>
     </div>

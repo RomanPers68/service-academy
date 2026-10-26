@@ -89,11 +89,11 @@ describe("v50: меню слева (NavRail)", () => {
     expect(app).toContain('import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";');
     expect(app).toContain('const homeCols = screen === "roleSelect" && homeTwoCols(vp, railOn, vp.safe);');
     expect(app).toContain('const NAV_SCREENS = ["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"];');
-    expect(app).toContain("? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate(\"assistant\")} />");
+    expect(app).toContain("? <NavRail a11y={a11y} activeId={activeId} tabs={tabs} compact={vp.short} onTab={(id) => navigate(id)} onAi={() => navigate(\"assistant\")} chat={chatDockProps} />");   // v91: + чат под Наставником
     expect(app).toContain(": <LiquidTabBar a11y={a11y} activeId={activeId} onTab={(id) => { if (screen !== id) vibrate(\"light\"); navigate(id); }} tabs={tabs}");
     // v55 (Доп. 368): условие плавающей кнопки вынесено в fabOn — по нему же ставится запас снизу (sa-fabon).
     // v64 (Доп. 377): Наставник — в нижнем меню (onAi), плавающая кнопка выключена; сама AiFab в коде осталась
-    expect(app).toContain('onAi={() => navigate("assistant")} aiMode="center" />;');
+    expect(app).toContain('onAi={() => navigate("assistant")} aiMode="center" chat={chatDockProps} />;');   // v91: + круг чата рядом с панелью
     expect(app).toContain("const fabOn = false;");
     expect(app).toContain("{fabOn && (");
     expect(app).toContain('bottom: vp.wide ? 24 : 104');

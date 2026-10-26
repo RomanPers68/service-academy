@@ -185,11 +185,11 @@ describe("v90: экран чата (ui/chat.jsx)", () => {
 
 describe("v90: чат в приложении", () => {
   const app = rd("App.jsx");
-  it("значок в верхней строке рядом с поиском: число непрочитанных; нет в тесте, на экзамене и в собеседовании", () => {
-    expect(app).toContain('{profile && profile.restaurant && chatOn && !["exam", "certificate", "candidate"].includes(screen) && !(screen === "lesson" && activeLesson && activeLesson.type === "quiz") ? (');
-    expect(app).toContain('<button className="sa-btn sa-hit" data-top-chat="" aria-label={"Чат смены" + (chatUnread ? ": непрочитанных " + chatUnread : "")} onClick={() => openChat(null)}');
-    expect(app).toContain("{chatBadge(chatUnread)}</span> : null}");
-    expect(app.indexOf("data-top-chat=")).toBeLessThan(app.indexOf("data-top-search"));
+  it("значок чата с числом непрочитанных (v91: круг у нижнего меню вместо верхней строки — tests/v91.test.js); нет в тесте, на экзамене и в собеседовании", () => {
+    expect(app).not.toContain("data-top-chat=");
+    expect(app).toContain('const chatDockProps = profile && profile.restaurant && chatOn ? { n: chatUnread, label: chatBadge(chatUnread), onOpen: () => openChat(null) } : null;');
+    expect((app.match(/chat=\{chatDockProps\}/g) || []).length).toBe(2);   // нижнее меню и меню слева: их нет в тесте, на экзамене, у кандидата
+    expect(app).toContain('const NAV_SCREENS = ["roleSelect","home","module","leaderboard","glossary","stats","daily","playerDetail","team","shift","teamHub","me"];');
   });
   it("непрочитанные и вызовы — chat_unread раз в 20 секунд на виду; без этапа 38 значка нет", async () => {
     const { POLL_APP_MS } = await import("../lib/chat.js");
@@ -212,7 +212,7 @@ describe("v90: чат в приложении", () => {
     const { GUIDE } = await import("../ui/guide.jsx");
     const g = GUIDE.flatMap((x) => x.items || []).find((x) => x.key === "chat") || {};
     expect(g.go).toBe("chat");
-    expect(g.text).toContain("Значок с облачками в верхней строке, рядом с лупой");
+    expect(g.text).toContain("Круг с облачками рядом с нижним меню");   // v91: был «в верхней строке, рядом с лупой»
     expect(g.text).toContain("Ответить с цитатой: свайп по сообщению вбок");
     expect(g.text.match(DASH)).toBe(null);
   });
@@ -228,15 +228,16 @@ describe("v90: чат в приложении", () => {
 
 describe("v90: этап 38 на сервере (статично; живые проверки — tools/claude/sql/test38.sh)", () => {
   const sql = rd("supabase/supabase-stage38-chat.sql");
-  it("15 функций — anon, служебные — нет; таблицы закрыты", () => {
+  it("16 функций (v91: + chat_clear) — anon, служебные — нет; таблицы закрыты", () => {
     const fns = ["chat_list(text)", "chat_unread(text)", "chat_open(text, bigint, bigint, bigint, timestamptz)", "chat_read(text, bigint, bigint)", "chat_send(text, bigint, text, bigint)",
       "chat_photo_send(text, bigint, text, text, int, int, text, bigint)", "chat_photo(text, bigint, boolean)", "chat_edit(text, bigint, text)", "chat_react(text, bigint, text)",
-      "chat_pin(text, bigint, bigint)", "chat_dm(text, text)", "chat_people(text)", "chat_call(text, text, text, text, text, text)", "chat_go(text, bigint)", "chat_delete(text, bigint)"];
+      "chat_pin(text, bigint, bigint)", "chat_dm(text, text)", "chat_people(text)", "chat_call(text, text, text, text, text, text)", "chat_go(text, bigint)", "chat_delete(text, bigint)",
+      "chat_clear(text, bigint)"];
     for (const f of fns) expect([f, sql.includes("grant execute on function " + f + " to anon, authenticated;")]).toEqual([f, true]);
-    expect((sql.match(/^grant execute on function /gm) || []).length).toBe(15);
+    expect((sql.match(/^grant execute on function /gm) || []).length).toBe(16);
     expect((sql.match(/^revoke all on function _sa_chat/gm) || []).length).toBe(21);
     expect(sql).toContain("revoke all on table sa_chats, sa_chat_msgs, sa_chat_reads, sa_chat_reacts, sa_chat_photos from public, anon, authenticated;");
-    expect(sql).toContain("' функций из 15 · таблицы: '");
+    expect(sql).toContain("' функций из 16 · таблицы: '");
   });
   it("правила: сутки на правку, реакции шести видов, закреп в группе, фото до 450 КБ, 10 за 10 минут, 60 в день и 200 МБ, 30 дней хранения (закреп — остаётся)", () => {
     expect(sql).toContain("if m.created_at < now() - interval '24 hours' then return jsonb_build_object('ok', false, 'error', 'too_late'); end if;");

@@ -27,11 +27,21 @@
 --     должности — кто сегодня в графике, если график есть), пишет бот;
 --     chat_go(p_token, p_msg) — «Иду» на вызов (позвавшему пишет бот);
 --   • chat_delete(p_token, p_msg) — удалить своё сообщение; руководитель и старший — любое в группе своего заведения,
---     в «Руководителях сети» — владелец и руководящий состав.
+--     в «Руководителях сети» — владелец и руководящий состав;
+--   • chat_clear(p_token, p_chat) — очистить чат целиком у всех (v91): «Вся команда» и «Старшие» — руководитель и старший
+--     заведения, «Руководители сети» — владелец и руководящий состав, личную переписку — любой из двоих. Стирается всё,
+--     без строки «кто очистил»; личная переписка уходит из списка чатов у обоих.
+-- Удалённое сообщение (v91) исчезает из переписки целиком, без «Сообщение удалено»: в первой странице и раньше его нет,
+-- в опросе оно приходит с del, чтобы открытые чаты убрали его у себя; в списке чатов — последнее неудалённое.
 -- Переписка и фото хранятся 30 дней (закреплённое — пока закреплено). Тексты и фото видят только сотрудники
 -- заведения (личные — только двое; «Руководители сети» — только руководители).
 --
 -- Нужны этапы 21, 22б, 24, 25, 32 и 36. Ничего не удаляет. Можно запускать повторно.
+--
+-- v91: функции с токеном — VOLATILE (как в этапе 21). PostgREST выполняет STABLE-функции в транзакции «только для
+-- чтения», а проверка входа (whoami) на сервере отмечает визит записью — chat_unread, chat_people и chat_photo в v90
+-- были STABLE и молча падали: пустой список «Написать», нет числа на значке и баннера вызова, фото не открывались.
+-- Перезапуск этапа заменяет их; переписка не трогается. Ещё в v91: chat_clear — «Очистить чат» (16 функций).
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -73,6 +83,7 @@ create table if not exists sa_chats (
 alter table sa_chats add column if not exists pin_id bigint;
 alter table sa_chats add column if not exists pin_by text;
 alter table sa_chats add column if not exists pin_at timestamptz;
+alter table sa_chats add column if not exists cleared_at timestamptz;   -- v91: когда чат очищали (открытые у других — перечитать)
 alter table sa_chats drop constraint if exists sa_chats_kind_check;
 alter table sa_chats add constraint sa_chats_kind_check check (kind in ('team', 'leads', 'dm', 'net'));
 create unique index if not exists sa_chats_group on sa_chats (restaurant, kind) where kind in ('team', 'leads');
@@ -276,7 +287,7 @@ create or replace function _sa_chat_view(c jsonb, ch sa_chats, p_today text[])
 returns jsonb language plpgsql stable security definer set search_path to public as $$
 declare lm sa_chat_msgs; n int; sh int; peer jsonb; pid text;
 begin
-  select * into lm from sa_chat_msgs m where m.chat_id = ch.id order by m.id desc limit 1;
+  select * into lm from sa_chat_msgs m where m.chat_id = ch.id and not m.deleted order by m.id desc limit 1;
   select count(*), count(*) filter (where p_today is not null and x.id = any(p_today)) into n, sh from _sa_chat_members(ch) x;
   if ch.kind = 'dm' then
     pid := case when ch.a = c->>'id' then ch.b else ch.a end;
@@ -285,7 +296,7 @@ begin
       into peer from employees e where e.id::text = pid;
   end if;
   return jsonb_build_object('id', ch.id, 'kind', ch.kind, 'members', n, 'shift', case when p_today is not null and ch.kind in ('team', 'leads') then sh end,
-    'peer', peer, 'last', case when lm.id is not null then _sa_chat_msg_json(lm) end, 'unread', _sa_chat_unread(ch.id, c->>'id'));
+    'peer', peer, 'last', case when lm.id is not null then _sa_chat_msg_json(lm) end, 'unread', _sa_chat_unread(ch.id, c->>'id'), 'cleared', ch.cleared_at);
 end; $$;
 
 -- вызовы мне за 10 минут без ответа
@@ -347,9 +358,9 @@ begin
   for ch in
     select x.* from sa_chats x
      where (x.restaurant = rest or (x.kind = 'net' and multi)) and _sa_chat_ok(c, x)
-       and (x.kind <> 'dm' or exists (select 1 from sa_chat_msgs m where m.chat_id = x.id))
+       and (x.kind <> 'dm' or exists (select 1 from sa_chat_msgs m where m.chat_id = x.id and not m.deleted))
      order by case x.kind when 'team' then 0 when 'leads' then 1 when 'net' then 2 else 3 end,
-              (select max(m.id) from sa_chat_msgs m where m.chat_id = x.id) desc nulls last
+              (select max(m.id) from sa_chat_msgs m where m.chat_id = x.id and not m.deleted) desc nulls last
   loop
     v := _sa_chat_view(c, ch, today);
     out := out || jsonb_build_array(v);
@@ -360,7 +371,7 @@ begin
 end; $$;
 
 create or replace function chat_unread(p_token text)
-returns jsonb language plpgsql stable security definer set search_path to public as $$
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
 declare c jsonb; rest text; tot int;
 begin
   c := _sa_caller(p_token);
@@ -384,8 +395,8 @@ begin
   if ch.id is null or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   if coalesce(p_before, 0) > 0 then
     select coalesce(jsonb_agg(_sa_chat_msg_json(m::sa_chat_msgs) order by m.id), '[]'::jsonb), min(m.id) into msgs, lo
-      from (select * from sa_chat_msgs x where x.chat_id = ch.id and x.id < p_before order by x.id desc limit 40) m;
-    more := lo is not null and exists (select 1 from sa_chat_msgs x where x.chat_id = ch.id and x.id < lo);
+      from (select * from sa_chat_msgs x where x.chat_id = ch.id and x.id < p_before and not x.deleted order by x.id desc limit 40) m;
+    more := lo is not null and exists (select 1 from sa_chat_msgs x where x.chat_id = ch.id and x.id < lo and not x.deleted);
   elsif coalesce(p_after, 0) > 0 then
     select coalesce(jsonb_agg(_sa_chat_msg_json(m::sa_chat_msgs) order by m.id), '[]'::jsonb) into msgs
       from ((select * from sa_chat_msgs x where x.chat_id = ch.id and x.id > p_after order by x.id limit 300)
@@ -396,8 +407,8 @@ begin
              order by x.updated_at desc limit 200)) m;
   else
     select coalesce(jsonb_agg(_sa_chat_msg_json(m::sa_chat_msgs) order by m.id), '[]'::jsonb), min(m.id) into msgs, lo
-      from (select * from sa_chat_msgs x where x.chat_id = ch.id order by x.id desc limit 60) m;
-    more := lo is not null and exists (select 1 from sa_chat_msgs x where x.chat_id = ch.id and x.id < lo);
+      from (select * from sa_chat_msgs x where x.chat_id = ch.id and not x.deleted order by x.id desc limit 60) m;
+    more := lo is not null and exists (select 1 from sa_chat_msgs x where x.chat_id = ch.id and x.id < lo and not x.deleted);
   end if;
   select coalesce(jsonb_agg(jsonb_build_object('id', x.id, 'name', x.name, 'pos', x.pos, 'rest', x.rest, 'read', coalesce(r.last_id, 0)) order by x.name), '[]'::jsonb) into mem
     from _sa_chat_members(ch) x left join sa_chat_reads r on r.chat_id = ch.id and r.emp_id = x.id;
@@ -533,7 +544,7 @@ begin
 end; $$;
 
 create or replace function chat_photo(p_token text, p_id bigint, p_full boolean default false)
-returns jsonb language plpgsql stable security definer set search_path to public as $$
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
 declare c jsonb; p sa_chat_photos; m sa_chat_msgs; ch sa_chats;
 begin
   c := _sa_caller(p_token);
@@ -628,7 +639,7 @@ begin
 end; $$;
 
 create or replace function chat_people(p_token text)
-returns jsonb language plpgsql stable security definer set search_path to public as $$
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
 declare c jsonb; rest text; today text[]; out jsonb;
 begin
   c := _sa_caller(p_token);
@@ -737,6 +748,34 @@ begin
   return jsonb_build_object('ok', true);
 end; $$;
 
+-- v91: очистить чат целиком — у всех. Сообщения стираются (фото и реакции — вместе с ними), закреп снимается, строки
+-- «кто очистил» нет (владелец: «что бы удалялось все, без подписи»); личная переписка уходит из списка у обоих.
+-- cleared_at — метка для тех, у кого чат открыт: их приложение увидит её в ответе опроса и перечитает переписку.
+create or replace function chat_clear(p_token text, p_chat bigint)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; ch sa_chats; n int; t timestamptz := clock_timestamp();
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  select * into ch from sa_chats where id = p_chat;
+  if ch.id is null or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if not (ch.kind = 'dm' or (coalesce((c->>'lead')::boolean, false) and ch.kind in ('team', 'leads'))
+          or (coalesce((c->>'network')::boolean, false) and ch.kind = 'net')) then
+    return jsonb_build_object('ok', false, 'error', 'forbidden');
+  end if;
+  delete from sa_chat_msgs where chat_id = ch.id;
+  get diagnostics n = row_count;
+  update sa_chats set pin_id = null, pin_by = c->>'id', pin_at = t, cleared_at = t where id = ch.id;
+  return jsonb_build_object('ok', true, 'removed', n, 'cleared', t);
+end; $$;
+
+-- v91: та же причина, что у chat_people, у двух функций прошлых этапов: my_reset_at (этап 20, метка «Сбросить
+-- прогресс» для нового телефона) и hr_quality_get (этап 28, общий итог «Проверки AI HR»). Тела не меняются.
+do $$ begin
+  if to_regprocedure('public.my_reset_at(text)') is not null then execute 'alter function public.my_reset_at(text) volatile'; end if;
+  if to_regprocedure('public.hr_quality_get(text,text)') is not null then execute 'alter function public.hr_quality_get(text, text) volatile'; end if;
+end $$;
+
 -- ── 6) Права ───────────────────────────────────────────────────────────────────
 grant execute on function chat_list(text) to anon, authenticated;
 grant execute on function chat_unread(text) to anon, authenticated;
@@ -753,6 +792,7 @@ grant execute on function chat_people(text) to anon, authenticated;
 grant execute on function chat_call(text, text, text, text, text, text) to anon, authenticated;
 grant execute on function chat_go(text, bigint) to anon, authenticated;
 grant execute on function chat_delete(text, bigint) to anon, authenticated;
+grant execute on function chat_clear(text, bigint) to anon, authenticated;
 revoke all on function _sa_chat_lead_pos() from public, anon, authenticated;
 revoke all on function _sa_chat_role_pos(text) from public, anon, authenticated;
 revoke all on function _sa_chat_cut(text, int) from public, anon, authenticated;
@@ -780,8 +820,8 @@ notify pgrst, 'reload schema';
 select 'чат смены: ' ||
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
      and p.proname in ('chat_list', 'chat_unread', 'chat_open', 'chat_read', 'chat_send', 'chat_photo_send', 'chat_photo', 'chat_edit', 'chat_react', 'chat_pin',
-                       'chat_dm', 'chat_people', 'chat_call', 'chat_go', 'chat_delete')) ||
-  ' функций из 15 · таблицы: ' || case when to_regclass('public.sa_chats') is not null and to_regclass('public.sa_chat_msgs') is not null
+                       'chat_dm', 'chat_people', 'chat_call', 'chat_go', 'chat_delete', 'chat_clear')) ||
+  ' функций из 16 · таблицы: ' || case when to_regclass('public.sa_chats') is not null and to_regclass('public.sa_chat_msgs') is not null
     and to_regclass('public.sa_chat_reads') is not null and to_regclass('public.sa_chat_reacts') is not null and to_regclass('public.sa_chat_photos') is not null
     then 'есть' else 'НЕТ' end ||
   ' · вид «Чат» в напоминаниях: ' || case when 'chat' = any(_sa_notify_kinds()) then 'да' else 'нет' end ||

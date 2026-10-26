@@ -20,6 +20,9 @@ run() { out=$($P0 -d $DB -f "$D/$1" 2>&1); rc=$?; RC=$((RC + rc)); echo "── 
 for f in $PRE; do run $f; done
 # без этапа 36 этап 38 не идёт: просит сначала его
 NO36=$($P0 -d $DB -f "$D/supabase-stage38-chat.sql" 2>&1)
+# v91: функции прошлых этапов с проверкой входа, объявленные STABLE (этапы 20 и 28 до v91), — этап 38 переводит их в VOLATILE
+$P0 -d $DB -c "create or replace function my_reset_at(p_token text) returns jsonb language plpgsql stable security definer set search_path to public as \$f\$ begin return jsonb_build_object('ok', true, 'reset_at', null); end \$f\$" \
+  -c "create or replace function hr_quality_get(p_token text, p_restaurant text) returns json language plpgsql stable security definer set search_path to public as \$f\$ begin return json_build_object('ok', true, 'item', null); end \$f\$" >/dev/null
 for f in $POST; do run $f; done
 # график «на сегодня» (как seed24.sql, от сегодняшнего дня: шаблон satest25 мог быть собран раньше)
 sed -n '1,/^end \$\$;/p' "$HERE/seed24.sql" > "$D/seed-today.sql"
@@ -43,7 +46,8 @@ calm() { PP "update sa_chat_reads set at = now() - interval '10 minutes', notifi
 
 chk "без этапа 36 — понятная ошибка: какой этап сначала" "$NO36" 'Сначала этап 36 \(supabase-stage36-comfort.sql\)'
 chk "этапы 26, 31, 32, 34, 35, 36, 37 и 38 (38 — дважды) — без ошибок" "$RC" '^0$'
-chk "итог этапа: 15 функций, таблицы, вид «Чат», бот" "$OUT38" 'чат смены: 15 функций из 15 · таблицы: есть · вид «Чат» в напоминаниях: да · Telegram: '
+chk "итог этапа: 16 функций, таблицы, вид «Чат», бот" "$OUT38" 'чат смены: 16 функций из 16 · таблицы: есть · вид «Чат» в напоминаниях: да · Telegram: '
+chk "v91: my_reset_at (этап 20) и hr_quality_get (этап 28) — VOLATILE после этапа 38" "$($P0 -d $DB -t -A -c "select string_agg(proname || ':' || provolatile::text, ',' order by proname) from pg_proc where proname in ('my_reset_at', 'hr_quality_get')")" '^hr_quality_get:v,my_reset_at:v$'
 $P -c "delete from net.sent_log; delete from tg_sent; delete from sa_notify_prefs; delete from vault.secrets_stub; insert into vault.secrets_stub values ('sa_tg_bot_token', '123:TEST'); insert into sa_settings (key, value) values ('app_url', 'https://app.example') on conflict (key) do update set value = excluded.value" >/dev/null
 
 # ── чаты заведения
@@ -190,9 +194,10 @@ chk "вызов старше 10 минут — из «вызовов мне» у
 # ── удаление
 MA2=$(Q "select chat_send('$ANNA', $TEAM, 'Удалю это')->'msg'->>'id'"); MI2=$(Q "select chat_send('$ILYA', $TEAM, 'И это удалят')->'msg'->>'id'")
 chk "чужое сообщение официанту не удалить — forbidden" "$(Q "select chat_delete('$ILYA', $MA2)->>'error'")" '^forbidden$'
-chk "своё — удаляется: текст пустой, del" "$(Q "select chat_delete('$ANNA', $MA2)->>'ok'")|$(Q "select (m->>'del') || ':' || (m->>'body') from jsonb_array_elements(chat_open('$ILYA', $TEAM)->'msgs') m where (m->>'id')::bigint = $MA2")" '^true\|true:$'
+chk "своё — удаляется: в опросе открытого чата приходит с del и пустым текстом (убрать у себя)" "$(Q "select chat_delete('$ANNA', $MA2)->>'ok'")|$(Q "select (m->>'del') || ':' || (m->>'body') from jsonb_array_elements(chat_open('$ILYA', $TEAM, $MA2 - 1)->'msgs') m where (m->>'id')::bigint = $MA2")" '^true\|true:$'
 DMLAST=$(PP "select max(id) from sa_chat_msgs where chat_id = $DMI")
 chk "старшая удаляет чужое в группе; в чужой личной — нет" "$(Q "select chat_delete('$MARIA', $MI2)->>'ok'") $(Q "select chat_delete('$MARIA', $DMLAST)->>'error'")" '^true not_found$'
+chk "v91: удалённых (два последних) нет в переписке (первая страница), в списке чатов — последнее неудалённое" "$(Q "select count(*) from jsonb_array_elements(chat_open('$ILYA', $TEAM)->'msgs') m where (m->>'id')::bigint in ($MA2, $MI2)")|$(Q "select (c->'last'->>'id')::bigint < $MA2 from jsonb_array_elements(chat_list('$ILYA')->'chats') c where c->>'kind' = 'team'")" '^0\|t$'
 WANT=$(PP "select count(*) from sa_chat_msgs m where m.chat_id = $TEAM and not m.deleted and m.emp_id <> '$PEMP' and m.id > coalesce((select last_id from sa_chat_reads r where r.chat_id = $TEAM and r.emp_id = '$PEMP'), 0)")
 chk "удалённые не считаются непрочитанными" "$(Q "select c->>'unread' from jsonb_array_elements(chat_list('$PETR')->'chats') c where c->>'kind' = 'team'")" "^$WANT\$"
 
@@ -223,11 +228,45 @@ PP "update employees set status = 'fired' where restaurant = 'Порт'" >/dev/n
 chk "заведение одно — «Руководителей сети» в списке нет" "$(Q "select count(*) from jsonb_array_elements(chat_list('$MARIA')->'chats') c where c->>'kind' = 'net'")" '^0$'
 PP "update employees set status = 'active' where restaurant = 'Порт'" >/dev/null
 
+# ── как PostgREST (v91): STABLE-функции он выполняет в транзакции «только для чтения», а whoami на сервере
+# записывает визит — функция с токеном, помеченная STABLE, там молча падает (v90: пустой «Написать», нет числа и баннера)
+PP "alter table sessions add column if not exists seen_at timestamptz; create or replace function whoami(p_token uuid) returns json language plpgsql volatile security definer set search_path to public as \$w\$
+declare e record;
+begin
+  update sessions set seen_at = now() where token = p_token;
+  select em.* into e from sessions s join employees em on em.id = s.employee_id where s.token = p_token and em.status = 'active';
+  if e is null then return json_build_object('ok', false, 'error', 'invalid_session'); end if;
+  return json_build_object('ok', true, 'employee', json_build_object('id', e.id, 'name', e.name, 'surname', e.surname, 'restaurant', e.restaurant, 'position', e.position, 'is_admin', e.is_admin));
+end \$w\$" >/dev/null
+RPC() { local fn="$1" call="$2" vol mode="read write"; vol=$(PP "select max(provolatile) from pg_proc where proname = '$fn'"); [ "$vol" != "v" ] && mode="read only"; $P -c "begin transaction $mode; set local role anon; $call; commit;" 2>&1 | tr '\n' ' ' | sed 's/[[:space:]]*$//'; }
+chk "все 16 функций чата — VOLATILE: PostgREST не запирает их «только для чтения»" "$(PP "select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like 'chat\_%' and p.provolatile = 'v'")" '^16$'
+chk "как PostgREST, whoami пишет визит: коллеги, непрочитанные, фото, список, переписка отвечают" "$(RPC chat_people "select chat_people('$ANNA')->>'ok'") $(RPC chat_unread "select chat_unread('$ANNA')->>'ok'") $(RPC chat_photo "select chat_photo('$ANNA', $PH)->>'ok'") $(RPC chat_list "select chat_list('$ANNA')->>'ok'") $(RPC chat_open "select chat_open('$ANNA', $TEAM)->>'ok'")" '^true true true true true$'
+chk "проверка проверяет: STABLE-функция с таким whoami в «только для чтения» падает" "$($P -c "begin transaction read only; select whoami('$ANNA'::uuid); commit;" 2>&1 | tr '\n' ' ')" 'read-only transaction'
+chk "коллеги у Анны — все действующие своего заведения" "$(RPC chat_people "select jsonb_array_length(chat_people('$ANNA')->'people')")" '^5$'
+
+# ── очистить чат (v91): «Вся команда» — руководитель и старший, «Старшие» — каждый, сеть — руководящий состав,
+# личную — любой из двоих; стирается всё (фото и реакции вместе с сообщениями), закреп снимается, строки «кто очистил» нет
+PP "update sa_chat_msgs set created_at = now() - interval '2 minutes', updated_at = now() - interval '2 minutes' where chat_id = $TEAM" >/dev/null
+MC1=$(Q "select chat_send('$ANNA', $TEAM, 'Тестовое сообщение')->'msg'->>'id'")
+Q "select chat_react('$ILYA', $MC1, 'ok')" >/dev/null; Q "select chat_pin('$MARIA', $TEAM, $MC1)" >/dev/null
+PHC=$(Q "select chat_photo_send('$PETR', $TEAM, '$JPG', '$THB', 16, 12, 'Тестовое фото', null)->'msg'->'photo'->>'id'")
+NT=$(PP "select count(*) from sa_chat_msgs where chat_id = $TEAM")
+chk "очистить «Вся команда»: официанту — forbidden, чужому заведению — not_found, уволенному — auth" "$(Q "select chat_clear('$ANNA', $TEAM)->>'error'") $(Q "select chat_clear('$IRINA', $TEAM)->>'error'") $(Q "select chat_clear('$OLEG', $TEAM)->>'error'")" '^forbidden not_found auth$'
+R=$(Q "select chat_clear('$MARIA', $TEAM)")
+chk "старшая очищает «Вся команда»: стёрто всё ($NT), без строки «кто очистил»" "$(Q "select (x->>'removed') || '|' || coalesce(x->>'msg', 'нет') from (select '$R'::jsonb x) y")|$(PP "select count(*) from sa_chat_msgs where chat_id = $TEAM")" "^$NT\\|нет\\|0\$"
+chk "после очистки: закрепа нет, фото и реакции ушли вместе с сообщениями" "$(PP "select (pin_id is null)::text from sa_chats where id = $TEAM") $(PP "select count(*) from sa_chat_photos where id = $PHC") $(PP "select count(*) from sa_chat_reacts where msg_id = $MC1")" '^true 0 0$'
+chk "у Ильи: в команде пусто и непрочитанных 0; в переписке метка «очищен» для открытых чатов" "$(Q "select (c->>'unread') || ' ' || coalesce(c->>'last', 'нет') from jsonb_array_elements(chat_list('$ILYA')->'chats') c where c->>'kind' = 'team'")|$(Q "select (x->'chat'->>'cleared' is not null)::text || ' ' || jsonb_array_length(x->'msgs') from chat_open('$ILYA', $TEAM) x")" '^0 нет\|true 0$'
+chk "«Старшие» очищает каждый из старших (Пётр, менеджер)" "$(Q "select chat_clear('$PETR', $LEADS)->>'ok'")|$(PP "select count(*) from sa_chat_msgs where chat_id = $LEADS")" '^true\|0$'
+chk "«Руководители сети»: руководитель Порта — forbidden, руководящий состав (Мария) — очищает" "$(Q "select chat_clear('$IRINA', $NET)->>'error'") $(Q "select chat_clear('$MARIA', $NET)->>'ok'")" '^forbidden true$'
+chk "чужую личную не очистить (Мария → Илья и Анна); нет такого чата — not_found" "$(Q "select chat_clear('$MARIA', $DMI)->>'error'") $(Q "select chat_clear('$MARIA', 999999)->>'error'")" '^not_found not_found$'
+chk "личную очищает любой из двоих (Илья): сообщений нет, строки об очистке нет, у Анны в списке её нет" "$(Q "select (x->>'ok') || ' ' || coalesce(x->>'msg', 'нет') from chat_clear('$ILYA', $DMI) x")|$(PP "select count(*) from sa_chat_msgs where chat_id = $DMI")|$(Q "select count(*) from jsonb_array_elements(chat_list('$ANNA')->'chats') c where (c->>'id')::bigint = $DMI")" '^true нет\|0\|0$'
+chk "фото личной ушло вместе с перепиской; после очистки в чат снова пишут" "$(PP "select count(*) from sa_chat_photos where id = $PH") $(Q "select chat_send('$ANNA', $TEAM, 'Начинаем с чистого листа')->>'ok'")" '^0 true$'
+
 # ── права
-chk "anon: 15 функций чата — можно" "$(PP "select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like 'chat\_%' and has_function_privilege('anon', p.oid, 'execute')")" '^15$'
+chk "anon: 16 функций чата — можно" "$(PP "select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like 'chat\_%' and has_function_privilege('anon', p.oid, 'execute')")" '^16$'
 chk "anon: служебные функции чата — нельзя" "$(PP "select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like '\_sa\_chat%' and has_function_privilege('anon', p.oid, 'execute')")" '^0$'
 chk "anon: таблицы чата — нельзя (сообщения, фото, реакции)" "$(Q "select count(*) from sa_chat_msgs") $(Q "select count(*) from sa_chat_photos") $(Q "select count(*) from sa_chat_reacts")" 'permission denied.*permission denied.*permission denied'
-chk "чужой токен — auth (все 15)" "$(Q "select string_agg(x, ' ') from (values (chat_open('мусор', $TEAM)->>'error'), (chat_send('мусор', $TEAM, 'x')->>'error'), (chat_dm('мусор', '$AEMP')->>'error'), (chat_call('мусор', 'host', null, 'help', null, null)->>'error'), (chat_go('мусор', $CALL)->>'error'), (chat_delete('мусор', $CALL)->>'error'), (chat_people('мусор')->>'error'), (chat_unread('мусор')->>'error'), (chat_read('мусор', $TEAM, 1)->>'error'), (chat_list('мусор')->>'error'), (chat_edit('мусор', $CALL, 'x')->>'error'), (chat_react('мусор', $CALL, 'ok')->>'error'), (chat_pin('мусор', $TEAM, null)->>'error'), (chat_photo('мусор', 1)->>'error'), (chat_photo_send('мусор', $TEAM, '$JPG', '$THB', 16, 12, '', null)->>'error')) v(x)")" '^(auth ){14}auth$'
+chk "чужой токен — auth (все 16)" "$(Q "select string_agg(x, ' ') from (values (chat_open('мусор', $TEAM)->>'error'), (chat_send('мусор', $TEAM, 'x')->>'error'), (chat_dm('мусор', '$AEMP')->>'error'), (chat_call('мусор', 'host', null, 'help', null, null)->>'error'), (chat_go('мусор', $CALL)->>'error'), (chat_delete('мусор', $CALL)->>'error'), (chat_people('мусор')->>'error'), (chat_unread('мусор')->>'error'), (chat_read('мусор', $TEAM, 1)->>'error'), (chat_list('мусор')->>'error'), (chat_edit('мусор', $CALL, 'x')->>'error'), (chat_react('мусор', $CALL, 'ok')->>'error'), (chat_pin('мусор', $TEAM, null)->>'error'), (chat_photo('мусор', 1)->>'error'), (chat_photo_send('мусор', $TEAM, '$JPG', '$THB', 16, 12, '', null)->>'error'), (chat_clear('мусор', $TEAM)->>'error')) v(x)")" '^(auth ){15}auth$'
 
 echo
 echo "Итого: $pass ✓, $fail ✗"

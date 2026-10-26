@@ -16,6 +16,10 @@
 // CallBanner — вызов, адресованный мне, поверх любого экрана: «Ольга зовёт тебя: к столу 5» и «Иду».
 // Сеть — через api (lib/chat-api.js в приложении, демо-сервер в tools/claude/chat-demo). Расчёт — lib/chat.js,
 // сжатие фото — lib/chat-photo.js.
+// v91 (Доп. 404): низ — с вырезом из Telegram (--sa-sb: в полноэкранном Telegram env() снизу пустой, и строка ввода
+// уходила под скруглённые углы экрана); клавиатура — по низу самого слоя (окно Telegram сжимается, а innerHeight
+// прежний); «Написать» отличает «не загрузилось» от «пусто»; корзина в шапке — «Очистить чат» (lib/chat.js, canClear);
+// удалённое исчезает целиком; открытая переписка не закрывается опросом списка.
 import React from "react";
 import { createPortal } from "react-dom";
 import { vibrate, onActivate } from "../lib/utils";
@@ -23,7 +27,7 @@ import { LABEL_CSS } from "./tokens";
 import { MicButton } from "./mic";
 import { CHAT_MAX, CALL_WHO, CALL_WHY, CALL_OWN_MAX, POLL_OPEN_MS, POLL_HOT_MS, REACTS, chatInitials, bubbleName, hhmm, listTime, feedRows, previewText, callLine,
   isCallForMe, callState, callProblem, cleanBody, readBy, readLine, badge, peopleWord, quoteText, replyOf, canEdit, canPin, canDelOthers, pinnable, reactGroups, myReact,
-  withReact, reactName, photoBox, restShort } from "../lib/chat";
+  withReact, reactName, photoBox, restShort, canClear, clearedChanged } from "../lib/chat";
 import { compressPhoto } from "../lib/chat-photo";
 
 // ── вид: та же палитра, что у «Живого диалога» (ui/screens-dialogue.jsx), свой корень .sa-dlg.ch ──
@@ -80,7 +84,7 @@ export const CHAT_CSS = `
 
 /* список */
 .ch-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-.ch-list{max-width:640px;margin:0 auto;padding:6px 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.ch-list{max-width:640px;margin:0 auto;padding:6px 0 calc(24px + var(--sa-sb,env(safe-area-inset-bottom,0px)))}
 .ch-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:0;background:none;text-align:left;cursor:pointer;position:relative}
 .ch-item:active{background:var(--row-hover)}
 .ch-item+.ch-item::before{content:"";position:absolute;top:0;left:74px;right:14px;border-top:1px solid var(--edge)}
@@ -97,6 +101,8 @@ export const CHAT_CSS = `
 .ch-empty{max-width:420px;margin:40px auto 0;padding:0 24px;text-align:center;color:var(--sub);font-size:15px;line-height:1.5}
 .ch-search{display:block;width:calc(100% - 28px);max-width:612px;margin:10px auto 6px;padding:10px 14px;border-radius:14px;border:1px solid var(--opt-edge);background:var(--field);color:var(--text);font-size:16px;font-family:inherit;outline:none}
 .ch-sec{max-width:640px;margin:14px auto 2px;padding:0 16px;${LABEL_CSS};font-size:13px;color:var(--gold-ink)}
+[data-chat-people]{padding-bottom:calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)))}
+.sa-dlg.ch.kb [data-chat-people]{padding-bottom:16px}
 
 /* закреплённое */
 .ch-pin{flex:0 0 auto;position:relative;z-index:3;padding:6px 8px 6px 12px;background:var(--head);border-bottom:1px solid var(--head-line);box-shadow:0 6px 14px rgba(0,0,0,0.12)}
@@ -196,7 +202,8 @@ export const CHAT_CSS = `
 .ch-down .ch-badge{position:absolute;top:-8px;right:-4px;min-width:20px;height:20px;font-size:11.5px;padding:0 5px}
 
 /* строка ввода */
-.ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));background:var(--head);border-top:1px solid var(--head-line)}
+.ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line)}
+.sa-dlg.ch.kb .ch-bar{padding-bottom:8px}
 .ch-bar-in{display:flex;align-items:flex-end;gap:6px;max-width:640px;margin:0 auto}
 .ch-fieldwrap{position:relative;flex:1;min-width:0;display:flex}
 .ch-input{flex:1;min-width:0;min-height:42px;max-height:132px;resize:none;padding:10px 14px;border-radius:21px;border:1px solid var(--opt-edge);background:var(--field);color:var(--text);
@@ -221,7 +228,7 @@ export const CHAT_CSS = `
 /* листы снизу */
 .ch-veil{position:absolute;inset:0;z-index:20;background:rgba(8,6,3,0.55);display:flex;align-items:flex-end;justify-content:center}
 .sa-dlg.ch.lt .ch-veil{background:rgba(70,52,24,0.32)}
-.ch-sheet{width:100%;max-width:640px;max-height:86%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));
+.ch-sheet{width:100%;max-width:640px;max-height:86%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 16px calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)));
   border-radius:22px 22px 0 0;background:var(--pane);box-shadow:inset 0 1px 0 var(--pane-line),var(--pane-shadow)}
 .ch-grip{width:38px;height:4px;border-radius:2px;background:var(--edge-gold);margin:0 auto 10px;opacity:.6}
 .ch-sheet-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -241,6 +248,8 @@ export const CHAT_CSS = `
 .ch-act:last-child{border-bottom:0}
 .ch-act svg{color:var(--gold-ink);flex:0 0 auto}
 .ch-act.bad,.ch-act.bad svg{color:var(--bad-ink)}
+.ch-act:disabled{opacity:.55}
+.ch-clear-t{font-size:15px;line-height:1.5;color:var(--sub);padding:0 2px 10px}
 .ch-quote{margin:0 0 6px;padding:8px 12px;border-radius:12px;background:var(--opt);font-size:14.5px;line-height:1.4;color:var(--sub);max-height:84px;overflow:hidden}
 .ch-names{font-size:14.5px;line-height:1.55;color:var(--text)}
 .ch-names i{color:var(--faint)}
@@ -267,7 +276,8 @@ export const CHAT_CSS = `
 .ch-view-btn{width:42px;height:42px;flex:0 0 auto;border-radius:50%;border:0;background:rgba(255,255,255,0.1);color:#F1E8D6;display:grid;place-items:center;cursor:pointer;padding:0;text-decoration:none}
 .ch-view-img{flex:1;min-height:0;position:relative;overflow:hidden;display:grid;place-items:center}
 .ch-view-img img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;will-change:transform}
-.ch-view-cap{flex:0 0 auto;max-height:30%;overflow-y:auto;padding:10px 18px calc(14px + env(safe-area-inset-bottom,0px));font-size:15px;line-height:1.45;text-align:center;white-space:pre-wrap}
+.ch-view-cap{flex:0 0 auto;max-height:30%;overflow-y:auto;padding:10px 18px calc(14px + var(--sa-sb,env(safe-area-inset-bottom,0px)));font-size:15px;line-height:1.45;text-align:center;white-space:pre-wrap}
+.ch-view-img:last-child{margin-bottom:var(--sa-sb,env(safe-area-inset-bottom,0px))}
 
 /* вызов поверх приложения */
 .ch-banner{position:fixed;left:10px;right:10px;top:calc(8px + var(--sa-st,env(safe-area-inset-top,0px)));z-index:1200;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;
@@ -347,16 +357,24 @@ const withRest = (name, rest, net) => (net && rest ? name + " · " + restShort(r
 const hidden = () => typeof document !== "undefined" && document.hidden;
 const stop = (e) => e.stopPropagation();
 
-// клавиатура iOS выезжает поверх fixed-слоя: поднимаем низ на её высоту (как у Наставника)
-function useKeyboard() {
+// клавиатура iOS выезжает поверх fixed-слоя: поднимаем низ на её высоту (как у Наставника). v91: высоту считаем от
+// низа самого слоя, а не от window.innerHeight — в полноэкранном Telegram окно с клавиатурой сжимается, а innerHeight
+// остаётся прежним, и клавиатура вычиталась дважды (строка ввода и «Никого не нашёл» уезжали и обрезались)
+export const kbOverlap = (layerBottom, vvTop, vvHeight) => Math.max(0, Math.round((Number(layerBottom) || 0) - (Number(vvTop) || 0) - (Number(vvHeight) || 0)));
+function useKeyboard(ref) {
   const [kb, setKb] = React.useState(0);
   React.useEffect(() => {
     const vv = typeof window !== "undefined" && window.visualViewport;
     if (!vv) return undefined;
-    const measure = () => setKb(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
-    vv.addEventListener("resize", measure); vv.addEventListener("scroll", measure); measure();
-    return () => { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); };
-  }, []);
+    const measure = () => {
+      const el = ref && ref.current;
+      let bottom = window.innerHeight;
+      try { if (el) bottom = el.getBoundingClientRect().bottom; } catch (e) { /* */ }
+      setKb(kbOverlap(bottom, vv.offsetTop, vv.height));
+    };
+    vv.addEventListener("resize", measure); vv.addEventListener("scroll", measure); window.addEventListener("resize", measure); measure();
+    return () => { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); window.removeEventListener("resize", measure); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   return kb;
 }
 
@@ -406,16 +424,24 @@ function PhotoImg({ api, id, local = null, alt = "" }) {
  */
 export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = null, onUnread }) {
   ensureChatCss();
-  const kb = useKeyboard();
+  const rootRef = React.useRef(null);
+  const kb = useKeyboard(rootRef);
   const [me, setMe] = React.useState(me0);   // кто я — как считает сервер (руководитель ли, заведение)
   const [chats, setChats] = React.useState(null);
   const [err, setErr] = React.useState("");
   const [curId, setCurId] = React.useState(openId);
   const [picker, setPicker] = React.useState(false);
   const [callOpen, setCallOpen] = React.useState(false);
+  // v91: открытая переписка остаётся открытой, даже если её нет в списке с сервера: пустую личную (ещё не написали)
+  // и очищенную список не показывает, и раньше через 10 секунд опрос списка закрывал такую переписку
+  const keepRef = React.useRef(null);
   React.useEffect(() => { if (openId != null) setCurId(openId); }, [openId]);
   const load = React.useCallback(() => Promise.resolve(api.list()).then((r) => {
-    if (r && r.ok) { setChats(r.chats || []); setErr(""); if (r.me) setMe((m) => ({ ...m, ...r.me })); if (onUnread) onUnread(r); }
+    if (r && r.ok) {
+      const list = r.chats || [], k = keepRef.current;
+      setChats(k && !list.some((c) => String(c.id) === String(k.id)) ? [...list, k] : list);
+      setErr(""); if (r.me) setMe((m) => ({ ...m, ...r.me })); if (onUnread) onUnread(r);
+    }
     else setErr(r && r.error === "missing" ? "На сервере ещё нет этапа 38 (supabase-stage38-chat.sql). Чат появится, когда руководитель его добавит." : "Чат не загрузился. Проверь связь.");
   }).catch(() => setErr("Нет связи. Список обновится сам.")), [api]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
@@ -424,13 +450,14 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     return () => clearInterval(t);
   }, [load]);
   const cur = (chats || []).find((c) => String(c.id) === String(curId)) || null;
+  keepRef.current = cur;
   const team = (chats || []).find((c) => c.kind === "team") || null;
   const openDm = (p) => Promise.resolve(api.dm(p.id)).then((r) => {
     if (r && r.ok && r.chat) { setChats((cs) => (cs || []).some((c) => String(c.id) === String(r.chat.id)) ? cs : [...(cs || []), r.chat]); setPicker(false); setCurId(r.chat.id); }
   });
   return portal(
-    <div className={"sa-dlg ch" + (a11y ? " lt" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат" style={{ paddingBottom: kb }}>
-      {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} chat={cur} stt={stt} onBack={() => { setCurId(null); load(); }} onSent={load} />
+    <div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb > 0 ? " kb" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат" style={{ paddingBottom: kb }}>
+      {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} chat={cur} stt={stt} onBack={() => { keepRef.current = null; setCurId(null); load(); }} onSent={load} />
         : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} />
         : <List chats={chats} me={me} err={err} onBack={onBack} onOpen={(c) => { vibrate("light"); setCurId(c.id); }} onWrite={() => { vibrate("light"); setPicker(true); }}
             onCall={team ? () => { vibrate("light"); setCallOpen(true); } : null} back={!callOpen} />}
@@ -478,10 +505,12 @@ function List({ chats, me, err, onBack, onOpen, onWrite, onCall, back = true }) 
 // ── коллеги (личное сообщение или вызов человека) ──
 function People({ me, api, title, hint, onBack, onPick, picked, inline = false }) {
   const [list, setList] = React.useState(null);
+  const [bad, setBad] = React.useState(false);   // список не пришёл (не «никого нет»)
   const [q, setQ] = React.useState("");
   React.useEffect(() => {
     let alive = true;
-    Promise.resolve(api.people()).then((r) => { if (alive) setList(r && r.ok ? (r.people || []).filter((p) => String(p.id) !== String(me && me.id)) : []); }).catch(() => { if (alive) setList([]); });
+    const fail = () => { if (alive) { setList([]); setBad(true); } };
+    Promise.resolve(api.people()).then((r) => { if (!alive) return; if (r && r.ok) { setBad(false); setList((r.people || []).filter((p) => String(p.id) !== String(me && me.id))); } else fail(); }).catch(fail);
     return () => { alive = false; };
   }, [api]);   // eslint-disable-line react-hooks/exhaustive-deps
   const norm = (s) => String(s || "").toLowerCase().replace(/ё/g, "е");
@@ -494,7 +523,8 @@ function People({ me, api, title, hint, onBack, onPick, picked, inline = false }
     </button>);
   const body = (<>
     <input className="ch-search sa-field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени" data-chat-search="" />
-    {!list ? <div className="ch-empty">Загружаю команду…</div> : !shown.length ? <div className="ch-empty">Никого не нашёл.</div> : null}
+    {!list ? <div className="ch-empty">Загружаю команду…</div> : bad ? <div className="ch-empty" role="alert" data-chat-people-bad="">Список коллег не загрузился. Проверь связь и открой ещё раз.</div>
+      : !shown.length ? <div className="ch-empty">{q.trim() ? "Никого не нашёл." : "Пока здесь никого."}</div> : null}
     {onShift.length ? <div className="ch-sec">Сегодня в смене</div> : null}
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 10px" }}>{onShift.map(row)}</div>
     {rest.length && onShift.length ? <div className="ch-sec">Остальные</div> : null}
@@ -644,6 +674,10 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
   const msgsRef = React.useRef(msgs); msgsRef.current = msgs;
   const moreRef = React.useRef(more); moreRef.current = more;
   const membersKey = React.useRef(""), pinKey = React.useRef("null");
+  const cleared = React.useRef(undefined);   // v91: когда чат очищали (chat.cleared с сервера) — сменилась, пока открыт: перечитать
+  const pullRef = React.useRef(null);
+  const [clearBusy, setClearBusy] = React.useState(false);
+  const [clearErr, setClearErr] = React.useState("");
   const maxId = (list) => list.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0);
   // новое и изменённое (кто идёт на вызов, правка, реакции, удаление) — в ленту по номеру; пришло не моё, а я выше по
   // ленте — счётчик у «вниз». Курсор опроса (lastId) двигают только ответы опроса: своё отправленное приходит с номером
@@ -658,6 +692,12 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
   };
   const pull = React.useCallback((first) => Promise.resolve(api.open(chat.id, first ? {} : { after: lastId.current, since: since.current })).then((r) => {
     if (!r || !r.ok) { if (first) setErr("Переписка не загрузилась. Проверь связь."); return; }
+    // v91: чат очистили у всех, пока он открыт: стёртого на сервере больше нет — лента заново
+    const cl = r.chat ? r.chat.cleared || null : undefined;
+    if (cl !== undefined) {
+      if (first || cleared.current === undefined) cleared.current = cl;
+      else if (clearedChanged(cleared.current, cl)) { cleared.current = cl; wipe(); if (pullRef.current) pullRef.current(true); return; }
+    }
     setErr((e) => (first ? "" : e));
     if (r.now) since.current = r.now;
     // участники и закреп — заново, только если что-то поменялось (опрос раз в 4 секунды не перерисовывает экран зря)
@@ -667,6 +707,12 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
     addMsgs(r.msgs, { poll: true, quiet: first });
     setLoaded(true);
   }).catch(() => { if (first) setErr("Нет связи. Переписка откроется, когда связь появится."); }), [api, chat.id, meId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  pullRef.current = pull;
+  // лента без стёртого: ни сообщений, ни закрепа, ни ответа или правки стёртого
+  function wipe() {
+    msgsRef.current = []; setMsgs([]); setMore(false); moreRef.current = false; lastId.current = 0; setFresh(0);
+    pinKey.current = "null"; setPin(null); setReply(null); setEdit(null); setSheet(null); setView(null);
+  }
   // опрос: раз в 4 секунды; 20 секунд после своего сообщения, вызова или «Иду» — чаще (ответ коллеги виден сразу)
   const hotUntil = React.useRef(0), lastPoll = React.useRef(0);
   const heat = () => { hotUntil.current = Date.now() + 20000; };
@@ -779,6 +825,21 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
     vibrate("medium"); setBusyGo(m.id);
     Promise.resolve(api.go(m.id)).then((r) => { setBusyGo(null); if (r && r.ok && r.msg) { addMsgs([r.msg], { quiet: true }); heat(); } }).catch(() => setBusyGo(null));
   };
+  // v91 (Доп. 404): очистить чат целиком у всех
+  const clearChat = () => {
+    if (clearBusy) return;
+    vibrate("medium"); setClearBusy(true); setClearErr("");
+    Promise.resolve(api.clear(chat.id)).then((r) => {
+      setClearBusy(false);
+      if (r && r.ok) {
+        cleared.current = r.cleared || null;
+        if (edit && inputRef.current) inputRef.current.style.height = "";
+        if (edit) setText("");
+        wipe(); stick.current = true;
+        heat(); if (onSent) onSent();
+      } else setClearErr(r && r.error === "forbidden" ? "Очистить этот чат может руководитель или старший." : "Не получилось очистить. Проверь связь.");
+    }).catch(() => { setClearBusy(false); setClearErr("Нет связи. Попробуй ещё раз."); });
+  };
   const del = (m) => Promise.resolve(api.del(m.id)).then((r) => {
     if (r && r.ok) { setSheet(null); addMsgs([{ id: m.id, del: true, body: "", photo: null, reacts: [] }], { quiet: true }); if (pin && String(pin.id) === String(m.id)) { pinKey.current = "null"; setPin(null); } }
   });
@@ -843,6 +904,8 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
       <div className="ch-head-in">
         <button type="button" className="ch-back" data-sa-back={layer ? undefined : ""} aria-label="К списку чатов" onClick={onBack}>{IC.back}</button>
         <div className="ch-who"><Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></div>
+        {canClear(chat, me) ? <button type="button" className="ch-tool" data-chat-clear="" aria-label={group ? "Очистить чат" : "Очистить переписку"}
+          onClick={() => { vibrate("light"); setClearErr(""); setSheet("clear"); }}>{IC.trash}</button> : null}
       </div>
     </header>
     {group && pin ? (
@@ -860,7 +923,7 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
         <div className="ch-feed">
           {more ? <button type="button" className="ch-more" onClick={() => loadOlder()}>Показать раньше</button> : null}
           {!loaded && !err ? <div className="ch-day">Загружаю…</div> : null}
-          {loaded && !msgs.length && !pending.length ? <div className="ch-day">{group ? "Здесь пока тихо. Напиши первым." : "Напиши первым: " + chatTitle(chat).split(" ")[0] + " увидит сообщение у себя."}</div> : null}
+          {loaded && !rows.length && !pending.length ? <div className="ch-day">{group ? "Здесь пока тихо. Напиши первым." : "Напиши первым: " + chatTitle(chat).split(" ")[0] + " увидит сообщение у себя."}</div> : null}
           {rows.map(renderRow)}
           {pending.map((p) => {
             const box = p.photo ? photoBox(p.photo.w, p.photo.h) : null;
@@ -909,6 +972,7 @@ function Thread({ a11y, me, api, chat, stt, onBack, onSent }) {
       </div>
     </div>
     {sheet === "call" ? <CallSheet me={me} api={api} chat={chat} onClose={() => setSheet(null)} onDone={(msg) => { setSheet(null); if (msg) { stick.current = true; addMsgs([msg], { quiet: true }); heat(); } }} /> : null}
+    {sheet === "clear" ? <ClearSheet chat={chat} busy={clearBusy} err={clearErr} onClear={clearChat} onClose={() => { if (!clearBusy) setSheet(null); }} /> : null}
     {sheet && sheet.msg ? <MsgSheet me={me} msg={msgs.find((x) => String(x.id) === String(sheet.msg.id)) || sheet.msg} chat={chat} members={others} reads={reads} pinned={pin}
       onClose={() => setSheet(null)} onDelete={del} onReply={startReply} onEdit={startEdit} onPin={pinMsg} onReact={react} /> : null}
     {shot ? <PhotoSheet shot={shot} caption={caption} onCaption={setCaption} reply={reply} me={me} onSend={sendShot} onClose={() => setShot(null)} /> : null}
@@ -1005,6 +1069,25 @@ function MsgSheet({ me, msg, chat, members, reads, pinned, onClose, onDelete, on
         {!call && msg.body ? <button type="button" className="ch-act" data-chat-copy="" onClick={copy}>{IC.copy}{copied ? "Скопировано" : "Скопировать текст"}</button> : null}
         {canDel ? <button type="button" className="ch-act bad" data-chat-del="" onClick={() => { if (!sure) { vibrate("light"); setSure(true); return; } onDelete(msg); }}>{IC.trash}{sure ? (mine ? "Точно удалить? Нажми ещё раз" : "Удалить у всех? Нажми ещё раз") : mine ? "Удалить" : "Удалить у всех (как старший)"}</button> : null}
         <button type="button" className="ch-act" data-sa-back="" style={{ justifyContent: "center", color: "var(--sub)" }} onClick={onClose}>Закрыть</button>
+      </div>
+    </div>);
+}
+
+// ── v91 (Доп. 404): очистить чат целиком — переспросить ──
+function ClearSheet({ chat, busy, err, onClear, onClose }) {
+  const dm = chat.kind === "dm";
+  return (
+    <div className="ch-veil" onClick={onClose}>
+      <div className="ch-sheet" role="dialog" aria-modal="true" aria-label={dm ? "Очистить переписку" : "Очистить чат"} data-chat-clearsheet="" onClick={stop}>
+        <div className="ch-grip" aria-hidden="true" />
+        <div className="ch-sheet-h"><span className="ch-sheet-t">{dm ? "Очистить переписку?" : "Очистить «" + chatTitle(chat) + "»?"}</span>
+          <button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
+        <div className="ch-clear-t" data-chat-clear-text="">{dm
+          ? "Сообщения и фото исчезнут у вас обоих, а переписка уйдёт из списка чатов. Вернуть их нельзя."
+          : "Сообщения, фото и закреплённое исчезнут у всех, чат станет пустым. Вернуть переписку нельзя."}</div>
+        {err ? <div className="ch-err" role="alert" data-chat-clear-err="">{err}</div> : null}
+        <button type="button" className="ch-act bad" data-chat-clear-go="" disabled={busy} style={{ justifyContent: "center" }} onClick={onClear}>{IC.trash}{busy ? "Очищаю…" : dm ? "Очистить переписку" : "Очистить чат"}</button>
+        <button type="button" className="ch-act" style={{ justifyContent: "center", color: "var(--sub)" }} onClick={onClose}>Отмена</button>
       </div>
     </div>);
 }

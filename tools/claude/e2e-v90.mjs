@@ -1,7 +1,8 @@
 // e2e v90 (Доп. 403): чат смены. Сервер чата — в памяти скрипта (как этап 38): кто зовёт — по токену, два человека
 // в двух окнах видят переписку друг друга.
 // Разделы:
-//   TOP     — значок чата в верхней строке слева от поиска, число непрочитанных; пункт «Чат смены» в «Смене» с числом;
+//   TOP     — значок чата (с v91 — круг у нижнего меню, не в верхней строке), число непрочитанных; пункт «Чат смены»
+//             в «Смене» с числом;
 //             на экзамене значка нет; обе темы; 320 px — верхняя строка без прокрутки вбок;
 //   FLOW    — Анна и Мария: Анна пишет в «Вся команда» → Мария видит; Мария отвечает с цитатой (лист «Ответить»), ставит
 //             «Принято», закрепляет сообщение Анны, шлёт фото → у Анны цитата, реакция, полоска закрепа, строка «Мария
@@ -221,7 +222,7 @@ const fits = (page, sel) => page.evaluate((sel) => { const W = document.document
 const bubble = (page, text) => page.locator("[data-chat-bubble] > .ch-tx", { hasText: text }).last();
 const bubbleEl = (page, text) => page.locator("[data-chat-bubble]").filter({ has: page.locator(":scope > .ch-tx", { hasText: text }) }).last();
 const wake = (page) => page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));   // приложение снова на виду — сразу спросить непрочитанные
-const openTeam = async (page) => { await page.locator("[data-top-chat]").click(); await sleep(900); await page.locator('[data-chat-item="team"]').click(); await sleep(1300); };
+const openTeam = async (page) => { await page.locator("[data-chat-dock]").click(); await sleep(900); await page.locator('[data-chat-item="team"]').click(); await sleep(1300); };
 
 if (want("TOP")) {
   for (const light of [false, true]) {
@@ -229,22 +230,22 @@ if (want("TOP")) {
     const C = chatServer();
     const o = await open({ who: ANNA, token: "tok-anna", light, rpcs: C.rpc });
     await sleep(4800);
-    const b = o.page.locator("[data-top-chat]"), s = o.page.locator("[data-top-search]");
-    const bb = await b.boundingBox(), sb = await s.boundingBox();
-    ok(tag + ": значок чата в верхней строке, слева от поиска, той же высоты", !!bb && !!sb && bb.x + bb.width <= sb.x && Math.abs(bb.y - sb.y) < 2 && Math.abs(bb.height - sb.height) < 2, JSON.stringify([bb, sb]));
-    ok(tag + ": число непрочитанных — 2 (Мария и Ольга)", (await o.page.locator('[data-top-chat-n="2"]').count()) === 1 && /непрочитанных 2/.test(await b.getAttribute("aria-label")));
+    // v91 (Доп. 404): значок переехал из верхней строки в круг рядом с нижним меню (подробно — e2e-v91, DOCK)
+    const b = o.page.locator("[data-chat-dock]");
+    ok(tag + ": значок чата — круг у нижнего меню (в верхней строке его нет)", (await b.count()) === 1 && !(await o.page.locator('[data-sa-topbar] [aria-label^="Чат смены"]').count()) && (await o.page.locator("[data-top-search]").count()) === 1);
+    ok(tag + ": число непрочитанных — 2 (Мария и Ольга)", (await o.page.locator('[data-chat-dock-n="2"]').count()) === 1 && /непрочитанных 2/.test(await b.getAttribute("aria-label")));
     const first = o.calls.find((x) => x.fn === "chat_unread");
     ok(tag + ": непрочитанные спрашиваются не при старте, а через 4 секунды (старт — одним запросом)", !!first && first.t - o.t0 >= 3500, first ? first.t - o.t0 + " мс" : "нет");
     await shot(o.page, "top" + (light ? "-light" : ""));
     await nav(o.page, "shift", 1500);
     const item = o.page.locator("button, [role=button]").filter({ hasText: "Чат смены" }).first();
-    ok(tag + ": «Смена» — пункт «Чат смены» с числом", /Чат смены Команда, старшие и личные сообщения, «Позвать» к столу 2$/.test(await txt(item)) && (await o.page.locator("[data-top-chat]").count()) === 1, await txt(item));
+    ok(tag + ": «Смена» — пункт «Чат смены» с числом", /Чат смены Команда, старшие и личные сообщения, «Позвать» к столу 2$/.test(await txt(item)) && (await o.page.locator("[data-chat-dock]").count()) === 1, await txt(item));
     await item.click(); await sleep(900);
     ok(tag + ": пункт открывает чат", (await o.page.locator("[data-chat]").count()) === 1 && (await o.page.locator("[data-chat-item]").count()) === 1);
     await o.page.locator(".ch-head [data-sa-back]").click(); await sleep(500);
     ok(tag + ": «Назад» — чат закрыт", !(await o.page.locator("[data-chat]").count()));
     await nav(o.page, "exam", 1200);
-    ok(tag + ": на экзамене значка чата нет", !(await o.page.locator("[data-top-chat]").count()));
+    ok(tag + ": на экзамене значка чата нет", !(await o.page.locator("[data-chat-dock]").count()));
     ok(tag + ": без ошибок в консоли", !o.errors.length, o.errors.slice(0, 3).join(" | "));
     await o.ctx.close();
   }
@@ -252,7 +253,7 @@ if (want("TOP")) {
   const o = await open({ who: MARIA, token: "tok-maria", w: 320, h: 640, rpcs: C.rpc });
   await sleep(4800);
   const f = await fits(o.page, "[data-sa-topbar] *");
-  ok("TOP: 320 px — верхняя строка со значком без прокрутки вбок", f.sw <= f.W && f.over === 0 && (await o.page.locator("[data-top-chat]").count()) === 1, JSON.stringify(f));
+  ok("TOP: 320 px — верхняя строка без прокрутки вбок, круг чата у меню", f.sw <= f.W && f.over === 0 && (await o.page.locator("[data-chat-dock]").count()) === 1, JSON.stringify(f));
   await shot(o.page, "top-320");
   await o.ctx.close();
 }
@@ -366,7 +367,7 @@ if (want("NET")) {
   const i = await open({ who: IRINA, token: "tok-irina", rpcs: C.rpc });
   const a = await open({ who: ANNA, token: "tok-anna", rpcs: C.rpc });
   await sleep(4800);
-  await m.page.locator("[data-top-chat]").click(); await sleep(900);
+  await m.page.locator("[data-chat-dock]").click(); await sleep(900);
   ok("NET: у старшей Океана — «Вся команда», «Старшие», «Руководители сети»", (await m.page.locator("[data-chat-item]").evaluateAll((els) => els.map((e) => e.getAttribute("data-chat-item")).join(","))) === "team,leads,net"
     && /Руководители сети/.test(await txt(m.page.locator('[data-chat-item="net"]'))));
   await m.page.locator('[data-chat-item="net"]').click(); await sleep(1200);
@@ -374,8 +375,8 @@ if (want("NET")) {
   await m.page.locator("[data-chat-input]").fill("Коллеги, в четверг общая планёрка в 11:00"); await m.page.locator("[data-chat-send]").click(); await sleep(800);
   await shot(m.page, "net-maria");
   await wake(i.page); await sleep(1500);
-  ok("NET: у менеджера Порта на значке — непрочитанное из сети", (await i.page.locator('[data-top-chat-n="1"]').count()) === 1);
-  await i.page.locator("[data-top-chat]").click(); await sleep(900);
+  ok("NET: у менеджера Порта на значке — непрочитанное из сети", (await i.page.locator('[data-chat-dock-n="1"]').count()) === 1);
+  await i.page.locator("[data-chat-dock]").click(); await sleep(900);
   ok("NET: у Ирины — её «Вся команда» и «Руководители сети» (без «Старших» Океана)", (await i.page.locator("[data-chat-item]").evaluateAll((els) => els.map((e) => e.getAttribute("data-chat-item")).join(","))) === "team,net");
   await i.page.locator('[data-chat-item="net"]').click(); await sleep(1200);
   ok("NET: у Ирины — сообщение Марии с подписью «Мария К. · Океан»", (await i.page.locator(".ch-nm").filter({ hasText: "Мария К. · Океан" }).count()) === 1 && (await bubble(i.page, "общая планёрка").count()) === 1);
@@ -383,7 +384,7 @@ if (want("NET")) {
   await bubble(i.page, "общая планёрка").click(); await sleep(300);
   ok("NET: Ирина (менеджер) может закрепить, но не удалить чужое", (await i.page.locator('[data-chat-pin="on"]').count()) === 1 && !(await i.page.locator("[data-chat-del]").count()));
   await i.page.keyboard.press("Escape"); await sleep(200);
-  await a.page.locator("[data-top-chat]").click(); await sleep(900);
+  await a.page.locator("[data-chat-dock]").click(); await sleep(900);
   ok("NET: у официанта Океана «Руководителей сети» нет", !(await a.page.locator('[data-chat-item="net"]').count()) && (await a.page.locator('[data-chat-item="team"]').count()) === 1);
   ok("NET: без ошибок в консоли", !m.errors.length && !i.errors.length && !a.errors.length, [...m.errors, ...i.errors, ...a.errors].slice(0, 3).join(" | "));
   await m.ctx.close(); await i.ctx.close(); await a.ctx.close();
@@ -400,7 +401,7 @@ if (want("LINK")) {
 if (want("MISSING")) {
   const o = await open({ who: ANNA, token: "tok-anna", rpcs: (fn) => (/^chat_/.test(fn) ? { code: "PGRST202", message: "not found" } : undefined) });
   await sleep(4800);
-  ok("MISSING: без этапа 38 — значка нет", !(await o.page.locator("[data-top-chat]").count()) && (await o.page.locator("[data-top-search]").count()) === 1);
+  ok("MISSING: без этапа 38 — значка нет", !(await o.page.locator("[data-chat-dock]").count()) && (await o.page.locator("[data-top-search]").count()) === 1);
   await nav(o.page, "shift", 1500);
   ok("MISSING: в «Смене» пункта «Чат смены» нет", !(await o.page.locator("button, [role=button]").filter({ hasText: "Чат смены" }).count()));
   ok("MISSING: без ошибок в консоли", !o.errors.length, o.errors.slice(0, 3).join(" | "));

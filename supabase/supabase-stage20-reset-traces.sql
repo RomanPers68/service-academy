@@ -120,8 +120,9 @@ begin
 end; $$;
 
 -- Метка сброса для того, кто спрашивает: приложение сотрудника стирает своё
+-- v91: VOLATILE, как функции этапа 21: проверка входа (whoami) может записывать, а STABLE PostgREST зовёт «только для чтения»
 create or replace function my_reset_at(p_token text)
-returns jsonb language plpgsql stable security definer set search_path to public as $$
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
 declare v jsonb; who text; ts timestamptz;
 begin
   v := _sa_who(p_token);

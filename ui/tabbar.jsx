@@ -12,10 +12,14 @@ import { vibrate, onActivate } from "../lib/utils";
 // v64 (Доп. 377): кнопка Наставника (AI) — в панели. Владелец: «AI как-то не вписывается в новый дизайн… может в навбар?».
 //   aiMode "center" — круглая стеклянная кнопка посередине панели, между «Сменой» и «Командой» (вкладки — по две по бокам);
 //   aiMode "side"   — отдельная круглая кнопка справа от панели, тем же стеклом (как в новом iOS: поиск рядом с вкладками).
-export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode = "center" }) {
+// v91 (Доп. 404): чат смены — круг рядом с панелью, как её продолжение, а не значок в верхней строке. Владелец: «давай
+//   сделаем иконку чата более заметной. Не вверху. А то выходит из поля зрения». Выбрал по кадрам из двух мест (второе —
+//   круг над панелью справа): «Рядом с меню». chat — { n, label, onOpen }: число непрочитанных и подпись на круге.
+export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode = "center", chat = null }) {
   const n0 = tabs.length;
   const aiIn = !!onAi && aiMode === "center";
   const aiSide = !!onAi && aiMode === "side";
+  const row = aiSide || !!chat;   // панель и круги справа от неё — в строку
   const AI_AT = Math.floor(n0 / 2);                       // ячейка кнопки AI среди видимых ячеек
   const n = aiIn ? n0 + 1 : n0;                           // ячеек на панели
   const visOf = (ti) => (aiIn && ti >= AI_AT ? ti + 1 : ti);        // вкладка → ячейка
@@ -54,6 +58,7 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode 
   const BAR_H = 58;
   const cellW = barW > 0 ? barW / n : 0;
   const lensW = cellW ? Math.max(44, cellW - 6) : 0; // компактнее ячейки
+  const tight = cellW > 0 && cellW < 52;   // v91: узкий экран (320 px) и круг чата рядом — подпись на 1 px мельче, без разрядки
   const rawC = dragX !== null ? dragX : (visOf(restIdx) + 0.5) * cellW;
   const cx = cellW ? Math.max(lensW / 2 + 4, Math.min(barW - lensW / 2 - 4, rawC)) : 0;
   const litVis = dragX !== null
@@ -105,13 +110,13 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode 
     // Передавать ссылку через три компонента ради одной подсветки — дороже,
     // чем найти элемент по имени.
     <div id="sa-tabbar" style={{ position:"fixed", left:10, right:10, zIndex:200,
-      bottom:"calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)", ...(aiSide ? { display:"flex", alignItems:"center", gap:8 } : null) }}>
+      bottom:"calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)", ...(row ? { display:"flex", alignItems:"center", gap:8 } : null) }}>
       {/* Разрешаем горизонтальный жест на баре: обходим глобальные touch-action и JS-блокировку свайпов */}
       <style>{`.sa-lensbar.sa-hscroll, .sa-lensbar.sa-hscroll * { touch-action: none !important; }`}</style>
       {/* Плавающий пилл */}
       <div ref={barRef} className="sa-lensbar sa-hscroll"
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
-        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch", ...(aiSide ? { flex:1, minWidth:0 } : null),
+        style={{ position:"relative", height:BAR_H, borderRadius:999, display:"flex", alignItems:"stretch", ...(row ? { flex:1, minWidth:0 } : null),
           background: a11y ? "rgba(255,252,244,0.22)" : "rgba(255,250,238,0.05)",
           backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
           border: a11y ? "1px solid rgba(139,106,48,0.32)" : "1px solid rgba(255,255,255,0.13)",
@@ -146,7 +151,7 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode 
                   {NAV_ICONS[tab.icon](lit ? accent : dim)}
                 </div>
                 {/* v58 (Доп. 371): подписи вкладок 11 px (были 9 — мельче всего на экране); v59: без прозрачности — иначе контраст падал до 2,3:1 */}
-                <div style={{ fontSize:11, fontFamily:"Georgia, serif", letterSpacing:0.3, fontWeight:"bold",
+                <div style={{ fontSize: tight ? 10 : 11, fontFamily:"Georgia, serif", letterSpacing: tight ? 0 : 0.3, fontWeight:"bold",
                   whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", textOverflow:"ellipsis",
                   color: lit ? accent : dim, opacity: 1,
                   transition:"color 0.25s ease, opacity 0.25s ease" }}>{tab.label}</div>
@@ -195,7 +200,36 @@ export function LiquidTabBar({ tabs, activeId, onTab, a11y, onAi = null, aiMode 
           <AiDisc a11y={a11y} size={BAR_H} glass pulse={aiNew} />
         </div>
       ) : null}
+      {chat ? (
+        <button type="button" className="sa-btn" data-chat-dock="bar" onClick={chat.onOpen}
+          aria-label={"Чат смены" + (chat.n ? ": непрочитанных " + chat.n : "")}
+          style={{ border:"none", background:"transparent", padding:0, margin:0, cursor:"pointer", flexShrink:0, borderRadius:"50%", WebkitTapHighlightColor:"transparent" }}>
+          <ChatDisc a11y={a11y} size={BAR_H} label={chat.label} />
+        </button>
+      ) : null}
     </div>
+  );
+}
+
+// v91 (Доп. 404): круг чата смены — то же стекло, что у Наставника: золотая кромка, изморозь, два облачка;
+// число непрочитанных — золотой ярлык на кромке
+const CHAT_ICON = (<>
+  <path d="M14.6 8.4V6.3a1.6 1.6 0 0 0-1.6-1.6H4.7a1.6 1.6 0 0 0-1.6 1.6v5.4a1.6 1.6 0 0 0 1.6 1.6h.9v2.4l2.4-2" />
+  <path d="M8.7 10.6A1.6 1.6 0 0 1 10.3 9h8.4a1.6 1.6 0 0 1 1.6 1.6v5a1.6 1.6 0 0 1-1.6 1.6h-.9v2.5l-3.1-2.5h-4.4a1.6 1.6 0 0 1-1.6-1.6z" />
+</>);
+export function ChatDisc({ a11y, size = 54, label = "", glass = true }) {
+  const gold = a11y ? "#7A5D2A" : "#C8A96E";
+  return (
+    <span data-chat-disc="" style={{ position:"relative", width:size, height:size, borderRadius:"50%", display:"grid", placeItems:"center", flexShrink:0,
+      background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.12)",
+      ...(glass ? { backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)" } : null),
+      boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.5)" : "rgba(214,178,102,0.45)"}, inset 0 0 18px ${a11y ? "rgba(255,255,255,0.45)" : "rgba(255,230,170,0.12)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)"}${glass ? `, 0 10px 30px rgba(0,0,0,${a11y ? 0.16 : 0.55})` : ""}` }}>
+      <svg width={Math.round(size * 0.46)} height={Math.round(size * 0.46)} viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{CHAT_ICON}</svg>
+      {label ? <span data-chat-dock-n={label} aria-hidden="true" style={{ position:"absolute", top:-3, right:-4, boxSizing:"border-box", minWidth:20, height:20, padding:"0 5px", borderRadius:10,
+        display:"inline-flex", alignItems:"center", justifyContent:"center", fontFamily:"system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", fontSize:11, fontWeight:700, lineHeight:1,
+        color:"#1A1008", background:"linear-gradient(180deg, #E4C88C, #C8A96E)", fontVariantNumeric:"tabular-nums",
+        boxShadow: a11y ? "0 0 0 2px #F3EBDA" : "0 0 0 2px #16110A, 0 0 12px rgba(228,200,140,0.45)" }}>{label}</span> : null}
+    </span>
   );
 }
 
@@ -225,7 +259,7 @@ export function AiDisc({ a11y, size = 46, glass = false, pulse = false }) {
 // кнопка Наставника (AI): в портрете она плавает над панелью, здесь — в меню,
 // чтобы не закрывать содержимое. id тот же, что у панели, — на него смотрит
 // подсказка главного экрана.
-export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact }) {
+export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact, chat = null }) {
   const activeIdx = tabs.findIndex(t => t.id === activeId);
   const lastIdxRef = useRef(activeIdx >= 0 ? activeIdx : 0);
   if (activeIdx >= 0) lastIdxRef.current = activeIdx;
@@ -302,6 +336,14 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact }) {
             </svg>
           </div>
         </>) : null}
+        {/* v91 (Доп. 404): чат смены — под Наставником, тем же кругом */}
+        {chat ? (
+          // лёжа на телефоне (compact) — чуть меньше: меню должно целиком входить в 340 px высоты (iPhone в Telegram)
+          <div role="button" tabIndex={0} aria-label={"Чат смены" + (chat.n ? ": непрочитанных " + chat.n : "")} data-chat-dock="rail" className="sa-railitem" onClick={chat.onOpen} {...onActivate(chat.onOpen)}
+            style={{ position:"relative", zIndex:2, borderRadius:"50%", margin: compact ? "2px auto 0" : "6px auto 2px", cursor:"pointer" }}>
+            <ChatDisc a11y={a11y} size={compact ? 42 : 50} label={chat.label} glass={false} />
+          </div>
+        ) : null}
       </div>
     </nav>
   );

@@ -121,14 +121,14 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
   const chatOf = (id) => chats.find((c) => String(c.id) === String(id));
   const visible = (c) => c && c.members.includes(me.id);
   const msgOf = (id) => msgs.find((x) => String(x.id) === String(id));
-  const last = (cid) => [...msgs].reverse().find((m) => m.chat === cid) || null;
+  const last = (cid) => [...msgs].reverse().find((m) => m.chat === cid && !m.del) || null;   // v91: удалённое — без следа
   const unread = (cid) => msgs.filter((m) => m.chat === cid && !m.del && String(m.emp) !== String(me.id) && m.id > ((reads[cid] || {})[me.id] || 0)).length;
   const forMe = (m) => m.kind === "call" && String(m.emp) !== String(me.id) && (m.call.who === "person" ? String(m.call.emp) === String(me.id) : (ROLE_POS[m.call.who] || []).includes(me.pos));
   const J = (m) => (m ? { ...m, call: m.call ? { ...m.call, going: [...(m.call.going || [])] } : null, photo: m.photo ? { ...m.photo } : null, reply: m.reply ? { ...m.reply } : null,
     reacts: (m.reacts || []).map((x) => ({ ...x })), body: m.del ? "" : m.body } : null);
   const view = (c) => ({ id: c.id, kind: c.kind, members: c.members.length, shift: c.kind === "team" ? all.filter((p) => p.id === me.id || p.shift).length : undefined,
     peer: c.kind === "dm" ? (() => { const p = byId(c.members.find((e) => e !== me.id)); return p && { id: p.id, name: p.name, pos: p.pos, shift: !!p.shift }; })() : undefined,
-    last: J(last(c.id)), unread: unread(c.id) });
+    last: J(last(c.id)), unread: unread(c.id), cleared: c.cleared || null });
   const RANK = { team: 0, leads: 1, net: 2, dm: 3 };
   const order = (a, b) => RANK[a.kind] - RANK[b.kind] || ((last(b.id) || { id: 0 }).id - (last(a.id) || { id: 0 }).id);
   const members = (c) => c.members.map((e) => ({ id: e, name: byId(e).name, rest: restOf(byId(e)), read: (reads[c.id] || {})[e] || 0 }));
@@ -162,15 +162,16 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
   const goer = (call) => (call.who === "person" ? call.emp : (all.find((p) => p.id !== me.id && p.shift && (ROLE_POS[call.who] || []).includes(p.pos)) || {}).id);
   const api = {
     me,
-    list: () => ok({ me, chats: chats.filter(visible).map(view).sort(order), calls: msgs.filter((m) => forMe(m) && !(m.call.going || []).length && !m.del).map(J) }),
+    list: () => ok({ me, chats: chats.filter((c) => visible(c) && (c.kind !== "dm" || msgs.some((m) => m.chat === c.id && !m.del))).map(view).sort(order),
+      calls: msgs.filter((m) => forMe(m) && !(m.call.going || []).length && !m.del).map(J) }),
     open: (cid, { after = 0, before = 0, since = 0 } = {}) => {
       const c = chatOf(cid);
       if (!visible(c)) return no("not_found");
       let list = msgs.filter((m) => m.chat === c.id);
       let more = false;
-      if (before) { list = list.filter((m) => m.id < before); more = list.length > 40; list = list.slice(-40); }
+      if (before) { list = list.filter((m) => m.id < before && !m.del); more = list.length > 40; list = list.slice(-40); }
       else if (after) list = list.filter((m) => m.id > after || (m.upd && since && m.upd > Number(since) - 5000));
-      else { more = list.length > 60; list = list.slice(-60); }
+      else { list = list.filter((m) => !m.del); more = list.length > 60; list = list.slice(-60); }
       return ok({ chat: view(c), msgs: list.map(J), members: members(c), more, pin: c.kind === "dm" ? null : pinOf(c), now: Date.now() });
     },
     send: (cid, body, replyId = null) => {
@@ -255,6 +256,15 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
       const m = msgOf(id);
       if (m) { m.del = true; m.body = ""; m.photo = null; m.reacts = []; touch(m); chats.forEach((c) => { if (c.pin === m.id) c.pin = null; }); }
       return ok({});
+    },
+    // v91: очистить чат целиком у всех — группу руководитель, личную любой из двоих; без строки «кто очистил»
+    clear: (cid) => {
+      const c = chatOf(cid);
+      if (!visible(c)) return no("not_found");
+      if (c.kind !== "dm" && !me.lead) return no("forbidden");
+      for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].chat === c.id) msgs.splice(i, 1);
+      c.pin = null; c.cleared = new Date().toISOString();
+      return ok({ removed: 0, cleared: c.cleared });
     },
     // демо: вызов мне и сообщение от коллеги
     demoCall: () => { put("team", "p5", "", 0, { kind: "call", call: { who: "lead", why: "help", going: [] } }); onChange(); },

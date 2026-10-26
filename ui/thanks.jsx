@@ -7,13 +7,17 @@
 // v86 (Доп. 399): «Показать гостю» — QR на весь экран на светлом фоне, экран не гаснет, пока он открыт; руководителю во
 // вкладке «Команда» — «Отзывы о заведении»: ссылки на Яндекс Карты, 2ГИС, Google Карты (этап 36), их гость видит
 // после «Спасибо передано».
+// v87 (Доп. 400): «Картинка для печати» — выбор вида с предпросмотром: карточка, домик на стол (A4, код с двух сторон),
+// вкладыш в папку для счёта, наклейка (ui/thanks-print.js).
 import React from "react";
+import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { qrMatrix, qrPath } from "../lib/qr";
 import { tagLabel, thanksUrl, posLabel, tagsLine, reviewKind, REVIEW_KINDS } from "../lib/guest-thanks";
+import { PRINT_LAYOUTS, PRINT_ORDER, drawThanksPrint, printFontsReady } from "./thanks-print";
 
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const dayOf = (iso) => { const d = new Date(iso || 0); return isNaN(d) ? "" : d.getDate() + " " + MONTHS[d.getMonth()]; };
@@ -34,26 +38,74 @@ const INK = "#22170A", PAPER = "#F7F0E1";   // QR — тёмным по свет
 const btn = (c, main) => ({ padding: "12px 14px", borderRadius: 16, fontFamily: "Georgia, serif", fontSize: 14.5, cursor: "pointer",
   ...(main ? { border: 0, background: c.gold, color: "#1A1008", fontWeight: "bold" } : { border: `1px solid ${c.gold}`, background: "transparent", color: c.text }) });
 
-/** Картинка для печати: заведение, QR, имя и должность, «Наведите камеру…». PNG через canvas. */
-export function drawThanksCard(canvas, { url, name, pos, restaurant }) {
-  const W = 1080, H = 1440, ctx = canvas.getContext("2d");
-  canvas.width = W; canvas.height = H;
-  ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "#B8924A"; ctx.lineWidth = 6; ctx.strokeRect(40, 40, W - 80, H - 80);
-  ctx.textAlign = "center"; ctx.fillStyle = "#8B6A30";
-  ctx.font = "italic 44px Georgia, serif"; ctx.fillText(restaurant || "Service Academy", W / 2, 150);
-  ctx.fillStyle = INK; ctx.font = "84px Georgia, serif"; ctx.fillText("Скажите спасибо", W / 2, 270);
-  const qr = qrMatrix(url, { ecl: "M" });
-  if (qr) {
-    const Q = 4, n = qr.size + 2 * Q, box = 700, s = Math.floor(box / n), x0 = (W - s * n) / 2, y0 = 340;
-    ctx.fillStyle = "#FFFFFF"; ctx.fillRect(x0, y0, s * n, s * n);
-    ctx.fillStyle = INK;
-    qr.modules.forEach((row, y) => row.forEach((d, x) => { if (d) ctx.fillRect(x0 + (x + Q) * s, y0 + (y + Q) * s, s, s); }));
-  }
-  ctx.fillStyle = INK; ctx.font = "76px Georgia, serif"; ctx.fillText(name || "", W / 2, 1160);
-  if (pos) { ctx.fillStyle = "#8B6A30"; ctx.font = "italic 44px Georgia, serif"; ctx.fillText(pos, W / 2, 1230); }
-  ctx.fillStyle = "#5A4628"; ctx.font = "38px Georgia, serif"; ctx.fillText("Наведите камеру телефона на код", W / 2, 1320);
-  return canvas;
+/** Картинка для печати (карточка): заведение, QR, имя и должность, «Наведите камеру…». PNG через canvas.
+ *  v87: виды и рисование — ui/thanks-print.js; это имя оставлено для совместимости. */
+export const drawThanksCard = (canvas, d) => drawThanksPrint(canvas, "card", d);
+
+// v87: значки видов для выбора — тонкой линией, как рисунки пустых мест
+const LAYOUT_ICON = {
+  card: <><rect x="14" y="4" width="20" height="28" rx="2" /><rect x="19" y="11" width="10" height="10" /><path d="M18 26h12" /></>,
+  tent: <><path d="M6 32L24 6l18 26" /><path d="M24 6v26" strokeDasharray="2 2.5" /><rect x="11" y="20" width="7" height="7" /><path d="M4 32h40" /></>,
+  insert: <><rect x="18" y="2" width="12" height="32" rx="1.5" /><rect x="20.5" y="13" width="7" height="7" /><path d="M20.5 7h7M20.5 26h7" /></>,
+  sticker: <><rect x="10" y="4" width="28" height="28" rx="7" strokeDasharray="2.5 2.5" /><rect x="17" y="10" width="14" height="14" /><path d="M18 28h12" /></>,
+};
+function LayoutPicker({ c, a11y, url, name, pos, restaurant, onMsg }) {
+  const [kind, setKind] = React.useState("card");
+  const [prev, setPrev] = React.useState("");   // data: URL предпросмотра; "x" — не нарисовалось
+  const cv = React.useRef(null);
+  React.useEffect(() => {
+    let alive = true;
+    setPrev(""); cv.current = null;
+    printFontsReady().then(() => {
+      if (!alive) return;
+      try { const el = drawThanksPrint(document.createElement("canvas"), kind, { url, name, pos, restaurant }); cv.current = el; setPrev(el.toDataURL("image/png")); }
+      catch (e) { setPrev("x"); }
+    });
+    return () => { alive = false; };
+  }, [kind, url, name, pos, restaurant]);
+  const L = PRINT_LAYOUTS[kind];
+  const save = () => {
+    const el = cv.current;
+    if (!el) return;
+    vibrate("light");
+    try {
+      el.toBlob((blob) => {
+        if (!blob) { onMsg("Не получилось. Сделай снимок экрана с QR."); return; }
+        const file = typeof File !== "undefined" ? new File([blob], L.file, { type: "image/png" }) : null;
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: "QR для гостей" }).catch(() => {}); return; }
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = L.file; document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+        onMsg(L.done + " Если не сохранилась, сделай снимок экрана с QR.");
+      }, "image/png");
+    } catch (e) { onMsg("Не получилось. Сделай снимок экрана с QR."); }
+  };
+  return (
+    <div data-thanks-layouts={kind} style={{ ...c.frost, padding: "14px 14px 12px", marginTop: 12 }}>
+      <div style={{ ...labelStyle(15), color: c.gold, marginBottom: 10 }}>Что напечатать?</div>
+      <div role="radiogroup" aria-label="Вид картинки для печати" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {PRINT_ORDER.map((k) => {
+          const on = k === kind, P = PRINT_LAYOUTS[k];
+          return (
+            <button key={k} type="button" role="radio" aria-checked={on} data-thanks-layout={k} onClick={() => { if (!on) { vibrate("light"); onMsg(""); setKind(k); } }}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 14, textAlign: "left", cursor: "pointer", fontFamily: "Georgia, serif",
+                border: `1px solid ${on ? c.gold : c.line}`, background: on ? (a11y ? "rgba(139,106,48,0.16)" : "rgba(200,169,110,0.20)") : "transparent" }}>
+              <svg width="34" height="26" viewBox="0 0 48 36" fill="none" stroke={c.gold} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{ flexShrink: 0 }}>{LAYOUT_ICON[k]}</svg>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 13.5, color: c.text, lineHeight: 1.25 }}>{P.t}</span>
+                <span style={{ display: "block", fontSize: 11.5, color: c.sub, lineHeight: 1.3 }}>{P.s}</span>
+              </span>
+            </button>);
+        })}
+      </div>
+      <div data-thanks-preview={prev && prev !== "x" ? kind : ""} style={{ marginTop: 12, display: "flex", justifyContent: "center", alignItems: "center", minHeight: 120 }}>
+        {prev && prev !== "x" ? <img src={prev} alt={"Предпросмотр: " + L.t.toLowerCase()} style={{ display: "block", maxWidth: kind === "insert" ? "46%" : kind === "sticker" ? "70%" : "78%", maxHeight: 340,
+          borderRadius: kind === "sticker" ? 18 : 4, boxShadow: "0 8px 22px rgba(0,0,0,0.30)" }} />
+          : <div style={{ fontSize: 13, color: c.sub }}>{prev === "x" ? "Предпросмотр не нарисовался, картинку всё равно можно сохранить." : "Рисую…"}</div>}
+      </div>
+      <button type="button" data-thanks-save="" onClick={save} disabled={!prev} style={{ ...btn(c, true), width: "100%", marginTop: 12, opacity: prev ? 1 : 0.6 }}>Сохранить картинку</button>
+    </div>
+  );
 }
 
 function QrCard({ c, url, name, pos, restaurant }) {
@@ -128,21 +180,7 @@ function Mine({ c, a11y, st, profile, onRotate, rotating }) {
     if (navigator.share) { navigator.share(data).catch(() => {}); return; }
     try { navigator.clipboard.writeText(url).then(() => setMsg("Ссылка скопирована."), () => setMsg(url)); } catch (e) { setMsg(url); }
   };
-  const save = () => {
-    vibrate("light");
-    try {
-      const cv = drawThanksCard(document.createElement("canvas"), { url, name: st.name, pos, restaurant: st.restaurant });
-      cv.toBlob((blob) => {
-        if (!blob) { setMsg("Не получилось. Сделай снимок экрана с QR."); return; }
-        const file = typeof File !== "undefined" ? new File([blob], "spasibo-qr.png", { type: "image/png" }) : null;
-        if (file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: "QR для гостей" }).catch(() => {}); return; }
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob); a.download = "spasibo-qr.png"; document.body.appendChild(a); a.click();
-        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-        setMsg("Картинка сохранена: распечатай и поставь на стол или стойку. Если не сохранилась, сделай снимок экрана с QR.");
-      }, "image/png");
-    } catch (e) { setMsg("Не получилось. Сделай снимок экрана с QR."); }
-  };
+  const [print, setPrint] = React.useState(false);   // v87: выбор вида картинки для печати
   return (
     <div>
       <QrCard c={c} url={url} name={st.name} pos={pos} restaurant={st.restaurant} />
@@ -150,9 +188,11 @@ function Mine({ c, a11y, st, profile, onRotate, rotating }) {
       <div style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, margin: "12px 2px" }}>Покажи гостю или поставь распечатку на стол: гость наводит камеру и говорит спасибо лично тебе. Без регистрации, за пару секунд.</div>
       <div style={{ display: "flex", gap: 10 }}>
         <button type="button" data-thanks-share="" onClick={share} style={{ ...btn(c), flex: 1 }}>Поделиться ссылкой</button>
-        <button type="button" data-thanks-print="" onClick={save} style={{ ...btn(c), flex: 1 }}>Картинка для печати</button>
+        <button type="button" data-thanks-print="" aria-expanded={print} onClick={() => { vibrate("light"); setMsg(""); setPrint((v) => !v); }}
+          style={{ ...btn(c), flex: 1, ...(print ? { background: a11y ? "rgba(139,106,48,0.16)" : "rgba(200,169,110,0.20)" } : null) }}>Картинка для печати</button>
       </div>
-      {msg ? <div role="status" style={{ fontSize: 13, color: c.text, margin: "10px 2px 0", lineHeight: 1.45, wordBreak: "break-all" }}>{msg}</div> : null}
+      {print ? <LayoutPicker c={c} a11y={a11y} url={url} name={st.name} pos={pos} restaurant={st.restaurant} onMsg={setMsg} /> : null}
+      {msg ? <div role="status" style={{ fontSize: 13, color: c.text, margin: "10px 2px 0", lineHeight: 1.45, wordBreak: /^https?:/.test(msg) ? "break-all" : "normal" }}>{msg}</div> : null}
       <div style={{ ...c.frost, padding: "14px 16px", margin: "16px 0 10px", display: "flex", textAlign: "center" }} data-thanks-stats="">
         {[["за неделю", st.week], ["за месяц", st.month], ["всего", st.total]].map(([t, v]) => (
           <div key={t} style={{ flex: 1 }}>
@@ -166,7 +206,10 @@ function Mine({ c, a11y, st, profile, onRotate, rotating }) {
           {x.text ? <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text, marginTop: 4, lineHeight: 1.45 }}>«{x.text}»</div>
             : <div style={{ fontSize: 13, color: c.sub, marginTop: 3 }}>Спасибо без слов</div>}
         </div>))
-        : <div style={{ fontSize: 13.5, color: c.sub, lineHeight: 1.5, padding: "2px 2px 8px" }}>Пока спасибо нет. Первое придёт, когда гость отсканирует твой QR.</div>}
+        : <div data-thanks-empty="" style={{ textAlign: "center", padding: "6px 2px 8px" }}>
+            <LineArt kind="heart" color={c.gold} size={130} style={{ margin: "6px auto 8px" }} />
+            <div style={{ fontSize: 13.5, color: c.sub, lineHeight: 1.5 }}>Пока спасибо нет. Первое придёт, когда гость отсканирует твой QR.</div>
+          </div>}
       <div style={{ marginTop: 16 }}>
         <button type="button" data-thanks-rotate="" disabled={rotating} onClick={() => { if (!sure) { vibrate("light"); setSure(true); return; } setSure(false); onRotate(); }}
           style={{ border: 0, background: "none", color: sure ? c.red : c.sub, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer", padding: "6px 2px" }}>

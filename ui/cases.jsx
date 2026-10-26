@@ -6,6 +6,7 @@
 //   разбор превращает рассказ в ситуацию (сцена, вопрос, как правильно и неверные варианты, разбор, «как было у нас»).
 // Сервер — этап 33 (case_submit / case_review / case_list); без него экран честно говорит, что этапа нет.
 import React from "react";
+import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
@@ -227,7 +228,10 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
                 </div>
                 <div style={{ fontSize: 13, color: c.sub, marginTop: 4, lineHeight: 1.45 }}>Ситуация, вопрос и разбор от руководителя. После ответа видно, как было у нас.</div>
                 <button type="button" data-case-play="" onClick={play} style={{ ...btn(c, "main"), width: "100%", marginTop: 12 }}>{fresh ? "Разобрать новые" : "Разобрать ещё раз"}</button>
-              </> : <div style={{ fontSize: 13.5, color: c.text, marginTop: 6, lineHeight: 1.5 }}>Пока ни одного. Расскажи случай со смены: руководитель разберёт его, и команда потренируется на живой истории.</div>}
+              </> : <>
+                <LineArt kind="tray" color={c.gold} size={130} style={{ margin: "10px auto 2px" }} />
+                <div style={{ fontSize: 13.5, color: c.text, marginTop: 6, lineHeight: 1.5 }}>Пока ни одного. Расскажи случай со смены: руководитель разберёт его, и команда потренируется на живой истории.</div>
+              </>}
             </div>
             {/* руководителю: ждут разбора */}
             {lead ? <>
@@ -272,6 +276,7 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
                   <div style={{ fontSize: 14, color: c.text, marginTop: 5, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{(x.sit && x.sit.scene) || x.story}</div>
                 </div>))}
             </> : null}
+            {team.length ? <LineArt kind="tray" color={c.gold} size={150} style={{ margin: "34px auto 0", opacity: 0.4 }} /> : null}
           </> : null}
         </>}
       </div>

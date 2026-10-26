@@ -111,6 +111,17 @@ function Beads({ n, pos, marks, curDone }) {
   return <div className="tb-beads"><span className="bf" style={{ width: "calc((100% - 8px) * " + frac.toFixed(4) + ")" }} /><span className="bi">{items}</span></div>;
 }
 
+// v87 (Доп. 400): «Как было у нас» и кто рассказал случай — отдельной плашкой на записке (режим cases)
+function RealPlaque({ sit }) {
+  if (!sit || (!sit._real && !sit._author)) return null;
+  return (
+    <div className="tb-real" data-case-real="">
+      {sit._real ? <><span className="rh">Как было у нас</span><p>{stripEm(sit._real)}</p></> : null}
+      {sit._author ? <span className="by">рассказал(а) {sit._author}</span> : null}
+    </div>
+  );
+}
+
 function Note({ ok, title, sign, children }) {
   return (
     <div className="tb-note tb-new" role="status">
@@ -602,6 +613,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
               <Note ok={ok} title={noteTitle} sign={signOf(mentorName)}>
                 {!ok ? <><span className="na">{g === "truefalse" ? "Ответ" : "Лучше так"}</span><p className="nb">{g === "truefalse" ? tfLabel(sit.options[sit.correct]).t : sit.options[sit.correct]}</p></> : null}
                 <p>{stripEm(ok ? sit.win : (missText(sit, ps.choice >= 0 ? sit.options[ps.choice] : "") || "Попробуй ещё раз в следующем раунде."))}</p>
+                <RealPlaque sit={sit} />
                 <p className="pts">{ok ? "+" + pts + " очков" + (ps.combo >= 2 ? " · комбо ×" + ps.combo : "") : "−1 тарелка · осталось " + Math.max(0, ps.lives)}</p>
                 {!ok && !preview ? <MentorLink onAsk={onAskMentor} sit={sit} pick={ps.choice} /> : null}
               </Note>
@@ -1065,6 +1077,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                     {c.ok && c.tries > 0 ? <p>Исправил, и гость доволен даже больше: так работает парадокс восстановления.</p> : null}
                     {!c.ok ? <><span className="na">{g === "truefalse" ? "Ответ" : "Лучше так"}</span><p className="nb">{g === "truefalse" ? tfLabel(sit.options[sit.correct]).t : sit.options[sit.correct]}</p></> : null}
                     <p>{stripEm(c.ok ? sit.win : missText(sit, c.pick >= 0 ? sit.options[c.pick] : ""))}</p>
+                    <RealPlaque sit={sit} />
                     {!c.ok && !strict ? <MentorLink onAsk={onAskMentor} sit={sit} pick={c.pick} /> : null}
                   </Note>
                 ) : null}

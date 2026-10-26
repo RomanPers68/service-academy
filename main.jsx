@@ -53,7 +53,7 @@ class BootBoundary extends React.Component {
 
 if (GUEST_THANKS) {
   import("./ui/guest-thanks.jsx").then(({ GuestThanksPage }) => {
-    try { document.body.style.margin = "0"; document.body.style.background = "#14110A"; } catch (e) {}
+    try { document.body.style.margin = "0"; document.body.style.background = "#F4EAD5"; } catch (e) {}   // v87: страница гостя — кремовая
     ReactDOM.createRoot(document.getElementById("root")).render(<GuestThanksPage code={thanksCode(location.search)} />);
   }).catch(() => {
     try { const sp = document.getElementById("sa-splash"); if (sp) sp.remove(); document.getElementById("root").textContent = "Страница не загрузилась. Обновите её."; } catch (e) {}

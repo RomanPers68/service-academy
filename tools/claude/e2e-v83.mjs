@@ -243,7 +243,8 @@ if (want("PLAY")) {
   // первый — неверно
   await o.page.locator(".tb .tb-actc", { hasText: "Сказать, что такого нет" }).first().click(); await sleep(1600);
   const note1 = await txt(o.page.locator(".tb"));
-  ok("PLAY: после ответа — как правильно, разбор, «как было у нас», кто рассказал", note1.includes("Лучше так") && note1.includes(TEAM[0].sit.options[0]) && note1.includes("Как было у нас: Предложили «Апероль шприц»") && note1.includes("Случай рассказал(а) Илья Бармен."), note1.slice(-420));
+  // v87: «как было у нас» и подпись рассказчика — плашкой [data-case-real] (раньше одним абзацем с разбором)
+  ok("PLAY: после ответа — как правильно, разбор, «как было у нас», кто рассказал", note1.includes("Лучше так") && note1.includes(TEAM[0].sit.options[0]) && /Как было у нас Предложили «Апероль шприц» вместо «Хьюго», гость заказал второй\./.test(note1) && /рассказал\(а\) Илья Бармен/.test(note1) && (await o.page.locator(".tb [data-case-real]").count()) === 1, note1.slice(-420));
   await shot(o.page, "play-note");
   let steps = 1;
   for (let i = 0; i < 6; i++) {
@@ -285,14 +286,15 @@ if (want("BRIEF")) {
   await o.page.evaluate(() => window.__saNav("brief")); await sleep(2600);
   const b = await txt(o.page.locator('[data-brief-block="case"]'));
   ok("BRIEF: блок «Случай из зала» — свежий опубликованный: сцена, вопрос, варианты, как было, кто рассказал", b.includes(TEAM[0].sit.scene) && /Как поступить\?/.test(b) && /А\. Предложить похожий/.test(b)
-    && /Как было у нас: Предложили «Апероль шприц»/.test(b) && /Рассказал\(а\) Илья Бармен/.test(b) && (await o.page.locator('[data-brief-block="case"]').getAttribute("data-on")) === "1", b.slice(0, 200));
+    && /Как было у нас Предложили «Апероль шприц» вместо «Хьюго», гость заказал второй\./.test(b) && /рассказал\(а\) Илья Бармен/.test(b) && (await o.page.locator('[data-brief-block="case"] [data-brief-real]').count()) === 1   // v87: плашкой с подписью
+    && (await o.page.locator('[data-brief-block="case"]').getAttribute("data-on")) === "1", b.slice(0, 200));
   await o.page.locator("[data-brief-present]").click(); await sleep(400);
   const show = o.page.locator("[data-brief-show]");
   for (let i = 0; i < 8; i++) { if ((await show.locator("[data-brief-page]").getAttribute("data-brief-page")) === "case") break; await show.locator("[data-brief-next]").click(); await sleep(200); }
   const p1 = await txt(show);
   ok("BRIEF: в показе — ответ и «как было» по кнопке", (await show.locator("[data-brief-page]").getAttribute("data-brief-page")) === "case" && /Показать ответ/.test(p1) && !/Как было у нас/.test(p1));
   await show.locator("[data-brief-reveal]").click(); await sleep(250);
-  ok("BRIEF: «Показать ответ» — разбор и «как было у нас»", /Как было у нас: Предложили/.test(await txt(show)) && /Гость пришёл за вкусом/.test(await txt(show)));
+  ok("BRIEF: «Показать ответ» — разбор и «как было у нас»", /Как было у нас Предложили/.test(await txt(show)) && /Гость пришёл за вкусом/.test(await txt(show)));
   await shot(o.page, "brief-case");
   await show.locator("[data-sa-back]").click(); await sleep(300);
   await o.page.locator("[data-brief-publish]").click(); await sleep(900);

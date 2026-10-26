@@ -7,6 +7,7 @@
 // PronounceScreen — словарь целиком: поиск, разделы, послушать, повторить и сравнить со своей записью.
 // v86 (Доп. 399): «медленно» — тот же голос медленнее; под словом — оно же по слогам, ударный слог заглавными.
 import React from "react";
+import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { liveVoiceAvailable, voiceUrl } from "../lib/radio-voice";
@@ -180,6 +181,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
       <div style={{ padding: "8px 16px 100px" }}>
         {!list.length ? (
           <div style={{ textAlign: "center", color: sub, fontSize: 13, padding: "24px 8px", lineHeight: 1.5 }}>
+            <LineArt kind="say" color={gold} size={130} style={{ margin: "0 auto 12px" }} />
             {q ? "Такого слова в словаре нет. Как произносить свои блюда, менеджер пишет в карточке блюда." : "Пока пусто."}
           </div>
         ) : list.map((e, i) => (
@@ -203,6 +205,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
             </div>
           </div>
         ))}
+        {list.length && list.length < 6 ? <LineArt kind="say" color={gold} size={140} style={{ margin: "28px auto 0", opacity: 0.4 }} /> : null}
       </div>
     </div>
   );

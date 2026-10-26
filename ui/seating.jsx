@@ -9,6 +9,7 @@
 // v86 (Доп. 399): статус «Счёт» (этап 36) — гости попросили счёт, стол скоро освободится: на схеме — терракотой,
 // в подборе компании — «Скоро освободится».
 import React from "react";
+import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
@@ -328,6 +329,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
           {st.offline ? <div style={{ fontSize: 12.5, color: c.red, margin: "0 2px 8px" }}>Нет связи: показано последнее, что пришло.</div> : null}
           {!plan || !(plan.tables || []).length ? (
             <div style={{ ...c.frost, padding: "14px 16px", lineHeight: 1.5 }} data-floor-empty="">
+              <LineArt kind="table" color={c.gold} size={140} style={{ margin: "4px auto 12px" }} />
               <div style={{ fontSize: 14.5, color: c.text }}>{st.lead ? "Схемы зала ещё нет. Нарисуй её: где какие столы и сколько за ними мест. Её увидит вся смена." : "Руководитель ещё не нарисовал схему зала."}</div>
               {st.lead ? <button type="button" data-floor-edit="" onClick={() => { vibrate("light"); setMsg(""); setEdit(true); }} style={{ ...btn(c, true), width: "100%", marginTop: 12 }}>Нарисовать схему</button> : null}
             </div>
@@ -373,6 +375,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
               <button type="button" data-floor-edit="" onClick={() => { vibrate("light"); setMsg(""); setEdit(true); }} style={{ border: 0, background: "none", color: c.gold, fontFamily: "Georgia, serif", fontSize: 14, cursor: "pointer", padding: "4px 2px" }}>Схема зала ›</button>
               <button type="button" data-seat-clear="" onClick={clear} style={{ border: 0, background: "none", color: sure ? c.red : c.sub, fontFamily: "Georgia, serif", fontSize: 14, cursor: "pointer", padding: "4px 2px" }}>{sure ? "Все столы станут свободными. Нажми ещё раз" : "Очистить доску"}</button>
             </div> : null}
+            <LineArt kind="table" color={c.gold} size={130} style={{ margin: "30px auto 0", opacity: 0.35 }} />
           </>}
         </> : null}
       </div>

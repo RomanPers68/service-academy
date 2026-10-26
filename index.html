@@ -81,6 +81,8 @@
     <div id="sa-splash"><div class="mark">SA</div></div>
     <script>
       try{if(localStorage.getItem("sa_a11y")==="1")document.getElementById("sa-splash").className="light"}catch(e){}
+      /* v87: страница гостя «Сказать спасибо» (?thanks=) — светлая, заставка тоже светлая, без вспышки тёмного */
+      try{if(/[?&]thanks=/.test(location.search))document.getElementById("sa-splash").className="light"}catch(e){}
       /* Диагностика запуска: любая ранняя ошибка записывается, а если за
          8 секунд приложение не поднялось — заставка сама говорит, что
          случилось, вместо вечного мерцания (прод-кейс: Telegram держал

@@ -9,6 +9,7 @@
 //   «Прочитал(а)» (этап 36), руководителю — «Прочитали 4 из 6 в графике» и кто ещё не отметил; голос шефа и сомелье
 //   к новинке — прямо в блоке «Новинки меню».
 import React from "react";
+import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
@@ -18,6 +19,7 @@ import { useAllModules } from "../lib/use-content";
 import { cachedShared } from "../lib/deck-extras";
 import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel, briefPreview, readStats, readLine } from "../lib/briefing";
 import { VoicePill } from "./voice-note";
+import { ensureTableCss } from "./table-css";   // v87: рукописный Marck Script для подписи рассказчика живёт в стилях стола
 
 const LETTERS = ["А", "Б", "В", "Г"];
 const HIDDEN = { ask: true, case: true };   // в показе и у сотрудника ответ открывается кнопкой «Показать ответ»
@@ -44,6 +46,19 @@ const HEAD = { display: "flex", alignItems: "center", gap: 10, padding: "max(14p
 // считается от неё, и шапка приложения оказывалась поверх слоя. Без DOM (тесты на сервере) — на месте.
 const portal = (el) => (typeof document !== "undefined" && document.body && document.body.nodeType === 1 ? createPortal(el, document.body) : el);
 const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
+
+// v87 (Доп. 400): «Как было у нас» — плашкой с подписью рассказчика, как на записке у «стола»
+function RealPlaque({ real, author, c, small }) {
+  ensureTableCss();
+  return (
+    <div data-brief-real="" style={{ marginTop: 10, padding: "9px 12px 8px", borderRadius: 10, borderLeft: `3px solid ${c.gold}`,
+      background: c.a11y ? "rgba(139,106,48,0.08)" : "rgba(226,186,116,0.07)" }}>
+      <div style={{ ...labelStyle(small), color: c.gold, marginBottom: 3 }}>Как было у нас</div>
+      <div style={{ fontFamily: "Georgia, serif", fontSize: small + 1.5, color: c.text, fontStyle: "italic", lineHeight: 1.5 }}>{/[.!?…][»)"]*$/.test(real) ? real : real + "."}</div>
+      {author ? <div style={{ fontFamily: "'Marck Script', 'Caveat', 'Segoe Script', cursive", fontSize: small + 5, color: c.sub, textAlign: "right", marginTop: 4 }}>рассказал(а) {author}</div> : null}
+    </div>
+  );
+}
 
 // ── Содержимое блока (одно и то же — в списке, в показе и у сотрудника) ──────────
 function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
@@ -97,10 +112,10 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
         <div key={i} style={{ fontSize: small + 1, color: reveal && i === b.correct ? c.gold : c.text, fontWeight: reveal && i === b.correct ? "bold" : "normal", marginBottom: 3 }}>{LETTERS[i]}. {o}</div>))}</div>
       {reveal ? <>
         {b.why ? <div style={{ fontSize: small, color: c.sub, marginTop: 6, lineHeight: 1.45 }}>{b.why}</div> : null}
-        {b.real ? <div style={{ fontSize: small, color: c.text, marginTop: 6, lineHeight: 1.45 }}><span style={{ color: c.gold }}>Как было у нас:</span> {b.real}</div> : null}
+        {b.real ? <RealPlaque real={b.real} author={b.author} c={c} small={small} /> : null}
       </> : <button type="button" data-brief-reveal="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onReveal && onReveal(); }}
           style={{ marginTop: 10, padding: "8px 16px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent", color: c.gold, fontFamily: "Georgia, serif", fontSize: small, cursor: "pointer" }}>Показать ответ</button>}
-      {b.author ? <div style={{ fontSize: small - 1, color: c.sub, marginTop: 6 }}>Рассказал(а) {b.author}</div> : null}
+      {b.author && !(reveal && b.real) ? <div style={{ fontSize: small - 1, color: c.sub, marginTop: 6 }}>Рассказал(а) {b.author}</div> : null}
     </div>);
   if (k === "thanks") return (
     <div>{b.map((t, i) => (
@@ -141,6 +156,7 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
         {k ? <>
           <div data-brief-page={k} style={{ ...labelStyle(18), color: c.gold, marginBottom: 14 }}>{BRIEF_TITLE[k]}</div>
           <BlockBody k={k} b={brief.blocks[k]} c={c} big reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
+          {i === pages.length - 1 ? <LineArt kind="bell" color={c.gold} size={150} style={{ margin: "36px auto 0", opacity: 0.5 }} /> : null}
         </> : <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: c.sub }}>В брифинге пока пусто.</div>}
       </div>
       <div style={{ display: "flex", gap: 10, padding: "10px 16px 14px" }}>
@@ -350,6 +366,7 @@ export function BriefView({ a11y, brief, onClose, onRead }) {
             <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 8 }}>{BRIEF_TITLE[k]}</div>
             <BlockBody k={k} b={d.blocks[k]} c={c} reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
           </div>))}
+        <LineArt kind="bell" color={c.gold} size={110} style={{ margin: "14px auto 6px", opacity: 0.45 }} />
         {me === true ? <div data-brief-read-done="" style={{ fontSize: 12.5, color: c.sub, textAlign: "center", margin: "4px 0 2px" }}>Отметка «Прочитал(а)» уже стоит.</div> : null}
         {err ? <div role="alert" style={{ fontSize: 13, color: c.red, textAlign: "center", margin: "4px 0 2px" }}>{err}</div> : null}
         {me === false

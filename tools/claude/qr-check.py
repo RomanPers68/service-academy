@@ -3,13 +3,20 @@
 #   python3 qr-check.py <картинка> <ожидаемый текст> [<картинка> <текст> …]
 # Печатает по строке на картинку: «✓ файл» или «✗ файл → прочитано», в конце — «OK n» или «FAIL n».
 # Код ищется на картинке как есть и, если не нашёлся, — с белым полем вокруг (камера тоже видит поле стола).
+# v87 (Доп. 400): «файл@top» / «файл@bottom» — только верхняя (повёрнутая, как у домика на стол) или нижняя половина.
 import sys
 import cv2
 
 def read(path):
+    half = ""
+    if path.endswith("@top") or path.endswith("@bottom"):
+        path, half = path.rsplit("@", 1)
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         return None
+    if half:
+        h = img.shape[0] // 2
+        img = cv2.rotate(img[:h], cv2.ROTATE_180) if half == "top" else img[h:]
     det = cv2.QRCodeDetector()
     for pad in (0, 40, 120):
         im = cv2.copyMakeBorder(img, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=255) if pad else img

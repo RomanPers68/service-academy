@@ -338,6 +338,8 @@ import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQday
 import { casesSub, isCaseMistake, markPlayed, readSince, markSince } from "./lib/cases";   // v83: случаи из нашего зала
 import { thanksSub } from "./lib/guest-thanks";   // v84: спасибо от гостей по QR
 import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
+import { shiftRoleOf, roleCard } from "./lib/shift-role";   // v87 (Доп. 400): «Смена» под роль
+import { ShiftRoleCard } from "./ui/shift-role";
 const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
 const loadGamification = () => import("./ui/screens-gamification");
 const loadTeamScreens = () => import("./ui/screens-team");
@@ -1374,6 +1376,7 @@ function ServiceAcademy() {
   const [teamBrief, setTeamBrief] = useState(null);   // { data, author, mine, sent, at } | null
   const [briefSeen, setBriefSeen] = useState("");
   const [briefReads, setBriefReads] = useState(null);   // v86: руководителю на карточке — сколько прочитали (этап 36)
+  const [briefKnown, setBriefKnown] = useState(false);   // v87: сервер ответил про брифинг дня (есть он или нет)
   const briefView = layerData(layers, "brief"), setBriefView = layerSet.brief;
   const briefAskRef = useRef({ at: 0, off: false, open: false });
   const briefKeyOf = (b) => (b && b.data ? (b.data.day || "") + "|" + (b.at || "") : "");
@@ -1386,7 +1389,7 @@ function ServiceAcademy() {
       if (rpcMissing(r)) { st.off = true; return; }
       if (r && r.ok) {
         const b = r.brief && r.brief.data ? r.brief : null;
-        setTeamBrief(b);
+        setTeamBrief(b); setBriefKnown(true);
         const lead = !!profile.is_admin || ["manager", "senior"].includes(profile.position);
         if (b && lead) rpc("brief_reads", { p_token: saToken() }).then((x) => setBriefReads(x && x.ok && x.brief ? x : null)).catch(() => {});
         else setBriefReads(null);
@@ -1447,6 +1450,7 @@ function ServiceAcademy() {
   // v86 (Доп. 399): «Твои столы» в пункте «Рассадка» — у официанта, которому посадили гостей (seat_board, этап 35):
   // при входе в «Смену» и раз в минуту, пока она открыта
   const [myTables, setMyTables] = useState(null);
+  const [seatBoard, setSeatBoard] = useState(null);   // v87: вся доска — для карточки «Смены» под роль
   const seatAskRef = useRef(0);
   useEffect(() => {
     if (screen !== "shift" || !storageLoaded || !profile || !profile.restaurant || !seatOn) return undefined;
@@ -1455,6 +1459,7 @@ function ServiceAcademy() {
       seatAskRef.current = Date.now();
       rpc("seat_board", { p_token: saToken() }).then((r) => {
         if (rpcMissing(r)) { setSeatOn(false); return; }
+        if (r && r.ok) setSeatBoard(r);
         if (r && r.ok) setMyTables(myTablesOf(r, profile.id));
       }).catch(() => { seatAskRef.current = 0; });
     };
@@ -1462,6 +1467,9 @@ function ServiceAcademy() {
     const t = setInterval(ask, 60e3);
     return () => clearInterval(t);
   }, [screen, storageLoaded, profile, seatOn]);
+  // v87 (Доп. 400): «Смена» под роль — руководителю брифинг и зал, хостес зал и ближайшая бронь, официанту его столы
+  const shiftRole = useMemo(() => roleCard({ role: shiftRoleOf(profile), board: seatOn ? seatBoard : null, empId: profile && profile.id,
+    briefKnown, briefSent: !!teamBrief, dayOff: !!(shiftToday && shiftToday.off) }), [profile, seatOn, seatBoard, briefKnown, teamBrief, shiftToday]);
   // ссылка «Брифинг смены» из Telegram (?go=brief): открыть, как только брифинг пришёл
   useEffect(() => { if (briefAskRef.current.open && teamBrief) { briefAskRef.current.open = false; openTeamBrief(); } }, [teamBrief, openTeamBrief]);
   // v31: ссылки из подталкиваний бота: ?go=pair|league|cellar|month|shift|radio|guest|probe (или startapp=go_…)
@@ -2953,6 +2961,7 @@ function ServiceAcademy() {
         {screen === "shift" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Смена" /* v78 (Доп. 391): без слогана под названием */
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
           hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} onOpen={() => navigate("schedule")} />
+            <ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} />
             {/* v82 (Доп. 395): брифинг смены от руководителя */}
             {teamBrief ? <Suspense fallback={null}><BriefCard a11y={a11y} brief={teamBrief} seen={!!teamBrief.mine || briefSeen === briefKeyOf(teamBrief)} reads={isLead ? briefReads : null} onOpen={openTeamBrief} /></Suspense> : null}
             {/* v30 (Доп. 314): квест смены и твоя часть */}

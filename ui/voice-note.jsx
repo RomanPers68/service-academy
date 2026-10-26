@@ -6,6 +6,7 @@
 // v86 (Доп. 399): скорость 1× / 1,5× (одна на все записи, помнит телефон), «прослушано» у каждой записи; в «Голосах
 // шефа и сомелье» — плеер внизу экрана: полоса, пауза, назад и вперёд по очереди, скорость; «Только новые».
 import React from "react";
+import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
@@ -290,6 +291,7 @@ export function VoicesList({ T, a11y, gold, dishes = [], Head, glass }) {
             </div>
           );
         })}
+        <LineArt kind="mic" color={gold} size={140} style={{ margin: "28px auto 0", opacity: 0.4 }} />
       </div>
       {/* плеер — порталом, как полоса брифинга: внутри .sa-screen (анимация с transform) fixed прилипает к экрану, а не к окну */}
       {now ? portal(<>

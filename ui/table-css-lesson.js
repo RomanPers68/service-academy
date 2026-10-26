@@ -96,6 +96,11 @@ export const TABLE_LESSON_CSS = `
 .tb-note .nb{font-weight:700}
 .tb-note .pts{${LABEL_CSS};font-size:13.5px;color:var(--paper-sub);margin:2px 0 0}
 .tb-note .sign{font-family:var(--font-hand);font-size:18px;color:var(--paper-sub);text-align:right;margin:2px 0 0}
+/* v87: «Как было у нас» — плашка из нашего зала с подписью рассказчика */
+.tb-note .tb-real{margin:10px -2px 8px;padding:9px 12px 8px;border-radius:2px;background:rgba(139,106,48,.09);border-left:3px solid rgba(139,106,48,.5)}
+.tb-note .tb-real .rh{display:block;${LABEL_CSS};font-size:12.5px;color:#7A5A1E;margin:0 0 3px}
+.tb-note .tb-real p{margin:0;font-size:14px;line-height:1.5;font-style:italic}
+.tb-note .tb-real .by{display:block;font-family:var(--font-hand);font-size:17px;color:var(--paper-sub);text-align:right;margin:4px 0 0}
 /* «а теперь — вслух» */
 .tb-say{margin:12px 0 4px;padding:12px 14px;border-radius:16px;border:1px solid var(--edge-gold);background:var(--glass)}
 .tb-say .ph{display:flex;gap:10px;align-items:flex-start;margin:4px 0 10px}

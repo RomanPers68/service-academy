@@ -168,9 +168,11 @@ if (want("STAFF")) {
     ok(tag + ": последние спасибо — отметки и слова гостя; без слов — так и сказано", /22 октября · внимание к нам, отличный совет «Спасибо за совет с вином»/.test(await txt(o.page.locator('[data-thanks-item="7"]')))
       && /Спасибо без слов/.test(await txt(o.page.locator('[data-thanks-item="6"]'))));
     await shot(o.page, "staff-screen" + (light ? "-light" : ""));
-    // картинка для печати
-    const dl = o.page.waitForEvent("download", { timeout: 8000 }).catch(() => null);
+    // картинка для печати. v87 (Доп. 400): сначала выбор вида с предпросмотром (карточка — первой), потом «Сохранить картинку»
     await o.page.locator("[data-thanks-print]").click();
+    await o.page.waitForSelector('[data-thanks-preview="card"]', { timeout: 8000 }).catch(() => {});
+    const dl = o.page.waitForEvent("download", { timeout: 8000 }).catch(() => null);
+    await o.page.locator("[data-thanks-save]").click();
     const d = await dl;
     let r2 = "нет скачивания";
     if (d) { const p = OUT + "/print-card" + (light ? "-light" : "") + ".png"; await d.saveAs(p); r2 = qrReads(p, want1); }

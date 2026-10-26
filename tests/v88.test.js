@@ -203,7 +203,8 @@ describe("v88: «Вопрос дня» на главной", () => {
     expect(app).toContain("if (alive) loadQday(true);");
     // другой сотрудник на том же телефоне: карточка и «не чаще раза в пять минут» сбрасываются
     expect(app).toContain('useEffect(() => { qdayAskRef.current = { at: 0, off: false }; setQdayData(null); setQdayErr(""); }, [ukP]);');
-    expect(app).toContain('qdayCard={qdayData && qdayData.item ? <QdayCard a11y={a11y} data={qdayData}');
+    // v89: отвеченный вопрос — только сразу после ответа (tests/v89.test.js)
+    expect(app).toMatch(/qdayCard=\{qdayData && qdayData\.item (\? |&& \(!Number\.isInteger\(qdayData\.item\.answer\) \|\| qdayKeep\) \? )<QdayCard a11y=\{a11y\} data=\{qdayData\}/);
     expect(rd("ui/screens-roleselect.jsx")).toContain('{qdayCard ? <div data-qday-slot="" style={{ margin:"9px -14px 0" }}>{qdayCard}</div> : null}');
   });
   it("напоминания: «Во сколько» у «Вопроса дня» — только с этапом 37; час заведения — как у всех (null)", async () => {

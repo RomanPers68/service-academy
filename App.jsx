@@ -1976,6 +1976,10 @@ function ServiceAcademy() {
   const [qdayBusy, setQdayBusy] = useState(false);
   const [qdayErr, setQdayErr] = useState("");
   const qdayAskRef = useRef({ at: 0, off: false });
+  // v89 (Доп. 402): отвеченный вопрос с главной уходит. Разбор виден, только если ответ дан сейчас и ты ещё на главной;
+  // «Понятно» убирает сразу. Ушёл с главной, перезапустил, ответил в Telegram — карточки нет до завтрашнего вопроса.
+  const [qdayKeep, setQdayKeep] = useState(false);
+  useEffect(() => { if (screen !== "roleSelect") setQdayKeep(false); }, [screen]);
   const loadQday = useCallback((force) => {
     const st = qdayAskRef.current;
     if (!profile || st.off || !saToken() || (!force && Date.now() - st.at < 5 * 60e3)) return;
@@ -1995,6 +1999,7 @@ function ServiceAcademy() {
     rpc("qday_answer", { p_token: saToken(), p_id: it.id, p_answer: i }).then((r) => {
       setQdayBusy(false);
       if (r && r.item && (r.ok || r.error === "again")) {
+        setQdayKeep(true);
         setQdayData((d) => ({ ...(d || {}), item: r.item, streak: r.streak }));
         const a = qdayAnswerOf(r.item);
         // ответ — в банк ошибок, как ответы из Telegram (один раз: тот же номер qday_inbox потом не учтёт)
@@ -2970,7 +2975,7 @@ function ServiceAcademy() {
               <Flame lit s={18} a11y={a11y} />
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
           nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
-          qdayCard={qdayData && qdayData.item ? <QdayCard a11y={a11y} data={qdayData} busy={qdayBusy} err={qdayErr} onAnswer={answerQday} onMistakes={() => navigate("mistakes")} /> : null}   /* v88 */
+          qdayCard={qdayData && qdayData.item && (!Number.isInteger(qdayData.item.answer) || qdayKeep) ? <QdayCard a11y={a11y} data={qdayData} busy={qdayBusy} err={qdayErr} onAnswer={answerQday} onMistakes={() => navigate("mistakes")} onHide={() => setQdayKeep(false)} /> : null}   /* v88; v89 — отвеченный только сразу после ответа */
           warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}

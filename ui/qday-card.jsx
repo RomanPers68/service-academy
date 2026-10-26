@@ -1,6 +1,9 @@
 // ui/qday-card.jsx — v88 (Доп. 401): «Вопрос дня» на главной (этап 37: qday_today / qday_answer).
 // Тот же вопрос, что приходит в Telegram: из ошибок, которые пора повторить, и пройденных тем. Ответ — один раз: верный
 // подсвечивается золотом, разбор сразу; ошибка уходит в «Работу над ошибками». Серия — сколько дней подряд был ответ.
+// v89 (Доп. 402): отвеченный вопрос не висит на главной. Разбор виден, пока ты на главной (App держит карточку, только
+// если ответ дан сейчас); «Понятно» (onHide) убирает её сразу. Ушёл с главной, перезапустил, ответил в Telegram —
+// карточки нет до завтрашнего вопроса.
 import React from "react";
 import { vibrate, onActivate } from "../lib/utils";
 import { labelStyle } from "./tokens";
@@ -29,14 +32,16 @@ const Flame = ({ color, size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     <path d="M12 3c2.5 3 4.5 5.4 4.5 8.6A4.5 4.5 0 0 1 12 16a4.5 4.5 0 0 1-4.5-4.4C7.5 9 9.5 7.6 12 3z" /><path d="M9 21h6M12 16v5" /></svg>);
 
-/** data: { item, streak } из qday_today; onAnswer(i) — ответ вариантом i; busy — ответ уходит; err — не ушёл. */
-export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMistakes }) {
+/** data: { item, streak } из qday_today; onAnswer(i) — ответ вариантом i; busy — ответ уходит; err — не ушёл;
+ *  onHide — «Понятно» после ответа (v89: убрать карточку с главной). */
+export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMistakes, onHide }) {
   const c = P(a11y);
   const it = data && data.item;
   if (!it || !Array.isArray(it.o) || !it.o.length) return null;
   const done = Number.isInteger(it.answer);
   const streak = qdayStreakText(data.streak);
   const pick = (i) => { if (done || busy || !onAnswer) return; vibrate("light"); onAnswer(i); };
+  const hide = () => { vibrate("light"); if (onHide) onHide(); };
   return (
     <div data-qday-card={done ? (it.correct ? "ok" : "bad") : "ask"} style={{ margin: "0 14px 10px", borderRadius: 18, padding: "12px 14px 13px", fontFamily: "Georgia, serif", ...c.card }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
@@ -66,8 +71,9 @@ export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMista
         <div data-qday-result="" role="status" style={{ marginTop: 10 }}>
           <div style={{ fontSize: 14.5, fontWeight: "bold", color: it.correct ? c.gold : c.bad }}>{qdayVerdict(it)}</div>
           {it.e ? <div style={{ fontSize: 13.5, lineHeight: 1.45, color: c.sub, marginTop: 3 }}>{it.e}</div> : null}
-          <div style={{ fontSize: 12.5, color: c.sub, marginTop: 6 }}>
-            {it.correct ? "Следующий вопрос завтра." : <>Вопрос ждёт в {onMistakes ? <span role="button" tabIndex={0} data-qday-mistakes="" onClick={onMistakes} {...onActivate(onMistakes)} style={{ color: c.gold, textDecoration: "underline", cursor: "pointer" }}>«Работе над ошибками»</span> : "«Работе над ошибками»"}. Следующий вопрос завтра.</>}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 12.5, color: c.sub, marginTop: 6 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>{it.correct ? "Следующий вопрос завтра." : <>Вопрос ждёт в {onMistakes ? <span role="button" tabIndex={0} data-qday-mistakes="" onClick={onMistakes} {...onActivate(onMistakes)} style={{ color: c.gold, textDecoration: "underline", cursor: "pointer" }}>«Работе над ошибками»</span> : "«Работе над ошибками»"}. Следующий вопрос завтра.</>}</span>
+            {onHide ? <span role="button" tabIndex={0} data-qday-hide="" onClick={hide} {...onActivate(hide)} style={{ color: c.gold, fontSize: 13.5, cursor: "pointer", whiteSpace: "nowrap", padding: "4px 0 4px 8px" }}>Понятно</span> : null}
           </div>
         </div>) : null}
       {err ? <div role="alert" style={{ fontSize: 13, color: c.bad, marginTop: 8 }}>{err}</div> : null}

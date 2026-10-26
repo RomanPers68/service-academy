@@ -8,6 +8,8 @@
 // и «Очистить доску». Сервер — этап 35; без него экран говорит, что этапа нет.
 // v86 (Доп. 399): статус «Счёт» (этап 36) — гости попросили счёт, стол скоро освободится: на схеме — терракотой,
 // в подборе компании — «Скоро освободится».
+// v88 (Доп. 401): залы (вкладки над схемой: «Основной», «Веранда»…), стены, бар и вход на схеме (этап 37); в редакторе
+// стол можно перетащить пальцем.
 import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
@@ -16,7 +18,8 @@ import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { briefRoster } from "../lib/briefing";
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
-  onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan } from "../lib/seating";
+  onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
+  MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1 } from "../lib/seating";
 
 const POLL_MS = 15000;
 const pl = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
@@ -64,19 +67,85 @@ function useWidth() {
   return [ref, w];
 }
 
-export function Floor({ a11y, c = C(a11y), plan, map, now, hi = [], sel, edit = false, onTable, onCell }) {
+// стены, бар, вход — цвета в тон схемы
+const ITEM_C = (a11y) => ({
+  wall: a11y ? "#5A4628" : "rgba(226,214,186,0.85)",
+  bar: { bg: a11y ? "rgba(139,106,48,0.16)" : "rgba(210,168,90,0.14)", bd: a11y ? "#8B6A30" : "rgba(214,178,102,0.62)", fg: a11y ? "#5A4628" : "#E9D7A8" },
+  door: { bd: a11y ? "#8B6A30" : "rgba(214,178,102,0.7)", fg: a11y ? "#5A4628" : "#E9D7A8" },
+});
+const DoorIcon = ({ s, color }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="M5 21V4h9v17" /><path d="M14 4l5 2v15l-5-2" /><path d="M11 12.5h.01" /><path d="M3 21h18" /></svg>);
+
+export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, selItem, edit = false, tool = "table", pend = null, onTable, onCell, onNode, onItem, onDrop }) {
   const [ref, w] = useWidth();
   const cell = w / GRID_W;
-  const rows = gridRows(plan, edit ? 3 : 1);
-  const ts = (plan && plan.tables) || [];
+  const z = zone || zone1(plan);
+  const rows = Math.max(3, gridRows(plan, edit ? 3 : 1, z));
+  const ts = zoneTables(plan, z);
+  const its = zoneItems(plan, z);
+  const walls = its.filter((i) => i.kind === "wall"), blocks = its.filter((i) => i.kind !== "wall");
+  const ic = ITEM_C(a11y);
+  // v88: перетаскивание стола пальцем (редактор, «Столы»): тень показывает, встанет ли стол
+  const drag = React.useRef(null), skipClick = React.useRef(false);
+  const [ghost, setGhost] = React.useState(null);
+  const cellAt = (e) => { const r = ref.current.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / cell), Math.floor((e.clientY - r.top) / cell)]; };
+  const canDrag = edit && tool === "table" && !!onDrop;
+  const down = (t) => (e) => {
+    if (!canDrag || (e.button != null && e.button > 0)) return;
+    const [cx] = cellAt(e);
+    drag.current = { t, dx: Math.max(0, Math.min(cx - t.x, t.shape === "long" ? 1 : 0)), sx: e.clientX, sy: e.clientY, moved: false };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_e) { /* */ }
+  };
+  const move = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 8) return;
+    d.moved = true;
+    const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy;
+    setGhost((g) => (g && g.x === x && g.y === y ? g : { t: d.t, x, y, ok: fits(plan, d.t, x, y) }));
+  };
+  const up = (e) => {
+    const d = drag.current;
+    drag.current = null;
+    setGhost(null);
+    if (!d || !d.moved) return;
+    skipClick.current = true; setTimeout(() => { skipClick.current = false; }, 450);
+    const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy;
+    if (x !== d.t.x || y !== d.t.y) onDrop(d.t, x, y);
+  };
+  const cancel = () => { drag.current = null; setGhost(null); };
+  const cellsOn = edit && (tool === "table" || tool === "bar" || tool === "door");
   return (
-    <div ref={ref} data-floor="" style={{ position: "relative", width: "100%", maxWidth: 560, margin: "0 auto", height: Math.max(3, rows) * cell,
+    <div ref={ref} data-floor="" data-zone={z} style={{ position: "relative", width: "100%", maxWidth: 560, margin: "0 auto", height: rows * cell,
       backgroundImage: edit ? `radial-gradient(${c.line} 1.2px, transparent 1.3px)` : "none", backgroundSize: cell + "px " + cell + "px", backgroundPosition: (cell / 2) + "px " + (cell / 2) + "px" }}>
-      {edit ? Array.from({ length: rows * GRID_W }, (_, i) => {
-        const x = i % GRID_W, y = Math.floor(i / GRID_W);
+      {cellsOn ? Array.from({ length: rows * GRID_W }, (_, i) => {
+        const x = i % GRID_W, y = Math.floor(i / GRID_W), p = pend && tool === "bar" && pend.x === x && pend.y === y;
         return <button key={"c" + i} type="button" aria-label={"Клетка " + (x + 1) + ", ряд " + (y + 1)} data-cell={x + ":" + y} onClick={() => onCell && onCell(x, y)}
-          style={{ position: "absolute", left: x * cell, top: y * cell, width: cell, height: cell, border: 0, background: "transparent", padding: 0, cursor: "pointer" }} />;
+          style={{ position: "absolute", left: x * cell, top: y * cell, width: cell, height: cell, border: p ? `2px dashed ${c.gold}` : 0, borderRadius: 8, boxSizing: "border-box", background: "transparent", padding: 0, cursor: "pointer" }} />;
       }) : null}
+      {blocks.map((i) => {
+        const isBar = i.kind === "bar", W = (isBar ? i.w : 1) * cell, H = (isBar ? i.h : 1) * cell, on = selItem === i.id, k = ic[i.kind];
+        const act = edit && onItem ? () => { vibrate("light"); onItem(i); } : null;
+        return (
+          <div key={i.id} data-item={i.id} data-kind={i.kind} {...(act ? { role: "button", tabIndex: 0, "aria-label": ITEM_KINDS[i.kind], onClick: act,
+              onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } } } : { "aria-hidden": "true" })}
+            style={{ position: "absolute", left: i.x * cell + 3, top: i.y * cell + 3, width: W - 6, height: H - 6, boxSizing: "border-box", borderRadius: Math.max(5, cell * 0.14),
+              border: `${on ? 2 : 1.2}px ${isBar ? "solid" : "dashed"} ${on ? c.gold : k.bd}`, background: isBar ? `${k.bg} repeating-linear-gradient(90deg, transparent 0 9px, rgba(255,255,255,0.035) 9px 10px)` : "transparent",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, color: k.fg, fontFamily: "Georgia, serif", fontStyle: "italic",
+              fontSize: Math.max(9, cell * 0.22), cursor: act ? "pointer" : "default", pointerEvents: act ? "auto" : "none", overflow: "hidden" }}>
+            {isBar ? <span>Бар</span> : <><DoorIcon s={Math.max(12, cell * 0.36)} color={k.fg} />{cell >= 34 ? <span style={{ fontSize: Math.max(8, cell * 0.18) }}>вход</span> : null}</>}
+          </div>);
+      })}
+      {walls.length ? (
+        <svg data-walls="" width={w} height={rows * cell} style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none" }} aria-hidden="true" focusable="false">
+          {walls.map((i) => (
+            <g key={i.id} data-item={i.id} data-kind="wall">
+              <line x1={i.x * cell} y1={i.y * cell} x2={i.x2 * cell} y2={i.y2 * cell} stroke={selItem === i.id ? c.gold : ic.wall} strokeWidth={Math.max(3, cell * 0.09)} strokeLinecap="round" />
+              {edit && tool === "wall" && onItem ? <line x1={i.x * cell} y1={i.y * cell} x2={i.x2 * cell} y2={i.y2 * cell} stroke="transparent" strokeWidth={Math.max(18, cell * 0.42)}
+                style={{ pointerEvents: "stroke", cursor: "pointer" }} onClick={() => { vibrate("light"); onItem(i); }} /> : null}
+            </g>))}
+        </svg>) : null}
       {ts.map((t) => {
         const r = stateOf(map, t.id), s = c.st[r.status] || c.st.free, wide = t.shape === "long" ? 2 : 1;
         const pad = Math.max(2, cell * 0.08), on = hi.includes(t.id), isSel = sel === t.id;
@@ -86,13 +155,17 @@ export function Floor({ a11y, c = C(a11y), plan, map, now, hi = [], sel, edit = 
         const fs0 = Math.max(9, cell * 0.22), need = sub.length * 0.6 * fs0;
         const broom = r.status === "clean" && need > avail;
         const fs = need > avail ? Math.max(7.5, avail / (sub.length * 0.6)) : fs0;
+        const dim = edit && tool !== "table";
         return (
-          <button key={t.id} type="button" data-table={t.id} data-status={r.status} data-hi={on ? "1" : "0"} onClick={() => onTable && onTable(t)}
+          <button key={t.id} type="button" data-table={t.id} data-status={r.status} data-hi={on ? "1" : "0"} tabIndex={dim ? -1 : undefined} className={canDrag ? "sa-drag" : undefined}
+            onClick={() => { if (skipClick.current) { skipClick.current = false; return; } if (!dim && onTable) onTable(t); }}
+            onPointerDown={canDrag ? down(t) : undefined} onPointerMove={canDrag ? move : undefined} onPointerUp={canDrag ? up : undefined} onPointerCancel={canDrag ? cancel : undefined}
             aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")}
             style={{ position: "absolute", left: t.x * cell + pad, top: t.y * cell + pad, width: wide * cell - 2 * pad, height: cell - 2 * pad, boxSizing: "border-box",
               borderRadius: t.shape === "rd" ? "50%" : Math.max(4, cell * 0.16), border: `${isSel || on ? 2 : 1.2}px ${s.dash ? "dashed" : "solid"} ${isSel ? (a11y ? "#2A1F0E" : "#FFF4DC") : on ? c.gold : s.bd}`,
-              background: s.bg, color: s.fg, cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              boxShadow: on ? `0 0 0 3px ${a11y ? "rgba(139,106,48,0.25)" : "rgba(210,168,90,0.35)"}` : "none", fontFamily: "Georgia, serif", lineHeight: 1.05, overflow: "hidden" }}>
+              background: s.bg, color: s.fg, cursor: dim ? "default" : canDrag ? "grab" : "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              boxShadow: on ? `0 0 0 3px ${a11y ? "rgba(139,106,48,0.25)" : "rgba(210,168,90,0.35)"}` : "none", fontFamily: "Georgia, serif", lineHeight: 1.05, overflow: "hidden",
+              opacity: dim ? 0.45 : ghost && ghost.t.id === t.id ? 0.5 : 1, pointerEvents: dim ? "none" : "auto" }}>
             <span style={{ fontSize: Math.max(11, cell * 0.36), fontWeight: "bold" }}>{t.n}</span>
             {cell < 26 ? null : broom ? (
               <svg data-broom="" width={Math.round(fs0 * 1.5)} height={Math.round(fs0 * 1.5)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginTop: 1, opacity: 0.9 }}>
@@ -101,12 +174,21 @@ export function Floor({ a11y, c = C(a11y), plan, map, now, hi = [], sel, edit = 
             {r.status === "seat" && r.waiter_name && cell >= 56 ? <span data-table-waiter="" style={{ fontSize: cell * 0.17, opacity: 0.85, whiteSpace: "nowrap" }}>{initials(r.waiter_name)}</span> : null}
           </button>);
       })}
+      {ghost ? <div data-drag-ghost={ghost.ok ? "ok" : "no"} aria-hidden="true" style={{ position: "absolute", left: ghost.x * cell + 2, top: ghost.y * cell + 2, width: (ghost.t.shape === "long" ? 2 : 1) * cell - 4, height: cell - 4,
+        boxSizing: "border-box", borderRadius: ghost.t.shape === "rd" ? "50%" : Math.max(4, cell * 0.16), border: `2px dashed ${ghost.ok ? c.gold : c.red}`, background: ghost.ok ? "rgba(210,168,90,0.12)" : "rgba(224,138,122,0.12)", pointerEvents: "none" }} /> : null}
+      {edit && tool === "wall" && onNode ? Array.from({ length: (GRID_W + 1) * (rows + 1) }, (_, i) => {
+        const x = i % (GRID_W + 1), y = Math.floor(i / (GRID_W + 1)), p = pend && pend.x === x && pend.y === y, hit = Math.min(30, cell * 0.7);
+        return <button key={"n" + i} type="button" data-node={x + ":" + y} aria-label={"Точка " + (x + 1) + ", " + (y + 1)} aria-pressed={!!p} onClick={() => onNode(x, y)}
+          style={{ position: "absolute", left: x * cell - hit / 2, top: y * cell - hit / 2, width: hit, height: hit, border: 0, padding: 0, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ width: p ? 14 : 7, height: p ? 14 : 7, borderRadius: "50%", background: p ? c.gold : c.sub, opacity: p ? 1 : 0.7, boxShadow: p ? `0 0 0 4px ${a11y ? "rgba(139,106,48,0.25)" : "rgba(210,168,90,0.3)"}` : "none" }} />
+        </button>;
+      }) : null}
     </div>
   );
 }
 
 // ── Карточка стола ──────────────────────────────────────────────────────────────
-export function TableSheet({ a11y, c = C(a11y), t, row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose }) {
+export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose }) {
   const [st, setSt] = React.useState(NEXT[row.status] || "seat");
   const [cnt, setCnt] = React.useState(() => defaultCnt(t, row, party));
   const [name, setName] = React.useState(row.name || "");
@@ -139,7 +221,7 @@ export function TableSheet({ a11y, c = C(a11y), t, row, staff, shiftMap = {}, lo
           borderRadius: "22px 22px 0 0", background: a11y ? "#F3EADA" : "#1F170C", borderTop: `1px solid ${c.line}`, boxShadow: "0 -10px 30px rgba(0,0,0,0.4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 21, color: c.text }}>Стол {t.n}</div>
+            <div style={{ fontSize: 21, color: c.text }}>Стол {t.n}{zoneName ? <span style={{ fontSize: 14, color: c.sub }}> · {zoneName}</span> : null}</div>
             <div style={{ fontSize: 13, color: c.sub }}>{t.seats} {pl(t.seats, "место", "места", "мест")} · сейчас: {STATUS[row.status].toLowerCase()}{isBusy(row) ? ", " + (row.cnt || 0) + " " + pl(row.cnt || 0, "гость", "гостя", "гостей") + ", " + sinceLabel(min) : ""}{row.status === "res" && row.rtime ? " на " + row.rtime : ""}</div>
           </div>
           <button type="button" data-sa-back="" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.sub, fontSize: 26, cursor: "pointer", lineHeight: 1 }}>×</button>
@@ -185,49 +267,143 @@ export function TableSheet({ a11y, c = C(a11y), t, row, staff, shiftMap = {}, lo
 }
 
 // ── Схема зала (руководителю) ───────────────────────────────────────────────────
-function FloorEditor({ c, a11y, plan0, onSaved, onCancel }) {
+// v88 (Доп. 401): залы (вкладки, «＋ Зал», название, убрать пустой), инструменты «Столы · Стены · Бар · Вход», стол можно
+// перетащить пальцем. Без этапа 37 на сервере — только столы одного зала (как в v85).
+const TOOLS = [["table", "Столы"], ["wall", "Стены"], ["bar", "Бар"], ["door", "Вход"]];
+const TOOL_HINT = {
+  wall: "Нажми на точку, где стена начинается, потом на точку, где она кончается: по прямой, по горизонтали или вертикали.",
+  bar: "Нажми на клетку, где бар начинается, потом на клетку, где он кончается.",
+  door: "Нажми на клетку, где вход.",
+};
+function FloorEditor({ c, a11y, plan0, floor2 = false, onSaved, onCancel }) {
   const [plan, setPlan] = React.useState(() => plan0 || emptyPlan());
+  const zs = zonesOf(plan);
+  const [zone, setZone] = React.useState(() => zs[0].id);
+  const z = zs.some((q) => q.id === zone) ? zone : zs[0].id;
+  const zObj = zs.find((q) => q.id === z) || zs[0];
+  const [zname, setZname] = React.useState(zObj.name);
+  React.useEffect(() => { setZname(zObj.name); }, [z]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const [tool, setTool] = React.useState("table");
+  const [pend, setPend] = React.useState(null);
   const [sel, setSel] = React.useState(null);
+  const [selItem, setSelItem] = React.useState(null);
   const [moving, setMoving] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
   const t = (plan.tables || []).find((q) => q.id === sel) || null;
-  // пустая клетка: «Передвинуть» — стол встаёт сюда; иначе — новый стол (и он выбран)
+  const it = zoneItems(plan, z).find((q) => q.id === selItem) || null;
+  const reset = () => { setSel(null); setSelItem(null); setPend(null); setMoving(false); setErr(""); };
+  const pickTool = (k) => { vibrate("light"); reset(); setTool(k); };
+  const pickZone = (id) => { vibrate("light"); reset(); setZone(id); };
+  // пустая клетка: «Столы» — новый стол (или «Передвинуть» — стол встаёт сюда); «Бар» — два угла; «Вход» — клетка
   const cell = (x, y) => {
     setErr("");
+    if (tool === "bar") {
+      if (!pend) { vibrate("light"); setPend({ x, y }); return; }
+      const p = addBar(plan, z, pend.x, pend.y, x, y);
+      setPend(null);
+      if (p === plan) setErr("Бар не встаёт: на пути стол или вход."); else { vibrate("light"); setPlan(p); }
+      return;
+    }
+    if (tool === "door") {
+      const p = addDoor(plan, z, x, y);
+      if (p === plan) setErr("Сюда вход не встаёт."); else { vibrate("light"); setPlan(p); }
+      return;
+    }
     if (t && moving) { const p = moveTable(plan, t.id, x, y); if (p === plan) setErr("Сюда стол не встаёт"); else { vibrate("light"); setPlan(p); setMoving(false); } return; }
-    const p = addTable(plan, x, y);
-    if (p !== plan) { vibrate("light"); setPlan(p); setSel(p.tables[p.tables.length - 1].id); }
+    const p = addTable(plan, x, y, z);
+    if (p !== plan) { vibrate("light"); setPlan(p); setSelItem(null); setSel(p.tables[p.tables.length - 1].id); }
     else if ((plan.tables || []).length >= MAX_TABLES) setErr("Столов не больше " + MAX_TABLES);
   };
+  const node = (x, y) => {
+    setErr("");
+    if (!pend) { vibrate("light"); setPend({ x, y }); return; }
+    if (pend.x === x && pend.y === y) { setPend(null); return; }
+    if (pend.x !== x && pend.y !== y) { setPend({ x, y }); setErr("Стена идёт по прямой: вторую точку выбери в той же строке или в том же столбце."); return; }
+    const p = addWall(plan, z, pend.x, pend.y, x, y);
+    setPend(null);
+    if (p !== plan) { vibrate("light"); setPlan(p); } else if ((plan.items || []).length >= MAX_ITEMS) setErr("Стен, баров и входов не больше " + MAX_ITEMS);
+  };
+  const drop = (q, x, y) => { const p = moveTable(plan, q.id, x, y); if (p === plan) setErr("Сюда стол не встаёт"); else { vibrate("light"); setErr(""); setPlan(p); setSel(q.id); setSelItem(null); } };
   const seats = (d) => setPlan((p) => updateTable(p, t.id, { seats: t.seats + d }));
+  const newZone = () => {
+    const r = addZone(plan);
+    if (!r) { setErr("Залов не больше " + MAX_ZONES); return; }
+    vibrate("light"); reset(); setPlan(r.plan); setZone(r.id); setTool("table");
+  };
+  const nameZone = (v) => {
+    setZname(v); setErr("");
+    const p = renameZone(plan, z, v);
+    if (p === plan && v.trim() !== zObj.name) setErr(v.trim() ? "Зал с таким названием уже есть" : "У зала нужно название");
+    else setPlan(p);
+  };
+  const dropZone = () => {
+    const p = removeZone(plan, z);
+    if (p === plan) { setErr("Убрать можно только пустой зал: сначала убери из него столы, стены, бар и вход."); return; }
+    vibrate("light"); reset(); setPlan(p); setZone(zonesOf(p)[0].id);
+  };
   const save = () => {
     const pr = planProblem(plan);
     if (pr) { setErr(pr); return; }
+    const body = floor2 ? withZones(plan) : planV1(plan);
+    if (!body) { setErr("Залы, стены, бар и вход сохранятся, когда на сервер добавят этап 37 (supabase-stage37-halls-qday.sql)."); return; }
     setBusy(true); setErr("");
-    rpc("floor_save", { p_token: saToken(), p_plan: plan }).then((r) => {
+    rpc("floor_save", { p_token: saToken(), p_plan: body }).then((r) => {
       setBusy(false);
-      if (r && r.ok) { vibrate("success"); onSaved(plan); }
-      else if (r && r.error === "duplicate") setErr("Номера столов повторяются.");
+      if (r && r.ok) { vibrate("success"); onSaved(body); }
+      else if (r && r.error === "duplicate") setErr("Номера столов или названия залов повторяются.");
+      else if (r && r.error === "overlap") setErr("Стол стоит на баре или входе.");
+      else if (r && r.error === "old_app") setErr("На сервере схема новее: обнови приложение.");
       else if (r && r.error === "forbidden") setErr("Схему меняет руководитель или старший.");
       else if (rpcMissing(r)) setErr("На сервере ещё нет этапа 35 (supabase-stage35-seating.sql).");
       else setErr("Не сохранилось. Проверь связь.");
     }).catch(() => { setBusy(false); setErr("Нет связи. Схема останется здесь, сохранишь позже."); });
   };
+  const hint = tool !== "table" ? TOOL_HINT[tool]
+    : t && moving ? "Нажми на пустую клетку: туда встанет стол " + t.n + "."
+    : t ? "Стол " + t.n + ": номер, места и форма ниже. Стол можно перетащить пальцем."
+    : "Нажми на пустую клетку, чтобы поставить стол. Стол можно перетащить пальцем, нажатие его выбирает.";
+  const field = { padding: "7px 10px", borderRadius: 10, border: `1px solid ${c.line}`, background: c.field, color: c.text, fontFamily: "Georgia, serif", fontSize: 15 };
   return (
     <div data-floor-editor="">
-      <div style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, marginBottom: 10 }}>
-        {t && moving ? "Нажми на пустую клетку: туда встанет стол " + t.n + "." : t ? "Стол " + t.n + ": номер, места и форма ниже. Пустая клетка: ещё один стол." : "Нажми на пустую клетку, чтобы поставить стол. Нажми на стол, чтобы его выбрать."}
-      </div>
+      {floor2 ? (
+        <div data-zone-tabs="" role="tablist" aria-label="Залы" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          {zs.map((q) => <button key={q.id} type="button" role="tab" aria-selected={q.id === z} data-zone-tab={q.id} onClick={() => pickZone(q.id)} style={chip(c, q.id === z, a11y)}>{q.name}</button>)}
+          {zs.length < MAX_ZONES ? <button type="button" data-zone-add="" onClick={newZone} style={{ ...chip(c, false, a11y), borderStyle: "dashed" }}>＋ Зал</button> : null}
+        </div>) : null}
+      {floor2 && zs.length > 1 ? (
+        <div data-zone-edit={z} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+          <input value={zname} maxLength={24} data-zone-name="" aria-label="Название зала" onChange={(e) => nameZone(e.target.value)} style={{ ...field, flex: 1, minWidth: 0 }} />
+          <button type="button" data-zone-remove="" onClick={dropZone} style={{ border: 0, background: "none", color: c.red, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer", whiteSpace: "nowrap" }}>Убрать зал</button>
+        </div>) : null}
+      {floor2 ? (
+        <div data-tools="" role="radiogroup" aria-label="Что ставить" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          {TOOLS.map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={tool === k} data-tool={k} onClick={() => pickTool(k)} style={chip(c, tool === k, a11y)}>{l}</button>)}
+        </div>
+      ) : <div data-need37="" style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.5, marginBottom: 8 }}>Залы, стены, бар и вход появятся, когда на сервер добавят этап 37 (supabase-stage37-halls-qday.sql).</div>}
+      <div data-editor-hint="" style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, marginBottom: 10 }}>{hint}</div>
       <div style={{ ...c.frost, padding: 10, marginBottom: 12 }}>
-        <Floor c={c} a11y={a11y} plan={plan} map={{}} now={Date.now()} sel={sel} edit onCell={cell} onTable={(q) => { vibrate("light"); setErr(""); setMoving(false); setSel(sel === q.id ? null : q.id); }} />
+        <Floor c={c} a11y={a11y} plan={plan} zone={z} map={{}} now={Date.now()} sel={sel} selItem={selItem} edit tool={tool} pend={pend}
+          onCell={cell} onNode={node} onDrop={drop}
+          onItem={(i) => { setErr(""); setSel(null); setMoving(false); setSelItem(selItem === i.id ? null : i.id); }}
+          onTable={(q) => { vibrate("light"); setErr(""); setMoving(false); setSelItem(null); setSel(sel === q.id ? null : q.id); }} />
       </div>
-      {t ? (
+      {floor2 && zoneItems(plan, z).length ? (
+        <div data-items="" role="group" aria-label="Стены, бар и вход" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          {zoneItems(plan, z).map((q, i) => <button key={q.id} type="button" data-item-chip={q.id} aria-pressed={selItem === q.id} onClick={() => { vibrate("light"); setErr(""); setSel(null); setSelItem(selItem === q.id ? null : q.id); }}
+            style={{ ...chip(c, selItem === q.id, a11y), fontSize: 12.5, padding: "5px 10px" }}>{ITEM_KINDS[q.kind]}{q.kind === "wall" ? " " + (zoneItems(plan, z).filter((x) => x.kind === "wall").indexOf(q) + 1) : ""}</button>)}
+        </div>) : null}
+      {it ? (
+        <div data-item-edit={it.id} style={{ ...c.frost, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ flex: 1, fontSize: 14, color: c.text }}>{ITEM_KINDS[it.kind]}{it.kind === "bar" ? " · " + it.w + " × " + it.h : it.kind === "wall" ? " · " + (Math.abs(it.x2 - it.x) + Math.abs(it.y2 - it.y)) + " " + pl(Math.abs(it.x2 - it.x) + Math.abs(it.y2 - it.y), "клетка", "клетки", "клеток") : ""}</span>
+          <button type="button" data-item-remove="" onClick={() => { vibrate("light"); setPlan((p) => removeItem(p, it.id)); setSelItem(null); }} style={{ border: 0, background: "none", color: c.red, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer" }}>Убрать</button>
+        </div>) : null}
+      {t && tool === "table" ? (
         <div data-table-edit={t.id} style={{ ...c.frost, padding: "12px 14px", marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
             <span style={{ ...labelStyle(13.5), color: c.gold }}>Номер</span>
             <input value={t.n} maxLength={6} data-edit-n="" aria-label="Номер стола" onChange={(e) => { setErr(""); setPlan((p) => updateTable(p, t.id, { n: e.target.value })); }}
-              style={{ width: 80, padding: "7px 10px", borderRadius: 10, border: `1px solid ${c.line}`, background: c.field, color: c.text, fontFamily: "Georgia, serif", fontSize: 15 }} />
+              style={{ ...field, width: 80 }} />
             <span style={{ flex: 1 }} />
             <button type="button" data-edit-move="" aria-pressed={moving} onClick={() => { vibrate("light"); setErr(""); setMoving(!moving); }} style={chip(c, moving, a11y)}>Передвинуть</button>
           </div>
@@ -252,6 +428,15 @@ function FloorEditor({ c, a11y, plan0, onSaved, onCancel }) {
   );
 }
 
+// v88: подбор компании по залам — «Подойдут: стол 5. Ещё в зале «Веранда»: стол В2.»; zoneOf — у схемы с залами
+export function suggestLine(hi, tn, zoneOf, z, zName) {
+  if (!hi.length) return "Свободных столов на столько гостей нет.";
+  if (!zoneOf) return "Подойдут: " + hi.map(tn).join(", ") + ". Они подсвечены.";
+  const here = hi.filter((id) => zoneOf(id) === z), other = hi.filter((id) => zoneOf(id) !== z);
+  const others = [...new Set(other.map(zoneOf))].map((zid) => "в зале «" + zName(zid) + "»: " + other.filter((id) => zoneOf(id) === zid).map(tn).join(", "));
+  return (here.length ? "Подойдут: " + here.map(tn).join(", ") + ". Они подсвечены." : "В этом зале подходящих нет.") + (others.length ? " Ещё " + others.join("; ") + "." : "");
+}
+
 // ── Экран ───────────────────────────────────────────────────────────────────────
 export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const c = C(a11y);
@@ -262,6 +447,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const [msg, setMsg] = React.useState("");
   const [sched, setSched] = React.useState(null);
   const [sure, setSure] = React.useState(false);
+  const [zone, setZone] = React.useState(() => { try { return localStorage.getItem("sa_seat_zone") || ""; } catch (e) { return ""; } });   // v88: зал на доске
   const restaurant = (profile && profile.restaurant) || "";
   const load = React.useCallback(() => rpc("seat_board", { p_token: saToken() }).then((r) => {
     if (rpcMissing(r)) { setSt({ status: "missing" }); if (onMissing) onMissing(); }
@@ -286,10 +472,20 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const [tick, setTick] = React.useState(0);
   React.useEffect(() => { const t = setInterval(() => setTick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   const now = ok ? Date.parse(st.now) + (Date.now() - st.at) : Date.now();
-  const sum = summary(plan, ok ? st.tables : []);
+  // v88: залы — вкладки над схемой; сводка — по выбранному залу, подбор компании — по всем (другие залы — строкой)
+  const zs = zonesOf(plan), multi = zs.length > 1;
+  const z = zs.some((q) => q.id === zone) ? zone : zs[0].id;
+  const zName = (id) => (zs.find((q) => q.id === id) || zs[0]).name;
+  const pickZone = (id) => { vibrate("light"); setZone(id); setSel(null); try { localStorage.setItem("sa_seat_zone", id); } catch (e) {} };
+  const sum = summary({ tables: zoneTables(plan, z) }, ok ? st.tables : []);
   const hi = party ? suggest(plan, ok ? st.tables : [], party) : [];
   const soon = party ? soonFree(plan, ok ? st.tables : [], party) : [];
-  const tn = (id) => "стол " + ((plan.tables || []).find((q) => q.id === id) || {}).n;
+  const tById = (id) => ((plan && plan.tables) || []).find((q) => q.id === id) || {};
+  const tn0 = (id) => "стол " + tById(id).n;
+  // стол другого зала — с названием зала в скобках
+  const tn = (id) => tn0(id) + (multi && zoneOfX(plan, tById(id)) !== z ? " (" + zName(zoneOfX(plan, tById(id))) + ")" : "");
+  const zoneFree = (id) => summary({ tables: zoneTables(plan, id) }, ok ? st.tables : []).free;
+  const zoneHi = (id) => hi.some((tid) => zoneOfX(plan, tById(tid)) === id);
   const res = reservations(plan, ok ? st.tables : []);
   const team = waiterLoad(plan, ok ? st.tables : [], st.staff || [], shiftMap);
   const selT = plan && sel ? (plan.tables || []).find((q) => q.id === sel) : null;
@@ -323,7 +519,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
         {st.status === "norest" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>В профиле не указано заведение.</div> : null}
         {st.status === "offline" || st.status === "error" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>Зал не загрузился. Проверь связь.
           <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
-        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
+        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
         {ok && !edit ? <>
           {msg ? <div role="status" style={{ fontSize: 13.5, color: c.text, margin: "2px 2px 10px" }}>{msg}</div> : null}
           {st.offline ? <div style={{ fontSize: 12.5, color: c.red, margin: "0 2px 8px" }}>Нет связи: показано последнее, что пришло.</div> : null}
@@ -334,6 +530,12 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
               {st.lead ? <button type="button" data-floor-edit="" onClick={() => { vibrate("light"); setMsg(""); setEdit(true); }} style={{ ...btn(c, true), width: "100%", marginTop: 12 }}>Нарисовать схему</button> : null}
             </div>
           ) : <>
+            {multi ? (
+              <div data-board-zones="" role="tablist" aria-label="Залы" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "2px 0 10px" }}>
+                {zs.map((q) => <button key={q.id} type="button" role="tab" aria-selected={q.id === z} data-board-zone={q.id} onClick={() => pickZone(q.id)} style={{ ...chip(c, q.id === z, a11y), display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  {q.name}<span aria-label={"свободно " + zoneFree(q.id)} style={{ fontSize: 12, color: q.id === z ? c.gold : c.sub }}>{zoneFree(q.id)}</span>
+                  {zoneHi(q.id) && q.id !== z ? <span data-zone-hi="" aria-label="есть подходящий стол" style={{ width: 7, height: 7, borderRadius: 4, background: c.gold }} /> : null}</button>)}
+              </div>) : null}
             <div data-seat-summary="" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "2px 0 10px", fontSize: 13, color: c.sub }}>
               <span>Свободно <b style={{ color: c.text }}>{sum.free}</b> из {sum.total}</span><span>·</span>
               <span>Занято <b style={{ color: c.text }}>{(sum.seat || 0) + (sum.bill || 0)}</b></span><span>·</span>
@@ -347,10 +549,10 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
               {PARTY.map(([n, l]) => <button key={n} type="button" data-party={n} onClick={() => { vibrate("light"); setParty(party === n ? 0 : n); }} style={chip(c, party === n, a11y)}>{l}</button>)}
             </div>
             {party ? <div data-suggest="" style={{ fontSize: 13, color: hi.length || soon.length ? c.text : c.red, margin: "0 2px 10px", lineHeight: 1.45 }}>
-              {hi.length ? "Подойдут: " + hi.map(tn).join(", ") + ". Они подсвечены." : "Свободных столов на столько гостей нет."}
+              {suggestLine(hi, tn0, multi ? (id) => zoneOfX(plan, tById(id)) : null, z, zName)}
               {soon.length ? <span data-soon=""> Скоро освободится: {soon.map(tn).join(", ")} (попросили счёт).</span> : null}</div> : null}
             <div style={{ ...c.frost, padding: 10 }}>
-              <Floor c={c} a11y={a11y} plan={plan} map={map} now={now} hi={hi} sel={sel} onTable={(t) => { vibrate("light"); setMsg(""); setSel(t.id); }} />
+              <Floor c={c} a11y={a11y} plan={plan} zone={z} map={map} now={now} hi={hi} sel={sel} onTable={(t) => { vibrate("light"); setMsg(""); setSel(t.id); }} />
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "10px 2px 0", fontSize: 12, color: c.sub }}>
               {["free", "res", "seat", "bill", "clean"].map((k) => <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -368,7 +570,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
               {res.map((x) => <div key={x.tid} role="button" tabIndex={0} onClick={() => setSel(x.tid)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSel(x.tid); } }} style={{ ...c.frost, padding: "10px 14px", marginBottom: 8, display: "flex", gap: 10, cursor: "pointer" }}>
                 <span style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, minWidth: 52 }}>{x.rtime}</span>
                 <span style={{ flex: 1, fontSize: 14, color: c.text }}>{x.name || "Без имени"} · {x.cnt} {pl(x.cnt, "гость", "гостя", "гостей")}</span>
-                <span style={{ fontSize: 13, color: c.sub }}>стол {x.n}</span>
+                <span style={{ fontSize: 13, color: c.sub }}>стол {x.n}{multi ? " · " + zName(zoneOfX(plan, tById(x.tid))) : ""}</span>
               </div>)}
             </div> : null}
             {st.lead ? <div style={{ display: "flex", gap: 14, marginTop: 18, flexWrap: "wrap" }}>
@@ -379,7 +581,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
           </>}
         </> : null}
       </div>
-      {selT ? <TableSheet key={selT.id} c={c} a11y={a11y} t={selT} row={stateOf(map, selT.id)} staff={st.staff || []} shiftMap={shiftMap} load={team.count} party={party}
+      {selT ? <TableSheet key={selT.id} c={c} a11y={a11y} t={selT} zoneName={multi ? zName(zoneOfX(plan, selT)) : ""} row={stateOf(map, selT.id)} staff={st.staff || []} shiftMap={shiftMap} load={team.count} party={party}
         now={now} onSave={saveTable} onClose={() => setSel(null)} /> : null}
     </div>
   );

@@ -301,6 +301,8 @@ export const prefGroups = (p) => { const rows = prefRows(p); return PREF_GROUPS.
 // v86: тихие часы (этап 36) — в это время бот молчит, кроме напоминания о смене; часы заведения
 export const QUIET = [[null, null, "Нет"], [22, 8, "22:00–8:00"], [23, 9, "23:00–9:00"], [0, 10, "0:00–10:00"], [2, 12, "2:00–12:00"]];
 export const quietLabel = (f, t) => (f == null || t == null ? "Нет" : f + ":00–" + t + ":00");
+// v88 (Доп. 401): свой час «Вопроса дня» (этап 37) — в какой час бот его пришлёт; час заведения — как у всех
+export const QDAY_PICK = [8, 10, 12, 14, 16, 18, 20];
 function NotifyPrefs({ a11y, c, onLoad }) {
   const [p, setP] = React.useState(null);
   const [busy, setBusy] = React.useState("");
@@ -322,6 +324,15 @@ function NotifyPrefs({ a11y, c, onLoad }) {
       if (r && r.ok) { setP(r); vibrate("light"); } else { setP((x) => ({ ...x, [k]: !on })); setMsg("Не сохранилось. Попробуй ещё раз."); }
     }).catch(() => { setBusy(""); setP((x) => ({ ...x, [k]: !on })); setMsg("Нет связи. Попробуй ещё раз."); });
   };
+  const setHour = (h) => {
+    if (busy || !p || p.qday_hour_default === undefined) return;
+    const was = p;
+    setBusy("qday_hour"); setMsg(""); setP((x) => ({ ...x, qday_hour: h }));
+    rpc("notify_qday_hour_set", { p_token: saToken(), p_hour: h === p.qday_hour_default ? null : h }).then((r) => {
+      setBusy("");
+      if (r && r.ok) { setP(r); vibrate("light"); } else { setP(was); setMsg("Не сохранилось. Попробуй ещё раз."); }
+    }).catch(() => { setBusy(""); setP(was); setMsg("Нет связи. Попробуй ещё раз."); });
+  };
   const setQ = (f, t) => {
     if (busy || !quiet) return;
     const was = quiet;
@@ -338,8 +349,8 @@ function NotifyPrefs({ a11y, c, onLoad }) {
       <div style={{ fontSize: 12, color: c.sub, letterSpacing: 0.3, margin: "12px 2px 0", fontStyle: "italic" }}>{gt}</div>
       {rows.map(([k, t, sub]) => {
         const on = !!p[k];
-        return (
-          <button key={k} type="button" role="switch" aria-checked={on} onClick={() => flip(k)} disabled={busy === k} className="sa-btn"
+        return (<React.Fragment key={k}>
+          <button type="button" role="switch" aria-checked={on} onClick={() => flip(k)} disabled={busy === k} className="sa-btn"
             style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 2px", border: 0, borderBottom: `1px dashed ${c.line}`, background: "none", cursor: "pointer", color: c.text }}>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", fontFamily: "Georgia, serif", fontSize: 14.5, fontWeight: "bold" }}>{t}</span>
@@ -349,7 +360,17 @@ function NotifyPrefs({ a11y, c, onLoad }) {
               <span style={{ position: "absolute", top: 2, left: 2, width: 18, height: 18, borderRadius: "50%", background: on ? (a11y ? "#8B6A30" : "#E4C88C") : c.sub, transform: on ? "translateX(16px)" : "none", transition: "transform .2s" }} />
             </span>
           </button>
-        );
+          {k === "qday" && on && p.qday_hour_default !== undefined ? (
+            <div data-qday-hour={p.qday_hour} role="group" aria-label="Во сколько присылать вопрос дня" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "8px 2px 10px", borderBottom: `1px dashed ${c.line}` }}>
+              <span style={{ fontSize: 12.5, color: c.sub, marginRight: 2 }}>Во сколько:</span>
+              {QDAY_PICK.map((h) => { const sel = p.qday_hour === h;
+                return <button key={h} type="button" aria-pressed={sel} data-qday-h={h} onClick={() => setHour(h)} disabled={busy === "qday_hour"}
+                  style={{ padding: "5px 10px", borderRadius: 999, border: `1px solid ${sel ? c.gold : c.line}`, background: sel ? (a11y ? "rgba(139,106,48,0.18)" : "rgba(200,169,110,0.22)") : "transparent",
+                    color: sel ? c.text : c.sub, fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer" }}>{h}:00</button>; })}
+              {!QDAY_PICK.includes(p.qday_hour) ? <span style={{ fontSize: 12.5, color: c.text }}>{p.qday_hour}:00</span> : null}
+              <span style={{ flexBasis: "100%", fontSize: 11.5, color: c.sub }}>Час заведения: {p.qday_hour_default}:00. В приложении вопрос дня ждёт на главной с утра.</span>
+            </div>) : null}
+        </React.Fragment>);
       })}
       </div>)}
       {quiet ? <div data-notify-quiet="" style={{ marginTop: 14 }}>

@@ -5,12 +5,19 @@
 //   без имени для команды), «Мои случаи» с ответом руководителя. Руководителю — ещё «Ждут разбора» и «Разобранные»:
 //   разбор превращает рассказ в ситуацию (сцена, вопрос, как правильно и неверные варианты, разбор, «как было у нас»).
 // Сервер — этап 33 (case_submit / case_review / case_list); без него экран честно говорит, что этапа нет.
+// v88 (Доп. 401): рассказать можно голосом (микрофон у полей, распознавание — функция stt); руководителю — «Черновик от
+// ИИ»: Наставник раскладывает рассказ на сцену, вопрос, варианты, разбор и «как было у нас», руководитель проверяет.
 import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
-import { CASE_OUTCOMES, CASE_LIMITS, outcomeLabel, caseDraft, draftProblem, draftToSit, casesToSits, readPlayed } from "../lib/cases";
+import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { CASE_OUTCOMES, CASE_LIMITS, outcomeLabel, caseDraft, draftProblem, draftToSit, casesToSits, readPlayed, caseAiPrompt, parseCaseAi } from "../lib/cases";
+import { MicButton } from "./mic";
+
+const STT = { url: () => SUPABASE_URL + "/functions/v1/stt", headers: () => ({ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }) };
+// сказанное голосом — в конец поля, через пробел, не длиннее предела поля
+export const appendSpoken = (prev, add, max) => { const a = String(prev || "").trim(), b = String(add || "").trim(); return (a && b ? a + " " + b : a || b).slice(0, max || 2000); };
 
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const dayOf = (iso) => { const d = new Date(iso || 0); return isNaN(d) ? "" : d.getDate() + " " + MONTHS[d.getMonth()]; };
@@ -32,17 +39,24 @@ const C = (a11y) => ({
 });
 const STATUS = { new: "Ждёт разбора", published: "В тренировке команды", declined: "Не для тренировки" };
 
-function Field({ c, label, hint, value, onChange, max, rows = 3, placeholder, name }) {
+function Field({ c, a11y, label, hint, value, onChange, max, rows = 3, placeholder, name, mic = false, onMicError }) {
   const multi = rows > 1;
   const st = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: `1px solid ${c.line}`, background: c.field, color: c.text,
     fontFamily: "Georgia, serif", fontSize: 14.5, lineHeight: 1.45, outline: "none", resize: multi ? "vertical" : "none" };
+  // v88: микрофон справа от подписи — сказанное дописывается в конец поля (к тому, что в поле в момент ответа).
+  // Микрофон — вне <label>: иначе нажатие на подпись включало бы запись, а поле теряло бы подпись для экранного диктора.
+  const vRef = React.useRef(value); vRef.current = value;
+  const id = React.useId();
+  const micEl = mic ? <span data-case-mic={name} style={{ flexShrink: 0 }}>
+    <MicButton a11y={a11y} size={34} sttUrl={STT.url()} headers={STT.headers()} onText={(x) => onChange(appendSpoken(vRef.current, x, max))} onError={(m) => onMicError && onMicError(m)} /></span> : null;
   return (
-    <label style={{ display: "block", marginBottom: 12 }}>
-      {label ? <span style={{ display: "block", ...labelStyle(13), color: c.gold, marginBottom: 5 }}>{label}</span> : null}
-      {multi ? <textarea className="sa-field" data-case-field={name} rows={rows} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />
-        : <input className="sa-field" data-case-field={name} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />}
+    <div style={{ marginBottom: 12 }}>
+      {label || micEl ? <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+        <label htmlFor={id} style={{ flex: 1, minWidth: 0, ...labelStyle(13), color: c.gold }}>{label}</label>{micEl}</div> : null}
+      {multi ? <textarea id={id} className="sa-field" data-case-field={name} rows={rows} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />
+        : <input id={id} className="sa-field" data-case-field={name} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />}
       {hint ? <span style={{ display: "block", fontSize: 12, color: c.sub, marginTop: 4, lineHeight: 1.4 }}>{hint}</span> : null}
-    </label>
+    </div>
   );
 }
 
@@ -71,6 +85,27 @@ function Review({ c, a11y, item, onDone, onCancel }) {
   const [d, setD] = React.useState(() => caseDraft(item));
   const [busy, setBusy] = React.useState("");
   const [err, setErr] = React.useState("");
+  // v88: «Черновик от ИИ» — Наставник раскладывает рассказ; прежний черновик можно вернуть
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiMsg, setAiMsg] = React.useState("");
+  const [undo, setUndo] = React.useState(null);
+  const askAi = () => {
+    if (aiBusy) return;
+    vibrate("light"); setAiBusy(true); setErr(""); setAiMsg("");
+    fetch(SUPABASE_URL + "/functions/v1/ai-chat", { method: "POST", headers: { "Content-Type": "application/json", ...STT.headers() },
+      body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: caseAiPrompt(item) }] }) })
+      .then((r) => r.json()).then((j) => {
+        setAiBusy(false);
+        const nd = j && j.ok && j.reply ? parseCaseAi(j.reply) : null;
+        if (nd) {
+          setUndo(d);
+          setD((x) => ({ ...x, ...nd, real: nd.real || x.real, showReal: x.real ? x.showReal : !!nd.real }));
+          setAiMsg("Черновик готов. Проверь каждое поле и поправь, если нужно: публикует только руководитель."); vibrate("success");
+        } else if (j && j.error === "daily_limit") setErr("На сегодня запросы к Наставнику закончились. Заполни разбор сам или попробуй завтра.");
+        else if (j && j.error === "not_configured") setErr("ИИ на сервере не настроен: нет ключа OPENROUTER_API_KEY.");
+        else setErr("Черновик не получился. Нажми ещё раз или заполни сам.");
+      }).catch(() => { setAiBusy(false); setErr("Нет связи с Наставником. Попробуй ещё раз."); });
+  };
   const [declineOpen, setDeclineOpen] = React.useState(false);
   const [note, setNote] = React.useState(item.note || "");
   const [sure, setSure] = React.useState(false);
@@ -101,15 +136,22 @@ function Review({ c, a11y, item, onDone, onCancel }) {
         {item.outcome ? <div style={{ fontSize: 13, color: c.sub, marginTop: 6 }}>Итог: {outcomeLabel(item.outcome).toLowerCase()}</div> : null}
       </div>
       <div style={{ ...labelStyle(15), color: c.gold, margin: "4px 2px 10px" }}>Ситуация для команды</div>
-      <Field c={c} name="scene" label="Что происходит" value={d.scene} onChange={set("scene")} max={CASE_LIMITS.scene} rows={4} hint="Без имён гостей и лишних подробностей: так, чтобы любой из команды узнал ситуацию." />
+      <div data-case-ai="" style={{ ...c.frost, padding: "10px 12px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" data-case-ai-go="" onClick={askAi} disabled={aiBusy} style={{ ...btn(c), padding: "9px 14px", fontSize: 14, opacity: aiBusy ? 0.6 : 1 }}>{aiBusy ? "Наставник пишет черновик…" : undo ? "Ещё вариант от ИИ" : "Черновик от ИИ"}</button>
+          {undo && !aiBusy ? <button type="button" data-case-ai-undo="" onClick={() => { vibrate("light"); setD(undo); setUndo(null); setAiMsg(""); }} style={{ border: 0, background: "none", color: c.sub, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer", textDecoration: "underline" }}>Вернуть как было</button> : null}
+        </div>
+        <div data-case-ai-msg="" style={{ fontSize: 12.5, color: aiMsg ? c.text : c.sub, lineHeight: 1.45, marginTop: 6 }}>{aiMsg || "Наставник разложит рассказ на сцену, вопрос, верный и неверные варианты и разбор. Ты проверяешь и публикуешь."}</div>
+      </div>
+      <Field c={c} a11y={a11y} name="scene" label="Что происходит" value={d.scene} onChange={set("scene")} max={CASE_LIMITS.scene} rows={4} hint="Без имён гостей и лишних подробностей: так, чтобы любой из команды узнал ситуацию." mic onMicError={setErr} />
       <Field c={c} name="question" label="Вопрос" value={d.question} onChange={set("question")} max={CASE_LIMITS.question} rows={1} />
       <Field c={c} name="right" label="Как правильно" value={d.right} onChange={set("right")} max={CASE_LIMITS.option} rows={2} placeholder="Извиниться, предложить плед и первый освободившийся стол" />
       {[0, 1, 2].map((i) => (
         <Field key={i} c={c} name={"wrong" + i} label={i === 0 ? "Неверные варианты" : ""} value={d.wrong[i] || ""} onChange={setWrong(i)} max={CASE_LIMITS.option} rows={1}
           placeholder={i === 0 ? "Сказать, что мест нет" : i === 1 ? "Ещё вариант (можно оставить пустым)" : "Ещё один (можно оставить пустым)"}
           hint={i === 0 && item.outcome && (item.outcome === "bad" || item.outcome === "unsure") && item.did ? "Сюда уже подставлено то, что сделали в зале: поправь, если нужно." : ""} />))}
-      <Field c={c} name="why" label="Разбор" value={d.why} onChange={set("why")} max={CASE_LIMITS.why} rows={3} placeholder="Почему так правильно: что важно гостю и что сделать первым" />
-      <Field c={c} name="real" label="Как было у нас" value={d.real} onChange={set("real")} max={CASE_LIMITS.real} rows={3} hint="Команда увидит это после ответа, если включено ниже." />
+      <Field c={c} a11y={a11y} name="why" label="Разбор" value={d.why} onChange={set("why")} max={CASE_LIMITS.why} rows={3} placeholder="Почему так правильно: что важно гостю и что сделать первым" mic onMicError={setErr} />
+      <Field c={c} a11y={a11y} name="real" label="Как было у нас" value={d.real} onChange={set("real")} max={CASE_LIMITS.real} rows={3} hint="Команда увидит это после ответа, если включено ниже." mic onMicError={setErr} />
       <Toggle c={c} a11y={a11y} name="real" on={d.showReal} onChange={set("showReal")} label="Показывать команде, как было" />
       <Toggle c={c} a11y={a11y} name="author" on={d.showAuthor && !item.anon} disabled={!!item.anon} onChange={set("showAuthor")} label="Показывать, кто рассказал"
         sub={item.anon ? "Автор попросил без имени: команда его не увидит." : "Команда увидит имя под разбором."} />
@@ -159,9 +201,9 @@ function Tell({ c, a11y, onSent }) {
   };
   return (
     <div data-case-tell="">
-      <Field c={c} name="story" label="Что случилось" value={f.story} onChange={set("story")} max={CASE_LIMITS.story} rows={4}
-        placeholder="Гость за шестым столом попросил пересадить: дует из окна, а свободных столов нет…" hint="Без имён и фамилий гостей." />
-      <Field c={c} name="did" label="Что ты сделал(а)" value={f.did} onChange={set("did")} max={CASE_LIMITS.did} rows={2} placeholder="Предложил(а) плед и пересадил(а), когда освободился стол" />
+      <Field c={c} a11y={a11y} name="story" label="Что случилось" value={f.story} onChange={set("story")} max={CASE_LIMITS.story} rows={4}
+        placeholder="Гость за шестым столом попросил пересадить: дует из окна, а свободных столов нет…" hint="Без имён и фамилий гостей. Можно рассказать голосом: нажми на микрофон." mic onMicError={setErr} />
+      <Field c={c} a11y={a11y} name="did" label="Что ты сделал(а)" value={f.did} onChange={set("did")} max={CASE_LIMITS.did} rows={2} placeholder="Предложил(а) плед и пересадил(а), когда освободился стол" mic onMicError={setErr} />
       <div style={{ ...labelStyle(13), color: c.gold, marginBottom: 6 }}>Чем закончилось</div>
       <div role="radiogroup" aria-label="Чем закончилось" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         {CASE_OUTCOMES.map(([k, label]) => {

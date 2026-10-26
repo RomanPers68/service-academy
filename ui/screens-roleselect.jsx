@@ -84,7 +84,7 @@ export const TRACK_GROUPS = [
 // (ui/now-hero.jsx NowInvitation), и в обычный день тоже — приглашение к следующему шагу трека.
 const MOOD_TITLE = { good: "Хорошая смена", ok: "Ровная смена", hard: "Тяжёлая смена, бывает" };
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false }) {
   const isAdmin = !!profile?.is_admin;
   // v56 (Доп. 369): ответ на «как прошла смена» — пока человек не решил, разбирать ли с Наставником
   const [moodReply, setMoodReply] = React.useState(null);
@@ -340,6 +340,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               </div>
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}
               {masteryCard ? <div data-mastery-slot="" style={{ marginTop:9 }}>{masteryCard}</div> : null}
+              {/* v88 (Доп. 401): «Вопрос дня» — под главной карточкой, отвечать прямо здесь */}
+              {qdayCard ? <div data-qday-slot="" style={{ margin:"9px -14px 0" }}>{qdayCard}</div> : null}
             </div>
           );
         })()}

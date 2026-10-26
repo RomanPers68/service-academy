@@ -335,6 +335,8 @@ import { RoleSelect } from "./ui/screens-roleselect";
 import { MistakesScreen, HomeScreen, ModuleScreen, LessonScreen, GlossaryScreen, loadTable, useTableModule } from "./ui/screens-learning";
 import { APP_SHARE_URL } from "./lib/app-url";
 import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQdaySeen, applyQdayToBank } from "./lib/qday";   // v81: вопрос дня в Telegram
+import { qdayAnswerOf } from "./lib/qday";   // v88 (Доп. 401): ответ из приложения — в банк ошибок
+import { QdayCard } from "./ui/qday-card";   // v88: «Вопрос дня» на главной
 import { casesSub, isCaseMistake, markPlayed, readSince, markSince } from "./lib/cases";   // v83: случаи из нашего зала
 import { thanksSub } from "./lib/guest-thanks";   // v84: спасибо от гостей по QR
 import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
@@ -1968,6 +1970,43 @@ function ServiceAcademy() {
   const quizDoneRef = useRef(quizDone); quizDoneRef.current = quizDone;
   const qdayOffRef = useRef(false);
   const progCount = programModules.length;
+  // v88 (Доп. 401): «Вопрос дня» на главной (этап 37: qday_today / qday_answer) — после очереди и при входе на главную,
+  // не чаще раза в пять минут; без этапа 37 карточки нет до перезапуска
+  const [qdayData, setQdayData] = useState(null);
+  const [qdayBusy, setQdayBusy] = useState(false);
+  const [qdayErr, setQdayErr] = useState("");
+  const qdayAskRef = useRef({ at: 0, off: false });
+  const loadQday = useCallback((force) => {
+    const st = qdayAskRef.current;
+    if (!profile || st.off || !saToken() || (!force && Date.now() - st.at < 5 * 60e3)) return;
+    st.at = Date.now();
+    rpc("qday_today", { p_token: saToken() }).then((r) => {
+      if (rpcMissing(r)) { st.off = true; setQdayData(null); return; }
+      if (r && r.ok) { setQdayData(r); setQdayErr(""); }
+    }).catch(() => { st.at = 0; });
+  }, [profile]);
+  // другой сотрудник на том же телефоне — чужой вопрос не показываем, спрашиваем заново
+  useEffect(() => { qdayAskRef.current = { at: 0, off: false }; setQdayData(null); setQdayErr(""); }, [ukP]);
+  useEffect(() => { if (screen === "roleSelect" && storageLoaded) loadQday(false); }, [screen, storageLoaded, todayKey, loadQday]);
+  const answerQday = useCallback((i) => {
+    const it = qdayData && qdayData.item;
+    if (!it || qdayBusy) return;
+    setQdayBusy(true); setQdayErr("");
+    rpc("qday_answer", { p_token: saToken(), p_id: it.id, p_answer: i }).then((r) => {
+      setQdayBusy(false);
+      if (r && r.item && (r.ok || r.error === "again")) {
+        setQdayData((d) => ({ ...(d || {}), item: r.item, streak: r.streak }));
+        const a = qdayAnswerOf(r.item);
+        // ответ — в банк ошибок, как ответы из Telegram (один раз: тот же номер qday_inbox потом не учтёт)
+        if (a && newQdayAnswers(ukP, [a]).length) {
+          setMistakeBank((prev) => applyQdayToBank(prev, [a], SR_DAYS));
+          markQdaySeen(ukP, [a.id]);
+          if (r.ok) logActivity("fix", 1);
+        }
+        if (r.ok) vibrate(a && a.correct ? "success" : "light");
+      } else setQdayErr("Ответ не сохранился. Проверь связь и нажми ещё раз.");
+    }).catch(() => { setQdayBusy(false); setQdayErr("Нет связи. Нажми ещё раз, когда связь появится."); });
+  }, [qdayData, qdayBusy, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (!profile || !storageLoaded || !role || qdayOffRef.current || !saToken()) return;
     let alive = true;
@@ -1996,6 +2035,7 @@ function ServiceAcademy() {
           else if (rpcMissing(r2)) qdayOffRef.current = true;
         }
       } catch (e) {}
+      if (alive) loadQday(true);   // v88: очередь на сервере обновлена — вопрос дня для главной
     }, 8000);
     return () => { alive = false; clearTimeout(t); };
   }, [profile, storageLoaded, role, ukP, todayKey, progCount]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -2930,6 +2970,7 @@ function ServiceAcademy() {
               <Flame lit s={18} a11y={a11y} />
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
           nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
+          qdayCard={qdayData && qdayData.item ? <QdayCard a11y={a11y} data={qdayData} busy={qdayBusy} err={qdayErr} onAnswer={answerQday} onMistakes={() => navigate("mistakes")} /> : null}   /* v88 */
           warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}

@@ -95,13 +95,15 @@ const shot = (page, name) => page.screenshot({ path: OUT + "/" + name + ".png" }
 const bank = (page) => page.evaluate((uk) => JSON.parse(localStorage.getItem("sa_mistakes" + uk) || "[]"), UK);
 const actToday = (page) => page.evaluate((uk) => { const a = JSON.parse(localStorage.getItem("sa_activity" + uk) || "{}"); return a["2026-10-23"] || {}; }, UK);
 
+// v88: qday_today — карточка «Вопрос дня» на главной (её проверяет e2e-v88); здесь — только очередь для Telegram
+const QCALL = /^qday_(inbox|push)$/;
 if (want("QUEUE")) {
   const o = await open({ rpcs: (fn) => (fn === "qday_inbox" ? { ok: true, hour: 12, queued: 0, items: [] } : fn === "qday_push" ? { ok: true, queued: 7, hour: 12 } : undefined) });
   const t0 = Date.now();
   await sleep(4000);
-  const early = o.calls.filter((c) => /^qday_/.test(c.fn)).map((c) => c.fn);
+  const early = o.calls.filter((c) => QCALL.test(c.fn)).map((c) => c.fn);
   await sleep(7000);
-  const q = o.calls.filter((c) => /^qday_/.test(c.fn));
+  const q = o.calls.filter((c) => QCALL.test(c.fn));
   const push = q.find((c) => c.fn === "qday_push");
   const items = push ? push.body.p_items : [];
   ok("QUEUE: в первые секунды — ни одного запроса «Вопроса дня» (не мешаем главной)", !early.length, early.join(","));
@@ -115,7 +117,7 @@ if (want("QUEUE")) {
   // тот же день — повторно не шлём
   o.calls.length = 0;
   await o.page.reload({ waitUntil: "load" }); await sleep(11000);
-  const again = o.calls.filter((c) => /^qday_/.test(c.fn)).map((c) => c.fn);
+  const again = o.calls.filter((c) => QCALL.test(c.fn)).map((c) => c.fn);
   ok("QUEUE: перезапуск в тот же день — ответы спрашиваем, очередь не шлём", again.join(",") === "qday_inbox", again.join(","));
   ok("QUEUE: без ошибок в консоли", !o.errors.length, o.errors.slice(0, 3).join(" | "));
   await o.ctx.close();
@@ -165,7 +167,7 @@ if (want("LINK")) {
 if (want("MISSING")) {
   const o = await open({ rpcs: (fn) => (fn === "qday_inbox" || fn === "qday_push" ? { code: "PGRST202", message: "Could not find the function" } : undefined) });
   await sleep(11000);
-  const q = o.calls.filter((c) => /^qday_/.test(c.fn)).map((c) => c.fn);
+  const q = o.calls.filter((c) => QCALL.test(c.fn)).map((c) => c.fn);
   ok("MISSING: этапа 31 нет — один вопрос серверу, очередь не шлём", q.join(",") === "qday_inbox", q.join(","));
   // ошибку практики уборка банка (v79) убирает сама — её ситуации нет в программе; ошибки тестов — как были
   const bb = await bank(o.page);

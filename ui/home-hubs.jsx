@@ -52,6 +52,8 @@ const ICON = {
   thanks: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M9.5 11.5l1.8 1.8 3.4-3.6"/></svg>,
   // v83: случаи из нашего зала — реплика с историей
   cases: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z"/><path d="M8 8.5h8M8 11.5h5"/></svg>,
+  // v90: чат смены — два облачка разговора (как значок в верхней строке)
+  chat: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.6 8.4V6.3a1.6 1.6 0 0 0-1.6-1.6H4.7a1.6 1.6 0 0 0-1.6 1.6v5.4a1.6 1.6 0 0 0 1.6 1.6h.9v2.4l2.4-2"/><path d="M8.7 10.6A1.6 1.6 0 0 1 10.3 9h8.4a1.6 1.6 0 0 1 1.6 1.6v5a1.6 1.6 0 0 1-1.6 1.6h-.9v2.5l-3.1-2.5h-4.4a1.6 1.6 0 0 1-1.6-1.6z"/></svg>,
   // v82: брифинг смены — рупор
   brief: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9.5h3l9-5v15l-9-5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path d="M7 14.5l1.5 5h2.6L9.6 14.5"/><path d="M19.5 9.5a3.5 3.5 0 0 1 0 5"/></svg>,
   // v31: «Погреб тем» — бокал с уровнем вина

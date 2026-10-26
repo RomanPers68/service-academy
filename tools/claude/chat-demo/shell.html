@@ -1,0 +1,70 @@
+<title>Чат смены</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Piazzolla:wght@700&display=swap">
+<style>
+/* Демо чата смены: главная приложения Service Academy (снимок) со значком чата — тёмное золото и светлая «Для чтения». */
+:root {
+  --bg: #EFE6D3; --bg-2: #E8DEC8; --card: rgba(255,252,244,0.86); --edge: rgba(139,106,48,0.28);
+  --text: #2A1F0E; --sub: #64523A; --gold: #A8843F; --gold-ink: #76561C; --gold-hi: #D9B978; --on-gold: #1A1008;
+  --glow: rgba(255,251,240,0.9);
+  --display: "Piazzolla", Georgia, "Times New Roman", serif;
+  --serif: "PT Serif", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14110A; --bg-2: #1C1509; --card: rgba(226,186,116,0.08); --edge: rgba(255,255,255,0.12);
+    --text: #EFE4C8; --sub: #A99A7C; --gold: #C8A96E; --gold-ink: #D9B87C; --gold-hi: #E4C88C; --on-gold: #1A1008;
+    --glow: rgba(214,170,80,0.12); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14110A; --bg-2: #1C1509; --card: rgba(226,186,116,0.08); --edge: rgba(255,255,255,0.12);
+  --text: #EFE4C8; --sub: #A99A7C; --gold: #C8A96E; --gold-ink: #D9B87C; --gold-hi: #E4C88C; --on-gold: #1A1008;
+  --glow: rgba(214,170,80,0.12); color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: radial-gradient(130% 70% at 50% -10%, var(--glow), transparent 60%), linear-gradient(160deg, var(--bg), var(--bg-2) 55%, var(--bg)); background-color: var(--bg);
+  color: var(--text); font-family: var(--serif); -webkit-text-size-adjust: 100%; }
+.shell { max-width: 560px; margin: 0 auto; padding-block: 14px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px; }
+.top { display: flex; align-items: center; justify-content: space-between; }
+.mark { font-family: var(--serif); letter-spacing: 3px; color: var(--gold-ink); font-size: 17px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--edge); background: var(--card); color: var(--gold-ink);
+  font-family: var(--serif); font-size: 14.5px; cursor: pointer; }
+.pill:focus-visible, .card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+h1 { margin: 6px 0 0; font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.15; text-wrap: balance; }
+.lead { margin: -8px 0 0; color: var(--sub); font-size: 15px; font-style: italic; }
+.card { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px; border-radius: 20px; border: 1px solid var(--edge); background: var(--card); color: var(--text);
+  text-align: left; cursor: pointer; font-family: var(--serif); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 22px rgba(0,0,0,0.18); }
+.card .ic { width: 48px; height: 48px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; color: var(--on-gold); background: linear-gradient(180deg, var(--gold-hi), var(--gold)); }
+.card .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.card .row { display: flex; align-items: center; gap: 8px; }
+.card b { font-family: var(--display); font-size: 18px; }
+.card .sub { color: var(--sub); font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .chev { color: var(--sub); font-size: 22px; }
+.badge { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; display: inline-grid; place-items: center; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 12.5px; font-weight: 700; color: var(--on-gold); background: linear-gradient(180deg, var(--gold-hi), var(--gold)); font-variant-numeric: tabular-nums; }
+.note { padding: 14px 16px; border-radius: 18px; border: 1px dashed var(--edge); }
+.note h2 { margin: 0 0 6px; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 15px; color: var(--gold-ink); }
+.note p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--text); max-width: 62ch; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.foot { margin: 8px 0 0; text-align: center; color: var(--sub); font-size: 12.5px; font-style: italic; }
+.phone { position: relative; width: 100%; max-width: 393px; margin: 0 auto; border-radius: 26px; overflow: hidden; background: #14110A;
+  box-shadow: 0 0 0 1px var(--edge), 0 18px 44px rgba(0,0,0,0.35); }
+.phone img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+.hot { position: absolute; border: 0; padding: 0; margin: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.hot:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.hot.hint::after { content: ""; position: absolute; inset: -5px; border-radius: 14px; box-shadow: 0 0 0 2px rgba(228,200,140,0.95), 0 0 14px rgba(228,200,140,0.6);
+  animation: hotPulse 1.6s ease-out infinite; pointer-events: none; }
+@keyframes hotPulse { 0% { opacity: 1; transform: scale(0.92); } 100% { opacity: 0; transform: scale(1.45); } }
+.hbadge { position: absolute; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700; line-height: 1; color: #1A1008; background: linear-gradient(180deg, #E4C88C, #C8A96E); font-variant-numeric: tabular-nums; pointer-events: none; }
+@keyframes chMicBar { 0%, 100% { transform: scaleY(.5); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>/*__APP__*/</script>

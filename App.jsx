@@ -64,6 +64,8 @@ const TrainingCardScreen = lazy(() => retryImport(() => import("./ui/training-ca
 const ReferenceSection = lazy(() => retryImport(() => import("./ui/ReferenceSection")).then(m => ({ default: m.ReferenceSection })));
 const CandidateScreen = lazy(() => retryImport(() => import("./ui/candidate")).then(m => ({ default: m.CandidateScreen })));
 const AssistantScreen = lazy(() => retryImport(() => import("./ui/assistant")).then(m => ({ default: m.AssistantScreen })));
+const ChatScreen = lazy(() => retryImport(() => import("./ui/chat")).then(m => ({ default: m.ChatScreen })));   // v90: чат смены
+const CallBanner = lazy(() => retryImport(() => import("./ui/chat")).then(m => ({ default: m.CallBanner })));
 // Доп. 309: отчёты по сотрудникам (Excel и PDF) — грузятся только руководителю и по кнопке
 const ReportScreen = lazy(() => retryImport(() => import("./ui/report")).then(m => ({ default: m.ReportScreen })));
 const LiveGuestScreen = lazy(() => retryImport(() => import("./ui/live-guest")).then(m => ({ default: m.LiveGuestScreen })));   // v30: Доп. 312
@@ -337,6 +339,8 @@ import { APP_SHARE_URL } from "./lib/app-url";
 import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQdaySeen, applyQdayToBank } from "./lib/qday";   // v81: вопрос дня в Telegram
 import { qdayAnswerOf } from "./lib/qday";   // v88 (Доп. 401): ответ из приложения — в банк ошибок
 import { QdayCard } from "./ui/qday-card";   // v88: «Вопрос дня» на главной
+import { chatApi, chatStt as chatSttOf } from "./lib/chat-api";   // v90 (Доп. 403): чат смены
+import { POLL_APP_MS, badge as chatBadge } from "./lib/chat";
 import { casesSub, isCaseMistake, markPlayed, readSince, markSince } from "./lib/cases";   // v83: случаи из нашего зала
 import { thanksSub } from "./lib/guest-thanks";   // v84: спасибо от гостей по QR
 import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
@@ -1469,6 +1473,50 @@ function ServiceAcademy() {
     const t = setInterval(ask, 60e3);
     return () => clearInterval(t);
   }, [screen, storageLoaded, profile, seatOn]);
+  // v90 (Доп. 403): чат смены (этап 38) — кнопка в верхней строке со счётчиком непрочитанных, сам чат — слой поверх всего
+  // (как Наставник: открывается с любого экрана, и то, что было под ним, не теряется), вызов мне — баннер «Ольга зовёт
+  // тебя: к столу 5» поверх любого экрана. Непрочитанные и вызовы — chat_unread раз в 20 секунд, пока приложение на виду;
+  // без этапа 38 на сервере кнопки нет до перезапуска.
+  const chatOpen = layerData(layers, "chat");   // true | { id } — сразу в этот чат
+  const setChatOpen = useCallback((v) => dispatchLayers(v != null && v !== false ? { type: "open", kind: "chat", data: v } : { type: "close", kind: "chat" }), []);
+  const [chatOn, setChatOn] = useState(true);
+  const [chatInfo, setChatInfo] = useState(null);   // { unread, calls }
+  const [callGone, setCallGone] = useState({});      // вызовы, закрытые «Позже» или «Иду»
+  const [callBusy, setCallBusy] = useState(false);
+  const chatApiObj = useMemo(() => chatApi(), []);
+  const chatAskRef = useRef({ at: 0, off: false, seen: new Set() });
+  const chatOpenRef = useRef(false); chatOpenRef.current = chatOpen != null;   // открытый чат сам спрашивает список (chat_list)
+  const loadChatInfo = useCallback((force) => {
+    const st = chatAskRef.current;
+    if (!profile || !profile.restaurant || st.off || (!force && Date.now() - st.at < POLL_APP_MS - 2000)) return;
+    st.at = Date.now();
+    rpc("chat_unread", { p_token: saToken() }).then((r) => {
+      if (rpcMissing(r)) { st.off = true; setChatOn(false); return; }
+      if (r && r.ok) setChatInfo({ unread: Number(r.unread) || 0, calls: Array.isArray(r.calls) ? r.calls : [] });
+    }).catch(() => { st.at = 0; });
+  }, [profile]);
+  // первый раз — через 4 секунды после старта: старт остаётся одним запросом (v64, app_bootstrap)
+  useEffect(() => {
+    if (!storageLoaded || !profile || !profile.restaurant) return undefined;
+    const first = setTimeout(() => loadChatInfo(true), 4000);
+    const t = setInterval(() => { if (!chatOpenRef.current && (typeof document === "undefined" || !document.hidden)) loadChatInfo(false); }, POLL_APP_MS);
+    const vis = () => { if (!document.hidden) loadChatInfo(true); };
+    document.addEventListener("visibilitychange", vis);
+    return () => { clearTimeout(first); clearInterval(t); document.removeEventListener("visibilitychange", vis); };
+  }, [storageLoaded, profile, loadChatInfo]);
+  const chatMe = useMemo(() => (profile ? { id: profile.id, name: [profile.name, profile.surname].filter(Boolean).join(" "), pos: profile.position || "", lead: isLead,
+    network: !!profile.is_admin || profile.position === "senior", restaurant: profile.restaurant || "" } : null), [profile, isLead]);
+  const chatUnread = chatOn && chatInfo ? chatInfo.unread : 0;
+  const myCall = chatOn && chatOpen == null && chatInfo ? (chatInfo.calls || []).find((c) => c && c.id != null && !callGone[c.id]) || null : null;
+  useEffect(() => { if (myCall && !chatAskRef.current.seen.has(myCall.id)) { chatAskRef.current.seen.add(myCall.id); vibrate("heavy"); } }, [myCall]);
+  const callGo = () => {
+    if (!myCall || callBusy) return;
+    const id = myCall.id;
+    setCallBusy(true); vibrate("medium");
+    chatApiObj.go(id).then(() => { setCallBusy(false); setCallGone((g) => ({ ...g, [id]: 1 })); loadChatInfo(true); });
+  };
+  const openChat = (id) => { vibrate("light"); setChatOpen(id != null ? { id } : true); };
+  const chatStt = useMemo(() => chatSttOf(), []);
   // v87 (Доп. 400): «Смена» под роль — руководителю брифинг и зал, хостес зал и ближайшая бронь, официанту его столы
   const shiftRole = useMemo(() => roleCard({ role: shiftRoleOf(profile), board: seatOn ? seatBoard : null, empId: profile && profile.id,
     briefKnown, briefSent: !!teamBrief, dayOff: !!(shiftToday && shiftToday.off) }), [profile, seatOn, seatBoard, briefKnown, teamBrief, shiftToday]);
@@ -1481,7 +1529,7 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat"].includes(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»
     } catch (e) { goLinkRef.current = ""; }
   }
   React.useEffect(() => {
@@ -1504,6 +1552,7 @@ function ServiceAcademy() {
     else if (g === "cases") navigate("cases");   // v83: «Разобрать» / «Открыть» из сообщений о случаях
     else if (g === "thanks") { setThanksTab("mine"); navigate("thanks"); }   // v84: «Гость сказал тебе спасибо»
     else if (g === "seat") navigate("seat");   // v85: «Стол 6: посадили…»
+    else if (g === "chat") setChatOpen(true);   // v90: «Анна пишет тебе…», «Ольга зовёт тебя…» — «Открыть чат»
   }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
@@ -2719,6 +2768,22 @@ function ServiceAcademy() {
             {/* v73 (Доп. 386): «SA» — шрифтом с засечками, без звёздочки ✦ и моноширинного */}
             <span style={{ ...T.a11yLabel, color: a11y ? "#765E2F" : GOLD_LOGO, fontSize:14, letterSpacing:2.5, fontFamily:"Georgia, serif" }}>SA</span>
             <span style={{ flex: 1 }} data-sa-topspace="" />
+            {/* v90 (Доп. 403): чат смены — с любого экрана, как поиск; число — непрочитанные. В тесте, на экзамене и в
+                собеседовании кандидата чата нет: спросить ответ у коллеги там было бы подсказкой */}
+            {profile && profile.restaurant && chatOn && !["exam", "certificate", "candidate"].includes(screen) && !(screen === "lesson" && activeLesson && activeLesson.type === "quiz") ? (
+              <button className="sa-btn sa-hit" data-top-chat="" aria-label={"Чат смены" + (chatUnread ? ": непрочитанных " + chatUnread : "")} onClick={() => openChat(null)}
+                style={{ position: "relative", width: 28, height: 26, marginRight: 10, borderRadius: 11, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
+                  background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.10)",
+                  boxShadow: a11y ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 1px 0 rgba(255,255,255,0.16)" }}>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke={a11y ? "#6B4E1A" : "#D2A85A"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M14.6 8.4V6.3a1.6 1.6 0 0 0-1.6-1.6H4.7a1.6 1.6 0 0 0-1.6 1.6v5.4a1.6 1.6 0 0 0 1.6 1.6h.9v2.4l2.4-2" />
+                  <path d="M8.7 10.6A1.6 1.6 0 0 1 10.3 9h8.4a1.6 1.6 0 0 1 1.6 1.6v5a1.6 1.6 0 0 1-1.6 1.6h-.9v2.5l-3.1-2.5h-4.4a1.6 1.6 0 0 1-1.6-1.6z" />
+                </svg>
+                {chatUnread ? <span data-top-chat-n={chatUnread} aria-hidden="true" style={{ position: "absolute", top: -6, right: -7, boxSizing: "border-box", minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", fontSize: 10, fontWeight: 700, lineHeight: 1,
+                  color: "#1A1008", background: "linear-gradient(180deg, #E4C88C, #C8A96E)", boxShadow: a11y ? "0 0 0 2px #F3EBDA" : "0 0 0 2px #16110A", fontVariantNumeric: "tabular-nums" }}>{chatBadge(chatUnread)}</span> : null}
+              </button>
+            ) : null}
             {/* v71: поиск с любого экрана — меню и аллергены, карта бара, глоссарий, справочник, уроки */}
             {/* в тесте, на экзамене и в собеседовании кандидата поиска нет: он стал бы подсказкой (и обходом учёта «лазеек») */}
             {profile && !["search", "exam", "certificate", "candidate"].includes(screen) && !(screen === "lesson" && activeLesson && activeLesson.type === "quiz") ? (
@@ -2811,6 +2876,11 @@ function ServiceAcademy() {
               assistantNavigate(dest, true);
             }} /></Suspense>
         ) : null}
+        {/* v90 (Доп. 403): чат смены — порталом в body, поверх всего; вызов мне — баннер, пока чат закрыт */}
+        {chatOpen != null && chatMe ? <Suspense fallback={null}><ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt} openId={typeof chatOpen === "object" && chatOpen ? chatOpen.id : null}
+          onBack={() => { setChatOpen(null); loadChatInfo(true); }} onUnread={(r) => setChatInfo({ unread: Number(r.unread) || 0, calls: Array.isArray(r.calls) ? r.calls : [] })} /></Suspense> : null}
+        {myCall && chatMe ? <Suspense fallback={null}><CallBanner a11y={a11y} me={chatMe} call={myCall} busy={callBusy} onGo={callGo}
+          onClose={() => setCallGone((g) => ({ ...g, [myCall.id]: 1 }))} onOpen={() => { setCallGone((g) => ({ ...g, [myCall.id]: 1 })); openChat(myCall.chat); }} /></Suspense> : null}
         {/* Доп. 288: вспышка — порталом в body, поверх слоёв урока «у стола» (z-index 1000) */}
         {celebrate ? createPortal(
           <div className="sa-celeb">
@@ -3017,6 +3087,8 @@ function ServiceAcademy() {
           // v71: группами — «На смене» (дело) и «Потренироваться» (две минуты на практику)
           isLead && { key:"brief", group:"На смене", icon:"brief", label:"Брифинг смены", sub: teamBrief ? "Сегодня отправлен" + (teamBrief.author && !teamBrief.mine ? ": " + teamBrief.author : "") + ". Можно поправить" : "Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды", onClick:() => navigate("brief") },   // v82
           seatOn && { key:"seat", group:"На смене", icon:"seat", label:"Рассадка", sub: myTablesSub(myTables) || "Схема зала: кто где сидит, брони и уборка", onClick:() => navigate("seat") },   // v85; v86: «Твои столы»
+          chatOn && profile.restaurant && { key:"chat", group:"На смене", icon:"chat", label:"Чат смены", sub: "Команда, старшие и личные сообщения, «Позвать» к столу",
+            badge: chatUnread ? chatBadge(chatUnread) : null, onClick:() => openChat(null) },   // v90 (Доп. 403): после брифинга и рассадки
           { key:"sch", group:"На смене", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
           { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, предсменка, закрытие", onClick:() => navigate("checklist") },
           { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено: за час до смены зовёт на разминку" : "Разминка в 2 минуты за час до смены", onClick:() => setRemindOpen(true) },
@@ -3063,6 +3135,7 @@ function ServiceAcademy() {
           else if (dest === "pair") setPairOpen(true);
           else if (dest === "mastery") openMastery();   // v40
           else if (dest === "thanks") openThanks("mine");   // v84
+          else if (dest === "chat") openChat(null);   // v90
           else navigate(dest);
         }} /></Suspense>}
         {screen === "me" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y}

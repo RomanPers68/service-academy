@@ -288,15 +288,16 @@ const PREF_ROWS = [
   ["cases", "Случаи из зала", "когда разобрали твой случай, а старшим о новых случаях"],   // v83, этап 33
   ["thanks", "Спасибо от гостей", "когда гость сказал тебе спасибо по QR (первые три за день)"],   // v84, этап 34
   ["seat", "Рассадка", "когда тебе посадили гостей за стол"],   // v85, этап 35
+  ["chat", "Чат смены", "личные сообщения, ответы тебе и вызовы, когда тебя нет в чате"],   // v90, этап 38
 ];
 // Строки для ответа notify_prefs. Вид «master» знает только этап 26: сервер этапа 25 его не присылает
 // и не принял бы (notify_set → kind) — тогда строки нет.
 // v81: так же «Вопрос дня» — только с этапом 31; час — от сервера (qday_hour). v82: «Брифинг смены» — с этапом 32
-const LATER_KINDS = new Set(["master", "qday", "brief", "cases", "thanks", "seat"]);
+const LATER_KINDS = new Set(["master", "qday", "brief", "cases", "thanks", "seat", "chat"]);
 export const prefRows = (p) => PREF_ROWS.filter(([k]) => !LATER_KINDS.has(k) || (!!p && p[k] !== undefined))
   .map(([k, t, sub]) => (k === "qday" && p && Number.isInteger(p.qday_hour) ? [k, t, sub.replace("12:00", p.qday_hour + ":00")] : [k, t, sub]));
 // v86 (Доп. 399): видов стало много — группами «Учёба / Смена / Команда» (строки внутри — в порядке группы)
-export const PREF_GROUPS = [["study", "Учёба", ["pair", "qday", "fresh", "month"]], ["shift", "Смена", ["quest", "brief", "seat", "cases"]], ["team", "Команда", ["league", "master", "thanks"]]];
+export const PREF_GROUPS = [["study", "Учёба", ["pair", "qday", "fresh", "month"]], ["shift", "Смена", ["chat", "quest", "brief", "seat", "cases"]], ["team", "Команда", ["league", "master", "thanks"]]];
 export const prefGroups = (p) => { const rows = prefRows(p); return PREF_GROUPS.map(([id, t, ks]) => [id, t, ks.map((k) => rows.find((r) => r[0] === k)).filter(Boolean)]).filter((g) => g[2].length); };
 // v86: тихие часы (этап 36) — в это время бот молчит, кроме напоминания о смене; часы заведения
 export const QUIET = [[null, null, "Нет"], [22, 8, "22:00–8:00"], [23, 9, "23:00–9:00"], [0, 10, "0:00–10:00"], [2, 12, "2:00–12:00"]];

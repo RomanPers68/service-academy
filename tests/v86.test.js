@@ -216,7 +216,7 @@ describe("v86: «Напоминания в Telegram» — группы и тих
     expect(prefGroups(all).map(([id, t, rows]) => id + ":" + rows.map((r) => r[0]).join(","))).toEqual(["study:pair,qday,fresh,month", "shift:quest,brief,seat,cases", "team:league,master,thanks"]);
     expect(prefGroups(all).map((g) => g[1])).toEqual(["Учёба", "Смена", "Команда"]);
     const grouped = PREF_GROUPS.flatMap((g) => g[2]).sort();
-    expect(prefRows(all).map((r) => r[0]).sort()).toEqual(grouped);
+    expect(prefRows({ ...all, chat: true }).map((r) => r[0]).sort()).toEqual(grouped);   // v90: и «Чат смены» (этап 38)
     expect(prefGroups({ ok: true }).map(([id, , rows]) => id + ":" + rows.length)).toEqual(["study:3", "shift:1", "team:1"]);   // этап 25: пять видов
     expect(QUIET.map((q) => q[2])).toEqual(["Нет", "22:00–8:00", "23:00–9:00", "0:00–10:00", "2:00–12:00"]);
     expect([quietLabel(null, null), quietLabel(21, 7)]).toEqual(["Нет", "21:00–7:00"]);

@@ -59,7 +59,8 @@ describe("v94: клавиатура (ui/keyboard.js)", () => {
   });
   it("хук: высота от Telegram (viewportChanged), отступ — переменной --kb в тот же кадр, без React; лента держится низа", () => {
     const src = rd("ui/keyboard.js");
-    for (const s of ['try { if (tg && tg.onEvent) tg.onEvent("viewportChanged", measure); } catch (e) { /* */ }',
+    // v95: слушатель высоты от Telegram — onTg (тот же замер и ещё два позже)
+    for (const s of ['try { if (tg && tg.onEvent) tg.onEvent("viewportChanged", onTg); } catch (e) { /* */ }',
       "let tgH = 0; try { tgH = tg ? num(tg.viewportHeight) : 0; } catch (e) { tgH = 0; }",
       'if (v !== put) { put = v; el.style.setProperty("--kb", v + "px"); }',
       "// окно сменило высоту, а цель та же: отступ пересчитан в этот же кадр, на экране ничего не дёрнулось",
@@ -70,14 +71,14 @@ describe("v94: клавиатура (ui/keyboard.js)", () => {
   it("чат: корень с --kb и классом kb по клавиатуре на экране, лист над клавиатурой, без прежнего перехода padding-bottom", () => {
     const src = rd("ui/chat.jsx");
     expect(src).toContain('import { useKeyboardLift, usePinBottom } from "./keyboard";');
-    expect(src).toContain("const kb = useKeyboardLift(rootRef);");
+    expect(src).toContain('const kb = useKeyboardLift(rootRef, { cls: "kb" });');   // v95: класс kb ставит сам хук
     expect(src).toContain('<div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb.up ? " kb" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат">');
     expect(src).toContain("background-size:240px 240px,auto,auto;padding-bottom:var(--kb,0px)}");
     expect(src).toContain(".ch-veil{position:absolute;inset:0 0 var(--kb,0px);z-index:20;");
     expect(src).toContain("usePinBottom(chatRef);");
     expect(src).not.toContain("transition:padding-bottom .25s");
     expect(src).not.toContain("style={{ paddingBottom: kb }}");
-    expect(src).toContain("  transition:padding-bottom .2s ease-out}   /* v94: вырез снизу уходит и возвращается вместе с клавиатурой, без скачка */");
+    expect(src).toContain("calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)) * var(--kbs,1))");   // v95: вырез снизу — тем же ходом, что низ
   });
   it("Наставник: тот же хук, корень с --kb, лента держится низа, без своего visualViewport", () => {
     const src = rd("ui/assistant.jsx");

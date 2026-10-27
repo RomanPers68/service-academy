@@ -15,6 +15,10 @@
 // отступ в тот же кадр становится 0 и на экране ничего не двигается. Клавиатура уходит: низ едет вниз вместе с ней,
 // не зависая над пустым местом.
 // В браузере и на Android: по visualViewport, как раньше (v91, v94).
+// v95 (Доп. 408): на iPhone окно сжимается без события resize (или событие приходит раньше, чем окно стало ниже), и
+// v94 оставлял отступ на высоту клавиатуры: строка ввода подпрыгивала к шапке (запись владельца). Теперь размер самого
+// слоя смотрит ResizeObserver: слой стал ниже или выше — отступ пересчитан в том же кадре, до отрисовки. На случай, если
+// и он молчит, после сообщения Telegram о высоте перемеряем ещё через 0,5 и 1 с.
 //
 // Отступ слой берёт из переменной --kb (padding-bottom: var(--kb)). Её ставит хук сам, каждый кадр, без React:
 // так отступ меняется в тот же кадр, что и высота окна.
@@ -66,14 +70,19 @@ const now = () => (typeof performance !== "undefined" && performance.now ? perfo
 /**
  * Низ слоя над клавиатурой. ref — корень слоя (position:fixed; inset:0; padding-bottom: var(--kb, 0px)).
  * Возвращает { lift, up }: lift — на сколько поднят низ (когда доедет), up — клавиатура на экране.
+ * v95: вырез снизу (полоска «домой») у строки ввода — переменная --kbs: 1 — клавиатуры нет, 0 — есть. Хук ведёт её тем
+ * же ходом и по тем же часам, что и низ (в одном кадре), поэтому строка ввода едет ровно, без подскока: переход CSS и
+ * класс через React запаздывали на кадр-два, и строка ввода в начале подпрыгивала на 7–13 px. В разметке:
+ * calc(8px + var(--sa-sb) * var(--kbs, 1)). Класс cls (у чата — kb) и атрибут data-kbup хук тоже ставит сам.
  */
-export function useKeyboardLift(ref) {
+export function useKeyboardLift(ref, { cls = "" } = {}) {
   const [st, setSt] = React.useState({ lift: 0, up: false });
   React.useLayoutEffect(() => {
     if (typeof window === "undefined") return undefined;
     const vv = window.visualViewport || null;
     const tg = window.Telegram && window.Telegram.WebApp;
-    let shown = null, from = 0, to = 0, t0 = 0, raf = 0, timer = 0, settle = 0, put = null, last = { lift: 0, up: false }, alive = true;
+    let shown = null, from = 0, to = 0, t0 = 0, raf = 0, timer = 0, settle = 0, put = null, last = { lift: 0, up: false }, alive = true, ro = null, late = [];
+    let us = null, ufrom = 0, uto = 0, ut0 = 0, putS = null;   // v95: клавиатура на экране, 0..1 — ход выреза снизу
     const rect = () => {
       const el = ref && ref.current;
       try { if (el) return el.getBoundingClientRect(); } catch (e) { /* */ }
@@ -84,13 +93,17 @@ export function useKeyboardLift(ref) {
       const el = ref && ref.current; if (!el || shown == null) return;
       const v = Math.max(0, Math.round((r || rect()).bottom - shown));
       if (v !== put) { put = v; el.style.setProperty("--kb", v + "px"); }
+      const s = us == null ? 1 : Math.round((1 - us) * 1000) / 1000;
+      if (s !== putS) { putS = s; el.style.setProperty("--kbs", String(s)); }
     };
-    const step = (t) => {
+    // один ход на двоих: низ и вырез — по одним часам (performance.now), а не по метке кадра
+    const step = () => {
       raf = 0; if (!alive) return;
-      const k = KB_MS > 0 ? (t - t0) / KB_MS : 1;
-      shown = from + (to - from) * kbEase(k);
+      const t = now(), k = KB_MS > 0 ? (t - t0) / KB_MS : 1, ku = KB_MS > 0 ? (t - ut0) / KB_MS : 1;
+      shown = k >= 1 ? to : from + (to - from) * kbEase(k);
+      us = ku >= 1 ? uto : ufrom + (uto - ufrom) * kbEase(ku);
       paint();
-      if (k < 1) raf = requestAnimationFrame(step);
+      if (k < 1 || ku < 1) raf = requestAnimationFrame(step);
     };
     const measure = () => {
       if (!alive) return;
@@ -101,34 +114,51 @@ export function useKeyboardLift(ref) {
       else if (now() - KB_BASE.low > 600) { KB_BASE.h = r.height; KB_BASE.low = 0; }                                         // так и осталось: это новая высота окна
       let tgH = 0; try { tgH = tg ? num(tg.viewportHeight) : 0; } catch (e) { tgH = 0; }
       const p = { bottom: r.bottom, layerH: r.height, baseH: KB_BASE.h, vvTop: vv ? vv.offsetTop : 0, vvH: vv ? vv.height : window.innerHeight, tgH, ios: tgIos(), typing: ty };
-      const target = kbBottom(p);
+      const target = kbBottom(p), upT = kbUp(p, target) ? 1 : 0;
       if (shown == null || calm()) {
         if (raf) { cancelAnimationFrame(raf); raf = 0; }
-        shown = to = target;
-      } else if (target !== to) {
-        // новая цель: едем к ней от того места, где низ сейчас
-        from = shown; to = target; t0 = now();
-        if (!raf) raf = requestAnimationFrame(step);
+        shown = to = target; us = uto = upT;
+      } else {
+        // новая цель: едем к ней от того места, где низ (и вырез) сейчас; часы общие — начинаем в один миг
+        const tn = now();
+        if (target !== to) { from = shown; to = target; t0 = tn; }
+        if (upT !== uto) { ufrom = us; uto = upT; ut0 = tn; }
+        if ((tn - t0 < KB_MS || tn - ut0 < KB_MS) && !raf) raf = requestAnimationFrame(step);
       }
       // окно сменило высоту, а цель та же: отступ пересчитан в этот же кадр, на экране ничего не дёрнулось
       paint(r);
-      const next = { lift: Math.max(0, Math.round(r.bottom - target)), up: kbUp(p, target) };
+      const next = { lift: Math.max(0, Math.round(r.bottom - target)), up: !!upT };
+      if (next.up !== last.up) {
+        const el = ref && ref.current;
+        if (el) { el.setAttribute("data-kbup", next.up ? "1" : "0"); if (cls) el.classList.toggle(cls, next.up); }
+      }
       if (next.lift !== last.lift || next.up !== last.up) { last = next; setSt(next); }
     };
     // фокус сменился: activeElement становится известен чуть позже события
     const later = () => { clearTimeout(timer); timer = setTimeout(measure, 0); };
+    // v95: Telegram сообщил высоту — окно он сожмёт через 0,4 с; перемерим и тогда, даже если об этом никто не скажет
+    const onTg = () => { measure(); late.forEach(clearTimeout); late = [500, 1000].map((ms) => setTimeout(measure, ms)); };
     if (vv) { vv.addEventListener("resize", measure); vv.addEventListener("scroll", measure); }
     window.addEventListener("resize", measure);
     document.addEventListener("focusin", later); document.addEventListener("focusout", later);
-    try { if (tg && tg.onEvent) tg.onEvent("viewportChanged", measure); } catch (e) { /* */ }
+    try { if (tg && tg.onEvent) tg.onEvent("viewportChanged", onTg); } catch (e) { /* */ }
+    // v95: слой стал ниже или выше (окно сжалось, клавиатура ушла) — пересчёт до отрисовки этого кадра, без событий окна
+    try {
+      const el = ref && ref.current;
+      if (el && typeof ResizeObserver !== "undefined") {
+        ro = new ResizeObserver(() => measure());
+        try { ro.observe(el, { box: "border-box" }); } catch (e) { ro.observe(el); }
+      }
+    } catch (e) { ro = null; }
     measure();
     return () => {
-      alive = false; clearTimeout(timer); clearTimeout(settle); if (raf) cancelAnimationFrame(raf);
+      alive = false; clearTimeout(timer); clearTimeout(settle); late.forEach(clearTimeout); if (raf) cancelAnimationFrame(raf);
+      if (ro) { try { ro.disconnect(); } catch (e) { /* */ } }
       if (vv) { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); }
       window.removeEventListener("resize", measure);
       document.removeEventListener("focusin", later); document.removeEventListener("focusout", later);
-      try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", measure); } catch (e) { /* */ }
-      const el = ref && ref.current; if (el) el.style.removeProperty("--kb");
+      try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", onTg); } catch (e) { /* */ }
+      const el = ref && ref.current; if (el) { el.style.removeProperty("--kb"); el.style.removeProperty("--kbs"); }
     };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   return st;

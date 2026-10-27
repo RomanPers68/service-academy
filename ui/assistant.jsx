@@ -718,7 +718,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       </div>
 
       {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
-      <div style={{ padding: kbs.up ? "6px 10px 10px" : "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))", transition: "padding-bottom .2s ease-out" }}>
+      {/* v95: вырез снизу — только без клавиатуры: --kbs ведёт ui/keyboard.js тем же ходом, что и низ */}
+      <div className="sa-ai-bar" style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px) * var(--kbs, 1))" }}>
         {/* Подсказки-чипы над полем ввода убраны по просьбе владельца (правка 157) */}
         {/* v35 (Доп. 344): разговор голосом — на месте поля полоса разговора, реплики — в этой же переписке */}
         {talk ? (

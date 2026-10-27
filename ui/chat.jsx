@@ -110,8 +110,8 @@ export const CHAT_CSS = `
 .ch-empty{max-width:420px;margin:40px auto 0;padding:0 24px;text-align:center;color:var(--sub);font-size:15px;line-height:1.5}
 .ch-search{display:block;width:calc(100% - 28px);max-width:612px;margin:10px auto 6px;padding:10px 14px;border-radius:14px;border:1px solid var(--opt-edge);background:var(--field);color:var(--text);font-size:16px;font-family:inherit;outline:none}
 .ch-sec{max-width:640px;margin:14px auto 2px;padding:0 16px;${LABEL_CSS};font-size:13px;color:var(--gold-ink)}
-[data-chat-people]{padding-bottom:calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)))}
-.sa-dlg.ch.kb [data-chat-people]{padding-bottom:16px}
+/* v95: вырез снизу (полоска «домой») — только без клавиатуры: --kbs ведёт ui/keyboard.js тем же ходом, что и низ */
+[data-chat-people]{padding-bottom:calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)) * var(--kbs,1))}
 
 /* закреплённое */
 .ch-pin{flex:0 0 auto;position:relative;z-index:3;padding:6px 8px 6px 12px;background:var(--head);border-bottom:1px solid var(--head-line);box-shadow:0 6px 14px rgba(0,0,0,0.12)}
@@ -211,9 +211,7 @@ export const CHAT_CSS = `
 .ch-down .ch-badge{position:absolute;top:-8px;right:-4px;min-width:20px;height:20px;font-size:11.5px;padding:0 5px}
 
 /* строка ввода */
-.ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line);
-  transition:padding-bottom .2s ease-out}   /* v94: вырез снизу уходит и возвращается вместе с клавиатурой, без скачка */
-.sa-dlg.ch.kb .ch-bar{padding-bottom:8px}
+.ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)) * var(--kbs,1));background:var(--head);border-top:1px solid var(--head-line)}
 .ch-bar-in{display:flex;align-items:flex-end;gap:6px;max-width:640px;margin:0 auto}
 .ch-fieldwrap{position:relative;flex:1;min-width:0;display:flex}
 .ch-input{flex:1;min-width:0;min-height:42px;max-height:132px;resize:none;padding:10px 14px;border-radius:21px;border:1px solid var(--opt-edge);background:var(--field);color:var(--text);
@@ -239,7 +237,7 @@ export const CHAT_CSS = `
 /* v94: лист стоит над клавиатурой, как и строка ввода (--kb, ui/keyboard.js) */
 .ch-veil{position:absolute;inset:0 0 var(--kb,0px);z-index:20;background:rgba(8,6,3,0.55);display:flex;align-items:flex-end;justify-content:center}
 .sa-dlg.ch.lt .ch-veil{background:rgba(70,52,24,0.32)}
-.ch-sheet{width:100%;max-width:640px;max-height:86%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 16px calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)));
+.ch-sheet{width:100%;max-width:640px;max-height:86%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 16px calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)) * var(--kbs,1));
   border-radius:22px 22px 0 0;background:var(--pane);box-shadow:inset 0 1px 0 var(--pane-line),var(--pane-shadow)}
 /* v94: в слое .sa-dlg палец двигает только ленты с классом sa-dlgscroll (ui/css.js), и листы не листались пальцем:
    «Задание», «О чате» со списком участников и другие (запись владельца). Листам и подписи к фото прокрутку возвращаем */
@@ -280,10 +278,8 @@ export const CHAT_CSS = `
 .ch-tick.on{border-color:transparent;background:linear-gradient(180deg,var(--gold-hi),var(--gold))}
 .ch-tick svg{width:15px;height:15px}
 .ch-new .ch-ava svg{width:22px;height:22px}
-.ch-foot{flex:0 0 auto;position:relative;z-index:3;padding:10px 14px calc(10px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line);
-  transition:padding-bottom .2s ease-out}
+.ch-foot{flex:0 0 auto;position:relative;z-index:3;padding:10px 14px calc(10px + var(--sa-sb,env(safe-area-inset-bottom,0px)) * var(--kbs,1));background:var(--head);border-top:1px solid var(--head-line)}
 .ch-foot .ch-main{max-width:612px;margin:0 auto}
-.sa-dlg.ch.kb .ch-foot{padding-bottom:10px}
 .ch-whob{border:0;background:none;padding:0;margin:0;text-align:left;color:inherit;font:inherit;cursor:pointer;border-radius:12px}
 .ch-gm{display:flex;align-items:center;gap:12px;padding:8px 2px;border-bottom:1px solid var(--edge)}
 .ch-gm:last-child{border-bottom:0}
@@ -404,7 +400,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   const app = React.useMemo(() => app0 || (appCtx ? makeChatApp(appCtx) : null), [app0, appCtx]);
   ensureChatCss();
   const rootRef = React.useRef(null);
-  const kb = useKeyboardLift(rootRef);   // v94: { lift, up }; отступ снизу слой берёт из --kb
+  const kb = useKeyboardLift(rootRef, { cls: "kb" });   // v94: { lift, up }; отступ снизу слой берёт из --kb; v95: класс kb ставит сам хук
   const [me, setMe] = React.useState(me0);   // кто я — как считает сервер (руководитель ли, заведение)
   const [chats, setChats] = React.useState(null);
   const [err, setErr] = React.useState("");

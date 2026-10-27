@@ -259,6 +259,8 @@ export function AiDisc({ a11y, size = 46, glass = false, pulse = false }) {
 // кнопка Наставника (AI): в портрете она плавает над панелью, здесь — в меню,
 // чтобы не закрывать содержимое. id тот же, что у панели, — на него смотрит
 // подсказка главного экрана.
+// v95: размер круглых кнопок в меню слева (Наставник и чат) — один на двоих
+export const RAIL_DISC = (compact) => (compact ? 44 : 50);
 export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact, chat = null }) {
   const activeIdx = tabs.findIndex(t => t.id === activeId);
   const lastIdxRef = useRef(activeIdx >= 0 ? activeIdx : 0);
@@ -321,11 +323,13 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact, chat = nul
             </div>
           );
         })}
+        {/* v95 (Доп. 408): Наставник и чат — круги одного размера (владелец: «линзы разного размера»): лёжа на телефоне
+            оба 44 px вместо 46 и 42 — высота меню та же, целиком входит в 340 px (iPhone в Telegram); на большом экране — 50 */}
         {onAi ? (<>
           <div aria-hidden style={{ height:1, margin: compact ? "4px 12px" : "6px 12px",
             background: a11y ? "rgba(139,106,48,0.28)" : "rgba(214,178,102,0.22)" }} />
           <div role="button" tabIndex={0} aria-label="AI-ассистент" data-rail-ai="" className="sa-railitem sa-pop" onClick={ai} {...onActivate(ai)}
-            style={{ position:"relative", zIndex:2, width: compact ? 46 : 50, height: compact ? 46 : 50, borderRadius:"50%", margin:"2px auto",
+            style={{ position:"relative", zIndex:2, width: RAIL_DISC(compact), height: RAIL_DISC(compact), borderRadius:"50%", margin:"2px auto",
               display:"grid", placeItems:"center", cursor:"pointer",
               background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.10)",
               boxShadow: `inset 0 0 0 1px ${a11y ? "rgba(139,106,48,0.5)" : "rgba(214,178,102,0.40)"}, inset 0 0 16px ${a11y ? "rgba(255,255,255,0.45)" : "rgba(255,230,170,0.10)"}, inset 0 1.5px 0 ${a11y ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)"}` }}>
@@ -338,10 +342,10 @@ export function NavRail({ tabs, activeId, onTab, a11y, onAi, compact, chat = nul
         </>) : null}
         {/* v91 (Доп. 404): чат смены — под Наставником, тем же кругом */}
         {chat ? (
-          // лёжа на телефоне (compact) — чуть меньше: меню должно целиком входить в 340 px высоты (iPhone в Telegram)
+          // тот же круг, что у Наставника (RAIL_DISC): лёжа на телефоне меню целиком входит в 340 px высоты (iPhone в Telegram)
           <div role="button" tabIndex={0} aria-label={"Чат смены" + (chat.n ? ": непрочитанных " + chat.n : "")} data-chat-dock="rail" className="sa-railitem" onClick={chat.onOpen} {...onActivate(chat.onOpen)}
             style={{ position:"relative", zIndex:2, borderRadius:"50%", margin: compact ? "2px auto 0" : "6px auto 2px", cursor:"pointer" }}>
-            <ChatDisc a11y={a11y} size={compact ? 42 : 50} label={chat.label} glass={false} />
+            <ChatDisc a11y={a11y} size={RAIL_DISC(compact)} label={chat.label} glass={false} />
           </div>
         ) : null}
       </div>

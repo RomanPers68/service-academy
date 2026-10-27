@@ -101,10 +101,11 @@ describe("v91: экран чата", () => {
   });
   it("низ в полноэкранном Telegram: --sa-sb (вырез из Telegram) у строки ввода, списка, листов и фото; при клавиатуре запаса нет", () => {
     const src = rd("ui/chat.jsx");
+    // v95: «при клавиатуре запаса нет» — уже не классом kb, а переменной --kbs (ui/keyboard.js ведёт её вместе с низом)
     for (const s of [".ch-list{max-width:640px;margin:0 auto;padding:6px 0 calc(24px + var(--sa-sb,env(safe-area-inset-bottom,0px)))}",
-      ".ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)));",
-      ".sa-dlg.ch.kb .ch-bar{padding-bottom:8px}", "[data-chat-people]{padding-bottom:calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)))}",
-      ".sa-dlg.ch.kb [data-chat-people]{padding-bottom:16px}", ".ch-view-img:last-child{margin-bottom:var(--sa-sb,env(safe-area-inset-bottom,0px))}"]) expect([s, src.includes(s)]).toEqual([s, true]);
+      ".ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)) * var(--kbs,1));",
+      "[data-chat-people]{padding-bottom:calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)) * var(--kbs,1))}",
+      ".ch-view-img:last-child{margin-bottom:var(--sa-sb,env(safe-area-inset-bottom,0px))}"]) expect([s, src.includes(s)]).toEqual([s, true]);
     expect(src).not.toMatch(/padding:[^;}]*calc\([^)]*\+ env\(safe-area-inset-bottom/);   // нигде не голый env()
   });
   it("«Написать»: список не пришёл — «Список коллег не загрузился», пусто — «Пока здесь никого», по поиску — «Никого не нашёл»", () => {

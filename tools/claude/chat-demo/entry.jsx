@@ -4,7 +4,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { ChatScreen, CallBanner } from "../../../ui/chat.jsx";
-import { demoApi } from "./demo-api.js";
+import { demoApi, DEMO_ITEMS } from "./demo-api.js";
 import { badge, unreadTotal } from "../../../lib/chat.js";
 
 /* global __HOME__ */
@@ -50,6 +50,17 @@ function Home({ light, total, onOpen, hint }) {
     </div>);
 }
 
+// v93: что «знает приложение» — поиск по урокам, меню, коктейлям и справочнику; «открыть» в демо — подсказка, что откроется
+const KIND_RU = { lesson: "урок", quiz: "тест", module: "тема", dish: "блюдо в Меню", cocktail: "коктейль в Колоде", ref: "карточка Справочника", brief: "брифинг смены" };
+function demoApp(onOpen) {
+  return {
+    search: (q, kinds) => { const s = String(q || "").toLowerCase().trim(); return DEMO_ITEMS.filter((x) => (!kinds || kinds.includes(x.kind)) && (!s || x.title.toLowerCase().includes(s))); },
+    open: (item) => onOpen(item),
+    done: (item) => !!item && item.id === "l-wine",
+    brief: () => ({ date: new Date().toISOString().slice(0, 10), lines: ["Гостей по брони: 42, пик с 19:00", "Банкет на 12 в 19:00, веранда", "Стоп: тартар из тунца", "Фокус смены: десерты к кофе", "Старший смены: Мария"] }),
+  };
+}
+
 function Demo() {
   const [tick, setTick] = React.useState(0);
   const api = React.useMemo(() => { const a = demoApi({ onChange: () => setTick((x) => x + 1) }); try { window.__demoApi = a; } catch (e) { /* */ } return a; }, []);
@@ -60,6 +71,8 @@ function Demo() {
   const [sum, setSum] = React.useState(null);
   const [gone, setGone] = React.useState({});
   const [busy, setBusy] = React.useState(false);
+  const [shown, setShown] = React.useState(null);   // v93: «в приложении откроется …»
+  const app = React.useMemo(() => demoApp(setShown), []);
   const autoCall = React.useRef(false);
   React.useEffect(() => {
     let alive = true;
@@ -86,13 +99,14 @@ function Demo() {
         <span className="mark">SA · чат смены</span>
         <button type="button" className="pill" onClick={() => setLight((v) => !v)} aria-label={light ? "Тёмная тема" : "Светлая тема"}><IcTheme light={light} />{light ? "Тёмная" : "Светлая"}</button>
       </div>
-      <h1>Чат на главной</h1>
-      <p className="lead">Круг чата стоит рядом с нижним меню, под большим пальцем, и не уезжает при прокрутке. Число на нём: сколько непрочитанных. Нажми на круг.</p>
+      <h1>Умный чат</h1>
+      <p className="lead">Сообщение в чате делает дело в приложении: смену можно забрать или поменять одним нажатием, урок открыть, на опрос ответить, Наставника спросить. Нажми на круг у меню и открой «Вся команда».</p>
       {HOME ? <Home light={light} total={total} hint={!opened} onOpen={() => openChat(null)} /> : (
         <button type="button" className="card" data-demo-open="" onClick={() => openChat(null)}><b>Открыть чат</b>{total ? <span className="badge">{badge(total)}</span> : null}</button>)}
       <section className="note">
         <h2>Это демо</h2>
-        <p>Коллеги и переписка выдуманы, всё работает прямо в этой странице. Попробуй: ответь на сообщение свайпом вбок, поставь реакцию, поправь своё, закрепи важное, отправь фото с телефона, позови хостес колокольчиком.</p>
+        <p>Коллеги и переписка выдуманы, всё работает прямо в этой странице. Попробуй: у Марии нажми «Поменяться» и выбери свою смену; открой урок из задания; проголосуй; нажми плюс в строке ввода и отдай смену или сделай опрос; напиши «@Наставник» и вопрос про блюдо.</p>
+        <p style={{ marginTop: 10 }}>Подтверждать обмен не нужно: смена переходит сразу, график обновляется у обоих. Руководитель видит каждую передачу: в «Старших» появляется строка, кто кому отдал смену, а бот пишет руководителям. Через 15 секунд в «Вся команда» Пётр заберёт смену Веры, посмотри.</p>
         <div className="acts">
           <button type="button" className="pill" onClick={() => api.demoCall()} data-demo-call=""><IcBell />Вызов мне</button>
           <button type="button" className="pill" onClick={() => api.demoMessage()} data-demo-msg=""><IcMsg />Сообщение от Анны</button>
@@ -100,7 +114,15 @@ function Demo() {
       </section>
       <p className="foot">Service Academy · чат смены · демо</p>
     </main>
-    {open ? <ChatScreen a11y={light} me={api.me} api={api} openId={openId} stt={{ url: "demo", headers: {} }} onBack={() => setOpen(false)} /> : null}
+    {open ? <ChatScreen a11y={light} me={api.me} api={api} app={app} openId={openId} stt={{ url: "demo", headers: {} }} onBack={() => setOpen(false)} /> : null}
+    {shown ? <div className="opened" role="dialog" aria-modal="true" data-demo-opened={shown.kind} onClick={() => setShown(null)}>
+      <div className="opened-in" onClick={(e) => e.stopPropagation()}>
+        <b>В приложении откроется {KIND_RU[shown.kind] || "экран"}</b>
+        <span>«{shown.title}»</span>
+        <span className="opened-s">Чат закроется, а вернуться в него можно кругом у меню.</span>
+        <button type="button" className="pill" onClick={() => setShown(null)}>Понятно</button>
+      </div>
+    </div> : null}
     {call ? <CallBanner a11y={light} me={api.me} call={call} busy={busy} onGo={goNow} onClose={() => setGone((g) => ({ ...g, [call.id]: 1 }))}
       onOpen={() => { setGone((g) => ({ ...g, [call.id]: 1 })); openChat("team"); }} /> : null}
   </>);

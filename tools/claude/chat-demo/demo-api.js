@@ -4,6 +4,26 @@
 // с цитатой), на сообщение в группе ставят «Принято», на фото — «Огонь»; на вызов идёт тот, кого звали.
 // «Руководители сети» — руководители Океана и выдуманного второго заведения «Два моря, Порт».
 import { callLine, EDIT_HOURS } from "../../../lib/chat.js";
+import { cardSummary, withVote, dueChoices, askAi, shiftLogLine } from "../../../lib/chat-smart.js";
+
+// v93: что «знает приложение» в демо — уроки, тесты, блюда, коктейли, справочник (для «+», заданий, стоп-листа и Наставника)
+export const DEMO_ITEMS = [
+  { kind: "lesson", id: "l-allerg", title: "Аллергены: как говорить с гостем", mins: 7, sub: "Новичок" },
+  { kind: "lesson", id: "l-wine", title: "Подача вина у стола", mins: 9, sub: "Официант" },
+  { kind: "lesson", id: "l-hard", title: "Сложный гость: спокойствие и решения", mins: 8, sub: "Официант" },
+  { kind: "quiz", id: "q-menu", title: "Тест: осеннее меню", mins: 5, sub: "12 вопросов" },
+  { kind: "module", id: "m-wine", title: "Винная карта", mins: 25, sub: "4 урока" },
+  { kind: "dish", id: "d-tartar", title: "Тартар из тунца", sub: "тунец, авокадо, понзу · рыба, соя, кунжут", allerg: "рыба, соя и кунжут" },
+  { kind: "dish", id: "d-borsch", title: "Борщ с уткой", sub: "утка, свёкла, сметана · молоко, сельдерей", allerg: "молоко и сельдерей" },
+  { kind: "dish", id: "d-cheese", title: "Чизкейк Сан-Себастьян", sub: "сливочный сыр, сливки, яйца · молоко, яйца, глютен", allerg: "молоко, яйца и глютен" },
+  { kind: "dish", id: "d-pasta", title: "Паста с белыми грибами", sub: "белые грибы, сливки, пармезан · глютен, молоко", allerg: "глютен и молоко" },
+  { kind: "cocktail", id: "c-negroni", title: "Кедровый негрони", sub: "джин на кедровых орешках, кампари, вермут · орехи" },
+  { kind: "cocktail", id: "c-spritz", title: "Апероль спритц", sub: "апероль, просекко, содовая" },
+  { kind: "ref", id: "r-meet", title: "Стандарт встречи гостя", sub: "первые 30 секунд у входа" },
+  { kind: "ref", id: "r-allerg", title: "Как говорить об аллергенах", sub: "фразы и что уточнить на кухне" },
+];
+const DAY = 86400000;
+const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 
 const PEOPLE = [
   { id: "p1", name: "Мария Ким", pos: "manager", shift: true },
@@ -58,7 +78,7 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
   const T0 = Date.now();
   const at = (minAgo) => new Date(T0 - minAgo * 60000).toISOString();
   const all = [me, ...PEOPLE];
-  const everyone = [...all, ...NET_PEOPLE];
+  const everyone = [...all, ...NET_PEOPLE, { id: "ai", name: "Наставник", pos: "ai" }];   // v93: Наставник пишет в переписку
   const byId = (id) => everyone.find((p) => String(p.id) === String(id));
   const restOf = (p) => (p && p.rest) || OKEAN;
   let seq = 100;
@@ -97,6 +117,30 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
   const mine = put("team", me.id, "Спасибо, команда. В 18:00 вместе проверим веранду перед банкетом.", 60, { edited: true, reacts: R("ok", "p1", "p2") });
   photos.d1 = { draw: true };
   put("team", "p5", "На баре новая карта коктейлей, гляньте до вечера", 12, { kind: "photo", photo: { id: "d1", w: 1024, h: 1280 }, reacts: R("fire", "p3", "p4") });
+  // v93: умные карточки — смена, обмен, задание, опрос, стоп-лист и вопрос Наставнику
+  const d0 = new Date(T0); d0.setHours(12, 0, 0, 0);
+  const dIn = (n) => iso(new Date(d0.getTime() + n * DAY));
+  const sCard = (c) => ({ t: "shift", st: "open", ...c });
+  // мои смены в демо меняются после обмена и передачи, как в графике
+  const myShifts = [[2, "День", "11:00–23:00"], [6, "День", "11:00–23:00"], [8, "Вечер", "17:00–24:00"], [11, "День", "11:00–23:00"]]
+    .map(([n, label, time]) => ({ date: dIn(n), venue: "main", label, time, pos: "менеджер" }));
+  const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const vera = put("team", "p6", "", 11, { kind: "card", card: sCard({ mode: "give", date: dIn(3), label: "Вечер", time: "18:00–24:00", pos: "зал", from: "p6", fromName: "Вера Соколова", note: "Сестра выходит замуж", can: false, why: "Забрать могут официанты, свободные в этот день" }) });
+  vera.body = cardSummary(vera.card);
+  const giveM = put("team", "p1", "", 10, { kind: "card", card: sCard({ mode: "give", date: dIn(5), label: "Вечер", time: "17:00–24:00", pos: "менеджер", from: "p1", fromName: "Мария Ким", note: "Семейный праздник", can: true }) });
+  giveM.body = cardSummary(giveM.card);
+  const swapC = put("team", "p1", "", 9, { kind: "card", card: sCard({ mode: "swap", date: dIn(4), label: "День", time: "11:00–23:00", pos: "менеджер", from: "p1", fromName: "Мария Ким", want: [dIn(6), dIn(8)], can: true }) });
+  swapC.body = cardSummary(swapC.card);
+  const fri = dueChoices(new Date(T0)).find((x) => x[0] === "fri")[2];
+  const task = put("team", "p1", "", 8, { kind: "card", card: { t: "task", item: DEMO_ITEMS[0], due: fri, n: 3, of: 7, left: ["Пётр Орлов", "Вера Соколова", "Илья Белов", "Глеб Морозов"] } });
+  task.body = cardSummary(task.card);
+  const poll = put("team", "p1", "", 7, { kind: "card", card: { t: "poll", q: "Кто выйдет на банкет в субботу?", opts: ["Я выйду", "Не смогу", "Могу до 22:00"], votes: [{ o: 0, emp: "p3", name: "Анна Смирнова" }, { o: 0, emp: "p4", name: "Пётр Орлов" }, { o: 2, emp: "p6", name: "Вера Соколова" }] } });
+  poll.body = cardSummary(poll.card);
+  const stopC = put("team", "p1", "", 6, { kind: "card", card: { t: "stop", st: "on", dish: { id: "d-tartar", name: "Тартар из тунца" } } });
+  stopC.body = cardSummary(stopC.card);
+  const ask = put("team", "p2", "@Наставник, какие аллергены в чизкейке Сан-Себастьян?", 5);
+  put("team", "ai", "В чизкейке Сан-Себастьян молоко (сливочный сыр и сливки), яйца и глютен (немного муки). Орехов нет, но десерт готовят на общей кухне: гостю с сильной аллергией скажи об этом и уточни у шефа.", 5,
+    { kind: "ai", reply: quote(ask), card: { t: "ai", cards: [{ kind: "dish", id: "d-cheese", title: "Чизкейк Сан-Себастьян", sub: "сливочный сыр, сливки, яйца · молоко, яйца, глютен" }] } });
   readAll("team", mine.id, ["p6", "p7"]);
   reads.team[me.id] = mine.id;
   put("leads", "p1", "Вечером не хватает одного официанта. Вера сможет выйти?", 200);
@@ -116,6 +160,13 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
   reads["dm-p3"] = { [me.id]: 0, p3: seq };
 
   const later = (ms, fn) => setTimeout(() => { fn(); onChange(); }, ms);
+  // v93: смена переходит без подтверждения, а руководители видят каждую передачу и обмен: строка в «Старших»
+  // (на сервере ещё и бот руководителям заведения)
+  const offered = (date) => msgs.some((m) => m.card && m.card.t === "shift" && m.card.st === "open" && String(m.card.from) === String(me.id) && m.card.date === date);
+  const logLeads = (m) => { if (m && m.chat !== "leads" && m.card && m.card.st === "done") put("leads", m.card.by, shiftLogLine(m.card), 0, { kind: "sys", card: { t: "log", mode: m.card.mode } }); };
+  // через 15 секунд в «Вся команда» Пётр забирает смену Веры: видно, как карточка закрывается и что пишут руководителям
+  let veraT = false;
+  const veraTake = () => { if (veraT) return; veraT = true; later(15000, () => { if (vera.card.st !== "open") return; Object.assign(vera.card, { st: "done", by: "p4", byName: "Пётр Орлов", at: new Date().toISOString() }); touch(vera); logLeads(vera); }); };
   const ok = (x) => new Promise((res) => setTimeout(() => res({ ok: true, ...x }), 90 + Math.random() * 90));
   const no = (error) => Promise.resolve({ ok: false, error });
   const chatOf = (id) => chats.find((c) => String(c.id) === String(id));
@@ -125,7 +176,7 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
   const unread = (cid) => msgs.filter((m) => m.chat === cid && !m.del && String(m.emp) !== String(me.id) && m.id > ((reads[cid] || {})[me.id] || 0)).length;
   const forMe = (m) => m.kind === "call" && String(m.emp) !== String(me.id) && (m.call.who === "person" ? String(m.call.emp) === String(me.id) : (ROLE_POS[m.call.who] || []).includes(me.pos));
   const J = (m) => (m ? { ...m, call: m.call ? { ...m.call, going: [...(m.call.going || [])] } : null, photo: m.photo ? { ...m.photo } : null, reply: m.reply ? { ...m.reply } : null,
-    reacts: (m.reacts || []).map((x) => ({ ...x })), body: m.del ? "" : m.body } : null);
+    reacts: (m.reacts || []).map((x) => ({ ...x })), body: m.del ? "" : m.body, card: m.card ? JSON.parse(JSON.stringify(m.card)) : undefined } : null);
   const view = (c) => ({ id: c.id, kind: c.kind, members: c.members.length, shift: c.kind === "team" ? all.filter((p) => p.id === me.id || p.shift).length : undefined,
     peer: c.kind === "dm" ? (() => { const p = byId(c.members.find((e) => e !== me.id)); return p && { id: p.id, name: p.name, pos: p.pos, shift: !!p.shift }; })() : undefined,
     last: J(last(c.id)), unread: unread(c.id), cleared: c.cleared || null, title: c.kind === "group" ? c.title : undefined, owner: c.kind === "group" ? c.owner : undefined });
@@ -173,6 +224,7 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
     open: (cid, { after = 0, before = 0, since = 0 } = {}) => {
       const c = chatOf(cid);
       if (!visible(c)) return no("not_found");
+      if (c.id === "team") veraTake();
       let list = msgs.filter((m) => m.chat === c.id);
       let more = false;
       if (before) { list = list.filter((m) => m.id < before && !m.del); more = list.length > 40; list = list.slice(-40); }
@@ -186,7 +238,7 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
       const q = replyId ? msgOf(replyId) : null;
       const m = put(c.id, me.id, String(body).slice(0, 1000), 0, { reply: q && q.chat === c.id ? quote(q) : null });
       reads[c.id] = reads[c.id] || {}; reads[c.id][me.id] = m.id;
-      answer(c, m);
+      if (!askAi(m.body)) answer(c, m);   // v93: на «@Наставник …» отвечает Наставник, а не коллеги
       return ok({ msg: J(m) });
     },
     photoSend: (cid, { full, thumb, w, h, body = "", reply = null } = {}) => {
@@ -302,6 +354,85 @@ export function demoApi({ me = { id: "me", name: "Роман", pos: "manager", l
       c.pin = null; c.cleared = new Date().toISOString();
       return ok({ removed: 0, cleared: c.cleared });
     },
+    // ── v93: умный чат ──
+    shiftsMine: () => ok({ shifts: myShifts.filter((s) => !offered(s.date)).map((s) => ({ ...s })) }),
+    shiftOffer: (cid, { date, venue, mode, want, note }) => {
+      const c = chatOf(cid); if (!visible(c)) return no("not_found");
+      const s = myShifts.find((x) => x.date === date);
+      if (!s || offered(date)) return no("not_allowed");
+      const m = put(c.id, me.id, "", 0, { kind: "card", card: sCard({ mode, date, venue, label: s.label, time: s.time, pos: "менеджер", from: me.id, fromName: me.name, want: want || [], note: note || "", can: false }) });
+      m.body = cardSummary(m.card);
+      // коллега (Мария) забирает или меняется через несколько секунд — как в смене
+      later(4200, () => {
+        if (m.card.st !== "open") return;
+        m.card.st = "done"; m.card.by = "p1"; m.card.byName = "Мария Ким"; m.card.at = new Date().toISOString();
+        const i = myShifts.findIndex((x) => x.date === date);
+        if (i >= 0) myShifts.splice(i, 1);
+        if (mode === "swap") { m.card.byDate = (want && want[0]) || dIn(9); m.card.byLabel = "День"; myShifts.push({ date: m.card.byDate, venue, label: "День", time: "11:00–23:00", pos: "менеджер" }); myShifts.sort(byDate); }
+        touch(m); logLeads(m);
+      });
+      return ok({ msg: J(m) });
+    },
+    shiftTake: (id) => {
+      const m = msgOf(id); if (!m || !m.card || m.card.t !== "shift") return no("not_found");
+      if (m.card.st !== "open") return no("taken");
+      if (!m.card.can || m.card.mode !== "give" || myShifts.some((x) => x.date === m.card.date)) return no("not_allowed");
+      Object.assign(m.card, { st: "done", by: me.id, byName: me.name, at: new Date().toISOString() }); touch(m); logLeads(m);
+      myShifts.push({ date: m.card.date, venue: "main", label: m.card.label, time: m.card.time, pos: "менеджер" }); myShifts.sort(byDate);
+      return ok({ msg: J(m) });
+    },
+    shiftSwapOptions: (id) => {
+      const m = msgOf(id); if (!m || !m.card) return no("not_found");
+      const want = m.card.want || [];
+      return ok({ shifts: myShifts.filter((s) => s.date !== m.card.date && !offered(s.date) && (!want.length || want.includes(s.date))).map((s) => ({ ...s })) });
+    },
+    shiftSwap: (id, date) => {
+      const m = msgOf(id); if (!m || !m.card || m.card.t !== "shift") return no("not_found");
+      if (m.card.st !== "open") return no("taken");
+      const i = myShifts.findIndex((x) => x.date === date);
+      if (!m.card.can || m.card.mode !== "swap" || i < 0) return no("not_allowed");
+      Object.assign(m.card, { st: "done", by: me.id, byName: me.name, byDate: date, byLabel: myShifts[i].label, at: new Date().toISOString() }); touch(m); logLeads(m);
+      myShifts.splice(i, 1, { date: m.card.date, venue: "main", label: m.card.label, time: m.card.time, pos: "менеджер" }); myShifts.sort(byDate);
+      return ok({ msg: J(m) });
+    },
+    shiftCancel: (id) => {
+      const m = msgOf(id); if (!m || !m.card || String(m.card.from) !== String(me.id)) return no("not_found");
+      if (m.card.st !== "open") return no("taken");
+      m.card.st = "off"; touch(m); return ok({ msg: J(m) });
+    },
+    cardSend: (cid, card) => {
+      const c = chatOf(cid); if (!visible(c)) return no("not_found");
+      const others = c.members.filter((e) => e !== me.id);
+      const cc = card.t === "task" ? { ...card, n: 0, of: others.length, left: others.map((e) => byId(e).name) } : card.t === "poll" ? { ...card, votes: [] } : { ...card };
+      const m = put(c.id, me.id, "", 0, { kind: "card", card: cc });
+      m.body = cardSummary(cc);
+      if (cc.t === "task") others.slice(0, 2).forEach((e, i) => later(3500 + i * 2600, () => { m.card.n += 1; m.card.left = m.card.left.filter((x) => x !== byId(e).name); touch(m); }));
+      if (cc.t === "poll") others.slice(0, 3).forEach((e, i) => later(2500 + i * 1500, () => { m.card.votes = withVote(m.card.votes, i % cc.opts.length, { id: e, name: byId(e).name }); touch(m); }));
+      if (cc.t === "share" || cc.t === "brief") later(2200, () => react(m, others[0], "ok"));
+      return ok({ msg: J(m) });
+    },
+    taskRemind: (id) => { const m = msgOf(id); if (!m || !m.card) return no("not_found"); m.card.reminded = true; touch(m); return ok({ n: (m.card.left || []).length, msg: J(m) }); },
+    pollVote: (id, i) => { const m = msgOf(id); if (!m || !m.card || m.card.t !== "poll") return no("not_found"); m.card.votes = withVote(m.card.votes, i, me); touch(m); return ok({ msg: J(m) }); },
+    stopSet: (cid, dish, on, until, msgId) => {
+      const c = chatOf(cid); if (!visible(c)) return no("not_found");
+      if (!on) { const m = msgOf(msgId); if (!m || !m.card) return no("not_found"); Object.assign(m.card, { st: "off", offBy: me.name, offAt: new Date().toISOString() }); touch(m); return ok({ msg: J(m) }); }
+      const m = put(c.id, me.id, "", 0, { kind: "card", card: { t: "stop", st: "on", dish: { id: dish.id, name: dish.name, img: dish.img || "" } } });
+      m.body = cardSummary(m.card);
+      return ok({ msg: J(m) });
+    },
+    aiAsk: (cid, qid, question) => new Promise((res) => {
+      const c = chatOf(cid), qm = msgOf(qid);
+      if (!visible(c) || !qm) { res({ ok: false, error: "not_found" }); return; }
+      const t = String(question || "").toLowerCase().replace(/ё/g, "е");
+      const dish = DEMO_ITEMS.find((x) => x.kind === "dish" && t.includes(x.title.toLowerCase().split(" ")[0].slice(0, 5).replace(/ё/g, "е")));
+      const ck = DEMO_ITEMS.find((x) => x.kind === "cocktail" && t.includes(x.title.toLowerCase().split(" ").slice(-1)[0].slice(0, 5)));
+      let body, cards = [];
+      if (dish) { body = dish.title + ": аллергены " + dish.allerg + ". Если гость спрашивает про замену, уточни у шефа, что можно убрать без потери вкуса."; cards = [{ kind: "dish", id: dish.id, title: dish.title, sub: dish.sub }]; }
+      else if (ck || /(вин|коктейл|напит)/.test(t)) { const x = ck || DEMO_ITEMS.find((y) => y.id === "c-spritz"); body = "К этому хорошо подойдёт " + x.title.toLowerCase() + ": " + x.sub + ". Предложи гостю коротко: вкус, крепость и почему к его блюду."; cards = [{ kind: "cocktail", id: x.id, title: x.title, sub: x.sub }]; }
+      else if (/(стандарт|встрет|гост)/.test(t)) { const x = DEMO_ITEMS.find((y) => y.id === "r-meet"); body = "Встречаем в первые 30 секунд: улыбка, приветствие, бронь или свободный стол, проводить и подать меню. Подробно в справочнике."; cards = [{ kind: "ref", id: x.id, title: x.title, sub: x.sub }]; }
+      else body = "Хороший вопрос. Коротко: опирайся на стандарты зала и меню вашего ресторана, а если сомневаешься, спроси старшего смены. Могу показать нужный урок или карточку блюда, если назовёшь блюдо.";
+      setTimeout(() => { const m = put(c.id, "ai", body, 0, { kind: "ai", reply: quote(qm), card: { t: "ai", cards } }); onChange(); res({ ok: true, msg: J(m) }); }, 1600);
+    }),
     // демо: вызов мне и сообщение от коллеги
     demoCall: () => { put("team", "p5", "", 0, { kind: "call", call: { who: "lead", why: "help", going: [] } }); onChange(); },
     demoMessage: () => { put("dm-p3", "p3", "Ещё вопрос: можно я сегодня уйду в 23:00? Все столы закрою.", 0); onChange(); },

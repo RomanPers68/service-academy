@@ -14,6 +14,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { rpc, saToken } from "../api/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
+import { mergeCells, mergedDays } from "../lib/schedule-merge";   // v93: смены из чата и «Сохранить»
 import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS, labelStyle } from "./tokens";
 import { Sign } from "./signs";   // v75 (Доп. 388): треугольник-предупреждение значком вместо ⚠
@@ -754,7 +755,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       const m = (r.months || []).find(x => x.venue_key === venueKey);
       const pl = m?.payload || {};
       setPlan(pl.plan || {}); setLocks(pl.locks || {}); setDays(pl.days || {}); setFacts(pl.facts || {});
-      savedRef.current = { plan: pl.plan || {}, days: pl.days || {}, facts: pl.facts || {} };
+      savedRef.current = { plan: pl.plan || {}, locks: pl.locks || {}, days: pl.days || {}, facts: pl.facts || {} };
       setSwapSel(null);   // выбор обмена не переживает смену месяца
       undoRef.current = null; setUndoTick(t => t + 1);   // и отмена тоже
       setDirty(false); setState("ok"); setOfflineAt(null);
@@ -857,7 +858,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           const c = JSON.parse(raw);
           setCfg(mergeCfg(c.cfg));
           setPlan(c.plan || {}); setLocks(c.locks || {}); setDays(c.days || {}); setFacts(c.facts || {});
-          savedRef.current = { plan: c.plan || {}, days: c.days || {}, facts: c.facts || {} };
+          savedRef.current = { plan: c.plan || {}, locks: c.locks || {}, days: c.days || {}, facts: c.facts || {} };
           setOfflineAt(c.ts || Date.now()); setDirty(false); setState("ok");
           return;
         }
@@ -872,11 +873,22 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     if (!isAdmin) return;
     setMsg("Сохраняю…");
     try {
+      // v93 (Доп. 406): пока правил, в чате смены могли передать или поменять смены — сводим с сервером по клеткам
+      // (lib/schedule-merge.js): своё — своё, нетронутое — как на сервере
+      let P = plan, L = locks, took = [];
+      try {
+        const cur = await rpc("schedule_load", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_month: mkey });
+        const mm = cur && cur.ok === true ? (cur.months || []).find(x => x.venue_key === venueKey) : null;
+        if (mm && mm.payload && savedRef.current) {
+          const a = mergeCells(savedRef.current.plan || {}, plan, mm.payload.plan || {}), b = mergeCells(savedRef.current.locks || {}, locks, mm.payload.locks || {});
+          if (a.fromServer.length || b.fromServer.length) { P = a.cells; L = b.cells; took = mergedDays(a.fromServer); setPlan(P); setLocks(L); }
+        }
+      } catch (e0) {}
       const r = await rpc("schedule_save_month", {
         p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue_key: venueKey,
-        p_month: mkey, p_payload: JSON.stringify({ plan, locks, days, facts }),
+        p_month: mkey, p_payload: JSON.stringify({ plan: P, locks: L, days, facts }),
       });
-      if (r && r.ok === true) { savedRef.current = { plan, days, facts }; setDirty(false); setMsg("Сохранено"); vibrate("success"); }
+      if (r && r.ok === true) { savedRef.current = { plan: P, locks: L, days, facts }; setDirty(false); setMsg(took.length ? "Сохранено вместе с обменами из чата (" + took.map(d => d + "-е").join(", ") + ")" : "Сохранено"); vibrate("success"); }
       else setMsg(r?.error === "forbidden" ? "Нет прав на изменение графика"
         : (r?.message || r?.error || "Сохранить не удалось"));
     } catch (e) { setMsg("Нет связи с сервером"); }

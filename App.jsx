@@ -1483,7 +1483,9 @@ function ServiceAcademy() {
   const [chatInfo, setChatInfo] = useState(null);   // { unread, calls }
   const [callGone, setCallGone] = useState({});      // вызовы, закрытые «Позже» или «Иду»
   const [callBusy, setCallBusy] = useState(false);
-  const chatApiObj = useMemo(() => chatApi(), []);
+  // v93 (Доп. 406): Наставник в переписке — ответ ИИ (lib/chat-ai.js, грузится, только когда его позвали)
+  const chatAiRef = useRef(null);
+  const chatApiObj = useMemo(() => chatApi(undefined, { ai: (q) => (chatAiRef.current ? chatAiRef.current(q) : Promise.resolve({ text: "", error: "no_ai" })) }), []);
   const chatAskRef = useRef({ at: 0, off: false, seen: new Set() });
   const chatOpenRef = useRef(false); chatOpenRef.current = chatOpen != null;   // открытый чат сам спрашивает список (chat_list)
   const loadChatInfo = useCallback((force) => {
@@ -1515,8 +1517,16 @@ function ServiceAcademy() {
     setCallBusy(true); vibrate("medium");
     chatApiObj.go(id).then(() => { setCallBusy(false); setCallGone((g) => ({ ...g, [id]: 1 })); loadChatInfo(true); });
   };
-  const openChat = (id) => { vibrate("light"); setChatOpen(id != null ? { id } : true); };
+  const openChat = (id) => { vibrate("light"); setChatOpen(id != null ? { id } : true); if (isLead) loadTeamBrief(false); };
   const chatStt = useMemo(() => chatSttOf(), []);
+  // v93: лёгкий контекст для умного чата (уроки, меню, брифинг; открыть место в приложении) — сам список и поиск в части
+  // чата (lib/chat-app.js); свежие прогресс, свои курсы и брифинг берутся через ref
+  const chatOpenItemRef = useRef(null);
+  const chatCtxRef = useRef({});
+  chatCtxRef.current = { completed, quizDone, custom: customModules, brief: teamBrief };
+  const chatAppCtx = useMemo(() => ({ restaurant: (profile && profile.restaurant) || "", leader: isLead,
+    custom: () => chatCtxRef.current.custom || [], progress: () => ({ completed: chatCtxRef.current.completed || {}, quizDone: chatCtxRef.current.quizDone || {} }),
+    brief: () => chatCtxRef.current.brief || null, open: (item) => (chatOpenItemRef.current ? chatOpenItemRef.current(item) : null) }), [profile, isLead]);
   // v91 (Доп. 404): круг чата рядом с нижней панелью (лёжа и на компьютере — в меню слева, под Наставником);
   // есть, когда у сотрудника заведение и на сервере этап 38
   const chatDockProps = profile && profile.restaurant && chatOn ? { n: chatUnread, label: chatBadge(chatUnread), onOpen: () => openChat(null) } : null;
@@ -2640,6 +2650,25 @@ function ServiceAcademy() {
     if (k === "staff" && !profile?.is_admin) return;
     jump(GO[k]);
   };
+  // v93 (Доп. 406): умный чат — карточка открывает своё место в приложении (чат закрывается, вернуться — кругом у меню);
+  // Наставник в переписке отвечает тем же ИИ, что и экран «Наставник»
+  chatOpenItemRef.current = (item) => {
+    if (!item) return;
+    setChatOpen(null);
+    const k = item.kind, id = item.id;
+    if (k === "lesson" || k === "quiz") { assistantNavigate({ lesson: id }, true); return; }
+    if (k === "dish") { assistantNavigate({ dish: id }, true); return; }
+    if (k === "cocktail") { assistantNavigate({ cocktail: id }, true); return; }
+    if (k === "ref") { setRefStart(id); navigate("reference"); return; }
+    if (k === "brief") { if (teamBrief) openTeamBrief(); else { navigate("shift"); briefAskRef.current.open = true; loadTeamBrief(true); } return; }   // как «Открыть» из бота
+    if (k === "module") {
+      loadAllModules().catch(() => {}).then(() => {
+        const m = [...Object.values(MODULES).flat(), ...(customModules || [])].find((x) => x && x.id === id);
+        if (m) { navigate("roleSelect"); openModule(m); } else navigate("roleSelect");
+      });
+    }
+  };
+  chatAiRef.current = (q) => import("./lib/chat-ai").then((m) => m.chatAi(q, profile, assistantLearner()));
   const dueMistakes = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
   useEffect(() => {
     if (welcome || !profile) return;
@@ -2866,7 +2895,7 @@ function ServiceAcademy() {
             }} /></Suspense>
         ) : null}
         {/* v90 (Доп. 403): чат смены — порталом в body, поверх всего; вызов мне — баннер, пока чат закрыт */}
-        {chatOpen != null && chatMe ? <Suspense fallback={null}><ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt} openId={typeof chatOpen === "object" && chatOpen ? chatOpen.id : null}
+        {chatOpen != null && chatMe ? <Suspense fallback={null}><ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt} appCtx={chatAppCtx} openId={typeof chatOpen === "object" && chatOpen ? chatOpen.id : null}
           onBack={() => { setChatOpen(null); loadChatInfo(true); }} onUnread={(r) => setChatInfo({ unread: Number(r.unread) || 0, calls: Array.isArray(r.calls) ? r.calls : [] })} /></Suspense> : null}
         {myCall && chatMe ? <Suspense fallback={null}><CallBanner a11y={a11y} me={chatMe} call={myCall} busy={callBusy} onGo={callGo}
           onClose={() => setCallGone((g) => ({ ...g, [myCall.id]: 1 }))} onOpen={() => { setCallGone((g) => ({ ...g, [myCall.id]: 1 })); openChat(myCall.chat); }} /></Suspense> : null}

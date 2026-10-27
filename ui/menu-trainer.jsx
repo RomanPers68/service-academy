@@ -9,6 +9,7 @@ import React from "react";
 import { hintsFor, hintKey } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
 import { rememberSharedMenu } from "../lib/reference-context";
+import { mergeStops } from "../lib/menu-dishes";   // v93: стоп из чата смены
 import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
 import { buildMenuQuiz } from "../lib/menu-quiz";
 import { MenuDeck, AllergenSprint } from "./menu-deck";
@@ -150,6 +151,12 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
     return [...own, ...team, ...samples];
   }, [restaurant, custom, shared, hideSamples, hiddenIds, deleted]);
   const modeStartedRef = React.useRef(null);
+  // v93 (Доп. 406): стоп из чата смены (на сервере новее своей копии) — в свои блюда, иначе публикация его сотрёт
+  React.useEffect(() => {
+    if (!restaurant || !shared.length) return;
+    const own = custom[restaurant] || [], nx = mergeStops(own, shared);
+    if (nx !== own) { const next = { ...custom, [restaurant]: nx }; setCustom(next); saveCustom(next); }
+  }, [restaurant, shared]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => { // Доп. 210: режим дня с главной
     if (!startMode || modeStartedRef.current === startMode) return; modeStartedRef.current = startMode;
     if (startMode === "allergens") setMode("sprint"); else if (startMode === "reverse-menu" || startMode === "know-menu") { setFocusNew(false); setMode("cards"); }
@@ -258,7 +265,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v92</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v93</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -901,7 +908,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   // Доп. 166: стоп-лист. Один тап — блюдо помечено «сегодня нет» и это сразу уходит команде.
   const toggleStop = (d) => {
     const stopped = !d.stop;
-    const upd = { ...d, stop: stopped ? { since: Date.now() } : null };
+    const upd = { ...d, stop: stopped ? { since: Date.now() } : null, stopAt: Date.now() };   // v93: stopAt — кто новее, свой или из чата
     const own = custom[restaurant] || []; // все свои, включая архив — иначе setCustom стёр бы архив
     const nextOwn = own.some(x => x.id === d.id) ? own.map(x => x.id === d.id ? upd : x) : [upd, ...own];
     setCustom({ ...custom, [restaurant]: nextOwn });

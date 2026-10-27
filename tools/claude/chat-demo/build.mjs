@@ -21,11 +21,12 @@ const globals = { name: "globals", setup(b) {
   b.onResolve({ filter: /^react(-dom)?(\/client)?$/ }, (a) => ({ path: a.path, namespace: "g" }));
   b.onLoad({ filter: /.*/, namespace: "g" }, (a) => ({ contents: "module.exports = window." + (a.path.startsWith("react-dom") ? "ReactDOM" : "React") + ";", loader: "js" }));
   b.onResolve({ filter: /^\.\/mic$/ }, () => ({ path: join(HERE, "mic-stub.jsx") }));
+  b.onResolve({ filter: /\/chat-app$/ }, () => ({ path: join(HERE, "chat-app-stub.js") }));   // v93: у демо свой «app» (entry.jsx)
 } };
 const r = await esbuild.build({ entryPoints: [join(HERE, "entry.jsx")], bundle: true, write: false, format: "iife", minify: true, target: "es2018",
   jsx: "transform", jsxFactory: "React.createElement", jsxFragment: "React.Fragment", loader: { ".js": "jsx" },
   define: { "process.env.NODE_ENV": '"production"', __HOME__: JSON.stringify(home) },
-  nodePaths: [G], plugins: local ? [{ name: "mic", setup(b) { b.onResolve({ filter: /^\.\/mic$/ }, () => ({ path: join(HERE, "mic-stub.jsx") })); } }] : [globals], logLevel: "warning" });
+  nodePaths: [G], plugins: local ? [{ name: "mic", setup(b) { b.onResolve({ filter: /^\.\/mic$/ }, () => ({ path: join(HERE, "mic-stub.jsx") })); b.onResolve({ filter: /\/chat-app$/ }, () => ({ path: join(HERE, "chat-app-stub.js") })); } }] : [globals], logLevel: "warning" });
 const js = r.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
 let shell = readFileSync(join(HERE, "shell.html"), "utf8");
 if (local) shell = shell.replace(/<script src="https:\/\/cdnjs[^>]*><\/script>\n/g, "");

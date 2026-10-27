@@ -62,7 +62,7 @@ describe("v91: функции с токеном — VOLATILE (PostgREST зовё
     const t = rd("tools/claude/sql/test38.sh");
     expect(t).toContain("update sessions set seen_at = now() where token = p_token;");
     expect(t).toContain('[ "$vol" != "v" ] && mode="read only"');
-    expect(t).toMatch(/chk "все (16|20) функций чата — VOLATILE: PostgREST не запирает их «только для чтения»"/);   // v92: 20 (свои чаты)
+    expect(t).toMatch(/chk "все (?:(?:16|20) функций|31 функция) чата — VOLATILE: PostgREST не запирает их «только для чтения»"/);   // v92: 20 (свои чаты), v93: 31 (умный чат)
   });
 });
 

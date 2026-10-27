@@ -19,7 +19,7 @@ describe("v92: свои чаты на сервере (этап 38)", () => {
   const sql = rd("supabase/supabase-stage38-chat.sql");
   it("таблица участников закрыта; вид group; название и кто завёл", () => {
     expect(sql).toContain("create table if not exists sa_chat_members (\n  chat_id bigint not null references sa_chats(id) on delete cascade,");
-    expect(sql).toContain("revoke all on table sa_chat_members from public, anon, authenticated;");
+    expect(sql).toContain("revoke all on table sa_chat_members, sa_chat_votes from public, anon, authenticated;");   // v93: и голоса опросов
     expect(sql).toContain("alter table sa_chat_members enable row level security;");
     expect(sql).toContain("check (kind in ('team', 'leads', 'dm', 'net', 'group'))");
     expect(sql).toContain("alter table sa_chats add column if not exists title text;");
@@ -58,7 +58,7 @@ describe("v92: свои чаты на сервере (этап 38)", () => {
     expect(fnBody(sql, "chat_clear")).toContain("and ch.kind in ('team', 'leads', 'group'))");
     expect(sql).toContain("when 'group' then coalesce(ch.title, 'Чат') else 'Руководители сети' end || '»:'");
     for (const f of ["chat_group_create", "chat_group_edit", "chat_group_leave", "chat_group_delete"]) expect([f, fnBody(sql, f).includes("language plpgsql volatile security definer")]).toEqual([f, true]);
-    expect(sql).toContain("' функций из 20 · таблицы: '");
+    expect(sql).toContain("' функций из 31 · таблицы: '");   // v93: умный чат
   });
 });
 
@@ -131,7 +131,7 @@ describe("v92: документы", () => {
   it("README: e2e-v92, test38 — 124 проверки; supabase/README — v92; CHANGES: Дополнение 405; «сборка v92»", () => {
     const readme = rd("tools/claude/README.md");
     expect(readme).toContain("`e2e-v92.mjs` — v92 (Доп. 405)");
-    expect(readme).toContain("124 проверки");
+    expect(readme).toMatch(/\((124 проверки|1[3-9]\d проверк[иа])\)/);   // v93: 171 проверка (умный чат)
     expect(rd("supabase/README.md")).toContain("v92: перезапусти `supabase-stage38-chat.sql`");
     expect(rd("CHANGES.md")).toContain("# Дополнение 405 — Свои чаты с выбором участников (v92)");
     expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(9[2-9]|\d{3,})<\/span>/);

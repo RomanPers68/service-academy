@@ -277,7 +277,7 @@ describe("v46: в графике (исходник)", () => {
   it("плашка «Сохранить» у нижнего края — только при изменениях; сетка — только недобор; светлая шапка и «Сегодня» читаются", () => {
     expect(src).toMatch(/\{dirty \? \(\(\) => \{\s+const n = planChanges\(savedRef\.current, \{ plan, days, facts \}, DAYS\);/);
     expect(src).toContain('data-savebar="" className="sa-fadein" style={{ position:"sticky", bottom:"calc(12px + env(safe-area-inset-bottom, 0px))"');
-    expect(src).toContain("savedRef.current = { plan, days, facts }; setDirty(false);");
+    expect(src).toMatch(/savedRef\.current = \{ plan(: P, locks: L)?, days, facts \}; setDirty\(false\);/);   // v93: со сменами из чата (сведено с сервером)
     expect(src).toContain("data-short={n - have}");
     expect(src).toContain('{have > n ? "+" + (have - n) : "✓"}');
     expect(src).not.toContain("{n ? `${have}/${n}` : (have || \"·\")}");

@@ -43,6 +43,14 @@ export function colWidthOf(lay, screen, rail, safe) {
   return COL_W;
 }
 
+// v98 (Доп. 411): вырез снизу (полоска «домой») от клавиатуры не меняется. Telegram на iPhone в полноэкранном режиме, пока
+// клавиатура на экране, сообщает safeAreaInset.bottom = 0, и приложение через 0,12 с убирало вырез у строки ввода: посреди
+// хода клавиатуры строка проседала на 20 px, а в конце подпрыгивала обратно (запись владельца, v96). Для одного положения
+// телефона (стоя или лёжа) и одного режима Telegram берём наибольший вырез снизу за всё время работы приложения.
+const SAFE_B = {};
+export const keepSafeBottom = (key, b, mem = SAFE_B) => { const v = Math.max(Number(mem[key]) || 0, Number(b) || 0); mem[key] = v; return v; };
+export const safeBottomKey = (w, h, full) => (Number(w) > Number(h) ? "land" : "port") + (full ? ":full" : "");
+
 // Вырезы экрана (чёлка / Dynamic Island в горизонтали). v51 (Доп. 364): Telegram на iPhone лёжа растягивает
 // окно под «остров», а env() без viewport-fit=cover там 0 — меню слева уезжало под «остров» (запись владельца).
 // Telegram сообщает вырезы сам (WebApp.safeAreaInset, Bot API 8.0) — берём больший из двух замеров. Старый
@@ -67,6 +75,10 @@ export function safeInsets() {
   } catch (er) {}
   const r = { t: Math.max(e.t, g.t), r: Math.max(e.r, g.r), b: Math.max(e.b, g.b), l: Math.max(e.l, g.l) };
   if (!r.l && !r.r && notchedFullWidth()) { r.l = 50; r.r = 50; }
+  try {
+    const tg = window.Telegram && window.Telegram.WebApp;
+    r.b = keepSafeBottom(safeBottomKey(window.innerWidth, window.innerHeight, !!(tg && tg.isFullscreen)), r.b);
+  } catch (er) {}
   return r;
 }
 

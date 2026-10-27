@@ -637,7 +637,7 @@ function GroupNew({ me, api, onBack, onDone }) {
     <div className="ch-sec" data-chat-gcount={sel.size}>Кого добавить{sel.size ? " · " + sel.size : ""}</div>
   </>);
   const foot = (
-    <div className="ch-foot" data-kbm="">
+    <div className="ch-foot" data-kbm="" data-kbm-at="">
       {err ? <div className="ch-err" role="alert" data-chat-gerr="">{err}</div> : null}
       <button type="button" className="ch-main" data-chat-gcreate="" disabled={!can} onClick={create}>
         {busy ? "Создаю…" : !t ? "Дай чату название" : !sel.size ? "Отметь коллег" : "Создать чат · " + peopleWord(sel.size + 1)}</button>
@@ -658,7 +658,7 @@ function GroupAdd({ me, api, chat, members, onBack, onDone }) {
       .catch(() => { setBusy(false); setErr(groupErr({ error: "net" })); });
   };
   const foot = (
-    <div className="ch-foot" data-kbm="">
+    <div className="ch-foot" data-kbm="" data-kbm-at="">
       {err ? <div className="ch-err" role="alert" data-chat-gerr="">{err}</div> : null}
       <button type="button" className="ch-main" data-chat-gaddgo="" disabled={!sel.size || busy} onClick={add}>{busy ? "Добавляю…" : sel.size ? "Добавить · " + sel.size : "Отметь коллег"}</button>
     </div>);
@@ -1229,7 +1229,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
       {away ? <button type="button" className="ch-down" data-kbm="" aria-label="К последним сообщениям" onClick={() => { stick.current = true; setAway(false); setFresh(0); toBottom(true); }}>
         {IC.down}{fresh ? <span className="ch-badge">{badge(fresh)}</span> : null}</button> : null}
     </div>
-    <div className="ch-bar" data-kbm="">
+    <div className="ch-bar" data-kbm="" data-kbm-at="">
       {err ? <div className="ch-err" role="alert">{err}</div> : null}
       {reply ? (
         <div className="ch-ctx" data-chat-replybar={reply.id}>

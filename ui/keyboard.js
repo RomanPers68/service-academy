@@ -28,10 +28,16 @@
 //     под шапку, не налезая на неё. Прокрутка ленты при этом держит зазор до низа (сколько не докручено): низ ленты
 //     на экране стоит, значит, и сообщения у низа стоят. Окно выросло раньше, чем мы узнали, — браузер уже прижал
 //     прокрутку к новому низу; берём ту, что была до того (запоминаем после каждого замера и при прокрутке);
-//   · ход — по кривой самой клавиатуры, снятой с записи (KB_OPEN — появляется, KB_CLOSE — уходит), с момента нажатия:
-//     фокус в поле — клавиатура уже поехала, высоту клавиатуры помним с прошлого раза (localStorage sa_kb_k), не ждём
-//     сообщения Telegram; фокус ушёл — едем вниз, как только окно позволит. Опоздали (Telegram сообщил позже, окно
-//     выросло на кадр позже) — догоняем клавиатуру за KB_CATCH мс, а не отстаём весь путь.
+//   · ход — по кривой самой клавиатуры, снятой с записи (KB_OPEN — появляется, KB_CLOSE — уходит). Опоздали —
+//     догоняем клавиатуру за KB_CATCH мс, а не отстаём весь путь.
+// v98 (Доп. 411): запись владельца с v96. После нажатия на поле Telegram на iPhone ~0,1 с ничего не рисует (готовит
+// клавиатуру), а v96 считал ход с самого нажатия: в первом же кадре строка оказывалась почти наверху, обгоняла
+// клавиатуру и ждала её. Теперь ход — с сообщения Telegram о высоте (оно приходит, когда клавиатура уже поехала),
+// а время клавиатуры — на KB_LAG_OPEN мс раньше (kbOpenAt); уходит — с того мига, как ушёл фокус (kbCloseAt). Высоту
+// «с прошлого раза» больше не помним. Подскок посреди пути и в конце давал вырез снизу: Telegram, пока клавиатура на
+// экране, сообщает его нулевым, и приложение через 0,12 с убирало его у строки ввода (держит ui/viewport.js); из-за
+// него же при закрытии строка убегала вниз раньше клавиатуры. На всякий случай: раскладка цели не совпала с концом
+// хода — строка доезжает, а не прыгает; окно сменило высоту — строка стоит, где была, и плавно едет к цели.
 import React from "react";
 
 const num = (v) => Number(v) || 0;
@@ -87,15 +93,30 @@ export const kbCurve = (pts, ms) => {
   }
   return pts[pts.length - 1][1];
 };
-// опоздали за клавиатурой — догоняем её за столько мс
-export const KB_CATCH = 50;
+// опоздали за клавиатурой — догоняем её за столько мс. v98: появляется — за кадр с небольшим (клавиатура и сама в
+// первом кадре проходит треть пути, а отстать — значит спрятать строку под неё); уходит — за 50 мс, как раньше (отстать
+// — лишь щель над клавиатурой, а догон за кадр был бы прыжком)
+export const KB_CATCH = 20, KB_CATCH_CLOSE = 50;
+// v98: когда клавиатура поехала. Появляется: после нажатия Telegram ~0,1 с готовит её, а сообщение о высоте приходит,
+// когда она уже поехала, — на KB_LAG_OPEN мс раньше сообщения, но не раньше фокуса. Уходит: с того мига, как ушёл фокус
+// (на записи курсор пропадает в том же кадре, где клавиатура трогается); фокус не уходил (её убрала система) — на
+// KB_LAG_CLOSE мс раньше, чем окно выросло
+export const KB_LAG_OPEN = 20, KB_LAG_CLOSE = 30;
+export const kbOpenAt = (tEv, tFocus) => Math.max(num(tFocus), num(tEv) - KB_LAG_OPEN);
+export const kbCloseAt = (tEv, tBlur) => (num(tEv) - num(tBlur) < 250 ? num(tBlur) : num(tEv) - KB_LAG_CLOSE);
+// v98: доезд, когда клавиатура уже на месте (раскладка цели не совпала с концом хода, окно сменило высоту)
+export const KB_FIX = [[0, 0], [16, 0.3], [33, 0.55], [50, 0.72], [67, 0.84], [83, 0.92], [100, 0.97], [120, 1]];
+// на сколько можно держать строку ниже раскладки, пока она доезжает (дальше — сразу на место: лента отошла бы от шапки);
+// окно сжалось посреди хода вверх — доезжаем за клавиатурой, тут можно и больше
+export const KB_HOLD_MAX = 60, KB_HOLD_RUN = 160;
 const smooth = (x) => { const u = Math.min(1, Math.max(0, x)); return u * u * (3 - 2 * u); };
 /**
  * Путь низа (y, px от верха окна) от момента s до конца: клавиатура поехала в k0 от y0 к y1 по кривой pts, мы — в s с
- * места ys. Не опоздали — ровно по клавиатуре; опоздали или цель сменилась — сходимся с ней за KB_CATCH мс.
+ * места ys. Не опоздали — ровно по клавиатуре; опоздали или цель сменилась — сходимся с ней за catchMs мс (KB_CATCH;
+ * v98: когда клавиатура уходит — KB_CATCH_CLOSE).
  * → [{ t, y }]: t — мс от s, шаг step; последний y — ровно y1.
  */
-export function kbPath(pts, { y0, y1, k0, s, ys, step = 16 }) {
+export function kbPath(pts, { y0, y1, k0, s, ys, step = 16, catchMs = KB_CATCH }) {
   const T = pts && pts.length ? pts[pts.length - 1][0] : 0;
   const ref = (t) => num(y0) + (num(y1) - num(y0)) * kbCurve(pts, t - num(k0));
   const end = Math.max(num(k0) + T, num(s) + 90);   // клавиатура уже доехала — короткий доезд
@@ -103,7 +124,7 @@ export function kbPath(pts, { y0, y1, k0, s, ys, step = 16 }) {
   const out = [];
   for (let t = num(s); ; t += step) {
     const tt = Math.min(t, end), u = tt - num(s);
-    out.push({ t: Math.round(u * 10) / 10, y: tt >= end ? num(y1) : ref(tt) + d * (1 - smooth(u / KB_CATCH)) });
+    out.push({ t: Math.round(u * 10) / 10, y: tt >= end ? num(y1) : ref(tt) + d * (1 - smooth(u / Math.max(1, num(catchMs)))) });
     if (tt >= end) break;
   }
   return out;
@@ -126,19 +147,6 @@ export const kbMove = (yS, goal, oFrom) => {
   return "down";
 };
 
-// v96: высота клавиатуры с прошлого раза (ширина и высота окна те же) — чтобы ехать с нажатия, не ожидая Telegram
-const KB_KEY = "sa_kb_k";
-let KB_K;
-export const kbRemembered = () => {
-  if (KB_K === undefined) { try { const o = JSON.parse(localStorage.getItem(KB_KEY) || "null"); KB_K = o && o.k > 0 && o.w > 0 && o.h > 0 ? o : null; } catch (e) { KB_K = null; } }
-  return KB_K;
-};
-export const kbRemember = (w, h, k) => {
-  const o = kbRemembered();
-  if (o && Math.abs(o.w - w) <= 1 && Math.abs(o.h - h) <= 2 && Math.abs(o.k - k) <= 1) return;
-  KB_K = { w: Math.round(w), h: Math.round(h), k: Math.round(k) };
-  try { localStorage.setItem(KB_KEY, JSON.stringify(KB_K)); } catch (e) { /* */ }
-};
 // вырез снизу в px (как его считает разметка: var(--sa-sb, env(…))) — замер невидимым элементом
 const PROBES = {};
 const probePx = (expr) => {
@@ -162,6 +170,7 @@ const tlNow = () => { try { const t = document.timeline && document.timeline.cur
  * calc(8px + var(--sa-sb) * var(--kbs, 1)). Класс cls (у чата — kb) и атрибут data-kbup хук тоже ставит сам.
  * v96: что едет вместе с клавиатурой — элементы с data-kbm внутри слоя (лента, строка ввода, листы, подсказка);
  * лента с прокруткой — data-kbm-scroll. safe — как разметка считает вырез снизу (у Наставника — env()).
+ * v98: data-kbm-at — по чему сверяем, где строка на экране, когда раскладка меняется (строка ввода, низ «Нового чата»).
  */
 export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-area-inset-bottom, 0px))" } = {}) {
   const [st, setSt] = React.useState({ lift: 0, up: false });
@@ -171,7 +180,7 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
     const tg = window.Telegram && window.Telegram.WebApp;
     let timer = 0, settle = 0, last = { lift: 0, up: false }, alive = true, ro = null, late = [];
     // v96: раскладка (--kb, --kbs), где низ в покое, путь в работе
-    let L = 0, S = 1, yIdle = null, run = null, lastR = null, kOpen = -1e9, kClose = -1e9, pred = null, predT = 0;
+    let L = 0, S = 1, yIdle = null, run = null, lastR = null, kOpen = -1e9, kClose = -1e9;
     // v96: рамка слоя по раскладке. Слой ещё въезжает (у .sa-screen анимация fadeIn: translateY(12px) → 0) — сдвиг
     // анимации не в счёт: иначе низ «в покое» запоминался на 12 px ниже, и первый же ход вверх считался рывком (сразу на место)
     const rect = () => {
@@ -228,19 +237,29 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
       anims.forEach((a) => { try { a.startTime = t0; } catch (e) { /* */ } });
       return anims;
     };
+    // v98: где на экране строка ввода (data-kbm-at: строка ввода чата и Наставника, низ «Нового чата») — верх её рамки
+    const anchorTop = () => {
+      const a = all("[data-kbm-at]").find((x) => { try { return x.getClientRects().length > 0; } catch (e) { return false; } });
+      try { return a ? a.getBoundingClientRect().top : null; } catch (e) { return null; }
+    };
     // доехали: вверх — раскладка цели и трансформ снят (в один кадр), вниз — трансформ уже 0
     const finish = (rn) => {
       if (!rn || run !== rn) return;
       clearTimeout(rn.timer); run = null;
-      const was = rn.dir === "up" ? before(false) : null;
-      if (rn.dir === "up") setLayout(rn.Lg, rn.St);
+      const up = rn.dir === "up", a0 = up ? anchorTop() : null;
+      const was = up ? before(false) : null;
+      if (up) setLayout(rn.Lg, rn.St);
       rn.anims.forEach((a) => { try { a.cancel(); } catch (e) { /* */ } });
       if (was) keepScroll(was);
       yIdle = rn.goal;
+      // v98: раскладка цели не совпала с концом хода (что-то сдвинуло строку в пути) — доезжаем, а не прыгаем
+      const a1 = up && a0 != null ? anchorTop() : null;
+      if (a1 != null && Math.abs(a0 - a1) > 1 && Math.abs(a0 - a1) <= KB_HOLD_MAX && animOk() && !calm())
+        start("fix", rn.goal, { y0: rn.goal + (a0 - a1), y1: rn.goal, k0: tlNow(), ys: rn.goal + (a0 - a1) }, KB_FIX, rn.Lg, rn.St, rn.goal);
     };
     const start = (dir, base, ref0, pts, Lg, St, goal) => {
       const t0 = tlNow();
-      const path = kbPath(pts, { ...ref0, s: t0 });
+      const path = kbPath(pts, { ...ref0, s: t0, catchMs: dir === "down" ? KB_CATCH_CLOSE : KB_CATCH });
       const anims = play(path, base, t0);
       if (!anims.length) { setLayout(Lg, St); yIdle = goal; return; }   // ехать некому — сразу на место
       const rn = { dir, base, path, t0, goal, Lg, St, y0: ref0.y0, k0: ref0.k0, anims, timer: 0 };
@@ -250,7 +269,7 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
     };
     // новая цель или окно сменило высоту: куда и как ехать
     const plan = (r, target, upT) => {
-      const sp = probePx(safe), tn = tlNow();
+      const sp = probePx(safe), tn = tlNow(), te = now();
       const Lg = Math.max(0, Math.round(r.bottom - target)), St = upT ? 0 : 1;
       const goal = (r.bottom - Lg) - sp * St;
       const resized = !!lastR && Math.abs(r.bottom - lastR.bottom) > 0.5;
@@ -261,14 +280,28 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
       const snap = () => { stop(); setLayout(Lg, St); keepScroll(was); yIdle = goal; };
       if (!animOk() || calm()) { snap(); return; }
       if (run && !resized && Math.abs(run.goal - goal) < 0.5 && run.Lg === Lg && run.St === St) return;   // уже едем туда
-      if (run && resized) { snap(); return; }   // окно сменило высоту посреди пути (редко) — сразу на место
+      if (resized) {
+        // v98: окно сменило высоту — раскладка цели сразу, а на экране всё стоит, где было, и едет к цели: вниз — за
+        // уходящей клавиатурой, вверх (Telegram сообщил высоту неточно, окно сжалось по настоящей) — доездом. Держать
+        // ниже раскладки можно немного (KB_HOLD_MAX): дальше лента отошла бы от шапки — тогда сразу на место
+        const prev = run, rising = !!prev && prev.dir === "up";
+        stop(); setLayout(Lg, St); keepScroll(was);
+        const nb = yLay(r, sp), hold = yS - nb;
+        if (Math.abs(hold) < 0.5 || hold > (rising ? KB_HOLD_RUN : KB_HOLD_MAX)) { yIdle = goal; return; }
+        if (hold < 0) {
+          const same = prev && prev.dir === "down";
+          start("down", nb, { y0: same ? prev.y0 : yS, y1: goal, k0: same ? prev.k0 : kbCloseAt(te, kClose), ys: yS }, KB_CLOSE, Lg, St, goal);
+        } else if (rising) start("fix", nb, { y0: prev.y0, y1: goal, k0: prev.k0, ys: yS }, KB_OPEN, Lg, St, goal);   // дальше за клавиатурой
+        else start("fix", nb, { y0: yS, y1: goal, k0: tn, ys: yS }, KB_FIX, Lg, St, goal);
+        return;
+      }
       const base = run ? run.base : yLay(r, sp);
       const how = kbMove(yS, goal, yS - base);
       if (how === "settle") { snap(); return; }
       if (how === "up") {
         // вверх: раскладку не трогаем, едем трансформом от того же места; в конце — раскладка цели
         const same = run && run.dir === "up";
-        const k0 = same ? run.k0 : (tn - kOpen < 250 ? kOpen : tn), y0 = same ? run.y0 : yS;
+        const k0 = same ? run.k0 : kbOpenAt(te, kOpen), y0 = same ? run.y0 : yS;
         stop();
         keepScroll(was);   // окно сменило высоту — тот же зазор до низа
         start("up", base, { y0, y1: goal, k0, ys: yS }, KB_OPEN, Lg, St, goal);
@@ -276,7 +309,7 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
       }
       // вниз: сразу раскладка цели, трансформом держим, где было (лента уходит под шапку), и едем вниз
       const same = run && run.dir === "down";
-      const k0 = same ? run.k0 : (tn - kClose < 250 ? kClose : tn), y0 = same ? run.y0 : yS;
+      const k0 = same ? run.k0 : kbCloseAt(te, kClose), y0 = same ? run.y0 : yS;
       stop();
       setLayout(Lg, St);
       keepScroll(was);
@@ -291,15 +324,7 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
       else if (tn - KB_BASE.low > 600) { KB_BASE.h = r.height; KB_BASE.low = 0; }                                            // так и осталось: это новая высота окна
       let tgH = 0; try { tgH = tg ? num(tg.viewportHeight) : 0; } catch (e) { tgH = 0; }
       const p = { bottom: r.bottom, layerH: r.height, baseH: KB_BASE.h, vvTop: vv ? vv.offsetTop : 0, vvH: vv ? vv.height : window.innerHeight, tgH, ios: tgIos(), typing: ty };
-      let target = kbBottom(p);
-      // v96: Telegram сообщил высоту клавиатуры, окно ещё прежнее — запомним на следующий раз
-      const told = p.ios && ty && tgH > 120 && r.bottom - tgH > 120;
-      if (told && Math.abs(r.height - KB_BASE.h) <= 2) kbRemember(r.width, KB_BASE.h, r.bottom - tgH);
-      // клавиатура поехала по фокусу, Telegram ещё молчит — едем по запомненной высоте
-      if (pred) {
-        if (!ty || told || tn > pred.until || Math.abs(r.width - pred.w) > 1) pred = null;
-        else if (Math.abs(target - r.bottom) < 1) target = Math.round(r.bottom - pred.k);
-      }
+      const target = kbBottom(p);
       const upT = kbUp(p, target) ? 1 : 0;
       plan(r, target, upT);
       note();
@@ -312,20 +337,9 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
     };
     // фокус сменился: activeElement становится известен чуть позже события
     const later = () => { clearTimeout(timer); timer = setTimeout(measure, 0); };
-    // v96: фокус в поле — клавиатура уже поехала: с этого мига и считаем её ход; высоту знаем с прошлого раза — едем сразу
-    const onIn = (e) => {
-      if (textInput(e && e.target)) {
-        kOpen = now();
-        const o = kbRemembered(), r = rect();
-        if (!pred && o && tgIos() && !last.up && r.width < 700 && Math.abs(o.w - r.width) <= 1 && Math.abs(o.h - KB_BASE.h) <= 2 && Math.abs(r.height - KB_BASE.h) <= 2) {
-          pred = { k: o.k, w: r.width, until: kOpen + 700 };
-          measure();
-          clearTimeout(predT); predT = setTimeout(measure, 720);   // Telegram так и не сообщил (клавиатуры нет) — вернём, как было
-        }
-      }
-      later();
-    };
-    // фокус ушёл не в другое поле — клавиатура уходит с этого мига
+    // фокус в поле: раньше этого клавиатура не поедет (v98: ход — по сообщению Telegram, см. kbOpenAt)
+    const onIn = (e) => { if (textInput(e && e.target)) kOpen = now(); later(); };
+    // фокус ушёл не в другое поле — клавиатура уходит с этого мига (kbCloseAt)
     const onOut = (e) => { if (!textInput(e && e.relatedTarget)) kClose = now(); later(); };
     // v95: Telegram сообщил высоту — окно он сожмёт через 0,4 с; перемерим и тогда, даже если об этом никто не скажет
     const onTg = () => { measure(); late.forEach(clearTimeout); late = [500, 1000].map((ms) => setTimeout(measure, ms)); };
@@ -347,7 +361,7 @@ export function useKeyboardLift(ref, { cls = "", safe = "var(--sa-sb, env(safe-a
     } catch (e) { ro = null; }
     measure();
     return () => {
-      alive = false; clearTimeout(timer); clearTimeout(settle); clearTimeout(predT); late.forEach(clearTimeout); stop();
+      alive = false; clearTimeout(timer); clearTimeout(settle); late.forEach(clearTimeout); stop();
       if (ro) { try { ro.disconnect(); } catch (e) { /* */ } }
       if (root) root.removeEventListener("scroll", onScroll, { capture: true });
       if (vv) { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); }

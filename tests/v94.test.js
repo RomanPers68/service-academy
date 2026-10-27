@@ -67,7 +67,7 @@ describe("v94: клавиатура (ui/keyboard.js)", () => {
     for (const s of ['try { if (tg && tg.onEvent) tg.onEvent("viewportChanged", onTg); } catch (e) { /* */ }',
       "let tgH = 0; try { tgH = tg ? num(tg.viewportHeight) : 0; } catch (e) { tgH = 0; }",
       'if (v !== L) { L = v; el.style.setProperty("--kb", v + "px"); }',
-      "if (run && resized) { snap(); return; }   // окно сменило высоту посреди пути (редко) — сразу на место",
+      "if (Math.abs(hold) < 0.5 || hold > (rising ? KB_HOLD_RUN : KB_HOLD_MAX)) { yIdle = goal; return; }",   // v98: окно сменило высоту — держим и доезжаем
       'document.addEventListener("focusin", onIn); document.addEventListener("focusout", onOut);',
       "else if (tn - KB_BASE.low > 600) { KB_BASE.h = r.height; KB_BASE.low = 0; }",
       "const ro = new ResizeObserver(() => {"]) expect([s, src.includes(s)]).toEqual([s, true]);

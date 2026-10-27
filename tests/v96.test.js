@@ -25,9 +25,9 @@ describe("v96: ход клавиатуры iPhone (ui/keyboard.js)", () => {
     expect(K.kbCurve(K.KB_OPEN, 12.5)).toBeCloseTo(0.12 + (0.27 - 0.12) * (4.5 / 9), 6);   // между точками — по прямой
     expect([K.kbCurve(K.KB_OPEN, -10), K.kbCurve(K.KB_OPEN, 5000), K.kbCurve([], 10)]).toEqual([0, 1, 1]);
   });
-  it("путь: не опоздали — ровно по клавиатуре; опоздали — сходимся с ней за KB_CATCH (50 мс); последний шаг — ровно цель", async () => {
+  it("путь: не опоздали — ровно по клавиатуре; опоздали — сходимся с ней за KB_CATCH; последний шаг — ровно цель", async () => {
     const { kbPath, kbAt, kbCurve, KB_OPEN, KB_CATCH } = await import("../ui/keyboard.js");
-    expect(KB_CATCH).toBe(50);
+    expect(KB_CATCH).toBe(20);   // v98: было 50 мс — догоняем за кадр с небольшим (клавиатура и сама в первом кадре проходит треть)
     // фокус в 1000 мс, едем с того же мига от 818 к 516
     const p = kbPath(KB_OPEN, { y0: 818, y1: 516, k0: 1000, s: 1000, ys: 818 });
     expect(p[0]).toEqual({ t: 0, y: 818 });
@@ -37,7 +37,7 @@ describe("v96: ход клавиатуры iPhone (ui/keyboard.js)", () => {
     // Telegram сообщил через 40 мс: стоим в 818, клавиатура уже прошла почти половину — догоняем
     const q = kbPath(KB_OPEN, { y0: 818, y1: 516, k0: 1000, s: 1040, ys: 818 });
     expect(q[0].y).toBe(818);
-    expect(Math.abs(kbAt(q, KB_CATCH) - (818 - 302 * kbCurve(KB_OPEN, 40 + KB_CATCH)))).toBeLessThan(1.5);   // шаг пути 16 мс — точность до пикселя
+    expect(Math.abs(kbAt(q, 32) - (818 - 302 * kbCurve(KB_OPEN, 40 + 32)))).toBeLessThan(1.5);   // догнали (точки пути — через 16 мс)
     for (let i = 1; i < q.length; i++) expect(q[i].y <= q[i - 1].y + 1e-9).toBe(true);   // только вверх
     // клавиатура давно доехала: короткий доезд, не меньше 90 мс
     const r = kbPath(KB_OPEN, { y0: 818, y1: 516, k0: 0, s: 5000, ys: 700 });
@@ -50,18 +50,10 @@ describe("v96: ход клавиатуры iPhone (ui/keyboard.js)", () => {
     expect(kbMove(818, 818.4, 0)).toBe("settle");
     expect(kbMove(864, 516, 12)).toBe("settle");   // уже ниже раскладки — сразу на место
   });
-  it("высота клавиатуры — с прошлого раза (sa_kb_k): та же ширина и высота окна; не пишем, если не изменилась", async () => {
-    const store = {};
-    globalThis.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
-    store.sa_kb_k = JSON.stringify({ w: 393, h: 852, k: 336 });
-    const K = await import("../ui/keyboard.js?kbmem");
-    expect(K.kbRemembered()).toEqual({ w: 393, h: 852, k: 336 });
-    K.kbRemember(393, 852, 336.4);
-    expect(JSON.parse(store.sa_kb_k)).toEqual({ w: 393, h: 852, k: 336 });
-    K.kbRemember(390, 844, 291);
-    expect(JSON.parse(store.sa_kb_k)).toEqual({ w: 390, h: 844, k: 291 });
-    expect(K.kbRemembered()).toEqual({ w: 390, h: 844, k: 291 });
-    delete globalThis.localStorage;
+  it("высоты клавиатуры «с прошлого раза» нет (v98: ход ждёт сообщения Telegram, sa_kb_k не нужен)", async () => {
+    const K = await import("../ui/keyboard.js");
+    expect([K.kbRemember, K.kbRemembered]).toEqual([undefined, undefined]);
+    expect(rd("ui/keyboard.js")).not.toContain("sa_kb_k");
   });
   it("хук: ход — Web Animations у всего, что с data-kbm, с одного момента; раскладка — setLayout; фокус — начало хода", () => {
     const src = rd("ui/keyboard.js");
@@ -69,13 +61,12 @@ describe("v96: ход клавиатуры iPhone (ui/keyboard.js)", () => {
       'all("[data-kbm]").forEach((m) => { try { anims.push(m.animate(frames, { duration: total, easing: "linear", fill: "forwards" })); } catch (e) { /* */ } });',
       "anims.forEach((a) => { try { a.startTime = t0; } catch (e) { /* */ } });",
       "if (!anims.length) { setLayout(Lg, St); yIdle = goal; return; }   // ехать некому — сразу на место",
-      "if (rn.dir === \"up\") setLayout(rn.Lg, rn.St);",
+      "if (up) setLayout(rn.Lg, rn.St);",   // v98: up = rn.dir === "up"
       "if (!animOk() || calm()) { snap(); return; }",
-      "const k0 = same ? run.k0 : (tn - kOpen < 250 ? kOpen : tn), y0 = same ? run.y0 : yS;",
-      "const k0 = same ? run.k0 : (tn - kClose < 250 ? kClose : tn), y0 = same ? run.y0 : yS;",
+      // v98: начало хода — kbOpenAt (сообщение Telegram) и kbCloseAt (ушёл фокус), а не сам фокус
+      "const k0 = same ? run.k0 : kbOpenAt(te, kOpen), y0 = same ? run.y0 : yS;",
+      "const k0 = same ? run.k0 : kbCloseAt(te, kClose), y0 = same ? run.y0 : yS;",
       "const onOut = (e) => { if (!textInput(e && e.relatedTarget)) kClose = now(); later(); };",
-      "if (told && Math.abs(r.height - KB_BASE.h) <= 2) kbRemember(r.width, KB_BASE.h, r.bottom - tgH);",
-      "else if (Math.abs(target - r.bottom) < 1) target = Math.round(r.bottom - pred.k);",
     ]) expect([s, src.includes(s)]).toEqual([s, true]);
   });
   it("прокрутка ленты держит зазор до низа; окно выросло раньше нас — берём прокрутку до того; usePinBottom не прижимает поверх", () => {
@@ -103,10 +94,10 @@ describe("v96: что едет с клавиатурой (разметка)", ()
     const chat = rd("ui/chat.jsx"), cards = rd("ui/chat-cards.jsx");
     expect(chat).toContain('<div ref={chatRef} className="ch-chat sa-dlgscroll" role="log" aria-live="polite" aria-relevant="additions" onScroll={onScroll} data-chat-feed="" data-kbm="" data-kbm-scroll="">');
     expect(chat).toContain('<button type="button" className="ch-down" data-kbm=""');
-    expect(chat).toContain('<div className="ch-bar" data-kbm="">');
+    expect(chat).toContain('<div className="ch-bar" data-kbm="" data-kbm-at="">');   // v98: data-kbm-at
     expect((chat.match(/className="ch-veil" data-kbm=""/g) || []).length).toBe(7);   // v97: + «Поделиться в чат» и карточка коллеги
     expect((cards.match(/className="ch-veil" data-kbm=""/g) || []).length).toBe(2);
-    expect((chat.match(/<div className="ch-foot" data-kbm="">/g) || []).length).toBe(2);
+    expect((chat.match(/<div className="ch-foot" data-kbm="" data-kbm-at="">/g) || []).length).toBe(2);   // v98: data-kbm-at
     expect(chat).toContain(".ch-chatwrap{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}");
     expect(chat).toContain('<div className="ch-chatwrap sa-dlgpath">');
   });

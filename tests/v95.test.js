@@ -20,7 +20,7 @@ describe("v95: окно сжалось без события (ui/keyboard.js)", 
     const src = rd("ui/keyboard.js");
     expect(src).toContain("const onTg = () => { measure(); late.forEach(clearTimeout); late = [500, 1000].map((ms) => setTimeout(measure, ms)); };");
     expect(src).toContain('try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", onTg); } catch (e) { /* */ }');
-    expect(src).toContain("alive = false; clearTimeout(timer); clearTimeout(settle); clearTimeout(predT); late.forEach(clearTimeout); stop();");   // v96: путь — stop()
+    expect(src).toContain("alive = false; clearTimeout(timer); clearTimeout(settle); late.forEach(clearTimeout); stop();");   // v96: путь — stop(); v98: без predT
   });
   it("расчёт прежний: окно сжалось, высота от Telegram та же — низ у клавиатуры, отступ 0", async () => {
     const { kbBottom } = await import("../ui/keyboard.js");
@@ -45,7 +45,7 @@ describe("v95: вырез снизу — тем же ходом и по тем �
     expect((chat.match(/var\(--sa-sb,env\(safe-area-inset-bottom,0px\)\) \* var\(--kbs,1\)/g) || []).length).toBe(4);
     expect(chat).not.toContain(".sa-dlg.ch.kb ");
     expect(chat).not.toContain("transition:padding-bottom");
-    expect(rd("ui/assistant.jsx")).toContain('<div className="sa-ai-bar" data-kbm="" style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px) * var(--kbs, 1))" }}>');   // v96: data-kbm
+    expect(rd("ui/assistant.jsx")).toContain('<div className="sa-ai-bar" data-kbm="" data-kbm-at="" style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px) * var(--kbs, 1))" }}>');   // v96: data-kbm; v98: data-kbm-at
   });
 });
 

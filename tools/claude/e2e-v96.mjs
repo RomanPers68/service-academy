@@ -24,6 +24,9 @@
 //   NARROW — 320 px, обе темы: в пути и в конце ничего не выезжает вбок;
 //   CARDS  — «что входит в салат два моря»: одна карточка, сам салат (без «Морской ёж», «Мороженое», «Краб стригун»),
 //            в чате и на экране «Наставник»; «что входит в морского ежа» — карточка «Морской ёж».
+// v98 (Доп. 411): строка трогается не с фокуса, а с сообщения Telegram о высоте (клавиатура поехала за 20 мс до него):
+// в OPEN до сообщения строка стоит, сверка с кривой — со второго кадра после него; в FIRST высоту больше не запоминаем;
+// догон за 20 мс — «без рывков» теперь не быстрее 3 % пути за мс. Пауза Telegram и вырез снизу — в e2e-v98.
 // Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> [E2E_SRC=<исходники>] node e2e-v96.mjs [разделы]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -526,12 +529,14 @@ const tgShrink = async (page, sel, frameH, w = 393, quiet = false) => {
   const b0 = await rectNow(page, sel);
   if (quiet) await mute(page, true);
   // замер — после отрисовки кадра (rAF → задача): то, что видит человек; в самом rAF ResizeObserver этого кадра ещё не сработал
-  await page.evaluate((sel) => { window.__trk = []; const t0 = performance.now(); const f = () => { setTimeout(() => { const r = document.querySelector(sel).getBoundingClientRect(); window.__trk.push({ t: Math.round(performance.now() - t0), bottom: Math.round(r.bottom), ih: window.innerHeight }); }, 0); if (performance.now() - t0 < 500) requestAnimationFrame(f); }; requestAnimationFrame(f); }, sel);
+  // v98: и высота окна в кадре (ih0): окно сжалось уже после кадра, до замера — замер показал бы раскладку, которой на
+  // экране не было (ResizeObserver сработает в следующем кадре, до его отрисовки) — не в счёт (как в e2e-v95 с v97)
+  await page.evaluate((sel) => { window.__trk = []; const t0 = performance.now(); const f = () => { const ih0 = window.innerHeight; setTimeout(() => { const r = document.querySelector(sel).getBoundingClientRect(); window.__trk.push({ t: Math.round(performance.now() - t0), bottom: Math.round(r.bottom), ih: window.innerHeight, ih0 }); }, 0); if (performance.now() - t0 < 500) requestAnimationFrame(f); }; requestAnimationFrame(f); }, sel);
   await page.setViewportSize({ width: w, height: frameH });
   await sleep(650);
   if (quiet) await mute(page, false);
   const trk = await page.evaluate(() => window.__trk);
-  const after = trk.filter((x) => x.ih === frameH);
+  const after = trk.filter((x) => x.ih === frameH && x.ih0 === x.ih);
   return { b0, after: after.length, moved: Math.max(0, ...after.map((x) => Math.abs(x.bottom - b0.bottom))) };
 };
 // клавиатура уходит: фокус снят, окно растёт сразу, visualViewport в WebKit ещё 0,45 с прежний
@@ -588,19 +593,24 @@ const startTrack = (page, { act = "", ms = 480, bar = ".ch-bar", root = "[data-c
     };
     requestAnimationFrame(f);
     // действие — в тот же миг, что и начало замера
-    if (act === "open" || act === "open-late") { const ta = q(input); ta.focus(); setTimeout(() => window.__tgViewport(h - kh), tgAt); }
+    // v98: когда сообщение Telegram пришло на самом деле (под нагрузкой таймер опаздывает) — от него и считается ход
+    window.__tgRel = null;
+    if (act === "open" || act === "open-late") { const ta = q(input); ta.focus(); setTimeout(() => { window.__tgViewport(h - kh); window.__tgRel = Math.round(performance.now() - t0); }, tgAt); }
     if (act === "blur") { const a = document.activeElement; if (a && a.blur) a.blur(); }
     if (act === "blur-tg") { const a = document.activeElement; if (a && a.blur) a.blur(); setTimeout(() => window.__tgViewport(h), 10); }
   }, { act, ms, bar, root, glue, tgAt, kh, h, input });
 // окно сменило размер уже после кадра, до замера: замер показал бы раскладку, которой на экране не было (кадр нарисован
 // со старым окном, а ResizeObserver сработает в следующем кадре, до его отрисовки) — такие замеры не в счёт
 const endTrack = async (page) => { await until(() => page.evaluate(() => window.__trkDone), 4000, 50); return page.evaluate(() => window.__trk.filter((x) => x.bb != null && x.ih === x.ih0)); };
+// v98: начало хода клавиатуры — за 20 мс до сообщения Telegram (KB_LAG_OPEN), но не раньше фокуса
+const kbAt0 = async (page) => Math.max(0, ((await page.evaluate(() => window.__tgRel)) || 0) - 20);
 // ход: только в одну сторону; без рывков — не быстрее 2,2 % пути за мс (клавиатура в самом быстром месте — 1,7 %,
 // плюс догон, когда опоздали). Скорость — по времени кадров: в безголовом Chromium кадры иногда пропускаются
 const steps = (s, from = 0) => { const st = []; for (let i = Math.max(1, from); i < s.length; i++) st.push(s[i].bt - s[i - 1].bt); return st; };
 const oneWay = (st, dir) => st.every((d) => (dir < 0 ? d <= 0.6 : d >= -0.6));
 const vmax = (s, key = "bt") => { let v = 0; for (let i = 1; i < s.length; i++) { const dt = s[i].ft - s[i - 1].ft, d = Math.abs(s[i][key] - s[i - 1][key]); v = Math.max(v, dt >= 8 ? d / dt : d / 8); } return Math.round(v * 100) / 100; };
-const smoothOk = (s, trav, key = "bt") => vmax(s, key) <= Math.abs(trav) * 0.022;
+// v98: догон за 20 мс (KB_CATCH), а не за 50 — не быстрее 3 % пути за мс (клавиатура и сама в первом кадре проходит треть)
+const smoothOk = (s, trav, key = "bt") => vmax(s, key) <= Math.abs(trav) * 0.03;
 const glued = (s) => { const g = s.filter((x) => x.gb != null).map((x) => x.bt - x.gb); return g.length ? Math.round((Math.max(...g) - Math.min(...g)) * 10) / 10 : 0; };
 // в покое: последнее сообщение прямо над строкой ввода (не под ней и не далеко над)
 const restGap = (page, bar = ".ch-bar", glue = "[data-chat-msg]") => page.evaluate(({ bar, glue }) => new Promise((res) => requestAnimationFrame(() => {
@@ -619,14 +629,16 @@ await run("OPEN", async () => {
   await startTrack(a.page, { act: "open" });
   const s = await endTrack(a.page);
   const run0 = s.filter((x) => x.t < 250), fin = s[s.length - 1];
-  const f1 = s.find((x) => x.ft >= 8);
-  ok("OPEN: фокус — строка ввода трогается в первом же кадре, до сообщения Telegram (высота с прошлого раза)", s.length > 10 && !!f1 && f1.ft <= 26 && rest.top - f1.bt >= 20, JSON.stringify({ rest, first: s.slice(0, 3) }));
+  // v98: строка трогается не с фокуса, а с сообщения Telegram о высоте (здесь — через 18 мс): клавиатура поехала до него
+  const tgO = (await a.page.evaluate(() => window.__tgRel)) || 18;
+  const f1 = s.find((x) => x.ft >= tgO + 8), f0 = s.filter((x) => x.t < tgO);
+  ok("OPEN: до сообщения Telegram строка стоит, с первым кадром после него — трогается (v98)", s.length > 10 && f0.every((x) => Math.abs(x.bt - rest.top) <= 1) && !!f1 && f1.ft <= tgO + 50 && rest.top - f1.bt >= 20, JSON.stringify({ tgO, rest, first: s.slice(0, 3) }));
   ok("OPEN: едет анимацией браузера (Web Animations), а не отступом: в пути отступ слоя 0, анимация идёт", run0.filter((x) => x.an > 0).length >= run0.length - 2 && run0.every((x) => x.pad === 0), JSON.stringify(run0.map((x) => [x.t, x.pad, x.an]).slice(0, 8)));
   ok("OPEN: раскладка меняется один раз — в конце (отступ = высоте клавиатуры), анимации сняты", fin.pad === KH && fin.an === 0 && new Set(s.map((x) => x.pad)).size === 2, JSON.stringify({ pads: [...new Set(s.map((x) => x.pad))], fin }));
   const st = steps(s);
-  ok("OPEN: только вверх, без возвратов и рывков", oneWay(st, -1) && smoothOk(s, rest.top - fin.bt), JSON.stringify({ st: st.map((d) => Math.round(d)), v: vmax(s), cap: (rest.top - fin.bt) * 0.022 }));
-  const trav = rest.top - fin.bt, ms = s.filter((x) => x.ft >= 8 && x.ft <= 200);
-  ok("OPEN: в каждом кадре — там же, где клавиатура в этот миг (по кривой KB_OPEN, ±10 %)", ms.length >= 8 && ms.every((x) => Math.abs((rest.top - x.bt) / trav - kbCurve(KB_OPEN, x.ft)) <= 0.10), JSON.stringify(ms.map((x) => [x.ft, Math.round((rest.top - x.bt) / trav * 100), Math.round(kbCurve(KB_OPEN, x.ft) * 100)])));
+  ok("OPEN: только вверх, без возвратов и рывков", oneWay(st, -1) && smoothOk(s, rest.top - fin.bt), JSON.stringify({ st: st.map((d) => Math.round(d)), v: vmax(s), cap: (rest.top - fin.bt) * 0.03 }));
+  const K0 = await kbAt0(a.page), trav = rest.top - fin.bt, ms = s.filter((x) => x.ft >= K0 + 36 && x.ft <= 200);   // v98: со второго кадра после сообщения Telegram
+  ok("OPEN: в каждом кадре — там же, где клавиатура в этот миг (по кривой KB_OPEN, ±10 %)", ms.length >= 3 && ms.every((x) => Math.abs((rest.top - x.bt) / trav - kbCurve(KB_OPEN, x.ft - K0)) <= 0.10), JSON.stringify({ K0, f: ms.map((x) => [x.ft, Math.round((rest.top - x.bt) / trav * 100), Math.round(kbCurve(KB_OPEN, x.ft - K0) * 100)]) }));
   const tail = s.filter((x) => x.ft >= 330), near = s.filter((x) => x.ft < 330 && x.ft > 250).slice(-1)[0];
   ok("OPEN: когда вырез снизу убран (конец пути), видимая часть не сдвинулась: верх строки на месте", tail.length >= 2 && !!near && Math.max(...tail.map((x) => x.bt)) - Math.min(...tail.map((x) => x.bt)) <= 1 && Math.abs(tail[0].bt - near.bt) <= 2, JSON.stringify(s.slice(-6).map((x) => [x.ft, x.bt, x.bb, x.pad])));
   ok("OPEN: последнее сообщение не отрывается от строки ввода ни в одном кадре (и когда меняется раскладка)", glued(s) <= 2, String(glued(s)));
@@ -664,7 +676,7 @@ await run("CLOSE", async () => {
   const st = steps(s, Math.max(1, ig));
   ok("CLOSE: пока окно не выросло, строка ввода стоит у клавиатуры (низ окна ещё там)", pre.length >= 1 && pre.every((x) => Math.abs(x.bt - up.top) <= 1), JSON.stringify({ up, pre }));
   ok("CLOSE: окно выросло — в тот же кадр раскладка без клавиатуры (отступ 0), а строка не падает вниз разом (≤ 12 px)", aft.length > 5 && aft.every((x) => x.pad === 0) && aft[0].bt - up.top <= 12, JSON.stringify({ before: pre.slice(-1), first: aft.slice(0, 3) }));
-  ok("CLOSE: вниз без возвратов и рывков: догоняет клавиатуру, а не прыгает разом", oneWay(st, 1) && smoothOk(aft, rest.top - up.top), JSON.stringify({ st: st.map((d) => Math.round(d)), v: vmax(aft), cap: (rest.top - up.top) * 0.022 }));
+  ok("CLOSE: вниз без возвратов и рывков: догоняет клавиатуру, а не прыгает разом", oneWay(st, 1) && smoothOk(aft, rest.top - up.top), JSON.stringify({ st: st.map((d) => Math.round(d)), v: vmax(aft), cap: (rest.top - up.top) * 0.03 }));
   const tr = rest.top - up.top, catchAt = aft.length ? aft[0].ft + 60 : 1e9, cs = aft.filter((x) => x.ft >= catchAt && x.ft <= 220);
   ok("CLOSE: опоздала на кадр — через 0,06 с идёт вровень с клавиатурой (±10 %)", cs.length >= 2 && cs.every((x) => Math.abs((x.bt - up.top) / tr - kbCurve(KB_CLOSE, x.ft)) <= 0.10), JSON.stringify(cs.map((x) => [x.ft, Math.round((x.bt - up.top) / tr * 100), Math.round(kbCurve(KB_CLOSE, x.ft) * 100)])));
   const at = aft.find((x) => x.t >= 320);
@@ -681,7 +693,7 @@ await run("CLOSE", async () => {
   const g3 = await restGap(a.page);
   ok("CLOSE: открыли снова — последнее сообщение опять прямо над строкой", gapOk(g3), String(g3));
   const f2 = s2.find((x) => x.ft >= 8);
-  ok("CLOSE: клавиатура ушла до сжатия окна — строка трогается в первом же кадре, вниз без возвратов и рывков, через 0,3 с внизу", !!f2 && f2.ft <= 26 && f2.bt - up2.top >= 4 && oneWay(st2, 1) && smoothOk(s2, rest.top - up2.top) && !!s2.find((x) => x.ft >= 300 && Math.abs(x.bt - rest.top) <= 2), JSON.stringify({ up2, first: s2.slice(0, 3), st: st2.map((d) => Math.round(d)), v: vmax(s2) }));
+  ok("CLOSE: клавиатура ушла до сжатия окна — строка трогается в первом же кадре, вниз без возвратов и рывков, через 0,3 с внизу", !!f2 && f2.ft <= 40 && f2.bt - up2.top >= 4 && oneWay(st2, 1) && smoothOk(s2, rest.top - up2.top) && !!s2.find((x) => x.ft >= 300 && Math.abs(x.bt - rest.top) <= 2), JSON.stringify({ up2, first: s2.slice(0, 3), st: st2.map((d) => Math.round(d)), v: vmax(s2) }));
   const m2 = s2.filter((x) => x.ft >= 8 && x.ft <= 220), tr2 = rest.top - up2.top;
   ok("CLOSE: и в каждом кадре там же, где клавиатура (по кривой KB_CLOSE, ±10 %)", m2.length >= 8 && m2.every((x) => Math.abs((x.bt - up2.top) / tr2 - kbCurve(KB_CLOSE, x.ft)) <= 0.10), JSON.stringify(m2.map((x) => [x.ft, Math.round((x.bt - up2.top) / tr2 * 100), Math.round(kbCurve(KB_CLOSE, x.ft) * 100)])));
   ok("CLOSE: и тут сообщения не отрываются от строки", glued(s2) <= 2, String(glued(s2)));
@@ -701,14 +713,15 @@ await run("FIRST", async () => {
   await startTrack(a.page, { act: "open-late", tgAt: 40 });
   const s = await endTrack(a.page);
   const pre = s.filter((x) => x.ft < 34), fin = s[s.length - 1];
-  const at = s.find((x) => x.ft >= 95 && x.ft <= 130);
+  const K0F = await kbAt0(a.page), at = s.find((x) => x.ft >= K0F + 55 && x.ft <= K0F + 110);   // v98: от сообщения Telegram
   ok("FIRST: до сообщения Telegram строка стоит (высоты не знаем — не выдумываем)", pre.length >= 1 && pre.every((x) => Math.abs(x.bt - rest.top) <= 0.6), JSON.stringify(pre));
   const travT = rest.top - fin.bt;
-  ok("FIRST: после — догоняет клавиатуру: к 0,1 с с фокуса идёт с ней вровень (±10 %)", !!at && Math.abs((rest.top - at.bt) / travT - kbCurve(KB_OPEN, at.ft)) <= 0.10, JSON.stringify({ at, p: at && (rest.top - at.bt) / travT, kb: at && kbCurve(KB_OPEN, at.ft) }));
+  // v98: клавиатура поехала за 20 мс до сообщения Telegram (KB_LAG_OPEN) — с ней и сверяем
+  ok("FIRST: после — догоняет клавиатуру: к 0,1 с идёт с ней вровень (±10 %)", !!at && Math.abs((rest.top - at.bt) / travT - kbCurve(KB_OPEN, at.ft - K0F)) <= 0.10, JSON.stringify({ K0F, at, p: at && (rest.top - at.bt) / travT, kb: at && kbCurve(KB_OPEN, at.ft - K0F) }));
   const st = steps(s);
-  ok("FIRST: только вверх, без рывков (догон за 0,05 с); в конце над клавиатурой; сообщения не отрываются", oneWay(st, -1) && smoothOk(s, travT) && fin.bb <= H - KH && fin.bb >= H - KH - 14 && glued(s) <= 2, JSON.stringify({ st: st.map((d) => Math.round(d)), v: vmax(s), cap: travT * 0.022, fin, g: glued(s) }));
-  const k = JSON.parse((await a.page.evaluate(() => localStorage.getItem("sa_kb_k"))) || "null");
-  ok("FIRST: высота клавиатуры запомнена на следующий раз ({ w: 393, h: 852, k: 336 })", !!k && k.w === 393 && k.h === H && k.k === KH, JSON.stringify(k));
+  ok("FIRST: только вверх, без рывков (догон за 0,02 с); в конце над клавиатурой; сообщения не отрываются", oneWay(st, -1) && smoothOk(s, travT) && fin.bb <= H - KH && fin.bb >= H - KH - 14 && glued(s) <= 2, JSON.stringify({ st: st.map((d) => Math.round(d)), v: vmax(s), cap: travT * 0.03, fin, g: glued(s) }));
+  // v98: высоту «с прошлого раза» больше не помним — ход всё равно ждёт сообщения Telegram
+  ok("FIRST: высоту клавиатуры не запоминаем (sa_kb_k не пишется, v98)", (await a.page.evaluate(() => localStorage.getItem("sa_kb_k"))) == null);
   const [e1, e2] = noErr(a);
   ok("FIRST: без ошибок в консоли", e1, e2);
   await a.ctx.close();
@@ -751,9 +764,9 @@ await run("SHEET", async () => {
   await startTrack(a.page, { act: "open", bar: ".ch-sheet", glue: "", input: "[data-chat-pollq]" });
   const s = await endTrack(a.page);
   const fin = s[s.length - 1], st = steps(s);
-  const f1 = s.find((x) => x.ft >= 8), trS = rest.top - fin.bt, msS = s.filter((x) => x.ft >= 8 && x.ft <= 200);
-  ok("SHEET: лист «Опрос» трогается в первом же кадре, вверх без возвратов и рывков", !!f1 && f1.ft <= 26 && rest.top - f1.bt >= 20 && oneWay(st, -1) && smoothOk(s, trS), JSON.stringify({ first: s.slice(0, 3), st: st.map((d) => Math.round(d)), v: vmax(s) }));
-  ok("SHEET: в каждом кадре — там же, где клавиатура (по кривой KB_OPEN, ±10 %)", msS.length >= 8 && msS.every((x) => Math.abs((rest.top - x.bt) / trS - kbCurve(KB_OPEN, x.ft)) <= 0.10), JSON.stringify(msS.map((x) => [x.ft, Math.round((rest.top - x.bt) / trS * 100), Math.round(kbCurve(KB_OPEN, x.ft) * 100)])));
+  const K0S = await kbAt0(a.page), f1 = s.find((x) => x.ft >= K0S + 28), trS = rest.top - fin.bt, msS = s.filter((x) => x.ft >= K0S + 36 && x.ft <= 200);   // v98: с сообщения Telegram
+  ok("SHEET: лист «Опрос» трогается в первом кадре после сообщения Telegram, вверх без возвратов и рывков", !!f1 && f1.ft <= K0S + 70 && rest.top - f1.bt >= 20 && oneWay(st, -1) && smoothOk(s, trS), JSON.stringify({ first: s.slice(0, 3), st: st.map((d) => Math.round(d)), v: vmax(s) }));
+  ok("SHEET: в каждом кадре — там же, где клавиатура (по кривой KB_OPEN, ±10 %)", msS.length >= 3 && msS.every((x) => Math.abs((rest.top - x.bt) / trS - kbCurve(KB_OPEN, x.ft - K0S)) <= 0.10), JSON.stringify({ K0S, f: msS.map((x) => [x.ft, Math.round((rest.top - x.bt) / trS * 100), Math.round(kbCurve(KB_OPEN, x.ft - K0S) * 100)]) }));
   ok("SHEET: в конце лист над клавиатурой (низ листа у её края), анимации сняты", Math.abs(fin.bb - (H - KH)) <= 2 && fin.an === 0, JSON.stringify(fin));
   await shot(a.page, "sheet-end");
   const [e1, e2] = noErr(a);
@@ -782,10 +795,10 @@ await run("AI", async () => {
   });
   const s = await endTrack(a.page);
   const fin = s[s.length - 1], st = steps(s);
-  const f1 = s.find((x) => x.ft >= 8), trA = rest.top - fin.bt, msA = s.filter((x) => x.ft >= 8 && x.ft <= 200);
-  ok("AI: в каждом кадре — там же, где клавиатура (по кривой KB_OPEN, ±10 %)", msA.length >= 8 && msA.every((x) => Math.abs((rest.top - x.bt) / trA - kbCurve(KB_OPEN, x.ft)) <= 0.10), JSON.stringify(msA.map((x) => [x.ft, Math.round((rest.top - x.bt) / trA * 100), Math.round(kbCurve(KB_OPEN, x.ft) * 100)])));
+  const K0A = await kbAt0(a.page), f1 = s.find((x) => x.ft >= K0A + 28), trA = rest.top - fin.bt, msA = s.filter((x) => x.ft >= K0A + 36 && x.ft <= 200);   // v98: с сообщения Telegram
+  ok("AI: в каждом кадре — там же, где клавиатура (по кривой KB_OPEN, ±10 %)", msA.length >= 3 && msA.every((x) => Math.abs((rest.top - x.bt) / trA - kbCurve(KB_OPEN, x.ft - K0A)) <= 0.10), JSON.stringify({ K0A, f: msA.map((x) => [x.ft, Math.round((rest.top - x.bt) / trA * 100), Math.round(kbCurve(KB_OPEN, x.ft - K0A) * 100)]) }));
   ok("AI: посреди пути заголовок «Наставник» виден: лента уходит под шапку, а не поверх неё", !!head && head.under && !head.covered, JSON.stringify(head));
-  ok("AI: строка трогается в первом же кадре, вверх без возвратов и рывков; отступ меняется один раз", !!f1 && f1.ft <= 26 && rest.top - f1.bt >= 20 && oneWay(st, -1) && smoothOk(s, rest.top - fin.bt) && new Set(s.map((x) => x.pad)).size === 2, JSON.stringify({ first: s.slice(0, 2), st: st.map((d) => Math.round(d)), pads: [...new Set(s.map((x) => x.pad))] }));
+  ok("AI: строка трогается в первом кадре после сообщения Telegram, вверх без возвратов и рывков; отступ меняется один раз", !!f1 && f1.ft <= K0A + 70 && rest.top - f1.bt >= 20 && oneWay(st, -1) && smoothOk(s, rest.top - fin.bt) && new Set(s.map((x) => x.pad)).size === 2, JSON.stringify({ first: s.slice(0, 2), st: st.map((d) => Math.round(d)), pads: [...new Set(s.map((x) => x.pad))] }));
   ok("AI: в конце поле над клавиатурой", fin.bb <= H - KH && fin.bb >= H - KH - 16, JSON.stringify(fin));
   await startTrack(a.page, { act: "blur-tg", bar: BAR, root: ROOT, glue: "", ms: 420 });
   const s2 = await endTrack(a.page), st2 = steps(s2);

@@ -96,7 +96,9 @@ describe("v91: экран чата", () => {
     expect(kbOverlap(500, 0, 552)).toBe(0);
     expect(kbOverlap(undefined, null, NaN)).toBe(0);
     // v94: расчёт переехал в ui/keyboard.js (общий с Наставником), низ — по-прежнему от самого слоя
-    expect(rd("ui/keyboard.js")).toContain("try { if (el) return el.getBoundingClientRect(); } catch (e) { /* */ }");
+    // v96: рамка слоя без сдвига его въезда (анимация fadeIn у .sa-screen)
+    expect(rd("ui/keyboard.js")).toContain("const r = el.getBoundingClientRect();");
+    expect(rd("ui/keyboard.js")).toContain("return dy ? { top: r.top - dy, bottom: r.bottom - dy, height: r.height, width: r.width } : r;");
     expect(rd("ui/chat.jsx")).toContain('<div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb.up ? " kb" : "")}');
   });
   it("низ в полноэкранном Telegram: --sa-sb (вырез из Telegram) у строки ввода, списка, листов и фото; при клавиатуре запаса нет", () => {

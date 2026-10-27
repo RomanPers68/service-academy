@@ -49,10 +49,13 @@ describe("v94: клавиатура (ui/keyboard.js)", () => {
     expect(kbUp({ bottom: 852, layerH: 852, baseH: 852, typing: false }, 852)).toBe(false);
     expect(kbUp({ bottom: 852, layerH: 852, baseH: 852, typing: true }, 820)).toBe(false);   // 32 px — не клавиатура
   });
-  it("ход низа: 220 мс, резко с места и мягко в конце; Telegram на iPhone — по платформе", async () => {
+  it("ход низа: резко с места и мягко в конце (v96: по кривой самой клавиатуры, а не 220 мс); Telegram на iPhone — по платформе", async () => {
     const K = await import("../ui/keyboard.js");
-    expect(K.KB_MS).toBe(220);
-    expect([K.kbEase(0), K.kbEase(1), K.kbEase(0.5), K.kbEase(-1), K.kbEase(2)]).toEqual([0, 1, 0.875, 0, 1]);
+    // v96 (Доп. 409): ход снят с записи клавиатуры iPhone — KB_OPEN и KB_CLOSE (tests/v96.test.js)
+    expect([K.KB_MS, K.kbEase]).toEqual([undefined, undefined]);
+    expect([K.kbCurve(K.KB_OPEN, 0), K.kbCurve(K.KB_OPEN, 1000), K.kbCurve(K.KB_OPEN, -5)]).toEqual([0, 1, 0]);
+    expect(K.kbCurve(K.KB_OPEN, 25)).toBeGreaterThan(0.3);   // резко с места
+    expect(K.kbCurve(K.KB_OPEN, 200) - K.kbCurve(K.KB_OPEN, 150)).toBeLessThan(0.05);   // мягко в конце
     expect(K.tgIos({ Telegram: { WebApp: { platform: "ios" } } })).toBe(true);
     expect(K.tgIos({ Telegram: { WebApp: { platform: "android" } } })).toBe(false);
     expect(K.tgIos({})).toBe(false);
@@ -60,12 +63,13 @@ describe("v94: клавиатура (ui/keyboard.js)", () => {
   it("хук: высота от Telegram (viewportChanged), отступ — переменной --kb в тот же кадр, без React; лента держится низа", () => {
     const src = rd("ui/keyboard.js");
     // v95: слушатель высоты от Telegram — onTg (тот же замер и ещё два позже)
+    // v96: --kb меняется только в начале или в конце пути (setLayout), фокус — onIn и onOut (с него и считается ход)
     for (const s of ['try { if (tg && tg.onEvent) tg.onEvent("viewportChanged", onTg); } catch (e) { /* */ }',
       "let tgH = 0; try { tgH = tg ? num(tg.viewportHeight) : 0; } catch (e) { tgH = 0; }",
-      'if (v !== put) { put = v; el.style.setProperty("--kb", v + "px"); }',
-      "// окно сменило высоту, а цель та же: отступ пересчитан в этот же кадр, на экране ничего не дёрнулось",
-      'document.addEventListener("focusin", later); document.addEventListener("focusout", later);',
-      "else if (now() - KB_BASE.low > 600) { KB_BASE.h = r.height; KB_BASE.low = 0; }",
+      'if (v !== L) { L = v; el.style.setProperty("--kb", v + "px"); }',
+      "if (run && resized) { snap(); return; }   // окно сменило высоту посреди пути (редко) — сразу на место",
+      'document.addEventListener("focusin", onIn); document.addEventListener("focusout", onOut);',
+      "else if (tn - KB_BASE.low > 600) { KB_BASE.h = r.height; KB_BASE.low = 0; }",
       "const ro = new ResizeObserver(() => {"]) expect([s, src.includes(s)]).toEqual([s, true]);
   });
   it("чат: корень с --kb и классом kb по клавиатуре на экране, лист над клавиатурой, без прежнего перехода padding-bottom", () => {
@@ -82,7 +86,7 @@ describe("v94: клавиатура (ui/keyboard.js)", () => {
   });
   it("Наставник: тот же хук, корень с --kb, лента держится низа, без своего visualViewport", () => {
     const src = rd("ui/assistant.jsx");
-    expect(src).toContain("const kbs = useKeyboardLift(rootRef);");
+    expect(src).toContain('const kbs = useKeyboardLift(rootRef, { safe: "env(safe-area-inset-bottom, 0px)" });');   // v96: вырез снизу у Наставника — env()
     expect(src).toContain("usePinBottom(listRef);");
     expect(src).toContain('<div className="sa-screen sa-dlg sa-layer" ref={rootRef}');
     expect(src).toContain('paddingBottom: "var(--kb, 0px)"');

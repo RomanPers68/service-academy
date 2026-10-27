@@ -281,7 +281,7 @@ const TILE_IC = { photo: IC.photo, give: IC.give, swap: IC.swap, task: IC.task, 
 export function ActSheet({ me, chat, onPick, onClose }) {
   const tiles = actTiles(me, chat);
   return (
-    <div className="ch-veil" onClick={onClose}>
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Действия" data-chat-acts="" onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-tiles">{tiles.map((t) => (
@@ -302,7 +302,7 @@ export function Suggest({ items, onPick }) {
 // ── листы ──
 function Sheet({ title, data, onClose, children }) {
   return (
-    <div className="ch-veil" onClick={onClose}>
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label={title} {...data} onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-sheet-h"><span className="ch-sheet-t">{title}</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>

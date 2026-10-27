@@ -250,7 +250,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   // v94: в Telegram на iPhone по высоте, которую Telegram сообщает, как только клавиатура поехала, и вместе с ней.
   // Раньше строка ввода полсекунды пряталась под клавиатурой, а потом весь экран падал вниз и ехал обратно.
   const rootRef = React.useRef(null);
-  const kbs = useKeyboardLift(rootRef);   // { lift, up }; отступ снизу корень берёт из --kb
+  // { lift, up }; отступ снизу корень берёт из --kb; v96: вырез снизу у строки ввода здесь — env(), как в её разметке
+  const kbs = useKeyboardLift(rootRef, { safe: "env(safe-area-inset-bottom, 0px)" });
   const kb = kbs.lift;
   usePinBottom(listRef);
 
@@ -587,8 +588,10 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       )}
 
       {/* ── Лента ── */}
-      <div ref={listRef} className="sa-dlgscroll"
-        style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", padding: "14px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* v96: лента — в рамке (overflow: hidden): с клавиатурой едет трансформом и уходит под шапку, не налезая на неё */}
+      <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
+      <div ref={listRef} className="sa-dlgscroll" data-kbm="" data-kbm-scroll=""
+        style={{ position: "absolute", inset: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", padding: "14px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
 
         {msgs.length === 0 && !confirmClear && (
           <div className="sa-pagein" style={{ ...glass, padding: "20px 18px" }}>
@@ -716,10 +719,11 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           </div>
         )}
       </div>
+      </div>
 
       {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
-      {/* v95: вырез снизу — только без клавиатуры: --kbs ведёт ui/keyboard.js тем же ходом, что и низ */}
-      <div className="sa-ai-bar" style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px) * var(--kbs, 1))" }}>
+      {/* v95: вырез снизу — только без клавиатуры (--kbs из ui/keyboard.js); v96: едет с клавиатурой трансформом */}
+      <div className="sa-ai-bar" data-kbm="" style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px) * var(--kbs, 1))" }}>
         {/* Подсказки-чипы над полем ввода убраны по просьбе владельца (правка 157) */}
         {/* v35 (Доп. 344): разговор голосом — на месте поля полоса разговора, реплики — в этой же переписке */}
         {talk ? (

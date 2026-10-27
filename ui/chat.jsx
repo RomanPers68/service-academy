@@ -311,7 +311,9 @@ export const CHAT_CSS = `
 .ch-banner-t{flex:1;min-width:0;font-size:15px;line-height:1.35}
 .ch-banner-t b{font-family:'Piazzolla',Georgia,serif}
 @keyframes chDrop{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){.sa-dlg.ch *,.ch-banner{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* v96: «Уменьшить движение»: переходы 0 с, а не 0,01 мс. С 0,01 мс любая смена стиля шла переходом и на кадр
+   запаздывала: вырез снизу у строки ввода убирался кадром позже низа, строка подскакивала на 34 px */
+@media (prefers-reduced-motion: reduce){.sa-dlg.ch *,.ch-banner{animation-duration:.01ms!important;transition-duration:0s!important}}
 `;
 const CSS_ID = "sa-chat-css";
 export function ensureChatCss() {
@@ -564,7 +566,7 @@ function GroupNew({ me, api, onBack, onDone }) {
     <div className="ch-sec" data-chat-gcount={sel.size}>Кого добавить{sel.size ? " · " + sel.size : ""}</div>
   </>);
   const foot = (
-    <div className="ch-foot">
+    <div className="ch-foot" data-kbm="">
       {err ? <div className="ch-err" role="alert" data-chat-gerr="">{err}</div> : null}
       <button type="button" className="ch-main" data-chat-gcreate="" disabled={!can} onClick={create}>
         {busy ? "Создаю…" : !t ? "Дай чату название" : !sel.size ? "Отметь коллег" : "Создать чат · " + peopleWord(sel.size + 1)}</button>
@@ -585,7 +587,7 @@ function GroupAdd({ me, api, chat, members, onBack, onDone }) {
       .catch(() => { setBusy(false); setErr(groupErr({ error: "net" })); });
   };
   const foot = (
-    <div className="ch-foot">
+    <div className="ch-foot" data-kbm="">
       {err ? <div className="ch-err" role="alert" data-chat-gerr="">{err}</div> : null}
       <button type="button" className="ch-main" data-chat-gaddgo="" disabled={!sel.size || busy} onClick={add}>{busy ? "Добавляю…" : sel.size ? "Добавить · " + sel.size : "Отметь коллег"}</button>
     </div>);
@@ -607,7 +609,7 @@ function GroupInfo({ chat, me, api, members, onClose, onChanged, onAdd, onGone }
   };
   const list = [...(members || [])].sort((a, b) => (String(a.id) === String(meId) ? -1 : String(b.id) === String(meId) ? 1 : String(a.name).localeCompare(String(b.name), "ru")));
   return (
-    <div className="ch-veil" onClick={onClose}>
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label={"О чате «" + chatTitle(chat) + "»"} data-chat-ginfo="" onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-sheet-h"><span className="ch-sheet-t">{chatTitle(chat)}</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
@@ -1088,7 +1090,8 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
         </div>
       </div>) : null}
     <div className="ch-chatwrap sa-dlgpath">
-      <div ref={chatRef} className="ch-chat sa-dlgscroll" role="log" aria-live="polite" aria-relevant="additions" onScroll={onScroll} data-chat-feed="">
+      {/* v96: лента едет с клавиатурой трансформом внутри рамки .ch-chatwrap (уходит под шапку, не налезая) — ui/keyboard.js */}
+      <div ref={chatRef} className="ch-chat sa-dlgscroll" role="log" aria-live="polite" aria-relevant="additions" onScroll={onScroll} data-chat-feed="" data-kbm="" data-kbm-scroll="">
         <div className="ch-feed">
           {more ? <button type="button" className="ch-more" onClick={() => loadOlder()}>Показать раньше</button> : null}
           {!loaded && !err ? <div className="ch-day">Загружаю…</div> : null}
@@ -1110,10 +1113,10 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
           })}
         </div>
       </div>
-      {away ? <button type="button" className="ch-down" aria-label="К последним сообщениям" onClick={() => { stick.current = true; setAway(false); setFresh(0); toBottom(true); }}>
+      {away ? <button type="button" className="ch-down" data-kbm="" aria-label="К последним сообщениям" onClick={() => { stick.current = true; setAway(false); setFresh(0); toBottom(true); }}>
         {IC.down}{fresh ? <span className="ch-badge">{badge(fresh)}</span> : null}</button> : null}
     </div>
-    <div className="ch-bar">
+    <div className="ch-bar" data-kbm="">
       {err ? <div className="ch-err" role="alert">{err}</div> : null}
       {reply ? (
         <div className="ch-ctx" data-chat-replybar={reply.id}>
@@ -1184,7 +1187,7 @@ function CallSheet({ me, api, chat, onClose, onDone }) {
     }).catch(() => { setBusy(false); setErr("Нет связи. Попробуй ещё раз."); });
   };
   return (
-    <div className="ch-veil" onClick={onClose}>
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Позвать" data-chat-callsheet="" onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-sheet-h"><span className="ch-sheet-t">Позвать</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
@@ -1228,7 +1231,7 @@ function MsgSheet({ me, msg, chat, members, reads, pinned, onClose, onDelete, on
     try { Promise.resolve(navigator.clipboard.writeText(msg.body || "")).then(done).catch(() => setCopied(false)); } catch (e) { setCopied(false); }
   };
   return (
-    <div className="ch-veil" onClick={onClose}>
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Сообщение" data-chat-msgsheet={msg.id} onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-rbar" role="group" aria-label="Реакция">
@@ -1259,7 +1262,7 @@ function MsgSheet({ me, msg, chat, members, reads, pinned, onClose, onDelete, on
 function ClearSheet({ chat, busy, err, onClear, onClose }) {
   const dm = chat.kind === "dm";
   return (
-    <div className="ch-veil" onClick={onClose}>
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label={dm ? "Очистить переписку" : "Очистить чат"} data-chat-clearsheet="" onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-sheet-h"><span className="ch-sheet-t">{dm ? "Очистить переписку?" : "Очистить «" + chatTitle(chat) + "»?"}</span>
@@ -1277,7 +1280,7 @@ function ClearSheet({ chat, busy, err, onClear, onClose }) {
 // ── фото к отправке: превью и подпись ──
 function PhotoSheet({ shot, caption, onCaption, reply, me, onSend, onClose }) {
   return (
-    <div className="ch-veil" onClick={onClose}>
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Фото" data-chat-photosheet="" onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-sheet-h"><span className="ch-sheet-t">Фото</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>

@@ -20,7 +20,7 @@ describe("v95: окно сжалось без события (ui/keyboard.js)", 
     const src = rd("ui/keyboard.js");
     expect(src).toContain("const onTg = () => { measure(); late.forEach(clearTimeout); late = [500, 1000].map((ms) => setTimeout(measure, ms)); };");
     expect(src).toContain('try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", onTg); } catch (e) { /* */ }');
-    expect(src).toContain("alive = false; clearTimeout(timer); clearTimeout(settle); late.forEach(clearTimeout); if (raf) cancelAnimationFrame(raf);");
+    expect(src).toContain("alive = false; clearTimeout(timer); clearTimeout(settle); clearTimeout(predT); late.forEach(clearTimeout); stop();");   // v96: путь — stop()
   });
   it("расчёт прежний: окно сжалось, высота от Telegram та же — низ у клавиатуры, отступ 0", async () => {
     const { kbBottom } = await import("../ui/keyboard.js");
@@ -30,13 +30,14 @@ describe("v95: окно сжалось без события (ui/keyboard.js)", 
 });
 
 describe("v95: вырез снизу — тем же ходом и по тем же часам, что низ", () => {
-  it("хук ведёт --kbs (1 — клавиатуры нет, 0 — есть) вместе с --kb; часы — performance.now, а не метка кадра", () => {
+  it("хук ведёт --kbs (1 — клавиатуры нет, 0 — есть) вместе с --kb (v96: в один миг, в начале или в конце пути)", () => {
     const src = rd("ui/keyboard.js");
-    for (const s of ['if (s !== putS) { putS = s; el.style.setProperty("--kbs", String(s)); }',
-      "const t = now(), k = KB_MS > 0 ? (t - t0) / KB_MS : 1, ku = KB_MS > 0 ? (t - ut0) / KB_MS : 1;",
-      "if (upT !== uto) { ufrom = us; uto = upT; ut0 = tn; }",
+    // v96 (Доп. 409): покадрового хода больше нет — --kb и --kbs меняет setLayout, путь ведёт браузер (Web Animations)
+    for (const s of ['if (s !== S) { S = s; el.style.setProperty("--kbs", String(s)); }',
+      "const goal = (r.bottom - Lg) - sp * St;",
       'if (el) { el.setAttribute("data-kbup", next.up ? "1" : "0"); if (cls) el.classList.toggle(cls, next.up); }'])
       expect([s, src.includes(s)]).toEqual([s, true]);
+    expect(src).not.toContain("KB_MS");
   });
   it("в разметке: строка ввода, «Новый чат», список коллег и листы — calc(… var(--sa-sb) * var(--kbs,1)), без класса kb и переходов", () => {
     const chat = rd("ui/chat.jsx");
@@ -44,7 +45,7 @@ describe("v95: вырез снизу — тем же ходом и по тем �
     expect((chat.match(/var\(--sa-sb,env\(safe-area-inset-bottom,0px\)\) \* var\(--kbs,1\)/g) || []).length).toBe(4);
     expect(chat).not.toContain(".sa-dlg.ch.kb ");
     expect(chat).not.toContain("transition:padding-bottom");
-    expect(rd("ui/assistant.jsx")).toContain('<div className="sa-ai-bar" style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px) * var(--kbs, 1))" }}>');
+    expect(rd("ui/assistant.jsx")).toContain('<div className="sa-ai-bar" data-kbm="" style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px) * var(--kbs, 1))" }}>');   // v96: data-kbm
   });
 });
 

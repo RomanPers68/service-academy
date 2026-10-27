@@ -3,9 +3,14 @@
 // меню (menu_get, menu_set), график (schedule_load, schedule_save_month), брифинг (brief_today, brief_publish) и чат
 // (этап 38: переписка, смены — отдать, поменяться, «Ищем в смену», заявки на месяц для «Графика», карточка коллеги,
 // задания, «Поделиться», опросы, стоп-лист из чата и из Меню, брифинг и «График готов» карточкой).
+// v99 (Доп. 412): этап 39: вход через Telegram (tg_login), упоминания (mentions, ment в списке чатов, бот упомянутым),
+// поиск (chat_search), «Опаздываю» (chat_late, chat_late_ok, late_month), календарь (cal_key, cal_feed) и «Сервер»
+// (server_check, owner_tg_setup). Сообщения бота в Telegram — через opts.ping (демо показывает их как уведомление).
 // Чего здесь нет, на то ответ «функции нет» (PGRST202): приложение прячет это, как без SQL-этапа.
 // Состояние — обычный объект (JSON): демо хранит его в localStorage и переживает смену человека и перезагрузку.
 import { cardSummary, shiftLogLine } from "../../../lib/chat-smart.js";
+import { mentionNames } from "../../../lib/chat-mention.js";
+import { lateMinText } from "../../../lib/late.js";
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -18,6 +23,10 @@ const toks = (s) => String(s || "").toLowerCase().replace(/ё/g, "е").split(/\s
 const nm = (s) => { const w = String(s || "").trim().split(/\s+/); return w[1] ? w[0] + " " + w[1][0] + "." : w[0] || ""; };
 const cut = (s, n) => { const t = String(s == null ? "" : s).replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t; };
 const ID_RE = /^[A-Za-z0-9_.:-]{1,80}$/;
+const lowE = (s) => String(s || "").toLowerCase().replace(/ё/g, "е");
+const reEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const hhmm = (mins) => { const v = ((Math.round(mins) % 1440) + 1440) % 1440; return String(Math.floor(v / 60)).padStart(2, "0") + ":" + String(v % 60).padStart(2, "0"); };
+const hex32 = () => Array.from({ length: 32 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
 export const LEADS = ["manager", "senior", "owner", "admin", "service_manager", "head"];
 export const isLead = (p) => !!p && (!!p.is_admin || LEADS.includes(p.position));
 export const full = (p) => (p.name + " " + (p.surname || "")).trim();
@@ -35,12 +44,16 @@ export function makeServer(opts) {
   const PEOPLE = opts.people, TOK = opts.tok || {}, SSTAFF = opts.sstaff, CFG = opts.cfg;
   const SH = (CFG && CFG.shifts) || SHIFTS;
   const clock = opts.clock || (() => Date.now());
+  const ping = opts.ping || (() => {});   // v99: «бот пишет в Telegram»: (кому, текст, кнопки, чат, сообщение)
   const now = () => new Date(clock()).toISOString();
   const S = opts.state || {
     chats: [{ id: 1, kind: "team", rest: R0, pin: null }, { id: 2, kind: "leads", rest: R0, pin: null }, { id: 3, kind: "net", rest: "", pin: null }],
     msgs: [], reads: {}, photos: {}, seq: 100, pseq: 500, votes: {}, progress: clone(opts.progress || {}), quizzes: clone(opts.quizzes || {}), tg: [], menu: clone(opts.menu || []), months: {}, saved: [],
     brief: null, briefSent: 0, log: [], wishes: {},
   };
+  // v99: этап 39 (состояние из прошлых версий демо — без этих полей)
+  S.late = S.late || {}; S.cal = S.cal || {}; S.seen = S.seen || {}; S.tgAuth = S.tgAuth || {}; S.allAt = S.allAt || {};
+  S.srv = S.srv || { hook: false, last: null, app: null, code: null };
   const monOf = (iso) => { const mk = iso.slice(0, 7); return S.months[mk] || (S.months[mk] = { plan: {}, locks: {}, days: {}, facts: {} }); };
   if (!opts.state) for (const [sid, row] of Object.entries(opts.plan || {})) for (const [n, k] of Object.entries(row)) { const iso = D(Number(n)); const mo = monOf(iso); (mo.plan[sid] = mo.plan[sid] || {})[dayN(iso)] = k; }
   // пожелания: { "ГГГГ-ММ": [{ staff_id, day, kind: "off" | "hard" }] }; opts.wishes — смещение дня от сегодня
@@ -58,7 +71,33 @@ export function makeServer(opts) {
   const J = (m) => ({ id: m.id, chat: m.chat, emp: m.emp, name: m.name, rest: m.rest, body: m.del ? "" : m.body, kind: m.kind, call: m.kind === "call" && !m.del ? m.call : null,
     photo: m.kind === "photo" && !m.del ? m.photo : null, reply: m.reply && !m.del ? quote(msgOf(m.reply)) : null, reacts: m.del ? [] : m.reacts.map((x) => ({ ...x })),
     at: m.at, edited: !!m.edited && !m.del, del: m.del, card: ["card", "ai", "sys"].includes(m.kind) && !m.del && m.card ? clone(m.card) : null });
-  const put = (c, p, body, extra = {}) => { const t = now(); const m = { id: ++S.seq, chat: c.id, emp: p.id, name: full(p), rest: p.restaurant, body, kind: "text", call: null, photo: null, reply: null, reacts: [], edited: false, del: false, at: t, upd: t, ...extra }; S.msgs.push(m); setRead(c, p.id, m.id); return m; };
+  const put = (c, p, body, extra = {}) => { const t = now(); const m = { id: ++S.seq, chat: c.id, emp: p.id, name: full(p), rest: p.restaurant, body, kind: "text", call: null, photo: null, reply: null, reacts: [], edited: false, del: false, at: t, upd: t, ...extra };
+    if (m.kind === "text" || m.kind === "photo") m.ment = mentionsOf(c, p, body);
+    S.msgs.push(m); setRead(c, p.id, m.id); seenNow(c, p.id); if (m.ment) mentionPings(c, p, m); return m; };
+  // v99: упоминания — как _sa_chat_ment_parse: участники чата (кроме автора) и «all» — «@все» руководителя; в личной — никого
+  function mentionsOf(c, p, body) {
+    if (!c || c.kind === "dm" || String(body || "").indexOf("@") < 0) return null;
+    const b = lowE(body), W = "а-яеa-z0-9_", out = [];
+    for (const n of mentionNames(members(c).map((e) => ({ id: e.id, name: full(e), pos: e.position })))) {
+      if (n.id === p.id) continue;
+      if (new RegExp("(^|[^" + W + "])@" + reEsc(lowE(n.disp)) + "($|[^" + W + "])").test(b)) out.push(n.id);
+    }
+    if (isLead(p) && new RegExp("(^|[^" + W + "])@(все|всем|all)($|[^" + W + "])").test(b)) out.push("all");
+    return out.length ? out : null;
+  }
+  // v99: кто сейчас в чате (открыт минуту назад), тому бот не пишет (как _sa_chat_pingk)
+  function seenNow(c, id) { S.seen[c.id + "|" + id] = clock(); }
+  function pingK(c, to, text, acts, msg) { if (!to || clock() - (S.seen[c.id + "|" + to] || 0) < 60000) return false; ping(to, text, acts || null, c.id, msg || null); return true; }
+  const placeOf = (c) => ({ team: "Вся команда", leads: "Старшие", net: "Руководители сети" }[c.kind] || c.title || "Чат");
+  function mentionPings(c, p, m) {
+    const what = m.kind === "photo" ? "Фото" + (m.body ? ": " + cut(m.body, 280) : "") : cut(m.body, 300);
+    const ids = m.ment.filter((x) => x !== "all" && x !== p.id);
+    ids.forEach((x) => pingK(c, x, nm(full(p)) + " упоминает тебя в «" + placeOf(c) + "»:\n" + what, null, m.id));
+    if (m.ment.includes("all") && !(clock() - (S.allAt[c.id] || 0) < 600000)) {
+      S.allAt[c.id] = clock();
+      members(c).filter((e) => e.id !== p.id && !ids.includes(e.id)).forEach((e) => pingK(c, e.id, nm(full(p)) + " пишет всем в «" + placeOf(c) + "»:\n" + what, null, m.id));
+    }
+  }
   const touch = (m) => { m.upd = now(); };
   const unread = (c, p) => S.msgs.filter((m) => m.chat === c.id && !m.del && m.emp !== p.id && m.id > rd(c, p.id)).length;
   const callFor = (m, p) => m.kind === "call" && !m.del && m.emp !== p.id && (m.call.who === "person" ? m.call.emp === p.id : m.call.who === "lead" ? isLead(p) : ({ host: ["hostess"], bar: ["bartender"], waiter: ["waiter"] }[m.call.who] || []).includes(p.position));
@@ -67,7 +106,8 @@ export function makeServer(opts) {
     const last = [...S.msgs].reverse().find((m) => m.chat === c.id && !m.del);
     const peer = c.kind === "dm" ? who(c.members.find((x) => x !== p.id)) : null;
     return { id: c.id, kind: c.kind, members: members(c).length, shift: c.kind === "team" || c.kind === "leads" ? 3 : null, peer: peer ? { id: peer.id, name: full(peer), pos: peer.position, shift: true } : null,
-      last: last ? J(last) : null, unread: unread(c, p), cleared: c.cleared || null, title: c.kind === "group" ? c.title : null, owner: c.kind === "group" ? c.owner : null };
+      last: last ? J(last) : null, unread: unread(c, p), cleared: c.cleared || null, title: c.kind === "group" ? c.title : null, owner: c.kind === "group" ? c.owner : null,
+      ment: S.msgs.filter((m) => m.chat === c.id && !m.del && m.emp !== p.id && m.id > rd(c, p.id) && m.ment && (m.ment.includes(p.id) || m.ment.includes("all"))).length };
   };
   // ── график: буква в клетке, почему нельзя, может ли взять, варианты обмена, запись ──
   const code = (sid, iso, over = {}) => { const key = iso + "|" + sid; if (key in over) return over[key] || ""; return ((monOf(iso).plan[sid] || {})[dayN(iso)]) || ""; };
@@ -202,6 +242,57 @@ export function makeServer(opts) {
       S.brief = { data: b.p_data, author: full(p), mine: true, sent: 0, at: now() };
       return { ok: true, again, sent: 0, bot: false };
     }
+    // ── v99 (этап 39): вход через Telegram, отметки «Опаздываю» в графике, календарь, «Сервер» ──
+    if (fn === "tg_login" || fn === "tg_auth_bind" || fn === "tg_auth_off") {
+      const init = String(b.p_init_data || ""), um = /(?:^|&)user=([^&]*)/.exec(init);
+      let tgId = ""; try { tgId = um ? String(JSON.parse(decodeURIComponent(um[1])).id || "") : ""; } catch (e) { tgId = ""; }
+      if (!tgId || !/(?:^|&)hash=/.test(init)) return { ok: false, error: "bad_init" };
+      if (fn === "tg_login") {
+        const a = S.tgAuth[tgId] || (opts.tgKnown && opts.tgKnown[tgId] ? { emp: opts.tgKnown[tgId], off: false } : null);
+        const e = a && !a.off ? who(a.emp) : null;
+        if (!e) return { ok: false, error: "not_linked" };
+        const tok = Object.keys(TOK).find((k) => TOK[k] === e.id);
+        return tok ? { ok: true, token: tok, employee: clone(e), via: "telegram" } : { ok: false, error: "not_linked" };
+      }
+      if (!p) return { ok: false, error: "auth" };
+      if (fn === "tg_auth_bind") { S.tgAuth[tgId] = { emp: p.id, off: false }; return { ok: true }; }
+      if (S.tgAuth[tgId] && S.tgAuth[tgId].emp === p.id) S.tgAuth[tgId].off = true; else S.tgAuth[tgId] = { emp: p.id, off: true };
+      return { ok: true };
+    }
+    if (fn === "late_month") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(b.p_month || ""))) return { ok: false, error: "bad_request" };
+      const rows = Object.values(S.late).filter((l) => l.rest === p.restaurant && l.day.slice(0, 7) === b.p_month && (isLead(p) || l.emp === p.id))
+        .sort((x, y) => (x.day < y.day ? -1 : x.day > y.day ? 1 : x.name.localeCompare(y.name, "ru")))
+        .map((l) => { const st = staffOf(l.emp); return { emp: l.emp, name: l.name, ...(st ? { sid: String(st.id) } : {}), day: Number(l.day.slice(8)), min: l.min, eta: l.eta, ...(l.note ? { note: l.note } : {}), ...(l.ok ? { ok: l.ok } : {}) }; });
+      return { ok: true, rows };
+    }
+    if (fn === "cal_key") {
+      if (!p) return { ok: false, error: "auth" };
+      if (b.p_reset) delete S.cal[p.id];
+      const k = S.cal[p.id] || (S.cal[p.id] = { k: hex32(), used: null });
+      const sh = empShifts(p, 0, 13);
+      return { ok: true, key: k.k, used: k.used, schedule: sh !== null, next: (sh || []).slice(0, 3) };
+    }
+    if (fn === "cal_feed") {
+      const id = Object.keys(S.cal).find((x) => S.cal[x].k === String(b.p_key || "")), e = id ? who(id) : null;
+      if (!e) return { ok: false, error: "key" };
+      if (!b.p_page) S.cal[id].used = now();   // страница «Подписаться» — ещё не календарь
+      return { ok: true, id: e.id, name: full(e), rest: e.restaurant, tz: "Europe/Moscow", schedule: true, shifts: empShifts(e, -31, 62) || [], app: S.srv.app };
+    }
+    if (fn === "server_check" || fn === "owner_tg_setup") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!p.is_admin) return { ok: false, error: "forbidden" };
+      if (fn === "owner_tg_setup") {
+        if (/^https:\/\/[^\s"<>?#]{4,190}$/.test(String(b.p_app || "")) && !S.srv.app) S.srv.app = String(b.p_app).replace(/\/+$/, "");
+        S.srv.code = hex32().slice(0, 12);
+        return { ok: true, code: S.srv.code, app: S.srv.app };
+      }
+      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.slice() : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
+        cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }], pg_net: true,
+        tg: { bot: true, name: "akademiya_demo_bot", hook: !!S.srv.hook, last: S.srv.last, linked: 5, auth: Object.values(S.tgAuth).filter((a) => !a.off).length + 2 },
+        app: S.srv.app, staff: PEOPLE.length, tz: "Europe/Moscow", now: now() };
+    }
     if (!/^chat_/.test(fn)) return { code: "PGRST202", message: "demo: " + fn };
     S.log.push({ fn, at: now() }); if (S.log.length > 200) S.log.splice(0, S.log.length - 200);
     if (!p) return { ok: false, error: "auth" };
@@ -220,10 +311,11 @@ export function makeServer(opts) {
       else if (b.p_after) list = list.filter((m) => m.id > b.p_after || (b.p_since && Date.parse(m.upd) >= Date.parse(b.p_since) - 5000));
       else { list = list.filter((m) => !m.del); more = list.length > 60; list = list.slice(-60); }
       const pin = c.pin ? msgOf(c.pin) : null;
+      seenNow(c, p.id);
       return { ok: true, chat: view(c, p), msgs: list.map((m) => smart(m, p)), members: members(c).map((e) => ({ id: e.id, name: full(e), pos: e.position, rest: e.restaurant, read: rd(c, e.id) })), more,
         pin: c.kind !== "dm" && pin && !pin.del ? J(pin) : null, now: now() };
     }
-    if (fn === "chat_read") { const c = chatOf(b.p_chat); if (!visible(c, p)) return { ok: false, error: "not_found" }; setRead(c, p.id, Math.min(Number(b.p_last) || 0, S.seq)); return { ok: true }; }
+    if (fn === "chat_read") { const c = chatOf(b.p_chat); if (!visible(c, p)) return { ok: false, error: "not_found" }; setRead(c, p.id, Math.min(Number(b.p_last) || 0, S.seq)); seenNow(c, p.id); return { ok: true }; }
     if (fn === "chat_send" || fn === "chat_photo_send") {
       const c = chatOf(b.p_chat); if (!visible(c, p)) return { ok: false, error: "not_found" };
       const q = b.p_reply ? msgOf(b.p_reply) : null;
@@ -260,7 +352,7 @@ export function makeServer(opts) {
     if (fn === "chat_edit") {
       const m = msgOf(b.p_msg); if (!m || m.del || m.emp !== p.id || m.kind !== "text") return { ok: false, error: "not_found" };
       const body = String(b.p_body || "").trim().slice(0, 1000); if (!body) return { ok: false, error: "bad_request" };
-      m.body = body; m.edited = true; touch(m); return { ok: true, msg: smart(m, p) };
+      m.body = body; m.edited = true; m.ment = mentionsOf(chatOf(m.chat), p, body); touch(m); return { ok: true, msg: smart(m, p) };
     }
     if (fn === "chat_pin") {
       const c = chatOf(b.p_chat); if (!visible(c, p) || c.kind === "dm") return { ok: false, error: "not_found" };
@@ -463,8 +555,51 @@ export function makeServer(opts) {
       Object.assign(m.card, { st: "off", offBy: full(p), offAt: now() }); m.body = cardSummary(m.card); touch(m);
       return { ok: true, msg: smart(m, p) };
     }
+    // ── v99: поиск по переписке, «Опаздываю» и «Принято» ──
+    if (fn === "chat_search") {
+      const q = String(b.p_q || "").replace(/\s+/g, " ").trim();
+      if (q.length < 2 || q.length > 80) return { ok: false, error: "bad_request" };
+      const ids = S.chats.filter((c) => visible(c, p) && (b.p_chat == null || c.id === Number(b.p_chat))).map((c) => c.id), qq = lowE(q);
+      const found = S.msgs.filter((m) => ids.includes(m.chat) && !m.del && ["text", "photo", "card", "ai"].includes(m.kind) && lowE(m.body).includes(qq)).sort((x, y) => y.id - x.id).slice(0, 50);
+      return { ok: true, q, msgs: found.map(J), more: found.length >= 50 };
+    }
+    if (fn === "chat_late") {
+      const c = b.p_chat == null ? teamOf(p.restaurant) : chatOf(b.p_chat);
+      if (!c || !visible(c, p) || !["team", "group"].includes(c.kind) || c.rest !== p.restaurant) return { ok: false, error: "not_found" };
+      const min = Number(b.p_min);
+      if (!(min >= 5 && min <= 240)) return { ok: false, error: "bad_request" };
+      if (S.msgs.some((m) => m.emp === p.id && m.kind === "card" && !m.del && m.card && m.card.t === "late" && clock() - Date.parse(m.at) < 180000)) return { ok: false, error: "too_fast" };
+      const t = new Date(clock()), cur = t.getHours() * 60 + t.getMinutes(), st = staffOf(p.id), sh = st ? def(code(String(st.id), TODAY)) : null;
+      const eta = hhmm(Math.max(sh ? sh.from * 60 : 0, cur) + min), note = cut(b.p_note, 80);
+      const card = { t: "late", min, eta, day: TODAY, ...(sh ? { from: hh(sh.from), label: sh.name.toLowerCase() } : {}), ...(note ? { note } : {}) };
+      const m = put(c, p, "Опаздываю на " + lateMinText(min) + ": буду в " + eta + (note ? ". " + note : ""), { kind: "card", card });
+      S.late[p.id + "|" + TODAY] = { emp: p.id, name: full(p), rest: p.restaurant, day: TODAY, min, eta, note: note || null, msg: m.id, ok: null };
+      // руководители и старшие этого чата, кто сегодня в графике; никого из них в графике — все
+      const leads = members(c).filter((e) => e.id !== p.id && isLead(e)), onl = leads.filter((e) => personToday(e)), to = onl.length ? onl : leads;
+      const txt = nm(full(p)) + " опаздывает на " + lateMinText(min) + ": будет в " + eta + (sh ? " (смена с " + hh(sh.from) + ")" : "") + "." + (note ? "\n«" + note + "»" : "");
+      let sent = 0;
+      to.forEach((e) => { if (pingK(c, e.id, txt, [{ text: "Принято", late: m.id }], m.id)) sent++; });
+      return { ok: true, msg: smart(m, p), sent, leads: to.length };
+    }
+    if (fn === "chat_late_ok") {
+      const m = msgOf(b.p_msg), c = m ? chatOf(m.chat) : null;
+      if (!m || m.del || m.kind !== "card" || !m.card || m.card.t !== "late" || !visible(c, p)) return { ok: false, error: "not_found" };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      if (m.card.ok) return { ok: true, again: true, msg: smart(m, p) };
+      m.card.ok = { id: p.id, name: full(p), at: now() }; touch(m);
+      const l = S.late[m.emp + "|" + m.card.day]; if (l && l.msg === m.id) l.ok = full(p);
+      if (m.emp !== p.id) pingK(c, m.emp, nm(full(p)) + ": принято, ждём к " + (m.card.eta || "") + ".", null, m.id);
+      return { ok: true, msg: smart(m, p) };
+    }
     if (fn === "chat_ai_post") return { ok: false, error: "no_ai" };
     return { code: "PGRST202", message: "demo: " + fn };
+  }
+  // v99: смены человека по графику (как _sa_emp_shifts): со смещения from по to от сегодня
+  function empShifts(e, from, to) {
+    const st = staffOf(e.id); if (!st) return [];
+    const out = [];
+    for (let i = from; i <= to; i++) { const iso = D(i), k = code(String(st.id), iso), sh = def(k); if (sh) out.push({ date: iso, k, label: sh.name, from: sh.from, to: sh.to, time: hh(sh.from) + "–" + hh(sh.to), pos: SPOS[st.pos][0], sid: String(st.id) }); }
+    return out;
   }
   // смена человека сегодня и ближайшая (для «Кто в смене» и карточки коллеги)
   function personToday(e) { const s = staffOf(e.id); const sh = s && def(code(String(s.id), TODAY)); return sh ? { label: sh.name, time: hh(sh.from) + "–" + hh(sh.to) } : null; }
@@ -480,5 +615,5 @@ export function makeServer(opts) {
     // кто из коллег (не я) может забрать или выйти по карточке
     taker: (m, notId) => PEOPLE.find((e) => e.id !== notId && e.id !== m.card.from && e.restaurant === R0 && (m.card.mode === "need" ? needCheck(m.card, e.id).can : check(m.card, e.id).can)) || null,
   };
-  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf };
+  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf, tokOf: (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null };
 }

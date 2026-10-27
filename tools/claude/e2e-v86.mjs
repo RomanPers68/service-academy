@@ -360,8 +360,9 @@ if (want("VOICES")) {
   await o.page.locator("[data-voices-all]").click(); await sleep(250);
   const pl = o.page.locator("[data-voices-player]");
   ok("VOICES: «Слушать подряд» — плеер внизу: блюдо, кто, 1/3", (await pl.count()) === 1 && /Буррата с томатами Шеф · Алексей · .* · 1\/3/.test(await txt(pl)), await txt(pl));
-  await shot(o.page, "voices-player");
+  // v99: снимок — после паузы: запись 0,8 с, и снимок до паузы на загруженной машине давал ей доиграть
   await pl.locator("[data-voices-pause]").click(); await sleep(250);
+  await shot(o.page, "voices-player");
   ok("VOICES: пауза — плеер ждёт («Дальше слушать»)", (await pl.getAttribute("data-voices-player")) === "pause" && (await pl.locator("[data-voices-pause]").getAttribute("aria-label")) === "Дальше слушать");
   await pl.locator("[data-voices-rate]").click(); await sleep(150);
   ok("VOICES: скорость 1,5× — на кнопке и в памяти телефона", (await pl.locator("[data-voices-rate]").innerText()) === "1,5×" && (await o.page.evaluate(() => localStorage.getItem("sa_voice_rate"))) === "1.5");

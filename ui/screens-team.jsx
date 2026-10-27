@@ -28,6 +28,7 @@ import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-car
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
 import { APP_SHARE_URL } from "./screens-gamification";
 import { POS_LABELS, positionLabel } from "../data/positions";
+import { tgInitData, tgLogin, tgBind, tgTryLogin, tgLoginNote } from "../lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 
 export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const [view, setView] = React.useState("list");        // list | add | card | code
@@ -615,17 +616,32 @@ export function CodeLoginScreen({ T, onSuccess }) {
   const [code, setCode] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
+  // v99 (Доп. 412): открыто в Telegram — сначала узнаём по Telegram (код не нужен, если этот Telegram уже входил по коду
+  // или подключал напоминания); не узнали — обычный вход по коду с подсказкой
+  // приглашение — код в start_param (base64); ссылки бота (go_…: «Брифинг», «Вопрос дня») — не код: по ним тоже узнаём по Telegram
+  const invite = React.useMemo(() => { try {
+    const sp = String(window.Telegram?.WebApp?.initDataUnsafe?.start_param || "");
+    if (!sp || /^go_/.test(sp)) return "";
+    const dec = String(decodeStartParam(sp) || "").trim();
+    return /^[A-ZА-ЯЁ0-9]{2,8}-?[A-ZА-ЯЁ0-9]{1,8}$/i.test(dec) ? dec : "";
+  } catch (e) { return ""; } }, []);
+  const [tgTry, setTgTry] = React.useState(() => tgTryLogin({ startParam: invite }));
+  const [tgNote, setTgNote] = React.useState("");
+  React.useEffect(() => {
+    if (!tgTry) return undefined;
+    let alive = true;
+    tgLogin().then((r) => {
+      if (!alive) return;
+      if (r && r.ok) { vibrate("heavy"); onSuccess(r.token, r.employee); return; }
+      setTgTry(false); setTgNote(tgLoginNote(r && r.error));
+    });
+    return () => { alive = false; };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Если открыто по ссылке-приглашению (t.me/...?startapp=КОД) — код подставляется сам
   React.useEffect(() => {
-    try {
-      const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-      if (sp) {
-        const dec = decodeStartParam(sp);
-        if (dec) { setCode(format(dec)); vibrate("light"); }
-      }
-    } catch (e) {}
-  }, []);
+    if (invite) { setCode(format(invite)); vibrate("light"); }
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Умное поле: верхний регистр, дефис подставляется сам
   // Доп. 179: поле принимает и старый вид «БУКВЫ-1234», и смешанный «PJM4-7ZQF»:
@@ -651,6 +667,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
       const res = await rpc("redeem_code", { p_code: code });
       if (res && res.ok) {
         vibrate("heavy");
+        if (tgInitData()) tgBind(res.token, { force: true }).catch(() => {});   // v99: дальше этот Telegram входит без кода
         onSuccess(res.token, res.employee);
       } else {
         vibrate("error");
@@ -673,8 +690,20 @@ export function CodeLoginScreen({ T, onSuccess }) {
         Вход по приглашению
       </div>
       <div style={{ color:"#9A8C74", fontSize:12.5, lineHeight:1.7, textAlign:"center", maxWidth:300, marginBottom:24 }}>
-        Введи код доступа от руководителя. Дальше вход автоматический, код больше не понадобится.
+        {tgTry ? "Приложение открыто в Telegram: если ты уже входил, код не нужен."   /* v99 */
+          : "Введи код доступа от руководителя. Дальше вход автоматический, код больше не понадобится."}
       </div>
+      {tgTry ? (
+        /* v99: пока сервер узнаёт по Telegram — вместо поля кода; «Войти по коду» — не ждать */
+        <div data-tg-login="try" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14, minHeight:150 }}>
+          <span aria-hidden="true" style={{ width:30, height:30, borderRadius:"50%", border:"3px solid rgba(200,160,80,0.3)", borderTopColor:GOLD, animation:"saSpin 0.9s linear infinite" }} />
+          <div role="status" style={{ color:CREAM, fontSize:14.5, fontFamily:"Georgia, serif" }}>Узнаю тебя по Telegram…</div>
+          <button type="button" className="sa-btn" data-tg-login-skip="" onClick={() => setTgTry(false)}
+            style={{ background:"none", border:"none", color:"#9A8C74", fontSize:12.5, textDecoration:"underline", textUnderlineOffset:3, cursor:"pointer", fontFamily:"Georgia, serif" }}>Войти по коду</button>
+          <style>{"@keyframes saSpin{to{transform:rotate(360deg)}}"}</style>
+        </div>
+      ) : (<>
+      {tgNote ? <div data-tg-login-note="" style={{ color:GOLD, fontSize:12.5, lineHeight:1.6, textAlign:"center", maxWidth:300, margin:"-10px 0 14px" }}>{tgNote}</div> : null}
       <input
         value={code}
         onChange={e => { setCode(format(e.target.value)); setError(null); }}
@@ -706,6 +735,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
       <div style={{ color:MUTED_2, fontSize:11, marginTop:20, textAlign:"center", lineHeight:1.7 }}>
         Нет кода? Спроси у руководителя:<br/>он создаст тебя в системе за минуту.
       </div>
+      </>)}
     </div>
   );
 }

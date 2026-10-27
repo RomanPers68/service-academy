@@ -34,10 +34,13 @@ import { CHAT_MAX, CALL_WHO, CALL_WHY, CALL_OWN_MAX, POLL_OPEN_MS, POLL_HOT_MS, 
   withReact, reactName, photoBox, restShort, canClear, clearedChanged, canGroup, canManage, groupTitle, GROUP_TITLE_MAX } from "../lib/chat";
 import { compressPhoto } from "../lib/chat-photo";
 import { IC, ric, posName, stop } from "./chat-kit";   // v93: значки и помощники — общие с умными карточками
-import { CARDS_CSS, CardMsg, AiMsg, AiTyping, ActSheet, Suggest, ShiftSheet, SwapSheet, TaskSheet, PollSheet, StopSheet, BriefSheet, ShareSheet, smartErr } from "./chat-cards";
+import { CARDS_CSS, CardMsg, AiMsg, AiTyping, ActSheet, Suggest, ShiftSheet, SwapSheet, TaskSheet, PollSheet, StopSheet, BriefSheet, ShareSheet, LateSheet, smartErr } from "./chat-cards";
 import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine } from "../lib/chat-smart";
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
+import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts, mentionsMe, isLeadPos } from "../lib/chat-mention";   // v99 (Доп. 412): «@Имя»
+import { draftGet, draftSet, draftClear, draftLine } from "../lib/chat-draft";   // v99: черновик не пропадает
+import { searchQuery, searchSnippet } from "../lib/chat-search";   // v99: поиск по переписке
 
 // ── вид: та же палитра, что у «Живого диалога» (ui/screens-dialogue.jsx), свой корень .sa-dlg.ch ──
 const wallSvg = (c, o) => `<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='${c}' stroke-opacity='${o}' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>` +
@@ -321,6 +324,39 @@ export const CHAT_CSS = `
 .ch-banner-t{flex:1;min-width:0;font-size:15px;line-height:1.35}
 .ch-banner-t b{font-family:'Piazzolla',Georgia,serif}
 @keyframes chDrop{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}
+/* v99 (Доп. 412): упоминания: «@Имя» в тексте — золотом; меня упомянули — пузырь с золотой каймой; подсказки после «@» */
+.ch-at{font-weight:700;color:var(--gold-ink)}
+.ch-out .ch-at{color:rgba(30,20,8,0.92)}
+.ch-at.me{padding:0 3px;border-radius:5px;background:rgba(214,178,102,0.24)}
+.ch-out .ch-at.me{background:rgba(30,20,8,0.12)}
+.ch-row.atme .ch-in{box-shadow:var(--in-shadow),inset 0 0 0 1.5px var(--edge-gold)}
+.ch-mb{display:flex;gap:6px;max-width:640px;margin:0 auto 7px;overflow-x:auto;scrollbar-width:none;padding:0 2px}
+.ch-mb::-webkit-scrollbar{display:none}
+.sa-dlg .ch-mb,.sa-dlg .ch-mb *{touch-action:pan-x !important}
+.ch-mc{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px 0 4px;border-radius:999px;border:1px solid var(--edge-gold);background:var(--card);color:var(--text);font-size:14.5px;cursor:pointer}
+.ch-mc .ch-ava{width:28px;height:28px;font-size:11.5px}
+.ch-mc .ch-ava svg{width:17px;height:17px}
+.ch-badge.at{min-width:22px;padding:0;background:none;border:1.5px solid var(--gold);color:var(--gold-ink)}
+.ch-badge.at svg{width:15px;height:15px}
+.ch-item-p .dr{color:var(--bad-ink);font-style:normal}
+/* v99: поиск по переписке */
+.ch-q{flex:1;min-width:0;width:100%;height:40px;padding:0 40px 0 14px;border-radius:20px;border:1px solid var(--opt-edge);background:var(--field);color:var(--text);font-size:16px;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none;box-sizing:border-box}
+.ch-q:focus{border-color:var(--edge-gold)}
+.ch-q::-webkit-search-cancel-button,.ch-q::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
+.ch-qw{position:relative;flex:1;min-width:0;display:flex}
+.ch-qx{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;border-radius:50%;background:none;color:var(--gold-ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.ch-qx svg{width:16px;height:16px}
+.ch-sr{display:flex;align-items:flex-start;gap:12px;width:100%;padding:10px 14px;border:0;background:none;text-align:left;cursor:pointer;position:relative;color:var(--text)}
+.ch-sr:active{background:var(--row-hover)}
+.ch-sr+.ch-sr::before{content:"";position:absolute;top:0;left:68px;right:14px;border-top:1px solid var(--edge)}
+.ch-sr .ch-ava{width:42px;height:42px}
+.ch-sr-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ch-sr-h{display:flex;align-items:baseline;gap:8px}
+.ch-sr-c{flex:1;min-width:0;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-sr-t{flex:0 0 auto;font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.ch-sr-x{font-size:14px;line-height:1.4;color:var(--sub);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ch-sr-x b{color:var(--gold-ink);font-weight:700;background:rgba(214,178,102,0.16);border-radius:4px;padding:0 1px}
+.ch-sr-w{color:var(--text)}
 /* v96: «Уменьшить движение»: переходы 0 с, а не 0,01 мс. С 0,01 мс любая смена стиля шла переходом и на кадр
    запаздывала: вырез снизу у строки ввода убирался кадром позже низа, строка подскакивала на 34 px */
 @media (prefers-reduced-motion: reduce){.sa-dlg.ch *,.ch-banner{animation-duration:.01ms!important;transition-duration:0s!important}}
@@ -426,6 +462,8 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   const [picker, setPicker] = React.useState(false);   // true — «Написать» (личное), "group" — новый свой чат (v92)
   const [callOpen, setCallOpen] = React.useState(false);
   const [note, setNote] = React.useState("");          // v92: «Этого чата у тебя больше нет» и т. п. — над списком
+  const [search, setSearch] = React.useState(false);   // v99 (Доп. 412): поиск по переписке — вместо списка
+  const searchQ = React.useRef("");                    // что искали: вернулся из найденного чата — тот же запрос
   // v91: открытая переписка остаётся открытой, даже если её нет в списке с сервера: пустую личную (ещё не написали)
   // и очищенную список не показывает, и раньше через 10 секунд опрос списка закрывал такую переписку
   const keepRef = React.useRef(null);
@@ -440,7 +478,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     if (it.kind === "chat" && it.id != null) { setInit(it.msg ? { msg: it.msg } : null); setCurId(it.id); return; }
     if (it.kind === "share" && it.item) { setCurId(null); setPicker(false); setShareItem(it.item); return; }
     if (it.kind === "dm" && it.emp) { openDm({ id: it.emp }); return; }   // eslint-disable-line no-use-before-define
-    if (it.kind === "give" || it.kind === "swap") wantRef.current = it;
+    if (it.kind === "give" || it.kind === "swap" || it.kind === "late") wantRef.current = it;   // v99: «Опаздываю» из «Смены» и с главной
   }, [intent]);   // eslint-disable-line react-hooks/exhaustive-deps
   const load = React.useCallback(() => Promise.resolve(api.list()).then((r) => {
     if (r && r.ok) {
@@ -461,7 +499,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   React.useEffect(() => {
     const w = wantRef.current;
     if (!w || !team) return;
-    wantRef.current = null; setInit({ shift: w.kind, date: w.date || null }); setCurId(team.id);
+    wantRef.current = null; setInit(w.kind === "late" ? { late: true } : { shift: w.kind, date: w.date || null }); setCurId(team.id);
   }, [team]);   // eslint-disable-line react-hooks/exhaustive-deps
   function openDm(p) { return Promise.resolve(api.dm(p.id)).then((r) => {
     if (r && r.ok && r.chat) { setChats((cs) => (cs || []).some((c) => String(c.id) === String(r.chat.id)) ? cs : [...(cs || []), r.chat]); setPicker(false); setCurId(r.chat.id); }
@@ -484,10 +522,12 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     <div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb.up ? " kb" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат">
       {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} app={app} chat={cur} stt={stt} onBack={() => { keepRef.current = null; setInit(null); setCurId(null); load(); }} onSent={load} onGone={gone} onDm={openDm}
           init={init && String(curId) === String(cur.id) ? init : null} />
+        : search && api.search ? <SearchView api={api} me={me} chats={chats} q0={searchQ.current} onQ={(q) => { searchQ.current = q; }} onBack={() => { searchQ.current = ""; setSearch(false); }}
+            onPick={(chatId, msgId) => { setInit({ msg: msgId, deep: true }); setCurId(chatId); }} />
         : picker === "group" ? <GroupNew me={me} api={api} onBack={() => setPicker(true)} onDone={openNew} />
         : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} top={newRow} />
         : <List chats={chats} me={me} err={err} note={note} onBack={onBack} onOpen={(c) => { vibrate("light"); setNote(""); setCurId(c.id); }} onWrite={() => { vibrate("light"); setNote(""); setPicker(true); }}
-            onCall={team ? () => { vibrate("light"); setCallOpen(true); } : null} back={!callOpen} />}
+            onCall={team ? () => { vibrate("light"); setCallOpen(true); } : null} back={!callOpen} onSearch={api.search ? () => { vibrate("light"); setNote(""); searchQ.current = ""; setSearch(true); } : null} />}
       {callOpen && !cur && team ? <CallSheet me={me} api={api} chat={team} onClose={() => setCallOpen(false)} onDone={() => { setCallOpen(false); setCurId(team.id); }} /> : null}
       {shareItem && !cur ? <ShareTo api={api} me={me} chats={chats} item={shareItem} onClose={() => setShareItem(null)}
         onSent={(chat) => { setShareItem(null); setInit(null); setCurId(chat.id); load(); }} /> : null}
@@ -531,13 +571,14 @@ function ShareTo({ api, me, chats, item, onClose, onSent }) {
 }
 
 // ── список чатов ──
-function List({ chats, me, err, note = "", onBack, onOpen, onWrite, onCall, back = true }) {
+function List({ chats, me, err, note = "", onBack, onOpen, onWrite, onCall, back = true, onSearch = null }) {
   const now = new Date();
   return (<>
     <header className="ch-head">
       <div className="ch-head-in">
         <button type="button" className="ch-back" data-sa-back={back ? "" : undefined} aria-label={back ? "Назад" : "Выйти из чата"} onClick={onBack}>{IC.back}</button>
         <div className="ch-id" style={{ flex: 1 }}><b className="ch-title">Чат</b><span className="ch-st">{me && me.restaurant ? me.restaurant : "команда заведения"}</span></div>
+        {onSearch ? <button type="button" className="ch-tool" data-chat-searchbtn="" aria-label="Поиск по сообщениям" onClick={onSearch}>{IC.search}</button> : null}
         {onCall ? <button type="button" className="ch-tool" data-chat-callbtn="" aria-label="Позвать" onClick={onCall}>{IC.bell}</button> : null}
         <button type="button" className="ch-tool" data-chat-write="" aria-label="Написать коллеге" onClick={onWrite}>{IC.pen}</button>
       </div>
@@ -549,12 +590,15 @@ function List({ chats, me, err, note = "", onBack, onOpen, onWrite, onCall, back
         {!chats && !err ? <div className="ch-empty">Загружаю переписку…</div> : null}
         {(chats || []).map((c) => {
           const last = c.last, call = last && last.kind === "call" && !last.del;
+          const dr = draftLine(me && me.id, c.id);   // v99 (Доп. 412): «Черновик: …», как в Telegram
           return (
             <button key={c.id} type="button" role="listitem" className="ch-item" data-chat-item={c.kind === "dm" ? "dm" : c.kind} data-chat-id={c.id} onClick={() => onOpen(c)}>
               <Ava c={c} big />
               <span className="ch-item-b">
                 <span className="ch-item-r"><span className="ch-item-t">{chatTitle(c)}</span><span className={"ch-item-time" + (c.unread ? " new" : "")}>{last ? listTime(last.at, now) : ""}</span></span>
-                <span className="ch-item-r"><span className={"ch-item-p" + (call ? " call" : "")}>{last ? previewText(last, me && me.id, c.kind !== "dm") : c.kind === "dm" ? "Напиши первым" : "Пока тихо"}</span>
+                <span className="ch-item-r">{dr ? <span className="ch-item-p" data-chat-draft={c.id}><span className="dr">Черновик:</span> {dr}</span>
+                  : <span className={"ch-item-p" + (call ? " call" : "")}>{last ? previewText(last, me && me.id, c.kind !== "dm") : c.kind === "dm" ? "Напиши первым" : "Пока тихо"}</span>}
+                  {c.ment ? <span className="ch-badge at" data-chat-ment={c.ment} aria-label={"тебя упомянули: " + c.ment}>{IC.at}</span> : null}
                   {c.unread ? <span className="ch-badge" data-chat-unread={c.unread} aria-label={"непрочитанных: " + c.unread}>{badge(c.unread)}</span> : null}</span>
               </span>
             </button>);
@@ -562,6 +606,68 @@ function List({ chats, me, err, note = "", onBack, onOpen, onWrite, onCall, back
         {chats ? <div className="ch-note">{(chats || []).some((c) => c.kind === "net")
           ? "Переписку видят только сотрудники вашего заведения, «Руководителей сети» видят руководители всех заведений. Она хранится 30 дней."
           : "Переписку видят только сотрудники вашего заведения. Она хранится 30 дней."}</div> : null}
+      </div>
+    </div>
+  </>);
+}
+
+// ── v99 (Доп. 412): поиск по переписке — во всех моих чатах (из списка) или в одном (из переписки). Сервер ищет по
+// словам в тексте, подписях к фото, карточках и ответах Наставника (регистр и «ё» не важны), до 50 последних; нажатие —
+// переписка открывается на этом сообщении ──
+function SearchView({ api, me, chats, chat = null, q0 = "", onQ = null, onBack, onPick }) {
+  const [q, setQ] = React.useState(q0 || "");
+  const [res, setRes] = React.useState(null);   // { q, msgs, more } | { q, err }
+  const [busy, setBusy] = React.useState(false);
+  const inRef = React.useRef(null);
+  React.useEffect(() => { const t = setTimeout(() => { try { if (inRef.current) inRef.current.focus(); } catch (e) { /* */ } }, 60); return () => clearTimeout(t); }, []);
+  React.useEffect(() => {
+    const qq = searchQuery(q);
+    if (onQ) onQ(q);
+    if (!qq) { setRes(null); setBusy(false); return undefined; }
+    let alive = true;
+    setBusy(true);
+    const t = setTimeout(() => {
+      Promise.resolve(api.search(qq, chat ? chat.id : null)).then((r) => {
+        if (!alive) return;
+        setBusy(false);
+        setRes(r && r.ok ? { q: qq, msgs: Array.isArray(r.msgs) ? r.msgs : [], more: !!r.more }
+          : { q: qq, err: r && r.error === "missing" ? "Поиск заработает, когда руководитель обновит сервер (этап 39)." : "Не получилось найти. Проверь связь." });
+      }).catch(() => { if (alive) { setBusy(false); setRes({ q: qq, err: "Нет связи. Попробуй ещё раз." }); } });
+    }, 350);
+    return () => { alive = false; clearTimeout(t); };
+  }, [q]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const byId = new Map((chats || []).map((c) => [String(c.id), c]));
+  const now = new Date(), qq = searchQuery(q);
+  return (<>
+    <header className="ch-head"><div className="ch-head-in">
+      <button type="button" className="ch-back" data-sa-back="" aria-label="Назад" onClick={onBack}>{IC.back}</button>
+      <span className="ch-qw">
+        <input ref={inRef} className="ch-q sa-field" type="search" value={q} maxLength={80} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
+          placeholder={chat ? "Поиск в «" + chatTitle(chat) + "»" : "Поиск по сообщениям"} aria-label={chat ? "Поиск в этом чате" : "Поиск по сообщениям"} data-chat-q="" />
+        {q ? <button type="button" className="ch-qx" data-chat-qx="" aria-label="Очистить" onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { setQ(""); try { if (inRef.current) inRef.current.focus(); } catch (e) { /* */ } }}>{IC.x}</button> : null}
+      </span>
+    </div></header>
+    <div className="ch-scroll sa-dlgscroll" data-chat-results={res && !res.err ? res.msgs.length : ""}>
+      <div className="ch-list" role="list">
+        {!qq ? <div className="ch-note" data-chat-search-hint="">{chat ? "Ищу в этом чате" : "Ищу во всех твоих чатах"} за 30 дней: по словам из сообщений, подписей к фото и карточек.</div> : null}
+        {qq && busy && !res ? <div className="ch-empty" role="status">Ищу…</div> : null}
+        {res && res.err ? <div className="ch-empty" role="alert" data-chat-search-err="">{res.err}</div> : null}
+        {res && !res.err && !res.msgs.length ? <div className="ch-empty" data-chat-nofound="">Ничего не нашёл.</div> : null}
+        {res && !res.err ? res.msgs.map((m) => {
+          const c = byId.get(String(m.chat)) || null;
+          const sn = searchSnippet(m.body, res.q);
+          const who = String(m.emp) === String(me && me.id) ? "Ты" : m.kind === "ai" ? AI_NAME : bubbleName(m.name);
+          return (
+            <button key={m.id} type="button" role="listitem" className="ch-sr" data-chat-sr={m.id} onClick={() => { vibrate("light"); onPick(m.chat, m.id); }}>
+              {c ? <Ava c={c} /> : <span className="ch-ava" aria-hidden="true">{chatInitials(m.name)}</span>}
+              <span className="ch-sr-b">
+                <span className="ch-sr-h"><span className="ch-sr-c">{c ? chatTitle(c) : "Чат"}</span><span className="ch-sr-t">{listTime(m.at, now)}</span></span>
+                <span className="ch-sr-x"><span className="ch-sr-w">{who}: </span>{sn.pre}{sn.hit ? <b>{sn.hit}</b> : null}{sn.post}</span>
+              </span>
+            </button>);
+        }) : null}
+        {res && res.more ? <div className="ch-note">Показаны 50 последних. Уточни запрос, чтобы найти раньше.</div> : null}
       </div>
     </div>
   </>);
@@ -802,16 +908,19 @@ function Quote({ q, me, onJump }) {
     </button>);
 }
 
-function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl, onMenu, onReply, onReact, onJump, onView, onWho = null }) {
+function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl, onMenu, onReply, onReact, onJump, onView, onWho = null, names = null, leadIds = null }) {
   const m = row.m, out = row.side === "out", meId = me && me.id;
   const sw = useSwipe(!m.del, () => onReply(m));
   const rb = out ? readBy(m, reads, meId) : [];
   const ph = m.kind === "photo" && m.photo && !m.del;
   const box = ph ? photoBox(m.photo.w, m.photo.h) : null;
   const cap = m.del ? "" : String(m.body || "");
+  // v99 (Доп. 412): «@Имя» — золотом; меня упомянули (или «@все» руководителя) — пузырь с золотой каймой
+  const parts = group && names && cap.indexOf("@") >= 0 ? mentionParts(cap, names, { meId, leadAuthor: !!(leadIds && leadIds.has(String(m.emp))) }) : null;
+  const atMe = !out && !!parts && parts.some((p) => p.t === "at" && p.me);
   const hasRx = !m.del && reactGroups(m.reacts, meId).length > 0;
   const open = () => { if (!sw.quiet.current && !m.del) onMenu(m); };
-  const cls = "ch-row " + row.side + (row.same ? " same" : "") + (row.cont ? " cont" : " tail") + (hl ? " hl" : "") + (sw.dx ? " swiping" : " back");
+  const cls = "ch-row " + row.side + (row.same ? " same" : "") + (row.cont ? " cont" : " tail") + (hl ? " hl" : "") + (atMe ? " atme" : "") + (sw.dx ? " swiping" : " back");
   const spacer = <i className={"ch-sp" + (m.edited && !m.del ? " ed" : "")} aria-hidden="true" />;
   const label = (out ? "Ты" : withRest(m.name, m.rest, net)) + ", " + hhmm(m.at) + ": " + (m.del ? "сообщение удалено" : (ph ? "фото" + (cap ? ", " + cap : "") : cap)) +
     (m.edited && !m.del ? ", изменено" : "") + (out ? (rb.length ? ", прочитано" : ", отправлено") : "");
@@ -827,7 +936,8 @@ function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl
         {!m.del && m.reply ? <Quote q={m.reply} me={me} onJump={onJump} /> : null}
         {ph ? <button type="button" className="ch-ph" style={{ width: box.w, height: box.h }} data-chat-photo={m.photo.id} aria-label="Открыть фото" onClick={(e) => { e.stopPropagation(); if (!sw.quiet.current) onView(m); }}>
           <PhotoImg api={api} id={m.photo.id} alt={cap ? "Фото: " + cap : "Фото"} /></button> : null}
-        {!ph || cap ? <span className={"ch-tx" + (m.del ? " ch-del" : "")}>{m.del ? "Сообщение удалено" : cap}{hasRx ? null : spacer}</span> : null}
+        {!ph || cap ? <span className={"ch-tx" + (m.del ? " ch-del" : "")}>{m.del ? "Сообщение удалено" : parts ? parts.map((p, i) => (p.t === "at"
+          ? <span key={i} className={"ch-at" + (p.me ? " me" : "")} data-chat-at={p.id}>{p.s}</span> : <React.Fragment key={i}>{p.s}</React.Fragment>)) : cap}{hasRx ? null : spacer}</span> : null}
         {hasRx ? <span className="ch-rxs"><Reactions m={m} me={me} onReact={onReact} />{spacer}</span> : null}
         <span className={"ch-meta" + (ph && !cap && !hasRx ? " on-ph" : "")} aria-hidden="true">{m.edited && !m.del ? <span className="ch-edm">изменено</span> : null}{hhmm(m.at)}{out ? TICKS : null}</span>
       </div>
@@ -862,10 +972,15 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   const [loaded, setLoaded] = React.useState(false);
   const [more, setMore] = React.useState(false);
   const [err, setErr] = React.useState("");
-  const [text, setText] = React.useState("");
+  // v99 (Доп. 412): черновик этого чата — в строке ввода с первого кадра (и на что отвечал — когда переписка загрузится)
+  const draft0 = React.useRef(undefined);
+  if (draft0.current === undefined) draft0.current = draftGet(meId, chat.id);
+  const [text, setText] = React.useState(() => (draft0.current ? draft0.current.t : ""));
+  const [caret, setCaret] = React.useState(() => (draft0.current ? draft0.current.t.length : 0));   // v99: где каретка — для подсказок после «@»
+  const stashRef = React.useRef(null);                 // v99: черновик на время правки своего сообщения
   const [pending, setPending] = React.useState([]);   // ещё не дошли до сервера: { tmp, body, at, failed, reply, photo }
   // v97: открыли из «Графика» — сразу лист «Отдать смену» или «Поменяться» с этим днём
-  const [sheet, setSheet] = React.useState(() => (init && init.shift ? { shift: init.shift, date: init.date || null } : null));     // "call" | { msg }
+  const [sheet, setSheet] = React.useState(() => (init && init.shift ? { shift: init.shift, date: init.date || null } : init && init.late ? "late" : null));     // "call" | { msg }; v99: "late" — «Опаздываю» из «Смены»
   const [reply, setReply] = React.useState(null);     // отвечаю на (цитата)
   const [edit, setEdit] = React.useState(null);       // правлю своё
   const [shot, setShot] = React.useState(null);       // фото к отправке: { busy } | сжатое
@@ -964,10 +1079,10 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     }).catch(() => false);
   };
   // к сообщению (цитата, закреп): подгружаем раньше, пока не найдём; подсвечиваем
-  const jumpTo = async (id) => {
+  const jumpTo = async (id, deep = false) => {   // v99: deep — из поиска: сообщение может быть и месяц назад
     if (id == null) return;
     const has = () => msgsRef.current.some((m) => String(m.id) === String(id));
-    for (let i = 0; i < 8 && !has() && moreRef.current; i++) { if (!(await loadOlder())) break; }
+    for (let i = 0; i < (deep ? 40 : 8) && !has() && moreRef.current; i++) { if (!(await loadOlder())) break; }
     if (!has()) { setErr("Этого сообщения уже нет в переписке."); return; }
     stick.current = false;
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -978,7 +1093,28 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   };
   // v97: ссылка из Telegram на сообщение (?go=chat_<чат>_<сообщение>) — к нему, когда переписка загрузилась
   const jumped = React.useRef(false);
-  React.useEffect(() => { if (loaded && init && init.msg && !jumped.current) { jumped.current = true; jumpTo(init.msg); } }, [loaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { if (loaded && init && init.msg && !jumped.current) { jumped.current = true; jumpTo(init.msg, !!init.deep); } }, [loaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v99 (Доп. 412): черновик: на что отвечал — когда переписка загрузилась; текст пишется по ходу (не во время правки) и
+  // при выходе из переписки; после отправки — стирается
+  React.useEffect(() => {
+    const d = draft0.current;
+    if (!loaded || !d || d.r == null) return;
+    draft0.current = { ...d, r: null };
+    const q = msgsRef.current.find((x) => String(x.id) === String(d.r));
+    if (q && !q.del) setReply(q);
+  }, [loaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const live = React.useRef({}); live.current = { text, reply, edit };
+  React.useEffect(() => {
+    if (edit) return undefined;
+    const t = setTimeout(() => draftSet(meId, chat.id, text, reply ? reply.id : null), 300);
+    return () => clearTimeout(t);
+  }, [text, reply, edit]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => () => {
+    const v = live.current, st = stashRef.current;
+    if (!v.edit) draftSet(meId, chat.id, v.text, v.reply ? v.reply.id : null);
+    else if (st) draftSet(meId, chat.id, st.t, st.reply ? st.reply.id : null);
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useLayoutEffect(() => { if (text && inputRef.current) grow(inputRef.current); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   // отправка: сразу в ленту (часики), сервер ответил — настоящее сообщение
   const fail = (t) => setPending((p) => p.map((x) => (x.tmp === t ? { ...x, failed: true } : x)));
   const sendErr = (r) => setErr(r && r.error === "too_fast" ? "Слишком часто: подожди минуту." : r && r.error === "photo_limit" ? "На сегодня фото в чате уже много. Завтра можно снова."
@@ -1033,11 +1169,13 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     }
     if (a === "who") { setWhoOpen((s) => new Set(s).add(String(m.id))); return; }   // список не закрывается, когда карточка обновилась
     if (a === "vote") { addMsgs([{ id: m.id, card: { ...(m.card || {}), votes: withVote((m.card || {}).votes, extra, me) } }], { quiet: true }); upd(api.pollVote(m.id, extra)); return; }
-    if (a === "unstop") { const d = (m.card || {}).dish || {}; upd(api.stopSet(chat.id, d, false, null, m.id)); }
+    if (a === "unstop") { const d = (m.card || {}).dish || {}; upd(api.stopSet(chat.id, d, false, null, m.id)); return; }
+    if (a === "lateok") { upd(api.lateOk(m.id)).then((r) => { if (r) flash("Принято. " + bubbleName(m.name).split(" ")[0] + " увидит это на карточке"); }); }   // v99
   };
   // v93: подсказки над строкой ввода и плитки «+»
   const onTile = (k) => {
     if (k === "photo") { setSheet(null); pickPhoto(); return; }
+    if (k === "late") { setSheet("late"); return; }   // v99 (Доп. 412)
     if (k === "give" || k === "swap") { setSheet({ shift: k }); return; }
     if (k === "poll") { setSheet({ poll: text.trim() }); return; }
     if (k === "ai") {
@@ -1051,22 +1189,42 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   const send = () => {
     const body = cleanBody(text);
     if (!body) return;
-    vibrate("light"); setText(""); setErr("");
+    vibrate("light"); setText(""); setCaret(0); setErr(""); draftClear(meId, chat.id);
     if (inputRef.current) { inputRef.current.style.height = ""; inputRef.current.focus(); }
     const r = reply; setReply(null);
     deliver({ tmp: "t" + Date.now(), body, at: new Date().toISOString(), reply: r ? replyOf(r) : null, photo: null });
   };
   const sugg = React.useMemo(() => (edit || !text.trim() ? [] : intents(text, me, chat.kind)), [text, edit, me, chat.kind]);
+  // v99 (Доп. 412): «@» — подсказки: участники (имя, у тёзок с буквой фамилии), «все» у руководителя, Наставник
+  const names = React.useMemo(() => mentionNames(members), [members]);
+  const leadIds = React.useMemo(() => new Set((members || []).filter((p) => isLeadPos(p.pos)).map((p) => String(p.id))), [members]);
+  const mq = !edit && text.indexOf("@") >= 0 ? mentionQuery(text, caret) : null;
+  const msugg = mq ? mentionSuggest(names, mq.q, { meId, lead: !!(me && me.lead), group, ai: true }) : [];
+  const pickMention = (it) => {
+    if (!mq) return;
+    vibrate("light");
+    const r = mentionInsert(text, mq.start, caret, it.disp);
+    setText(r.text); setCaret(r.caret);
+    try { if (inputRef.current) inputRef.current.focus(); } catch (e) { /* */ }   // в том же нажатии: клавиатура не прячется
+    setTimeout(() => { const el = inputRef.current; if (el) { grow(el); try { el.setSelectionRange(r.caret, r.caret); } catch (e) { /* */ } } }, 20);
+  };
+  const onCaret = (e) => { try { setCaret(e.target.selectionStart == null ? e.target.value.length : e.target.selectionStart); } catch (x) { /* */ } };
   // правка своего: в строке ввода, «Сохранить» — галочкой
-  const startEdit = (m) => { setReply(null); setEdit(m); setText(m.body || ""); setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); grow(el); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* */ } } }, 30); };
-  const cancelEdit = () => { setEdit(null); setText(""); if (inputRef.current) inputRef.current.style.height = ""; };
+  // v99: на время правки черновик откладывается и потом возвращается в строку ввода
+  const startEdit = (m) => { if (!edit) stashRef.current = { t: text, reply }; setReply(null); setEdit(m); setText(m.body || ""); setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); grow(el); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* */ } } }, 30); };
+  const unstash = () => {
+    const st = stashRef.current; stashRef.current = null;
+    setText(st ? st.t : ""); setCaret(st ? st.t.length : 0); if (st && st.reply) setReply(st.reply);
+    if (inputRef.current) inputRef.current.style.height = "";
+    if (st && st.t) setTimeout(() => grow(inputRef.current), 20);
+  };
+  const cancelEdit = () => { setEdit(null); unstash(); };
   const saveEdit = () => {
     const m = edit; if (!m) return;
     const body = cleanBody(text);
     if (!body && m.kind !== "photo") return;
     vibrate("light");
-    setEdit(null); setText(""); setErr("");
-    if (inputRef.current) inputRef.current.style.height = "";
+    setEdit(null); setErr(""); unstash();
     if (body === String(m.body || "")) return;
     addMsgs([{ id: m.id, body, edited: true }], { quiet: true });
     Promise.resolve(api.edit(m.id, body)).then((r) => {
@@ -1171,9 +1329,13 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     if (m.kind === "card") return <CardMsg key={row.key} row={row} me={me} app={app} busy={cardBusy === m.id} hl={isHl} showWho={whoOpen.has(String(m.id))} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} />;   // v93
     if (m.kind === "ai") return <AiMsg key={row.key} row={row} me={me} hl={isHl} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} />;
     return <Bubble key={row.key} row={row} me={me} api={api} reads={reads} myLastId={myLast && myLast.id} othersN={others.length} group={group} net={chat.kind === "net"} hl={isHl}
-      onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} onJump={jumpTo} onView={setView} onWho={api.person ? (x) => setSheet({ person: String(x.emp) }) : null} />;
+      onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} onJump={jumpTo} onView={setView} onWho={api.person ? (x) => setSheet({ person: String(x.emp) }) : null}
+      names={names} leadIds={leadIds} />;
   };
   // v92: добавить людей в свой чат — на весь экран вместо переписки (хуки — выше)
+  // v99 (Доп. 412): поиск в этом чате — на весь экран вместо переписки; нашёл — к сообщению (подгружая раньше)
+  if (sheet === "search" && api.search) return <SearchView api={api} me={me} chats={[chat]} chat={chat} onBack={() => setSheet(null)}
+    onPick={(cid, mid) => { setSheet(null); stick.current = false; setTimeout(() => jumpTo(mid, true), 30); }} />;
   if (sheet === "add") return <GroupAdd me={me} api={api} chat={chat} members={members} onBack={() => setSheet("info")}
     onDone={() => { setSheet(null); if (onSent) onSent(); if (pullRef.current) pullRef.current(false); }} />;
   return (<>
@@ -1188,6 +1350,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
             ? <button type="button" className="ch-who ch-whob" data-chat-peer={chat.peer.id} aria-label={"Коллега: " + chatTitle(chat)} onClick={() => { vibrate("light"); setSheet({ person: String(chat.peer.id) }); }}>
                 <Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></button>
             : <div className="ch-who"><Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></div>}
+        {api.search ? <button type="button" className="ch-tool" data-chat-tsearch="" aria-label="Поиск в этом чате" onClick={() => { vibrate("light"); setSheet("search"); }}>{IC.search}</button> : null}
         {canClear(chat, me) ? <button type="button" className="ch-tool" data-chat-clear="" aria-label={group ? "Очистить чат" : "Очистить переписку"}
           onClick={() => { vibrate("light"); setClearErr(""); setSheet("clear"); }}>{IC.trash}</button> : null}
       </div>
@@ -1243,13 +1406,21 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
           <span className="ch-ctx-b"><span className="ch-ctx-l">{edit.kind === "photo" ? "Правка подписи" : "Правка сообщения"}</span><span className="ch-ctx-t">{quoteText(edit, meId)}</span></span>
           <button type="button" className="ch-x" aria-label="Отменить правку" data-chat-noedit="" onClick={cancelEdit}>{IC.x}</button>
         </div>) : null}
-      {!edit ? <Suggest items={sugg} onPick={(k) => (k === "stop" || k === "give" || k === "swap" || k === "poll" || k === "ai" ? onTile(k) : null)} /> : null}
+      {msugg.length ? (
+        <div className="ch-mb" role="listbox" aria-label="Кого упомянуть" data-chat-mentions="">
+          {msugg.map((it) => (
+            <button key={it.kind + it.id} type="button" role="option" aria-selected="false" className="ch-mc" data-chat-mention={it.kind === "person" ? it.id : it.kind} onMouseDown={(e) => e.preventDefault()} onClick={() => pickMention(it)}>
+              <span className={"ch-ava" + (it.kind === "person" ? "" : " team")} aria-hidden="true">{it.kind === "all" ? IC.team : it.kind === "ai" ? IC.ai : chatInitials(it.name)}</span>
+              {it.kind === "all" ? "Все" : it.disp}</button>))}
+        </div>)
+        : !edit ? <Suggest items={sugg} onPick={(k) => (k === "stop" || k === "give" || k === "swap" || k === "poll" || k === "ai" ? onTile(k) : null)} /> : null}
       <div className="ch-bar-in" style={{ position: "relative" }}>
         {text.length > CHAT_MAX - 100 ? <span className={"ch-count" + (over ? " over" : "")}>{text.length} / {CHAT_MAX}</span> : null}
         {chat.kind === "team" && !edit ? <button type="button" className="ch-bell" data-chat-callbtn="" aria-label="Позвать" onClick={() => { vibrate("light"); setSheet("call"); }}>{IC.bell}</button> : null}
         <div className="ch-fieldwrap">
           <textarea ref={inputRef} className={"ch-input sa-field" + (edit ? "" : " clip")} rows={1} value={text} maxLength={CHAT_MAX + 200} placeholder={edit ? (edit.kind === "photo" ? "Подпись к фото" : "Сообщение") : "Сообщение"}
-            aria-label={edit ? "Правка сообщения" : "Сообщение"} data-chat-input="" onChange={(e) => { setText(e.target.value); grow(e.target); }} onKeyDown={onKey} />
+            aria-label={edit ? "Правка сообщения" : "Сообщение"} data-chat-input="" onChange={(e) => { setText(e.target.value); onCaret(e); grow(e.target); }} onKeyDown={onKey}
+            onSelect={onCaret} onKeyUp={onCaret} onClick={onCaret} />
           {!edit ? <button type="button" className="ch-attach" data-chat-attach="" aria-label="Фото, смена, задание, опрос и другое" onClick={() => { vibrate("light"); setSheet("act"); }}>{IC.more}</button> : null}
         </div>
         {edit ? <button type="button" className="ch-send" data-chat-save="" aria-label="Сохранить правку" disabled={over || (!text.trim() && edit.kind !== "photo")} onClick={saveEdit}>{IC.check}</button>
@@ -1271,6 +1442,8 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     {sheet && typeof sheet.poll === "string" ? <PollSheet api={api} chat={chat} q0={sheet.poll} onClose={() => setSheet(null)} onDone={(m) => { cardDone(m); setText(""); }} /> : null}
     {sheet === "stop" ? <StopSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
     {sheet === "brief" ? <BriefSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
+    {sheet === "late" && api.late ? <LateSheet api={api} chat={chat} onClose={() => setSheet(null)}
+      onDone={(m, r) => { cardDone(m); flash(r && Number(r.sent) > 0 ? "Руководитель получил сообщение в Telegram" : "Карточка в чате: руководитель увидит её здесь"); }} /> : null}
     {toast && !sheet ? <div className="ch-toast" role="status" data-chat-toast="">{toast}</div> : null}
     {sheet && sheet.msg ? <MsgSheet me={me} msg={msgs.find((x) => String(x.id) === String(sheet.msg.id)) || sheet.msg} chat={chat} members={others} reads={reads} pinned={pin}
       onClose={() => setSheet(null)} onDelete={del} onReply={startReply} onEdit={startEdit} onPin={pinMsg} onReact={react} /> : null}

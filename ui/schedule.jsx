@@ -291,6 +291,7 @@ const IcoWarn = (p) => <Ico {...p}><path d="M12 4l9 16H3z" /><path d="M12 10v4M1
 const IcoSun = (p) => <Ico {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" /></Ico>;
 const IcoTarget = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.3" /><circle cx="12" cy="12" r="0.8" fill={p.color || "#C8A96E"} stroke="none" /></Ico>;
 const IcoWave = (p) => <Ico {...p}><path d="M2.5 10c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /><path d="M2.5 16c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /></Ico>;
+const IcoLate = (p) => <Ico {...p}><circle cx="13.5" cy="12.5" r="7" /><path d="M13.5 8.8v3.9l2.4 1.5" /><path d="M2.5 9.4h3M1.6 12.5h3M2.5 15.6h3" /></Ico>;   // v99 (Доп. 412): «Опаздываю»
 const IcoPhone = (p) => <Ico {...p}><path d="M5.5 4h3.4l1.6 4-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4 1.6v3.4a2 2 0 0 1-2.2 2A17 17 0 0 1 3.5 6.2 2 2 0 0 1 5.5 4z" /></Ico>;
 const IcoChat = (p) => <Ico {...p}><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H7l-3.5 2.5v-10A7.5 7.5 0 0 1 11 4h1.5A7.5 7.5 0 0 1 20 11.5z" /><path d="M8.5 11.5h7M8.5 14.5h4" /></Ico>;   // v97: смены в чате
 // Числа с достоинством: значение досчитывается за ~0.6с (ease-out).
@@ -420,7 +421,7 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
  * «Забрать» и «Выйду» отсюда, «Отдать / Поменяться в чате» открывает лист в чате с этим днём (open — intent чата),
  * руководителю «Спросить в чате» в «Кто вместо?» и «Кто может выйти?», «График готов» и «Пожелания» карточкой.
  * Нет чата или на сервере ещё нет chat_shift_board — обмен как раньше (swap_*). */
-export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist, chat = null }) {
+export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist, chat = null, onCal = null }) {
   // Редактор графика — не только владелец: менеджеры и руководители тоже
   // (та же формула, что у собеседования кандидатов — canHire в App).
   const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
@@ -907,6 +908,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   }, [mkey, profile?.restaurant]);   // eslint-disable-line react-hooks/exhaustive-deps
   const chatBack = chat ? chat.closedAt || 0 : 0;
   React.useEffect(() => { if (chatBack && state === "ok") { refreshQuiet(); loadBoard(); } }, [chatBack]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v99 (Доп. 412): «Опаздываю» — отметки месяца (этап 39, late_month): руководителю — все, остальным — свои; sid — строка
+  // графика. Нет этапа — пусто, как раньше
+  const [lates, setLates] = React.useState([]);
+  const loadLates = React.useCallback(() => {
+    if (!profile?.restaurant) { setLates([]); return; }
+    rpc("late_month", { p_token: saToken(), p_month: mkey }).then((r) => setLates(r && r.ok && Array.isArray(r.rows) ? r.rows : [])).catch(() => {});
+  }, [mkey, profile?.restaurant]);
+  React.useEffect(() => { if (state === "ok") loadLates(); }, [state, loadLates]);
+  React.useEffect(() => { if (chatBack && state === "ok") loadLates(); }, [chatBack]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const lateOf = (sid, d) => lates.find((x) => x && String(x.sid) === String(sid) && Number(x.day) === Number(d)) || null;
   // «Забрать» и «Выйду» с экрана графика: смена переходит сразу (сервер пишет в график), здесь — та же клетка
   const boardTake = (r, meId, same = true) => {   // same — смена этого месяца (клетку на экране поправить сразу)
     if (boardBusy || !chat) return;
@@ -3131,8 +3142,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             const todayD = (now.getFullYear() === Y && now.getMonth() === M) ? now.getDate() : 0;
             const offerDays = new Set(swaps.filter(w => w.status === "open" && String(w.from_staff) !== String(me.id)
               && (staff.find(q => String(q.id) === String(w.from_staff)) || {}).pos === me.pos && !shiftOf(plan[me.id]?.[w.day])).map(w => w.day));
-            const used = new Set(); let anyWish = false, anyHard = false, anyVac = false;
-            for (let d = 1; d <= DAYS; d++) { const kk = plan[me.id]?.[d]; if (shiftOf(kk)) used.add(kk); if (wishOf(me.id, d)) anyWish = true; if (hardOf(me.id, d)) anyHard = true; if (onVac(me, d)) anyVac = true; }
+            const used = new Set(); let anyWish = false, anyHard = false, anyVac = false, anyLate = false;
+            for (let d = 1; d <= DAYS; d++) { const kk = plan[me.id]?.[d]; if (shiftOf(kk)) used.add(kk); if (wishOf(me.id, d)) anyWish = true; if (hardOf(me.id, d)) anyHard = true; if (onVac(me, d)) anyVac = true; if (lateOf(me.id, d)) anyLate = true; }
             const calTap = (d) => {
               if (wishRange) { wishTap(d); return; }
               vibrate("light"); setSheetCall(null); setSheetMore(false); setDaySheet(d);
@@ -3165,6 +3176,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           : vac ? <IcoWave size={11} color={a11y ? "#3C6E8F" : "#9CC7E0"} /> : offerHere ? <span style={{ fontSize:11, lineHeight:1, color:P.acc }}>⇄</span>
                           : off ? <span style={{ fontSize:10, lineHeight:1, color:P.sub }}>✕</span> : <span style={{ height:11 }} />}
                         {note ? <i style={{ position:"absolute", top:4, right:4, width:5, height:5, borderRadius:3, background:GOLD }} /> : null}
+                        {lateOf(me.id, d) ? <span data-cal-late={d} aria-hidden="true" style={{ position:"absolute", top:2, left:3, lineHeight:0 }}><IcoLate size={10} color={P.warn} /></span> : null}
                       </button>
                     );
                   })}
@@ -3176,6 +3188,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   {anyHard ? <span style={lg}><IcoBan size={10} color={P.warn} />не смогу</span> : null}
                   {anyVac ? <span style={lg}><IcoWave size={10} color={a11y ? "#3C6E8F" : "#9CC7E0"} />отпуск</span> : null}
                   {offerDays.size ? <span style={lg}><span style={{ color:P.acc }}>⇄</span>можно взять</span> : null}
+                  {anyLate ? <span style={lg}><IcoLate size={10} color={P.warn} />предупреждал(а) об опоздании</span> : null}
                 </div>
                 <div style={{ fontSize:11, color: wishRange ? P.acc : P.sub, fontStyle:"italic", marginTop:8, lineHeight:1.5 }}>
                   {wishBusy ? wishBusy : wishRange ? (wishRange.from ? "Теперь тапни последний день периода" : "Тапни первый день периода")
@@ -3193,6 +3206,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       style={{ ...ghost, flex:"0 0 auto", fontSize:12.5, padding:"8px 12px", opacity: wLate ? .5 : 1, background: wishRange ? "rgba(214,178,102,0.16)" : "transparent",
                         color: a11y ? "#7A5A22" : GOLD, borderColor: a11y ? "rgba(122,90,34,0.5)" : GOLD + "66" }}>
                       {wishRange ? "Отмена периода" : "Отметить период"}</button>
+                  </div>
+                ) : null}
+                {/* v99 (Доп. 412): смены в календаре телефона — подписка по личной ссылке */}
+                {onCal ? (
+                  <div data-cal-phone="" style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginTop:10, paddingTop:10,
+                    borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.12)"}` }}>
+                    <div style={{ flex:"1 1 170px", minWidth:0, fontSize:12.5, color:P.text, lineHeight:1.45 }}>Смены в календаре телефона
+                      <div style={{ fontSize:11, color:P.sub, marginTop:2 }}>Подпишись, и они обновятся сами, когда меняется график</div></div>
+                    <button className="sa-btn" onClick={() => { vibrate("light"); onCal(); }}
+                      style={{ ...ghost, flex:"0 0 auto", fontSize:12.5, padding:"8px 12px", color: a11y ? "#7A5A22" : GOLD, borderColor: a11y ? "rgba(122,90,34,0.5)" : GOLD + "66" }}>В календарь</button>
                   </div>
                 ) : null}
               </div>
@@ -3690,6 +3713,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   {typeof facts[me.id]?.[d] === "number" && sh ? (
                     <div style={{ fontSize:12.5, color:P.text, marginTop:10 }}>Учтено по факту: <b style={{ color:P.acc }}>{facts[me.id][d]} ч</b><span style={{ color:P.sub }}> · план {len(sh)} ч</span></div>
                   ) : null}
+                  {(() => { const l = lateOf(me.id, d); return l ? (   /* v99 (Доп. 412) */
+                    <div data-sheet-late="" style={{ display:"flex", alignItems:"center", gap:6, fontSize:12.5, color:P.text, marginTop:10 }}><IcoLate size={13} color={P.warn} />
+                      <span>Ты предупреждал(а): опоздание на {l.min} мин{l.eta ? ", к " + l.eta : ""}{l.ok ? <span style={{ color:P.sub }}> · принято: {String(l.ok).split(" ")[0]}</span> : null}</span></div>) : null; })()}
                   <div style={{ ...lab, margin:"14px 0 5px" }}>Заметка</div>
                   <textarea key={"snt" + mkey + "-" + d} defaultValue={notes[d] || ""} rows={2} maxLength={200} placeholder="Чаевые, важный день, напоминание…"
                     onFocus={focusScroll} onBlur={e => saveNote(d, e.target.value)}
@@ -4346,6 +4372,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       : wish ? <IcoSun size={11} color={P.acc} /> : hd ? <IcoBan size={11} color={P.warn} />
                       : vac ? <IcoWave size={11} color={waveC} /> : off ? <span style={{ fontSize:10, lineHeight:1, color:P.sub }}>✕</span> : <span style={{ height:11 }} />}
                     {clash ? <i data-person-clash="" style={{ position:"absolute", top:3, right:3, width:6, height:6, borderRadius:3, background: hd ? P.warn : GOLD }} /> : null}
+                    {lateOf(s.id, d) ? <span data-person-late={d} aria-hidden="true" style={{ position:"absolute", top:2, left:3, lineHeight:0 }}><IcoLate size={10} color={P.warn} /></span> : null}
                   </button>
                 );
               })}
@@ -4362,7 +4389,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               {hl.length ? <span style={lg}><IcoBan size={12} color={P.warn} />не сможет: {hl.join(", ")}</span> : null}
               {vr.length ? <span style={lg}><IcoWave size={12} color={waveC} />отпуск: {vr.join(", ")}</span> : null}
               {offW.length ? <span style={lg}><span style={{ color:P.sub }}>✕</span>постоянный выходной: {offW.join(", ")}</span> : null}
-              {!wl.length && !hl.length && !vr.length && !offW.length ? <span style={{ color:P.sub }}>Пожеланий на этот месяц нет</span> : null}
+              {(() => { const ll = lates.filter((x) => x && String(x.sid) === String(s.id)); return ll.length   /* v99 (Доп. 412) */
+                ? <span data-person-lates={ll.length} style={lg}><IcoLate size={12} color={P.warn} />опоздания: {ll.map((x) => x.day + "-е, " + x.min + " мин").join("; ")}</span> : null; })()}
+              {!wl.length && !hl.length && !vr.length && !offW.length && !lates.some((x) => x && String(x.sid) === String(s.id)) ? <span style={{ color:P.sub }}>Пожеланий на этот месяц нет</span> : null}
             </div>
             <div style={{ display:"flex", gap:8, marginTop:12 }}>
               <button className="sa-btn" data-person-setup="" onClick={toSetup} style={{ ...ghostInk, flex:1, padding:"10px 8px", fontSize:12.5 }}>Настройки сотрудника ›</button>
@@ -4436,6 +4465,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               {wishOf(who.id, d) ? <span style={chip("")}><IcoSun size={11} color={P.acc} />просил(а) выходной</span> : null}
               {hardOf(who.id, d) ? <span style={chip("bad")}><IcoBan size={11} color={P.warn} />отметил(а) «не смогу»</span> : null}
               {onVac(who, d) ? <span style={chip("")}><IcoWave size={11} color={a11y ? "#3C6E8F" : "#9CC7E0"} />в отпуске</span> : null}
+              {(() => { const l = lateOf(who.id, d); return l ? <span data-pick-late="" style={chip("")}><IcoLate size={11} color={P.warn} />опоздание {l.min} мин{l.eta ? ", к " + l.eta : ""}{l.ok ? " · принято" : ""}</span> : null; })()}   {/* v99 */}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {(cfg.shifts || []).map((sh2, i2) => {
@@ -4931,14 +4961,17 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     <div style={{ flex:1, display:"flex", minWidth:0 }}>
                       {list.slice(0, 6).map((o, oi) => {
                         const lead = leadOn(today) === o.who.name;
+                        const lt = lateOf(o.who.id, today);   // v99 (Доп. 412): предупредил(а), что опаздывает
                         return (
-                          <span key={o.who.id} title={o.who.name} style={dot({ marginLeft: oi ? -6 : 0,
+                          <span key={o.who.id} title={o.who.name + (lt ? ", опаздывает: к " + lt.eta : "")} style={dot({ marginLeft: oi ? -6 : 0, position:"relative",
                             background: lead
                               ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
                               : (a11y ? "rgba(250,242,222,0.85)" : "#2A1F0E"),
                             border:`1px solid ${lead ? GOLD : (a11y ? "rgba(150,112,40,0.4)" : "rgba(145,108,40,0.5)")}`,
                             boxShadow:"inset 0 1px 0 rgba(255,255,255,0.12)" })}>
                             {initialsOf(o.who.name)}
+                            {lt ? <span data-today-late={o.who.id} aria-hidden="true" style={{ position:"absolute", top:-4, left:-4, width:15, height:15, borderRadius:"50%",
+                              display:"grid", placeItems:"center", background: a11y ? "#FFF6EE" : "#2A1F0E", border:`1px solid ${P.warn}` }}><IcoLate size={10} color={P.warn} /></span> : null}
                           </span>
                         );
                       })}
@@ -4963,6 +4996,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   не хватает: {Array.from(new Set(holes)).join(", ").toLowerCase()}
                 </div>
               ) : null}
+              {(() => { const ll = onAll.map(x => ({ x, l: lateOf(x.id, today) })).filter(y => y.l);   /* v99 (Доп. 412): кто предупредил об опоздании */
+                return ll.length ? (
+                  <div data-today-lates={ll.length} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:P.warn, marginTop:2 }}>
+                    <IcoLate size={11} color={P.warn} />
+                    <span>{ll.length > 1 ? "опаздывают: " : "опаздывает: "}{ll.map(y => y.x.name + " к " + y.l.eta + (y.l.ok ? " (принято)" : "")).join(", ")}</span>
+                  </div>) : null; })()}
               <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", marginTop:4 }}>тап покажет, кто в смене
                 {/* v49: тот же день по часам, что по тапу на число в таблице */}
                 {" · "}<span data-today-hours="" onClick={e => { e.stopPropagation(); setBossDay(today); vibrate("light"); }}
@@ -5037,6 +5076,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                             : (a11y ? "inset 0 0 14px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 14px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12)") }}>
                         {initialsOf(c.who.name)}
                       </div>
+                      {lateOf(c.who.id, today) ? <span data-today-late={c.who.id} aria-hidden="true" style={{ position:"absolute", left:-3, top:-2, width:17, height:17, borderRadius:"50%",
+                        display:"grid", placeItems:"center", background: a11y ? "#FFF6EE" : "#2A1F0E", border:`1px solid ${P.warn}` }}><IcoLate size={11} color={P.warn} /></span> : null}
                       {col ? (
                         <span style={{ position:"absolute", right:-3, bottom:-2, width:17, height:17, borderRadius:6,
                           display:"grid", placeItems:"center", fontFamily:mono, fontSize:9,
@@ -5046,6 +5087,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     </div>
                     <div style={{ fontSize:11, color:P.text, lineHeight:1.3 }}>{c.who.name.split(" ")[0]}</div>
                     <div style={{ fontSize:9, color: on ? P.acc : P.sub }}>{lead ? "старший" : c.pos.toLowerCase()}</div>
+                    {(() => { const lt = lateOf(c.who.id, today); return lt ? <div style={{ fontSize:9, color:P.warn, lineHeight:1.3 }}>опоздает, к {lt.eta}</div> : null; })()}
                   </div>
                 );
               })}

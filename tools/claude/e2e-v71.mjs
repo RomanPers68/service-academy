@@ -251,7 +251,7 @@ if (want("HUBS")) {
   const a = await open({ who: "admin", role: "manager" });
   await nav(a.page, "teamHub", 2000);
   const tm = await a.page.evaluate(() => ({ groups: [...document.querySelectorAll("[data-hub-group]")].map((g) => g.getAttribute("data-hub-group")), first: [...(document.querySelector("[data-hub-compact]") || document).querySelectorAll(".sa-card")].map((x) => x.getAttribute("aria-label")) }));
-  ok("HUBS «Команда» у руководителя: «Управление» первым, строками — пять пунктов", tm.groups[0] === "Управление" && JSON.stringify(tm.first) === JSON.stringify(["Аналитика", "Сотрудники", "Собеседование", "Отчёты по сотрудникам", "Редактор контента"]), JSON.stringify(tm));
+  ok("HUBS «Команда» у руководителя: «Управление» первым, строками — пять пунктов", tm.groups[0] === "Управление" && JSON.stringify(tm.first.filter((x) => x !== "Сервер")) === JSON.stringify(["Аналитика", "Сотрудники", "Собеседование", "Отчёты по сотрудникам", "Редактор контента"]), JSON.stringify(tm));   // v99: и «Сервер» у владельца (e2e-v99)
   await a.page.click('[data-hub-compact] [aria-label="Собеседование"]'); await sleep(1600);
   ok("HUBS: строка «Собеседование» открывает собеседование", /Начать собеседование|Собеседование в приложении/.test(await a.page.evaluate(() => document.body.innerText)));
   await a.ctx.close();

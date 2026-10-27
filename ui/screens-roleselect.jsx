@@ -84,7 +84,7 @@ export const TRACK_GROUPS = [
 // (ui/now-hero.jsx NowInvitation), и в обычный день тоже — приглашение к следующему шагу трека.
 const MOOD_TITLE = { good: "Хорошая смена", ok: "Ровная смена", hard: "Тяжёлая смена, бывает" };
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null }) {
   const isAdmin = !!profile?.is_admin;
   // v56 (Доп. 369): ответ на «как прошла смена» — пока человек не решил, разбирать ли с Наставником
   const [moodReply, setMoodReply] = React.useState(null);
@@ -319,11 +319,13 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             glyph: gold ? GUEST : (ROLE_SVG[role] ? (c, sz) => ROLE_SVG[role](c, sz) : "cloche"),
             lead: (roleObj ? roleObj.label + " · " : "") + (!next ? "пройдено 100%" : done ? "пройдено " + prog + "%" : "первый шаг"),
             title: next ? nextTitle : title, sub: String(sub || "").replace(/\s*·\s*пройдено \d+%/, "") };
-          const rows = ctx
+          const rows0 = ctx
             ? (next ? [{ key: "next", label: "Дальше:", title: nextTitle, onClick: go }] : [])
             : [warm && warm.props ? { key: "warm", label: "Разминка:", title: warmWhen(warm.props), onClick: warm.props.onStart } : null,
                stepData ? { key: "step", label: "Шаг дня:", title: String(stepData.text).replace(/^Попробуй:\s*/, "").replace(/^./, (x) => x.toUpperCase()),
                  onClick: () => { if (step.props.onStep) step.props.onStep(stepData); } } : null].filter(Boolean);
+          // v99 (Доп. 412): за 3 часа до смены и 2 часа после начала — «Опаздываю» первой строкой (App: lateRow)
+          const rows = lateRow && !firstDay ? [lateRow, ...rows0].slice(0, 3) : rows0;
           const foot = !ctx && warm && warm.props ? warm.props.children || null : null;
           return (
             <div style={{ padding:"0 14px 9px" }}>

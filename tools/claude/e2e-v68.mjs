@@ -160,7 +160,9 @@ if (want("DARK")) {
   // v70 (Доп. 383): карточка — тёплое стекло в тон плиток, подложки нет: то же стекло прямо поверх карточки
   const lens = await o.page.evaluate(() => { const a = document.querySelector("[data-now-lens]"), b = document.querySelector("[data-ai-disc]"); const s = (e) => e ? getComputedStyle(e) : null; return { a: s(a) && [s(a).backgroundColor, s(a).boxShadow, s(a).backgroundImage], b: s(b) && [s(b).backgroundColor, s(b).boxShadow] }; });
   ok("DARK: линза — то же стекло, что у кнопки AI (стекло и кромки; без подложки)", lens.a && lens.b && lens.a[0] === lens.b[0] && lens.a[1] === lens.b[1] && lens.a[2] === "none", JSON.stringify(lens));
-  ok("DARK: строка «Дальше: Тест «Философия сервиса»»", g && g.rows.length === 1 && /^next:Дальше: Тест «Философия сервиса»/.test(g.rows[0]), JSON.stringify(g && g.rows));
+  // v99 (Доп. 412): до смены 26 минут — первой строкой «Опаздываю? предупредить» (e2e-v99), дальше — как было
+  const rows = g ? g.rows.filter((r) => !/^late:/.test(r)) : [];
+  ok("DARK: строка «Дальше: Тест «Философия сервиса»»", g && rows.length === 1 && /^next:Дальше: Тест «Философия сервиса»/.test(rows[0]), JSON.stringify(g && g.rows));
   await shot(o.page, "dark-before");
   const was = await warmOpen(o.page);
   await o.page.locator("[data-now-card]").click(); await sleep(1500);

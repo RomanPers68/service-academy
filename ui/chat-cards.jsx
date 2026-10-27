@@ -15,6 +15,7 @@ import { bubbleName, hhmm, quoteText } from "../lib/chat";
 import { shiftState, shiftLine, wantLine, dayLong, dayShort, dayParts, nextDays, taskLine, dueLine, dueChoices, pollView, pollProblem, POLL_MAX, actTiles, INTENT_LABEL, AI_NAME, aiQuestion,
   posWord, insteadLine, schedView } from "../lib/chat-smart";   // v97: «Ищем в смену», «График готов»
 import { IC, stop } from "./chat-kit";
+import { LATE_MINS, LATE_NOTE_MAX, lateChip, lateEta, lateMinText, lateView } from "../lib/late";   // v99 (Доп. 412): «Опаздываю»
 
 export const CARDS_CSS = `
 /* v93: умные карточки */
@@ -93,6 +94,9 @@ export const CARDS_CSS = `
 .ch-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ch-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 4px 10px;border-radius:16px;border:1px solid var(--opt-edge);background:var(--opt);color:var(--text);font-size:13.5px;line-height:1.2;text-align:center;cursor:pointer;min-width:0}
 .ch-tile-i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold)}
+.ch-tile.wide{grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;padding:9px 12px;font-size:14.5px}
+.ch-tile.wide .ch-tile-i{width:34px;height:34px}
+.ch-tile.wide .ch-tile-i svg{width:19px;height:19px}
 .ch-sugg{display:flex;gap:6px;max-width:640px;margin:0 auto 7px;overflow-x:auto;scrollbar-width:none;padding:0 2px}
 .ch-sugg::-webkit-scrollbar{display:none}
 /* v94: ряд подсказок листается пальцем вбок (в слое .sa-dlg жесты выключены всем, кроме лент) */
@@ -267,6 +271,18 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
       <div className="ch-card-acts"><button type="button" className="ch-cbtn ghost" data-chat-open="brief" onClick={act("open", { kind: "brief", id: c.date, title: "Брифинг" })}>Открыть брифинг</button></div>
     </>);
   }
+  if (c.t === "late") {
+    // v99 (Доп. 412): «Опаздываю»: корешок — на сколько минут, справа — к какому времени; руководителю — «Принято»
+    const v = lateView(c, me, m.emp), mins = Number(c.min) || 0;
+    return wrap(v.ok ? "done" : "", <NumTile ic={IC.late} n={mins < 60 ? "+" + mins : "+" + String(mins / 60).replace(".", ",")} word={mins < 60 ? "мин" : "ч"} />, <>
+      <Head k="Опаздываю" m={m} me={me} />
+      <div className="ch-card-t" data-chat-late-eta={c.eta || ""}>{v.title}</div>
+      <div className="ch-card-s">{v.sub}</div>
+      {v.note ? <div className="ch-card-n">«{v.note}»</div> : null}
+      {v.ok ? <St ok data-chat-late-ok="">Принято: {v.ok}</St> : v.wait ? <St wait data-chat-late-wait="">Ждём ответа руководителя</St> : null}
+      {v.act ? <div className="ch-card-acts"><button type="button" className="ch-cbtn" data-chat-lateok={m.id} disabled={busy} onClick={act("lateok")}>Принято</button></div> : null}
+    </>);
+  }
   return wrap("done", <IcoTile ic={IC.share} />, <><Head k="Карточка" m={m} me={me} /><div className="ch-card-s">Эта карточка откроется в новой версии приложения.</div></>);
 }
 
@@ -292,16 +308,19 @@ export function AiMsg({ row, me, hl, onAct, onMenu }) {
 export const AiTyping = () => <div className="ch-typing" role="status" data-chat-ai-typing="">{AI_NAME} печатает<i /><i /><i /></div>;
 
 // ── «+»: все действия ──
-const TILE_IC = { photo: IC.photo, give: IC.give, swap: IC.swap, task: IC.task, share: IC.share, poll: IC.poll, stop: IC.stop, brief: IC.brief, ai: IC.ai };
+const TILE_IC = { photo: IC.photo, late: IC.late, give: IC.give, swap: IC.swap, task: IC.task, share: IC.share, poll: IC.poll, stop: IC.stop, brief: IC.brief, ai: IC.ai };
 export function ActSheet({ me, chat, onPick, onClose }) {
-  const tiles = actTiles(me, chat);
+  // v99 (Доп. 412): «Опаздываю» — во всю ширину под плитками: сетка остаётся ровной (3×3 у руководителя, 3×2 у сотрудника)
+  const all = actTiles(me, chat), tiles = all.filter((t) => t.id !== "late"), late = all.find((t) => t.id === "late") || null;
   return (
     <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Действия" data-chat-acts="" onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-tiles">{tiles.map((t) => (
           <button key={t.id} type="button" className="ch-tile" data-chat-act={t.id} onClick={() => { vibrate("light"); onPick(t.id); }}>
-            <span className="ch-tile-i" aria-hidden="true">{TILE_IC[t.id]}</span>{t.label}</button>))}</div>
+            <span className="ch-tile-i" aria-hidden="true">{TILE_IC[t.id]}</span>{t.label}</button>))}
+          {late ? <button type="button" className="ch-tile wide" data-chat-act="late" onClick={() => { vibrate("light"); onPick("late"); }}>
+            <span className="ch-tile-i" aria-hidden="true">{TILE_IC.late}</span>{late.label}</button> : null}</div>
         <div className="ch-hint">Карточки делают дело сами: смену можно забрать одним нажатием, урок открывается из чата, а {AI_NAME} отвечает прямо в переписке.</div>
       </div>
     </div>);
@@ -339,6 +358,7 @@ const errText = (r, ctx = "") => {
   const e = r && r.error;
   if (e === "not_allowed") return (r.why ? String(r.why).replace(/\.?$/, ".") : "Эту смену взять нельзя: другая должность или правила графика.");
   if (e === "too_fast" && ctx === "remind") return "Напоминали недавно. Следующее через 3 часа.";
+  if (e === "too_fast" && ctx === "late") return "Ты уже предупредил(а) только что. Через пару минут можно ещё раз.";
   return ERR[e] || "Не получилось. Проверь связь.";
 };
 export { errText as smartErr };
@@ -561,4 +581,49 @@ export function ShareSheet({ app, api, chat, onClose, onDone }) {
     Promise.resolve(api.cardSend(chat.id, { t: "share", item: it })).then((r) => { if (r && r.ok && r.msg) onDone(r.msg); else setErr(errText(r)); }).catch(() => setErr(errText({ error: "net" })));
   };
   return <PickSheet app={app} kinds={kinds} title="Поделиться" data={{ "data-chat-sharesheet": "" }} onPick={go} onClose={onClose} hint={err || "Коллеги откроют карточку из чата одним нажатием."} />;
+}
+
+// v99 (Доп. 412): «Опаздываю»: на сколько и, если хочешь, почему. Карточка — в «Вся команда» (или свой чат), руководителю
+// в смене пишет бот с кнопкой «Принято». Смена сегодня — из графика (chat_shift_mine): «буду в 10:15» считается от её
+// начала, если оно ещё не наступило
+export function LateSheet({ api, chat, onClose, onDone }) {
+  const [min, setMin] = React.useState(15);
+  const [note, setNote] = React.useState("");
+  const [shift, setShift] = React.useState(undefined);   // undefined — грузим, null — смены сегодня нет
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const [now, setNow] = React.useState(() => new Date());
+  React.useEffect(() => {
+    let alive = true;
+    const t0 = new Date(), today = t0.getFullYear() + "-" + String(t0.getMonth() + 1).padStart(2, "0") + "-" + String(t0.getDate()).padStart(2, "0");
+    Promise.resolve(api.shiftsMine ? api.shiftsMine() : null).then((r) => {
+      if (!alive) return;
+      const s = r && r.ok && Array.isArray(r.shifts) ? r.shifts.find((x) => x && x.date === today) : null;
+      const fromH = s && /^\d{2}:\d{2}/.test(String(s.time || "")) ? Number(s.time.slice(0, 2)) + Number(s.time.slice(3, 5)) / 60 : null;
+      setShift(s ? { label: String(s.label || "").toLowerCase(), time: s.time, from: fromH } : null);
+    }).catch(() => { if (alive) setShift(null); });
+    const tm = setInterval(() => setNow(new Date()), 30000);
+    return () => { alive = false; clearInterval(tm); };
+  }, [api]);
+  const eta = lateEta(shift ? shift.from : null, min, now);
+  const go = () => {
+    if (busy) return;
+    vibrate("light"); setBusy(true); setErr("");
+    Promise.resolve(api.late(chat ? chat.id : null, min, note.trim())).then((r) => { setBusy(false); if (r && r.ok && r.msg) onDone(r.msg, r); else setErr(errText(r, "late")); })
+      .catch(() => { setBusy(false); setErr(errText({ error: "net" })); });
+  };
+  return (
+    <Sheet title="Опаздываю" data={{ "data-chat-latesheet": "" }} onClose={onClose}>
+      <div className="ch-hint" style={{ marginTop: 0 }} data-chat-late-shift={shift ? shift.time : shift === null ? "none" : "wait"}>
+        {shift === undefined ? "Смотрю график…" : shift ? "Сегодня смена: " + [shift.label, shift.time].filter(Boolean).join(" ") : "Сегодня в графике смены нет: время считаю от сейчас."}</div>
+      <div className="ch-lbl">На сколько</div>
+      <div className="ch-chips" role="radiogroup" aria-label="На сколько опаздываю">
+        {LATE_MINS.map((n) => <button key={n} type="button" role="radio" aria-checked={min === n} className="ch-chip" data-chat-latemin={n} onClick={() => { vibrate("light"); setMin(n); setErr(""); }}>{lateChip(n)}</button>)}
+      </div>
+      <input className="ch-field sa-field" value={note} maxLength={LATE_NOTE_MAX} onChange={(e) => setNote(e.target.value)} placeholder="Причина, если хочешь: пробка, автобус" aria-label="Причина" data-chat-latenote="" />
+      <div className="ch-preview" data-chat-late-preview="">Опаздываю на {lateMinText(min)}: буду в {eta}{note.trim() ? ". " + note.trim() : ""}</div>
+      {err ? <div className="ch-err" role="alert" style={{ marginTop: 8 }} data-chat-late-err="">{err}</div> : null}
+      <button type="button" className="ch-main" data-chat-latego="" disabled={busy} onClick={go}>{busy ? "Отправляю…" : "Предупредить"}</button>
+      <div className="ch-hint">{chat && chat.kind === "group" ? "Карточка уйдёт в этот чат" : "Карточка уйдёт в «Вся команда»"}, руководителю в смене бот сразу напишет в Telegram. В графике у этого дня останется отметка.</div>
+    </Sheet>);
 }

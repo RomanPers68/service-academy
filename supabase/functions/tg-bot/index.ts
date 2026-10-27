@@ -1,13 +1,16 @@
 // Service Academy — tg-bot: вебхук бота для «Вопроса дня» (v81, Дополнение 394).
 //
-// POST от Telegram (нажатие кнопки, /start) → RPC sa_tg_update (этап 31): ответ записывается, сообщение
-//   дополняется итогом. Запрос принимается, только если в заголовке X-Telegram-Bot-Api-Secret-Token тот секрет,
-//   который сервер выдал при подключении (проверяет sa_tg_update). Telegram всегда получает 200, иначе он
+// POST от Telegram (нажатие кнопки, /start, /smena, ответ на сообщение) → RPC sa_tg_update (этапы 31, 38, 39): ответ
+//   записывается, сообщение дополняется итогом. Запрос принимается, только если в заголовке X-Telegram-Bot-Api-Secret-Token
+//   тот секрет, который сервер выдал при подключении (проверяет sa_tg_update). Telegram всегда получает 200, иначе он
 //   повторял бы одно и то же нажатие.
-// GET ?setup=<код> → подключить вебхук. Код даёт SQL: select sa_tg_setup_code(); (30 минут). Функция по коду
-//   берёт токен бота и секрет (sa_tg_setup_take), спрашивает у Telegram, какой вебхук стоит сейчас, и:
+// GET ?setup=<код> → подключить вебхук. Код даёт приложение («Команда» → «Сервер» → «Подключить бота», этап 39) или SQL:
+//   select sa_tg_setup_code(); (30 минут). Функция по коду берёт токен бота и секрет (sa_tg_setup_take), спрашивает у
+//   Telegram, какой вебхук стоит сейчас, и:
 //     • пусто или уже наш — ставит наш (с секретом, только нажатия и сообщения);
 //     • стоит чужой — ничего не трогает и показывает его адрес; заменить — та же ссылка с &force=1.
+//   v99 (Доп. 412): заодно — то, чего у бота ещё нет: кнопка «Академия» у поля ввода (открывает приложение; адрес — из
+//   настроек, app_url) и список команд (/smena, /start). Если в BotFather это уже настроено — не трогает.
 //   Токен бота в ответ и в журнал не попадает.
 //
 // Деплой: Supabase → Edge Functions → Deploy a new function → Via Editor → имя tg-bot → вставить код → Deploy.
@@ -23,6 +26,14 @@ const page = (title: string, text: string, status = 200) =>
 // Доп. 191: старые ключи — JWT (apikey + Bearer), новые sb_secret_… — только apikey
 const isJwt = (k: string) => /^eyJ/.test(k || "");
 const keyHeaders = (k: string): Record<string, string> => isJwt(k) ? { apikey: k, Authorization: "Bearer " + k } : { apikey: k };
+
+// v99: команды бота (если их ещё нет) и кнопка у поля ввода
+const COMMANDS = [
+  { command: "smena", description: "Мои ближайшие смены" },
+  { command: "start", description: "Что приходит от бота" },
+];
+const MENU_TEXT = "Академия";
+const appUrlOk = (u: string) => /^https:\/\/[^\s"<>]{4,200}$/.test(u || "");
 
 Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL");
@@ -59,7 +70,7 @@ Deno.serve(async (req) => {
   };
   const t = await take(false);
   if (!t || !t.ok) {
-    return page("Код не подошёл", "Код неверный или старше 30 минут. Выполни в SQL Editor: select sa_tg_setup_code();  — и открой новую ссылку.\n" +
+    return page("Код не подошёл", "Код неверный или старше 30 минут. В приложении: «Команда» → «Сервер» → «Подключить бота». Или в SQL Editor выполни select sa_tg_setup_code(); и открой новую ссылку.\n" +
       "Если SQL пишет, что такой функции нет, сначала запусти supabase-stage31-qday.sql.", 400);
   }
   if (!t.token) return page("Нет токена бота", "В Vault нет токена бота (этап 22б): select vault.create_secret('ТОКЕН', 'sa_tg_bot_token');", 400);
@@ -82,7 +93,27 @@ Deno.serve(async (req) => {
   const set = await tg("setWebhook", { url: me, secret_token: t.secret, allowed_updates: ["callback_query", "message"], drop_pending_updates: false });
   if (!set || !set.ok) return page("Telegram не принял вебхук", String(set?.description || "нет ответа"), 502);
   await take(true);   // код использован
-  return page("Готово", `Бот подключён: нажатия кнопок «Вопроса дня» приходят сюда:\n${me}\n\n` +
+
+  // v99: кнопка «Академия» у поля ввода и команды — только если их ещё нет (настроенное в BotFather не трогаем)
+  const lines: string[] = [];
+  const app = String(t.app || "").trim().replace(/\/+$/, "");
+  const mb = await tg("getChatMenuButton", {});
+  const mbType = String(mb?.result?.type || "");
+  if (mbType === "web_app") lines.push("Кнопка у поля ввода уже открывает приложение: не трогаю.");
+  else if (!appUrlOk(app)) lines.push("Кнопку «" + MENU_TEXT + "» у поля ввода не поставил: нет адреса приложения. В приложении: «Команда» → «Сервер» → «Подключить бота».");
+  else {
+    const r = await tg("setChatMenuButton", { menu_button: { type: "web_app", text: MENU_TEXT, web_app: { url: app + "/" } } });
+    lines.push(r && r.ok ? "Кнопка «" + MENU_TEXT + "» у поля ввода открывает приложение." : "Кнопку у поля ввода Telegram не принял: " + String(r?.description || "нет ответа"));
+  }
+  const cm = await tg("getMyCommands", {});
+  if (cm && cm.ok && Array.isArray(cm.result) && cm.result.length) lines.push("Список команд уже настроен: не трогаю (/smena работает и так).");
+  else {
+    const r = await tg("setMyCommands", { commands: COMMANDS });
+    lines.push(r && r.ok ? "Команды: /smena (ближайшие смены) и /start (что приходит от бота)." : "Команды Telegram не принял: " + String(r?.description || "нет ответа"));
+  }
+
+  return page("Готово", `Бот подключён: нажатия кнопок и ответы в чат приходят сюда:\n${me}\n\n` +
     (cur && cur !== me ? `Прежний адрес ${cur} больше не получает события.\n\n` : "") +
-    "Проверить можно в Telegram: напиши боту /start, он ответит и покажет кнопку в приложение.");
+    lines.join("\n") + "\n\n" +
+    "Проверить можно в Telegram: напиши боту /start, он ответит и покажет кнопку в приложение; /smena покажет твои смены.");
 });

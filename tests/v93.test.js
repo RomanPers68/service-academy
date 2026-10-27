@@ -61,8 +61,8 @@ describe("v93: расчёт умного чата (lib/chat-smart.js)", () => {
     expect(S.intents("Кто может подменить меня в субботу?", { lead: false }, "team")).toEqual(["give", "poll"]);
     expect(S.intents("Тартар закончился, убираем из меню", { lead: true }, "team")).toEqual(["stop"]);
     expect(S.intents("Тартар закончился", { lead: false }, "team")).toEqual([]);
-    expect(S.actTiles({ lead: false }, { kind: "team" }).map((t) => t.id)).toEqual(["photo", "give", "swap", "share", "poll", "ai"]);
-    expect(S.actTiles({ lead: true }, { kind: "team" }).map((t) => t.id)).toEqual(["photo", "give", "swap", "task", "share", "poll", "stop", "brief", "ai"]);
+    expect(S.actTiles({ lead: false }, { kind: "team" }).map((t) => t.id).filter((id) => id !== "late")).toEqual(["photo", "give", "swap", "share", "poll", "ai"]);   // v99: «Опаздываю» (tests/v99.test.js)
+    expect(S.actTiles({ lead: true }, { kind: "team" }).map((t) => t.id).filter((id) => id !== "late")).toEqual(["photo", "give", "swap", "task", "share", "poll", "stop", "brief", "ai"]);
     expect(S.actTiles({ lead: true }, { kind: "dm" }).map((t) => t.id)).toEqual(["photo", "give", "swap", "task", "share", "ai"]);
     expect(S.actTiles({ lead: true }, { kind: "net" }).map((t) => t.id)).toEqual(["photo", "task", "share", "poll", "ai"]);
   });

@@ -253,7 +253,7 @@ describe("v82: в приложении", () => {
   it("кнопка «Брифинг смены» из Telegram (?go=brief): «Смена» и сразу чтение; «Назад» закрывает слой", () => {
     expect(app).toMatch(/\["pair", "league", [^\]]*"mistakes", "brief"[^\]]*\]\.includes\(v\)/);   // дальше в списке — ссылки следующих версий
     expect(app).toContain('else if (g === "brief") { navigate("shift"); briefAskRef.current.open = true; loadTeamBrief(true); }');
-    expect(app).toContain('pair: set("pair"), brief: set("brief") };');
+    expect(app).toMatch(/pair: set\("pair"\), brief: set\("brief"\)(, [a-z]+: set\("[a-z]+"\))* \};/);   // v99: дальше — слои следующих версий (cal)
     expect(app).toContain("{briefView && teamBrief ? <Suspense fallback={null}><BriefView");
   });
   it("«Напоминания в Telegram»: строка «Брифинг смены» — только когда сервер её знает (этап 32)", async () => {

@@ -60,6 +60,10 @@ const ICON = {
   cellar: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12c0 6-2 11-6 13-4-2-6-7-6-13z"/><path d="M7 8.5h10"/><path d="M12 16v5M8.5 21h7"/></svg>,
   // v40: «Путь мастера» — медаль: лента и круг с маленькой звездой
   mastery: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 2.5h3.1l1.8 6.5M6.5 2.5l2.7 7.2M17.5 2.5h-3.1l-1.8 6.5M17.5 2.5l-2.7 7.2"/><circle cx="12" cy="15" r="6"/><path d="M12 12.7l.59 1.59 1.69.07-1.33 1.05.46 1.63L12 16.1l-1.41.94.46-1.63-1.33-1.05 1.69-.07z"/></svg>,
+  // v99 (Доп. 412): «Опаздываю» — часы на бегу; смены в календаре телефона — листок со стрелкой; «Сервер» — стопка дисков
+  late: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="14" cy="12.5" r="7"/><path d="M14 8.8v3.9l2.5 1.5"/><path d="M2.5 9.3h3M1.5 12.5h3M2.5 15.7h3"/></svg>,
+  calendar: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M9 15.5l2.2 2.2 4-4.4"/></svg>,
+  server: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-6"/><path d="M4.5 11.5v6c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-6"/><path d="M8 9.6v.01M8 15.6v.01"/></svg>,
 };
 
 export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null }) {

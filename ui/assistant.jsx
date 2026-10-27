@@ -13,10 +13,12 @@ import { createPortal } from "react-dom";
 import { GOLD, RED, RADIUS, labelStyle } from "./tokens";
 import { vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
+import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone (общая с чатом)
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
 import { withRefContext, rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { cleanReply } from "../lib/reply-clean";   // v76–v77: разметка, которую чат не показывает («###», «-», «---»), — обычным текстом
+import { pickCards } from "../lib/ai-cards";   // v94: карточка того блюда, о котором спросили (общая с чатом)
 import { COCKTAILS } from "../data/cocktails";
 import { CocktailArt } from "./cocktail-art";
 import { UI_SVG } from "./icons";
@@ -244,19 +246,13 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     // с экрана не возвращал жест сворачивания.
   }, []);
 
-  // Клавиатура iOS выезжает ПОВЕРХ fixed-элементов — следим за видимой
-  // областью (visualViewport) и приподнимаем низ экрана на её высоту,
-  // чтобы строка ввода всегда оставалась над клавиатурой.
-  const [kb, setKb] = React.useState(0);
-  React.useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const measure = () => setKb(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
-    vv.addEventListener("resize", measure);
-    vv.addEventListener("scroll", measure);
-    measure();
-    return () => { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); };
-  }, []);
+  // Клавиатура iOS выезжает ПОВЕРХ fixed-элементов: низ экрана поднимаем над ней (ui/keyboard.js, общий с чатом).
+  // v94: в Telegram на iPhone по высоте, которую Telegram сообщает, как только клавиатура поехала, и вместе с ней.
+  // Раньше строка ввода полсекунды пряталась под клавиатурой, а потом весь экран падал вниз и ехал обратно.
+  const rootRef = React.useRef(null);
+  const kbs = useKeyboardLift(rootRef);   // { lift, up }; отступ снизу корень берёт из --kb
+  const kb = kbs.lift;
+  usePinBottom(listRef);
 
   // автопрокрутка к последним репликам
   React.useEffect(() => {
@@ -422,20 +418,15 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   // [[dish:ID]] (id даны ей в контексте); если забыла — ищем в тексте ответа
   // точные названия коктейлей и блюд своего ресторана. Не больше двух карточек.
   const myDishes = React.useMemo(() => dishesOf(profile?.restaurant), [profile?.restaurant, msgs.length]);
-  const parseCards = (text) => {
-    let clean = text || "";
-    const cards = [];
-    // Доп. 164: маркер может прийти и с подписью — [[dish:id|Посмотреть карточку]] — принимаем оба вида;
-    // неизвестный id тоже вычищаем из текста, чтобы маркер не висел сырым
-    clean = clean.replace(/\[\[cocktail:([a-zA-Z0-9_-]+)(?:\|[^\]]*)?\]\]/g, (_, id) => { const c = COCKTAILS.find(x => x.id === id); if (c) cards.push({ kind: "cocktail", c }); return ""; });
-    clean = clean.replace(/\[\[dish:([a-zA-Z0-9_-]+)(?:\|[^\]]*)?\]\]/g, (_, id) => { const d = myDishes.find(x => String(x.id) === id); if (d) cards.push({ kind: "dish", d }); return ""; });
-    if (!cards.length) {
-      const low = clean.toLowerCase().replace(/ё/g, "е");
-      for (const c of COCKTAILS) { if (c.name.length >= 4 && low.includes(c.name.toLowerCase().replace(/ё/g, "е"))) { cards.push({ kind: "cocktail", c }); if (cards.length >= 2) break; } }
-      if (cards.length < 2) for (const d of myDishes) { if (d.name && d.name.length >= 4 && low.includes(d.name.toLowerCase().replace(/ё/g, "е"))) { cards.push({ kind: "dish", d }); if (cards.length >= 2) break; } }
-    }
-    return { clean: clean.replace(/\n{3,}/g, "\n\n").trim(), cards: cards.slice(0, 2) };
+  // Доп. 164: маркер может прийти и с подписью — [[dish:id|Посмотреть карточку]] — принимаем оба вида; неизвестный id
+  // тоже вычищаем из текста. v94: выбор — lib/ai-cards.js, общий с чатом: сначала то, о чём спросили (question —
+  // вопрос перед ответом), потом метки, потом названия в тексте, но не строки состава и не то, что входит в выбранное
+  // блюдо (спросили салат «Два моря», а карточкой приходил «Краб стригун» из его состава)
+  const parseCards = (text, question = "") => {
+    const pc = pickCards({ text: text || "", question, dishes: myDishes, cocktails: COCKTAILS, max: 2 });
+    return { clean: pc.text.replace(/\n{3,}/g, "\n\n").trim(), cards: pc.picks.map((p) => (p.kind === "cocktail" ? { kind: "cocktail", c: p.item } : { kind: "dish", d: p.item })) };
   };
+  const askBefore = (i) => { for (let j = i - 1; j >= 0; j--) if (msgs[j] && msgs[j].role === "user") return String(msgs[j].content || ""); return ""; };
   const cardBox = { marginTop: 10, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 14, cursor: "pointer",
     border: `1px solid ${gold}55`, background: a11y ? "rgba(139,106,48,0.07)" : "rgba(200,169,110,0.07)",
     boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.08)"}` };
@@ -502,10 +493,9 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
 
   return createPortal(
     // v50 (Доп. 363): на компьютере — панелью по центру (sa-layer, ui/css.js), а не строкой во весь экран
-    <div className="sa-screen sa-dlg sa-layer"
-      style={{ ...T.screen, "--sa-layerw": "780px", position: "fixed", inset: 0, zIndex: z, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: kb,
+    <div className="sa-screen sa-dlg sa-layer" ref={rootRef}
+      style={{ ...T.screen, "--sa-layerw": "780px", position: "fixed", inset: 0, zIndex: z, display: "flex", flexDirection: "column", boxSizing: "border-box", paddingBottom: "var(--kb, 0px)",
         paddingTop: "var(--sa-st, 0px)",   // v69 (Доп. 382): шапка — под кнопками Telegram в полноэкранном режиме
-        transition: "padding-bottom 0.25s cubic-bezier(0.25,0.1,0.25,1)",
         // Сплошной фон — ровно как у основы приложения (слой #sa-scene, App.jsx). Без фона
         // экран чата, лежащий поверх приложения, становился прозрачным: сквозь него была видна
         // строка «SA · Для чтения», шапки накладывались, а тап по «Для чтения» не проходил
@@ -565,7 +555,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         </div>
       )}
       {showChats && (
-        <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
+        <div className="sa-pagein sa-dlgscroll" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,   // v94: беседы листаются пальцем
             ...panel, padding: "6px 6px", maxHeight: "55vh", overflowY: "auto", WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain" }} >
           {store.sessions.map(s => (
@@ -650,7 +640,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
             }}>
               {(() => {
                 const nv = m.role === "assistant" ? parseNav(m.content) : { clean: m.content, nav: null };
-                const { clean, cards } = m.role === "assistant" ? parseCards(nv.clean) : { clean: nv.clean, cards: [] };
+                const { clean, cards } = m.role === "assistant" ? parseCards(nv.clean, askBefore(i)) : { clean: nv.clean, cards: [] };
                 const nav = nv.nav;
                 return (<>
                   <Rich text={m.role === "assistant" ? cleanReply(clean) : clean} color={gold} />
@@ -728,7 +718,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       </div>
 
       {/* ── Ввод: стеклянная плита-капсула в языке навбара ── */}
-      <div style={{ padding: "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))" }}>
+      <div style={{ padding: kbs.up ? "6px 10px 10px" : "6px 10px calc(10px + env(safe-area-inset-bottom, 0px))", transition: "padding-bottom .2s ease-out" }}>
         {/* Подсказки-чипы над полем ввода убраны по просьбе владельца (правка 157) */}
         {/* v35 (Доп. 344): разговор голосом — на месте поля полоса разговора, реплики — в этой же переписке */}
         {talk ? (

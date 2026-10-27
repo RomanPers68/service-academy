@@ -94,6 +94,8 @@ export const CARDS_CSS = `
 .ch-tile-i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold)}
 .ch-sugg{display:flex;gap:6px;max-width:640px;margin:0 auto 7px;overflow-x:auto;scrollbar-width:none;padding:0 2px}
 .ch-sugg::-webkit-scrollbar{display:none}
+/* v94: ряд подсказок листается пальцем вбок (в слое .sa-dlg жесты выключены всем, кроме лент) */
+.sa-dlg .ch-sugg,.sa-dlg .ch-sugg *{touch-action:pan-x !important}
 .ch-sg{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px 0 9px;border-radius:999px;border:1px solid var(--edge-gold);background:rgba(214,178,102,0.12);color:var(--gold-ink);font-size:13.5px;cursor:pointer}
 .ch-sg svg{width:16px;height:16px}
 /* выбор */

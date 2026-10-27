@@ -37,6 +37,7 @@ import { IC, ric, posName, stop } from "./chat-kit";   // v93: значки и �
 import { CARDS_CSS, CardMsg, AiMsg, AiTyping, ActSheet, Suggest, ShiftSheet, SwapSheet, TaskSheet, PollSheet, StopSheet, BriefSheet, ShareSheet, smartErr } from "./chat-cards";
 import { askAi, aiQuestion, intents, withVote, AI_NAME } from "../lib/chat-smart";
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
+import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
 
 // ── вид: та же палитра, что у «Живого диалога» (ui/screens-dialogue.jsx), свой корень .sa-dlg.ch ──
 const wallSvg = (c, o) => `<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='${c}' stroke-opacity='${o}' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>` +
@@ -72,7 +73,7 @@ export const CHAT_CSS = `
 .sa-dlg.ch{${DARK};--tail:${TAIL};position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;overflow:hidden;
   color:var(--text);font-family:Georgia,'PT Serif','Times New Roman',serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;
   background-color:var(--bg);background-image:var(--wall),radial-gradient(130% 70% at 50% 0%,var(--glow),transparent 60%),linear-gradient(160deg,var(--bg),var(--bg-2) 50%,var(--bg));
-  background-size:240px 240px,auto,auto;transition:padding-bottom .25s cubic-bezier(.25,.1,.25,1)}
+  background-size:240px 240px,auto,auto;padding-bottom:var(--kb,0px)}
 .sa-dlg.ch.lt{${LIGHT}}
 .sa-dlg.ch *{box-sizing:border-box}
 :where(.sa-dlg.ch) button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;margin:0}
@@ -210,7 +211,8 @@ export const CHAT_CSS = `
 .ch-down .ch-badge{position:absolute;top:-8px;right:-4px;min-width:20px;height:20px;font-size:11.5px;padding:0 5px}
 
 /* строка ввода */
-.ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line)}
+.ch-bar{flex:0 0 auto;position:relative;z-index:3;padding:8px 8px calc(8px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line);
+  transition:padding-bottom .2s ease-out}   /* v94: вырез снизу уходит и возвращается вместе с клавиатурой, без скачка */
 .sa-dlg.ch.kb .ch-bar{padding-bottom:8px}
 .ch-bar-in{display:flex;align-items:flex-end;gap:6px;max-width:640px;margin:0 auto}
 .ch-fieldwrap{position:relative;flex:1;min-width:0;display:flex}
@@ -234,10 +236,14 @@ export const CHAT_CSS = `
 .ch-ctx-t{font-size:13.5px;line-height:1.3;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* листы снизу */
-.ch-veil{position:absolute;inset:0;z-index:20;background:rgba(8,6,3,0.55);display:flex;align-items:flex-end;justify-content:center}
+/* v94: лист стоит над клавиатурой, как и строка ввода (--kb, ui/keyboard.js) */
+.ch-veil{position:absolute;inset:0 0 var(--kb,0px);z-index:20;background:rgba(8,6,3,0.55);display:flex;align-items:flex-end;justify-content:center}
 .sa-dlg.ch.lt .ch-veil{background:rgba(70,52,24,0.32)}
 .ch-sheet{width:100%;max-width:640px;max-height:86%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 16px calc(16px + var(--sa-sb,env(safe-area-inset-bottom,0px)));
   border-radius:22px 22px 0 0;background:var(--pane);box-shadow:inset 0 1px 0 var(--pane-line),var(--pane-shadow)}
+/* v94: в слое .sa-dlg палец двигает только ленты с классом sa-dlgscroll (ui/css.js), и листы не листались пальцем:
+   «Задание», «О чате» со списком участников и другие (запись владельца). Листам и подписи к фото прокрутку возвращаем */
+.sa-dlg .ch-sheet,.sa-dlg .ch-sheet *,.ch-view .ch-view-cap,.ch-view .ch-view-cap *{touch-action:pan-y !important}
 .ch-grip{width:38px;height:4px;border-radius:2px;background:var(--edge-gold);margin:0 auto 10px;opacity:.6}
 .ch-sheet-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .ch-sheet-t{flex:1;font-family:'Piazzolla',Georgia,serif;font-weight:700;font-size:18px}
@@ -274,7 +280,8 @@ export const CHAT_CSS = `
 .ch-tick.on{border-color:transparent;background:linear-gradient(180deg,var(--gold-hi),var(--gold))}
 .ch-tick svg{width:15px;height:15px}
 .ch-new .ch-ava svg{width:22px;height:22px}
-.ch-foot{flex:0 0 auto;position:relative;z-index:3;padding:10px 14px calc(10px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line)}
+.ch-foot{flex:0 0 auto;position:relative;z-index:3;padding:10px 14px calc(10px + var(--sa-sb,env(safe-area-inset-bottom,0px)));background:var(--head);border-top:1px solid var(--head-line);
+  transition:padding-bottom .2s ease-out}
 .ch-foot .ch-main{max-width:612px;margin:0 auto}
 .sa-dlg.ch.kb .ch-foot{padding-bottom:10px}
 .ch-whob{border:0;background:none;padding:0;margin:0;text-align:left;color:inherit;font:inherit;cursor:pointer;border-radius:12px}
@@ -344,26 +351,9 @@ const withRest = (name, rest, net) => (net && rest ? name + " · " + restShort(r
 // виден ли экран (поллинг только видимого)
 const hidden = () => typeof document !== "undefined" && document.hidden;
 
-// клавиатура iOS выезжает поверх fixed-слоя: поднимаем низ на её высоту (как у Наставника). v91: высоту считаем от
-// низа самого слоя, а не от window.innerHeight — в полноэкранном Telegram окно с клавиатурой сжимается, а innerHeight
-// остаётся прежним, и клавиатура вычиталась дважды (строка ввода и «Никого не нашёл» уезжали и обрезались)
-export const kbOverlap = (layerBottom, vvTop, vvHeight) => Math.max(0, Math.round((Number(layerBottom) || 0) - (Number(vvTop) || 0) - (Number(vvHeight) || 0)));
-function useKeyboard(ref) {
-  const [kb, setKb] = React.useState(0);
-  React.useEffect(() => {
-    const vv = typeof window !== "undefined" && window.visualViewport;
-    if (!vv) return undefined;
-    const measure = () => {
-      const el = ref && ref.current;
-      let bottom = window.innerHeight;
-      try { if (el) bottom = el.getBoundingClientRect().bottom; } catch (e) { /* */ }
-      setKb(kbOverlap(bottom, vv.offsetTop, vv.height));
-    };
-    vv.addEventListener("resize", measure); vv.addEventListener("scroll", measure); window.addEventListener("resize", measure); measure();
-    return () => { vv.removeEventListener("resize", measure); vv.removeEventListener("scroll", measure); window.removeEventListener("resize", measure); };
-  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
-  return kb;
-}
+// клавиатура: низ слоя поднимается над ней (ui/keyboard.js, общий с Наставником). v91: по низу самого слоя; v94: в
+// Telegram на iPhone по высоте, которую Telegram сообщает, как только клавиатура поехала, и вместе с ней
+export { kbOverlap, kbPad } from "./keyboard";
 
 // ── фото: превью и полные — по запросу, запоминаем на время работы приложения ──
 const PH = new Map();   // "id:t" | "id:f" → { url, p }
@@ -414,7 +404,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   const app = React.useMemo(() => app0 || (appCtx ? makeChatApp(appCtx) : null), [app0, appCtx]);
   ensureChatCss();
   const rootRef = React.useRef(null);
-  const kb = useKeyboard(rootRef);
+  const kb = useKeyboardLift(rootRef);   // v94: { lift, up }; отступ снизу слой берёт из --kb
   const [me, setMe] = React.useState(me0);   // кто я — как считает сервер (руководитель ли, заведение)
   const [chats, setChats] = React.useState(null);
   const [err, setErr] = React.useState("");
@@ -460,7 +450,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
       </button>
     </div>) : null;
   return portal(
-    <div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb > 0 ? " kb" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат" style={{ paddingBottom: kb }}>
+    <div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb.up ? " kb" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат">
       {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} app={app} chat={cur} stt={stt} onBack={() => { keepRef.current = null; setCurId(null); load(); }} onSent={load} onGone={gone} />
         : picker === "group" ? <GroupNew me={me} api={api} onBack={() => setPicker(true)} onDone={openNew} />
         : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} top={newRow} />
@@ -852,6 +842,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
   // прокрутка: у низа — держимся низа
   const toBottom = (smooth) => { const el = chatRef.current; if (el) { try { el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" }); } catch (e) { el.scrollTop = el.scrollHeight; } } };
   React.useLayoutEffect(() => { if (stick.current) toBottom(false); }, [msgs, pending, loaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  usePinBottom(chatRef);   // v94: клавиатура поднимает низ, поле растёт: последние сообщения остаются на виду
   const onScroll = () => {
     const el = chatRef.current; if (!el) return;
     const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;

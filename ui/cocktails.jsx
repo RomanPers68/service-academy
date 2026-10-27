@@ -10,6 +10,8 @@ import { vibrate, onActivate } from "../lib/utils";
 import { GOLD, INK_DEEP, labelStyle } from "./tokens";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor, hintKey } from "../data/hints";
+import { cocktailShareItem } from "../lib/share-items";   // v97 (Доп. 410): «Поделиться в чат»
+import { CHAT_SHARE_IC } from "./share-chat";
 
 // Колода бармена: свайп — листать, тап — перевернуть (рецепт), режим
 // «Знаю?» — интервальное повторение (1·3·7·30 дней), как у банка ошибок.
@@ -39,7 +41,7 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint }) {
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint, onShareChat = null }) {
   // Доп. 210: своя карта бара (флаги в меню команды), свои коктейли из меню, «наоборот», гость спрашивает, мост к меню
   const restaurant = profile?.restaurant || "";
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
@@ -335,6 +337,9 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 ))}
               </div>
               {c.house && !c.full && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню: фото и описание ›</div>}
+              {/* v97 (Доп. 410): коктейль — в чат команды карточкой, коллега откроет его в своей Колоде бармена */}
+              {onShareChat ? <div style={{ marginTop:10 }}><span role="button" tabIndex={0} data-share-chat={"cocktail:" + c.id} onClick={(e) => { e.stopPropagation(); vibrate("light"); onShareChat(cocktailShareItem(c)); }}
+                {...onActivate(() => onShareChat(cocktailShareItem(c)))} style={{ ...pill(false), fontSize:11.5, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}>{CHAT_SHARE_IC(GOLD)}Поделиться в чат</span></div> : null}
               {c.house && canEdit && onEdit && <div onClick={(e) => { e.stopPropagation(); onEdit(c.full ? c.id : null); }} style={{ marginTop:8, fontSize:12.5, color:GOLD, cursor:"pointer" }}>{c.full ? "Править в редакторе ›" : "Дописать спек в редакторе ›"}</div>}
               {(() => { const fam = familyOf(c, ALL); return fam ? (
                 <div style={{ marginTop:10 }}>

@@ -7,6 +7,8 @@ import { dishFaq, cocktailLinks, bumpDaily, allergenLabel } from "../lib/deck-ex
 import { emitActivity } from "../lib/activity";
 import { report as reportAch } from "../lib/achievements";
 import { suggestAllergens } from "../lib/menu-sections";
+import { dishShareItem } from "../lib/share-items";   // v97: «Поделиться в чат»
+import { CHAT_SHARE_IC } from "./share-chat";
 
 // ── Дополнение 161: Колода меню — та же механика, что у Колоды бармена ────────
 // Свайп 1:1 с продолжением движения, тап — переворот, поиск и разделы за лупой,
@@ -18,7 +20,7 @@ const SR_DAYS = [1, 3, 7, 30];
 const srKey = (restaurant) => "sa_menu_sr_" + (restaurant || "x");
 const loadSR = (restaurant) => { try { return JSON.parse(localStorage.getItem(srKey(restaurant)) || "{}"); } catch (e) { return {}; } };
 
-export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant, Head, DishPhoto, DishBack, glass, onLearned, startId, uk, onOpenCocktail, initialMode }) {
+export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant, Head, DishPhoto, DishBack, glass, onLearned, startId, uk, onOpenCocktail, initialMode, onShareChat = null }) {
   const [reverse, setReverse] = React.useState(initialMode === "reverse"); // Доп. 210: «наоборот» — фото и состав без названия
   const [faqOpen, setFaqOpen] = React.useState(null);
   const [q, setQ] = React.useState("");
@@ -225,6 +227,13 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                       <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>К нему из бара</div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenCocktail(l.id); }} style={{ ...pill(false), fontSize: 11, color: text }}>{l.name} ›</span>)}</div>
                     </div>) : null; })()}
+                  {/* v97 (Доп. 410): блюдо — в чат команды карточкой, коллега откроет его в своей Колоде */}
+                  {onShareChat ? (
+                    <div style={{ marginTop: 10 }}>
+                      <span role="button" tabIndex={0} data-share-chat={"dish:" + d.id} onClick={(e) => { e.stopPropagation(); vibrate("light"); onShareChat(dishShareItem(d)); }}
+                        {...onActivate(() => onShareChat(dishShareItem(d)))} style={{ ...pill(false), fontSize: 11.5, color: text, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        {CHAT_SHARE_IC(gold)}Поделиться в чат</span>
+                    </div>) : null}
                 </div>
               </div>
             </div>

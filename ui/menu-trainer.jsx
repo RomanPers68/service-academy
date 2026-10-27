@@ -56,6 +56,14 @@ const saveCustom = (obj) => {
     setStorageFull(true); return false;
   }
 };
+// v97 (Доп. 410): стоп из редактора меню — карточкой в чат команды «Стоп: …», «Вернуть» отмечает «Снова в меню»
+// (chat_stop_note, этап 38, после публикации меню). Нет этапа 38 — больше не спрашиваем до перезапуска.
+const stopNote = { off: false };
+const stopToChat = (dishId, on) => {
+  if (stopNote.off || !saToken()) return Promise.resolve(null);
+  return rpc("chat_stop_note", { p_token: saToken(), p_dish: String(dishId), p_on: !!on })
+    .then((r) => { if (rpcMissing(r)) stopNote.off = true; return r; }).catch(() => null);
+};
 const loadHide = () => { try { return JSON.parse(localStorage.getItem(HIDE_SAMPLES_KEY) || "{}"); } catch (e) { return {}; } };
 const saveHide = (obj) => { try { localStorage.setItem(HIDE_SAMPLES_KEY, JSON.stringify(obj)); } catch (e) {} };
 
@@ -79,7 +87,7 @@ const DishPhoto = ({ src, h = 170 }) => src ? (
 // Сжатие фото с телефона перед сохранением (localStorage не резиновый)
 // readPhoto — общий, в lib/utils (Доп. 242)
 
-export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role, accent }) {
+export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role, accent, onShareChat = null }) {
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   // Цвет приходит от кнопки, которой сюда вошли, — как у SOS. Без него
   // остаётся прежний золотой, чтобы прочие входы не поменяли вид.
@@ -213,7 +221,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // Доп. 189: «Меню по разделам» слилось с Колодой — список живёт в ней за иконкой указателя
   if (mode === "print") return <MenuPrint T={T} a11y={a11y} dishes={dishes} restaurant={restaurant} onBack={() => setMode(null)} />;   // Доп. 261
   if (mode === "sprint") return <AllergenSprint T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={dishes} restaurant={restaurant} uk={uk} Head={Head} DishPhoto={DishPhoto} glass={glass} onExit={() => setMode(null)} />;
-  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} initialMode={startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined}   /* Доп. 282: только если пришли с карточки режима дня */
+  if (mode === "cards") return <MenuDeck T={T} a11y={a11y} gold={gold} green={green} red={red} dishes={focusNew ? newDishes : dishes} restaurant={restaurant} Head={Head} startId={deckStart} uk={uk} onOpenCocktail={onOpenCocktail} onShareChat={onShareChat} initialMode={startMode === "reverse-menu" ? "reverse" : startMode === "know-menu" ? "quiz" : undefined}   /* Доп. 282: только если пришли с карточки режима дня */
     DishPhoto={DishPhoto} DishBack={DishBack} glass={glass} onLearned={focusNew && !learned ? markLearned : null} />; // Доп. 161: механика Колоды бармена
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
@@ -265,7 +273,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v96</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v97</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -899,11 +907,12 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   const [pubBusy, setPubBusy] = React.useState(false);
   const [pubMsg, setPubMsg] = React.useState(null); // { ok, text }
   const _showPub = (ok, text) => { setPubMsg({ ok, text }); setTimeout(() => setPubMsg(null), 8000); };
+  // v97: ответ — опубликовано ли (стоп после публикации уходит в чат команды)
   const publishList = (dishesToPublish) => {
-    if (!saToken() || !restaurant) return;
-    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(dishesToPublish) })
-      .then(res => { if (res && res.ok === true) { if (onPublished) onPublished(dishesToPublish); rememberSharedMenu(restaurant, dishesToPublish); try { localStorage.setItem("sa_menu_pub_" + restaurant, String(Date.now())); } catch (e) {} } })
-      .catch(() => {});
+    if (!saToken() || !restaurant) return Promise.resolve(false);
+    return rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(dishesToPublish) })
+      .then(res => { if (res && res.ok === true) { if (onPublished) onPublished(dishesToPublish); rememberSharedMenu(restaurant, dishesToPublish); try { localStorage.setItem("sa_menu_pub_" + restaurant, String(Date.now())); } catch (e) {} return true; } return false; })
+      .catch(() => false);
   };
   // Доп. 166: стоп-лист. Один тап — блюдо помечено «сегодня нет» и это сразу уходит команде.
   const toggleStop = (d) => {
@@ -913,7 +922,8 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     const nextOwn = own.some(x => x.id === d.id) ? own.map(x => x.id === d.id ? upd : x) : [upd, ...own];
     setCustom({ ...custom, [restaurant]: nextOwn });
     vibrate(stopped ? "error" : "success");
-    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id), ...(shared || []).filter(x => isBarcard(x) || (x && x.kind === "cocktail"))]);
+    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id), ...(shared || []).filter(x => isBarcard(x) || (x && x.kind === "cocktail"))])
+      .then((ok) => { if (ok) stopToChat(d.id, stopped); });
   };
   const publish = () => {
     if (!saToken()) { _showPub(false, "Нужен вход по коду сотрудника"); return; }

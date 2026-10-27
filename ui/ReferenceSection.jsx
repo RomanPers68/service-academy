@@ -12,6 +12,8 @@ import { SearchScreen } from "./search";
 import { onActivate } from "../lib/utils";
 import { GOLD, GREEN, RED, labelStyle } from "./tokens";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): курсы и главы — в две колонки на широком экране
+import { refShareItem } from "../lib/share-items";   // v97 (Доп. 410): глава — в чат команды
+import { CHAT_SHARE_IC } from "./share-chat";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -150,7 +152,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
 }
 
 // ── Глава ──
-function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
+function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel, onShare = null }) {
   const bodyRef = R.useRef(null);
   R.useEffect(() => {
     if (typeof document !== "undefined") { try { (document.getElementById("root") || window).scrollTo(0, 0); } catch (e) {} }
@@ -163,6 +165,12 @@ function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
       <div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 22, boxShadow: T.lessGlass.shadow, padding: "20px 18px", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur }}>
         <Content text={lesson.content} T={T} gold={gold} dark={dark} />
       </div>
+      {/* v97 (Доп. 410): глава — в чат команды карточкой, коллега откроет её в своём Справочнике */}
+      {onShare ? <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+        <button type="button" data-share-chat={"ref:" + lesson.id} onClick={onShare} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 999,
+          border: `1px solid ${gold}66`, background: dark ? "rgba(255,248,230,0.06)" : "rgba(255,255,255,0.55)", color: T.bold.color, fontFamily: SERIF, fontSize: 13, cursor: "pointer" }}>
+          {CHAT_SHARE_IC(gold)}Поделиться в чат</button>
+      </div> : null}
       {onNext
         ? <button style={{ ...T.doneBtn, background: gold }} onClick={onNext}>{nextLabel} →</button>
         : <button style={{ ...T.doneBtn, background: gold }} onClick={onBack}>К программе курса</button>}
@@ -210,7 +218,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent }) {
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null }) {
   // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
   const gold = accent || (a11y ? "#7A5D2A" : GOLD);
   const [rHint, rHintDone] = useHintOnce("reference");
@@ -265,7 +273,8 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
-  return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
+  return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel}
+    onShare={onShareChat ? () => onShareChat(refShareItem(lesson, course.title)) : null} />;
 }
 
 // Задание дня из Справочника: одна глава/тест, меняется по дате (seed).

@@ -48,6 +48,8 @@ import { topicShade, inkOnColor } from "../lib/topic-tint";
 import { topicFreshness, freshLabel, wineLevel } from "../lib/freshness";
 import { canCredit, canGold, canRefresh } from "../lib/marks";
 import { QuizPlates, QuizBeads, QuizMeta, QuizRuleNote, OptLetter, quizTopic, ensureQuizCss } from "./quiz-bits";   // v71: тест с правилами на виду
+import { lessonShareItem } from "../lib/share-items";   // v97 (Доп. 410): пройденный урок — в чат команды
+import { CHAT_SHARE_IC } from "./share-chat";
 
 // Доп. 289–292: формат «у стола» (практика, проверка после урока) — отдельный
 // модуль, грузится фоном. Пока не приехал (или без сети не загрузился) —
@@ -1115,7 +1117,7 @@ function TapAnchored({ x, y, T, children }) {
 
 export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule, skipped, onSkipped,
   mod = null, profile = null, streak = null, mistakeBank = [], onMistakes, onResolveMistake, onFailMistake, wasCompleted = false,
-  modules = null, mentorName = "", goal = null, onAskMentor, onActivity, onContents }) {
+  modules = null, mentorName = "", goal = null, onAskMentor, onActivity, onContents, onShareChat = null }) {
   // Доп. 299–303: повтор пройденного — меньше нажатий (автопереход), шпаргалка из уроков
   // раздела, подпись настоящего наставника, стакан «цель дня» в чеке, вопрос Наставнику.
   const replay = !!wasCompleted;
@@ -1155,6 +1157,12 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           <button className="sa-btn" style={{ ...T.doneBtn, background: color, width: "100%" }} onClick={onNext}>{next === null ? "Дальше ›" : "К модулю ›"}</button>
         )}
         <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
+        {/* v97 (Доп. 410): пройденный урок — в чат команды карточкой, коллега откроет его у себя */}
+        {onShareChat ? <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+          <span role="button" tabIndex={0} data-share-chat={"lesson:" + lesson.id} onClick={() => { vibrate("light"); onShareChat(lessonShareItem(lesson, mod)); }} {...onActivate(() => onShareChat(lessonShareItem(lesson, mod)))}
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 999, border: `1px solid ${color}55`, color: T.modTitle.color, fontSize: 12.5, cursor: "pointer" }}>
+            {CHAT_SHARE_IC(color)}Поделиться в чат</span>
+        </div> : null}
         {skipped && (
           <div onClick={onSkipped} {...onActivate(onSkipped)} style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: `1px solid ${color}44`, background: `${color}12`, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
             <span style={{ color, flexShrink: 0, display: "inline-flex" }}><Sign n="flag" s={15} /></span>

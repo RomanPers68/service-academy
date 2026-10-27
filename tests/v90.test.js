@@ -205,7 +205,7 @@ describe("v90: чат в приложении", () => {
     expect(s.map((l) => l.kind)).toEqual(["special", "chat"]);   // под чатом не теряется то, что было открыто
     expect(app).toContain("const myCall = chatOn && chatOpen == null && chatInfo ?");
     expect(app).toContain('{chatOpen != null && chatMe ? <Suspense fallback={null}><ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt}');
-    expect(app).toContain('"thanks", "seat", "chat"].includes(v) ? v : "";');
+    expect(app).toContain('"thanks", "seat", "chat", "schedule"].includes(v)');   // v97: + «График» и ссылки на сообщение, урок
     expect(app).toContain('else if (g === "chat") setChatOpen(true);');
     expect(app).toContain('chatOn && profile.restaurant && { key:"chat", group:"На смене", icon:"chat", label:"Чат смены"');
     expect(app).toContain('else if (dest === "chat") openChat(null);   // v90');
@@ -237,11 +237,11 @@ describe("v90: этап 38 на сервере (статично; живые п�
       "chat_shift_cancel(text, bigint)", "chat_card_send(text, bigint, jsonb)", "chat_task_remind(text, bigint)", "chat_poll_vote(text, bigint, int)", "chat_stop_set(text, bigint, text, boolean, bigint)",
       "chat_ai_post(text, bigint, bigint, text, jsonb)"];   // v93
     for (const f of fns) expect([f, sql.includes("grant execute on function " + f + " to anon, authenticated;")]).toEqual([f, true]);
-    expect((sql.match(/^grant execute on function /gm) || []).length).toBe(31);
-    expect((sql.match(/^revoke all on function _sa_chat/gm) || []).length).toBe(41);   // v92: + _sa_chat_title, _pick, _added, _group_out; v93: + 16 умного чата
-    expect((sql.match(/^revoke all on function _sa_sh_/gm) || []).length).toBe(14);    // v93: смены по графику
+    expect((sql.match(/^grant execute on function /gm) || []).length).toBe(35);   // v97: + chat_shift_need, chat_shift_board, chat_person, chat_stop_note
+    expect((sql.match(/^revoke all on function _sa_chat/gm) || []).length).toBe(52);   // v92: + _sa_chat_title, _pick, _added, _group_out; v93: + 16 умного чата; v97: + 11 (кнопки Telegram, «Ищем в смену», ссылки)
+    expect((sql.match(/^revoke all on function _sa_sh_/gm) || []).length).toBe(17);    // v93: смены по графику; v97: + 3 («Забрать» из «Графика», «Ищем в смену»)
     expect(sql).toContain("revoke all on table sa_chats, sa_chat_msgs, sa_chat_reads, sa_chat_reacts, sa_chat_photos from public, anon, authenticated;");
-    expect(sql).toContain("' функций из 31 · таблицы: '");   // v93
+    expect(sql).toContain("' функций из 35 · таблицы: '");   // v93: 31; v97: 35
   });
   it("правила: сутки на правку, реакции шести видов, закреп в группе, фото до 450 КБ, 10 за 10 минут, 60 в день и 200 МБ, 30 дней хранения (закреп — остаётся)", () => {
     expect(sql).toContain("if m.created_at < now() - interval '24 hours' then return jsonb_build_object('ok', false, 'error', 'too_late'); end if;");

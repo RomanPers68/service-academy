@@ -27,6 +27,7 @@ import { ACCENT_SERIF } from "./styles";
 import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText } from "../lib/schedule-attn";
 import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон лёжа и компьютер
 import { WEEKDAY_MON_SHORT, WEEKDAY_MON, WEEKDAY_SHORT, MONTH_NOM, MONTH_GEN } from "../lib/dates";   // v59
+import { isoDay, boardRows, boardNeeds, boardWho, mineWho, needProgress, boardErr } from "../lib/schedule-chat";   // v97: смены в чате
 
 const mono = "ui-monospace, Menlo, monospace";   // v73: только цифрам — время, часы, счёт, коды, телефоны
 const serif = "Georgia, serif";
@@ -291,6 +292,7 @@ const IcoSun = (p) => <Ico {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2
 const IcoTarget = (p) => <Ico {...p}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.3" /><circle cx="12" cy="12" r="0.8" fill={p.color || "#C8A96E"} stroke="none" /></Ico>;
 const IcoWave = (p) => <Ico {...p}><path d="M2.5 10c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /><path d="M2.5 16c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0" /></Ico>;
 const IcoPhone = (p) => <Ico {...p}><path d="M5.5 4h3.4l1.6 4-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4 1.6v3.4a2 2 0 0 1-2.2 2A17 17 0 0 1 3.5 6.2 2 2 0 0 1 5.5 4z" /></Ico>;
+const IcoChat = (p) => <Ico {...p}><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H7l-3.5 2.5v-10A7.5 7.5 0 0 1 11 4h1.5A7.5 7.5 0 0 1 20 11.5z" /><path d="M8.5 11.5h7M8.5 14.5h4" /></Ico>;   // v97: смены в чате
 // Числа с достоинством: значение досчитывается за ~0.6с (ease-out).
 // Движутся ЦИФРЫ, не поверхности — морозный лёд статичен.
 function NumUp({ v }) {
@@ -414,7 +416,11 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
   );
 }
 
-export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist }) {
+/* v97 (Доп. 410): chat — { api, open } у заведения с чатом (этап 38): смены из чата на этом экране (chat_shift_board),
+ * «Забрать» и «Выйду» отсюда, «Отдать / Поменяться в чате» открывает лист в чате с этим днём (open — intent чата),
+ * руководителю «Спросить в чате» в «Кто вместо?» и «Кто может выйти?», «График готов» и «Пожелания» карточкой.
+ * Нет чата или на сервере ещё нет chat_shift_board — обмен как раньше (swap_*). */
+export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist, chat = null }) {
   // Редактор графика — не только владелец: менеджеры и руководители тоже
   // (та же формула, что у собеседования кандидатов — canHire в App).
   const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
@@ -527,6 +533,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [backupText, setBackupText] = React.useState("");   // страховка настроек
   const [swaps, setSwaps] = React.useState([]);       // обмены сменами (сервер)
   const [swapDay, setSwapDay] = React.useState(0);    // выбранный день для предложения
+  const [board, setBoard] = React.useState(null);     // v97: предложения смен в чате на месяц; null — чата нет
+  const [boardMore, setBoardMore] = React.useState(null);   // { mk, offers } — открыт текущий месяц: заявки на следующий
+  const [boardBusy, setBoardBusy] = React.useState(null);   // msg, который сейчас забирают
+  const [chatAsk, setChatAsk] = React.useState(null);       // v97: ответ «Спросить в чате» в листе: { ok, text, row }
+  const [chatNote, setChatNote] = React.useState(false);    // v97: лист «Сообщить в чат» (график готов, пожелания)
   const [prevPay, setPrevPay] = React.useState({});   // заработок прошлого месяца по людям
   const [planDiff, setPlanDiff] = React.useState([]);  // мои изменённые дни с прошлого визита
   const [empFilter, setEmpFilter] = React.useState(""); // фильтр сотрудников в настройках
@@ -868,6 +879,52 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   }, [mkey, profile?.restaurant]);
 
   React.useEffect(() => { flushRef.current(); load(); }, [load]);
+  // v97: смены в чате команды на этот месяц — после загрузки графика (нет чата или функции — null, обмен как раньше)
+  const chatApi = chat && chat.api ? chat.api : null;
+  const loadBoard = React.useCallback(() => {
+    if (!chatApi || !chatApi.shiftBoard || !profile?.restaurant) { setBoard(null); setBoardMore(null); return Promise.resolve(null); }
+    // открыт текущий месяц — и заявки на следующий: в конце месяца смены на первые дни следующего тоже видны
+    const t0 = new Date(), yy = +mkey.slice(0, 4), mm = +mkey.slice(5, 7) - 1;
+    const nk = t0.getFullYear() === yy && t0.getMonth() === mm ? (mm === 11 ? (yy + 1) + "-01" : yy + "-" + String(mm + 2).padStart(2, "0")) : null;
+    return Promise.all([chatApi.shiftBoard(mkey), nk ? chatApi.shiftBoard(nk) : null]).then(([r, r2]) => {
+      setBoard(r && r.ok && Array.isArray(r.offers) ? r.offers : null);
+      setBoardMore(nk && r2 && r2.ok && Array.isArray(r2.offers) ? { mk: nk, offers: r2.offers } : null);
+      return r;
+    }).catch(() => null);
+  }, [chatApi, mkey, profile?.restaurant]);
+  React.useEffect(() => { if (state === "ok") loadBoard(); }, [state, loadBoard]);
+  // вернулись из чата (там могли забрать или отдать смену): график и предложения — тихо, без загрузки экрана;
+  // у руководителя с несохранёнными правками график не трогаем — сведёт «Сохранить» (v93)
+  const dirtyNow = React.useRef(false); dirtyNow.current = dirty;
+  const refreshQuiet = React.useCallback(async () => {
+    try {
+      const r = await rpc("schedule_load", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_month: mkey });
+      const m = r && r.ok === true ? (r.months || []).find(x => x.venue_key === venueKey) : null;
+      if (!m || !m.payload || dirtyNow.current) return;
+      setPlan(m.payload.plan || {}); setLocks(m.payload.locks || {});
+      if (savedRef.current) savedRef.current = { ...savedRef.current, plan: m.payload.plan || {}, locks: m.payload.locks || {} };
+    } catch (e) {}
+  }, [mkey, profile?.restaurant]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const chatBack = chat ? chat.closedAt || 0 : 0;
+  React.useEffect(() => { if (chatBack && state === "ok") { refreshQuiet(); loadBoard(); } }, [chatBack]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // «Забрать» и «Выйду» с экрана графика: смена переходит сразу (сервер пишет в график), здесь — та же клетка
+  const boardTake = (r, meId, same = true) => {   // same — смена этого месяца (клетку на экране поправить сразу)
+    if (boardBusy || !chat) return;
+    setBoardBusy(r.msg); vibrate("light");
+    Promise.resolve(chat.api.shiftTake(r.msg)).then((x) => {
+      setBoardBusy(null);
+      if (x && x.ok) {
+        vibrate("success");
+        if (same) setPlan((pl) => { const nx = { ...pl }; if (meId != null) nx[meId] = { ...(pl[meId] || {}), [r.day]: r.k };
+          if (r.sid && (r.mode === "give" || (r.mode === "need" && r.took === 0))) { nx[r.sid] = { ...(pl[r.sid] || {}) }; delete nx[r.sid][r.day]; }
+          return nx; });
+        setMsg(r.mode === "need" ? "Ты выходишь в смену, график обновлён" : "Смена твоя, график обновлён");
+      } else setMsg(boardErr(x));
+      setTimeout(() => setMsg(""), 3500);
+      loadBoard();
+    }).catch(() => { setBoardBusy(null); setMsg(boardErr({ error: "net" })); setTimeout(() => setMsg(""), 2500); });
+  };
+  const toChat = (r) => { if (chat && chat.open) { vibrate("light"); chat.open({ kind: "chat", id: r.chat, msg: r.msg }); } };
 
   const save = async () => {
     if (!isAdmin) return;
@@ -3141,7 +3198,66 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               </div>
             );
           })() : null}
-          {/* Обмен сменами: предложить свою / взять чужую (сервер swaps) */}
+          {/* v97 (Доп. 410): смены в чате команды — что отдают, где ищут в смену и кто хочет поменяться (забрать и
+              выйти можно прямо здесь, поменяться — в чате), свои предложения и «Отдать в чате» для своей смены */}
+          {board ? (() => {
+            const t0 = new Date();
+            const isCur = t0.getFullYear() === Y && t0.getMonth() === M;
+            const pastM = new Date(Y, M) < new Date(t0.getFullYear(), t0.getMonth());
+            const td0 = isCur ? t0.getDate() : 1;
+            const cur = boardRows(board, mkey);
+            // открыт текущий месяц — и заявки на начало следующего (день словами со своим месяцем)
+            const more = boardMore ? boardRows(boardMore.offers, boardMore.mk) : { mine: [], take: [] };
+            const whenMore = (r) => { const y = +boardMore.mk.slice(0, 4), m0 = +boardMore.mk.slice(5, 7) - 1, dt = new Date(y, m0, r.day), q = shiftOf(r.k);
+              return `${DOWL[(dt.getDay() + 6) % 7]}, ${r.day} ${MONTHS_R[m0]}` + (q ? ` · ${q.name} ${q.from}:00–${q.to > 24 ? q.to - 24 : q.to}:00` : ""); };
+            const mine = [...cur.mine.map(r => ({ ...r, when: swapWhen(r.day, r.k), same: true })), ...more.mine.map(r => ({ ...r, when: whenMore(r), same: false }))];
+            const take = [...cur.take.map(r => ({ ...r, when: swapWhen(r.day, r.k), same: true })), ...more.take.map(r => ({ ...r, when: whenMore(r), same: false }))];
+            const myDays = [];
+            if (!pastM) for (let d = td0; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d]) && !cur.mine.some(r => r.day === d)) myDays.push(d);
+            if (!mine.length && !take.length && !myDays.length) return null;
+            const dSel = myDays.includes(swapDay) ? swapDay : myDays[0];
+            const goldPill = { padding:"5px 12px", borderRadius:999, cursor:"pointer", fontSize:11.5, fontWeight:"bold", whiteSpace:"nowrap",
+              color:INK_DEEP, background:`linear-gradient(180deg,#E4C88C,${GOLD})` };
+            const ghostPill = { padding:"4px 11px", borderRadius:999, cursor:"pointer", fontSize:11.5, whiteSpace:"nowrap", color: a11y ? "#7A5A22" : GOLD,
+              border:`1px solid ${a11y ? "rgba(122,90,34,0.5)" : GOLD + "66"}` };
+            return (
+              <div data-sched-chat="" style={{ margin:"0 0 12px", padding:"11px 13px", borderRadius:14,
+                background: a11y ? "rgba(250,242,222,0.6)" : "rgba(255,250,238,0.035)",
+                border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}`,
+                boxShadow: a11y ? "none" : "inset 0 0 16px rgba(255,248,230,0.06), inset 0 1px 0 rgba(255,255,255,0.09)" }}>
+                <div style={{ ...labelStyle(11.5), color:P.sub, marginBottom:6 }}>Смены в чате команды</div>
+                {mine.map(r => (
+                  <div key={r.msg} data-sched-chat-mine={r.day} style={{ fontSize:12.5, color:P.text, marginTop:6, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <span style={{ flex:"1 1 170px", minWidth:0 }}>{mineWho(r)} {r.when}. Ждём, кто {r.mode === "swap" ? "согласится" : "заберёт"}</span>
+                    <span role="button" tabIndex={0} onClick={() => toChat(r)} {...onActivate(() => toChat(r))} style={ghostPill}>В чат ›</span>
+                  </div>
+                ))}
+                {take.map(r => (
+                  <div key={r.msg} data-sched-chat-offer={r.mode} data-sched-chat-day={r.day} style={{ fontSize:12.5, color:P.text, marginTop:6, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <span style={{ flex:"1 1 170px", minWidth:0 }}><b style={{ color:P.acc, fontWeight:"normal" }}>{boardWho(r)}</b> · {r.when}</span>
+                    {r.mode === "swap"
+                      ? <span role="button" tabIndex={0} data-sched-chat-swap={r.msg} onClick={() => toChat(r)} {...onActivate(() => toChat(r))} style={ghostPill}>Поменяться ›</span>
+                      : <span role="button" tabIndex={0} data-sched-chat-take={r.msg} onClick={() => boardTake(r, me.id, r.same)} {...onActivate(() => boardTake(r, me.id, r.same))}
+                          style={{ ...goldPill, opacity: boardBusy && boardBusy !== r.msg ? .5 : 1 }}>{boardBusy === r.msg ? "Секунду…" : r.mode === "need" ? "Выйду" : "Забрать"}</span>}
+                  </div>
+                ))}
+                {myDays.length ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginTop: mine.length || take.length ? 10 : 0 }}>
+                    <select value={dSel} onChange={e => setSwapDay(+e.target.value)} aria-label="Моя смена"
+                      style={{ ...inp, padding:"6px 8px", fontSize:12.5 }}>
+                      {myDays.map(d => <option key={d} value={d}>{d}-е · {shiftOf(plan[me.id][d]).name}</option>)}
+                    </select>
+                    <span role="button" tabIndex={0} data-sched-chat-give={dSel} onClick={() => { vibrate("light"); chat.open({ kind: "give", date: isoDay(mkey, dSel) }); }}
+                      {...onActivate(() => chat.open({ kind: "give", date: isoDay(mkey, dSel) }))} style={goldPill}>Отдать в чате</span>
+                    <span role="button" tabIndex={0} data-sched-chat-swapgo={dSel} onClick={() => { vibrate("light"); chat.open({ kind: "swap", date: isoDay(mkey, dSel) }); }}
+                      {...onActivate(() => chat.open({ kind: "swap", date: isoDay(mkey, dSel) }))} style={ghostPill}>Поменяться</span>
+                  </div>
+                ) : null}
+                <div style={{ fontSize:11, color:P.sub, marginTop:8, lineHeight:1.45 }}>Забрал смену здесь или в чате, и она сразу в твоём графике. Руководитель видит каждую передачу.</div>
+              </div>
+            );
+          })() : null}
+          {/* Обмен сменами: предложить свою / взять чужую (сервер swaps). v97: с чатом — только заявки, начатые до чата */}
           {(() => {
             const t0 = new Date();
             const isCur = t0.getFullYear() === Y && t0.getMonth() === M;
@@ -3152,7 +3268,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               && (staff.find(q => String(q.id) === String(w.from_staff)) || {}).pos === me.pos
               && !shiftOf(plan[me.id]?.[w.day]));
             const myDays = [];
-            for (let d = td0; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d])) myDays.push(d);
+            if (!board) for (let d = td0; d <= DAYS; d++) if (shiftOf(plan[me.id]?.[d])) myDays.push(d);
             if (!myAct && !offers.length && !mine.length && !myDays.length) return null;
             // v46: день и смена словами (swapWhen) — «чт, 22 октября · День 12:00–20:00» вместо «22-е (Д)»
             const act = swapCall;
@@ -3416,6 +3532,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             const offer = swaps.find(w => w.status === "open" && w.day === d && String(w.from_staff) !== String(me.id)
               && (staff.find(q => String(q.id) === String(w.from_staff)) || {}).pos === me.pos);
             const taking = swaps.find(w => w.day === d && String(w.to_staff) === String(me.id) && w.status === "taken");
+            // v97: смены этого дня в чате команды — своя (ждёт) и что можно забрать, выйти или поменяться
+            const cb = board ? boardRows(board, mkey) : null;
+            const chatMine = cb ? cb.mine.find(r => r.day === d) : null;
+            const chatTake = cb ? cb.take.filter(r => r.day === d) : [];
             const pp = palette(a11y);
             const lab = { ...labelStyle(a11y ? 13 : 11.5), color:P.sub };   // v73: подписи листа — курсивом, не капсом
             const ink = a11y ? "#7A5A22" : GOLD;   // светлая тема: тёмное золото — светлое на кремовом не читалось
@@ -3503,9 +3623,27 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       );
                     }) : null}
                   </>) : null}
-                  {/* обмен и пожелания этого дня */}
+                  {/* обмен и пожелания этого дня; v97: с чатом команды — «Отдать / Поменяться в чате» и «Забрать / Выйду» */}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:14 }}>
-                    {sh && canSwap ? (myAct && myAct.day === d ? (
+                    {board && sh && canSwap && !(myAct && myAct.day === d) ? (chatMine ? (
+                      <div data-sheet-chatmine="" style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", fontSize:12.5, color:P.text }}>
+                        <span style={{ flex:"1 1 170px" }}>{chatMine.mode === "swap" ? "Ты предлагаешь обмен этой смены" : "Ты отдаёшь эту смену"} в чате. Ждём, кто {chatMine.mode === "swap" ? "согласится" : "заберёт"}</span>
+                        <button className="sa-btn" style={{ ...act2, flex:"0 0 auto", padding:"9px 14px" }} onClick={() => { setDaySheet(0); toChat(chatMine); }}>Открыть в чате</button>
+                      </div>
+                    ) : (<>
+                      <button className="sa-btn" data-sheet-chatgive="" style={act2} onClick={() => { setDaySheet(0); vibrate("light"); chat.open({ kind: "give", date: isoDay(mkey, d) }); }}>Отдать в чате</button>
+                      <button className="sa-btn" data-sheet-chatswap="" style={act2} onClick={() => { setDaySheet(0); vibrate("light"); chat.open({ kind: "swap", date: isoDay(mkey, d) }); }}>Поменяться в чате</button>
+                    </>)) : null}
+                    {board && !sh && canSwap ? chatTake.map(r => (
+                      <div key={r.msg} data-sheet-chattake={r.mode} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                        <span style={{ flex:"1 1 160px", fontSize:12.5, color:P.text }}><b style={{ color:P.acc, fontWeight:"normal" }}>{boardWho(r)}</b> · {swapWhen(r.day, r.k).split(" · ")[1] || ""}</span>
+                        {r.mode === "swap"
+                          ? <button className="sa-btn" style={{ ...act2, flex:"0 0 auto", padding:"9px 14px" }} onClick={() => { setDaySheet(0); toChat(r); }}>Поменяться ›</button>
+                          : <button className="sa-btn" style={{ ...goldBtn, flex:"0 0 auto", padding:"9px 16px" }} disabled={!!boardBusy} onClick={() => boardTake(r, me.id)}>
+                              {boardBusy === r.msg ? "Секунду…" : r.mode === "need" ? "Выйду" : "Забрать"}</button>}
+                      </div>
+                    )) : null}
+                    {sh && canSwap && (!board || (myAct && myAct.day === d)) ? (myAct && myAct.day === d ? (
                       <div style={{ flex:"1 1 100%", fontSize:12.5, color:P.text }}>
                         Ты отдаёшь эту смену{myAct.status === "taken" ? <>. Берёт <b style={{ color:P.acc }}>{myAct.to_name}</b>, ждём менеджера</> : ". Ждём желающих"}{" "}
                         <span onClick={() => swapCall("swap_cancel", { p_id: myAct.id, p_staff: String(me.id) }, "Заявка отозвана")} {...onActivate(() => swapCall("swap_cancel", { p_id: myAct.id, p_staff: String(me.id) }, "Заявка отозвана"))}
@@ -3815,6 +3953,46 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       }
       setSwaps(ws => ws.filter(x => x.id !== w.id));
     } } catch (e) {} };
+  // v97 (Доп. 410): «Спросить в чате команды» в «Кто может выйти?» и «Кто вместо?» — карточка «Ищем в смену» или
+  // «Ищем замену» в «Вся команда» (chat_shift_need): кто нажмёт «Выйду», сразу встанет в график, руководители увидят
+  // строку. Смену сервер берёт из сохранённого графика, поэтому несохранённые правки сначала сохранить.
+  const askInChat = (key, args) => {
+    if (!chat || !chat.api || !chat.api.shiftNeed || (chatAsk && chatAsk.busy)) return;
+    setChatAsk({ key, busy: true }); vibrate("light");
+    const findRow = (offers) => boardNeeds(offers || [], mkey).find(r => r.day === args.day && r.pos === args.pos && r.k === args.k) || null;
+    Promise.resolve(chat.api.shiftNeed(null, { date: isoDay(mkey, args.day), pos: args.pos, k: args.k, n: args.n || 1, instead: args.instead || null })).then((r) => {
+      if (r && r.ok) {
+        vibrate("success");
+        setChatAsk({ key, ok: true, row: r.msg && r.msg.id != null ? { msg: r.msg.id, chat: r.msg.chat } : null });
+        loadBoard();
+      } else if (r && r.error === "already") {
+        loadBoard().then((b) => setChatAsk({ key, ok: true, again: true, row: findRow(b && b.offers) }));
+      } else setChatAsk({ key, err: boardErr(r) });
+    }).catch(() => setChatAsk({ key, err: boardErr({ error: "net" }) }));
+  };
+  const chatAskBlock = (key, args) => {
+    if (!chat || !board || !chat.api.shiftNeed) return null;   // нет чата или сервер ещё без смен в чате
+    const t0 = new Date();
+    if (new Date(Y, M, args.day) < new Date(t0.getFullYear(), t0.getMonth(), t0.getDate())) return null;   // прошедший день
+    const st = chatAsk && chatAsk.key === key ? chatAsk : null;
+    const open = st && st.row ? () => { setFillAsk(null); setReplAsk(null); toChat(st.row); } : null;
+    return (
+      <div data-chat-ask={key} style={{ marginTop:12, padding:"10px 12px", borderRadius:12, border:`1px solid ${GOLD}44`,
+        background: a11y ? "rgba(255,252,244,0.7)" : "rgba(255,250,238,0.04)" }}>
+        {st && st.ok ? (<>
+          <div data-chat-ask-ok="" style={{ fontSize:12.5, color:P.text, lineHeight:1.45 }}>
+            {st.again ? "Такая карточка уже в чате команды." : "Готово: карточка в чате команды."} Кто нажмёт «Выйду», сразу встанет в график.</div>
+          {open ? <button className="sa-btn" onClick={open} style={{ ...ghostInk, width:"100%", marginTop:8, padding:"9px" }}>Открыть в чате</button> : null}
+        </>) : (<>
+          <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.45, marginBottom:8 }}>
+            {dirty ? "Сначала сохрани график: в чат уходит смена из сохранённого." : "Или спроси команду: карточка в чате, и кто свободен, нажмёт «Выйду»."}</div>
+          <button className="sa-btn" data-chat-ask-go="" disabled={dirty || !!(st && st.busy)} onClick={() => askInChat(key, args)}
+            style={{ ...btn, width:"100%", padding:"10px", opacity: dirty ? .5 : 1, display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+            <IcoChat size={15} color={INK_DEEP} />{st && st.busy ? "Отправляю…" : "Спросить в чате команды"}</button>
+          {st && st.err ? <div role="alert" style={{ fontSize:12, color:P.warn, marginTop:6 }}>{st.err}</div> : null}
+        </>)}
+      </div>);
+  };
 
   // «Сегодня» столбцом. Было: два жёстких золотых рельса по 2 px на каждой
   // клетке — они читались как скобки, рассекающие таблицу, проходили сквозь
@@ -3886,6 +4064,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       const ctx = { staff, plan, POS, needOf, shiftOf, hardOff };
       const holes = holesIn(win, ctx), confl = conflictsIn(win, ctx);
       const waiting = swaps.filter(w => w.status === "taken");
+      const needs = board ? boardNeeds(board, mkey).filter(r => win.includes(r.day)) : [];   // v97: ищем в чате
       if (!win.length && !waiting.length) return null;      // прошлый месяц: поправлять нечего
       const isCur = now.getFullYear() === Y && now.getMonth() === M;
       const row = (warn) => ({ display:"flex", alignItems:"center", gap:10, padding:"10px 11px", borderRadius:12, marginTop:7,
@@ -3942,6 +4121,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <span onClick={() => resolveSwap(w, false)} {...onActivate(() => resolveSwap(w, false))}
                   style={{ fontSize:11.5, color:P.warn, cursor:"pointer", textDecoration:"underline" }}>отклонить</span>
               </span>
+            </div>
+          ))}
+          {needs.map(r => (
+            <div key={"n" + r.msg} data-attn-row="chatneed" data-attn-day={r.day} style={{ ...row(false), flexWrap:"wrap" }}>
+              <IcoChat size={16} color={P.acc} />
+              <div style={{ flex:"1 1 160px", minWidth:0 }}>
+                <div style={{ fontSize:13.5, color:P.text }}>В чате: {boardWho(r).replace(/^И/, "и")}</div>
+                <div style={{ fontSize:11.5, color:P.sub, marginTop:1 }}>{DOWL[dow(r.day)]}, {r.day} {MONTHS_R[M]} · {shName(r.k)} · {needProgress(r)}</div>
+              </div>
+              <button className="sa-btn" style={chipBtn} onClick={() => toChat(r)}>В чат ›</button>
             </div>
           ))}
           {calm ? (
@@ -4322,6 +4511,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           : why ? why(plan, x, d, z.k) : null;
         (r ? busy : free).push({ x, r });
       });
+      const needN = needOf(d)[pos] || 0, haveN = staff.filter(x => { const q = x.pos === pos && shiftOf(plan[x.id]?.[d]); return q && !q.extra; }).length;
       const put = (x) => {
         snapUndo();
         setPlan(pl => ({ ...pl, [x.id]: { ...(pl[x.id] || {}), [d]: z.k } }));
@@ -4336,7 +4526,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             background: a11y ? "rgba(250,242,222,0.98)" : "rgba(26,20,10,0.98)", border:`1px solid ${GOLD}55` }}>
             <div style={{ ...labelStyle(11.5), color:P.acc }}>Кто может выйти · {DOWL[dow(d)]} · {d} {MONTHS_R[M]}</div>
             <div style={{ fontFamily:serif, fontSize:18, color:P.text, marginTop:2 }}>{posName(pos)} · {z.name} {z.from}:00–{z.to > 24 ? z.to - 24 : z.to}:00</div>
-            <div style={{ fontSize:12.5, color:P.sub, marginTop:2, marginBottom:10 }}>нужно {needOf(d)[pos] || 0}, в смене {staff.filter(x => { const q = x.pos === pos && shiftOf(plan[x.id]?.[d]); return q && !q.extra; }).length}</div>
+            <div style={{ fontSize:12.5, color:P.sub, marginTop:2, marginBottom:10 }}>нужно {needN}, в смене {haveN}</div>
             {free.length ? <>
               <div style={{ ...labelStyle(11.5), color: a11y ? "#4A6B4A" : "#7FA05A", marginBottom:6 }}>Могут выйти · {free.length}</div>
               {free.map(({ x }) => (
@@ -4358,6 +4548,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   <span style={{ flex:1 }}>{r}</span>
                 </div>))}
             </> : null}
+            {chatAskBlock("fill:" + d + ":" + pos + ":" + z.k, { day: d, pos, k: z.k, n: Math.max(1, Math.min(5, needN - haveN)) })}
             <button className="sa-btn" onClick={() => setFillAsk(null)} style={{ ...ghostInk, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
           </div>
         </div>
@@ -4407,6 +4598,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   <span style={{ flex:1 }}>{r}</span>
                 </div>))}
             </> : null}
+            {chatAskBlock("repl:" + who.id + ":" + d, { day: d, pos: who.pos, k, instead: who.id })}
             <button className="sa-btn" onClick={() => setReplAsk(null)} style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
           </div>
         </div>
@@ -4471,8 +4663,57 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           onClick={() => { snapUndo(); setLocks({}); setDirty(true); setMore(false); }}>Снять закрепления</button>
         <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%", borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
           onClick={() => { setConfirmClear(true); setMore(false); }}>Очистить месяц</button>
+        {/* v97 (Доп. 410): «График готов» и «Пожелания до…» карточкой в чат команды */}
+        {chat && board && chat.api.cardSend && new Date(Y, M) >= new Date(now.getFullYear(), now.getMonth()) ? (
+          <button style={{ ...btn, fontSize:12.5, padding:"9px 10px", flex:"1 1 100%", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }} className="sa-btn" data-sched-chatnote=""
+            onClick={() => { setChatNote({}); setMore(false); vibrate("light"); }}><IcoChat size={15} color={INK_DEEP} />Сообщить в чат команды</button>
+        ) : null}
       </div>
     ) : null}
+    {chatNote ? (() => {
+      // v97: месяц — тот, что открыт; пожелания — до числа из правил (если ещё не прошло) или через неделю
+      const t0 = new Date(), today0 = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate());
+      const iso = (dt) => dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
+      const wDl0 = (cfg?.rules || {}).wishDeadline || 0, dl0 = wDl0 ? new Date(Y, M, wDl0) : null;
+      const maxD = new Date(today0.getTime() + 62 * 864e5);
+      const defUntil = dl0 && dl0 >= today0 && dl0 <= maxD ? iso(dl0) : iso(new Date(today0.getTime() + 7 * 864e5));
+      const until = chatNote.until || defUntil;
+      const mon = MONTHS_N[M].toLowerCase();
+      const send = (what) => {
+        if (chatNote.busy) return;
+        setChatNote((s) => ({ ...s, busy: what, err: "" })); vibrate("light");
+        Promise.resolve(chat.api.cardSend(null, what === "wishes" ? { t: "sched", what: "wishes", month: mkey, until } : { t: "sched", month: mkey })).then((r) => {
+          if (r && r.ok) { vibrate("success"); setChatNote((s) => ({ ...s, busy: null, done: what, row: r.msg && r.msg.id != null ? { msg: r.msg.id, chat: r.msg.chat } : null })); }
+          else setChatNote((s) => ({ ...s, busy: null, err: boardErr(r) }));
+        }).catch(() => setChatNote((s) => ({ ...s, busy: null, err: boardErr({ error: "net" }) })));
+      };
+      return (
+        <div onClick={() => setChatNote(false)} style={veil(false)}>
+          <div data-chatnote-sheet="" onClick={e => e.stopPropagation()} className="sa-fadein" style={sheetBox}>
+            <div style={{ ...labelStyle(11.5), color:P.acc }}>Сообщить в чат команды</div>
+            <div style={{ fontSize:12.5, color:P.sub, margin:"4px 0 12px", lineHeight:1.45 }}>Карточка уйдёт в «Вся команда»; у кого подключён Telegram, тому придёт и туда, с кнопкой в график.</div>
+            {chatNote.done ? (<>
+              <div data-chatnote-ok="" style={{ fontSize:13, color:P.text, lineHeight:1.45 }}>
+                Готово: {chatNote.done === "wishes" ? "«Пожелания на " + mon + "» в чате команды." : "«График на " + mon + " готов» в чате команды."}</div>
+              {chatNote.row ? <button className="sa-btn" onClick={() => { const rr = chatNote.row; setChatNote(false); toChat(rr); }}
+                style={{ ...ghostInk, width:"100%", marginTop:10, padding:"10px" }}>Открыть в чате</button> : null}
+            </>) : (<>
+              <button className="sa-btn" data-chatnote-ready="" disabled={dirty || !!chatNote.busy} onClick={() => send("ready")}
+                style={{ ...btn, width:"100%", padding:"11px", opacity: dirty ? .5 : 1 }}>{chatNote.busy === "ready" ? "Отправляю…" : "График на " + mon + " готов"}</button>
+              {dirty ? <div style={{ fontSize:11.5, color:P.warn, marginTop:6 }}>Сначала сохрани график: команда откроет сохранённый.</div> : null}
+              <div style={{ ...labelStyle(11.5), color:P.sub, margin:"14px 0 6px" }}>Пожелания на {mon}: принимаем до</div>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <input type="date" value={until} min={iso(today0)} max={iso(maxD)} onChange={(e) => setChatNote((s) => ({ ...s, until: e.target.value }))}
+                  aria-label="Принимаем пожелания до" data-chatnote-until="" style={{ ...inp, flex:1, padding:"9px 10px", fontSize:13 }} />
+                <button className="sa-btn" data-chatnote-wishes="" disabled={!!chatNote.busy || !until} onClick={() => send("wishes")}
+                  style={{ ...ghostInk, flex:"0 0 auto", padding:"9px 14px", fontSize:12.5 }}>{chatNote.busy === "wishes" ? "Отправляю…" : "Позвать"}</button>
+              </div>
+            </>)}
+            {chatNote.err ? <div role="alert" style={{ fontSize:12, color:P.warn, marginTop:8 }}>{chatNote.err}</div> : null}
+            <button className="sa-btn" onClick={() => setChatNote(false)} style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
+          </div>
+        </div>);
+    })() : null}
     {shot ? (
       <div data-shot-card="" style={{ ...card }}>
         <div style={eyebrow}><span>{shot.kind === "today" ? "Смена картинкой" : "График картинкой"}</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>

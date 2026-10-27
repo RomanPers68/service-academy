@@ -9,6 +9,8 @@
 //   QNARROW — 320 px, обе темы: окно сжалось молча — строка ввода у клавиатуры;
 //   RAIL   — меню слева: круги Наставника и чата одного размера (лёжа на телефоне 44 px, на большом экране 50 px),
 //            лёжа в Telegram (750×340) меню целиком в высоте экрана; обе темы.
+// v97: с v96 ход ведёт браузер по времени, поэтому замер помнит метку кадра: шаг считается на кадр в 16,7 мс
+// (пропущенный под нагрузкой кадр — не рывок), а замер, перед которым окно сменило размер уже после кадра, не в счёт.
 // Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> [E2E_SRC=<исходники>] node e2e-v95.mjs [разделы]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -511,12 +513,14 @@ const tgShrink = async (page, sel, frameH, w = 393, quiet = false) => {
   const b0 = await rectNow(page, sel);
   if (quiet) await mute(page, true);
   // замер — после отрисовки кадра (rAF → задача): то, что видит человек; в самом rAF ResizeObserver этого кадра ещё не сработал
-  await page.evaluate((sel) => { window.__trk = []; const t0 = performance.now(); const f = () => { setTimeout(() => { const r = document.querySelector(sel).getBoundingClientRect(); window.__trk.push({ t: Math.round(performance.now() - t0), bottom: Math.round(r.bottom), ih: window.innerHeight }); }, 0); if (performance.now() - t0 < 500) requestAnimationFrame(f); }; requestAnimationFrame(f); }, sel);
+  // v97: и метка кадра (ft), и высота окна в кадре (ih0): окно выросло уже после кадра, до замера — замер показал бы
+  // раскладку, которой на экране не было (ResizeObserver сработает в следующем кадре, до его отрисовки) — не в счёт
+  await page.evaluate((sel) => { window.__trk = []; const t0 = performance.now(); const f = (ts) => { const ft = Math.round(ts - t0), ih0 = window.innerHeight; setTimeout(() => { const r = document.querySelector(sel).getBoundingClientRect(); window.__trk.push({ t: Math.round(performance.now() - t0), ft, bottom: Math.round(r.bottom), ih: window.innerHeight, ih0 }); }, 0); if (performance.now() - t0 < 500) requestAnimationFrame(f); }; requestAnimationFrame(f); }, sel);
   await page.setViewportSize({ width: w, height: frameH });
   await sleep(650);
   if (quiet) await mute(page, false);
   const trk = await page.evaluate(() => window.__trk);
-  const after = trk.filter((x) => x.ih === frameH);
+  const after = trk.filter((x) => x.ih === frameH && x.ih0 === x.ih);
   return { b0, after: after.length, moved: Math.max(0, ...after.map((x) => Math.abs(x.bottom - b0.bottom))) };
 };
 // клавиатура уходит: фокус снят, окно растёт сразу, visualViewport в WebKit ещё 0,45 с прежний
@@ -528,7 +532,7 @@ const tgHide = async (page, sel, H0, w = 393, quiet = false) => {
     Object.defineProperty(vv, "height", { configurable: true, get: () => (performance.now() < until ? kH : real.get.call(vv)) });
     setTimeout(() => { delete vv.height; vv.dispatchEvent(new Event("resize")); }, 470);
     window.__trk = []; const t0 = performance.now();
-    const f = () => { setTimeout(() => { const e = document.querySelector(sel); const r = e ? e.getBoundingClientRect() : null; window.__trk.push({ t: Math.round(performance.now() - t0), bottom: r ? Math.round(r.bottom) : null, ih: window.innerHeight }); }, 0); if (performance.now() - t0 < 900) requestAnimationFrame(f); };
+    const f = (ts) => { const ft = Math.round(ts - t0), ih0 = window.innerHeight; setTimeout(() => { const e = document.querySelector(sel); const r = e ? e.getBoundingClientRect() : null; window.__trk.push({ t: Math.round(performance.now() - t0), ft, bottom: r ? Math.round(r.bottom) : null, ih: window.innerHeight, ih0 }); }, 0); if (performance.now() - t0 < 900) requestAnimationFrame(f); };
     requestAnimationFrame(f);
   }, { sel, kH: window_kH(H0) });
   // v95: «молча» — как на iPhone: Telegram сообщает высоту раньше, чем окно выросло, а resize не приходит
@@ -536,12 +540,15 @@ const tgHide = async (page, sel, H0, w = 393, quiet = false) => {
   else { await page.setViewportSize({ width: w, height: H0 }); await page.evaluate((h) => window.__tgViewport(h), H0); }
   await sleep(1000);
   if (quiet) await mute(page, false);
-  const trk = (await page.evaluate(() => window.__trk)).filter((x) => x.bottom != null);
+  const trk = (await page.evaluate(() => window.__trk)).filter((x) => x.bottom != null && x.ih === x.ih0);   // v97: без замеров между кадром и ростом окна
   const i0 = trk.findIndex((x) => x.ih === H0), t0 = i0 >= 0 ? trk[i0].t : 0, aft = i0 >= 0 ? trk.slice(i0) : [];
   const fin = aft.length ? aft[aft.length - 1].bottom : null;
-  let up = 0, step = 0; for (let i = 1; i < aft.length; i++) { up = Math.max(up, aft[i - 1].bottom - aft[i].bottom); step = Math.max(step, Math.abs(aft[i].bottom - aft[i - 1].bottom)); }
+  // v97: шаг — на кадр в 16,7 мс: с v96 ход ведёт браузер по времени, и пропущенный под нагрузкой кадр — это не рывок
+  const per = (a, b) => Math.abs(b.bottom - a.bottom) * 16.7 / Math.max(16.7, (b.ft != null && a.ft != null ? b.ft - a.ft : 16.7));
+  let up = 0, step = 0; for (let i = 1; i < aft.length; i++) { up = Math.max(up, aft[i - 1].bottom - aft[i].bottom); step = Math.max(step, per(aft[i - 1], aft[i])); }
   // первый кадр после роста окна — тоже шаг: строка ввода не должна прыгнуть вниз разом
-  if (i0 > 0) step = Math.max(step, Math.abs(trk[i0].bottom - trk[i0 - 1].bottom));
+  if (i0 > 0) step = Math.max(step, per(trk[i0 - 1], trk[i0]));
+  step = Math.round(step);
   const at300 = aft.find((x) => x.t - t0 >= 300);
   return { fin, up, step, at300: at300 ? at300.bottom : null, n: aft.length };
 };

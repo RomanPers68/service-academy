@@ -12,7 +12,8 @@
 import React from "react";
 import { vibrate } from "../lib/utils";
 import { bubbleName, hhmm, quoteText } from "../lib/chat";
-import { shiftState, shiftLine, wantLine, dayLong, dayShort, dayParts, nextDays, taskLine, dueLine, dueChoices, pollView, pollProblem, POLL_MAX, actTiles, INTENT_LABEL, AI_NAME, aiQuestion } from "../lib/chat-smart";
+import { shiftState, shiftLine, wantLine, dayLong, dayShort, dayParts, nextDays, taskLine, dueLine, dueChoices, pollView, pollProblem, POLL_MAX, actTiles, INTENT_LABEL, AI_NAME, aiQuestion,
+  posWord, insteadLine, schedView } from "../lib/chat-smart";   // v97: «Ищем в смену», «График готов»
 import { IC, stop } from "./chat-kit";
 
 export const CARDS_CSS = `
@@ -173,19 +174,33 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
       </div>
     </div>);
   if (c.t === "shift") {
-    const s = shiftState(c, me), swap = c.mode === "swap";
+    const s = shiftState(c, me), swap = c.mode === "swap", need = c.mode === "need", n = Math.max(1, Number(c.n) || 1);
+    // v97: «Ищем в смену» — должность и сколько человек; у замены — вместо кого
+    const whom = need ? [posWord(c.posKey) || c.pos, n > 1 ? "нужно " + n : "", insteadLine(c)].filter(Boolean).join(", ") : c.pos;
     return wrap(s.done ? "done" : "", <DateTile iso={c.date} />, <>
       <Head k={s.head} m={m} me={me} />
       <div className="ch-card-t" data-chat-shift-when="">{cap([String(c.label || "").toLowerCase(), c.time].filter(Boolean).join(" "))}</div>
-      <div className="ch-card-s">{[dayLong(c.date).split(",")[0], c.pos].filter(Boolean).join(" · ")}</div>
+      <div className="ch-card-s" data-chat-shift-who="">{[dayLong(c.date).split(",")[0], whom].filter(Boolean).join(" · ")}</div>
       {swap && c.st === "open" ? <div className="ch-card-s ch-card-want" data-chat-shift-want="">{wantLine(c.want)}</div> : null}
       {c.note ? <div className="ch-card-n">«{c.note}»</div> : null}
       <St ok={c.st === "done"} wait={c.st === "open" && s.mine} data-chat-shift-st={c.st}>{s.line}</St>
       {s.act ? <div className="ch-card-acts">
         {s.act === "take" ? <button type="button" className="ch-cbtn" data-chat-take={m.id} disabled={busy} onClick={act("take")}>Забрать</button> : null}
+        {s.act === "need" ? <button type="button" className="ch-cbtn" data-chat-need={m.id} disabled={busy} onClick={act("need")}>Выйду</button> : null}
         {s.act === "swap" ? <button type="button" className="ch-cbtn" data-chat-swap={m.id} disabled={busy} onClick={act("swap")}>Поменяться</button> : null}
-        {s.act === "cancel" ? <button type="button" className="ch-cbtn ghost" data-chat-shift-cancel={m.id} disabled={busy} onClick={act("cancel")}>Отменить</button> : null}
+        {s.act === "cancel" ? <button type="button" className="ch-cbtn ghost" data-chat-shift-cancel={m.id} disabled={busy} onClick={act("cancel")}>{need ? "Больше не ищем" : "Отменить"}</button> : null}
       </div> : null}
+    </>);
+  }
+  if (c.t === "sched") {
+    // v97: «График на ноябрь готов», «Пожелания на декабрь: до 20 ноября» — открывают «График»
+    const v = schedView(c), mon = String(c.month || "").slice(5, 7);
+    return wrap("", <IcoTile ic={IC.cal} cap={v.head} />, <>
+      <Head k={v.head} m={m} me={me} />
+      <div className="ch-card-t" data-chat-sched={c.what || "ready"}>{v.title}</div>
+      <div className="ch-card-s">{v.sub}</div>
+      <div className="ch-card-acts"><button type="button" className="ch-cbtn ghost" data-chat-open="schedule" data-chat-sched-m={mon}
+        onClick={act("open", { kind: "schedule", id: String(c.month || ""), title: v.title, wishes: c.what === "wishes" })}>{v.btn}</button></div>
     </>);
   }
   if (c.t === "task") {
@@ -329,7 +344,7 @@ const errText = (r, ctx = "") => {
 export { errText as smartErr };
 
 // отдать или поменяться: моя смена из графика (и для обмена — какие дни взамен), записка
-export function ShiftSheet({ api, chat, mode, onClose, onDone }) {
+export function ShiftSheet({ api, chat, mode, date = null, onClose, onDone }) {
   const swap = mode === "swap";
   const [list, setList] = React.useState(null);
   const [pick, setPick] = React.useState(null);
@@ -339,9 +354,17 @@ export function ShiftSheet({ api, chat, mode, onClose, onDone }) {
   const [err, setErr] = React.useState("");
   React.useEffect(() => {
     let alive = true;
-    Promise.resolve(api.shiftsMine()).then((r) => { if (!alive) return; if (r && r.ok) setList(r.shifts || []); else { setList([]); setErr(errText(r)); } }).catch(() => { if (alive) { setList([]); setErr(errText({ error: "net" })); } });
+    Promise.resolve(api.shiftsMine()).then((r) => {
+      if (!alive) return;
+      if (r && r.ok) {
+        const l = r.shifts || [];
+        setList(l);
+        // v97: из «Графика» — смена этого дня уже выбрана
+        if (date) { const s = l.find((x) => x && x.date === date); if (s) setPick(s); }
+      } else { setList([]); setErr(errText(r)); }
+    }).catch(() => { if (alive) { setList([]); setErr(errText({ error: "net" })); } });
     return () => { alive = false; };
-  }, [api]);
+  }, [api]);   // eslint-disable-line react-hooks/exhaustive-deps
   const days = React.useMemo(() => nextDays(14).filter((d) => !pick || d !== pick.date), [pick]);
   const go = () => {
     if (!pick || busy) return;

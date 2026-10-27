@@ -51,6 +51,12 @@
 -- Наставник в переписке (kind ai): chat_shift_mine, chat_shift_offer, chat_shift_take, chat_shift_options, chat_shift_swap,
 -- chat_shift_cancel, chat_card_send, chat_task_remind, chat_poll_vote, chat_stop_set, chat_ai_post — 31 функция. Смены
 -- меняются в графике (этап 9) сразу, без подтверждения; руководители видят каждую передачу (строка в «Старших» и бот).
+-- v97: чат и приложение — одно целое. «Ищем в смену» из графика руководителя (chat_shift_need: «Выйду» сразу ставит в
+-- график; можно вместо того, кто не сможет выйти), предложения смен для экрана «График» (chat_shift_board), карточка
+-- коллеги (chat_person), стоп-лист из Меню — карточкой в чат (chat_stop_note), брифинг дня и «График готов» в «Вся
+-- команда» (без повторов брифинга). Кнопки прямо в сообщениях бота: «Иду» на вызов, «Забрать» и «Выйду» на смену, голос
+-- в опросе руководителя, «Открыть урок» в задании; ответ на сообщение бота уходит в чат (sa_tg_update — тот же вебхук
+-- tg-bot, что у «Вопроса дня», этап 31) — 35 функций.
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -476,20 +482,81 @@ end; $$;
 
 -- ── 4) Написать, фото, правка, реакции, закреп ─────────────────────────────────
 -- бот пишет о переписке: человек не в чате (не читал минуту) и бот не писал о ней 2 минуты
-create or replace function _sa_chat_ping(ch sa_chats, p_to text, p_text text)
+-- v97: сообщения бота с кнопками. Кнопка «Открыть чат» ведёт в этот чат (?go=chat_<чат>_<сообщение>); по ней же ответ
+-- на сообщение бота в Telegram находит, в какой чат его отправить (sa_tg_update).
+create or replace function _sa_chat_tg_btn(p_text text, p_go text)
+returns jsonb language plpgsql stable security definer set search_path to public as $$
+declare app text; botname text;
+begin
+  app := nullif(btrim(coalesce((select value from sa_settings where key = 'app_url'), '')), '');
+  botname := coalesce(nullif(btrim((select value from sa_settings where key = 'bot_username')), ''), 'SA_RestaurantBot');
+  if app is not null then
+    return jsonb_build_object('text', p_text, 'web_app', jsonb_build_object('url', rtrim(app, '/') || '/' || case when p_go is not null then '?go=' || p_go else '' end));
+  end if;
+  return jsonb_build_object('text', p_text, 'url', 'https://t.me/' || botname || case when p_go is not null then '?startapp=go_' || p_go else '' end);
+end; $$;
+create or replace function _sa_chat_tg_open(p_chat bigint, p_msg bigint)
+returns jsonb language sql stable security definer set search_path to public as $$
+  select _sa_chat_tg_btn('Открыть чат', 'chat_' || p_chat || coalesce('_' || p_msg, ''))
+$$;
+-- сообщение бота: p_rows — ряды кнопок (callback_data разбирает sa_tg_update); p_extra — что ещё (ответ на сообщение)
+create or replace function _sa_chat_tg(p_chat bigint, p_text text, p_rows jsonb, p_extra jsonb default null)
+returns bigint language plpgsql security definer set search_path to public, extensions, pg_catalog as $$
+declare bot text; body jsonb; rid bigint;
+begin
+  bot := _sa_tg_token();
+  if bot is null or p_chat is null or coalesce(p_text, '') = '' then return null; end if;
+  body := jsonb_build_object('chat_id', p_chat, 'text', left(p_text, 4000), 'disable_web_page_preview', true);
+  if jsonb_typeof(p_rows) = 'array' and jsonb_array_length(p_rows) > 0 then
+    body := body || jsonb_build_object('reply_markup', jsonb_build_object('inline_keyboard', p_rows));
+  end if;
+  if jsonb_typeof(p_extra) = 'object' then body := body || p_extra; end if;
+  begin
+    execute 'select net.http_post(url := $1, body := $2, headers := $3, timeout_milliseconds := 5000)'
+      into rid using 'https://api.telegram.org/bot' || bot || '/sendMessage', body, '{"Content-Type": "application/json"}'::jsonb;
+  exception when others then
+    raise notice '_sa_chat_tg: %', sqlerrm;
+    return null;
+  end;
+  return rid;
+end; $$;
+-- вызов Telegram по имени метода (ответ на нажатие, правка сообщения)
+create or replace function _sa_chat_tg_api(p_method text, p_body jsonb)
+returns bigint language plpgsql security definer set search_path to public, extensions, pg_catalog as $$
+declare bot text; rid bigint;
+begin
+  bot := _sa_tg_token();
+  if bot is null or coalesce(p_method, '') !~ '^[A-Za-z]{3,40}$' then return null; end if;
+  begin
+    execute 'select net.http_post(url := $1, body := $2, headers := $3, timeout_milliseconds := 5000)'
+      into rid using 'https://api.telegram.org/bot' || bot || '/' || p_method, coalesce(p_body, '{}'::jsonb), '{"Content-Type": "application/json"}'::jsonb;
+  exception when others then
+    raise notice '_sa_chat_tg_api: %', sqlerrm;
+    return null;
+  end;
+  return rid;
+end; $$;
+
+-- бот пишет о переписке, если человека нет в чате прямо сейчас; не чаще раза в 2 минуты на переписку (p_force — для
+-- карточек с кнопкой: «Забрать», «Выйду» доходят всегда). p_msg — сообщение (для ответа из Telegram), p_acts — кнопки.
+create or replace function _sa_chat_pingk(ch sa_chats, p_to text, p_text text, p_msg bigint, p_acts jsonb, p_force boolean default false)
 returns boolean language plpgsql security definer set search_path to public as $$
 declare chat bigint; r sa_chat_reads;
 begin
   if not _sa_tg_ready() or p_to is null then return false; end if;
   select * into r from sa_chat_reads where chat_id = ch.id and emp_id = p_to;
-  if r.emp_id is not null and (r.at > now() - interval '1 minute' or r.notified_at > now() - interval '2 minutes') then return false; end if;
+  if r.emp_id is not null and (r.at > now() - interval '1 minute' or (not coalesce(p_force, false) and r.notified_at > now() - interval '2 minutes')) then return false; end if;
   chat := _sa_tg_chat(p_to, 'chat');
   if chat is null then return false; end if;
-  perform sa_tg_send(chat, p_text, 'Открыть чат', 'chat');
+  perform _sa_chat_tg(chat, p_text, case when jsonb_typeof(p_acts) = 'array' then p_acts else '[]'::jsonb end || jsonb_build_array(jsonb_build_array(_sa_chat_tg_open(ch.id, p_msg))));
   insert into sa_chat_reads (chat_id, emp_id, last_id, at, notified_at) values (ch.id, p_to, 0, now() - interval '1 day', now())
     on conflict (chat_id, emp_id) do update set notified_at = now();
   return true;
 end; $$;
+create or replace function _sa_chat_ping(ch sa_chats, p_to text, p_text text)
+returns boolean language sql security definer set search_path to public as $$
+  select _sa_chat_pingk(ch, p_to, p_text, null, null, false)
+$$;
 
 -- кому сказать о новом сообщении: собеседнику в личной; в группе — автору сообщения, на которое ответили
 create or replace function _sa_chat_notify(c jsonb, ch sa_chats, m sa_chat_msgs)
@@ -499,13 +566,13 @@ begin
   what := case when m.kind = 'photo' then 'Фото' || case when m.body <> '' then ': ' || _sa_clip(m.body, 280) else '' end else _sa_clip(m.body, 300) end;
   if ch.kind = 'dm' then
     peer := case when ch.a = c->>'id' then ch.b else ch.a end;
-    perform _sa_chat_ping(ch, peer, coalesce(c->>'who', '') || ' пишет тебе:' || chr(10) || what);
+    perform _sa_chat_pingk(ch, peer, coalesce(c->>'who', '') || ' пишет тебе:' || chr(10) || what, m.id, null);
   elsif m.reply_to is not null then
     select * into q from sa_chat_msgs where id = m.reply_to;
     if q.id is not null and q.emp_id <> c->>'id' and q.kind in ('text', 'photo', 'call')
        and exists (select 1 from _sa_chat_members(ch) x where x.id = q.emp_id) then
-      perform _sa_chat_ping(ch, q.emp_id, coalesce(c->>'who', '') || ' отвечает тебе в «' || case ch.kind when 'team' then 'Вся команда' when 'leads' then 'Старшие'
-        when 'group' then coalesce(ch.title, 'Чат') else 'Руководители сети' end || '»:' || chr(10) || what);
+      perform _sa_chat_pingk(ch, q.emp_id, coalesce(c->>'who', '') || ' отвечает тебе в «' || case ch.kind when 'team' then 'Вся команда' when 'leads' then 'Старшие'
+        when 'group' then coalesce(ch.title, 'Чат') else 'Руководители сети' end || '»:' || chr(10) || what, m.id, null);
     end if;
   end if;
 end; $$;
@@ -736,29 +803,25 @@ begin
          and (p_who = 'person' or today is null or cardinality(today) = 0 or e.id::text = any(today))
     loop
       chat := _sa_tg_chat(t.id, 'chat');
-      if chat is not null then
-        perform sa_tg_send(chat, split_part(coalesce(c->>'who', ''), ' ', 1) || ' зовёт ' || case when p_who = 'person' then 'тебя' else _sa_chat_call_who(call) end ||
-          ': ' || _sa_chat_call_why(call), 'Открыть чат', 'chat');
+      if chat is not null then   -- v97: «Иду» прямо в Telegram
+        perform _sa_chat_tg(chat, split_part(coalesce(c->>'who', ''), ' ', 1) || ' зовёт ' || case when p_who = 'person' then 'тебя' else _sa_chat_call_who(call) end ||
+          ': ' || _sa_chat_call_why(call), jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'Иду', 'callback_data', 'cg:' || m.id)),
+          jsonb_build_array(_sa_chat_tg_open(ch.id, m.id))));
       end if;
     end loop;
   end if;
   return jsonb_build_object('ok', true, 'msg', _sa_chat_msg_json(m));
 end; $$;
 
-create or replace function chat_go(p_token text, p_msg bigint)
-returns jsonb language plpgsql security definer set search_path to public as $$
-declare c jsonb; m sa_chat_msgs; ch sa_chats; chat bigint;
+-- «Иду»: в вызов, позвавшему — бот (v97: и из приложения, и кнопкой в Telegram)
+create or replace function _sa_chat_go_do(c jsonb, m sa_chat_msgs)
+returns sa_chat_msgs language plpgsql security definer set search_path to public as $$
+declare chat bigint; r sa_chat_msgs := m;
 begin
-  c := _sa_caller(p_token);
-  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
-  select * into m from sa_chat_msgs where id = p_msg;
-  select * into ch from sa_chats where id = m.chat_id;
-  if m.id is null or m.kind <> 'call' or m.deleted or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
-  if m.emp_id = c->>'id' then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
   if not exists (select 1 from jsonb_array_elements(coalesce(m.call->'going', '[]'::jsonb)) g where g->>'id' = c->>'id') then
     update sa_chat_msgs set call = jsonb_set(call, '{going}', coalesce(call->'going', '[]'::jsonb) ||
         jsonb_build_array(jsonb_build_object('id', c->>'id', 'name', coalesce(c->>'who', ''), 'at', now()))), updated_at = now()
-     where id = m.id returning * into m;
+     where id = m.id returning * into r;
     if _sa_tg_ready() then
       chat := _sa_tg_chat(m.emp_id, 'chat');
       if chat is not null then
@@ -766,6 +829,19 @@ begin
       end if;
     end if;
   end if;
+  return r;
+end; $$;
+create or replace function chat_go(p_token text, p_msg bigint)
+returns jsonb language plpgsql security definer set search_path to public as $$
+declare c jsonb; m sa_chat_msgs; ch sa_chats;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  select * into m from sa_chat_msgs where id = p_msg;
+  select * into ch from sa_chats where id = m.chat_id;
+  if m.id is null or m.kind <> 'call' or m.deleted or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if m.emp_id = c->>'id' then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+  m := _sa_chat_go_do(c, m);
   return jsonb_build_object('ok', true, 'msg', _sa_chat_msg_json(m));
 end; $$;
 
@@ -994,6 +1070,22 @@ returns text language sql immutable as $$
     when 'runner' then case when p_many then 'раннеры' else 'раннер' end
     else case when p_many then 'коллеги той же должности' else '' end end
 $$;
+-- v97: «Ищем официанта», «Ищем 2 официантов» — кого ищут в смену (n — сколько человек)
+create or replace function _sa_chat_spos_acc(p text, n int)
+returns text language sql immutable as $$
+  select case when coalesce(n, 1) <= 1 then
+    case coalesce(p, '') when 'manager' then 'менеджера' when 'host' then 'хостес' when 'call' then 'оператора колл-центра' when 'bar' then 'бармена'
+      when 'barback' then 'барбека' when 'waiter' then 'официанта' when 'runner' then 'раннера' else 'человека' end
+  else n::text || ' ' ||
+    case coalesce(p, '') when 'manager' then 'менеджеров' when 'host' then 'хостес' when 'call' then 'операторов колл-центра' when 'bar' then 'барменов'
+      when 'barback' then 'барбеков' when 'waiter' then 'официантов' when 'runner' then 'раннеров' else 'человек' end end
+$$;
+-- месяц словами: «ноябрь» (график на ноябрь) и «ноября» (до 20 ноября)
+create or replace function _sa_chat_mon(p_m int, p_gen boolean)
+returns text language sql immutable as $$
+  select case when p_gen then (array['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'])[p_m]
+    else (array['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'])[p_m] end
+$$;
 
 -- ── график (этап 9): одно заведение «main» на ресторан, как в приложении ──
 create or replace function _sa_sh_cfg(p_rest text)
@@ -1152,6 +1244,33 @@ begin
   end loop;
   return jsonb_build_object('shifts', out, 'why', case when jsonb_array_length(out) > 0 then '' when why = '' then 'Подходящих смен взамен нет' else 'Не получится: ' || why end);
 end; $$;
+-- v97: может ли p_emp выйти по карточке «Ищем в смену» (mode need): та же должность по графику, в этот день без смены,
+-- правила графика; уже выходит по этой карточке — нет. {can, why; ts — его строка графика}
+create or replace function _sa_sh_need_check(p_rest text, p_card jsonb, p_emp text)
+returns jsonb language plpgsql stable security definer set search_path to public as $$
+declare cfg jsonb := _sa_sh_cfg(p_rest); d date := _sa_chat_date(p_card->>'date'); ts jsonb; w text; today date;
+begin
+  if cfg is null then return jsonb_build_object('can', false, 'why', 'Графика в приложении нет'); end if;
+  if d is null then return jsonb_build_object('can', false, 'why', ''); end if;
+  today := (now() at time zone _sa_tz(p_rest))::date;
+  if d < today then return jsonb_build_object('can', false, 'why', 'Этот день уже прошёл'); end if;
+  if exists (select 1 from jsonb_array_elements(case when jsonb_typeof(p_card->'took') = 'array' then p_card->'took' else '[]'::jsonb end) t where t->>'id' = p_emp) then
+    return jsonb_build_object('can', false, 'why', 'Ты выходишь в эту смену');
+  end if;
+  ts := _sa_sh_staff(cfg, p_emp, to_char(d, 'YYYY-MM'));
+  if ts is null then return jsonb_build_object('can', false, 'why', 'Тебя нет в графике'); end if;
+  if coalesce(ts->>'pos', '') <> coalesce(p_card->>'posKey', '') then
+    return jsonb_build_object('can', false, 'why', 'Выйти могут ' || _sa_chat_spos(p_card->>'posKey', true));
+  end if;
+  if ts->>'id' = p_card->'instead'->>'sid' then return jsonb_build_object('can', false, 'why', ''); end if;
+  w := _sa_sh_why(p_rest, cfg, ts, d, p_card->>'k', '{}'::jsonb);
+  if w is not null then return jsonb_build_object('can', false, 'why', 'Не получится: ' || w); end if;
+  return jsonb_build_object('can', true, 'ts', ts);
+end; $$;
+create or replace function _sa_sh_need_can(p_rest text, p_card jsonb, p_emp text)
+returns jsonb language sql stable security definer set search_path to public as $$
+  select jsonb_build_object('can', coalesce((x->>'can')::boolean, false), 'why', coalesce(x->>'why', '')) from (select _sa_sh_need_check(p_rest, p_card, p_emp) x) y
+$$;
 -- клетка плана: поставить букву (null — убрать) и замок (пересборка месяца клетку не тронет)
 create or replace function _sa_sh_put(p jsonb, p_sid text, p_day text, p_k text)
 returns jsonb language sql immutable as $$
@@ -1182,7 +1301,12 @@ end; $$;
 -- shiftLogLine в lib/chat-smart.js)
 create or replace function _sa_sh_line(p_card jsonb)
 returns text language sql immutable as $$
-  select case when p_card->>'mode' = 'swap'
+  select case when p_card->>'mode' = 'need'   -- v97: «Смена пт 30, вечер (официант): выходит Пётр О.»
+    then case when coalesce(p_card->'instead'->>'name', '') <> '' then 'Замена ' else 'Смена ' end ||
+         coalesce(_sa_chat_dshort(_sa_chat_date(p_card->>'date')), '') || coalesce(', ' || nullif(_sa_chat_low(p_card->>'label'), ''), '') ||
+         coalesce(' (' || nullif(_sa_chat_spos(p_card->>'posKey', false), '') || ')', '') || ': выходит ' || _sa_chat_nm(p_card->'took'->-1->>'name') ||
+         case when coalesce(p_card->'instead'->>'name', '') <> '' then ', не выходит ' || _sa_chat_nm(p_card->'instead'->>'name') else '' end || ' · график обновлён'
+    when p_card->>'mode' = 'swap'
     then 'Обмен сменами: ' || _sa_chat_nm(p_card->>'fromName') || ' (' || coalesce(_sa_chat_dshort(_sa_chat_date(p_card->>'date')), '') || ') и ' ||
          _sa_chat_nm(p_card->>'byName') || ' (' || coalesce(_sa_chat_dshort(_sa_chat_date(p_card->>'byDate')), '') || ') · график обновлён'
     else 'Передача смены ' || coalesce(_sa_chat_dshort(_sa_chat_date(p_card->>'date')), '') || coalesce(', ' || nullif(_sa_chat_low(p_card->>'label'), ''), '') ||
@@ -1191,7 +1315,7 @@ $$;
 -- смена перешла: строка в «Старших» (если карточка не там же), бот тому, кто отдал, и руководителям заведения
 create or replace function _sa_sh_done(ch sa_chats, m sa_chat_msgs, c jsonb)
 returns void language plpgsql security definer set search_path to public as $$
-declare line text := _sa_sh_line(m.card); lc sa_chats; t record; tg bigint; who text := coalesce(c->>'who', '');
+declare line text := _sa_sh_line(m.card); lc sa_chats; t record; tg bigint; who text := coalesce(c->>'who', ''); iid text;
 begin
   insert into sa_chats (restaurant, kind) values (ch.restaurant, 'leads') on conflict (restaurant, kind) where kind in ('team', 'leads') do nothing;
   select * into lc from sa_chats where restaurant = ch.restaurant and kind = 'leads';
@@ -1204,7 +1328,19 @@ begin
   if tg is not null then
     perform sa_tg_send(tg, case when m.card->>'mode' = 'swap'
       then _sa_chat_nm(who) || ' меняется с тобой: ты выходишь ' || coalesce(_sa_chat_dlong(_sa_chat_date(m.card->>'byDate')), '') || ', ' || _sa_chat_nm(who) || ' — ' || coalesce(_sa_chat_dlong(_sa_chat_date(m.card->>'date')), '') || '. График обновлён.'
+      when m.card->>'mode' = 'need'
+      then _sa_chat_nm(who) || ' выходит в смену: ' || coalesce(_sa_chat_dlong(_sa_chat_date(m.card->>'date')), '') || coalesce(' · ' || nullif(_sa_chat_low(m.card->>'label'), ''), '') || '. График обновлён.'
       else _sa_chat_nm(who) || ' забирает твою смену: ' || coalesce(_sa_chat_dlong(_sa_chat_date(m.card->>'date')), '') || '. График обновлён.' end, 'Открыть чат', 'chat');
+  end if;
+  -- v97: замена — тому, кто не сможет выйти: кто выходит вместо него
+  if m.card->>'mode' = 'need' and coalesce(m.card->'instead'->>'name', '') <> '' and jsonb_array_length(coalesce(m.card->'took', '[]'::jsonb)) = 1 then
+    select e.id::text into iid from employees e
+     where e.restaurant is not distinct from ch.restaurant and coalesce(e.status, 'active') = 'active'
+       and _sa_name_tokens(coalesce(e.name, '') || ' ' || coalesce(e.surname, '')) = _sa_name_tokens(m.card->'instead'->>'name') limit 1;
+    tg := case when iid is not null and iid <> c->>'id' then _sa_tg_chat(iid, 'chat') end;
+    if tg is not null then
+      perform sa_tg_send(tg, _sa_chat_nm(who) || ' выходит вместо тебя: ' || coalesce(_sa_chat_dlong(_sa_chat_date(m.card->>'date')), '') || '. График обновлён.', 'Открыть чат', 'chat');
+    end if;
   end if;
   for t in
     select e.id::text as id from employees e
@@ -1222,14 +1358,23 @@ end; $$;
 create or replace function _sa_chat_card_sum(p jsonb)
 returns text language sql immutable as $$
   select case p->>'t'
-    when 'shift' then case when p->>'mode' = 'swap' then 'Меняю смену: ' else 'Отдаю смену: ' end || coalesce(_sa_chat_dlong(_sa_chat_date(p->>'date')), '') ||
-      coalesce(' · ' || nullif(btrim(_sa_chat_low(p->>'label') || ' ' || coalesce(p->>'time', '')), ''), '')
+    when 'shift' then case
+        when p->>'mode' = 'need' and coalesce(p->'instead'->>'name', '') <> '' then 'Ищем замену: '
+        when p->>'mode' = 'need' then 'Ищем ' || _sa_chat_spos_acc(p->>'posKey', case when p->>'n' ~ '^[0-9]$' then (p->>'n')::int else 1 end) || ': '
+        when p->>'mode' = 'swap' then 'Меняю смену: ' else 'Отдаю смену: ' end || coalesce(_sa_chat_dlong(_sa_chat_date(p->>'date')), '') ||
+      coalesce(' · ' || nullif(btrim(_sa_chat_low(p->>'label') || ' ' || coalesce(p->>'time', '')), ''), '') ||
+      case when p->>'mode' = 'need' and coalesce(p->'instead'->>'name', '') <> '' then coalesce(' (' || nullif(_sa_chat_spos(p->>'posKey', false), '') || ')', '') else '' end
     when 'task' then 'Задание: ' || coalesce(p->'item'->>'title', '') || coalesce(', ' || _sa_chat_due(_sa_chat_date(p->>'due')), '')
     when 'share' then (case p->'item'->>'kind' when 'dish' then 'Блюдо' when 'cocktail' then 'Коктейль' when 'ref' then 'Справочник' when 'lesson' then 'Урок'
       when 'quiz' then 'Тест' when 'module' then 'Тема' else 'Карточка' end) || ': ' || coalesce(p->'item'->>'title', '')
     when 'poll' then 'Опрос: ' || coalesce(p->>'q', '')
     when 'stop' then case when p->>'st' = 'off' then 'Снова в меню: ' else 'В стоп-листе: ' end || coalesce(p->'dish'->>'name', '')
     when 'brief' then 'Брифинг смены, ' || coalesce(_sa_chat_dlong(_sa_chat_date(p->>'date')), '')
+    -- v97: «График на ноябрь готов», «Пожелания на декабрь: до 20 ноября»
+    when 'sched' then case when p->>'what' = 'wishes'
+      then 'Пожелания на ' || coalesce(_sa_chat_mon(case when p->>'month' ~ '^\d{4}-(0[1-9]|1[0-2])$' then substr(p->>'month', 6, 2)::int end, false), 'месяц') ||
+        coalesce(': до ' || extract(day from _sa_chat_date(p->>'until'))::int || ' ' || _sa_chat_mon(extract(month from _sa_chat_date(p->>'until'))::int, true), '')
+      else 'График на ' || coalesce(_sa_chat_mon(case when p->>'month' ~ '^\d{4}-(0[1-9]|1[0-2])$' then substr(p->>'month', 6, 2)::int end, false), 'месяц') || ' готов' end
     else '' end
 $$;
 -- что приложение положило в карточку: вид из разрешённых, id, название, подпись, минуты, картинка (только https),
@@ -1294,7 +1439,9 @@ begin
     cd := x->'card';
     if x->>'kind' = 'card' and jsonb_typeof(cd) = 'object' and not coalesce((x->>'del')::boolean, false) then
       if cd->>'t' = 'shift' then
-        if cd->>'st' = 'open' and cd->>'from' is distinct from c->>'id' then cd := cd || _sa_sh_can(ch.restaurant, cd, c->>'id'); end if;
+        if cd->>'st' = 'open' and cd->>'from' is distinct from c->>'id' then
+          cd := cd || case when cd->>'mode' = 'need' then _sa_sh_need_can(ch.restaurant, cd, c->>'id') else _sa_sh_can(ch.restaurant, cd, c->>'id') end;
+        end if;
       elsif cd->>'t' = 'task' then
         cd := cd || _sa_chat_task(ch, cd, x->>'emp', lead);
       elsif cd->>'t' = 'poll' then
@@ -1386,29 +1533,46 @@ begin
   if p_mode = 'give' and ch.kind <> 'dm' and _sa_tg_ready() then
     for t in select x2.id from _sa_chat_members(ch) x2 where x2.id <> c->>'id' loop
       if coalesce((_sa_sh_check(rest, card, t.id)->>'can')::boolean, false) then
-        perform _sa_chat_ping(ch, t.id, _sa_chat_nm(c->>'who') || ' отдаёт смену: ' || _sa_chat_dlong(d) || ' · ' || _sa_chat_low(card->>'label') || ' ' || (card->>'time') ||
-          '. Забрать можно в чате одним нажатием.');
+        perform _sa_chat_pingk(ch, t.id, _sa_chat_nm(c->>'who') || ' отдаёт смену: ' || _sa_chat_dlong(d) || ' · ' || _sa_chat_low(card->>'label') || ' ' || (card->>'time') ||
+          '. Забрать можно прямо здесь.', m.id, jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'Забрать', 'callback_data', 'ct:' || m.id))), true);   -- v97: кнопка в Telegram
       end if;
     end loop;
   end if;
   return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
 end; $$;
 
--- «Забрать»: смена переходит сразу (график, замок на клетках), руководители видят
-create or replace function chat_shift_take(p_token text, p_msg bigint)
+-- «Забрать» (отдаю) и «Выйду» (ищем в смену, v97): смена переходит сразу (график, замок на клетках), руководители видят.
+-- Общая часть для приложения и для кнопки в Telegram: c — кто нажал (как _sa_caller).
+create or replace function _sa_sh_take_do(c jsonb, p_msg bigint)
 returns jsonb language plpgsql volatile security definer set search_path to public as $$
-declare c jsonb; m sa_chat_msgs; ch sa_chats; v jsonb; d date; dk text;
+declare m sa_chat_msgs; ch sa_chats; v jsonb; d date; dk text; took jsonb; nn int; inst text;
 begin
-  c := _sa_caller(p_token);
-  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
   select * into m from sa_chat_msgs where id = p_msg for update;
   select * into ch from sa_chats where id = m.chat_id;
   if m.id is null or m.deleted or m.kind <> 'card' or m.card->>'t' <> 'shift' or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   if m.card->>'st' <> 'open' then return jsonb_build_object('ok', false, 'error', 'taken', 'msg', _sa_chat_smart1(c, ch, m)); end if;
-  if m.card->>'mode' <> 'give' or m.card->>'from' = c->>'id' then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+  if m.card->>'mode' not in ('give', 'need') or m.card->>'from' = c->>'id' then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
   if _sa_sh_cfg(ch.restaurant) is null then return jsonb_build_object('ok', false, 'error', 'no_schedule'); end if;
   d := _sa_chat_date(m.card->>'date'); dk := to_char(d, 'YYYY-MM-DD');
   perform 1 from schedule_months x where x.restaurant = ch.restaurant and x.venue_key = 'main' and x.month = to_char(d, 'YYYY-MM') for update;
+  if m.card->>'mode' = 'need' then
+    v := _sa_sh_need_check(ch.restaurant, m.card, c->>'id');
+    if not coalesce((v->>'can')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'not_allowed', 'why', coalesce(v->>'why', ''), 'msg', _sa_chat_smart1(c, ch, m)); end if;
+    took := case when jsonb_typeof(m.card->'took') = 'array' then m.card->'took' else '[]'::jsonb end;
+    inst := case when jsonb_array_length(took) = 0 then nullif(m.card->'instead'->>'sid', '') end;   -- вместо кого: с первым, кто вышел
+    if not _sa_sh_apply(ch.restaurant, 'Чат: ' || coalesce(c->>'who', ''), jsonb_build_array(jsonb_build_object('date', dk, 'sid', v->'ts'->>'id', 'k', m.card->>'k')) ||
+         case when inst is not null then jsonb_build_array(jsonb_build_object('date', dk, 'sid', inst, 'k', null)) else '[]'::jsonb end) then
+      return jsonb_build_object('ok', false, 'error', 'no_schedule');
+    end if;
+    took := took || jsonb_build_array(jsonb_build_object('id', c->>'id', 'name', coalesce(c->>'who', ''), 'sid', v->'ts'->>'id', 'at', now()));
+    nn := greatest(case when m.card->>'n' ~ '^[0-9]$' then (m.card->>'n')::int else 1 end, 1);
+    update sa_chat_msgs set card = card || jsonb_build_object('took', took) ||
+        case when jsonb_array_length(took) >= nn then jsonb_build_object('st', 'done', 'by', c->>'id', 'byName', coalesce(c->>'who', ''), 'at', now()) else '{}'::jsonb end,
+        updated_at = now()
+     where id = m.id returning * into m;
+    perform _sa_sh_done(ch, m, c);
+    return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
+  end if;
   v := _sa_sh_check(ch.restaurant, m.card, c->>'id');
   if not coalesce((v->>'can')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'not_allowed', 'why', coalesce(v->>'why', '')); end if;
   if not _sa_sh_apply(ch.restaurant, 'Чат: ' || coalesce(c->>'who', ''), jsonb_build_array(
@@ -1419,6 +1583,14 @@ begin
    where id = m.id returning * into m;
   perform _sa_sh_done(ch, m, c);
   return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
+end; $$;
+create or replace function chat_shift_take(p_token text, p_msg bigint)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  return _sa_sh_take_do(c, p_msg);
 end; $$;
 
 -- «Поменяться»: свои смены, которые подходят (правила графика для обоих), или почему нет
@@ -1486,14 +1658,27 @@ begin
 end; $$;
 
 -- ── задание, поделиться, опрос, брифинг ──
+-- v97: кнопка в сообщении бота о задании: «Открыть урок» (тест — по той же ссылке); тема — без кнопки (есть «Открыть чат»)
+create or replace function _sa_chat_task_kb(p_item jsonb)
+returns jsonb language sql stable security definer set search_path to public as $$
+  select case when p_item->>'kind' in ('lesson', 'quiz') and coalesce(p_item->>'id', '') ~ '^[A-Za-z0-9_-]{1,54}$'
+    then jsonb_build_array(jsonb_build_array(_sa_chat_tg_btn(case when p_item->>'kind' = 'quiz' then 'Открыть тест' else 'Открыть урок' end, 'lesson_' || (p_item->>'id'))))
+    else '[]'::jsonb end
+$$;
+-- p_chat null (v97) — «Вся команда» своего заведения: брифинг из экрана «Брифинг», «График готов» из графика
 create or replace function chat_card_send(p_token text, p_chat bigint, p_card jsonb)
 returns jsonb language plpgsql volatile security definer set search_path to public as $$
 declare c jsonb; ch sa_chats; t text := p_card->>'t'; lead boolean; card jsonb; it jsonb; due date; today date; q text; opts text[]; lines text[];
-  m sa_chat_msgs; what text; ids text[]; done text[]; e text;
+  m sa_chat_msgs; what text; ids text[]; done text[]; e text; mk text; till date; nc jsonb; r record; kb jsonb;
 begin
   c := _sa_caller(p_token);
   if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
-  select * into ch from sa_chats where id = p_chat;
+  if p_chat is null then
+    perform _sa_chat_ensure(c);
+    select * into ch from sa_chats x where x.restaurant = nullif(btrim(coalesce(c->>'restaurant', '')), '') and x.kind = 'team';
+  else
+    select * into ch from sa_chats where id = p_chat;
+  end if;
   if ch.id is null or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   lead := coalesce((c->>'lead')::boolean, false);
   today := (now() at time zone _sa_tz(coalesce(nullif(ch.restaurant, ''), c->>'restaurant')))::date;
@@ -1529,6 +1714,30 @@ begin
     if cardinality(lines) = 0 then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
     card := jsonb_build_object('t', 'brief', 'date', to_char(today, 'YYYY-MM-DD'), 'title', coalesce(nullif(_sa_chat_cut(p_card->>'title', 80), ''), 'Брифинг смены'),
       'lines', to_jsonb(lines[1:8]));
+    -- v97: брифинг дня уже в чате (отправили правку) — та же карточка, обновлённая, без второй
+    select * into m from sa_chat_msgs x where x.chat_id = ch.id and x.kind = 'card' and not x.deleted and x.card->>'t' = 'brief'
+       and x.card->>'date' = to_char(today, 'YYYY-MM-DD') order by x.id desc limit 1 for update;
+    if m.id is not null then
+      nc := card;
+      update sa_chat_msgs x set card = nc, body = _sa_chat_card_sum(nc), emp_id = c->>'id', emp_name = coalesce(c->>'who', ''), updated_at = now()
+       where x.id = m.id returning * into m;
+      return jsonb_build_object('ok', true, 'again', true, 'msg', _sa_chat_smart1(c, ch, m));
+    end if;
+  elsif t = 'sched' then   -- v97: «График на ноябрь готов», «Пожелания на декабрь: до 20 ноября»
+    if not lead then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+    if ch.kind <> 'team' then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+    mk := p_card->>'month';
+    if coalesce(mk, '') !~ '^\d{4}-(0[1-9]|1[0-2])$' or to_date(mk || '-01', 'YYYY-MM-DD') < date_trunc('month', today)::date
+       or to_date(mk || '-01', 'YYYY-MM-DD') > (date_trunc('month', today) + interval '3 months')::date then
+      return jsonb_build_object('ok', false, 'error', 'bad_request');
+    end if;
+    if p_card->>'what' = 'wishes' then
+      till := _sa_chat_date(p_card->>'until');
+      if till is null or till < today or till > today + 62 then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+      card := jsonb_build_object('t', 'sched', 'what', 'wishes', 'month', mk, 'until', to_char(till, 'YYYY-MM-DD'));
+    else
+      card := jsonb_build_object('t', 'sched', 'what', 'ready', 'month', mk);
+    end if;
   else
     return jsonb_build_object('ok', false, 'error', 'bad_request');
   end if;
@@ -1537,14 +1746,24 @@ begin
     values (ch.id, c->>'id', coalesce(c->>'who', ''), coalesce(c->>'restaurant', ''), _sa_chat_card_sum(card), 'card', card) returning * into m;
   perform _sa_chat_after_write(ch, c->>'id', m.id);
   perform _sa_chat_notify(c, ch, m);
-  -- задание: тем, кому оно и кто ещё не прошёл, пишет бот (кто сейчас не в чате)
+  -- задание: тем, кому оно и кто ещё не прошёл, пишет бот (кто сейчас не в чате); v97 — с кнопкой «Открыть урок»
   if t = 'task' and ch.kind <> 'dm' and _sa_tg_ready() then
     what := case it->>'kind' when 'quiz' then 'тест' when 'module' then 'тему' else 'урок' end || ' «' || (it->>'title') || '»' || coalesce(' ' || _sa_chat_due(due), '');
     select coalesce(array_agg(x.id), '{}') into ids from _sa_chat_task_who(ch, card, c->>'id') x;
     done := _sa_chat_task_done(ids, it);
     foreach e in array ids loop
       continue when e = any(done);
-      perform _sa_chat_ping(ch, e, _sa_chat_nm(c->>'who') || ' даёт задание: пройти ' || what || '. Открыть можно прямо из чата.');
+      perform _sa_chat_pingk(ch, e, _sa_chat_nm(c->>'who') || ' даёт задание: пройти ' || what || '. Открыть можно прямо из чата.', m.id, _sa_chat_task_kb(it), true);
+    end loop;
+  end if;
+  -- v97: опрос руководителя — каждому в Telegram с вариантами-кнопками; «График готов» и «Пожелания» — с кнопкой в график
+  if t in ('poll', 'sched') and lead and ch.kind in ('team', 'group') and _sa_tg_ready() then
+    kb := case when t = 'poll'
+      then (select jsonb_agg(jsonb_build_array(jsonb_build_object('text', o.v, 'callback_data', 'cv:' || m.id || ':' || (o.n - 1))) order by o.n) from unnest(opts) with ordinality o(v, n))
+      else jsonb_build_array(jsonb_build_array(_sa_chat_tg_btn(case when card->>'what' = 'wishes' then 'Отметить пожелания' else 'Открыть график' end, 'schedule'))) end;
+    for r in select x.id from _sa_chat_members(ch) x where x.id <> c->>'id' loop
+      perform _sa_chat_pingk(ch, r.id, case when t = 'poll' then _sa_chat_nm(c->>'who') || ' спрашивает: ' || q
+        else m.body || case when card->>'what' = 'wishes' then '. Отметь в графике, когда не можешь выйти.' else '. Проверь свои смены.' end end, m.id, kb, true);
     end loop;
   end if;
   return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
@@ -1572,7 +1791,11 @@ begin
     n := n + 1;
     if ready then
       tg := _sa_tg_chat(e, 'chat');
-      if tg is not null then perform sa_tg_send(tg, _sa_chat_nm(c->>'who') || ' напоминает: пройди ' || what || '. Открыть можно прямо из чата.', 'Открыть чат', 'chat'); sent := sent + 1; end if;
+      if tg is not null then   -- v97: с кнопкой «Открыть урок»
+        perform _sa_chat_tg(tg, _sa_chat_nm(c->>'who') || ' напоминает: пройди ' || what || '. Открыть можно прямо из чата.',
+          _sa_chat_task_kb(m.card->'item') || jsonb_build_array(jsonb_build_array(_sa_chat_tg_open(ch.id, m.id))));
+        sent := sent + 1;
+      end if;
     end if;
   end loop;
   update sa_chat_msgs set card = card || jsonb_build_object('reminded', now()), updated_at = now() where id = m.id returning * into m;
@@ -1580,6 +1803,20 @@ begin
 end; $$;
 
 -- голос в опросе: один вариант у человека; повторное нажатие на свой — снять
+-- общая часть (v97: и кнопкой в Telegram — там повторное нажатие голос не снимает, p_toggle = false)
+create or replace function _sa_poll_vote_do(c jsonb, m sa_chat_msgs, p_o int, p_toggle boolean)
+returns sa_chat_msgs language plpgsql volatile security definer set search_path to public as $$
+declare r sa_chat_msgs;
+begin
+  if exists (select 1 from sa_chat_votes v where v.msg_id = m.id and v.emp_id = c->>'id' and v.o = p_o) then
+    if p_toggle then delete from sa_chat_votes where msg_id = m.id and emp_id = c->>'id'; end if;
+  else
+    insert into sa_chat_votes (msg_id, emp_id, emp_name, o) values (m.id, c->>'id', coalesce(c->>'who', ''), p_o)
+      on conflict (msg_id, emp_id) do update set o = excluded.o, emp_name = excluded.emp_name, at = now();
+  end if;
+  update sa_chat_msgs set updated_at = now() where id = m.id returning * into r;
+  return r;
+end; $$;
 create or replace function chat_poll_vote(p_token text, p_msg bigint, p_o int)
 returns jsonb language plpgsql volatile security definer set search_path to public as $$
 declare c jsonb; m sa_chat_msgs; ch sa_chats;
@@ -1590,13 +1827,7 @@ begin
   select * into ch from sa_chats where id = m.chat_id;
   if m.id is null or m.deleted or m.kind <> 'card' or m.card->>'t' <> 'poll' or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   if p_o is null or p_o < 0 or p_o >= jsonb_array_length(coalesce(m.card->'opts', '[]'::jsonb)) then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
-  if exists (select 1 from sa_chat_votes v where v.msg_id = m.id and v.emp_id = c->>'id' and v.o = p_o) then
-    delete from sa_chat_votes where msg_id = m.id and emp_id = c->>'id';
-  else
-    insert into sa_chat_votes (msg_id, emp_id, emp_name, o) values (m.id, c->>'id', coalesce(c->>'who', ''), p_o)
-      on conflict (msg_id, emp_id) do update set o = excluded.o, emp_name = excluded.emp_name, at = now();
-  end if;
-  update sa_chat_msgs set updated_at = now() where id = m.id returning * into m;
+  m := _sa_poll_vote_do(c, m, p_o, true);
   return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
 end; $$;
 
@@ -1682,6 +1913,371 @@ begin
   return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
 end; $$;
 
+-- ── 5г) Чат и приложение (v97) ─────────────────────────────────────────────────
+-- Владелец: «что можно добавить в чат, что бы он был един с приложением» — «Да, давай»: кнопки «в чат» в приложении,
+-- «Ищем в смену» из графика, стоп-лист из Меню и брифинг в чат, кнопки прямо в сообщениях бота и ответ из Telegram.
+
+-- «Ищем в смену» из графика руководителя: должность, смена, сколько человек (1–5), записка; можно вместо того, кто не
+-- сможет выйти (p_instead — его строка графика, тогда один человек). «Выйду» — у тех, кто может (та же должность, в этот
+-- день без смены, правила графика), и сразу в графике (_sa_sh_take_do). p_chat null — «Вся команда».
+create or replace function chat_shift_need(p_token text, p_chat bigint, p_date text, p_pos text, p_k text, p_n int default 1, p_note text default '', p_instead text default null)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; ch sa_chats; rest text; cfg jsonb; d date; today date; sh jsonb; cd jsonb; m sa_chat_msgs; t record; ist jsonb; n int;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  if not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  if p_chat is null then
+    perform _sa_chat_ensure(c);
+    select * into ch from sa_chats x where x.restaurant = nullif(btrim(coalesce(c->>'restaurant', '')), '') and x.kind = 'team';
+  else
+    select * into ch from sa_chats where id = p_chat;
+  end if;
+  if ch.id is null or ch.kind not in ('team', 'group') or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  rest := ch.restaurant;
+  cfg := _sa_sh_cfg(rest);
+  if cfg is null then return jsonb_build_object('ok', false, 'error', 'no_schedule'); end if;
+  d := _sa_chat_date(p_date); today := (now() at time zone _sa_tz(rest))::date; n := coalesce(p_n, 1);
+  if d is null or d < today or d > today + 45 or coalesce(p_pos, '') !~ '^[a-z_]{2,20}$' or n < 1 or n > 5 then
+    return jsonb_build_object('ok', false, 'error', 'bad_request');
+  end if;
+  sh := _sa_sh_def(cfg, p_k);
+  if sh is null then return jsonb_build_object('ok', false, 'error', 'no_shift'); end if;
+  if p_instead is not null then
+    ist := _sa_sh_row(cfg, p_instead);
+    if ist is null or coalesce(ist->>'pos', '') <> p_pos or _sa_sh_code(rest, p_instead, d) is distinct from p_k then
+      return jsonb_build_object('ok', false, 'error', 'bad_request');
+    end if;
+    n := 1;
+  end if;
+  if exists (select 1 from sa_chat_msgs x where x.chat_id = ch.id and x.kind = 'card' and not x.deleted and x.card->>'t' = 'shift' and x.card->>'mode' = 'need'
+               and x.card->>'st' = 'open' and x.card->>'date' = to_char(d, 'YYYY-MM-DD') and x.card->>'posKey' = p_pos and x.card->>'k' = p_k
+               and (x.card->'instead'->>'sid') is not distinct from p_instead) then
+    return jsonb_build_object('ok', false, 'error', 'already');
+  end if;
+  if _sa_chat_fast(c) then return jsonb_build_object('ok', false, 'error', 'too_fast'); end if;
+  cd := jsonb_strip_nulls(jsonb_build_object('t', 'shift', 'mode', 'need', 'date', to_char(d, 'YYYY-MM-DD'), 'k', p_k, 'label', coalesce(sh->>'name', p_k),
+    'time', _sa_chat_hh(_sa_num(sh->>'from')) || '–' || _sa_chat_hh(_sa_num(sh->>'to')), 'pos', _sa_chat_spos(p_pos, false), 'posKey', p_pos, 'n', n,
+    'from', c->>'id', 'fromName', coalesce(c->>'who', ''), 'note', nullif(_sa_chat_cut(p_note, 120), ''), 'st', 'open',
+    'instead', case when ist is not null then jsonb_build_object('sid', ist->>'id', 'name', coalesce(ist->>'name', '')) end)) || jsonb_build_object('took', '[]'::jsonb);
+  insert into sa_chat_msgs (chat_id, emp_id, emp_name, emp_rest, body, kind, card)
+    values (ch.id, c->>'id', coalesce(c->>'who', ''), coalesce(c->>'restaurant', ''), _sa_chat_card_sum(cd), 'card', cd) returning * into m;
+  perform _sa_chat_after_write(ch, c->>'id', m.id);
+  -- тем, кто может выйти, — бот с кнопкой «Выйду»
+  if _sa_tg_ready() then
+    for t in select x.id from _sa_chat_members(ch) x where x.id <> c->>'id' loop
+      if coalesce((_sa_sh_need_check(rest, cd, t.id)->>'can')::boolean, false) then
+        perform _sa_chat_pingk(ch, t.id, _sa_chat_nm(c->>'who') || case when ist is not null then ' ищет замену в смену: ' else ' ищет ' || _sa_chat_spos_acc(p_pos, n) || ' в смену: ' end ||
+          _sa_chat_dlong(d) || ' · ' || _sa_chat_low(cd->>'label') || ' ' || (cd->>'time') || '. Выйти можно прямо здесь.', m.id,
+          jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'Выйду', 'callback_data', 'ct:' || m.id))), true);
+      end if;
+    end loop;
+  end if;
+  return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
+end; $$;
+
+-- предложения смен в чатах заведения на месяц — для экрана «График»: отдают, меняются, ищут в смену (открытые, с
+-- сегодняшнего дня); тому, кто смотрит, — может ли он (can, why) и его ли это (mine)
+create or replace function chat_shift_board(p_token text, p_month text)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; rest text; today date; out jsonb := '[]'::jsonb; r record; cd jsonb; ch sa_chats;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  rest := nullif(btrim(coalesce(c->>'restaurant', '')), '');
+  if rest is null or coalesce(p_month, '') !~ '^\d{4}-(0[1-9]|1[0-2])$' then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+  today := (now() at time zone _sa_tz(rest))::date;
+  for r in
+    select x.id, x.chat_id, x.card from sa_chat_msgs x join sa_chats y on y.id = x.chat_id
+     where y.restaurant = rest and y.kind in ('team', 'group') and x.kind = 'card' and not x.deleted and x.card->>'t' = 'shift'
+       and x.card->>'st' = 'open' and left(x.card->>'date', 7) = p_month and x.card->>'date' >= to_char(today, 'YYYY-MM-DD')
+     order by x.card->>'date', x.id
+     limit 200
+  loop
+    select * into ch from sa_chats where id = r.chat_id;
+    continue when not _sa_chat_ok(c, ch);
+    cd := r.card;
+    if cd->>'from' is distinct from c->>'id' then
+      cd := cd || case when cd->>'mode' = 'need' then _sa_sh_need_can(rest, cd, c->>'id') else _sa_sh_can(rest, cd, c->>'id') end;
+    end if;
+    out := out || jsonb_build_array(jsonb_build_object('msg', r.id, 'chat', r.chat_id, 'mine', cd->>'from' = c->>'id', 'card', cd));
+  end loop;
+  return jsonb_build_object('ok', true, 'offers', out);
+end; $$;
+
+-- карточка коллеги (нажатие на имя в чате): должность, смена сегодня и следующая по графику (две недели вперёд);
+-- коллега своего заведения, руководителю — и руководитель другого заведения (из «Руководителей сети»)
+create or replace function chat_person(p_token text, p_emp text)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; e record; cfg jsonb; today date; d date; mk text := ''; ms jsonb; k text; sh jsonb; tday jsonb; nxt jsonb; dm bigint; va text; vb text;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  select x.id::text as id, btrim(coalesce(x.name, '') || ' ' || coalesce(x.surname, '')) as name, lower(coalesce(x.position, '')) as pos, coalesce(x.restaurant, '') as rest,
+         coalesce(x.is_admin, false) or lower(coalesce(x.position, '')) = any(_sa_chat_lead_pos()) as lead
+    into e from employees x where x.id::text = p_emp and coalesce(x.status, 'active') = 'active';
+  if e.id is null or not (e.rest = coalesce(c->>'restaurant', '') or (coalesce((c->>'lead')::boolean, false) and e.lead)) then
+    return jsonb_build_object('ok', false, 'error', 'not_found');
+  end if;
+  cfg := case when e.rest <> '' then _sa_sh_cfg(e.rest) end;
+  if cfg is not null then
+    today := (now() at time zone _sa_tz(e.rest))::date;
+    for d in select g::date from generate_series(today, today + 14, interval '1 day') g loop
+      if to_char(d, 'YYYY-MM') <> mk then mk := to_char(d, 'YYYY-MM'); ms := _sa_sh_staff(cfg, e.id, mk); end if;
+      continue when ms is null;
+      k := _sa_sh_code(e.rest, ms->>'id', d); sh := _sa_sh_def(cfg, k);
+      continue when sh is null;
+      if d = today then tday := jsonb_build_object('label', coalesce(sh->>'name', k), 'time', _sa_chat_hh(_sa_num(sh->>'from')) || '–' || _sa_chat_hh(_sa_num(sh->>'to')));
+      else nxt := jsonb_build_object('date', to_char(d, 'YYYY-MM-DD'), 'label', coalesce(sh->>'name', k), 'time', _sa_chat_hh(_sa_num(sh->>'from')) || '–' || _sa_chat_hh(_sa_num(sh->>'to')));
+      end if;
+      exit when nxt is not null;
+    end loop;
+  end if;
+  va := least(c->>'id', e.id); vb := greatest(c->>'id', e.id);
+  select x.id into dm from sa_chats x where x.kind = 'dm' and x.restaurant = e.rest and x.a = va and x.b = vb;
+  return jsonb_build_object('ok', true, 'person', jsonb_build_object('id', e.id, 'name', e.name, 'pos', e.pos, 'rest', e.rest, 'me', e.id = c->>'id',
+    'same', e.rest = coalesce(c->>'restaurant', ''), 'today', tday, 'next', nxt, 'dm', dm));
+end; $$;
+
+-- стоп-лист из Меню: руководитель поставил блюдо в стоп в Меню — карточка в «Вся команда» (уже есть — вторую не ставим);
+-- вернул в меню — открытые карточки этого блюда становятся «Снова в меню». Само меню здесь не трогаем: его публикует Меню.
+create or replace function chat_stop_note(p_token text, p_dish text, p_on boolean)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; rest text; ch sa_chats; ds jsonb; dish jsonb; cd jsonb; m sa_chat_msgs; r record; n int := 0; who text;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  if not coalesce((c->>'lead')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  rest := nullif(btrim(coalesce(c->>'restaurant', '')), '');
+  if rest is null then return jsonb_build_object('ok', false, 'error', 'no_restaurant'); end if;
+  if to_regclass('public.restaurant_menu') is null then return jsonb_build_object('ok', false, 'error', 'no_menu'); end if;
+  if coalesce(p_dish, '') = '' then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+  who := coalesce(c->>'who', '');
+  perform _sa_chat_ensure(c);
+  select * into ch from sa_chats x where x.restaurant = rest and x.kind = 'team';
+  if coalesce(p_on, false) then
+    select dishes into ds from restaurant_menu where restaurant = rest;
+    select y.x into dish from jsonb_array_elements(case when jsonb_typeof(ds) = 'array' then ds else '[]'::jsonb end) y(x)
+     where jsonb_typeof(y.x) = 'object' and y.x->>'id' = p_dish and coalesce(y.x->>'kind', '') <> 'cocktail' limit 1;
+    if dish is null then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+    select * into m from sa_chat_msgs x where x.chat_id = ch.id and x.kind = 'card' and not x.deleted and x.card->>'t' = 'stop' and x.card->>'st' = 'on'
+       and x.card->'dish'->>'id' = p_dish order by x.id desc limit 1;
+    if m.id is not null then return jsonb_build_object('ok', true, 'again', true, 'msg', _sa_chat_smart1(c, ch, m)); end if;
+    if _sa_chat_fast(c) then return jsonb_build_object('ok', false, 'error', 'too_fast'); end if;
+    cd := jsonb_build_object('t', 'stop', 'st', 'on', 'from', 'menu', 'dish', jsonb_strip_nulls(jsonb_build_object('id', dish->>'id', 'name', _sa_chat_cut(dish->>'name', 120),
+      'img', case when dish->>'img' ~ '^https://[^\s"<>]+$' and char_length(dish->>'img') <= 600 then dish->>'img' end)));
+    insert into sa_chat_msgs (chat_id, emp_id, emp_name, emp_rest, body, kind, card)
+      values (ch.id, c->>'id', who, coalesce(c->>'restaurant', ''), _sa_chat_card_sum(cd), 'card', cd) returning * into m;
+    perform _sa_chat_after_write(ch, c->>'id', m.id);
+    return jsonb_build_object('ok', true, 'msg', _sa_chat_smart1(c, ch, m));
+  end if;
+  for r in select x.id from sa_chat_msgs x join sa_chats y on y.id = x.chat_id
+            where y.restaurant = rest and x.kind = 'card' and not x.deleted and x.card->>'t' = 'stop' and x.card->>'st' = 'on' and x.card->'dish'->>'id' = p_dish
+  loop
+    update sa_chat_msgs x set card = x.card || jsonb_build_object('st', 'off', 'offBy', who, 'offAt', now()), updated_at = now() where x.id = r.id returning * into m;
+    update sa_chat_msgs x set body = _sa_chat_card_sum(x.card) where x.id = r.id returning * into m;
+    n := n + 1;
+  end loop;
+  return jsonb_build_object('ok', true, 'n', n, 'msg', case when m.id is not null then _sa_chat_smart1(c, ch, m) end);
+end; $$;
+
+-- ── Telegram: кнопки в сообщениях бота и ответ в чат ──
+-- кто нажал или ответил: сотрудник по связке Telegram (tg_links), как _sa_caller
+create or replace function _sa_tg_caller(p_tg text)
+returns jsonb language plpgsql stable security definer set search_path to public as $$
+declare e record;
+begin
+  if coalesce(p_tg, '') !~ '^\d{1,18}$' or to_regclass('public.tg_links') is null then return null; end if;
+  select x.id::text as id, coalesce(x.name, '') as name, coalesce(x.surname, '') as surname, x.restaurant, lower(coalesce(x.position, '')) as pos, coalesce(x.is_admin, false) as adm
+    into e from tg_links l join employees x on x.id::text = l.emp_id
+   where l.chat_id = p_tg::bigint and coalesce(x.status, 'active') = 'active' order by l.updated_at desc nulls last limit 1;
+  if e.id is null then return null; end if;
+  return jsonb_build_object('id', e.id, 'name', e.name, 'surname', e.surname, 'who', btrim(e.name || ' ' || e.surname), 'restaurant', e.restaurant,
+    'position', e.pos, 'admin', e.adm, 'network', e.adm or e.pos = 'senior', 'lead', e.adm or e.pos = any(_sa_chat_lead_pos()));
+end; $$;
+
+-- нажатие: cg:<вызов> — «Иду»; ct:<карточка> — «Забрать» или «Выйду»; cv:<опрос>:<вариант> — голос. Сообщение бота
+-- дописывается итогом; кнопки действий уходят (у опроса остаются: голос можно поменять), «Открыть чат» остаётся.
+create or replace function _sa_chat_tg_cb(cq jsonb)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare mm text[]; c jsonb; m sa_chat_msgs; ch sa_chats; r jsonb; done text; tip text; kb jsonb; msg jsonb; o int; ok boolean := true;
+begin
+  mm := regexp_match(coalesce(cq->>'data', ''), '^(cg|ct|cv):(\d{1,18})(?::(\d))?$');
+  if mm is null then
+    perform _sa_chat_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id'));
+    return jsonb_build_object('ok', true, 'skip', 'data');
+  end if;
+  c := _sa_tg_caller(cq->'from'->>'id');
+  if c is null then
+    perform _sa_chat_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id', 'show_alert', true,
+      'text', 'Этот Telegram не связан с приложением. Открой приложение: «Смена» → «Напоминания в Telegram».'));
+    return jsonb_build_object('ok', true, 'skip', 'who');
+  end if;
+  select * into m from sa_chat_msgs where id = mm[2]::bigint;
+  select * into ch from sa_chats where id = m.chat_id;
+  if m.id is null or m.deleted or not _sa_chat_ok(c, ch) then
+    perform _sa_chat_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id', 'text', 'Этого сообщения в чате уже нет'));
+    return jsonb_build_object('ok', true, 'skip', 'row');
+  end if;
+  if mm[1] = 'cg' then
+    if m.kind <> 'call' or m.emp_id = c->>'id' then
+      perform _sa_chat_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id'));
+      return jsonb_build_object('ok', true, 'skip', 'call');
+    end if;
+    m := _sa_chat_go_do(c, m);
+    done := 'Ты идёшь.'; tip := 'Отметил: ты идёшь';
+  elsif mm[1] = 'ct' then
+    r := _sa_sh_take_do(c, m.id);
+    ok := coalesce((r->>'ok')::boolean, false);
+    done := case when ok and m.card->>'mode' = 'need' then 'Ты выходишь в эту смену. График обновлён.'
+      when ok then 'Смена твоя. График обновлён.'
+      when r->>'error' = 'taken' then case when m.card->>'mode' = 'need' then 'Уже нашли, кто выйдет.' else 'Смену уже забрали.' end
+      when r->>'error' = 'not_allowed' then coalesce(nullif(regexp_replace(coalesce(r->>'why', ''), '\.?$', '.'), '.'), 'Эту смену взять нельзя.')
+      when r->>'error' = 'no_schedule' then 'График смен ещё не заполнен.'
+      else 'Не получилось. Открой чат.' end;
+    tip := case when ok then 'Готово, график обновлён' else done end;
+  else
+    o := case when mm[3] is not null then mm[3]::int end;
+    if m.kind <> 'card' or m.card->>'t' <> 'poll' or o is null or o >= jsonb_array_length(coalesce(m.card->'opts', '[]'::jsonb)) then
+      perform _sa_chat_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id'));
+      return jsonb_build_object('ok', true, 'skip', 'option');
+    end if;
+    m := _sa_poll_vote_do(c, m, o, false);
+    done := 'Твой ответ: «' || (m.card->'opts'->>o) || '».'; tip := 'Голос учтён';
+  end if;
+  msg := cq->'message';
+  if jsonb_typeof(msg) = 'object' and msg->'chat'->>'id' is not null and msg->>'message_id' is not null then
+    select coalesce(jsonb_agg(rw), '[]'::jsonb) into kb
+      from jsonb_array_elements(case when jsonb_typeof(msg->'reply_markup'->'inline_keyboard') = 'array' then msg->'reply_markup'->'inline_keyboard' else '[]'::jsonb end) rw
+     where mm[1] = 'cv' or not exists (select 1 from jsonb_array_elements(rw) b where b ? 'callback_data');
+    perform _sa_chat_tg_api('editMessageText', jsonb_build_object('chat_id', msg->'chat'->'id', 'message_id', msg->'message_id', 'disable_web_page_preview', true,
+      'text', left(regexp_replace(coalesce(msg->>'text', ''), E'\n\n(Ты идёшь|Смена твоя|Ты выходишь|Твой ответ|Смену уже|Уже нашли|Не получится|Не получилось|Эту смену|График смен|Этот день|Тебя нет|Выйти могут|Забрать могут|В этот день)[^\n]*$', '') || E'\n\n' || done, 4000),
+      'reply_markup', jsonb_build_object('inline_keyboard', kb)));
+  end if;
+  perform _sa_chat_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id', 'text', left(tip, 190)));
+  return jsonb_build_object('ok', true, 'act', mm[1], 'msg', m.id, 'done', ok);
+end; $$;
+
+-- ответ на сообщение бота: текст уходит в чат, о котором было сообщение (кнопка «Открыть чат»: go=chat_<чат>_<сообщение>;
+-- с сообщением — ответом с цитатой). Только личная переписка с ботом и сотрудник со связкой Telegram.
+create or replace function _sa_chat_tg_reply(p_msg jsonb)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; rm jsonb; u text; mm text[]; ch sa_chats; body text; m sa_chat_msgs; q bigint; tgc bigint; place text;
+begin
+  tgc := case when coalesce(p_msg->'chat'->>'id', '') ~ '^\d{1,18}$' then (p_msg->'chat'->>'id')::bigint end;
+  if tgc is null or coalesce(p_msg->'chat'->>'type', 'private') <> 'private' then return jsonb_build_object('ok', true, 'skip', 'chat'); end if;
+  c := _sa_tg_caller(p_msg->'from'->>'id');
+  if c is null then return jsonb_build_object('ok', true, 'skip', 'who'); end if;
+  rm := p_msg->'reply_to_message';
+  select coalesce(b->'web_app'->>'url', b->>'url') into u
+    from jsonb_array_elements(case when jsonb_typeof(rm->'reply_markup'->'inline_keyboard') = 'array' then rm->'reply_markup'->'inline_keyboard' else '[]'::jsonb end) rw,
+         jsonb_array_elements(case when jsonb_typeof(rw) = 'array' then rw else '[]'::jsonb end) b
+   where coalesce(b->'web_app'->>'url', b->>'url', '') ~ 'chat_\d' limit 1;
+  mm := regexp_match(coalesce(u, ''), 'chat_(\d{1,18})(?:_(\d{1,18}))?');
+  if mm is null then
+    perform _sa_chat_tg(tgc, 'Этот ответ в чат не уходит. Ответь на сообщение о переписке, и ответ придёт в чат.', null);
+    return jsonb_build_object('ok', true, 'skip', 'link');
+  end if;
+  select * into ch from sa_chats where id = mm[1]::bigint;
+  if ch.id is null or not _sa_chat_ok(c, ch) then
+    perform _sa_chat_tg(tgc, 'Этого чата у тебя больше нет.', null);
+    return jsonb_build_object('ok', true, 'skip', 'gone');
+  end if;
+  body := left(btrim(regexp_replace(regexp_replace(coalesce(p_msg->>'text', ''), E'\r\n?', E'\n', 'g'), E'\n{3,}', E'\n\n', 'g')), 1000);
+  if body = '' then
+    perform _sa_chat_tg(tgc, 'В чат из Telegram уходит только текст. Фото можно отправить из приложения.', jsonb_build_array(jsonb_build_array(_sa_chat_tg_open(ch.id, null))));
+    return jsonb_build_object('ok', true, 'skip', 'text');
+  end if;
+  if (select count(*) from sa_chat_msgs x where x.emp_id = c->>'id' and x.created_at > now() - interval '1 minute') >= 20 then
+    perform _sa_chat_tg(tgc, 'Слишком часто. Подожди минуту.', null);
+    return jsonb_build_object('ok', true, 'skip', 'fast');
+  end if;
+  q := case when mm[2] is not null then _sa_chat_reply_ok(ch, mm[2]::bigint) end;
+  insert into sa_chat_msgs (chat_id, emp_id, emp_name, emp_rest, body, reply_to)
+    values (ch.id, c->>'id', coalesce(c->>'who', ''), coalesce(c->>'restaurant', ''), body, q) returning * into m;
+  perform _sa_chat_after_write(ch, c->>'id', m.id);
+  perform _sa_chat_notify(c, ch, m);
+  place := case ch.kind when 'team' then '«Вся команда»' when 'leads' then '«Старшие»' when 'net' then '«Руководители сети»'
+    when 'group' then '«' || coalesce(ch.title, 'Чат') || '»' else 'личную переписку' end;
+  perform _sa_chat_tg(tgc, 'Ушло в ' || place || '.', jsonb_build_array(jsonb_build_array(_sa_chat_tg_open(ch.id, m.id))),
+    jsonb_build_object('reply_parameters', jsonb_build_object('message_id', p_msg->'message_id', 'allow_sending_without_reply', true)));
+  return jsonb_build_object('ok', true, 'sent', m.id, 'chat', ch.id);
+end; $$;
+
+-- Вебхук бота (функция tg-bot, этап 31): «Вопрос дня» — как в этапе 31; v97 — кнопки чата, ответ на сообщение бота,
+-- подсказка на просто текст. Этап 31 после этого запускать не нужно; если запустили — перезапусти этот файл.
+create or replace function sa_tg_update(p_secret text, p_update jsonb)
+returns jsonb language plpgsql security definer set search_path to public as $$
+declare want text; cq jsonb; m text[]; v_id bigint; v_n int; nx record; v_from bigint; v_ok boolean; v_c int;
+  txt text; msg jsonb; mt text; chat bigint;
+begin
+  select value into want from sa_settings where key = 'tg_webhook_secret';
+  if coalesce(want, '') = '' or coalesce(p_secret, '') <> want then return jsonb_build_object('ok', false, 'error', 'secret'); end if;
+  if p_update is null or jsonb_typeof(p_update) <> 'object' then return jsonb_build_object('ok', true, 'skip', 'empty'); end if;
+
+  cq := p_update->'callback_query';
+  if cq is not null and jsonb_typeof(cq) = 'object' then
+    if coalesce(cq->>'data', '') ~ '^(cg|ct|cv):' then return _sa_chat_tg_cb(cq); end if;   -- v97: кнопки чата
+    m := regexp_match(coalesce(cq->>'data', ''), '^qd:(\d{1,18}):(\d)$');
+    if m is null then
+      perform sa_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id'));
+      return jsonb_build_object('ok', true, 'skip', 'data');
+    end if;
+    v_id := m[1]::bigint; v_n := m[2]::int;
+    v_from := case when coalesce(cq->'from'->>'id', '') ~ '^\d{1,18}$' then (cq->'from'->>'id')::bigint end;
+    select * into nx from sa_qday where id = v_id;
+    if nx.id is null or nx.chat_id is null or nx.chat_id is distinct from v_from then
+      perform sa_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id', 'text', 'Этот вопрос не найден'));
+      return jsonb_build_object('ok', true, 'skip', 'row');
+    end if;
+    if v_n >= jsonb_array_length(nx.item->'o') then
+      perform sa_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id'));
+      return jsonb_build_object('ok', true, 'skip', 'option');
+    end if;
+    update sa_qday set answer = v_n, correct = (v_n = (item->>'c')::int), answered_at = now()
+     where id = v_id and answered_at is null;
+    if not found then
+      perform sa_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id', 'text', 'Ответ уже засчитан'));
+      return jsonb_build_object('ok', true, 'skip', 'again');
+    end if;
+    v_c := (nx.item->>'c')::int;
+    v_ok := v_n = v_c;
+    txt := _sa_qday_text(nx.item) || E'\n\n' ||
+      case when v_ok then 'Твой ответ: ' || _sa_qday_letter(v_n) || '. Верно.'
+           else 'Твой ответ: ' || _sa_qday_letter(v_n) || '. Верный: ' || _sa_qday_letter(v_c) || '.' end ||
+      case when coalesce(nx.item->>'e', '') <> '' then E'\n' || (nx.item->>'e') else '' end ||
+      case when v_ok then '' else E'\n\nВопрос ждёт в «Работе над ошибками».' end;
+    msg := cq->'message';
+    if msg is not null and msg->'chat'->>'id' is not null and msg->>'message_id' is not null then
+      perform sa_tg_api('editMessageText', jsonb_build_object('chat_id', msg->'chat'->'id', 'message_id', msg->'message_id',
+        'text', left(txt, 4000), 'disable_web_page_preview', true,
+        'reply_markup', _sa_tg_app_kb(case when v_ok then 'Открыть академию' else 'Разобрать ошибку' end, case when v_ok then null else 'mistakes' end)));
+    end if;
+    perform sa_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id', 'text', case when v_ok then 'Верно' else 'Неверно, разбор в сообщении' end));
+    return jsonb_build_object('ok', true, 'answered', v_id, 'correct', v_ok);
+  end if;
+
+  -- v97: ответ на сообщение бота — в чат
+  msg := p_update->'message';
+  if jsonb_typeof(msg) = 'object' and jsonb_typeof(msg->'reply_to_message') = 'object' and coalesce(msg->'reply_to_message'->'from'->>'is_bot', '') = 'true' then
+    return _sa_chat_tg_reply(msg);
+  end if;
+  -- сообщение боту: на /start — что здесь приходит, и кнопка в приложение
+  mt := coalesce(p_update->'message'->>'text', '');
+  if mt ~ '^/start' and coalesce(p_update->'message'->'chat'->>'id', '') ~ '^-?\d{1,18}$' then
+    chat := (p_update->'message'->'chat'->>'id')::bigint;
+    perform sa_tg_send(chat, 'Здесь приходят сообщения академии: разминка перед сменой, вопрос дня, лига недели, чат смены. Уроки и тесты ждут в приложении. На сообщение из чата можно ответить прямо здесь.', 'Открыть академию', null);
+    return jsonb_build_object('ok', true, 'start', true);
+  end if;
+  -- v97: просто текст боту от сотрудника — как ответить в чат
+  if mt <> '' and coalesce(p_update->'message'->'chat'->>'type', '') = 'private' and coalesce(p_update->'message'->'chat'->>'id', '') ~ '^\d{1,18}$'
+     and _sa_tg_caller(p_update->'message'->'from'->>'id') is not null then
+    perform _sa_chat_tg((p_update->'message'->'chat'->>'id')::bigint, 'Чтобы написать в чат, ответь на сообщение о переписке: смахни его влево или нажми «Ответить».', null);
+    return jsonb_build_object('ok', true, 'hint', true);
+  end if;
+  return jsonb_build_object('ok', true, 'skip', 'other');
+end; $$;
+
 -- v91: та же причина, что у chat_people, у двух функций прошлых этапов: my_reset_at (этап 20, метка «Сбросить
 -- прогресс» для нового телефона) и hr_quality_get (этап 28, общий итог «Проверки AI HR»). Тела не меняются.
 do $$ begin
@@ -1721,6 +2317,15 @@ grant execute on function chat_task_remind(text, bigint) to anon, authenticated;
 grant execute on function chat_poll_vote(text, bigint, int) to anon, authenticated;
 grant execute on function chat_stop_set(text, bigint, text, boolean, bigint) to anon, authenticated;
 grant execute on function chat_ai_post(text, bigint, bigint, text, jsonb) to anon, authenticated;
+grant execute on function chat_shift_need(text, bigint, text, text, text, int, text, text) to anon, authenticated;
+grant execute on function chat_shift_board(text, text) to anon, authenticated;
+grant execute on function chat_person(text, text) to anon, authenticated;
+grant execute on function chat_stop_note(text, text, boolean) to anon, authenticated;
+-- вебхук бота — только функция tg-bot (сервисный ключ)
+revoke all on function sa_tg_update(text, jsonb) from public, anon, authenticated;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then execute 'grant execute on function sa_tg_update(text, jsonb) to service_role'; end if;
+end $$;
 revoke all on function _sa_chat_lead_pos() from public, anon, authenticated;
 revoke all on function _sa_chat_role_pos(text) from public, anon, authenticated;
 revoke all on function _sa_chat_cut(text, int) from public, anon, authenticated;
@@ -1776,6 +2381,22 @@ revoke all on function _sa_chat_task(sa_chats, jsonb, text, boolean) from public
 revoke all on function _sa_chat_smart(jsonb, sa_chats, jsonb) from public, anon, authenticated;
 revoke all on function _sa_chat_smart1(jsonb, sa_chats, sa_chat_msgs) from public, anon, authenticated;
 revoke all on function _sa_chat_fast(jsonb) from public, anon, authenticated;
+revoke all on function _sa_chat_tg_btn(text, text) from public, anon, authenticated;
+revoke all on function _sa_chat_tg_open(bigint, bigint) from public, anon, authenticated;
+revoke all on function _sa_chat_tg(bigint, text, jsonb, jsonb) from public, anon, authenticated;
+revoke all on function _sa_chat_tg_api(text, jsonb) from public, anon, authenticated;
+revoke all on function _sa_chat_pingk(sa_chats, text, text, bigint, jsonb, boolean) from public, anon, authenticated;
+revoke all on function _sa_chat_go_do(jsonb, sa_chat_msgs) from public, anon, authenticated;
+revoke all on function _sa_sh_take_do(jsonb, bigint) from public, anon, authenticated;
+revoke all on function _sa_poll_vote_do(jsonb, sa_chat_msgs, int, boolean) from public, anon, authenticated;
+revoke all on function _sa_sh_need_check(text, jsonb, text) from public, anon, authenticated;
+revoke all on function _sa_sh_need_can(text, jsonb, text) from public, anon, authenticated;
+revoke all on function _sa_chat_spos_acc(text, int) from public, anon, authenticated;
+revoke all on function _sa_chat_mon(int, boolean) from public, anon, authenticated;
+revoke all on function _sa_chat_task_kb(jsonb) from public, anon, authenticated;
+revoke all on function _sa_tg_caller(text) from public, anon, authenticated;
+revoke all on function _sa_chat_tg_cb(jsonb) from public, anon, authenticated;
+revoke all on function _sa_chat_tg_reply(jsonb) from public, anon, authenticated;
 
 notify pgrst, 'reload schema';
 
@@ -1785,10 +2406,13 @@ select 'чат смены: ' ||
                        'chat_dm', 'chat_people', 'chat_call', 'chat_go', 'chat_delete', 'chat_clear',
                        'chat_group_create', 'chat_group_edit', 'chat_group_leave', 'chat_group_delete',
                        'chat_shift_mine', 'chat_shift_offer', 'chat_shift_take', 'chat_shift_options', 'chat_shift_swap', 'chat_shift_cancel',
-                       'chat_card_send', 'chat_task_remind', 'chat_poll_vote', 'chat_stop_set', 'chat_ai_post')) ||
-  ' функций из 31 · таблицы: ' || case when to_regclass('public.sa_chats') is not null and to_regclass('public.sa_chat_msgs') is not null
+                       'chat_card_send', 'chat_task_remind', 'chat_poll_vote', 'chat_stop_set', 'chat_ai_post',
+                       'chat_shift_need', 'chat_shift_board', 'chat_person', 'chat_stop_note')) ||
+  ' функций из 35 · таблицы: ' || case when to_regclass('public.sa_chats') is not null and to_regclass('public.sa_chat_msgs') is not null
     and to_regclass('public.sa_chat_reads') is not null and to_regclass('public.sa_chat_reacts') is not null and to_regclass('public.sa_chat_photos') is not null
     and to_regclass('public.sa_chat_members') is not null and to_regclass('public.sa_chat_votes') is not null
     then 'есть' else 'НЕТ' end ||
   ' · вид «Чат» в напоминаниях: ' || case when 'chat' = any(_sa_notify_kinds()) then 'да' else 'нет' end ||
-  ' · Telegram: ' || case when _sa_tg_ready() then 'бот на месте' else 'нет (чат работает, без сообщений)' end as result;
+  ' · Telegram: ' || case when _sa_tg_ready() then 'бот на месте' else 'нет (чат работает, без сообщений)' end ||
+  ' · кнопки в Telegram: ' || case when coalesce((select value from sa_settings where key = 'tg_webhook_secret'), '') <> '' then 'да'
+    else 'нужен вебхук бота (этап 31: select sa_tg_setup_code();)' end as result;

@@ -17,7 +17,7 @@ import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { programAll } from "../data/modules";
 import { useAllModules } from "../lib/use-content";
 import { cachedShared } from "../lib/deck-extras";
-import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel, briefPreview, readStats, readLine } from "../lib/briefing";
+import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel, briefPreview, readStats, readLine, briefLines } from "../lib/briefing";
 import { VoicePill } from "./voice-note";
 import { ensureTableCss } from "./table-css";   // v87: рукописный Marck Script для подписи рассказчика живёт в стилях стола
 
@@ -170,7 +170,9 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
 }
 
 // ── Руководителю: собрать, провести, отправить ───────────────────────────────────
-export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
+/* v97 (Доп. 410): toChat — у заведения есть чат: отправленный брифинг ещё и карточкой в «Вся команда» (правка обновляет
+ * ту же карточку, второй не будет; chat_card_send с p_chat null, этап 38) */
+export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }) {
   const c = C(a11y);
   const contentVer = useAllModules();   // фокус и вопрос ищутся по программе всех ролей
   const [src, setSrc] = React.useState({ menu: null, hard: null, sched: null, league: null, cases: null, guests: null, seat: null });
@@ -234,9 +236,13 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent }) {
         if (onSent) onSent();
         loadReads();
         const tg = r.sent ? ` В Telegram ушло ${r.sent} ${plural(r.sent, "сотруднику", "сотрудникам", "сотрудникам")}.` : "";
-        setMsg({ ok: true, text: r.again
+        const text = r.again
           ? "Брифинг обновлён: команда увидит правку в «Смене»." + (tg ? tg.replace("ушло", "ушло тем, кто ещё не получал:") : " Второй раз в Telegram не пишем.")
-          : "Отправлено: брифинг в «Смене» у всей команды." + (tg || (r.bot ? " В Telegram сегодня некому: никто из команды не подключил бота." : "")) });
+          : "Отправлено: брифинг в «Смене» у всей команды." + (tg || (r.bot ? " В Telegram сегодня некому: никто из команды не подключил бота." : ""));
+        setMsg({ ok: true, text });
+        const lines = toChat ? briefLines(data) : [];
+        if (lines.length) rpc("chat_card_send", { p_token: saToken(), p_chat: null, p_card: { t: "brief", date: data.day, title: "Брифинг смены · " + (data.dayLabel || ""), lines } })
+          .then((q) => { if (q && q.ok) setMsg({ ok: true, text: text + (q.again ? " Карточка в чате команды обновлена." : " В чате команды карточка брифинга.") }); }).catch(() => {});
       } else if (rpcMissing(r)) setMsg({ ok: false, text: "На сервере ещё нет этапа 32 (supabase-stage32-briefing.sql). Провести брифинг можно и без него." });
       else if (r && r.error === "forbidden") setMsg({ ok: false, text: "Отправлять брифинг может руководитель или старший." });
       else setMsg({ ok: false, text: "Не отправилось. Проверь связь и попробуй ещё раз." });

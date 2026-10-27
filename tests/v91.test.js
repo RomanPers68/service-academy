@@ -62,7 +62,7 @@ describe("v91: функции с токеном — VOLATILE (PostgREST зовё
     const t = rd("tools/claude/sql/test38.sh");
     expect(t).toContain("update sessions set seen_at = now() where token = p_token;");
     expect(t).toContain('[ "$vol" != "v" ] && mode="read only"');
-    expect(t).toMatch(/chk "все (?:(?:16|20) функций|31 функция) чата — VOLATILE: PostgREST не запирает их «только для чтения»"/);   // v92: 20 (свои чаты), v93: 31 (умный чат)
+    expect(t).toMatch(/chk "все (?:(?:16|20|35) функций|31 функция) чата — VOLATILE: PostgREST не запирает их «только для чтения»"/);   // v92: 20 (свои чаты), v93: 31 (умный чат), v97: 35
   });
 });
 
@@ -142,7 +142,7 @@ describe("v91: экран чата", () => {
     const src = rd("ui/chat.jsx");
     expect(src).toContain("setChats(k && !list.some((c) => String(c.id) === String(k.id)) ? [...list, k] : list);");
     expect(src).toContain("keepRef.current = cur;");
-    expect(src).toContain("onBack={() => { keepRef.current = null; setCurId(null); load(); }}");
+    expect(src).toContain("onBack={() => { keepRef.current = null; setInit(null); setCurId(null); load(); }}");   // v97: и сообщение, к которому пришли из приложения
   });
   it("API: chat_clear", async () => {
     const { chatApi } = await import("../lib/chat-api.js");

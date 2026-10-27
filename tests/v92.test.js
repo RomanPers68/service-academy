@@ -58,7 +58,7 @@ describe("v92: свои чаты на сервере (этап 38)", () => {
     expect(fnBody(sql, "chat_clear")).toContain("and ch.kind in ('team', 'leads', 'group'))");
     expect(sql).toContain("when 'group' then coalesce(ch.title, 'Чат') else 'Руководители сети' end || '»:'");
     for (const f of ["chat_group_create", "chat_group_edit", "chat_group_leave", "chat_group_delete"]) expect([f, fnBody(sql, f).includes("language plpgsql volatile security definer")]).toEqual([f, true]);
-    expect(sql).toContain("' функций из 31 · таблицы: '");   // v93: умный чат
+    expect(sql).toContain("' функций из 35 · таблицы: '");   // v93: умный чат (31); v97: чат и приложение (35)
   });
 });
 

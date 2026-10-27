@@ -104,7 +104,7 @@ describe("v96: что едет с клавиатурой (разметка)", ()
     expect(chat).toContain('<div ref={chatRef} className="ch-chat sa-dlgscroll" role="log" aria-live="polite" aria-relevant="additions" onScroll={onScroll} data-chat-feed="" data-kbm="" data-kbm-scroll="">');
     expect(chat).toContain('<button type="button" className="ch-down" data-kbm=""');
     expect(chat).toContain('<div className="ch-bar" data-kbm="">');
-    expect((chat.match(/className="ch-veil" data-kbm=""/g) || []).length).toBe(5);
+    expect((chat.match(/className="ch-veil" data-kbm=""/g) || []).length).toBe(7);   // v97: + «Поделиться в чат» и карточка коллеги
     expect((cards.match(/className="ch-veil" data-kbm=""/g) || []).length).toBe(2);
     expect((chat.match(/<div className="ch-foot" data-kbm="">/g) || []).length).toBe(2);
     expect(chat).toContain(".ch-chatwrap{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}");

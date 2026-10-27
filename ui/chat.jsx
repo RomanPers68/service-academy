@@ -35,7 +35,7 @@ import { CHAT_MAX, CALL_WHO, CALL_WHY, CALL_OWN_MAX, POLL_OPEN_MS, POLL_HOT_MS, 
 import { compressPhoto } from "../lib/chat-photo";
 import { IC, ric, posName, stop } from "./chat-kit";   // v93: значки и помощники — общие с умными карточками
 import { CARDS_CSS, CardMsg, AiMsg, AiTyping, ActSheet, Suggest, ShiftSheet, SwapSheet, TaskSheet, PollSheet, StopSheet, BriefSheet, ShareSheet, smartErr } from "./chat-cards";
-import { askAi, aiQuestion, intents, withVote, AI_NAME } from "../lib/chat-smart";
+import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine } from "../lib/chat-smart";
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
 
@@ -136,6 +136,16 @@ export const CHAT_CSS = `
 .ch-row.back{transition:transform .22s cubic-bezier(.3,1.2,.5,1)}
 .ch-swipe{position:absolute;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;display:grid;place-items:center;background:var(--card);color:var(--gold-ink);box-shadow:0 0 0 1px var(--edge-gold);pointer-events:none}
 .ch-nm{margin:0 0 3px 12px;font-size:13px;line-height:1.2;color:var(--gold-ink);font-style:italic}
+/* v97: имя — кнопка (карточка коллеги) */
+.ch-nmb{display:block;border:0;background:none;padding:2px 0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ch-nmb:active{opacity:.7}
+.ch-pp{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.ch-pp .ch-ava{width:52px;height:52px;font-size:18px}
+.ch-pp-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ch-pp-n{font-family:'Piazzolla',Georgia,serif;font-size:19px;line-height:1.25}
+.ch-pp-p{font-size:13.5px;color:var(--sub)}
+.ch-pp-sh{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;border:1px solid var(--opt-edge);background:var(--opt);font-size:15px;line-height:1.35;margin-bottom:4px}
+.ch-pp-sh svg{flex:0 0 auto;color:var(--gold-ink)}
 .ch-b{position:relative;max-width:100%;padding:7px 11px 7px 12px;border-radius:18px;font-size:var(--fs);line-height:1.42;overflow-wrap:anywhere;cursor:pointer;text-align:left;border:0;outline-offset:2px}
 .ch-in{background:var(--in);color:var(--in-text);box-shadow:var(--in-shadow)}
 .ch-out{background:linear-gradient(180deg,var(--out-a),var(--out-b));color:var(--out-text);box-shadow:var(--out-shadow)}
@@ -397,7 +407,13 @@ function PhotoImg({ api, id, local = null, alt = "" }) {
  * photoSend, photo, clear (v91), groupCreate, groupEdit, groupLeave, groupDelete (v92) } — каждый возвращает Promise с ответом сервера; stt: { url, headers } — распознавание речи для
  * микрофона (нет — без микрофона). openId — сразу открыть этот чат (из баннера вызова или ссылки).
  */
-export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = null, onUnread, app: app0 = null, appCtx = null }) {
+/*
+ * v97 (Доп. 410): intent — с чем чат открыли из приложения: { kind: "chat", id, msg } — этот чат и сообщение (ссылка из
+ * Telegram), { kind: "give" | "swap", date } — «Вся команда» и лист «Отдать смену» / «Поменяться» с этим днём (из
+ * «Графика»), { kind: "share", item } — «Поделиться в чат» (Меню, Колода, Справочник, урок): куда отправить,
+ * { kind: "dm", emp } — личная переписка.
+ */
+export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = null, onUnread, app: app0 = null, appCtx = null, intent = null }) {
   // v93: что чат знает о приложении — готовое (демо) или из лёгкого контекста App.jsx (lib/chat-app.js)
   const app = React.useMemo(() => app0 || (appCtx ? makeChatApp(appCtx) : null), [app0, appCtx]);
   ensureChatCss();
@@ -414,6 +430,18 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   // и очищенную список не показывает, и раньше через 10 секунд опрос списка закрывал такую переписку
   const keepRef = React.useRef(null);
   React.useEffect(() => { if (openId != null) setCurId(openId); }, [openId]);
+  // v97: с чем открыли (intent): переписка и сообщение, лист смены, «Поделиться в чат», личная
+  const [init, setInit] = React.useState(null);        // для переписки: { msg } или { shift, date }
+  const [shareItem, setShareItem] = React.useState(null);
+  const wantRef = React.useRef(null);                  // ждём список чатов, чтобы найти «Вся команда»
+  React.useEffect(() => {
+    const it = intent;
+    if (!it || !it.kind) return;
+    if (it.kind === "chat" && it.id != null) { setInit(it.msg ? { msg: it.msg } : null); setCurId(it.id); return; }
+    if (it.kind === "share" && it.item) { setCurId(null); setPicker(false); setShareItem(it.item); return; }
+    if (it.kind === "dm" && it.emp) { openDm({ id: it.emp }); return; }   // eslint-disable-line no-use-before-define
+    if (it.kind === "give" || it.kind === "swap") wantRef.current = it;
+  }, [intent]);   // eslint-disable-line react-hooks/exhaustive-deps
   const load = React.useCallback(() => Promise.resolve(api.list()).then((r) => {
     if (r && r.ok) {
       const list = r.chats || [], k = keepRef.current;
@@ -430,9 +458,14 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   const cur = (chats || []).find((c) => String(c.id) === String(curId)) || null;
   keepRef.current = cur;
   const team = (chats || []).find((c) => c.kind === "team") || null;
-  const openDm = (p) => Promise.resolve(api.dm(p.id)).then((r) => {
+  React.useEffect(() => {
+    const w = wantRef.current;
+    if (!w || !team) return;
+    wantRef.current = null; setInit({ shift: w.kind, date: w.date || null }); setCurId(team.id);
+  }, [team]);   // eslint-disable-line react-hooks/exhaustive-deps
+  function openDm(p) { return Promise.resolve(api.dm(p.id)).then((r) => {
     if (r && r.ok && r.chat) { setChats((cs) => (cs || []).some((c) => String(c.id) === String(r.chat.id)) ? cs : [...(cs || []), r.chat]); setPicker(false); setCurId(r.chat.id); }
-  });
+  }); }
   // v92: свой чат заведён — сразу в него
   const openNew = (chat) => { setChats((cs) => [...(cs || []).filter((c) => String(c.id) !== String(chat.id)), chat]); setPicker(false); setNote(""); setCurId(chat.id); load(); };
   const gone = (why) => {
@@ -449,14 +482,52 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     </div>) : null;
   return portal(
     <div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb.up ? " kb" : "")} data-chat="" role="dialog" aria-modal="true" aria-label="Чат">
-      {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} app={app} chat={cur} stt={stt} onBack={() => { keepRef.current = null; setCurId(null); load(); }} onSent={load} onGone={gone} />
+      {cur ? <Thread key={cur.id} a11y={a11y} me={me} api={api} app={app} chat={cur} stt={stt} onBack={() => { keepRef.current = null; setInit(null); setCurId(null); load(); }} onSent={load} onGone={gone} onDm={openDm}
+          init={init && String(curId) === String(cur.id) ? init : null} />
         : picker === "group" ? <GroupNew me={me} api={api} onBack={() => setPicker(true)} onDone={openNew} />
         : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} top={newRow} />
         : <List chats={chats} me={me} err={err} note={note} onBack={onBack} onOpen={(c) => { vibrate("light"); setNote(""); setCurId(c.id); }} onWrite={() => { vibrate("light"); setNote(""); setPicker(true); }}
             onCall={team ? () => { vibrate("light"); setCallOpen(true); } : null} back={!callOpen} />}
       {callOpen && !cur && team ? <CallSheet me={me} api={api} chat={team} onClose={() => setCallOpen(false)} onDone={() => { setCallOpen(false); setCurId(team.id); }} /> : null}
+      {shareItem && !cur ? <ShareTo api={api} me={me} chats={chats} item={shareItem} onClose={() => setShareItem(null)}
+        onSent={(chat) => { setShareItem(null); setInit(null); setCurId(chat.id); load(); }} /> : null}
     </div>
   );
+}
+
+// v97 (Доп. 410): «Поделиться в чат» из приложения (Меню, Колода, Справочник, урок): что, пара слов и куда — карточка
+// уходит в выбранный чат, и он открывается
+function ShareTo({ api, me, chats, item, onClose, onSent }) {
+  const [note, setNote] = React.useState("");
+  const [busy, setBusy] = React.useState(null);
+  const [err, setErr] = React.useState("");
+  const list = (chats || []).filter((c) => c && (c.kind !== "net" || ["lesson", "quiz", "module", "ref"].includes(item.kind)));
+  const send = (c) => {
+    if (busy) return;
+    vibrate("light"); setBusy(c.id); setErr("");
+    Promise.resolve(api.cardSend(c.id, { t: "share", item, note: note.trim() })).then((r) => { setBusy(null); if (r && r.ok) onSent(c); else setErr(smartErr(r)); })
+      .catch(() => { setBusy(null); setErr(smartErr({ error: "net" })); });
+  };
+  return (
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
+      <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Поделиться в чат" data-chat-shareto={item.kind + ":" + item.id} onClick={stop}>
+        <div className="ch-grip" aria-hidden="true" />
+        <div className="ch-sheet-h"><span className="ch-sheet-t">Поделиться в чат</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
+        <div className="ch-opt ch-share-it" aria-label={"Что: " + item.title}>
+          <span className="ch-opt-i" aria-hidden="true">{item.img ? <img src={item.img} alt="" /> : IC.share}</span>
+          <span className="ch-opt-b"><span className="ch-opt-t">{item.title}</span>{item.sub ? <span className="ch-opt-s">{item.sub}</span> : null}</span>
+        </div>
+        <input className="ch-field sa-field" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Пара слов коллегам (можно без них)" aria-label="Пара слов коллегам" data-chat-share-note="" />
+        <div className="ch-lbl">Куда</div>
+        {!chats ? <div className="ch-hint">Загружаю чаты…</div> : !list.length ? <div className="ch-hint">Чатов пока нет.</div> : null}
+        {list.map((c) => (
+          <button key={c.id} type="button" className="ch-opt" data-chat-shareto-chat={c.kind} disabled={!!busy} onClick={() => send(c)}>
+            <Ava c={c} />
+            <span className="ch-opt-b"><span className="ch-opt-t">{chatTitle(c)}</span><span className="ch-opt-s">{busy === c.id ? "Отправляю…" : c.kind === "dm" ? "Личная переписка" : peopleWord(c.members)}</span></span>
+          </button>))}
+        {err ? <div className="ch-err" role="alert" data-chat-share-err="">{err}</div> : null}
+      </div>
+    </div>);
 }
 
 // ── список чатов ──
@@ -595,6 +666,36 @@ function GroupAdd({ me, api, chat, members, onBack, onDone }) {
     emptyText="Все коллеги уже в этом чате." foot={foot} />;
 }
 // о своём чате: участники; руководитель и старший — переименовать, добавить, убрать, удалить; каждый — выйти
+// v97 (Доп. 410): карточка коллеги — нажатие на имя над сообщением или на шапку личной переписки: должность, смена
+// сегодня или ближайшая по графику (chat_person), «Написать лично»
+function PersonSheet({ api, emp, chat, onClose, onDm = null }) {
+  const [p, setP] = React.useState(null);
+  const [err, setErr] = React.useState("");
+  React.useEffect(() => {
+    let alive = true;
+    Promise.resolve(api.person(emp)).then((r) => { if (!alive) return; if (r && r.ok && r.person) setP(r.person); else setErr(r && r.error === "missing" ? "Карточки коллег появятся, когда руководитель перезапустит этап 38." : "Карточка не загрузилась. Проверь связь."); })
+      .catch(() => { if (alive) setErr("Нет связи. Попробуй ещё раз."); });
+    return () => { alive = false; };
+  }, [api, emp]);
+  const here = chat && chat.kind === "dm" && chat.peer && String(chat.peer.id) === String(emp);
+  return (
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
+      <div className="ch-sheet" role="dialog" aria-modal="true" aria-label={p ? p.name : "Коллега"} data-chat-person={emp} onClick={stop}>
+        <div className="ch-grip" aria-hidden="true" />
+        <div className="ch-pp">
+          <span className="ch-ava" aria-hidden="true">{p ? chatInitials(p.name) : ""}</span>
+          <div className="ch-pp-b"><b className="ch-pp-n" data-chat-person-n="">{p ? p.name : "Коллега"}</b>
+            {p ? <span className="ch-pp-p" data-chat-person-p="">{[posName(p.pos), p.same ? "" : restShort(p.rest)].filter(Boolean).join(" · ")}</span> : null}</div>
+          <button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button>
+        </div>
+        {!p ? <div className="ch-hint" role={err ? "alert" : "status"}>{err || "Загружаю…"}</div> : (<>
+          <div className="ch-pp-sh" data-chat-person-shift="">{IC.cal}<span>{personShiftLine(p)}</span></div>
+          {!p.me && !here && onDm ? <button type="button" className="ch-main" data-chat-person-dm={p.id} onClick={() => { vibrate("light"); onClose(); onDm({ id: p.id, name: p.name }); }}>Написать лично</button> : null}
+        </>)}
+      </div>
+    </div>);
+}
+
 function GroupInfo({ chat, me, api, members, onClose, onChanged, onAdd, onGone }) {
   const manage = canManage(chat, me);
   const meId = me && me.id;
@@ -701,7 +802,7 @@ function Quote({ q, me, onJump }) {
     </button>);
 }
 
-function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl, onMenu, onReply, onReact, onJump, onView }) {
+function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl, onMenu, onReply, onReact, onJump, onView, onWho = null }) {
   const m = row.m, out = row.side === "out", meId = me && me.id;
   const sw = useSwipe(!m.del, () => onReply(m));
   const rb = out ? readBy(m, reads, meId) : [];
@@ -717,7 +818,10 @@ function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl
   return (
     <div className={cls} data-chat-msg={m.id} data-chat-side={row.side} style={sw.dx ? { transform: "translateX(" + sw.dx + "px)" } : undefined} {...sw.handlers}>
       <SwipeIcon dx={sw.dx} />
-      {row.showName ? <div className="ch-nm" aria-hidden="true">{withRest(bubbleName(m.name), m.rest, net)}</div> : null}
+      {/* v97: имя над сообщением — карточка коллеги (должность, смена, «Написать лично») */}
+      {row.showName ? (onWho && m.emp && m.emp !== "ai"
+        ? <button type="button" className="ch-nm ch-nmb" data-chat-who={m.emp} aria-label={"Коллега: " + withRest(m.name, m.rest, net)} onClick={(e) => { e.stopPropagation(); vibrate("light"); onWho(m); }}>{withRest(bubbleName(m.name), m.rest, net)}</button>
+        : <div className="ch-nm" aria-hidden="true">{withRest(bubbleName(m.name), m.rest, net)}</div>) : null}
       <div className={"ch-b " + (out ? "ch-out" : "ch-in") + (out && rb.length ? " read" : "") + (ph ? " ph" : "")} style={ph ? { width: box.w + 6 } : undefined}
         role="group" tabIndex={0} aria-label={label} data-chat-bubble="" onClick={open} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); open(); } }}>
         {!m.del && m.reply ? <Quote q={m.reply} me={me} onJump={onJump} /> : null}
@@ -749,7 +853,7 @@ function CallCard({ row, me, now, busyGo, hl, onGo, onMenu, onReply, onReact }) 
     </div>);
 }
 
-function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }) {
+function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, onDm = null, init = null }) {
   const group = chat.kind !== "dm";
   const meId = me && me.id;
   const [msgs, setMsgs] = React.useState([]);
@@ -760,7 +864,8 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
   const [err, setErr] = React.useState("");
   const [text, setText] = React.useState("");
   const [pending, setPending] = React.useState([]);   // ещё не дошли до сервера: { tmp, body, at, failed, reply, photo }
-  const [sheet, setSheet] = React.useState(null);     // "call" | { msg }
+  // v97: открыли из «Графика» — сразу лист «Отдать смену» или «Поменяться» с этим днём
+  const [sheet, setSheet] = React.useState(() => (init && init.shift ? { shift: init.shift, date: init.date || null } : null));     // "call" | { msg }
   const [reply, setReply] = React.useState(null);     // отвечаю на (цитата)
   const [edit, setEdit] = React.useState(null);       // правлю своё
   const [shot, setShot] = React.useState(null);       // фото к отправке: { busy } | сжатое
@@ -871,6 +976,9 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
       setHl(String(id)); setTimeout(() => setHl((h) => (h === String(id) ? null : h)), 1800);
     }));
   };
+  // v97: ссылка из Telegram на сообщение (?go=chat_<чат>_<сообщение>) — к нему, когда переписка загрузилась
+  const jumped = React.useRef(false);
+  React.useEffect(() => { if (loaded && init && init.msg && !jumped.current) { jumped.current = true; jumpTo(init.msg); } }, [loaded]);   // eslint-disable-line react-hooks/exhaustive-deps
   // отправка: сразу в ленту (часики), сервер ответил — настоящее сообщение
   const fail = (t) => setPending((p) => p.map((x) => (x.tmp === t ? { ...x, failed: true } : x)));
   const sendErr = (r) => setErr(r && r.error === "too_fast" ? "Слишком часто: подожди минуту." : r && r.error === "photo_limit" ? "На сегодня фото в чате уже много. Завтра можно снова."
@@ -912,6 +1020,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
       .catch(() => { setCardBusy(null); flash(smartErr({ error: "net" })); return null; }); };
     if (a === "open") { if (app && app.open) app.open(extra); else flash("Откроется в приложении"); return; }
     if (a === "take") { upd(api.shiftTake(m.id)).then((r) => { if (r) flash("Смена твоя, график обновлён"); }); return; }
+    if (a === "need") { upd(api.shiftTake(m.id)).then((r) => { if (r) flash("Ты выходишь в смену, график обновлён"); }); return; }   // v97: «Ищем в смену» — «Выйду»
     if (a === "swap") { setSheet({ swap: m }); return; }
     if (a === "cancel") { upd(api.shiftCancel(m.id)); return; }
     if (a === "remind") {
@@ -1062,7 +1171,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
     if (m.kind === "card") return <CardMsg key={row.key} row={row} me={me} app={app} busy={cardBusy === m.id} hl={isHl} showWho={whoOpen.has(String(m.id))} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} />;   // v93
     if (m.kind === "ai") return <AiMsg key={row.key} row={row} me={me} hl={isHl} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} />;
     return <Bubble key={row.key} row={row} me={me} api={api} reads={reads} myLastId={myLast && myLast.id} othersN={others.length} group={group} net={chat.kind === "net"} hl={isHl}
-      onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} onJump={jumpTo} onView={setView} />;
+      onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} onJump={jumpTo} onView={setView} onWho={api.person ? (x) => setSheet({ person: String(x.emp) }) : null} />;
   };
   // v92: добавить людей в свой чат — на весь экран вместо переписки (хуки — выше)
   if (sheet === "add") return <GroupAdd me={me} api={api} chat={chat} members={members} onBack={() => setSheet("info")}
@@ -1074,7 +1183,11 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
         {chat.kind === "group"
           ? <button type="button" className="ch-who ch-whob" data-chat-info="" aria-label={"О чате «" + chatTitle(chat) + "»: участники"} onClick={() => { vibrate("light"); setSheet("info"); }}>
               <Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}{status ? " · участники" : ""}</span></div></button>
-          : <div className="ch-who"><Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></div>}
+          : chat.kind === "dm" && chat.peer && api.person
+            // v97: личная переписка — нажатие на шапку открывает карточку коллеги
+            ? <button type="button" className="ch-who ch-whob" data-chat-peer={chat.peer.id} aria-label={"Коллега: " + chatTitle(chat)} onClick={() => { vibrate("light"); setSheet({ person: String(chat.peer.id) }); }}>
+                <Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></button>
+            : <div className="ch-who"><Ava c={chat} /><div className="ch-id"><b className="ch-title" data-chat-title="">{chatTitle(chat)}</b><span className="ch-st">{status}</span></div></div>}
         {canClear(chat, me) ? <button type="button" className="ch-tool" data-chat-clear="" aria-label={group ? "Очистить чат" : "Очистить переписку"}
           onClick={() => { vibrate("light"); setClearErr(""); setSheet("clear"); }}>{IC.trash}</button> : null}
       </div>
@@ -1150,9 +1263,10 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone }
       onChanged={() => { if (onSent) onSent(); if (pullRef.current) pullRef.current(false); }} /> : null}
     {sheet === "clear" ? <ClearSheet chat={chat} busy={clearBusy} err={clearErr} onClear={clearChat} onClose={() => { if (!clearBusy) setSheet(null); }} /> : null}
     {sheet === "act" ? <ActSheet me={me} chat={chat} onPick={onTile} onClose={() => setSheet(null)} /> : null}
-    {sheet && sheet.shift ? <ShiftSheet api={api} chat={chat} mode={sheet.shift} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
+    {sheet && sheet.shift ? <ShiftSheet api={api} chat={chat} mode={sheet.shift} date={sheet.date || null} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
     {sheet && sheet.swap ? <SwapSheet api={api} msg={msgs.find((x) => String(x.id) === String(sheet.swap.id)) || sheet.swap} onClose={() => setSheet(null)} onDone={(m) => { cardDone(m); flash("Поменялись, график обновлён"); }} /> : null}
     {sheet === "task" ? <TaskSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
+    {sheet && sheet.person ? <PersonSheet api={api} emp={sheet.person} chat={chat} onClose={() => setSheet(null)} onDm={onDm} /> : null}
     {sheet === "share" ? <ShareSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
     {sheet && typeof sheet.poll === "string" ? <PollSheet api={api} chat={chat} q0={sheet.poll} onClose={() => setSheet(null)} onDone={(m) => { cardDone(m); setText(""); }} /> : null}
     {sheet === "stop" ? <StopSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}

@@ -175,7 +175,7 @@ describe("v93: сервер (этап 38, статично; живые пров�
     expect(sql).toContain("alter table sa_chat_votes enable row level security;");
     expect(sql).toContain("'card', case when m.kind in ('card', 'ai', 'sys') and not m.deleted then m.card end,");
     expect(fnBody(sql, "chat_open")).toContain("msgs := _sa_chat_smart(c, ch, msgs);");
-    expect(sql).toContain("' функций из 31 · таблицы: '");
+    expect(sql).toContain("' функций из 35 · таблицы: '");   // v97: 35
     for (const f of ["chat_shift_mine", "chat_shift_offer", "chat_shift_take", "chat_shift_options", "chat_shift_swap", "chat_shift_cancel", "chat_card_send", "chat_task_remind", "chat_poll_vote", "chat_stop_set", "chat_ai_post"])
       expect([f, fnBody(sql, f).includes("language plpgsql volatile security definer set search_path to public")]).toEqual([f, true]);
     expect(sql).not.toMatch(/\{1,600\}/);   // в PostgreSQL повтор в регулярке — не больше 255
@@ -188,7 +188,9 @@ describe("v93: сервер (этап 38, статично; живые пров�
     expect(why).toContain("else 5 end;");
     expect(fnBody(sql, "_sa_sh_check")).toContain("else 'Забрать могут ' || _sa_chat_spos(gs->>'pos', true) || ', свободные в этот день' end);");
     expect(fnBody(sql, "_sa_sh_put")).toContain("jsonb_build_object(p_day, true)");
-    expect(fnBody(sql, "chat_shift_take")).toContain("perform _sa_sh_done(ch, m, c);");
+    // v97: «Забрать» общий для чата и «Графика» — _sa_sh_take_do
+    expect(fnBody(sql, "chat_shift_take")).toContain("return _sa_sh_take_do(c, p_msg);");
+    expect(fnBody(sql, "_sa_sh_take_do")).toContain("perform _sa_sh_done(ch, m, c);");
     expect(fnBody(sql, "_sa_sh_done")).toContain("values (lc.id, c->>'id', who, coalesce(c->>'restaurant', ''), line, 'sys', jsonb_build_object('t', 'log', 'mode', m.card->>'mode'));");
     expect(fnBody(sql, "_sa_sh_done")).toContain("and (coalesce(e.is_admin, false) or lower(coalesce(e.position, '')) = any(_sa_chat_lead_pos()))");
     expect(fnBody(sql, "chat_shift_offer")).toContain("if ch.id is null or ch.kind = 'net' or not _sa_chat_ok(c, ch) then");

@@ -136,7 +136,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
   return (
     <div style={{ minHeight:"100%", paddingBottom:24, color:C.text }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
-        <div className="sa-hit" onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div className="sa-hit" onClick={onBack} {...onActivate(onBack)} data-lens="back" style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:18, fontWeight:"bold" }}>Чек-листы смены</div>
         {canEdit && !edit && <div ref={clRefEdit} onClick={startEdit} {...onActivate(startEdit)} style={{ cursor:"pointer", color:C.gold, fontSize:12.5, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:18, padding:"5px 12px" }}>✎ Править</div>}
         {edit && <div onClick={()=>setEdit(false)} {...onActivate(()=>setEdit(false))} style={{ cursor:"pointer", color:C.muted, fontSize:12.5, padding:"5px 10px" }}>Отмена</div>}
@@ -272,7 +272,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
           onClose={obHintDone} />
       ) : null}
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
-        <div className="sa-hit" onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div className="sa-hit" onClick={onBack} {...onActivate(onBack)} data-lens="back" style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:18, fontWeight:"bold" }}>{isNew && view==="me" ? "Первая неделя" : "Новички на онбординге"}</div>
       </div>
 
@@ -593,7 +593,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           onClose={anHintDone} />
       ) : null}
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 2px" }}>
-        <div className="sa-hit" onClick={onBack} {...onActivate(onBack)} style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
+        <div className="sa-hit" onClick={onBack} {...onActivate(onBack)} data-lens="back" style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1 }}>
           <div style={{ color:C.text, fontFamily:serif, fontSize:20, fontWeight:"bold" }}>Аналитика</div>
           <div style={{ color:muted, fontSize:12 }}>Охват: {scopeLabel}</div>

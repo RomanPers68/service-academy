@@ -510,7 +510,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => { if (edit) setEdit(false); else onBack(); }}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { if (edit) setEdit(false); else onBack(); }}>‹</button>
         <div style={T.lessHeadTitle}>{edit ? "Схема зала" : "Рассадка"}</div>
       </div>
       <div style={{ padding: "4px 16px 110px" }}>

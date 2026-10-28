@@ -104,7 +104,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
   const label = (t) => <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 0 6px" }}>{t}</div>;   // v73 (Доп. 386): подпись поля — курсивом обычными буквами
   const Head = (title, back) => (
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
-      <button className="sa-btn" onClick={back} {...onActivate(back)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+      <button className="sa-btn" data-lens="back" onClick={back} {...onActivate(back)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...labelStyle(13.5), color: gold }}>Колода бармена · {restaurant}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>

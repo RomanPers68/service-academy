@@ -132,7 +132,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
       ) : null}
       <style>{`@media print { body * { visibility: hidden !important; } #sa-print, #sa-print * { visibility: visible !important; } #sa-print { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; color: #1A1008 !important; background: #fff !important; } #sa-print .sa-noprint { display: none !important; } #sa-print .sa-pcard { break-inside: avoid; border-bottom: 1px solid #ccc; } }`}</style>
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }} className="sa-noprint">
-        <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+        <button className="sa-btn" data-lens="back" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...labelStyle(13.5), color: gold }}>Колода бармена · экспорт</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15 }}>Карта бара для печати</div>

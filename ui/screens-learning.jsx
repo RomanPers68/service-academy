@@ -125,7 +125,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
   // Хук стоит до условных return (правила хуков); на пустом банке вернёт undefined — ниже не используется.
   const q = React.useMemo(() => shuffleQuizOptions(bank[Math.min(idx, bank.length - 1)]), [bank, idx]);
 
-  const Head = (<div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
+  const Head = (<div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
 
   if (bank.length === 0) {
     const nextDue = mistakeBank.reduce((min, m) => (m.due && m.due > nowTs && (!min || m.due < min)) ? m.due : min, null);
@@ -1343,7 +1343,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   if (lesson.type === "lesson") {
     return (
       <div style={{ ...T.screen, position: "relative" }}>
-        <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div>{onContents && stepInfo ? (
+        <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div>{onContents && stepInfo ? (
           <button onClick={onContents} aria-label={"Содержание раздела: шаг " + stepInfo.i + " из " + stepInfo.n} data-sa-contents=""
             style={{ flexShrink: 0, background: "transparent", border: `1px solid ${color}77`, borderRadius: 999, padding: "4px 10px", color: inkOf(color, !!T.a11y), fontFamily: "monospace", fontSize: 11, letterSpacing: 0.5, cursor: "pointer", whiteSpace: "nowrap" }}>{stepInfo.i} из {stepInfo.n}</button>
         ) : null}<button onClick={() => { dismissModeHint(); setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center", borderRadius: 12, animation: modeHint ? "pulse 2s infinite" : "none" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
@@ -1557,7 +1557,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       return (
         <div style={T.screen} className="sa-screen">
           <div style={T.lessHead}>
-            <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+            <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
             <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.gamepad(color, 18)}<span>Результат раунда</span></div>
           </div>
           <div style={{ flex:1, padding:"20px 18px 40px", overflowY:"auto" }}>
@@ -1628,7 +1628,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         {/* ── ШАПКа ── */}
         <div className="sa-tophead" style={{ padding:"44px 18px 10px", background:"transparent" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-            <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+            <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
             <div style={{ display:"flex", gap:2 }} data-practice-lives={practiceState.lives} role="img" aria-label={"Жизни: " + practiceState.lives + " из 3"}>
               {[1,2,3].map(h=><span key={h} style={{ display:"inline-flex", color:RED, opacity:h<=practiceState.lives?1:0.25, transition:"opacity 0.3s" }}><Sign n="heartFull" s={17} /></span>)}
             </div>
@@ -1785,7 +1785,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       const wrongAnswers = allAnswers.filter(a=>!a.isCorrect);
       return (
         <div style={T.screen}>
-          <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Результат теста</div></div>
+          <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Результат теста</div></div>
           <div style={{ ...T.quizWrap, paddingBottom:40 }}>
             <div style={T.resultWrap}>
               <div className="sa-pop" style={{ ...T.resultCircle, borderColor:color }}>
@@ -1831,7 +1831,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     const mistakesNow = quizState.answers.filter((a) => !a.isCorrect).length + (pendingBad ? 1 : 0);
     return (
       <div style={T.screen}>
-        <div style={{ ...T.lessHead, gap: 8 }}><button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => { commitPending(); onBack(); }}>‹</button>
+        <div style={{ ...T.lessHead, gap: 8 }}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { commitPending(); onBack(); }}>‹</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div data-quiz-kind style={{ ...labelStyle(light ? 14.5 : 13), color: light ? "#7A5A1E" : GOLD, marginBottom: 2 }}>Тест · {nQ} {nQ % 10 === 1 && nQ % 100 !== 11 ? "вопрос" : (nQ % 10 >= 2 && nQ % 10 <= 4 && (nQ % 100 < 10 || nQ % 100 >= 20)) ? "вопроса" : "вопросов"}</div>
             <div data-quiz-title style={{ ...T.lessHeadTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{quizTopic(lesson.title)}</div>
@@ -1897,7 +1897,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
   return (
     <div style={T.screen}>
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.book(color || GOLD, 18)}<span>Глоссарий</span></div>
       </div>
       {/* ПОСЛЕ шапки, а не внутри: lessHead — флекс-ряд, и пузырь

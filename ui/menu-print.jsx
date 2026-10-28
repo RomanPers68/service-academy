@@ -106,7 +106,7 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
-        <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+        <button className="sa-btn" data-lens="back" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...labelStyle(13.5), color: gold }}>Меню · экспорт</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.15 }}>Меню для печати</div>

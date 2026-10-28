@@ -336,7 +336,7 @@ export function ThanksScreen({ T, a11y, profile, lead = false, startTab = "mine"
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Спасибо от гостей</div>
       </div>
       <div style={{ padding: "4px 16px 110px" }}>

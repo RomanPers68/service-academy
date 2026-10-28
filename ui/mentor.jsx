@@ -192,7 +192,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
     <div style={T.screen} className="sa-screen">
       {allDone && createPortal(<Confetti />, document.body)}
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Допуск наставника</div>
       </div>
 
@@ -254,7 +254,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
             <div key={s.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", alignItems: "flex-start", opacity: 1 }}
               onClick={() => !rec && setModal(s)} {...onActivate(() => !rec && setModal(s))}>
               {/* v73 (Доп. 386): цветной полоски слева больше нет — «подтверждён» видно по зелёному кружку ✓ и заголовку */}
-              <div style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, border: rec ? "none" : `1.5px solid ${gold}66`, background: rec ? green : "transparent", color: rec ? "#fff" : T.modSub.color, fontSize: rec ? 15 : 13 }}>{rec ? "✓" : i + 1}</div>
+              <div data-lens={rec ? undefined : "disc"} style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, border: rec ? "none" : `1.5px solid ${gold}66`, background: rec ? green : "transparent", color: rec ? "#fff" : T.modSub.color, fontSize: rec ? 15 : 13 }}>{rec ? "✓" : i + 1}</div>
               <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <div style={{ ...T.modTitle, color: rec ? green : T.modTitle.color }}>{s.label}</div>
                 <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.45 }}>{s.hint}</div>

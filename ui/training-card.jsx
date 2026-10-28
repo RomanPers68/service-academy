@@ -78,7 +78,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
       }`}</style>
 
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Карта обучения</div>
       </div>
 

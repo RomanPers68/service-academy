@@ -194,11 +194,11 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
         const ic = (d) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
         return (<>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-            <span className="sa-hit" onClick={onBack} {...onActivate(onBack)} style={{ color:GOLD, fontSize:21, cursor:"pointer", padding:"0 4px" }}>‹</span>
+            <span className="sa-hit" onClick={onBack} {...onActivate(onBack)} data-lens="back" style={{ color:GOLD, fontSize:21, cursor:"pointer", padding:"0 4px" }}>‹</span>
             <div style={{ fontFamily:"Georgia, serif", fontSize:18, color:glass.tx, flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Колода бармена</div>
             <span style={{ fontFamily:"ui-monospace, Menlo, monospace", fontSize:10.5, color:glass.sub, marginRight:2, whiteSpace:"nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
-            <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и фильтр">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
-            <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
+            <span style={iconBtn(open)} data-lens={open ? undefined : "disc"} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и фильтр">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
+            <span style={iconBtn(view === "index")} data-lens={view === "index" ? undefined : "disc"} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
             <div ref={ckRefMode} style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>

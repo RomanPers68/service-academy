@@ -401,7 +401,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
   return (
     <div style={TT.screen} className="sa-screen" data-ms-screen="">
       <div style={{ ...TT.lessHead, justifyContent: "space-between" }}>
-        <button style={{ ...TT.backBtn2, minWidth: 44, minHeight: 44, marginLeft: -10 }} onClick={onBack} aria-label="Назад">‹</button>
+        <button style={{ ...TT.backBtn2, minWidth: 44, minHeight: 44, marginLeft: -10 }} data-lens="back" onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ ...TT.lessHeadTitle, display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
           <FamIcon id="master" size={22} color={tierColor(3, a11y)} />
           <span style={{ minWidth: 0 }}>

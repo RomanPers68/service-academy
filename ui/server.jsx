@@ -65,7 +65,7 @@ export function ServerScreen({ T, a11y, profile, onBack }) {
   return (
     <div style={T.screen} className="sa-screen" data-server={st.phase}>
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Сервер</div>
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>

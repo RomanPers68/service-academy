@@ -112,7 +112,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Поиск</div>
       </div>
       <div style={{ padding: "10px 16px 6px" }}>

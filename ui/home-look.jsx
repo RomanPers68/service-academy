@@ -6,6 +6,13 @@
 //   Кружки инструментов: кольцо — по краю кружка, стекло — внутри (::before). Ряд инструментов обрезан по высоте (подписи
 //   выезжают вбок), и кольцо снаружи срезалось сверху и снизу (владелец: «линзы выглядят не ровными, как будто обрезаны»);
 //   по той же причине у инструментов нет внешней тени.
+// v102 (Доп. 415): «Линза» на всех экранах — правила под html.sa-lens (класс ставит App в виде «Линза»). Линзой
+// становится только то, что на экранах уже круглое: кнопка «назад» (T.backBtn2, data-lens="back"), поиск в верхней
+// строке, стрелки графика, кружки значков SOS, сертификатов, книги отзывов, номера навыков наставника, аватарки
+// (data-lens="disc" | "sos" | "avatar"), «Все темы списком», кружок «Я это умею», «Подробнее» квеста смены (по классам).
+// Новых плашек под значками нет (значки без плашек — намеренно, v78); кружки с состоянием (подтверждён, выбран,
+// отмечен) — прежние. Стекло — фон самого кружка (содержимое всегда поверх), кольцо — снаружи (::after), как у
+// медальонов на главной.
 
 const CSS = `
 .sa-look{--lk-gold:#C8A96E;--lk-hi:#E8C983;--lk-glass:rgba(200,169,110,0.12);--lk-rim:rgba(214,178,102,0.45);--lk-glow:rgba(255,230,170,0.12);
@@ -36,6 +43,31 @@ html.sa-light .sa-look{--lk-gold:#7A5D2A;--lk-hi:#8A6524;--lk-glass:rgba(139,106
   box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-glow),var(--lk-shadow)!important}
 .sa-look-lens .sa-dp,.sa-look-lens [data-tile],.sa-look-lens [data-tools-capsule]{background:radial-gradient(120% 90% at 20% 0%,var(--lk-light),transparent 60%),var(--lk-card)!important}
 .sa-look-lens [data-tracks-quote]{border-left-color:var(--lk-rim)!important}
+
+/* ── v102: «Линза» на всех экранах (html.sa-lens): что уже круглое — то же стекло, ободок и кольцо ── */
+html.sa-lens{--lk-gold:#C8A96E;--lk-hi:#E8C983;--lk-glass:rgba(200,169,110,0.12);--lk-rim:rgba(214,178,102,0.45);--lk-glow:rgba(255,230,170,0.12);
+  --lk-hl:rgba(255,255,255,0.18);--lk-ring:rgba(214,178,102,0.44);--lk-sos:234,140,140}
+html.sa-lens.sa-light{--lk-gold:#7A5D2A;--lk-hi:#8A6524;--lk-glass:rgba(139,106,48,0.09);--lk-rim:rgba(139,106,48,0.48);--lk-glow:rgba(255,255,255,0.5);
+  --lk-hl:rgba(255,255,255,0.95);--lk-ring:rgba(139,106,48,0.32);--lk-sos:163,58,42}
+html.sa-lens [data-lens]{position:relative}
+html.sa-lens [data-lens]::after,html.sa-lens .tbp-view::after,html.sa-lens .tbm-act:not([disabled]) .tbm-act-ic::after,html.sa-lens .tg-more::after{
+  content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens [data-lens="disc"],html.sa-lens [data-lens="back"],html.sa-lens .tbp-view,html.sa-lens .tbm-act:not([disabled]) .tbm-act-ic,html.sa-lens .tg-more{
+  background:var(--lk-glass)!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),inset 0 -9px 12px -7px var(--tint,transparent)!important}
+html.sa-lens .tbp-view,html.sa-lens .tbm-act:not([disabled]) .tbm-act-ic,html.sa-lens .tg-more{position:relative}
+html.sa-lens .tbm-act.hot .tbm-act-ic{--tint:rgba(255,248,230,0.35)}
+html.sa-lens .tbm-act.gold .tbm-act-ic{--tint:rgba(232,197,106,0.45)}
+html.sa-lens [data-lens="sos"]{background:rgba(var(--lk-sos),0.10)!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px rgba(var(--lk-sos),0.62),inset 0 0 14px rgba(var(--lk-sos),0.16),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens="sos"]::after{border-color:rgba(var(--lk-sos),0.42)}
+html.sa-lens [data-lens="avatar"]{box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl),0 2px 10px rgba(0,0,0,0.25)!important}
+/* кнопка «назад»: круглая линза 32 px со стрелкой посередине (была стрелка без кружка) */
+html.sa-lens [data-lens="back"]{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;border-radius:50%!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;flex-shrink:0;box-sizing:border-box;
+  font-size:21px!important;line-height:1!important;color:var(--lk-gold)!important;padding:0 1px 3px 0!important}
+/* поиск в верхней строке — круглая линза 28 px (был скруглённый квадрат 28 × 26) */
+html.sa-lens [data-top-search][data-lens]{height:28px!important;border-radius:50%!important}
 
 `;
 export function ensureLookCss() {

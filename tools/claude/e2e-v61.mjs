@@ -571,7 +571,8 @@ if (want("MOTION")) {
   const lastP = withPanel[withPanel.length - 1], firstA = after[0];
   const jumps = cl.slice(1).map((f, i) => Math.abs(f.s - cl[i].s));
   ok("MOTION: сворачивание — страница опускается вместе с панелью: когда панель убралась, прокрутка уже на месте (без рывка после)",
-    !!lastP && !!firstA && Math.abs(firstA.s - lastP.s) <= 1 && Math.max(...jumps) <= 8 && cl[0].s > firstA.s,
+    // v102: с v101 главная ужата под экран и до сворачивания прокручена на 48 px — шаг за кадр той же кривой до 9–10 px
+    !!lastP && !!firstA && Math.abs(firstA.s - lastP.s) <= 1 && Math.max(...jumps) <= 10 && cl[0].s > firstA.s,
     JSON.stringify({ start: cl[0].s, lastP, firstA, maxJump: Math.max(...jumps), seq: cl.map((f) => f.s + "/" + f.h).join(" ") }));
   ok("MOTION: без ошибок", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
@@ -693,7 +694,8 @@ if (want("AI")) {
   const o = await open({ profile: BAR, storage: { ...ROMAN44(), ...MET, __role: "bar" }, w: W, h: H, dsf: 1, rpcs: schedRpcs(FX, null), fixedTime: at(14, 20) });
   const p = o.page; await sleep(2200); await dismissToasts(p);
   const st = () => p.evaluate(() => {
-    const ai = document.querySelector("[data-tab-ai]")?.getBoundingClientRect(); const bar = document.getElementById("sa-tabbar")?.getBoundingClientRect();
+    // v102: с v91 справа от панели — отдельный круг чата (#sa-tabbar стал рядом «панель + чат»): середина — у самой панели
+    const ai = document.querySelector("[data-tab-ai]")?.getBoundingClientRect(); const bar = (document.querySelector("#sa-tabbar .sa-lensbar") || document.getElementById("sa-tabbar"))?.getBoundingClientRect();
     const labels = [...document.querySelectorAll("#sa-tabbar [role=button][aria-label]")].map((b) => { const q = b.getBoundingClientRect(); return { l: b.getAttribute("aria-label"), x: Math.round(q.left + q.width / 2) }; }).sort((a, b) => a.x - b.x).map((x) => x.l);
     const row = document.querySelector("[data-tracks-row]");
     return { fab: !!document.querySelector(".sa-fab"), ai: !!ai, aiCx: ai ? Math.round(ai.left + ai.width / 2) : null, barCx: bar ? Math.round(bar.left + bar.width / 2) : null, labels,

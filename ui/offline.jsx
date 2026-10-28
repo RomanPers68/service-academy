@@ -29,7 +29,7 @@ export function OfflineScreen({ T, a11y, onBack }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
-        <button className="sa-btn" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+        <button className="sa-btn" data-lens="back" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div>
           <div style={{ ...labelStyle(13.5), color: gold }}>Без сети</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>Подвал, кухня, лестница</div>

@@ -256,7 +256,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Брифинг смены</div>
       </div>
       <div style={{ padding: "4px 16px 120px" }}>
@@ -360,7 +360,7 @@ export function BriefView({ a11y, brief, onClose, onRead }) {
   return portal(
     <div data-brief-view="" role="dialog" aria-modal="true" aria-label="Брифинг смены" className="sa-layer sa-safex" style={{ ...SHELL(a11y), overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
       <div style={HEAD}>
-        <button type="button" data-sa-back="" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.gold, fontSize: 26, cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: "Georgia, serif" }}>‹</button>
+        <button type="button" data-sa-back="" data-lens="back" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.gold, fontSize: 26, cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: "Georgia, serif" }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...labelStyle(13), color: c.sub }}>Брифинг смены · {d.dayLabel}</div>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text }}>{brief.author ? "Отправил(а): " + brief.author : "Брифинг от руководителя"}</div>

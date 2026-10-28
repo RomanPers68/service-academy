@@ -249,7 +249,7 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={back}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={back}>‹</button>
         <div style={T.lessHeadTitle}>{review ? "Разбор случая" : "Случаи из нашего зала"}</div>
       </div>
       <div style={{ padding: "4px 16px 110px" }}>

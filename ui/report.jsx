@@ -267,7 +267,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
     return (
       <div className="rp" ref={topRef}>
         <div className="rp-top">
-          <button type="button" className="rp-back" onClick={back} aria-label="Назад">‹</button>
+          <button type="button" className="rp-back" data-lens="back" onClick={back} aria-label="Назад">‹</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="rp-ey">{lead ? "Отчёт по сотруднику" : "Мой отчёт"}</div>
             <h2 className="rp-h">{m ? m.full : (list.rows.find((r) => r.id === sel) || {}).full || "…"}</h2>
@@ -295,7 +295,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
   return (
     <div className="rp" ref={topRef}>
       <div className="rp-top">
-        <button type="button" className="rp-back" onClick={onBack} aria-label="Назад">‹</button>
+        <button type="button" className="rp-back" data-lens="back" onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="rp-ey">Отчёты по сотрудникам</div>
           <h2 className="rp-h">{list.scope === "restaurant" ? (list.restaurant || "Мой ресторан") : list.scope ? "Все рестораны" : "Команда"}</h2>

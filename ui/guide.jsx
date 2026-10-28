@@ -129,7 +129,7 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
-        <button className="sa-btn sa-hit" onClick={onBack} {...onActivate(onBack)} aria-label="Назад"
+        <button className="sa-btn sa-hit" onClick={onBack} {...onActivate(onBack)} aria-label="Назад" data-lens="back"
           style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
         <div>
           <div style={{ ...labelStyle(13.5), color: gold }}>Гид по приложению</div>

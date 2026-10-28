@@ -334,7 +334,8 @@ import { hintsFor, hintKey } from "./data/hints";
 // файл попадали экраны руководителя, «Команды», экзамена, рейтинга и живого диалога (около 250 КБ кода); теперь они
 // грузятся при первом открытии, а фоновый прогрев (ниже) подтягивает их заранее, когда главная уже на экране.
 import { RoleSelect } from "./ui/screens-roleselect";
-import { homeLook, LOOK_EVENT } from "./lib/home-look";   // v101 (Доп. 414): вид главной
+import { homeLook, LOOK_EVENT, LENS_CLASS, lensOn } from "./lib/home-look";   // v101 (Доп. 414): вид главной; v102 — на всех экранах
+import { ensureLookCss } from "./ui/home-look";
 import { MistakesScreen, HomeScreen, ModuleScreen, LessonScreen, GlossaryScreen, loadTable, useTableModule } from "./ui/screens-learning";
 import { APP_SHARE_URL } from "./lib/app-url";
 import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQdaySeen, applyQdayToBank } from "./lib/qday";   // v81: вопрос дня в Telegram
@@ -1288,9 +1289,15 @@ function ServiceAcademy() {
   React.useEffect(() => { setTgRemind(readRemindFlag(ukP)); }, [ukP]);
   // ── Доп. 303: подтверждение в зале — сколько запросов ждут старшего (этап 22) ──
   const isLead = !!profile && (!!profile.is_admin || ["manager", "senior"].includes(profile.position));
-  // v101 (Доп. 414): вид главной (lib/home-look.js); пока владелец не выбрал — «как сейчас», в демо — переключатель
+  // v101 (Доп. 414): вид главной (lib/home-look.js): «Линза» (по умолчанию) или «как сейчас», в демо — переключатель.
+  // v102 (Доп. 415): «Линза» и на остальных экранах — класс sa-lens на <html>, стили ui/home-look.jsx
   const [look, setLook] = useState(() => homeLook());
   useEffect(() => { const on = () => setLook(homeLook()); window.addEventListener(LOOK_EVENT, on); return () => window.removeEventListener(LOOK_EVENT, on); }, []);
+  React.useLayoutEffect(() => {
+    const on = lensOn(look);
+    if (on) ensureLookCss();
+    try { document.documentElement.classList.toggle(LENS_CLASS, on); } catch (e) {}
+  }, [look]);
   const [hallInbox, setHallInbox] = useState(0);
   React.useEffect(() => {
     if (!isLead || !storageLoaded || !["teamHub", "roleSelect"].includes(screen)) return undefined;
@@ -2839,7 +2846,7 @@ function ServiceAcademy() {
             {/* v71: поиск с любого экрана — меню и аллергены, карта бара, глоссарий, справочник, уроки */}
             {/* в тесте, на экзамене и в собеседовании кандидата поиска нет: он стал бы подсказкой (и обходом учёта «лазеек») */}
             {profile && !["search", "exam", "certificate", "candidate"].includes(screen) && !(screen === "lesson" && activeLesson && activeLesson.type === "quiz") ? (
-              <button className="sa-btn sa-hit" data-top-search aria-label="Поиск: блюдо, аллерген, коктейль, термин" onClick={() => { vibrate("light"); navigate("search"); }}
+              <button className="sa-btn sa-hit" data-top-search data-lens="disc" aria-label="Поиск: блюдо, аллерген, коктейль, термин" onClick={() => { vibrate("light"); navigate("search"); }}
                 style={{ width: 28, height: 26, marginRight: 10, borderRadius: 11, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
                   background: a11y ? "rgba(139,106,48,0.12)" : "rgba(200,169,110,0.10)",
                   boxShadow: a11y ? "inset 0 0 0 1px rgba(139,106,48,0.5), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 1px 0 rgba(255,255,255,0.16)" }}>

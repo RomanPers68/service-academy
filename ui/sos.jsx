@@ -167,7 +167,7 @@ export function SOSScreen({ T, a11y, onBack }) {
 
         {/* ── Шапка: красная печать SOS ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-          <div style={{
+          <div data-lens="sos" style={{
             width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
             background: a11y ? "rgba(160,56,40,0.10)" : "rgba(224,120,120,0.12)",
@@ -202,7 +202,7 @@ export function SOSScreen({ T, a11y, onBack }) {
               <div key={c.id} style={{ ...glass(T, a11y, isOpen), overflow: "hidden" }}>
                 <div onClick={() => toggle(c.id)} {...onActivate(() => toggle(c.id))}
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
-                  <div style={{
+                  <div data-lens="sos" style={{
                     width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: a11y ? "rgba(160,56,40,0.08)" : "rgba(224,120,120,0.10)",

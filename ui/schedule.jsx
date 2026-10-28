@@ -1585,13 +1585,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       <div style={{ display:"flex", alignItems:"center", gap:10, padding: vpS.short ? "14px 18px 4px" : "max(14px, calc(44px - var(--sa-st, 0px))) 18px 4px" }}>
         <button className="sa-btn sa-hit" style={{ background:"transparent", border:"none", color:GOLD,
           fontSize:25, cursor:"pointer", lineHeight:1, padding:"0 6px 4px 0", fontFamily:serif }}
-          onClick={onBack} aria-label="Назад">‹</button>
+          onClick={onBack} aria-label="Назад" data-lens="back">‹</button>
         <div style={{ flex:1 }}>
           <div style={{ ...labelStyle(11.5), color:P.sub }}>График</div>
           <div style={{ color:P.text, fontSize: opts.arrows ? 18 : 16, fontFamily:serif }}>{MONTHS_N[M]} {Y}</div>
         </div>
         {opts.arrows ? [[-1, "‹", "Предыдущий месяц"], [1, "›", "Следующий месяц"]].map(([dir, t, al]) => (
-          <button key={dir} className="sa-btn" data-month-arrow={dir} aria-label={al} onClick={() => { goMonth(dir); vibrate("light"); }}
+          <button key={dir} className="sa-btn" data-month-arrow={dir} data-lens="disc" aria-label={al} onClick={() => { goMonth(dir); vibrate("light"); }}
             style={{ width:36, height:36, borderRadius:"50%", flexShrink:0, cursor:"pointer", display:"grid", placeItems:"center", padding:0,
               fontSize:16, color:GOLD, fontFamily:serif, background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,250,238,0.03)",
               border:`1px solid ${a11y ? "rgba(139,106,48,0.45)" : "rgba(200,169,110,0.45)"}` }}>{t}</button>
@@ -5222,7 +5222,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               </div>
               {selW ? (
                 <div data-sched-stepper="" style={{ display:"flex", alignItems:"center", gap:10, marginTop:6 }}>
-                  <button className="sa-btn" aria-label="Предыдущая неделя" disabled={weekIdx === 0} onClick={() => { setWeekIdx(Math.max(0, weekIdx - 1)); vibrate("light"); }}
+                  <button className="sa-btn" data-lens="disc" aria-label="Предыдущая неделя" disabled={weekIdx === 0} onClick={() => { setWeekIdx(Math.max(0, weekIdx - 1)); vibrate("light"); }}
                     style={stepBtn(weekIdx === 0)}>‹</button>
                   <div style={{ flex:1, minWidth:0, textAlign:"center" }}>
                     <div data-stepper-week="" style={{ fontSize:15, color:P.text }}>{wk.length > 1 ? `${wk[0]}–${wk[wk.length - 1]}` : wk[0]} {MONTHS_R[M]}</div>
@@ -5231,7 +5231,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         : <span style={{ color:okC }}>неделя закрыта полностью</span>}
                     </div>
                   </div>
-                  <button className="sa-btn" aria-label="Следующая неделя" disabled={weekIdx >= weeks.length - 1} onClick={() => { setWeekIdx(Math.min(weeks.length - 1, weekIdx + 1)); vibrate("light"); }}
+                  <button className="sa-btn" data-lens="disc" aria-label="Следующая неделя" disabled={weekIdx >= weeks.length - 1} onClick={() => { setWeekIdx(Math.min(weeks.length - 1, weekIdx + 1)); vibrate("light"); }}
                     style={stepBtn(weekIdx >= weeks.length - 1)}>›</button>
                 </div>
               ) : null}

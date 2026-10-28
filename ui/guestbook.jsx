@@ -202,7 +202,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
       {/* Шапка */}
       <div style={{ ...T.lessHead, justifyContent: "space-between" }}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z" /><path d="M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z" /><path d="M15 8h2M15 11h2" /></svg>
           <span>Книга отзывов</span></div>
@@ -212,7 +212,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
       {/* Звание и прогресс */}
       <div style={{ padding: "10px 16px 0" }}>
         <div style={{ ...T.modCard, alignItems: "center", gap: 12 }}>
-          <div style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, border: `1.5px solid ${GOLD}66`, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-lens="disc" style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, border: `1.5px solid ${GOLD}66`, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="1.6"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>

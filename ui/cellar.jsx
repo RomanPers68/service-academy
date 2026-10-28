@@ -88,7 +88,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ ...T.lessHead, justifyContent: "space-between" }}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Назад" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Назад" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display: "flex", alignItems: "center", gap: 8 }}><WineGlass level={0.7} size={20} a11y={a11y} /><span>Погреб тем</span></div>
         <div style={{ width: 24 }} />
       </div>

@@ -221,7 +221,7 @@ export function WeekStar({ weekly, T }) {
     <div style={wrap}>
       <div style={{ ...labelStyle(13.5), color:gold, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} Сотрудник недели</div>
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #7A5D2A)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#FBF7EE", 24)}</div>
+        <div data-lens="avatar" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #7A5D2A)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#FBF7EE", 24)}</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ ...T.modTitle, fontSize:16 }}>{top.name} {top.surname}</div>
           <div style={{ color:T.modSub.color, fontSize:12.5 }}>{top.restaurant || ""}</div>
@@ -459,7 +459,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={detailTab ? () => { setDetailTab(false); setSelected(null); } : onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={detailTab ? () => { setDetailTab(false); setSelected(null); } : onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>
           <span>Рейтинг сотрудников</span></div>
@@ -707,7 +707,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
   if (!role) return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
         <div style={{ width:24 }} />
       </div>
@@ -722,7 +722,7 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
   return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.target(GOLD, 19)} Задания дня</div>
         <div style={{ width:24 }} />
       </div>
@@ -902,7 +902,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
           onClose={pdHintDone} />
       ) : null}
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.barChart(GOLD, 18)} {player.name} {player.surname}</div>
       </div>
       <div style={{ ...T.lessBody, padding:"14px 16px 80px" }}>
@@ -1254,7 +1254,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
   return (
     <div style={T.screen}>
       <div style={{ ...T.lessHead, justifyContent:"space-between" }}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>{UI_SVG.chartLine(GOLD, 18)} Моя статистика</div>
         <div style={{ width:24 }} />
       </div>
@@ -1270,7 +1270,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
 
         {/* Профиль */}
         <div style={{ ...T.modCard, marginBottom:12, gap:12 }}>
-          <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:"bold", color: goldText(a11y), fontFamily:"Georgia, serif", flexShrink:0 }}>
+          <div data-lens="disc" style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:"bold", color: goldText(a11y), fontFamily:"Georgia, serif", flexShrink:0 }}>
             {profile?.is_admin ? UI_SVG.crown(GOLD, 24) : `${profile?.name?.[0]}${(profile?.surname||"")[0]||""}`.toUpperCase()}
           </div>
           <div>

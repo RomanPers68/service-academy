@@ -337,7 +337,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     return (
       <div style={T.screen} className="sa-screen">
         <div style={T.lessHead}>
-          <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => setView("list")}>‹</button>
+          <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => setView("list")}>‹</button>
           <div style={T.lessHeadTitle}>Новый сотрудник</div>
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
@@ -384,7 +384,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     return (
       <div style={T.screen} className="sa-screen">
         <div style={T.lessHead}>
-          <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={() => { setSelected(null); setConfirm(null); setActionError(null); setView("list"); }}>‹</button>
+          <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { setSelected(null); setConfirm(null); setActionError(null); setView("list"); }}>‹</button>
           <div style={T.lessHeadTitle}>Сотрудник</div>
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
@@ -826,7 +826,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
-        <button className="sa-hit" style={T.backBtn2} aria-label="Вернуться" onClick={onBack}>‹</button>
+        <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Аккаунт</div>
       </div>
       {acHint && acSteps.length ? (
@@ -836,7 +836,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
       {/* v57: снизу 24 (было 40); v59: ещё плотнее (16/20, заметка и карточки ближе) — с четвёртой настройкой экран по-прежнему помещается целиком */}
       <div style={{ flex:1, padding:"16px 18px 20px" }}>
         <div ref={acRefCard} style={{ ...T.modCard, gap:12, marginBottom:12 }}>
-          <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
+          <div data-lens="avatar" style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
             <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown("#fff", 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
             </span>
@@ -870,7 +870,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
         {onTrainingCard && (
           <div className="sa-card" style={{ ...T.modCard, marginBottom:12, cursor:"pointer" }}
             onClick={onTrainingCard} {...onActivate(onTrainingCard)}>
-            <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,169,110,0.13)" }}>
+            <div data-lens="disc" style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,169,110,0.13)" }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h10v6H7z"/><path d="M5 9h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/><path d="M7 15h10"/></svg>
             </div>
             <div style={{ flex:1, minWidth:0, paddingLeft:6 }}>

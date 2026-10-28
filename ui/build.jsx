@@ -667,7 +667,7 @@ function Shell({ title, onClose, accent, T, children }) {
       overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
     }}>
       <div className="sa-tophead" style={{ display: "flex", alignItems: "center", gap: 10, padding: "max(14px, calc(44px - var(--sa-st, 0px))) 18px 4px" }}>
-        <button className="sa-btn" style={{
+        <button className="sa-btn" data-lens="back" style={{
           background: "transparent", border: "none", color: accent, fontSize: 25,
           cursor: "pointer", lineHeight: 1, padding: "0 6px 4px 0", fontFamily: serif,
         }} onClick={onClose} aria-label="Закрыть">‹</button>

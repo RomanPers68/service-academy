@@ -197,7 +197,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
               strokeDasharray={`${(CC * Math.min(100, x.pct)) / 100} ${CC}`} transform={`rotate(-90 ${d / 2} ${d / 2})`} /> : null}
           </svg>
           {/* плоское стекло без блика — как кнопка AI; у своего трека золотая оправа; выбранный — оправа цвета трека и свечение */}
-          <span aria-hidden className={nudgeOn && x.cur ? "sa-orb-nudge" : undefined} style={{ position: "absolute", inset: 5, borderRadius: "50%",
+          <span aria-hidden data-orb-glass="" className={nudgeOn && x.cur ? "sa-orb-nudge" : undefined} style={{ position: "absolute", inset: 5, borderRadius: "50%", "--tint": x.open ? ic + "55" : "transparent",
             background: x.open ? `${ic}${sel ? "33" : "1F"}` : (a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.04)"),
             boxShadow: sel
               ? `inset 0 0 0 1.5px ${selRing}, 0 0 0 3px ${selRing}33, 0 0 18px ${selRing}66`

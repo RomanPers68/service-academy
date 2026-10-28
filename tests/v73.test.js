@@ -61,7 +61,8 @@ describe("v73: главная и вкладки", () => {
     expect(home).not.toContain("T.roleAccent");
     expect(home).not.toMatch(/fontFamily:"monospace"[^}]*textTransform:"uppercase"/);
     // разделитель над «Треками обучения» — одна линия той же высоты (19 + 10)
-    expect(home).toContain('<div style={{ display:"flex", alignItems:"center", height:19, padding:"0 20px 10px" }}>');
+    // v101 (Доп. 414): высота и отступ — из lib/home-fit.js (19 + 10, пока главная не ужата под экран)
+    expect(home).toMatch(/<div style=\{\{ display:"flex", alignItems:"center", height:(19|F\.divH), padding:("0 20px 10px"|"0 20px " \+ F\.divPb \+ "px") \}\}>/);
   });
   it("девиз — «Сервис — это забота» (выбор владельца); в уроке «Что такое сервис?» фраза прежняя", () => {
     expect(home).toContain("«Сервис — это забота»");

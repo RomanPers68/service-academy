@@ -549,7 +549,8 @@ if (want("MOTION")) {
   const rec = () => p.evaluate(() => {
     const row = document.querySelector("[data-tracks-row]");
     let sc = row.parentElement; while (sc && !(sc.scrollHeight > sc.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
-    sc = sc || document.scrollingElement;
+    // v101 (Доп. 414): главная целиком на экране может не листаться до раскрытия — тогда прокрутка у приложения (#root)
+    sc = sc || document.getElementById("root") || document.scrollingElement;
     window.__mv = []; const t0 = performance.now();
     const tick = () => { const pn = document.querySelector("[data-track-open]"), ch = document.getElementById("sa-orb-bar");
       window.__mv.push({ t: Math.round(performance.now() - t0), s: Math.round(sc.scrollTop * 10) / 10, h: pn ? Math.round(pn.getBoundingClientRect().height) : null, dy: Math.round(ch.getBoundingClientRect().top - row.getBoundingClientRect().top) });

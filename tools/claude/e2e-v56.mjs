@@ -467,7 +467,8 @@ const nowInfo = (p) => p.evaluate(() => {
   return { mode: m === "track" ? null : m, text: c ? c.innerText.replace(/\s+/g, " ") : "", tag: c && c.querySelector("[data-now-tag]") ? c.querySelector("[data-now-tag]").innerText : "",
     first: !!document.querySelector("[data-first-day]"), pills: !!document.querySelector('[data-now-row="warm"], [data-now-row="step"]'), next: !!document.querySelector("[data-now-next]"),
     hello: (document.body.innerText.match(/(Доброе утро|Добрый день|Добрый вечер|Доброй ночи|С возвращением), [^\n]+/) || [""])[0],
-    logo: lb ? [Math.round(lb.width), Math.round(lb.height)] : null, over: (() => { const r = document.getElementById("root"); return r.scrollWidth - r.clientWidth; })() };
+    logo: lb ? [Math.round(lb.width), Math.round(lb.height)] : null, over: (() => { const r = document.getElementById("root"); return r.scrollWidth - r.clientWidth; })(),
+    fitK: (() => { const r = document.querySelector("[data-home-look]"); return r ? Number(r.getAttribute("data-home-fit") || 0) : 0; })() };
 });
 const openHome = async (opts) => {
   const o = await open({ profile: prof, w: W6, h: H6, dsf: 1, rpcs: schedRpcs(FX, null), ...opts });
@@ -483,7 +484,9 @@ if (want("FIRST")) {
   const zeros = await o.page.evaluate(() => /0\s*дней/i.test(document.body.innerText));
   ok("FIRST: на главной нет «0 дней»", !zeros);
   ok("FIRST: одно главное действие — первый урок, без плашек «Разминка» и «Шаг дня»", !g.pills && /Начать/.test(await o.page.evaluate(() => document.querySelector("[data-day-chips]") ? document.body.innerText : "")), JSON.stringify(g));
-  ok("FIRST: логотип на четверть меньше — 152×121 (было 198×158)", g.logo && g.logo[0] === 152 && g.logo[1] === 121, JSON.stringify(g.logo));
+  // v101 (Доп. 414): главная целиком на экране — если девиз уходил под меню, логотип ужат (те же пропорции, не мельче 90×72)
+  ok("FIRST: логотип на четверть меньше — 152×121 (было 198×158; v101: ужат под экран — в тех же пропорциях)",
+    g.logo && (g.fitK ? g.logo[1] < 121 && g.logo[1] >= 72 && Math.abs(g.logo[0] / g.logo[1] - 152 / 121) < 0.03 : g.logo[0] === 152 && g.logo[1] === 121), JSON.stringify({ logo: g.logo, k: g.fitK }));
   await shot(o.page, "first");
   ok("FIRST: без ошибок", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();

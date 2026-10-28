@@ -47,7 +47,7 @@ describe("v58: трек по должности (неудобство 3)", () =>
   });
   it("главная: «по должности · сменить» под ролью; «сменить» ведёт к списку треков", () => {
     const rs = rd("ui/screens-roleselect.jsx");
-    expect(rs).toMatch(/nowCard = null, nowOn = null, firstDay = false, roleAuto = false(, tracksOpen = false)?(, lateRow = null)? \}\) \{/);   // v99: lateRow — «Опаздываю?»
+    expect(rs).toMatch(/nowCard = null, nowOn = null, firstDay = false, roleAuto = false(, tracksOpen = false)?(, lateRow = null)?(, look = "now")? \}\) \{/);   // v99: lateRow — «Опаздываю?»
     expect(rs).toContain('по должности · <button type="button" data-role-change="" onClick={toTracks}');
     expect(rs).toMatch(/<(div|button type="button") ref=\{refTracks\} data-tracks-title=""/);
     expect(rs).toContain('<div ref={refTracks} data-home2-title="" data-tracks-title=""');

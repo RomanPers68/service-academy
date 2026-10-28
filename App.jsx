@@ -334,6 +334,7 @@ import { hintsFor, hintKey } from "./data/hints";
 // файл попадали экраны руководителя, «Команды», экзамена, рейтинга и живого диалога (около 250 КБ кода); теперь они
 // грузятся при первом открытии, а фоновый прогрев (ниже) подтягивает их заранее, когда главная уже на экране.
 import { RoleSelect } from "./ui/screens-roleselect";
+import { homeLook, LOOK_EVENT } from "./lib/home-look";   // v101 (Доп. 414): вид главной
 import { MistakesScreen, HomeScreen, ModuleScreen, LessonScreen, GlossaryScreen, loadTable, useTableModule } from "./ui/screens-learning";
 import { APP_SHARE_URL } from "./lib/app-url";
 import { buildQdayQueue, qdayNeedsPush, qdayMarkPushed, newQdayAnswers, markQdaySeen, applyQdayToBank } from "./lib/qday";   // v81: вопрос дня в Telegram
@@ -1287,6 +1288,9 @@ function ServiceAcademy() {
   React.useEffect(() => { setTgRemind(readRemindFlag(ukP)); }, [ukP]);
   // ── Доп. 303: подтверждение в зале — сколько запросов ждут старшего (этап 22) ──
   const isLead = !!profile && (!!profile.is_admin || ["manager", "senior"].includes(profile.position));
+  // v101 (Доп. 414): вид главной (lib/home-look.js); пока владелец не выбрал — «как сейчас», в демо — переключатель
+  const [look, setLook] = useState(() => homeLook());
+  useEffect(() => { const on = () => setLook(homeLook()); window.addEventListener(LOOK_EVENT, on); return () => window.removeEventListener(LOOK_EVENT, on); }, []);
   const [hallInbox, setHallInbox] = useState(0);
   React.useEffect(() => {
     if (!isLead || !storageLoaded || !["teamHub", "roleSelect"].includes(screen)) return undefined;
@@ -3095,7 +3099,7 @@ function ServiceAcademy() {
                   и не получала цветов темы (тёмный воск). Из показанного выбрано «пламя» — как у серии на табличке выше */}
               <Flame lit s={18} a11y={a11y} />
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
-          nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted} lateRow={lateOn ? { key: "late", label: "Опаздываю?", title: "предупредить", onClick: openLate } : null}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
+          look={look} nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted} lateRow={lateOn ? { key: "late", label: "Опаздываю?", title: "предупредить", onClick: openLate } : null}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
           qdayCard={qdayData && qdayData.item && (!Number.isInteger(qdayData.item.answer) || qdayKeep) ? <QdayCard a11y={a11y} data={qdayData} busy={qdayBusy} err={qdayErr} onAnswer={answerQday} onMistakes={() => navigate("mistakes")} onHide={() => setQdayKeep(false)} /> : null}   /* v88; v89 — отвеченный только сразу после ответа */
           warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}

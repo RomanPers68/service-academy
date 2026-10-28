@@ -30,6 +30,9 @@ import { moodTier, MOOD_REPLY } from "../lib/now-card";   // v56 (Доп. 369): 
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor, goldText, labelStyle } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
 import { NowInvitation } from "./now-hero";   // v68 (Доп. 381): главная карточка «Приглашение»
+import { lookClass } from "../lib/home-look";   // v101 (Доп. 414): вид главной с общим элементом
+import { ensureLookCss } from "./home-look";
+import { fitValues, fitOver, fitNext, fitTailFor, fitTail, fitBudget, FIT_ABOVE, FIT_NONE } from "../lib/home-fit";   // v101: главная целиком на экране
 
 const _WAX_BLOB = "M12 1.9c2.3-.3 4.5.7 6.1 2.2 1.6 1.5 2.9 3.5 3.5 5.6.6 2.2.2 4.6-1 6.5-1.1 1.9-3 3.5-5.1 4.4-2.1.9-4.6 1-6.7.1-2.1-.8-3.9-2.5-5-4.5-1.1-2-1.5-4.4-.9-6.6C3.5 7.4 5 5.4 6.9 4 8.4 2.9 10.2 2.1 12 1.9Z";
 const WaxSealMini = ({ size = 15, rot = 0 }) => (
@@ -83,9 +86,66 @@ export const TRACK_GROUPS = [
 // SOS, после смены — «как прошла?», после перерыва — «С возвращением». v68 (Доп. 381): карточка — «Приглашение»
 // (ui/now-hero.jsx NowInvitation), и в обычный день тоже — приглашение к следующему шагу трека.
 const MOOD_TITLE = { good: "Хорошая смена", ok: "Ровная смена", hard: "Тяжёлая смена, бывает" };
+// v101 (Доп. 414): последняя подгонка главной под экран (lib/home-fit.js) — при возврате на главную с того же экрана
+// она сразу в нужном размере, без лишних перерисовок; fail — «не влезает и так» для этого размера окна; t0, n, frozen —
+// предохранитель (fitBudget)
+const FIT_MEMO = { w: 0, h: 0, fit: FIT_NONE, fail: null };
+const fitStart = () => (typeof window !== "undefined" && FIT_MEMO.w === window.innerWidth && FIT_MEMO.h === window.innerHeight ? FIT_MEMO.fit : FIT_NONE);
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now" }) {
   const isAdmin = !!profile?.is_admin;
+  // v101 (Доп. 414): вид главной (lib/home-look.js): «Линза» или «как сейчас» — классы на корне и стили
+  // ui/home-look.jsx; раскладка та же.
+  const lk = lookClass(look);
+  if (lk) ensureLookCss();
+  // v101 (Доп. 414): главная целиком на экране (lib/home-fit.js). Владелец: «сжать немного элементы и закрепить экран…
+  // чтобы было видно девиз академии и все элементы были видны без того, чтобы скролить… чтобы учитывались открытые уроки,
+  // тогда уже может работать скрол». Низ девиза (при прокрутке 0) заходит за нижнее меню — логотип и отступы чуть меньше,
+  // ровно насколько не хватает (доля fit.k); не влезает и так — как было. Девиз над меню — экран стоит: места под девизом
+  // (fit.tail) не больше, чем осталось до низа главной при её минимальной высоте, и страница ровно в экран. Раскрыт
+  // список треков или карточка трека — не пересчитываем: работает прокрутка, ничего не прыгает. Лёжа, в две колонки и с
+  // меню слева — без этого. Все замеры не зависят от самой подгонки (низ девиза — от верха главной, минимальная высота —
+  // из стиля), число подгонок подряд ограничено (fitBudget): первая сборка на iPhone зацикливалась (React #185).
+  const rootRef = React.useRef(null);
+  const [fit, setFitState] = React.useState(fitStart);
+  const setFit = (v) => { FIT_MEMO.w = window.innerWidth; FIT_MEMO.h = window.innerHeight; FIT_MEMO.fit = v; setFitState(v); };
+  const [, setFitTick] = React.useState(0);
+  const fitOn = !!role && !wideCols && !short;
+  const F = fitValues(fitOn ? fit.k : 0), FT = fitTail(fitOn ? fit.tail : null);
+  const fitOnRef = React.useRef(fitOn);
+  fitOnRef.current = fitOn;
+  React.useLayoutEffect(() => {
+    const W = window.innerWidth, H = window.innerHeight;
+    const put = (v) => { if ((v.k !== fit.k || v.tail !== fit.tail) && fitBudget(FIT_MEMO, Date.now(), W, H)) setFit(v); };
+    if (!fitOn) { put(FIT_NONE); return; }
+    if (FIT_MEMO.frozen && FIT_MEMO.frozen.w === W && FIT_MEMO.frozen.h === H) return;   // предохранитель сработал
+    const root = rootRef.current, tab = document.getElementById("sa-tabbar"), sc = document.getElementById("root");
+    if (!root || listOpen || root.querySelector("[data-track-open]")) return;
+    const q = root.querySelector("[data-tracks-quote]"), tr = tab ? tab.getBoundingClientRect() : null;
+    if (!q || !sc || !tr || tr.top < H * 0.6) { put(FIT_NONE); return; }   // меню не внизу (меню слева)
+    // низ девиза от верха главной (главная въезжает — fadeIn, сдвиг 12 px — сдвиг сокращается); верх главной — по обёртке
+    const par = root.parentElement, rr = root.getBoundingClientRect();
+    const top0 = par ? par.getBoundingClientRect().top + (parseFloat(getComputedStyle(par).paddingTop) || 0) : rr.top;
+    const rel = q.getBoundingClientRect().bottom - rr.top, minH = parseFloat(getComputedStyle(root).minHeight);
+    const over = fitOver(top0 + rel + sc.scrollTop + (window.scrollY || 0), tr.top, rel, minH);   // при прокрутке 0
+    const over0 = over + fit.k * FIT_ABOVE, f = FIT_MEMO.fail;
+    if (fit.k === 0 && f && f.w === W && f.h === H && over0 >= f.over0 - 2) { put(FIT_NONE); return; }   // пробовали: не влезает
+    const k = fitNext(fit.k, over);
+    if (k === 0 && fit.k > 0 && over > 0.5) FIT_MEMO.fail = { w: W, h: H, over0 };
+    // размеры поменялись — место под девизом меряем на следующем проходе; девиз на месте — место до низа главной
+    if (Math.abs(k - fit.k) > 0.0005) put({ k, tail: fit.tail });
+    else put({ k: fit.k, tail: over <= 0.5 ? fitTailFor(rel, minH) : null });
+  });
+  // пересчёт, когда меняется высота главной (карточка трека свернулась, пришли данные) или окна. Пока раскрыт список
+  // треков или карточка трека (и пока она едет), главную не перерисовываем: мерить всё равно нечего
+  React.useEffect(() => {
+    const el = rootRef.current; if (!el) return undefined;
+    const bump = () => { if (fitOnRef.current && !el.querySelector("[data-track-open],[data-tracks-list]")) setFitTick((t) => t + 1); };
+    let ro = null;
+    try { ro = new ResizeObserver(bump); ro.observe(el); if (el.firstElementChild) ro.observe(el.firstElementChild); } catch (e) {}
+    window.addEventListener("resize", bump);
+    return () => { if (ro) ro.disconnect(); window.removeEventListener("resize", bump); };
+  }, []);
   // v56 (Доп. 369): ответ на «как прошла смена» — пока человек не решил, разбирать ли с Наставником
   const [moodReply, setMoodReply] = React.useState(null);
   // v69 (Доп. 382): с каким состоянием открылась главная — карточка проявляется только при смене состояния на открытом
@@ -179,7 +239,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // «не X, а Y» — любимый шаблон нейросетей, владелец выбрал короткий вариант (23.10, «2😉»). В уроке «Что такое сервис?»
   // фраза прежняя — там вокруг неё объяснение.
   const quote = (
-    <div data-tracks-quote="" style={{ margin:"4px 16px 12px", padding:"8px 14px", borderLeft:"2px solid #D2A85A44" }}>
+    <div data-tracks-quote="" style={{ margin: F.quoteMt + "px 16px " + FT.quoteMb + "px", padding: F.quotePt + "px 14px " + F.quotePb + "px", borderLeft:"2px solid #D2A85A44" }}>
       <span style={{ color:T.modSub.color, fontSize:12.5, fontStyle:"italic", lineHeight:1.6 }}>
         «Сервис — это забота»
       </span>
@@ -188,7 +248,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   return (
     // v50 (Доп. 363): широкий экран — две колонки (sa-home2, правила в ui/css.js): слева шапка дня, справа треки.
     // Телефон лёжа — логотип меньше, чтобы под ним сразу было видно день.
-    <div style={T.screen} className={"sa-screen" + (wideCols ? " sa-home2" : "")}>
+    <div ref={rootRef} style={T.screen} className={"sa-screen" + (wideCols ? " sa-home2" : "") + lk} data-home-look={look}
+      data-home-fit={fitOn && fit.k ? fit.k.toFixed(2) : undefined} data-home-tail={fitOn && fit.tail !== null ? fit.tail : undefined}>
       <div style={{ ...T.roleHeader, position:"relative", overflow:"hidden" }}>
         {/* Доп. 146: свет по времени суток — утром теплее и светлее, вечером глубже и золотистее */}
         {(() => {
@@ -204,9 +265,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           </>);
         })()}
         {/* v56 (Доп. 369): логотип на четверть меньше (198 → 152 px) — первым на экране «что сделать», а не знак */}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : "16px 24px 8px" }}>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : F.logoPadTop + "px 24px " + F.logoPadBottom + "px" }}>
           <img src={LOGO_SRC_DARK /* тёмная версия читается на обеих темах;
-                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" decoding="sync" style={{ width: short ? 118 : 152, height: short ? 94 : 121, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+                    если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" decoding="sync" style={{ width: short ? 118 : F.logoW, height: short ? 94 : F.logoH, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         </div>
         {/* ═══ Приветствие по часам (профиль-карточка переехала в «Профиль») ═══ */}
         {profile && (() => {
@@ -225,7 +286,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           const roleObj = role ? ROLES.find(r => r.id === role) : null;
           const RCg = roleObj ? (inkOf(roleObj.color, a11y) || (a11y ? "#4E7A58" : "#8FB890")) : null;
           return (
-            <div style={{ padding:"2px 20px 8px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
+            <div style={{ padding:"2px 20px " + F.greetPb + "px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
               <div style={{ color: T.modTitle.color, fontSize:18, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: goldText(a11y) }}>{profile.name}</span>
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
@@ -254,7 +315,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
         {/* Доп. 298, 306: ритм дня (из App). v43 (Доп. 356): табличка во всю ширину под приветствием —
             пламя серии, бокал «цель дня» и венок «Путь мастера» в медальонах, с трека и без. До v43 значки
             стояли в строке роли (без трека — под заведением) и были «мелкие и невзрачные». v44: плотнее. */}
-        {profile && dayStrip ? <div data-day-chips="" style={{ padding:"0 14px 8px" }}>{dayStrip}</div> : null}
+        {profile && dayStrip ? <div data-day-chips="" style={{ padding:"0 14px " + F.stripPb + "px" }}>{dayStrip}</div> : null}
 
         {/* v31: строка напарника; без трека — с теми же полями, что у карточек ниже */}
         {!role && dayNote ? <div style={{ padding:"0 10px" }}>{dayNote}</div> : null}
@@ -328,7 +389,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           const rows = lateRow && !firstDay ? [lateRow, ...rows0].slice(0, 3) : rows0;
           const foot = !ctx && warm && warm.props ? warm.props.children || null : null;
           return (
-            <div style={{ padding:"0 14px 9px" }}>
+            <div style={{ padding:"0 14px " + F.cardPb + "px" }}>
               {/* Роль чипом. После перестройки она пряталась только в заголовке
                   карточки, и на экране её было не видно. v44 (Доп. 357): роль — строкой под именем в
                   приветствии (там же видна), отдельного ряда над карточкой больше нет. */}
@@ -391,7 +452,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           // border-box: основа 150 px — вместе с полями и рамкой, иначе плитка с полями шире соседки и ряд переносится раньше
           const tile = { flex:"1 1 150px", minWidth:0, boxSizing:"border-box", position:"relative", borderRadius:14, cursor:"pointer", background: saInner(a11y), boxShadow: glass };
           return (
-            <div data-home-tiles="" style={{ display:"flex", flexWrap:"wrap", gap:8, padding:"0 14px 8px" }}>
+            <div data-home-tiles="" style={{ display:"flex", flexWrap:"wrap", gap:8, padding:"0 14px " + F.tilesPb + "px" }}>
               <ScheduleTile a11y={a11y} mgr={mgr} tile={tile} frame={saFrame(a11y, "mid")}
                 onOpen={() => onSchedule && onSchedule()} act={onActivate(() => onSchedule && onSchedule())} />
               {bs ? (
@@ -550,9 +611,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 // всё вокруг — карточки с полями; к тому же сразу под блоком
                 // уже стоит разделитель приложения, и полос выходило три подряд.
                 // В общей карточке ряд перестаёт быть наклейкой поверх вёрстки.
-                <div ref={refTools} className={homeHint && hintsReady && homeStep === 1 ? "sa-pulse" : undefined}
+                <div ref={refTools} data-tools-capsule="" className={homeHint && hintsReady && homeStep === 1 ? "sa-pulse" : undefined}
                   style={{ display:"flex", alignItems:"center", gap:6,
-                  margin:"0 14px 8px", padding: narrow ? "6px 9px" : "6px 10px", borderRadius:999,
+                  margin:"0 14px " + F.toolsMb + "px", padding: narrow ? "6px 9px" : "6px 10px", borderRadius:999,
                   background: saInner(a11y), border:`1px solid ${saFrame(a11y, "mid")}`,
                   boxShadow: a11y
                     ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)"
@@ -581,8 +642,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                             padding:2, borderRadius:999, WebkitTapHighlightColor:"transparent",
                             background: on ? `${c}1F` : "transparent",
                             transition:"background .45s ease" }}>
-                          <span style={{ position:"relative", width:ring, height:ring, borderRadius:"50%",
-                            display:"grid", placeItems:"center", flexShrink:0,
+                          <span data-tool-disc="" style={{ position:"relative", width:ring, height:ring, borderRadius:"50%",
+                            display:"grid", placeItems:"center", flexShrink:0, "--tint": c + "55",
                             background:`${c}${on ? "33" : "24"}`, transition:"background .45s ease" }}>
                             {React.cloneElement(t.icon, { width:ico, height:ico })}
                             {(badge || dot) ? (
@@ -614,7 +675,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                         не нужно догадываться по иконке щита. */}
                     <span style={{ width:1, height:34, flexShrink:0, alignSelf:"center",
                       background: saFrame(a11y, "mid"), margin:"0 2px" }} />
-                    <div onClick={sos.onClick} {...onActivate(sos.onClick)} title="Срочная помощь"
+                    <div data-sos-disc="" onClick={sos.onClick} {...onActivate(sos.onClick)} title="Срочная помощь"
                       style={{ flexShrink:0, width: narrow ? 40 : 42, height: narrow ? 40 : 42, borderRadius:"50%", cursor:"pointer",
                         display:"grid", placeItems:"center", alignSelf:"center",
                         WebkitTapHighlightColor:"transparent",
@@ -637,7 +698,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           );
         })()}
         {/* v73 (Доп. 386): разделитель — одна тонкая линия, без звёздочки ✦ посередине; высота строки прежняя */}
-        <div style={{ display:"flex", alignItems:"center", height:19, padding:"0 20px 10px" }}>
+        <div style={{ display:"flex", alignItems:"center", height:F.divH, padding:"0 20px " + F.divPb + "px" }}>
           <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, transparent, #D2A85A55, transparent)" }} />
         </div>
 
@@ -647,7 +708,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           role ? (
             <button type="button" ref={refTracks} data-tracks-title="" data-tracks-toggle={listOpen ? "open" : "closed"} aria-expanded={listOpen}
               onClick={() => { vibrate("light"); setListOpen((v) => !v); }}
-              style={{ width:"100%", background:"none", border:"none", padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8, cursor:"pointer", textAlign:"left", scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
+              style={{ width:"100%", background:"none", border:"none", padding:"0 14px " + F.titlePb + "px", display:"flex", alignItems:"center", gap:8, cursor:"pointer", textAlign:"left", scrollMarginTop:"calc(var(--sa-top, 0px) + 12px)" }}>
               <div style={{ ...T.roleSubtitle }}>Треки обучения</div>
               <div style={{ flex:1, height:1, background:"linear-gradient(to right, #D2A85A33, transparent)" }} />
               <div style={{ fontFamily:"Georgia, serif", fontSize:12.5, color: T.modSub.color, whiteSpace:"nowrap" }}>{listOpen ? "Свернуть" : "подробнее"}</div>
@@ -863,7 +924,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
         quote
       )}
 
-      <div style={{ padding:"0 14px 20px", display:"flex", flexDirection:"column", gap:8 }}>
+      <div style={{ padding:"0 14px " + FT.tailPb + "px", display:"flex", flexDirection:"column", gap:8 }}>
 
       </div>
     </div>

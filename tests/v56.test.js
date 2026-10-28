@@ -146,7 +146,8 @@ describe("v56: главная", () => {
   });
   it("«С возвращением» вместо приветствия по часам; логотип 152×121 (лёжа — как был, 118×94)", () => {
     expect(home).toContain("const hello = nowCard && nowCard.mode === \"back\" ? \"С возвращением\" : h < 6 ? \"Доброй ночи\"");
-    expect(home).toContain("style={{ width: short ? 118 : 152, height: short ? 94 : 121, objectFit:\"contain\"");
+    // v101 (Доп. 414): стоя — F.logoW × F.logoH из lib/home-fit.js: 152×121, пока главная не ужата под экран
+    expect(home).toMatch(/style=\{\{ width: short \? 118 : (152|F\.logoW), height: short \? 94 : (121|F\.logoH), objectFit:"contain"/);
   });
 });
 

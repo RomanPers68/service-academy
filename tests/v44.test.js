@@ -175,7 +175,8 @@ describe("v44: «Пульс недели», табличка и полка — �
     // v65 (Доп. 378): 36 / 34 px — по-прежнему наибольший размер; уже ряд — кружки меньше, чтобы подпись влезала
     expect(src).toContain("const n = tools.length, base = narrow ? 34 : 36;");
     expect(src).toContain("dockFit(toolsFit.w, toolsFit.l, n, base)");
-    expect(src).toContain('margin:"0 14px 8px", padding: narrow ? "6px 9px" : "6px 10px", borderRadius:999,');
+    // v101 (Доп. 414): отступ под лентой — из lib/home-fit.js (8 px, пока главная не ужата под экран)
+    expect(src).toMatch(/margin:("0 14px 8px"|"0 14px " \+ F\.toolsMb \+ "px"), padding: narrow \? "6px 9px" : "6px 10px", borderRadius:999,/);
     expect(src).toContain("width: narrow ? 40 : 42, height: narrow ? 40 : 42");
   });
 });

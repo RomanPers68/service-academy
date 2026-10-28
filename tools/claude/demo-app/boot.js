@@ -5,11 +5,13 @@
 // v99 (Доп. 412): время в демо идёт с 11:00 (у Анны и Марии смена с 12:00, на главной «Опаздываю?»); «Новый телефон» —
 // вход через Telegram без кода; сообщения бота в Telegram — уведомлением сверху (с кнопкой «Принято»); страница
 // «Подписаться» на календарь и страница подключения бота открываются поверх приложения.
+// v101 (Доп. 414): главная «Линза»; в строке демо — «Вид: …» (Линза или как было), главная меняется сразу.
 // Собирается в один скрипт (esbuild, IIFE) и подключается в index.html до приложения.
 import { makeServer, SHIFTS, full } from "./fake-server.js";
 import { RESTAURANT_MENUS } from "../../../data/menu.js";
 import { HINTS, HINTS_VERSION } from "../../../data/hints.js";
 import { calPage } from "../../../lib/ical.js";
+import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib/home-look.js";
 
 const K_SRV = "__demo_srv", K_WHO = "__demo_who", K_DAY = "__demo_day", K_T = "__demo_t", K_NEW = "__demo_newphone";
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -102,7 +104,7 @@ try { saved = lsGet(K_DAY) === TODAY ? JSON.parse(lsGet(K_SRV) || "null") : null
 // пройденное: Анна и Мария не новички (инструменты открыты), коллеги — для заданий «кто прошёл»
 const DONE = ["s0-1", "s0-2", "s0-3", "s0-4", "s1-1", "s1-2"];
 const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaff: SSTAFF, cfg: CFG, plan: planOf(), menu: MENU, state: saved,
-  progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"] },
+  progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],
   tgKnown: { [TG_ANNA]: "e-anna" },
   // бот пишет в Telegram: мне — уведомлением сверху, остальным — никак (их телефонов в демо нет)
@@ -126,13 +128,20 @@ if (!saved) {
 // ── то, что приложение ждёт на устройстве: вход, подсказки уже показаны ──
 function seed() {
   const uk = "_" + me.name + "_" + me.surname;
-  const keep = new Set([K_SRV, K_WHO, K_DAY, K_T]);
+  const keep = new Set([K_SRV, K_WHO, K_DAY, K_T, LOOK_KEY]);
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}
   const s = { sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_ai_fab: "1", ["sa_last_role" + uk]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + uk]: "1", ["sa_mastery" + uk]: JSON.stringify({ tiers: {}, fw: false, master: {} }),
     sa_menu_shared: JSON.stringify({ [R0]: srv.S.menu }), sa_boot_missing: String(Date.now()), __demo_me: me.id };
   if (!newPhone) { s.sa_session_token = tokOf(me.id); s.sa_profile = JSON.stringify(me); }   // новый телефон — входа ещё нет
+  // v101: серия и журнал прошлых дней — живой сотрудник, а не первый день (Анна 3 дня подряд, Мария 6, Роман 2)
+  const sn = { "e-anna": 3, "u-maria": 6, "u-roman": 2 }[me.id] || 0;
+  if (sn && !newPhone) {
+    const ago = (n) => iso(new Date(Date.now() - n * 86400000));
+    s["sa_streak" + uk] = JSON.stringify({ count: sn, best: Math.max(sn, 5), last: ago(1), days: Array.from({ length: sn }, (_, i) => ago(sn - i)) });
+    s["sa_activity" + uk] = JSON.stringify(Object.fromEntries(Array.from({ length: sn }, (_, i) => [ago(sn - i), { st: 2, l: 1, q: 1 }])));
+  }
   for (const k of Object.keys(HINTS)) s["sa_hint_v" + HINTS_VERSION + "_" + k] = "1";
   s["sa_hint_v" + HINTS_VERSION + "_track_orb"] = "1";
   Object.entries(s).forEach(([k, v]) => lsSet(k, v));
@@ -309,6 +318,13 @@ html.sa-tgfs body{padding-top:var(--sa-st,0px)}
 #demo-strip .tag{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:#C8A96E;border:1px solid rgba(214,178,102,0.45);border-radius:999px;padding:3px 8px}
 #demo-strip .who{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #demo-strip button{font-family:Georgia,serif;font-size:12.5px;color:#1C150A;background:linear-gradient(180deg,#E4C88C,#C8A96E);border:none;border-radius:999px;padding:6px 12px;cursor:pointer}
+#demo-strip .look{position:relative;flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:5px 26px 5px 11px;border-radius:999px;border:1px solid rgba(214,178,102,0.55);
+  color:#EAD9B4;font-size:12.5px;white-space:nowrap}
+#demo-strip .look b{font-weight:normal;color:#F3E6C8}
+#demo-strip .look:after{content:"";position:absolute;right:11px;top:50%;width:6px;height:6px;margin-top:-5px;border:solid #C8A96E;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+#demo-strip .look select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
+#demo-strip .chg{flex-shrink:0}
+@media (max-width:380px){#demo-strip{gap:7px;padding:0 8px}#demo-strip .tag{display:none}#demo-strip .look .lk-l{display:none}#demo-strip .chg{padding:6px 10px}}
 #demo-veil{position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,0.5);display:flex;align-items:flex-start;justify-content:center;padding:${STRIP + 8}px 12px 12px;box-sizing:border-box}
 #demo-box{width:100%;max-width:440px;max-height:calc(100% - 20px);overflow-y:auto;box-sizing:border-box;border-radius:18px;padding:16px;font-family:Georgia,serif;color:#EAD9B4;
   background:linear-gradient(180deg,rgba(38,29,15,0.99),rgba(22,17,8,0.99));border:1px solid rgba(145,108,40,0.4);border-top-color:rgba(210,168,65,0.45);box-shadow:inset 0 0 22px rgba(255,248,230,0.05),0 10px 30px rgba(0,0,0,0.5)}
@@ -344,9 +360,9 @@ html.sa-tgfs body{padding-top:var(--sa-st,0px)}
 #demo-page pre{margin:0;padding:14px 14px 30px;white-space:pre-wrap;word-break:break-word;font:14px/1.5 ui-monospace,Menlo,monospace;color:#1d1d1d;background:#fff;flex:1;overflow:auto}
 `;
 const TIPS = {
-  anna: { t: "Анна Смирнова, официант", s: "В демо 11:00, смена с 12:00: на главной «Опаздываю?». В чате «@» зовёт коллегу, лупа ищет по переписке, недописанное сообщение ждёт в строке. «Смена» → «Смены в календаре телефона»." },
-  maria: { t: "Мария Ким, менеджер", s: "Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота. «@все» зовёт всю команду. В «Графике» у дня отметка опоздания." },
-  roman: { t: "Роман, владелец", s: "«Команда» → «Сервер»: этапы базы, бот, расписания. «Подключить бота» одной кнопкой: вебхук, кнопка «Академия» у поля ввода, команды бота." },
+  anna: { t: "Анна Смирнова, официант", s: "Главная сотрудника: медальоны дня, приглашение, график и книга отзывов, инструменты, треки. В демо 11:00, смена с 12:00: на главной «Опаздываю?»." },
+  maria: { t: "Мария Ким, менеджер", s: "Главная менеджера: у инструментов ещё «AI-интервью». Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота." },
+  roman: { t: "Роман, владелец", s: "Главная владельца: «Пульс недели» и все инструменты. «Команда» → «Сервер»: этапы базы, бот, расписания." },
   phone: { t: "Анна: новый телефон", s: "Приложение открыли в Telegram на новом телефоне. Кода нет, а оно узнаёт Анну само: она подключала напоминания." },
 };
 function strip() {
@@ -354,15 +370,23 @@ function strip() {
   document.documentElement.classList.add("sa-tgfs");
   document.documentElement.style.setProperty("--sa-st", STRIP + "px");
   const el = document.createElement("div"); el.id = "demo-strip";
-  el.innerHTML = '<span class="tag">Демо</span><span class="who"></span><button type="button">Сменить</button>';
+  el.innerHTML = '<span class="tag">Демо</span><span class="who"></span>' +
+    '<label class="look"><span class="lk-l">Вид:</span><b></b><select aria-label="Вид главной"></select></label>' +
+    '<button type="button" class="chg">Сменить</button>';
+  // v101: «Вид: …» — как сейчас, Линза, Строчка, Меню; главная меняется сразу (App слушает LOOK_EVENT)
+  const sel = el.querySelector(".look select"), lab = el.querySelector(".look b");
+  for (const k of LOOKS) { const o = document.createElement("option"); o.value = k; o.textContent = LOOK_NAMES[k].replace(/^./, (c) => c.toUpperCase()); sel.appendChild(o); }
+  const lookUpd = () => { const v = homeLook(); sel.value = v; lab.textContent = LOOK_NAMES[v].replace(/^./, (c) => c.toUpperCase()); };
+  sel.addEventListener("change", () => { setHomeLook(sel.value); lookUpd(); });
+  lookUpd();
   el.querySelector(".who").textContent = (newPhone ? TIPS.phone.t : TIPS[who].t) + " · " + R0;
-  el.querySelector("button").addEventListener("click", panel);
+  el.querySelector(".chg").addEventListener("click", panel);
   document.body.appendChild(el);
 }
 function panel() {
   if (document.getElementById("demo-veil")) return;
   const v = document.createElement("div"); v.id = "demo-veil";
-  v.innerHTML = '<div id="demo-box" role="dialog" aria-label="Демо"><h3>Кто ты в демо</h3><p>Заведение выдуманное, сервер живёт в этой странице. Время в демо идёт с 11:00. Коллеги отвечают сами, а то, что бот прислал бы в Telegram, появляется уведомлением сверху.</p></div>';
+  v.innerHTML = '<div id="demo-box" role="dialog" aria-label="Демо"><h3>Кто ты в демо</h3><p>Заведение выдуманное, сервер живёт в этой странице. Время в демо идёт с 11:00. Коллеги отвечают сами, а то, что бот прислал бы в Telegram, появляется уведомлением сверху. «Вид» в строке вверху показывает главную «Линзой» или как было до неё.</p></div>';
   const box = v.querySelector("#demo-box");
   for (const k of ["anna", "maria", "roman", "phone"]) {
     const b = document.createElement("button"); b.type = "button"; b.className = "p"; b.setAttribute("aria-pressed", String(k === "phone" ? newPhone : k === who && !newPhone));

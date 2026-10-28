@@ -140,7 +140,7 @@ describe("v50: колонка экрана и классы на <html>", () => {
 describe("v50: главная в две колонки", () => {
   const rs = rd("ui/screens-roleselect.jsx");
   it("sa-home2: слева шапка дня, справа треки; заголовок треков — над правой колонкой", () => {
-    expect(rs).toContain('<div style={T.screen} className={"sa-screen" + (wideCols ? " sa-home2" : "")}>');
+    expect(rs).toMatch(/className=\{"sa-screen" \+ \(wideCols \? " sa-home2" : ""\)( \+ lk)?\}/);   // v101: + класс вида главной
     expect(rs).toContain('data-home2-title=""');
     expect(rs).toMatch(/\{!wideCols \? \(\s+(role \? \(\s+<button[^]*?\) : \(\s+)?<div (ref=\{refTracks\} data-tracks-title="" )?style=\{\{ padding:"0 14px 8px", display:"flex", alignItems:"center", gap:8/);   // v58: якорь «сменить»; v59: с треком — кнопка-переключатель
     expect(css).toContain("html.sa-wide .sa-home2 { display: grid !important; grid-template-columns: minmax(310px, 440px) minmax(300px, 1fr);");
@@ -150,7 +150,8 @@ describe("v50: главная в две колонки", () => {
   });
   it("телефон лёжа — логотип меньше (118×94 вместо 198×158); узкая левая колонка — плотнее ряд инструментов", () => {
     // v56 (Доп. 369): стоя логотип на четверть меньше — 152×121 (было 198×158); лёжа — как был, 118×94
-    expect(rs).toMatch(/width: short \? 118 : (198|152), height: short \? 94 : (158|121)/);
+    // v101 (Доп. 414): стоя — из lib/home-fit.js (152×121, пока главная не ужата под экран)
+    expect(rs).toMatch(/width: short \? 118 : (198|152|F\.logoW), height: short \? 94 : (158|121|F\.logoH)/);
     expect(rs).toContain("(window.innerWidth < 380 || (wideCols && wideColW > 0 && wideColW < 728))");
     expect(app).toContain("<RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short}");
   });

@@ -19,7 +19,10 @@
 --   • проверка сервера владельцем: server_check(p_token, p_fns, p_buckets, p_url) — какие функции и корзины на месте,
 --     Telegram, расписания pg_cron; owner_tg_setup(p_token, p_app) — код подключения бота из приложения (вместо SQL);
 --   • бот: /smena — ближайшие смены; отметка последнего события от Telegram (tg_last_update) для экрана «Сервер»;
---     sa_tg_setup_take отдаёт адрес приложения — функция tg-bot ставит кнопку «Академия» у поля ввода и список команд.
+--     sa_tg_setup_take отдаёт адрес приложения — функция tg-bot ставит кнопку «Академия» у поля ввода и список команд;
+--   • v100 (Доп. 413): смены и словами — «смена», «смены», «мои смены», «график», smena без слеша, в том числе ответом на
+--     сообщение бота (не о переписке); бот узнаёт и тех, кто входит в приложение через Telegram (sa_tg_auth), без
+--     напоминаний. После v99 перезапусти этот файл.
 --
 -- Нужны этапы 21, 22б, 24, 25, 31 и 38. Ничего не удаляет. Можно запускать повторно.
 -- Этот файл заменяет sa_tg_update, _sa_chat_view, sa_tg_setup_take и sa_tg_setup_code: если после него снова запускали
@@ -581,6 +584,33 @@ begin
 end; $$;
 
 -- ── 9) Бот: /smena, «Принято» на опоздание, отметка последнего события ─────────
+-- v100 (Доп. 413): просят смены: /smena, smena, «смена», «смены», «мои смены», «график» и т. п. — всё сообщение целиком;
+-- регистр, «ё», лишние пробелы, точка или «?» в конце и @имя_бота после команды не важны
+create or replace function _sa_tg_is_shifts(p_text text)
+returns boolean language sql immutable as $$
+  select regexp_replace(regexp_replace(regexp_replace(_sa_low_e(btrim(coalesce(p_text, ''))), '\s+', ' ', 'g'), '^/', ''), '(@[a-z0-9_]+)?[ .!?,…]*$', '')
+    ~ '^(smena|smeny|shifts|смена|смены|моя смена|мои смены|когда смена|когда смены|когда на смену|график|мой график|расписание)$'
+$$;
+-- v100: кто пишет боту: по напоминаниям (tg_links), а если их нет — по входу через Telegram (sa_tg_auth, если не вышел сам)
+create or replace function _sa_tg_emp(p_tg text)
+returns text language plpgsql stable security definer set search_path to public as $$
+declare c jsonb; e text;
+begin
+  c := _sa_tg_caller(p_tg);
+  if c is not null then return c->>'id'; end if;
+  if coalesce(p_tg, '') !~ '^\d{1,18}$' then return null; end if;
+  select x.id::text into e from sa_tg_auth a join employees x on x.id::text = a.emp_id
+   where a.tg_id = p_tg::bigint and not a.off and coalesce(x.status, 'active') = 'active';
+  return e;
+end; $$;
+-- v100: сообщение бота о переписке — с кнопкой «Открыть чат» (ссылка chat_…), как его узнаёт _sa_chat_tg_reply
+create or replace function _sa_tg_chat_link(p_rm jsonb)
+returns boolean language sql immutable as $$
+  select exists (select 1
+    from jsonb_array_elements(case when jsonb_typeof(p_rm->'reply_markup'->'inline_keyboard') = 'array' then p_rm->'reply_markup'->'inline_keyboard' else '[]'::jsonb end) rw,
+         jsonb_array_elements(case when jsonb_typeof(rw) = 'array' then rw else '[]'::jsonb end) b
+   where coalesce(b->'web_app'->>'url', b->>'url', '') ~ 'chat_\d')
+$$;
 -- ближайшие смены одним сообщением (две недели вперёд, до 6)
 create or replace function _sa_tg_shifts_text(p_emp text)
 returns text language plpgsql stable security definer set search_path to public as $$
@@ -637,7 +667,7 @@ end; $$;
 create or replace function sa_tg_update(p_secret text, p_update jsonb)
 returns jsonb language plpgsql security definer set search_path to public as $$
 declare want text; cq jsonb; m text[]; v_id bigint; v_n int; nx record; v_from bigint; v_ok boolean; v_c int;
-  txt text; msg jsonb; mt text; chat bigint; who jsonb;
+  txt text; msg jsonb; mt text; chat bigint; emp text;
 begin
   select value into want from sa_settings where key = 'tg_webhook_secret';
   if coalesce(want, '') = '' or coalesce(p_secret, '') <> want then return jsonb_build_object('ok', false, 'error', 'secret'); end if;
@@ -688,33 +718,34 @@ begin
     return jsonb_build_object('ok', true, 'answered', v_id, 'correct', v_ok);
   end if;
 
-  -- v97: ответ на сообщение бота — в чат
   msg := p_update->'message';
-  if jsonb_typeof(msg) = 'object' and jsonb_typeof(msg->'reply_to_message') = 'object' and coalesce(msg->'reply_to_message'->'from'->>'is_bot', '') = 'true' then
+  mt := coalesce(msg->>'text', '');
+  chat := case when coalesce(msg->'chat'->>'id', '') ~ '^-?\d{1,18}$' then (msg->'chat'->>'id')::bigint end;
+  -- v97: ответ на сообщение бота — в чат; v100: «смена» в ответ на сообщение не о переписке — смены
+  if jsonb_typeof(msg) = 'object' and jsonb_typeof(msg->'reply_to_message') = 'object' and coalesce(msg->'reply_to_message'->'from'->>'is_bot', '') = 'true'
+     and not (_sa_tg_is_shifts(mt) and not _sa_tg_chat_link(msg->'reply_to_message')) then
     return _sa_chat_tg_reply(msg);
   end if;
-  mt := coalesce(p_update->'message'->>'text', '');
-  chat := case when coalesce(p_update->'message'->'chat'->>'id', '') ~ '^-?\d{1,18}$' then (p_update->'message'->'chat'->>'id')::bigint end;
-  -- v99: /smena — ближайшие смены по графику
-  if mt ~* '^/(smena|smeny|shifts)(@[a-z0-9_]+)?(\s|$)' and chat is not null then
-    who := _sa_tg_caller(p_update->'message'->'from'->>'id');
-    if who is null then
-      perform sa_tg_send(chat, 'Этот Telegram не связан с приложением. Открой приложение: «Смена» → «Напоминания в Telegram».', 'Открыть академию', null);
+  -- v99: /smena — ближайшие смены по графику; v100: и словами («смена», «мои смены», «график»), и для входа через Telegram
+  if _sa_tg_is_shifts(mt) and chat is not null then
+    emp := _sa_tg_emp(msg->'from'->>'id');
+    if emp is null then
+      perform sa_tg_send(chat, 'Не узнаю этот Telegram. Открой приложение кнопкой ниже и войди: дальше бот будет тебя узнавать.', 'Открыть академию', null);
     else
-      perform sa_tg_send(chat, _sa_tg_shifts_text(who->>'id'), 'Открыть график', 'schedule');
+      perform sa_tg_send(chat, _sa_tg_shifts_text(emp), 'Открыть график', 'schedule');
     end if;
     return jsonb_build_object('ok', true, 'shifts', true);
   end if;
   -- сообщение боту: на /start — что здесь приходит, и кнопка в приложение
   if mt ~ '^/start' and chat is not null then
     perform sa_tg_send(chat, 'Здесь приходят сообщения академии: разминка перед сменой, вопрос дня, лига недели, чат смены. Уроки и тесты ждут в приложении. На сообщение из чата можно ответить прямо здесь.' ||
-      E'\n\n/smena: твои ближайшие смены.', 'Открыть академию', null);
+      E'\n\nНапиши «смена» или /smena: пришлю твои ближайшие смены.', 'Открыть академию', null);
     return jsonb_build_object('ok', true, 'start', true);
   end if;
   -- v97: просто текст боту от сотрудника — как ответить в чат
   if mt <> '' and coalesce(p_update->'message'->'chat'->>'type', '') = 'private' and coalesce(p_update->'message'->'chat'->>'id', '') ~ '^\d{1,18}$'
-     and _sa_tg_caller(p_update->'message'->'from'->>'id') is not null then
-    perform _sa_chat_tg((p_update->'message'->'chat'->>'id')::bigint, 'Чтобы написать в чат, ответь на сообщение о переписке: смахни его влево или нажми «Ответить». Твои смены: /smena.', null);
+     and _sa_tg_emp(p_update->'message'->'from'->>'id') is not null then
+    perform _sa_chat_tg((p_update->'message'->'chat'->>'id')::bigint, 'Чтобы написать в чат, ответь на сообщение о переписке: смахни его влево или нажми «Ответить». Твои смены: напиши «смена» или /smena.', null);
     return jsonb_build_object('ok', true, 'hint', true);
   end if;
   return jsonb_build_object('ok', true, 'skip', 'other');
@@ -735,6 +766,9 @@ revoke all on function _sa_late_min(int) from public, anon, authenticated;
 revoke all on function _sa_late_ok_do(jsonb, sa_chats, sa_chat_msgs) from public, anon, authenticated;
 revoke all on function _sa_tg_shifts_text(text) from public, anon, authenticated;
 revoke all on function _sa_late_tg_cb(jsonb) from public, anon, authenticated;
+revoke all on function _sa_tg_is_shifts(text) from public, anon, authenticated;
+revoke all on function _sa_tg_emp(text) from public, anon, authenticated;
+revoke all on function _sa_tg_chat_link(jsonb) from public, anon, authenticated;
 revoke all on function sa_tg_setup_code() from public, anon, authenticated;
 revoke all on function sa_tg_setup_take(text, boolean) from public, anon, authenticated;
 grant execute on function sa_tg_setup_take(text, boolean) to service_role;

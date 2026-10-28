@@ -149,7 +149,31 @@ chk "/smena (Анна): «Твои смены: сегодня, … · вечер
 PP "delete from net.sent_log" >/dev/null
 TGU '{"update_id": 21, "message": {"message_id": 2, "from": {"id": 999}, "chat": {"id": 999, "type": "private"}, "text": "/smena@SA_RestaurantBot"}}' >/dev/null
 TGU '{"update_id": 22, "message": {"message_id": 3, "from": {"id": 111}, "chat": {"id": 111, "type": "private"}, "text": "/start"}}' >/dev/null
-chk "/smena из чужого Telegram — «не связан с приложением»; /start — подсказка про /smena" "$(sent 999 'Этот Telegram не связан с приложением')|$(sent 111 '/smena: твои ближайшие смены.')" '^1\|1$'
+chk "/smena из чужого Telegram — «Не узнаю этот Telegram» и кнопка в приложение; /start — подсказка про «смена» и /smena" "$(sent 999 'Не узнаю этот Telegram. Открой приложение кнопкой ниже и войди')|$(sent 111 'Напиши «смена» или /smena: пришлю твои ближайшие смены.')" '^1\|1$'
+
+# ── v100 (Доп. 413): смены словами, ответом на сообщение бота и по входу через Telegram ──
+TGM() { echo "{\"update_id\": $1, \"message\": {\"message_id\": $1, \"from\": {\"id\": $2}, \"chat\": {\"id\": $2, \"type\": \"private\"}, \"text\": \"$3\"${4:-}}}"; }
+PP "delete from net.sent_log" >/dev/null
+for w in "smena" "Смена" "мои  смены!" "График?" "Когда на смену" "/smena@SA_RestaurantBot"; do TGU "$(TGM 30 111 "$w")" >/dev/null; done
+chk "v100: «smena», «Смена», «мои  смены!», «График?», «Когда на смену», /smena@бот — каждый раз смены" "$(sent 111 'Твои смены:')" '^6$'
+PP "delete from net.sent_log" >/dev/null
+TGU "$(TGM 31 111 'сменаа')" >/dev/null; TGU "$(TGM 32 111 'смена завтра у кого')" >/dev/null
+chk "v100: «сменаа», «смена завтра у кого» — не команда: подсказка «Твои смены: напиши «смена» или /smena.»" "$(sent 111 'Твои смены: напиши «смена» или /smena.') $(sent 111 'Твои смены:')" '^2 2$'
+PP "delete from net.sent_log" >/dev/null
+RB='{"message_id": 50, "from": {"id": 1, "is_bot": true}, "chat": {"id": 111, "type": "private"}, "text": "Чтобы написать в чат, ответь на сообщение о переписке"}'
+TGU "$(TGM 33 111 'smena' ", \"reply_to_message\": $RB")" >/dev/null
+chk "v100: «smena» ответом на сообщение бота не о переписке — смены (раньше «Этот ответ в чат не уходит»)" "$(sent 111 'Твои смены:') $(sent 111 'Этот ответ в чат не уходит')" '^1 0$'
+RC='{"message_id": 51, "from": {"id": 1, "is_bot": true}, "chat": {"id": 111, "type": "private"}, "text": "Мария К. пишет", "reply_markup": {"inline_keyboard": [[{"text": "Открыть чат", "web_app": {"url": "https://app.example/?go=chat_'"$TEAM"'"}}]]}}'
+N0=$(PP "select count(*) from sa_chat_msgs where emp_id = '$AEMP' and body = 'смена'")
+calm "$AEMP"
+TGU "$(TGM 34 111 'смена' ", \"reply_to_message\": $RC")" >/dev/null
+chk "v100: «смена» ответом на сообщение о переписке — уходит в чат, как раньше" "$(PP "select count(*) from sa_chat_msgs where emp_id = '$AEMP' and body = 'смена'")" "^$((N0+1))$"
+PP "insert into sa_tg_auth (tg_id, emp_id, off) values (777, '$PEMP', false) on conflict (tg_id) do update set emp_id = excluded.emp_id, off = false; delete from net.sent_log" >/dev/null
+TGU "$(TGM 35 777 'смена')" >/dev/null
+PP "update sa_tg_auth set off = true where tg_id = 777" >/dev/null
+TGU "$(TGM 36 777 'смена')" >/dev/null
+chk "v100: вход через Telegram без напоминаний — бот узнаёт (у Петра в графике смен нет — так и пишет); вышел сам — «Не узнаю этот Telegram»" "$(sent 777 'В графике на две недели вперёд смен нет.')|$(sent 777 'Не узнаю этот Telegram')" '^1\|1$'
+chk "v100: служебные функции закрыты (anon)" "$(PP "select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('_sa_tg_is_shifts', '_sa_tg_emp', '_sa_tg_chat_link') and has_function_privilege('anon', p.oid, 'execute')")" '^0$'
 
 # ── календарь ──
 K1=$(Q "select cal_key('$ANNA')->>'key'")

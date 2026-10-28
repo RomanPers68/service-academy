@@ -454,7 +454,7 @@ describe("v99: бот — кнопка «Академия», команды, /sm
     expect(SQL.match(/function sa_tg_setup_take[\s\S]*?end; \$\$;/)[0]).toContain("'app'");
     expect(SQL).toContain("create or replace function _sa_tg_shifts_text(p_emp text)");
     expect(SQL).toContain("create or replace function _sa_late_tg_cb(cq jsonb)");
-    expect(SQL).toContain("if mt ~* '^/(smena|smeny|shifts)(@[a-z0-9_]+)?(\\s|$)' and chat is not null then");
+    expect(SQL).toMatch(/if mt ~\* '\^\/\(smena\|smeny\|shifts\)\(@\[a-z0-9_\]\+\)\?\(\\s\|\$\)' and chat is not null then|if _sa_tg_is_shifts\(mt\) and chat is not null then/);   // v100: и словами (tests/v100.test.js)
     expect(SQL).toContain("tg_last_update");
   });
 });

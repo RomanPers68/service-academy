@@ -213,7 +213,7 @@ describe("v50: попутно", () => {
     expect(g.slice(title, reset)).toMatch(/<\/div>\s+<\/div>\s+\{\/\* v50 \(Доп\. 363\)/);
   });
   it("метка сборки — v50; CHANGES — «Дополнение 363»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v51 — следующая метка
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v51 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 363 — горизонталь и компьютер: меню слева, две колонки, текст после поворота (v50)");
   });
 });

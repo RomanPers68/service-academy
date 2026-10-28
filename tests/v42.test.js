@@ -398,7 +398,7 @@ describe("экран и тексты", () => {
     expect(guide).toMatch("пять оценок по шагам твоей роли");
     const ms = readFileSync("lib/mastery.js", "utf8");
     expect(ms).not.toMatch("заказывает из вашего меню");
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}</);   // v43: номер сборки растёт
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2,}</);   // v43: номер сборки растёт
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 355 — «Живой гость» знает роль \(v42\)/);
     expect(readFileSync("supabase/README.md", "utf8")).toMatch("после выкладки v42 её нужно развернуть заново");
   });

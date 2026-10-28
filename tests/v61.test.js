@@ -84,7 +84,7 @@ describe("v61: ряд треков в коде", () => {
     expect(rd("App.jsx")).toContain("const fabOn = false;");
   });
   it("метка сборки; CHANGES — «Дополнение 374», «375», «376»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);
     expect(rd("CHANGES.md")).toContain("# Дополнение 374");
     expect(rd("CHANGES.md")).toContain("# Дополнение 375");
     expect(rd("CHANGES.md")).toContain("# Дополнение 376");

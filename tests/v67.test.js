@@ -222,7 +222,7 @@ describe("v67: проверка AI HR — для той модели, на ко�
 
 describe("v67: метка и описание", () => {
   it("«сборка v67», «Дополнение 380», инструкция перехода", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v68 — следующая метка
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v68 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 380");
     const s = rd("supabase/AI-SETUP.md");
     expect(s).toContain("anthropic/claude-haiku-5.5");

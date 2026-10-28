@@ -147,7 +147,7 @@ describe("v64: Наставник — круг посередине нижнег
 
 describe("v64: метка сборки и описание", () => {
   it("«сборка v64», «Дополнение 377»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v65 — следующая метка
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v65 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 377");
   });
 });

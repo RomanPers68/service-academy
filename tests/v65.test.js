@@ -114,7 +114,7 @@ describe("v65: ответ голосом в AI-собеседовании", () =
 
 describe("v65: метка сборки и описание", () => {
   it("«сборка v65», «Дополнение 378»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v66 — следующая метка
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v66 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 378");
   });
 });

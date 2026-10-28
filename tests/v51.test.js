@@ -63,7 +63,7 @@ describe("v51: линза нижней панели после поворота"
     expect(tb).toContain("if (barRef.current && barRef.current.clientWidth !== barW) setBarW(barRef.current.clientWidth);   // v51");
   });
   it("метка сборки — v51; CHANGES — «Дополнение 364»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v52 — следующая метка
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v52 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 364 — лёжа меню не под Dynamic Island, линза после поворота на месте (v51)");
   });
 });

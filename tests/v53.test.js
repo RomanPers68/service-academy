@@ -41,7 +41,7 @@ describe("v53: полоска разделов в редакторе урока 
 
 describe("v53: метка и журнал", () => {
   it("метка сборки — v53; CHANGES — «Дополнение 366»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v54 — следующая метка
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v54 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 366 — редактор урока: полоска разделов прилипает и на телефоне (v53)");
   });
 });

@@ -171,7 +171,7 @@ describe("v52: портрет не трогаем", () => {
 
 describe("v52: метка и журнал", () => {
   it("метка сборки — v52; CHANGES — «Дополнение 365»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v53 — следующая метка
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v53 — следующая метка
     expect(rd("CHANGES.md")).toContain("# Дополнение 365 — компьютер: остальные экраны используют ширину (v52)");
   });
 });

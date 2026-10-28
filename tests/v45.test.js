@@ -163,7 +163,7 @@ describe("v45: на главной", () => {
     expect(text(none)).toContain("Смены, время и старший смены");
   });
   it("метка сборки — v45; CHANGES — «Дополнение 358»", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v46 — следующая метка
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2,}<\/span>/);   // v46 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 358 — плитка «График смен»: листок календаря и нить суток (v45)");
   });
 });

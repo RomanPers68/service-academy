@@ -193,7 +193,7 @@ describe("v69: «Приглашение» — линза светлее, без 
 
 describe("v69: метка и журнал", () => {
   it("«сборка v69», «Дополнение 382»", () => {
-    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2}<\/span>/);   // v70: метка дальше
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v\d{2,}<\/span>/);   // v70: метка дальше
     expect(rd("CHANGES.md")).toContain("# Дополнение 382 — полноэкранный режим в Telegram, линза светлее, карточка без мерцания (v69)");
   });
 });

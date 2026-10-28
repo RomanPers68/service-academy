@@ -331,7 +331,7 @@ describe("v43: гид, метка сборки и CHANGES", () => {
     expect(all.map((x) => x.title + " " + x.text).join("\n")).not.toMatch(/стакан/i);
   });
   it("«сборка v43», «Дополнение 356»", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}</);   // v44: номер сборки растёт
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2,}</);   // v44: номер сборки растёт
     expect(readFileSync("CHANGES.md", "utf8")).toMatch(/# Дополнение 356 — /);
   });
 });

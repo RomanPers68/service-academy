@@ -44,7 +44,7 @@ describe("v47: край следующего листка — только по�
     expect(RAW(h(CalendarPage, { day: 7, p: palette(true), a11y: true }))).toContain("background:#FFFCF4");
   });
   it("метка сборки — v47; CHANGES — «Дополнение 360»", () => {
-    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2}<\/span>/);   // v48 — следующая метка
+    expect(readFileSync("ui/menu-trainer.jsx", "utf8")).toMatch(/· сборка v\d{2,}<\/span>/);   // v48 — следующая метка
     expect(readFileSync("CHANGES.md", "utf8")).toContain("# Дополнение 360 — листок календаря без светлой полосы (v47)");
   });
 });

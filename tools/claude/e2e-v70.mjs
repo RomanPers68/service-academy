@@ -36,7 +36,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const sched = JSON.stringify({ cfg: { staff: [{ id: "s1", name: "Роман" }], shifts: [{ k: "Д", name: "День", from: 11, to: 24 }] }, plan: { s1: { 22: "Д", 23: "Д" } }, ts: NOW.getTime() });
 
 // fs — заглушка полноэкранного Telegram (Bot API 8.0: строка состояния 62 + кнопки 46 px); pair — напарник уже занимался
-async function open({ light = false, w = 440, h = 956, dsf = 2, fs = false, pair = false } = {}) {
+async function open({ light = false, w = 440, h = 956, dsf = 2, fs = false, pair = false, look = null } = {}) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: dsf, isMobile: true, hasTouch: true, serviceWorkers: "block", locale: "ru-RU", timezoneId: "Asia/Kamchatka", reducedMotion: "reduce" });
   await ctx.route("**/*", (route) => {
     const u = route.request().url();
@@ -56,6 +56,7 @@ async function open({ light = false, w = 440, h = 956, dsf = 2, fs = false, pair
     ["sa_last_role" + uk]: JSON.stringify("spg"), ["sa_completed" + uk]: JSON.stringify(DONE), ["sa_goal" + uk]: "1",
     ["sa_activity" + uk]: JSON.stringify({ [YDAY]: { st: 2, l: 2 } }),
     sa_today_shift: JSON.stringify({ date: TODAY, label: "День · 11:00–24:00" }), "sa_sched_cache_main_2026-10": sched };
+  if (look) seed.sa_home_look = look;   // v103: вид главной
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
   seed[`sa_hint_v${HINTS_VERSION}_track_orb`] = "1";
   await ctx.addInitScript(([seed, fs]) => {
@@ -162,7 +163,8 @@ if (want("EDGE")) {
 }
 
 if (want("LIGHT")) {
-  const o = await open({ light: true });
+  // v103 (Доп. 416): в виде «Линза» на белой бумаге — линза (tools/claude/e2e-v103.mjs); сургуч — в виде «как сейчас»
+  const o = await open({ light: true, look: "now" });
   const g = await o.page.evaluate(() => { const c = document.querySelector("[data-now-card]"); const m = c.querySelector(":scope > div"); return { hero: c.getAttribute("data-hero"), bg: getComputedStyle(m).backgroundImage, seal: !!c.querySelector("[data-now-seal]"), lens: !!c.querySelector("[data-now-lens]") }; });
   ok("LIGHT: белая бумага (#FFFDF8 → #F7EEDC) и сургуч, как были; тона плиток тёмной темы нет", g.hero === "paper" && /255, 253, 248/.test(g.bg) && /247, 238, 220/.test(g.bg) && !/226, 186, 116/.test(g.bg) && g.seal && !g.lens, JSON.stringify({ ...g, bg: g.bg.slice(-120) }));
   const c = await box(o.page, "[data-now-card]");

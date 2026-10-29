@@ -90,13 +90,16 @@ function WaxSeal({ size = 50, icon = "clock" }) {
 // кнопка AI стоит на стеклянной панели меню, линза — на чёрной карте, и то же стекло выходило темнее; тогда под стекло
 // линзы положили тон панели меню. v70 (Доп. 383): карточка сама стала тёплым стеклом в тон плиток — подложка больше не
 // нужна: то же стекло прямо поверх карточки, как кнопка AI поверх панели меню.
-function Lens({ size = 44, icon = "clock" }) {
+// v103 (Доп. 416): в виде «Линза» линза и на белой бумаге «Для чтения» вместо сургучной печати (владелец: «ну и эту
+// печать, в теме для чтения… как в тёмной») — то же стекло тёмным золотом, как линзы светлой темы (ui/home-look.jsx).
+function Lens({ size = 44, icon = "clock", light = false }) {
   return (
-    <span aria-hidden="true" data-now-lens="" style={{ position: "relative", width: size, height: size, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0,
-      background: "rgba(200,169,110,0.12)",
-      boxShadow: "inset 0 0 0 1px rgba(214,178,102,0.45), inset 0 0 18px rgba(255,230,170,0.12), inset 0 1.5px 0 rgba(255,255,255,0.18)" }}>
-      <span style={{ position: "absolute", inset: -4, borderRadius: "50%", border: "1.5px solid " + GOLD, pointerEvents: "none" }} />
-      {glyph(icon, GOLD, Math.round(size * 0.46))}
+    <span aria-hidden="true" data-now-lens={light ? "light" : ""} style={{ position: "relative", width: size, height: size, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0,
+      background: light ? "rgba(139,106,48,0.09)" : "rgba(200,169,110,0.12)",
+      boxShadow: light ? "inset 0 0 0 1px rgba(139,106,48,0.55), inset 0 0 18px rgba(255,255,255,0.5), inset 0 1.5px 0 rgba(255,255,255,0.95)"
+        : "inset 0 0 0 1px rgba(214,178,102,0.45), inset 0 0 18px rgba(255,230,170,0.12), inset 0 1.5px 0 rgba(255,255,255,0.18)" }}>
+      <span style={{ position: "absolute", inset: -4, borderRadius: "50%", border: "1.5px solid " + (light ? "rgba(139,106,48,0.7)" : GOLD), pointerEvents: "none" }} />
+      {glyph(icon, light ? "#7A5D2A" : GOLD, Math.round(size * 0.46))}
     </span>
   );
 }
@@ -120,7 +123,7 @@ const TILE_TONE = "linear-gradient(160deg, rgba(226,186,116,0.18) 0%, rgba(226,1
 // fade — мягкое появление: только когда состояние сменилось на открытом экране (ответ на «как прошла», началась
 // смена). v69 (Доп. 382): при возврате на главную карточка проявлялась второй раз поверх появления всей страницы —
 // позже остального экрана («мерцание», запись владельца)
-export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone, fade = false }) {
+export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone, fade = false, lens = false }) {
   const { act, stop, key, later, tappable } = useActs({ ctx, on, onReplyDone });
   const dark = !a11y;
   // v70 (Доп. 383), владелец: «может всё-таки эту кнопку сделаем чуть светлее, теплее? В тон других кнопок? А то кажется,
@@ -171,8 +174,8 @@ export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, on
             ) : null}
           </div>
           <span aria-hidden="true" style={{ width: 0, borderLeft: P.perf, margin: "14px 0" }} />
-          <div data-now-stub="" style={{ width: STUB - 2, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: dark ? 9 : 5, padding: "12px 4px" }}>
-            {dark ? <Lens size={44} icon={icon} /> : <WaxSeal size={50} icon={icon} />}
+          <div data-now-stub="" style={{ width: STUB - 2, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: dark || lens ? 9 : 5, padding: "12px 4px" }}>
+            {dark ? <Lens size={44} icon={icon} /> : lens ? <Lens size={44} icon={icon} light /> : <WaxSeal size={50} icon={icon} />}
             {ctx.cta ? <span data-now-cta="" style={dark ? { fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 14.5, color: P.ink, marginTop: 1 }
               : { fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: 16, color: P.ink, marginTop: 2 }}>{ctx.cta}</span> : null}
             {ctx.action === "warmup" ? <span style={{ fontFamily: "Georgia, serif", fontSize: 11.5, color: P.sub, marginTop: dark ? -5 : 0 }}>2 мин</span> : null}

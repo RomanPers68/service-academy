@@ -69,6 +69,19 @@ html.sa-lens [data-lens="back"]{width:32px!important;height:32px!important;min-w
 /* поиск в верхней строке — круглая линза 28 px (был скруглённый квадрат 28 × 26) */
 html.sa-lens [data-top-search][data-lens]{height:28px!important;border-radius:50%!important}
 
+/* ── v103: чат (ui/chat.jsx, ui/chat-cards.jsx — стили по классам): кружок чата и людей (в шапке, списке, поиске,
+   упоминаниях), «назад» в шапке, кружки листа действий («Фото» … «Опаздываю»), «вниз», колокольчик — линзы.
+   Сообщения и карточки в переписке, «отправить» (главное действие — золотом), значки без кружка — прежние ── */
+html.sa-lens .ch-ava,html.sa-lens .ch-tile-i,html.sa-lens .ch-back,html.sa-lens .ch-down,html.sa-lens .ch-bell{
+  background:var(--lk-glass)!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens .ch-ava.team,html.sa-lens .ch-tile-i,html.sa-lens .ch-back{color:var(--lk-gold)!important}
+html.sa-lens .ch-tile-i,html.sa-lens .ch-back,html.sa-lens .ch-bell{position:relative}
+html.sa-lens .ch-ava::after,html.sa-lens .ch-tile-i::after,html.sa-lens .ch-back::after,html.sa-lens .ch-down::after,html.sa-lens .ch-bell::after{
+  content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .ch-back{width:34px;height:34px;margin:3px}
+html.sa-lens .ch-back:active{opacity:.7}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

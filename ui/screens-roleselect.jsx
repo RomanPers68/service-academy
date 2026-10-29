@@ -398,7 +398,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               {/* подсказка главной (шаг 1) показывает на эту карточку — ref на обёртке */}
               <div ref={refTrack}>
                 <NowInvitation key={card.mode} ctx={card} a11y={a11y} rows={rows} foot={foot} on={ctx ? nowOn : { go }}
-                  fade={(() => { if (nowModeRef.current === null) nowModeRef.current = card.mode; return card.mode !== nowModeRef.current; })()}
+                  lens={look === "lens"} fade={(() => { if (nowModeRef.current === null) nowModeRef.current = card.mode; return card.mode !== nowModeRef.current; })()}
                   onMood={(lvl) => { setMoodReply(lvl); if (nowOn) nowOn.mood(lvl); }} onReplyDone={() => setMoodReply(null)} />
               </div>
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}

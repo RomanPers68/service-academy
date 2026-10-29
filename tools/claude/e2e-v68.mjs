@@ -177,7 +177,8 @@ if (want("DARK")) {
 }
 
 if (want("LIGHT")) {
-  const o = await open({ light: true });
+  // v103 (Доп. 416): в виде «Линза» на белой бумаге — линза (tools/claude/e2e-v103.mjs); сургуч — в виде «как сейчас»
+  const o = await open({ light: true, extra: { sa_home_look: "now" } });
   const g = await card(o.page);
   ok("LIGHT: белая бумага, сургучная печать, «Начать»; линзы нет", g && g.hero === "paper" && g.seal && !g.lens && g.cta === "Начать", JSON.stringify(g));
   const bg = await o.page.evaluate(() => getComputedStyle(document.querySelector("[data-now-card] > div")).backgroundImage);

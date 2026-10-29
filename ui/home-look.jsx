@@ -82,6 +82,28 @@ html.sa-lens .ch-ava::after,html.sa-lens .ch-tile-i::after,html.sa-lens .ch-back
 html.sa-lens .ch-back{width:34px;height:34px;margin:3px}
 html.sa-lens .ch-back:active{opacity:.7}
 
+/* ── v104: листы чата («Задание», «Стоп-лист», «Поменяться», «Отдать смену», «Опаздываю», «Опрос»…). Владелец: «по
+   настройкам, в чате… тоже можем линзы сделать, особенно кнопки подтверждения, ну и всё остальное?».
+   «Готово»-кнопки листов (.ch-main: «Предложить обмен», «Отправить»…) — стеклянная плашка с золотым ободком, светом
+   сверху и тонким кольцом, надпись золотом (было сплошное золото с тёмной надписью); «отправить» (.ch-send) — линза;
+   значки строк выбора (.ch-opt-i) — круглые линзы, фото блюда — в круге с ободком; «закрыть» листа (.ch-x) — линза,
+   как «назад». Выбранная строка (золотая кромка), чипы, поля ввода, сообщения и карточки переписки — прежние ── */
+html.sa-lens .ch-main{position:relative;color:var(--lk-hi)!important;
+  background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%)!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)!important}
+html.sa-lens.sa-light .ch-main{background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%)!important;
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)!important}
+html.sa-lens.sa-light .ch-main::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens .ch-main::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .ch-send,html.sa-lens .ch-x,html.sa-lens .ch-opt-i{position:relative;background:var(--lk-glass)!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens .ch-send,html.sa-lens .ch-x,html.sa-lens .ch-opt-i{color:var(--lk-gold)!important}
+html.sa-lens .ch-send{color:var(--lk-hi)!important}
+html.sa-lens .ch-send::after,html.sa-lens .ch-x::after,html.sa-lens .ch-opt-i::after{content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .ch-x{width:32px;height:32px;margin:2px}
+html.sa-lens .ch-opt-i{border-radius:50%!important;overflow:visible!important}
+html.sa-lens .ch-opt-i img{border-radius:50%}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

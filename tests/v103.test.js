@@ -25,7 +25,8 @@ describe("v103: чат — линзы по классам (ui/chat.jsx, ui/chat-
     expect(rd("ui/chat.jsx")).toMatch(/\.ch-down\{position:absolute;/);
   });
   it("«отправить» (главное действие), сообщения и карточки переписки — без линзы", () => {
-    const chat = CSS.slice(CSS.indexOf("/* ── v103"));
+    // v104 (Доп. 417): «отправить» и кнопки подтверждения листов — линзы по просьбе владельца (раздел v104); здесь — v103
+    const end = CSS.indexOf("/* ── v104"), chat = CSS.slice(CSS.indexOf("/* ── v103"), end > 0 ? end : undefined);
     expect(chat).not.toMatch(/\.ch-send|\.ch-bubble|\.ch-msg|\.ch-card/);
   });
   it("классы чата, на которые опирается линза, на месте", () => {

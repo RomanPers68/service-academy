@@ -145,8 +145,13 @@ if (want("LEAD")) {
     await toShift(o.page);
     const item = o.page.locator('.sa-card[aria-label="Брифинг смены"]');
     const itemTxt = await txt(item);
-    ok(tag + ": в «Смене» у руководителя пункт «Брифинг смены» в «На смене», первым", /Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды/.test(itemTxt)
-      && (await o.page.evaluate(() => { const g = document.querySelector('[data-hub-group="На смене"]'); const c = g && g.nextElementSibling; return !!c && (c.getAttribute("aria-label") === "Брифинг смены" || !!c.querySelector('[aria-label="Брифинг смены"]')); })), itemTxt);
+    // v106 (Доп. 419): первым в «На смене» — «Утро руководителя», брифинг — сразу за ним
+    ok(tag + ": в «Смене» у руководителя пункт «Брифинг смены» в «На смене», первым (с v106 — сразу за «Утро руководителя»)", /Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды/.test(itemTxt)
+      && (await o.page.evaluate(() => {
+        const is = (el, l) => !!el && (el.getAttribute("aria-label") === l || !!el.querySelector('[aria-label="' + l + '"]'));
+        const g = document.querySelector('[data-hub-group="На смене"]'); let c = g && g.nextElementSibling;
+        if (is(c, "Утро руководителя")) c = c.nextElementSibling;
+        return is(c, "Брифинг смены"); })), itemTxt);
     ok(tag + ": брифинга сегодня ещё нет — карточки в «Смене» нет", !(await o.page.locator("[data-brief-card]").count()));
     await item.first().click(); await sleep(2600);
     const block = (k) => o.page.locator(`[data-brief-block="${k}"]`);

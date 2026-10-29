@@ -205,7 +205,7 @@ describe("v90: чат в приложении", () => {
     expect(s.map((l) => l.kind)).toEqual(["special", "chat"]);   // под чатом не теряется то, что было открыто
     expect(app).toContain("const myCall = chatOn && chatOpen == null && chatInfo ?");
     expect(app).toContain('{chatOpen != null && chatMe ? <Suspense fallback={null}><ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt}');
-    expect(app).toContain('"thanks", "seat", "chat", "schedule"].includes(v)');   // v97: + «График» и ссылки на сообщение, урок
+    expect(app).toMatch(/"thanks", "seat", "chat", "schedule"(, "[a-z]+")*\]\.includes\(v\)/);   // v97: + «График» и ссылки на сообщение, урок; v106: + «Утро»
     expect(app).toContain('else if (g === "chat") setChatOpen(true);');
     expect(app).toContain('chatOn && profile.restaurant && { key:"chat", group:"На смене", icon:"chat", label:"Чат смены"');
     expect(app).toContain('else if (dest === "chat") openChat(null);   // v90');

@@ -11,6 +11,7 @@
 import { cardSummary, shiftLogLine } from "../../../lib/chat-smart.js";
 import { mentionNames } from "../../../lib/chat-mention.js";
 import { lateMinText } from "../../../lib/late.js";
+import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — текст, как у сервера
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -54,6 +55,14 @@ export function makeServer(opts) {
   // v99: этап 39 (состояние из прошлых версий демо — без этих полей)
   S.late = S.late || {}; S.cal = S.cal || {}; S.seen = S.seen || {}; S.tgAuth = S.tgAuth || {}; S.allAt = S.allAt || {};
   S.srv = S.srv || { hook: false, last: null, app: null, code: null };
+  // v106 (этап 40): «Утро руководителя»: настройки, кто подключил Telegram, «спасибо» гостей и занятия по дням (смещения от
+  // сегодня), прочтения брифинга прошлых дней, чек-листы по дням. Состояние прошлых версий демо — из opts.
+  S.morning = S.morning || {}; S.morningNow = S.morningNow || {}; S.nudged = S.nudged || {};
+  S.tgLinked = S.tgLinked || (opts.tgLinked || []).slice();
+  S.thanks = S.thanks || (opts.thanks || []).map((t, i) => ({ id: i + 1, emp: t.emp, day: D(t.at), text: t.text || "", hidden: !!t.hidden, at: D(t.at) + "T" + (t.time || "19:00") + ":00" }));
+  S.learn = S.learn || Object.fromEntries(Object.entries(opts.learn || {}).map(([id, offs]) => [id, offs.map((n) => D(n))]));
+  S.briefDays = S.briefDays || Object.fromEntries(Object.entries(opts.briefDays || {}).map(([n, reads]) => [D(Number(n)), { reads }]));
+  S.cl = S.cl || Object.fromEntries(Object.entries(opts.checklists || {}).map(([n, v]) => [D(Number(n)), v]));
   const monOf = (iso) => { const mk = iso.slice(0, 7); return S.months[mk] || (S.months[mk] = { plan: {}, locks: {}, days: {}, facts: {} }); };
   if (!opts.state) for (const [sid, row] of Object.entries(opts.plan || {})) for (const [n, k] of Object.entries(row)) { const iso = D(Number(n)); const mo = monOf(iso); (mo.plan[sid] = mo.plan[sid] || {})[dayN(iso)] = k; }
   // пожелания: { "ГГГГ-ММ": [{ staff_id, day, kind: "off" | "hard" }] }; opts.wishes — смещение дня от сегодня
@@ -289,9 +298,60 @@ export function makeServer(opts) {
         return { ok: true, code: S.srv.code, app: S.srv.app };
       }
       return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.slice() : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
-        cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }], pg_net: true,
+        cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }, { name: "sa-morning", on: true }], pg_net: true,
         tg: { bot: true, name: "akademiya_demo_bot", hook: !!S.srv.hook, last: S.srv.last, linked: 5, auth: Object.values(S.tgAuth).filter((a) => !a.off).length + 2 },
         app: S.srv.app, staff: PEOPLE.length, tz: "Europe/Moscow", now: now() };
+    }
+    // ── v106 (этап 40): «Утро руководителя» и вчерашние чек-листы для него ──
+    if (fn === "morning_brief") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      return { ...morningOf(p), prefs: morningPrefs(p) };
+    }
+    if (fn === "morning_set") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      if (b.p_hour != null && !(Number(b.p_hour) >= 6 && Number(b.p_hour) <= 12)) return { ok: false, error: "hour" };
+      const cur = S.morning[p.id] || { on: true, hour: 9 };
+      S.morning[p.id] = { on: b.p_on == null ? cur.on : !!b.p_on, hour: b.p_hour == null ? cur.hour : Math.round(Number(b.p_hour)) };
+      return { ok: true, prefs: morningPrefs(p) };
+    }
+    if (fn === "morning_send_now") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      if (!S.tgLinked.includes(p.id)) return { ok: false, error: "not_linked" };
+      if (clock() - (S.morningNow[p.id] || 0) < 60000) return { ok: false, error: "too_fast" };
+      S.morningNow[p.id] = clock();
+      const mb = morningOf(p);
+      ping(p.id, morningText(mb, p.name), null, null, null, { kind: "morning", kb: morningKb(mb) });
+      return { ok: true, sent: true };
+    }
+    if (fn === "morning_nudge") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      const e = who(String(b.p_emp || ""));
+      if (!e || e.restaurant !== p.restaurant || e.id === p.id) return { ok: false, error: "not_found" };
+      if (!S.tgLinked.includes(e.id)) return { ok: false, error: "no_tg" };
+      const k = e.id + "|" + TODAY;
+      if (S.nudged[k]) return { ok: false, error: "already" };
+      S.nudged[k] = full(p);
+      ping(e.id, nm(full(p)) + " напоминает про разминку: 2 минуты, три ситуации из зала.", null);
+      return { ok: true, sent: true };
+    }
+    if (fn === "checklist_get") {
+      if (!p) return { ok: false, error: "auth" };
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.p_day || "")) ? b.p_day : TODAY;
+      return { ok: true, templates: {}, today: clone(S.cl[day] || {}) };
+    }
+    if (fn === "checklist_check") {
+      if (!p) return { ok: false, error: "auth" };
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.p_day || "")) ? b.p_day : TODAY, kind = String(b.p_kind || "");
+      if (!["open", "preshift", "close"].includes(kind)) return { ok: false, error: "bad_request" };
+      const checked = Array.isArray(b.p_checked) ? b.p_checked.map(String).slice(0, 40) : [];
+      const done = checked.length > 0 && checked.length >= (Number(b.p_total) || 0);
+      const cur = (S.cl[day] = S.cl[day] || {})[kind] || {};
+      S.cl[day][kind] = { checked, done_at: done ? cur.done_at || now() : null, by_name: done ? cur.by_name || nm(full(p)) : null };
+      return { ok: true, done_at: S.cl[day][kind].done_at };
     }
     if (!/^chat_/.test(fn)) return { code: "PGRST202", message: "demo: " + fn };
     S.log.push({ fn, at: now() }); if (S.log.length > 200) S.log.splice(0, S.log.length - 200);
@@ -594,6 +654,83 @@ export function makeServer(opts) {
     if (fn === "chat_ai_post") return { ok: false, error: "no_ai" };
     return { code: "PGRST202", message: "demo: " + fn };
   }
+
+  // ── v106 (этап 40): «Утро руководителя» — сводка, как _sa_morning_at на сервере ──
+  const MO_POS = ["manager", "host", "call", "bar", "barback", "waiter", "runner"];
+  const MO_HOL = ["01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08", "02-23", "03-08", "05-01", "05-09", "06-12", "11-04"];
+  const MO_NEED = { 1: { manager: 1, host: 1, call: 1, bar: 1, barback: 1, waiter: 6, runner: 1 }, 2: { manager: 1, host: 1, call: 1, bar: 1, barback: 1, waiter: 6, runner: 2 },
+    3: { manager: 1, host: 1, call: 1, bar: 2, barback: 1, waiter: 6, runner: 2 } };
+  const moCfg = () => ({ ...CFG, rules: { peakDows: [4, 5], highDows: [3, 6], holidayPeak: true, ...((CFG && CFG.rules) || {}) }, need: { ...MO_NEED, ...((CFG && CFG.need) || {}) } });
+  function moLvl(cfg, iso) {
+    const r = cfg.rules, n = (l, ps) => Number((cfg.need[l] || {})[ps]) || 0;
+    const lv = r.levels === 2 || r.levels === 3 ? r.levels : MO_POS.some((ps) => n(2, ps) !== n(1, ps) && n(2, ps) !== n(3, ps)) ? 3 : 2;
+    const o = (monOf(iso).days || {})[dayN(iso)];
+    if (o && [1, 2, 3].includes(Number(o.lvl))) return Number(o.lvl) === 2 && lv === 2 ? 3 : Number(o.lvl);
+    if (MO_HOL.includes(iso.slice(5)) && r.holidayPeak) return 3;
+    const w = (dowOf(iso) + 6) % 7;
+    if ((r.peakDows || []).includes(w)) return 3;
+    if (lv === 3 && (r.highDows || []).includes(w)) return 2;
+    return 1;
+  }
+  const moStaff = (mk) => SSTAFF.filter((s) => (!s.till || mk <= s.till) && (!s.since || mk >= s.since));
+  function moHoles(cfg, iso) {
+    const mo = monOf(iso), dn = dayN(iso);
+    if (!Object.values(mo.plan || {}).some((row) => row && row[dn])) return [];   // день ещё не расписан
+    const need = cfg.need[moLvl(cfg, iso)] || {};
+    const out = [];
+    for (const ps of MO_POS) {
+      const n = Number(need[ps]) || 0; if (n <= 0) continue;
+      const have = moStaff(iso.slice(0, 7)).filter((s) => s.pos === ps && (() => { const sh = def(code(String(s.id), iso)); return sh && !sh.extra; })()).length;
+      if (have < n) out.push({ pos: ps, miss: n - have });
+    }
+    return out;
+  }
+  const moEmp = (s) => PEOPLE.find((e) => e.restaurant === R0 && toks(full(e)) === toks(s.name)) || null;
+  const moLast = (id) => { const days = S.learn[id] || []; return days.length ? [...days].sort().pop() : null; };
+  const dDiff = (a, b) => Math.round((Date.parse(a + "T00:00:00Z") - Date.parse(b + "T00:00:00Z")) / 86400e3);
+  const onShift = (iso) => moStaff(iso.slice(0, 7)).filter((s) => def(code(String(s.id), iso))).map(moEmp).filter(Boolean).map((e) => e.id);
+  function morningOf(p) {
+    const cfg = moCfg(), Y = D(-1), lateOf = Object.values(S.late).filter((l) => l.rest === p.restaurant && l.day === TODAY).sort((x, y) => (x.at < y.at ? -1 : 1));
+    const shifts = [...SH].sort((x, y) => x.from - y.from || (x.k < y.k ? -1 : 1)).map((sh) => ({ k: sh.k, name: sh.name, from: sh.from, to: sh.to,
+      people: moStaff(TODAY.slice(0, 7)).filter((s) => code(String(s.id), TODAY) === sh.k)
+        .sort((a, b) => (MO_POS.indexOf(a.pos) + 1 || 99) - (MO_POS.indexOf(b.pos) + 1 || 99) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+        .map((s) => { const e = moEmp(s), l = e && lateOf.find((x) => x.emp === e.id); return { id: e ? e.id : null, n: nm(e ? full(e) : s.name), late: l ? { min: l.min, eta: l.eta } : null }; }) }))
+      .filter((g) => g.people.length);
+    const holes = [];
+    for (let i = 0; i <= 6; i++) for (const h of moHoles(cfg, D(i))) holes.push({ ...h, day: D(i) });
+    const open = S.msgs.filter((m) => m.kind === "card" && !m.del && m.card && m.card.t === "shift" && m.card.st === "open" && ["give", "swap", "need"].includes(m.card.mode)
+      && m.card.date >= TODAY && m.card.date <= D(6) && (chatOf(m.chat) || {}).rest === p.restaurant)
+      .sort((x, y) => (x.card.date < y.card.date ? -1 : x.card.date > y.card.date ? 1 : x.id - y.id))
+      .map((m) => ({ id: m.id, chat: m.chat, mode: m.card.mode, day: m.card.date, who: nm(m.card.fromName), pos: m.card.posKey || "",
+        n: Math.max(1, (Number(m.card.n) || 0) - (Array.isArray(m.card.took) ? m.card.took.length : 0)) }));
+    const stopAll = (S.menu || []).filter((d) => d && d.stop && typeof d.stop === "object" && !d.archived && String(d.name || "").trim()).map((d) => String(d.name).trim()).sort();
+    const ty = (S.thanks || []).filter((t) => !t.hidden && t.day === Y);
+    let thanks = null;
+    if (ty.length) {
+      const by = {}; ty.forEach((t) => { by[t.emp] = (by[t.emp] || 0) + 1; });
+      const people = Object.entries(by).map(([id, k]) => ({ id, n: nm(full(who(id) || { name: "" })), k })).filter((x) => x.n).sort((a, b) => b.k - a.k || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0));
+      const len = (t) => String(t.text || "").trim().length;
+      const q = [...ty].filter((t) => len(t) >= 12).sort((a, b) => (len(a) <= 160 ? 0 : 1) - (len(b) <= 160 ? 0 : 1) || len(b) - len(a) || (a.at < b.at ? 1 : -1))[0];
+      const qt = q ? String(q.text).replace(/\s+/g, " ").trim() : "";
+      thanks = { n: ty.length, people, quote: qt.length > 160 ? qt.slice(0, 159) + "…" : qt, by: q ? nm(full(who(q.emp) || { name: "" })) : "" };
+    }
+    const yon = onShift(Y);
+    const yr = S.briefDays[Y];
+    const yreads = yr ? yr.reads.filter((id) => !yon.length || yon.includes(id)).length : 0;
+    const ybrief = yreads ? { reads: yreads, of: yon.length } : null;
+    const learn = yon.length ? { done: yon.filter((id) => (S.learn[id] || []).includes(Y)).length, of: yon.length } : null;
+    const week = [...new Set([0, 1, 2, 3, 4, 5, 6].flatMap((i) => onShift(D(i))))];
+    const slow = week.map((id) => who(id)).filter((e) => e && !isLead(e)).map((e) => { const last = moLast(e.id); return { id: e.id, n: nm(full(e)), days: last ? dDiff(TODAY, last) : null }; })
+      .filter((x) => x.days == null || x.days >= 6)
+      .sort((a, b) => (a.days == null ? (b.days == null ? 0 : -1) : b.days == null ? 1 : b.days - a.days) || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0));
+    const today = S.brief && S.brief.data && S.brief.data.day === TODAY ? S.brief : null;
+    return { ok: true, day: TODAY, rest: p.restaurant, sched: true, shifts, count: shifts.reduce((s, g) => s + g.people.length, 0), holes, open,
+      stop: { n: stopAll.length, names: stopAll.slice(0, 8) }, thanks, ybrief, learn,
+      idle: { list: slow.slice(0, 3).map((x) => ({ ...x, tg: S.tgLinked.includes(x.id) })), more: Math.max(0, slow.length - 3) },
+      brief: today ? { done: true, at: hhmm((Date.parse(today.at) - Date.parse(TODAY + "T00:00:00")) / 60000) } : { done: false },
+      late: lateOf.map((l) => ({ id: l.emp, n: nm(l.name), min: l.min, eta: l.eta })) };
+  }
+  const morningPrefs = (p) => { const m = S.morning[p.id] || { on: true, hour: 9 }; return { on: m.on, hour: m.hour, linked: S.tgLinked.includes(p.id), bot: true }; };
   // v99: смены человека по графику (как _sa_emp_shifts): со смещения from по to от сегодня
   function empShifts(e, from, to) {
     const st = staffOf(e.id); if (!st) return [];

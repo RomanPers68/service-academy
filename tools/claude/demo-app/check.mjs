@@ -2,6 +2,7 @@
 // Анна (время 11:00, «Опаздываю?», уведомление бота об упоминании, лист «Опаздываю», «Принято» от Марии, «@» и подсветка,
 // черновик, поиск, календарь и страница подписки), Мария (уведомление «Дарья Л. опаздывает» с «Принято», «Сегодня» в
 // «Графике»), Роман («Сервер», «Подключить бота», страница бота), новый телефон (вход через Telegram без кода).
+// v106 (Доп. 419): Марии и Роману при открытии — «Утро руководителя» в Telegram; «Открыть утро» — экран «Утро», «Напомнить».
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -127,6 +128,21 @@ if (!ONLY || ONLY.includes("anna")) {
 if (!ONLY || ONLY.includes("maria")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "maria"); localStorage.removeItem("__demo_me"); });
   await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot();
+  // v106 (Доп. 419): при открытии демо Марии бот уже прислал «Утро руководителя» — чат с ботом поверх приложения
+  await page.waitForSelector("#demo-tgchat", { timeout: 8000 }).catch(() => {});
+  const mo = await page.locator("#demo-tgchat .t").innerText().catch(() => "");
+  const btns = await page.locator("#demo-tgchat .kb button").allInnerTexts().catch(() => []);
+  ok("Марии: «Утро руководителя» в Telegram — смена, неделя, стоп-лист, вчера, кнопки", /^Доброе утро, Мария/.test(mo) && /Сегодня в смене \d/.test(mo) && /Стоп-лист: 2/.test(mo)
+    && /Гости сказали спасибо 4 раза/.test(mo) && /Давно не занимались/.test(mo) && btns[0] === "Открыть утро", mo.replace(/\s+/g, " ").slice(0, 160) + " · " + btns.join("|"));
+  await shot("m0-morning-tg");
+  await page.locator('#demo-tgchat [data-demo-tgbtn="morning"]').click().catch(() => {}); await page.waitForTimeout(2200);
+  const ms = await page.locator("[data-morning]").getAttribute("data-morning").catch(() => "");
+  ok("«Открыть утро» — экран «Утро»: сегодня, неделя, стоп-лист, вчера и чек-листы, давно не занимались, Telegram", ms === "ready"
+    && (await page.locator('[data-mo-sec="today"], [data-mo-sec="week"], [data-mo-sec="stop"], [data-mo-sec="yday"], [data-mo-sec="idle"], [data-mo-sec="tg"]').count()) === 6
+    && (await page.locator('[data-mo-row="cl-close"]').count()) === 1, ms);
+  await shot("m0b-morning");
+  await page.locator("[data-mo-nudge]").first().click().catch(() => {}); await page.waitForTimeout(700);
+  ok("«Напомнить»: отправлено", /Напомнили/.test(await page.locator("[data-mo-nudge]").first().innerText().catch(() => "")));
   await shot("m1-home");
   await page.waitForFunction(() => { const t = document.getElementById("demo-tg"); return t && /опаздывает/.test(t.innerText); }, null, { timeout: 40000 }).catch(() => {});
   const tg = await page.locator("#demo-tg").innerText().catch(() => "");
@@ -144,6 +160,10 @@ if (!ONLY || ONLY.includes("maria")) {
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });
   await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot();
+  // v106: Роману тоже пришло «Утро руководителя» — закрыть чат с ботом
+  await page.waitForSelector("#demo-tgchat", { timeout: 8000 }).catch(() => {});
+  ok("Роману: «Утро руководителя» в Telegram", /^Доброе утро, Роман/.test(await page.locator("#demo-tgchat .t").innerText().catch(() => "")));
+  await page.locator("#demo-tgchat .done").click().catch(() => {}); await page.waitForTimeout(400);
   await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1200);
   ok("«Команда»: пункт «Сервер»", /Этапы базы, бот Telegram, расписания/.test(await txt()));
   await shot("r1-team");

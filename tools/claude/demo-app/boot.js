@@ -6,12 +6,15 @@
 // вход через Telegram без кода; сообщения бота в Telegram — уведомлением сверху (с кнопкой «Принято»); страница
 // «Подписаться» на календарь и страница подключения бота открываются поверх приложения.
 // v101 (Доп. 414): главная «Линза»; в строке демо — «Вид: …» (Линза или как было), главная меняется сразу.
+// v106 (Доп. 419): «Утро руководителя» — Марии и Роману при открытии демо бот присылает утреннюю сводку (она открывается
+// как чат с ботом в Telegram, кнопки ведут в приложение); «спасибо» гостей, занятия, брифинг и чек-листы вчерашнего дня.
 // Собирается в один скрипт (esbuild, IIFE) и подключается в index.html до приложения.
 import { makeServer, SHIFTS, full } from "./fake-server.js";
 import { RESTAURANT_MENUS } from "../../../data/menu.js";
 import { HINTS, HINTS_VERSION } from "../../../data/hints.js";
 import { calPage } from "../../../lib/ical.js";
 import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib/home-look.js";
+import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — сообщение бота
 
 const K_SRV = "__demo_srv", K_WHO = "__demo_who", K_DAY = "__demo_day", K_T = "__demo_t", K_NEW = "__demo_newphone";
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -91,6 +94,8 @@ function planOf() {
 const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 const TODAY = iso(new Date());
 const MENU = JSON.parse(JSON.stringify(RESTAURANT_MENUS[R0] || []));
+// v106: утром в стопе два блюда — «Утро руководителя» показывает стоп-лист
+MENU.filter((d) => d && d.name && d.kind !== "cocktail").slice(3, 5).forEach((d) => Object.assign(d, { stop: { since: Date.now() - 3600e3, by: "Мария Ким" }, stopAt: Date.now() - 3600e3 }));
 
 // ── кто я: Анна, Мария или Роман; «Новый телефон» — Анна без входа, приложение открыто «в Telegram» ──
 const whoKey = lsGet(K_WHO);
@@ -107,8 +112,17 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],
   tgKnown: { [TG_ANNA]: "e-anna" },
+  // v106: вчерашний день и привычки команды — для «Утра руководителя» (смещения дней от сегодня)
+  thanks: [{ emp: "e-anna", at: -1, time: "19:40", text: "Анна подсказала с вином, всё было идеально" }, { emp: "e-anna", at: -1, time: "21:10", text: "Спасибо за внимательность" },
+    { emp: "e-petr", at: -1, time: "20:05", text: "Быстро и вежливо, спасибо" }, { emp: "e-vera", at: -1, time: "18:30", text: "" }, { emp: "e-ilya", at: -2, time: "20:00", text: "Лучший негрони в городе" }],
+  learn: { "e-anna": [-1, -2, -3], "u-maria": [-1, -2, -3, -4, -5, -6], "e-vera": [-1, -3], "e-olga": [-1, -2], "e-ilya": [-1], "e-petr": [-9], "u-roman": [-1, -2] },
+  briefDays: { "-1": ["e-anna", "e-petr", "e-olga", "e-vera", "u-maria", "e-ilya"] },
+  tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera"],
+  checklists: { "-1": { open: { checked: ["o1", "o2", "o3", "o4", "o5", "o6"], done_at: iso(new Date(Date.now() - 86400000)) + "T09:52:00", by_name: "Ольга Л." },
+    preshift: { checked: ["p1", "p2", "p3", "p4", "p5"], done_at: iso(new Date(Date.now() - 86400000)) + "T11:40:00", by_name: "Мария К." },
+    close: { checked: ["c1", "c2", "c3", "c4"], done_at: null, by_name: null } } },
   // бот пишет в Telegram: мне — уведомлением сверху, остальным — никак (их телефонов в демо нет)
-  ping: (to, text, acts) => { if (to === me.id) setTimeout(() => tgToast(text, acts), 500); } });
+  ping: (to, text, acts, chat, msg, o) => { if (to !== me.id) return; if (o && o.kind === "morning") setTimeout(() => tgChat(text, o.kb, nowHM()), 400); else setTimeout(() => tgToast(text, acts), 500); } });
 const save = () => { lsSet(K_SRV, JSON.stringify(srv.S)); lsSet(K_DAY, TODAY); };
 const D = srv.D;
 // приложение только что открыли: сейчас я ни в одном чате (бот пишет мне в Telegram, как в жизни)
@@ -207,6 +221,11 @@ if (!newPhone) {
   if (who === "maria") once("ment-maria", 15000, () => srv.bot.say("e-petr", "@Мария, на банкет нужен ещё один стол. Ставим к окну?"));
   if (who === "roman") once("ment-roman", 15000, () => srv.bot.say("u-maria", "@Роман, к банкету берём «Шабли» или «Совиньон блан»? Нужно решить до 15:00."));
   if (who === "maria") once("late-darya", 25000, () => srv.rpc("chat_late", { p_token: tokOf("e-darya"), p_chat: null, p_min: 20, p_note: "автобус сломался" }));
+  // v106: «Утро руководителя» пришло в 9:00 — при открытии демо оно уже ждёт в Telegram
+  if (who === "maria" || who === "roman") once("morning-" + who, 1800, () => {
+    const mb = srv.rpc("morning_brief", { p_token: tokOf(me.id) });
+    if (mb && mb.ok) tgChat(morningText(mb, me.name), morningKb(mb), "09:00");
+  });
 }
 
 // ── сервер вместо Supabase: те же адреса, ответы из памяти ──
@@ -308,6 +327,31 @@ function tgToast(text, acts) {
   document.body.appendChild(t);
 }
 
+// ── v106: чат с ботом в Telegram — утренняя сводка руководителю. Текст — HTML бота (только <b> и экранированный текст),
+// кнопки ведут в приложение, как web_app-кнопки в Telegram ──
+const nowHM = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+function tgChat(html, kb, at) {
+  const old = document.getElementById("demo-tgchat"); if (old) old.remove();
+  const v = document.createElement("div"); v.id = "demo-tgchat"; v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Telegram: сообщение бота");
+  v.innerHTML = '<div class="bar"><button type="button" class="x" aria-label="Закрыть">‹</button><span class="ava">SA</span><span class="who"><b>Академия</b><i>бот</i></span><button type="button" class="done">Готово</button></div>' +
+    '<div class="note">Так приходит «Утро руководителя» в Telegram. Кнопки открывают приложение.</div><div class="feed"><div class="day">Сегодня</div><div class="msg"><div class="t"></div><span class="tm"></span></div><div class="kb"></div></div>';
+  v.querySelector(".t").innerHTML = String(html || "").replace(/\n/g, "<br>");
+  v.querySelector(".tm").textContent = at || "";
+  const close = () => v.remove();
+  v.querySelector(".x").addEventListener("click", close); v.querySelector(".done").addEventListener("click", close);
+  const go = { morning: "morning", briefing: "brief", schedule: "schedule" };
+  for (const row of kb || []) {
+    const r = document.createElement("div"); r.className = "row";
+    for (const k of row) {
+      const btn = document.createElement("button"); btn.type = "button"; btn.textContent = k.text; btn.setAttribute("data-demo-tgbtn", k.go);
+      btn.addEventListener("click", () => { close(); try { if (window.__saNav && go[k.go]) window.__saNav(go[k.go]); } catch (e) {} });
+      r.appendChild(btn);
+    }
+    v.querySelector(".kb").appendChild(r);
+  }
+  document.body.appendChild(v);
+}
+
 // ── строка демо сверху: кто я, сменить, начать заново ──
 const STRIP = 40;
 const css = `
@@ -349,6 +393,24 @@ html.sa-tgfs body{padding-top:var(--sa-st,0px)}
 #demo-tg .a{display:flex;gap:8px}
 #demo-tg .a button{margin-top:9px;flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(120,170,220,0.35);background:rgba(90,174,232,0.16);color:#E8F1F8;font:inherit;cursor:pointer}
 @keyframes demoTgIn{from{transform:translateY(-12px);opacity:0}to{transform:none;opacity:1}}
+#demo-tgchat{position:fixed;inset:0;z-index:2147482990;display:flex;flex-direction:column;background:#0E1621;color:#F5F7FA;font:15px/1.42 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+#demo-tgchat .bar{display:flex;align-items:center;gap:10px;padding:calc(${STRIP + 6}px) 10px 8px;background:#17212B;border-bottom:1px solid rgba(255,255,255,0.06)}
+#demo-tgchat .bar .x{border:0;background:none;color:#6AB2F2;font-size:30px;line-height:1;padding:0 6px 4px;cursor:pointer}
+#demo-tgchat .ava{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,#E4C88C,#C8A96E);color:#1C150A;font:600 13px Georgia,serif;letter-spacing:1px}
+#demo-tgchat .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+#demo-tgchat .who b{font-weight:600;font-size:15.5px}
+#demo-tgchat .who i{font-style:normal;font-size:13px;color:#8B9AA8}
+#demo-tgchat .bar .done{border:0;background:none;color:#6AB2F2;font:600 15px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;padding:6px 4px}
+#demo-tgchat .note{margin:10px 12px 0;padding:9px 12px;border-radius:12px;font:13px/1.45 Georgia,serif;color:#1C150A;background:linear-gradient(180deg,#E4C88C,#C8A96E)}
+#demo-tgchat .feed{flex:1;min-height:0;overflow-y:auto;padding:12px 10px 24px;display:flex;flex-direction:column;align-items:flex-start}
+#demo-tgchat .day{align-self:center;margin:2px 0 10px;padding:3px 10px;border-radius:12px;background:rgba(0,0,0,0.35);color:#C9D2DB;font-size:13px}
+#demo-tgchat .msg{position:relative;max-width:92%;padding:8px 12px 20px;border-radius:16px 16px 16px 6px;background:#182533;box-shadow:0 1px 1px rgba(0,0,0,0.25)}
+#demo-tgchat .msg .t{white-space:normal;word-break:break-word}
+#demo-tgchat .msg .t b{font-weight:600}
+#demo-tgchat .msg .tm{position:absolute;right:10px;bottom:5px;font-size:12px;color:#6D7F8F}
+#demo-tgchat .kb{width:92%;max-width:92%;margin-top:4px;display:flex;flex-direction:column;gap:4px}
+#demo-tgchat .kb .row{display:flex;gap:4px}
+#demo-tgchat .kb button{flex:1;min-width:0;padding:10px 8px;border:0;border-radius:10px;background:rgba(43,82,120,0.55);color:#F5F7FA;font:500 14.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer}
 @media (prefers-reduced-motion: reduce){#demo-tg{animation:none}}
 #demo-page{position:fixed;inset:0;z-index:2147483003;display:flex;flex-direction:column;background:#14110A}
 #demo-page .bar{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:#2A2F36;color:#C9D2DB;font:12.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
@@ -361,8 +423,8 @@ html.sa-tgfs body{padding-top:var(--sa-st,0px)}
 `;
 const TIPS = {
   anna: { t: "Анна Смирнова, официант", s: "Главная сотрудника: медальоны дня, приглашение, график и книга отзывов, инструменты, треки. В демо 11:00, смена с 12:00: на главной «Опаздываю?»." },
-  maria: { t: "Мария Ким, менеджер", s: "Главная менеджера: у инструментов ещё «AI-интервью». Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота." },
-  roman: { t: "Роман, владелец", s: "Главная владельца: «Пульс недели» и все инструменты. «Команда» → «Сервер»: этапы базы, бот, расписания." },
+  maria: { t: "Мария Ким, менеджер", s: "Главная менеджера: у инструментов ещё «AI-интервью». Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота. Утром бот прислал «Утро руководителя»: «Смена» → «Утро руководителя»." },
+  roman: { t: "Роман, владелец", s: "Главная владельца: «Пульс недели» и все инструменты. «Команда» → «Сервер»: этапы базы, бот, расписания. Утром бот прислал «Утро руководителя»." },
   phone: { t: "Анна: новый телефон", s: "Приложение открыли в Telegram на новом телефоне. Кода нет, а оно узнаёт Анну само: она подключала напоминания." },
 };
 function strip() {
@@ -406,4 +468,4 @@ function panel() {
   document.body.appendChild(v);
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", strip); else strip();
-window.__demo = { srv, save, who, me: full(me), newPhone, toast: tgToast };
+window.__demo = { srv, save, who, me: full(me), newPhone, toast: tgToast, tgChat };

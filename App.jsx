@@ -375,6 +375,7 @@ const LiveDialogue = lazyOf(loadDialogueScreen, "LiveDialogue");
 const loadBriefing = () => import("./ui/briefing");   // v82 (Доп. 395): брифинг смены
 // v99 (Доп. 412): «Сервер» у владельца и «Смены в календаре телефона» — отдельными кусками, грузятся при открытии
 const ServerScreen = lazyOf(() => import("./ui/server"), "ServerScreen");
+const MorningScreen = lazyOf(() => import("./ui/morning"), "MorningScreen");   // v106 (Доп. 419): «Утро руководителя»
 const CalSheet = lazyOf(() => import("./ui/cal-sheet"), "CalSheet");
 const BriefScreen = lazyOf(loadBriefing, "BriefScreen");
 const BriefCard = lazyOf(loadBriefing, "BriefCard");
@@ -1575,7 +1576,7 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule"].includes(v)
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing"].includes(v)
         || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»; v97: chat_<чат>_<сообщение>, lesson_<урок>, schedule — кнопки в сообщениях бота
     } catch (e) { goLinkRef.current = ""; }
   }
@@ -1604,6 +1605,8 @@ function ServiceAcademy() {
     else if (/^chat_/.test(g)) { const [, cid, mid] = g.split("_"); setChatOpen({ intent: { kind: "chat", id: Number(cid), msg: mid ? Number(mid) : null, at: Date.now() } }); }
     else if (/^lesson_/.test(g)) { if (chatOpenItemRef.current) chatOpenItemRef.current({ kind: "lesson", id: g.slice(7) }); }
     else if (g === "schedule") navigate("schedule");
+    else if (g === "morning") navigate("morning");     // v106 (Доп. 419): «Открыть утро» под сводкой руководителя
+    else if (g === "briefing") navigate("brief");      // v106: «Собрать брифинг» оттуда же
   }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
@@ -2660,7 +2663,7 @@ function ServiceAcademy() {
       checklist: "checklist", reference: "reference", stats: "stats", guestbook: "guestbook", mentor: "mentor",
       menu: "menuTrainer", cocktails: "cocktails", barlab: "barLab", schedule: "schedule", mistakes: "mistakes",
       certificates: "certificates", guide: "guide", onboarding: "onboarding", weeklyguest: "weeklyGuest",
-      shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team" };
+      shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team", morning: "morning" };
     const boss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
     const k = String(dest || "").toLowerCase();
     // Доп. 310: разделы v28–v29 — разминка, чек недели и напоминания открываются поверх экрана,
@@ -2981,6 +2984,17 @@ function ServiceAcademy() {
         {screen === "team" && profile?.is_admin && <Suspense fallback={<ScreenLoader T={T} />}><TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} /></Suspense>}
         {screen === "server" && profile?.is_admin && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ServerScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("teamHub")} /></Suspense></div>}
         {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => navigate(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
+        {/* v106 (Доп. 419): «Утро руководителя» — сводка дня; строки ведут в график, брифинг, меню, отзывы, отчёты, чек-листы и чат */}
+        {screen === "morning" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MorningScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("shift")}
+          onRemind={() => setRemindOpen(true)} onGo={(dest, x) => {
+            if (dest === "schedule") navigate("schedule");
+            else if (dest === "brief") navigate("brief");
+            else if (dest === "menu") navigate("menuTrainer");
+            else if (dest === "thanks") openThanks("team");
+            else if (dest === "report") { setReportSelf(false); navigate("report"); }
+            else if (dest === "checklist") navigate("checklist");
+            else if (dest === "chat" && x && x.chat) setChatOpen({ intent: { kind: "chat", id: Number(x.chat), msg: x.msg ? Number(x.msg) : null, at: Date.now() } });
+          }} /></Suspense></div>}
         {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={customLessons} startSelf={reportSelf}
@@ -3147,6 +3161,7 @@ function ServiceAcademy() {
               data={briefStatus === "ok" ? (brief && brief.quest) || { ok: false } : briefStatus === "pending" ? null : undefined} onReload={() => refreshDay(true)}
               onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
           // v71: группами — «На смене» (дело) и «Потренироваться» (две минуты на практику)
+          isLead && { key:"morning", group:"На смене", icon:"morning", label:"Утро руководителя", sub:"Смена, неделя, стоп-лист и вчерашний день; каждое утро в Telegram", onClick:() => navigate("morning") },   // v106 (Доп. 419)
           lateOn && { key:"late", group:"На смене", icon:"late", label:"Опаздываю", sub:"Предупредить руководителя и команду: «буду в …»", onClick: openLate },   // v99 (Доп. 412)
           isLead && { key:"brief", group:"На смене", icon:"brief", label:"Брифинг смены", sub: teamBrief ? "Сегодня отправлен" + (teamBrief.author && !teamBrief.mine ? ": " + teamBrief.author : "") + ". Можно поправить" : "Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды", onClick:() => navigate("brief") },   // v82
           seatOn && { key:"seat", group:"На смене", icon:"seat", label:"Рассадка", sub: myTablesSub(myTables) || "Схема зала: кто где сидит, брони и уборка", onClick:() => navigate("seat") },   // v85; v86: «Твои столы»

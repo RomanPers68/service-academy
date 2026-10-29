@@ -315,7 +315,8 @@ describe("v99: экран «Сервер» у владельца (lib/server-che
       if (s.fn) expect(fnsOf(rd(p)), s.file + " → " + s.fn).toContain(s.fn);
       if (s.bucket) expect(rd(p), s.file + " → " + s.bucket).toContain("'" + s.bucket + "'");
     }
-    expect(R.STAGES.map((s) => s.n).slice(-3)).toEqual(["37", "38", "39"]);
+    const ns = R.STAGES.map((s) => s.n);   // v106: после 39 — этап 40 («Утро руководителя»)
+    expect(ns.slice(ns.indexOf("37"), ns.indexOf("37") + 3)).toEqual(["37", "38", "39"]);
     expect(R.stageBuckets()).toEqual(["menu-photos", "menu-voice"]);
   });
   it("расписания pg_cron из списка ставят их этапы", async () => {
@@ -340,7 +341,8 @@ describe("v99: экран «Сервер» у владельца (lib/server-che
     expect([ok.todo, ok.missing.length, ok.cronMissing.length, ok.tg, ok.app, ok.net, ok.tz])
       .toEqual([0, 0, 0, { bot: true, name: "sa_bot", hook: true, last: "2026-10-28T11:00:00Z", ago: "1 час назад", linked: 5, auth: 3, staff: 12 }, "https://x", true, "Europe/Moscow"]);
     const bad = R.serverReport({ fns: all.filter((x) => x !== "cal_feed" && x !== "chat_person"), buckets: null, cron: [{ name: "sa-nudges", on: false }], tg: { bot: true, hook: false } }, now);
-    expect([bad.missing.map((s) => s.n), bad.cronMissing.map((j) => j.name), bad.todo]).toEqual([["38", "39"], ["sa-warmup-reminders", "sa-nudges", "sa-qday"], 6]);
+    // v106: расписаний стало четыре (+ sa-morning) — все без задачи или выключены, по делу на каждое
+    expect([bad.missing.map((s) => s.n), bad.cronMissing.map((j) => j.name), bad.todo]).toEqual([["38", "39"], R.CRON_JOBS.map((j) => j.name), 3 + R.CRON_JOBS.length]);
     const none = R.serverReport(null, now);
     expect([none.cron, none.todo, none.tg.bot]).toEqual([null, R.stageFns().length + 2, false]);
   });

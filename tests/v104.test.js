@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 
 const rd = (f) => readFileSync(f, "utf8");
 const CSS = rd("ui/home-look.jsx");
-const V104 = CSS.slice(CSS.indexOf("/* ── v104"));
+const end = CSS.indexOf("/* ── v105"), V104 = CSS.slice(CSS.indexOf("/* ── v104"), end > 0 ? end : undefined);   // v105: только свой раздел
 
 describe("v104: листы чата — стили под html.sa-lens", () => {
   it("кнопка подтверждения (.ch-main) — стеклянная плашка: свет сверху, ободок, кольцо снаружи, надпись золотом", () => {

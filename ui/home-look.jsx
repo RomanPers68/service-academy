@@ -13,6 +13,13 @@
 // Новых плашек под значками нет (значки без плашек — намеренно, v78); кружки с состоянием (подтверждён, выбран,
 // отмечен) — прежние. Стекло — фон самого кружка (содержимое всегда поверх), кольцо — снаружи (::after), как у
 // медальонов на главной.
+// v105 (Доп. 418): линза в переписке — стекло и свет на пузырях, карточках и полях (раздел v105 в стилях ниже).
+
+// v105: хвостик пузыря продолжает ободок. Две маски той же формы, что TAIL в ui/chat.jsx: под ::before — форма с
+// краем (красится цветом ободка), под ::after — та же форма на 1 px внутрь (заливка пузыря). Ободок самого пузыря
+// у хвостика закрывает заливка, и ободок идёт по кромке пузыря и хвостика без шва.
+const tailSvg = (d) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 16'><path d='${d}'/></svg>`)}")`;
+const TAIL_RIM = tailSvg("M6 0C6 7.5 4.6 12.6 0 16h11v-5H7V0z"), TAIL_FILL = tailSvg("M7 0C7 7.3 5.7 12 2.6 15H11v-4H7z");
 
 const CSS = `
 .sa-look{--lk-gold:#C8A96E;--lk-hi:#E8C983;--lk-glass:rgba(200,169,110,0.12);--lk-rim:rgba(214,178,102,0.45);--lk-glow:rgba(255,230,170,0.12);
@@ -103,6 +110,56 @@ html.sa-lens .ch-send::after,html.sa-lens .ch-x::after,html.sa-lens .ch-opt-i::a
 html.sa-lens .ch-x{width:32px;height:32px;margin:2px}
 html.sa-lens .ch-opt-i{border-radius:50%!important;overflow:visible!important}
 html.sa-lens .ch-opt-i img{border-radius:50%}
+
+/* ── v105: переписка. Владелец (29.10, снимок «Вся команда»): «может, в чат линзу интегрируем?». Сообщения читают,
+   поэтому колец вокруг пузырей нет: в переписке линза — стекло и свет, как у карточек на главной. Чужие пузыри —
+   тёмное стекло с золотым ободком и бликом сверху, свои — золото с бликом и светлым ободком; хвостик продолжает
+   ободок (раньше у пузыря «тебя упомянули» на хвостике был шов). Карточки и вызов — стекло с бликом, их кнопки
+   («Иду», «Забрать»…) — стеклянные плашки с кольцом, как кнопки листов (v104); «Сегодня» и «Показать раньше» —
+   плашки с кольцом; строка ввода, поиск и поля листов — стекло с ободком; подсказки над строкой, кружок Наставника и
+   стрелка ответа при свайпе — стекло. Размеры, цвет и кегль текста прежние; бледные и выбранные состояния — прежние ── */
+html.sa-lens .sa-dlg.ch{--tail-o:${TAIL_RIM};--tail-i:${TAIL_FILL};
+  --lk-rim-in:rgba(214,178,102,0.30);--lk-sheen-in:rgba(232,201,131,0.09);--lk-hl-in:rgba(255,255,255,0.07);
+  --lk-rim-out:rgba(255,244,214,0.42);--lk-sheen-out:rgba(255,250,232,0.40);--lk-hl-out:rgba(255,255,255,0.6);
+  --lk-sh-b:0 2px 8px rgba(0,0,0,0.30);--lk-sh-c:0 8px 22px rgba(0,0,0,0.32)}
+html.sa-lens .sa-dlg.ch.lt{--lk-rim-in:rgba(139,106,48,0.30);--lk-sheen-in:rgba(250,238,208,0.6);--lk-hl-in:rgba(255,255,255,1);
+  --lk-rim-out:rgba(255,248,226,0.55);--lk-sheen-out:rgba(255,252,240,0.5);--lk-hl-out:rgba(255,255,255,0.75);
+  --lk-sh-b:0 2px 7px rgba(120,85,25,0.16);--lk-sh-c:0 6px 18px rgba(120,85,25,0.16)}
+html.sa-lens .ch-in,html.sa-lens .ch-typing{background:radial-gradient(140% 120% at 18% 0%,var(--lk-sheen-in),transparent 58%),var(--in);
+  box-shadow:inset 0 0 0 1px var(--lk-rim-in),inset 0 1.5px 0 var(--lk-hl-in),var(--lk-sh-b)}
+html.sa-lens .ch-out{background:radial-gradient(140% 120% at 18% 0%,var(--lk-sheen-out),transparent 55%),linear-gradient(180deg,var(--out-a),var(--out-b));
+  box-shadow:inset 0 0 0 1px var(--lk-rim-out),inset 0 1.5px 0 var(--lk-hl-out),var(--lk-sh-b)}
+html.sa-lens .ch-row.atme .ch-in{--lk-rim-in:rgba(228,200,140,0.78);box-shadow:inset 0 0 0 1px var(--lk-rim-in),inset 0 1.5px 0 var(--lk-hl-in),var(--lk-sh-b)}
+html.sa-lens .sa-dlg.ch.lt .ch-row.atme .ch-in{--lk-rim-in:rgba(139,106,48,0.72)}
+html.sa-lens .ch-b.ai{--lk-rim-in:transparent}
+html.sa-lens .ch-row.tail .ch-b::before{-webkit-mask-image:var(--tail-o);mask-image:var(--tail-o)}
+html.sa-lens .ch-row.tail .ch-in::before{background:linear-gradient(var(--lk-rim-in),var(--lk-rim-in)),var(--in)}
+html.sa-lens .ch-row.tail .ch-out::before{background:linear-gradient(var(--lk-rim-out),var(--lk-rim-out)),var(--out-b)}
+html.sa-lens .ch-row.tail .ch-b::after{content:"";position:absolute;bottom:0;width:11px;height:16px;pointer-events:none;
+  -webkit-mask:var(--tail-i) no-repeat 0 0/100% 100%;mask:var(--tail-i) no-repeat 0 0/100% 100%}
+html.sa-lens .ch-row.tail .ch-in::after{left:-6px;background:var(--in)}
+html.sa-lens .ch-row.tail .ch-out::after{right:-6px;background:var(--out-b);transform:scaleX(-1)}
+html.sa-lens .ch-card,html.sa-lens .ch-call{background:radial-gradient(120% 90% at 30% 0%,var(--lk-sheen-in),transparent 60%),var(--card);
+  box-shadow:inset 0 1.5px 0 var(--lk-hl-in),inset 0 0 22px rgba(255,230,170,0.05),var(--lk-sh-c)}
+html.sa-lens .ch-card:not(.done):not(.stopc) .ch-card-tile{box-shadow:inset -10px 0 18px rgba(26,16,8,0.08),inset 0 1.5px 0 rgba(255,255,255,0.6),inset 0 0 18px rgba(255,248,225,0.22)}
+html.sa-lens .ch-go,html.sa-lens .ch-cbtn:not(.ghost):not(.bad){position:relative;color:var(--lk-hi);
+  background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .ch-go,html.sa-lens.sa-light .ch-cbtn:not(.ghost):not(.bad){background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)}
+html.sa-lens .ch-go::after,html.sa-lens .ch-cbtn:not(.ghost):not(.bad)::after,html.sa-lens .ch-more::after{
+  content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light .ch-go::after,html.sa-lens.sa-light .ch-cbtn:not(.ghost):not(.bad)::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens .ch-day,html.sa-lens .ch-sys{position:relative;background:rgba(22,17,9,0.66);box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1px 0 var(--lk-hl)}
+html.sa-lens .sa-dlg.ch.lt .ch-day,html.sa-lens .sa-dlg.ch.lt .ch-sys{background:rgba(255,252,242,0.72)}
+html.sa-lens .ch-day::after{content:"";position:absolute;inset:-3.5px;border-radius:15.5px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .ch-more{position:relative;background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .ch-input,html.sa-lens .ch-search,html.sa-lens .ch-field{background:var(--lk-glass);border-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .ch-input:focus,html.sa-lens .ch-search:focus,html.sa-lens .ch-field:focus{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .ch-sg,html.sa-lens .ch-mc,html.sa-lens .ch-ai-nm .ch-ai-d,html.sa-lens .ch-swipe{background:var(--lk-glass);border-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .ch-ai-nm .ch-ai-d{color:var(--lk-gold)}
 
 `;
 export function ensureLookCss() {

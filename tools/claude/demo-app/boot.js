@@ -8,6 +8,9 @@
 // v101 (Доп. 414): главная «Линза»; в строке демо — «Вид: …» (Линза или как было), главная меняется сразу.
 // v106 (Доп. 419): «Утро руководителя» — Марии и Роману при открытии демо бот присылает утреннюю сводку (она открывается
 // как чат с ботом в Telegram, кнопки ведут в приложение); «спасибо» гостей, занятия, брифинг и чек-листы вчерашнего дня.
+// v107 (Доп. 420): новички. Ксения Миронова (официант) пришла вчера, сегодня первая смена: вчера вечером бот прислал ей
+// памятку, в «Вся команда» её представили, наставник — Анна, первыми в плане — темы с собеседования. Тимур Ахметов (бармен)
+// с нами неделю, наставник — Илья, «5 столов» подтверждено, самостоятельной смены ещё нет. В демо можно стать Ксенией.
 // Собирается в один скрипт (esbuild, IIFE) и подключается в index.html до приложения.
 import { makeServer, SHIFTS, full } from "./fake-server.js";
 import { RESTAURANT_MENUS } from "../../../data/menu.js";
@@ -15,6 +18,7 @@ import { HINTS, HINTS_VERSION } from "../../../data/hints.js";
 import { calPage } from "../../../lib/ical.js";
 import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib/home-look.js";
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — сообщение бота
+import { eveText, eveKb } from "../../../lib/newbie.js";   // v107: памятка новичку накануне первой смены
 
 const K_SRV = "__demo_srv", K_WHO = "__demo_who", K_DAY = "__demo_day", K_T = "__demo_t", K_NEW = "__demo_newphone";
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -53,10 +57,12 @@ const PEOPLE = [
   { id: "e-darya", name: "Дарья", surname: "Лебедева", restaurant: R0, position: "waiter", is_admin: false },
   { id: "e-ilya", name: "Илья", surname: "Белов", restaurant: R0, position: "bartender", is_admin: false },
   { id: "u-roman", name: "Роман", surname: "", restaurant: R0, position: "owner", is_admin: true },   // v99: владелец — экран «Сервер»
+  { id: "e-ksenia", name: "Ксения", surname: "Миронова", restaurant: R0, position: "waiter", is_admin: false },   // v107: новичок, первая смена сегодня
+  { id: "e-timur", name: "Тимур", surname: "Ахметов", restaurant: R0, position: "bartender", is_admin: false },   // v107: новичок, неделя в команде
 ];
 const TOK = Object.fromEntries(PEOPLE.map((p) => ["demo-" + p.id, p.id]));
 const tokOf = (id) => "demo-" + id;
-const ME = { anna: "e-anna", maria: "u-maria", roman: "u-roman" };
+const ME = { anna: "e-anna", maria: "u-maria", roman: "u-roman", ksenia: "e-ksenia" };
 const TG_ANNA = "700003";   // Telegram Анны: она подключала напоминания, поэтому приложение узнаёт её без кода
 const DEMO_INIT = "user=" + encodeURIComponent(JSON.stringify({ id: Number(TG_ANNA), first_name: "Анна" })) + "&auth_date=" + Math.floor(Date.now() / 1000) + "&hash=demo";
 const SSTAFF = [
@@ -64,6 +70,7 @@ const SSTAFF = [
   { id: 3, name: "Смирнова Анна", pos: "waiter", norm: 160 }, { id: 4, name: "Орлов Пётр", pos: "waiter", norm: 160 },
   { id: 5, name: "Соколова Вера", pos: "waiter", norm: 160 }, { id: 6, name: "Лебедева Дарья", pos: "waiter", norm: 160 },
   { id: 7, name: "Белов Илья", pos: "bar", norm: 160 },
+  { id: 8, name: "Миронова Ксения", pos: "waiter", norm: 160 }, { id: 9, name: "Ахметов Тимур", pos: "bar", norm: 160 },   // v107: новички
 ];
 const CFG = {
   hours: [[12, 24], [12, 24], [12, 24], [12, 24], [12, 24], [12, 24], [12, 24]], shifts: SHIFTS,
@@ -88,6 +95,9 @@ function planOf() {
       const row = NEAR[sid];
       set(sid, i >= 0 && i < row.length ? row[i] : row[((i % row.length) + row.length) % row.length]);
     }
+    // v107: Ксения — с сегодняшнего дня (первая смена — сегодня днём), Тимур — с прошлой недели
+    if (i >= 0) set(8, "Д-ВВ-ДД-"[i % 8]);
+    if (i >= -5) set(9, "ДД-ВВ-Д"[(i + 5) % 7]);
   }
   return out;
 }
@@ -109,7 +119,7 @@ try { saved = lsGet(K_DAY) === TODAY ? JSON.parse(lsGet(K_SRV) || "null") : null
 // пройденное: Анна и Мария не новички (инструменты открыты), коллеги — для заданий «кто прошёл»
 const DONE = ["s0-1", "s0-2", "s0-3", "s0-4", "s1-1", "s1-2"];
 const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaff: SSTAFF, cfg: CFG, plan: planOf(), menu: MENU, state: saved,
-  progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
+  progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE, "e-ksenia": ["s0-1"] }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],
   tgKnown: { [TG_ANNA]: "e-anna" },
   // v106: вчерашний день и привычки команды — для «Утра руководителя» (смещения дней от сегодня)
@@ -117,7 +127,19 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
     { emp: "e-petr", at: -1, time: "20:05", text: "Быстро и вежливо, спасибо" }, { emp: "e-vera", at: -1, time: "18:30", text: "" }, { emp: "e-ilya", at: -2, time: "20:00", text: "Лучший негрони в городе" }],
   learn: { "e-anna": [-1, -2, -3], "u-maria": [-1, -2, -3, -4, -5, -6], "e-vera": [-1, -3], "e-olga": [-1, -2], "e-ilya": [-1], "e-petr": [-9], "u-roman": [-1, -2] },
   briefDays: { "-1": ["e-anna", "e-petr", "e-olga", "e-vera", "u-maria", "e-ilya"] },
-  tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera"],
+  tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera", "e-ksenia"],
+  // v107: новички (смещения дней от сегодня), памятка заведения, собеседования «Берём»
+  newbies: [
+    { emp: "e-ksenia", started: -1, buddy: "e-anna", buddyBy: "u-maria", checked: ["d1c"], hello: { at: -1, time: "18:40", by: "u-maria", greet: ["e-petr", "e-vera", "e-ilya"] } },
+    { emp: "e-timur", started: -6, buddy: "e-ilya", buddyBy: "u-maria", checked: ["d1a", "d1b", "d1c", "d1d", "d2a", "d2b", "d2d"],
+      confirm: { d2c: { by: "e-ilya", name: "Илья Белов", at: -2 } }, hello: { at: -6, time: "17:20", by: "u-maria", greet: ["e-anna", "e-petr", "e-olga", "e-vera"] } },
+  ],
+  nbMemo: { addr: "Служебный вход со двора, звонок справа от двери", arrive: 15, dress: "Чёрный верх, тёмные брюки, закрытая обувь. Фартук выдадут на месте",
+    meet: "", extra: "Обед для команды в 15:30" },
+  cands: [
+    { id: 501, name: "Ксения Миронова", at: -6, decision: "hire", aiScores: { "Сервис и гость": 78, "Конфликты и сложные ситуации": 45, "Приоритеты и организация": 70, "Честность и деньги": 62, "Команда": 85 } },
+    { id: 502, name: "Глеб Соколов", at: -2, decision: "hire", aiScores: { "Сервис и гость": 66, "Конфликты и сложные ситуации": 72, "Приоритеты и организация": 58, "Честность и деньги": 80, "Команда": 74 } },
+  ],
   checklists: { "-1": { open: { checked: ["o1", "o2", "o3", "o4", "o5", "o6"], done_at: iso(new Date(Date.now() - 86400000)) + "T09:52:00", by_name: "Ольга Л." },
     preshift: { checked: ["p1", "p2", "p3", "p4", "p5"], done_at: iso(new Date(Date.now() - 86400000)) + "T11:40:00", by_name: "Мария К." },
     close: { checked: ["c1", "c2", "c3", "c4"], done_at: null, by_name: null } } },
@@ -193,6 +215,9 @@ function after(fn, b, res) {
     if (t === "brief") say("e-olga", "Прочитала, к банкету готовы");
     if (t === "poll") later(5000, () => { const x = srv.msgOf(m.id); if (x) ["e-petr", "e-vera"].forEach((id, i) => srv.rpc("chat_poll_vote", { p_token: tokOf(id), p_msg: x.id, p_o: i % x.card.opts.length })); });
   }
+  // v107: представили новичка — коллеги здороваются; самостоятельная смена — поздравляют
+  if (fn === "newbie_set" && b.p_hello && m) later(5000, () => ["e-petr", "e-vera", "e-olga"].filter((id) => id !== me.id && id !== b.p_emp).forEach((id) => srv.rpc("chat_greet", { p_token: tokOf(id), p_msg: m.id })));
+  if (fn === "newbie_confirm" && b.p_step === "d3b" && b.p_on !== false) later(5000, () => { const n = srv.S.nb[b.p_emp]; if (n && n.soloMsg) ["e-vera", "e-petr", "e-olga", "e-anna"].filter((id) => id !== me.id && id !== b.p_emp).slice(0, 3).forEach((id) => srv.rpc("chat_greet", { p_token: tokOf(id), p_msg: n.soloMsg })); });
   if (fn === "chat_stop_note" && b.p_on && !res.again && m) later(4500, () => srv.bot.say("e-ilya", "Понял, гостям предложу замену", m.chat));
   if (fn === "chat_stop_set" && b.p_on && m) later(4500, () => srv.bot.say("e-ilya", "Понял, гостям предложу замену", m.chat));
   // v99: «Опаздываю» — руководитель в смене через несколько секунд отвечает «Принято» (Марии и Роману — друг друга)
@@ -226,6 +251,12 @@ if (!newPhone) {
     const mb = srv.rpc("morning_brief", { p_token: tokOf(me.id) });
     if (mb && mb.ok) tgChat(morningText(mb, me.name), morningKb(mb), "09:00");
   });
+  // v107: Ксения — вчера в 19:00 бот прислал памятку на первую смену; через 12 секунд с ней здоровается Ольга
+  if (who === "ksenia") once("eve-ksenia", 1800, () => {
+    const r = srv.rpc("newbie_me", { p_token: tokOf(me.id) });
+    if (r && r.ok && r.first) tgChat(eveText(r), eveKb(), "19:00", { day: "Вчера", note: "Так новичок получает памятку накануне первой смены. Кнопка открывает «Первую неделю»." });
+  });
+  if (who === "ksenia") once("greet-olga", 12000, () => { const n = srv.S.nb["e-ksenia"]; if (n && n.hello) srv.rpc("chat_greet", { p_token: tokOf("e-olga"), p_msg: n.hello }); });
 }
 
 // ── сервер вместо Supabase: те же адреса, ответы из памяти ──
@@ -330,16 +361,18 @@ function tgToast(text, acts) {
 // ── v106: чат с ботом в Telegram — утренняя сводка руководителю. Текст — HTML бота (только <b> и экранированный текст),
 // кнопки ведут в приложение, как web_app-кнопки в Telegram ──
 const nowHM = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
-function tgChat(html, kb, at) {
+function tgChat(html, kb, at, o = {}) {
   const old = document.getElementById("demo-tgchat"); if (old) old.remove();
   const v = document.createElement("div"); v.id = "demo-tgchat"; v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Telegram: сообщение бота");
   v.innerHTML = '<div class="bar"><button type="button" class="x" aria-label="Закрыть">‹</button><span class="ava">SA</span><span class="who"><b>Академия</b><i>бот</i></span><button type="button" class="done">Готово</button></div>' +
     '<div class="note">Так приходит «Утро руководителя» в Telegram. Кнопки открывают приложение.</div><div class="feed"><div class="day">Сегодня</div><div class="msg"><div class="t"></div><span class="tm"></span></div><div class="kb"></div></div>';
   v.querySelector(".t").innerHTML = String(html || "").replace(/\n/g, "<br>");
   v.querySelector(".tm").textContent = at || "";
+  if (o.day) v.querySelector(".day").textContent = o.day;   // v107: памятка новичку пришла вчера
+  if (o.note) v.querySelector(".note").textContent = o.note;
   const close = () => v.remove();
   v.querySelector(".x").addEventListener("click", close); v.querySelector(".done").addEventListener("click", close);
-  const go = { morning: "morning", briefing: "brief", schedule: "schedule" };
+  const go = { morning: "morning", briefing: "brief", schedule: "schedule", newbie: "newbie", newbies: "newbies" };
   for (const row of kb || []) {
     const r = document.createElement("div"); r.className = "row";
     for (const k of row) {
@@ -422,9 +455,10 @@ html.sa-tgfs body{padding-top:var(--sa-st,0px)}
 #demo-page pre{margin:0;padding:14px 14px 30px;white-space:pre-wrap;word-break:break-word;font:14px/1.5 ui-monospace,Menlo,monospace;color:#1d1d1d;background:#fff;flex:1;overflow:auto}
 `;
 const TIPS = {
-  anna: { t: "Анна Смирнова, официант", s: "Главная сотрудника: медальоны дня, приглашение, график и книга отзывов, инструменты, треки. В демо 11:00, смена с 12:00: на главной «Опаздываю?»." },
-  maria: { t: "Мария Ким, менеджер", s: "Главная менеджера: у инструментов ещё «AI-интервью». Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота. Утром бот прислал «Утро руководителя»: «Смена» → «Утро руководителя»." },
+  anna: { t: "Анна Смирнова, официант", s: "Главная сотрудника: медальоны дня, приглашение, график и книга отзывов, инструменты, треки. В демо 11:00, смена с 12:00: на главной «Опаздываю?». Анна ведёт новичка: «Команда» → «Новички»." },
+  maria: { t: "Мария Ким, менеджер", s: "Главная менеджера: у инструментов ещё «AI-интервью». Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота. Утром бот прислал «Утро руководителя»: «Смена» → «Утро руководителя». «Команда» → «Новички»: Ксения и Тимур." },
   roman: { t: "Роман, владелец", s: "Главная владельца: «Пульс недели» и все инструменты. «Команда» → «Сервер»: этапы базы, бот, расписания. Утром бот прислал «Утро руководителя»." },
+  ksenia: { t: "Ксения Миронова, новичок", s: "Вчера пришла в команду, сегодня первая смена. Вчера вечером бот прислал памятку. «Смена» → «Первая неделя»: наставник, план и темы с собеседования. В «Вся команда» с ней здороваются." },
   phone: { t: "Анна: новый телефон", s: "Приложение открыли в Telegram на новом телефоне. Кода нет, а оно узнаёт Анну само: она подключала напоминания." },
 };
 function strip() {
@@ -450,7 +484,7 @@ function panel() {
   const v = document.createElement("div"); v.id = "demo-veil";
   v.innerHTML = '<div id="demo-box" role="dialog" aria-label="Демо"><h3>Кто ты в демо</h3><p>Заведение выдуманное, сервер живёт в этой странице. Время в демо идёт с 11:00. Коллеги отвечают сами, а то, что бот прислал бы в Telegram, появляется уведомлением сверху. «Вид» в строке вверху показывает главную «Линзой» или как было до неё.</p></div>';
   const box = v.querySelector("#demo-box");
-  for (const k of ["anna", "maria", "roman", "phone"]) {
+  for (const k of ["anna", "maria", "roman", "ksenia", "phone"]) {
     const b = document.createElement("button"); b.type = "button"; b.className = "p"; b.setAttribute("aria-pressed", String(k === "phone" ? newPhone : k === who && !newPhone));
     b.innerHTML = "<b></b><span></span>"; b.querySelector("b").textContent = TIPS[k].t; b.querySelector("span").textContent = TIPS[k].s;
     b.addEventListener("click", () => {

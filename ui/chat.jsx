@@ -41,6 +41,7 @@ import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клави
 import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts, mentionsMe, isLeadPos } from "../lib/chat-mention";   // v99 (Доп. 412): «@Имя»
 import { draftGet, draftSet, draftClear, draftLine } from "../lib/chat-draft";   // v99: черновик не пропадает
 import { searchQuery, searchSnippet } from "../lib/chat-search";   // v99: поиск по переписке
+import { mentorLine } from "../lib/newbie";   // v107 (Доп. 420): «Наставник новичков» в карточке коллеги
 
 // ── вид: та же палитра, что у «Живого диалога» (ui/screens-dialogue.jsx), свой корень .sa-dlg.ch ──
 const wallSvg = (c, o) => `<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='${c}' stroke-opacity='${o}' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>` +
@@ -478,7 +479,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     if (it.kind === "chat" && it.id != null) { setInit(it.msg ? { msg: it.msg } : null); setCurId(it.id); return; }
     if (it.kind === "share" && it.item) { setCurId(null); setPicker(false); setShareItem(it.item); return; }
     if (it.kind === "dm" && it.emp) { openDm({ id: it.emp }); return; }   // eslint-disable-line no-use-before-define
-    if (it.kind === "give" || it.kind === "swap" || it.kind === "late") wantRef.current = it;   // v99: «Опаздываю» из «Смены» и с главной
+    if (it.kind === "give" || it.kind === "swap" || it.kind === "late" || it.kind === "team") wantRef.current = it;   // v99: «Опаздываю» из «Смены» и с главной; v107: «Вся команда» (карточка новичка)
   }, [intent]);   // eslint-disable-line react-hooks/exhaustive-deps
   const load = React.useCallback(() => Promise.resolve(api.list()).then((r) => {
     if (r && r.ok) {
@@ -499,7 +500,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   React.useEffect(() => {
     const w = wantRef.current;
     if (!w || !team) return;
-    wantRef.current = null; setInit(w.kind === "late" ? { late: true } : { shift: w.kind, date: w.date || null }); setCurId(team.id);
+    wantRef.current = null; setInit(w.kind === "late" ? { late: true } : w.kind === "team" ? (w.msg ? { msg: w.msg } : null) : { shift: w.kind, date: w.date || null }); setCurId(team.id);
   }, [team]);   // eslint-disable-line react-hooks/exhaustive-deps
   function openDm(p) { return Promise.resolve(api.dm(p.id)).then((r) => {
     if (r && r.ok && r.chat) { setChats((cs) => (cs || []).some((c) => String(c.id) === String(r.chat.id)) ? cs : [...(cs || []), r.chat]); setPicker(false); setCurId(r.chat.id); }
@@ -777,6 +778,12 @@ function GroupAdd({ me, api, chat, members, onBack, onDone }) {
 function PersonSheet({ api, emp, chat, onClose, onDm = null }) {
   const [p, setP] = React.useState(null);
   const [err, setErr] = React.useState("");
+  const [mark, setMark] = React.useState("");   // v107 (Доп. 420): «Наставник новичков»
+  React.useEffect(() => {
+    let alive = true;
+    if (api.newbieMark) Promise.resolve(api.newbieMark(emp)).then((r) => { if (alive && r && r.ok) setMark(mentorLine(r)); }).catch(() => {});
+    return () => { alive = false; };
+  }, [api, emp]);
   React.useEffect(() => {
     let alive = true;
     Promise.resolve(api.person(emp)).then((r) => { if (!alive) return; if (r && r.ok && r.person) setP(r.person); else setErr(r && r.error === "missing" ? "Карточки коллег появятся, когда руководитель перезапустит этап 38." : "Карточка не загрузилась. Проверь связь."); })
@@ -796,6 +803,7 @@ function PersonSheet({ api, emp, chat, onClose, onDm = null }) {
         </div>
         {!p ? <div className="ch-hint" role={err ? "alert" : "status"}>{err || "Загружаю…"}</div> : (<>
           <div className="ch-pp-sh" data-chat-person-shift="">{IC.cal}<span>{personShiftLine(p)}</span></div>
+          {mark ? <div className="ch-pp-sh" data-chat-person-mentor="">{IC.star}<span>{mark}</span></div> : null}
           {!p.me && !here && onDm ? <button type="button" className="ch-main" data-chat-person-dm={p.id} onClick={() => { vibrate("light"); onClose(); onDm({ id: p.id, name: p.name }); }}>Написать лично</button> : null}
         </>)}
       </div>
@@ -1171,6 +1179,11 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     if (a === "vote") { addMsgs([{ id: m.id, card: { ...(m.card || {}), votes: withVote((m.card || {}).votes, extra, me) } }], { quiet: true }); upd(api.pollVote(m.id, extra)); return; }
     if (a === "unstop") { const d = (m.card || {}).dish || {}; upd(api.stopSet(chat.id, d, false, null, m.id)); return; }
     if (a === "lateok") { upd(api.lateOk(m.id)).then((r) => { if (r) flash("Принято. " + bubbleName(m.name).split(" ")[0] + " увидит это на карточке"); }); }   // v99
+    if (a === "greet" && api.greet) {   // v107: «Поздороваться», «Поздравить» — своё имя на карточке сразу
+      const cd = m.card || {};
+      addMsgs([{ id: m.id, card: { ...cd, greet: [...(Array.isArray(cd.greet) ? cd.greet : []), { id: me && me.id, n: me && me.name }] } }], { quiet: true });
+      upd(api.greet(m.id));
+    }
   };
   // v93: подсказки над строкой ввода и плитки «+»
   const onTile = (k) => {

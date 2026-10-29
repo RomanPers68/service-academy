@@ -182,7 +182,7 @@ describe("v99: «Опаздываю» (lib/late.js, chat_late)", () => {
     expect(app).toContain('lateRow={lateOn ? { key: "late", label: "Опаздываю?", title: "предупредить", onClick: openLate } : null}');
     expect(app).toContain('lateOn && { key:"late", group:"На смене", icon:"late", label:"Опаздываю"');
     const chat = rd("ui/chat.jsx");
-    expect(chat).toContain('if (it.kind === "give" || it.kind === "swap" || it.kind === "late") wantRef.current = it;');
+    expect(chat).toContain('if (it.kind === "give" || it.kind === "swap" || it.kind === "late"');   // v107: ещё «team» (карточка новичка)
     expect(chat).toContain('if (k === "late") { setSheet("late"); return; }');
     expect(rd("ui/chat-cards.jsx")).toContain('<Sheet title="Опаздываю" data={{ "data-chat-latesheet": "" }} onClose={onClose}>');
     // в «+» — во всю ширину под плитками: сетка ровная (3×3 у руководителя, 3×2 у сотрудника)

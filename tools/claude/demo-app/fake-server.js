@@ -12,6 +12,7 @@ import { cardSummary, shiftLogLine } from "../../../lib/chat-smart.js";
 import { mentionNames } from "../../../lib/chat-mention.js";
 import { lateMinText } from "../../../lib/late.js";
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — текст, как у сервера
+import { focusFromPayload, memoOf, NB_KEEP_DAYS, NB_STEP_IDS, NB_BUDDY_STEPS } from "../../../lib/newbie.js";   // v107: новичок, как этап 41
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -63,6 +64,15 @@ export function makeServer(opts) {
   S.learn = S.learn || Object.fromEntries(Object.entries(opts.learn || {}).map(([id, offs]) => [id, offs.map((n) => D(n))]));
   S.briefDays = S.briefDays || Object.fromEntries(Object.entries(opts.briefDays || {}).map(([n, reads]) => [D(Number(n)), { reads }]));
   S.cl = S.cl || Object.fromEntries(Object.entries(opts.checklists || {}).map(([n, v]) => [D(Number(n)), v]));
+  // v107 (этап 41): новички — когда пришёл (смещение дня), наставник, свои шаги и подтверждения наставника, карточки
+  // «Знакомьтесь» и «самостоятельная смена», памятка заведения, собеседования «Берём» (cands: aiScores или topics)
+  const nbSeed = !S.nb;
+  S.nb = S.nb || Object.fromEntries((opts.newbies || []).map((n) => [n.emp, { started: D(n.started || 0), added: n.added || null, cand: n.cand == null ? null : n.cand,
+    buddy: n.buddy || null, buddyBy: n.buddyBy || null, checked: Object.fromEntries((n.checked || []).map((x) => [x, D(n.started || 0) + "T10:00:00Z"])),
+    confirm: Object.fromEntries(Object.entries(n.confirm || {}).map(([k, v]) => [k, { by: v.by, name: v.name, at: D(v.at || 0) + "T21:00:00Z" }])),
+    hello: null, helloAt: null, solo: null, soloBy: null, soloName: null, soloMsg: null, off: false }]));
+  S.nbMemo = S.nbMemo || clone(opts.nbMemo || {});
+  S.cands = S.cands || (opts.cands || []).map((c) => ({ ...clone(c), date: D(c.at || 0) }));
   const monOf = (iso) => { const mk = iso.slice(0, 7); return S.months[mk] || (S.months[mk] = { plan: {}, locks: {}, days: {}, facts: {} }); };
   if (!opts.state) for (const [sid, row] of Object.entries(opts.plan || {})) for (const [n, k] of Object.entries(row)) { const iso = D(Number(n)); const mo = monOf(iso); (mo.plan[sid] = mo.plan[sid] || {})[dayN(iso)] = k; }
   // пожелания: { "ГГГГ-ММ": [{ staff_id, day, kind: "off" | "hard" }] }; opts.wishes — смещение дня от сегодня
@@ -205,6 +215,75 @@ export function makeServer(opts) {
   const cardMsg = (c, p, card, extra = {}) => put(c, p, cardSummary(card), { kind: "card", card, ...extra });
   const shiftCard = (s, iso, k) => { const sh = def(k); return { date: iso, k, label: sh.name, time: hh(sh.from) + "–" + hh(sh.to), pos: SPOS[s.pos][0], posKey: s.pos }; };
 
+  // ── v107 (этап 41): новичок — как _sa_nb_* на сервере ──
+  const nbOf = (id) => S.nb[id] || null;
+  const nbActive = (n) => !!n && !n.off && (!n.solo || clock() - Date.parse(n.solo) < NB_KEEP_DAYS * 864e5);
+  const nbDays = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 864e5);
+  function nbFirst(empId, fromIso) {
+    const st = staffOf(empId); if (!st) return null;
+    for (let i = 0; i <= 60; i++) { const iso = addD(fromIso, i), k = code(String(st.id), iso), sh = def(k); if (sh) return { day: iso, k, name: sh.name, from: sh.from, to: sh.to }; }
+    return null;
+  }
+  function nbCand(n, e) {
+    if (n.cand != null && n.cand < 0) return null;
+    let c = null, how = "set";
+    if (n.cand > 0) c = S.cands.find((x) => x.id === n.cand) || null;
+    else {
+      const t = toks(full(e)); if (t.split(" ").length < 2) return null;
+      const hits = S.cands.filter((x) => x.decision === "hire" && toks(x.name) === t && nbDays(x.date, n.started) <= 120 && nbDays(n.started, x.date) <= 7);
+      if (hits.length !== 1) return null;
+      c = hits[0]; how = "auto";
+    }
+    return c ? { id: c.id, name: c.name, date: c.date, how, focus: focusFromPayload(c) } : null;
+  }
+  function nbRow(empId, view) {
+    const n = nbOf(empId), e = who(empId); if (!n || !e) return null;
+    const cand = nbCand(n, e), b = n.buddy ? who(n.buddy) : null, hm = n.hello ? msgOf(n.hello) : null, f = nbFirst(e.id, n.started);
+    const out = { emp: e.id, name: full(e), pos: e.position, rest: e.restaurant, day: TODAY, started: n.started, days: Math.max(0, nbDays(n.started, TODAY)),
+      memo: memoOf(S.nbMemo), focus: (cand ? cand.focus : []).map((x) => (view === "lead" ? x : { topic: x.topic })), checked: clone(n.checked), confirm: clone(n.confirm),
+      tg: S.tgLinked.includes(e.id) };
+    if (f) out.first = f;
+    if (b) out.buddy = { id: b.id, name: full(b), pos: b.position };
+    if (n.hello) out.hello = { msg: n.hello, at: n.helloAt, n: hm && !hm.del ? ((hm.card && hm.card.greet) || []).length : 0 };
+    if (n.solo) out.solo = { at: n.solo, by: n.soloBy, name: n.soloName || "" };
+    if (view === "lead") { if (cand) out.cand = { id: cand.id, name: cand.name, date: cand.date, how: cand.how }; out.no_cand = n.cand != null && n.cand < 0; }
+    return out;
+  }
+  const nbBuddyOf = (pid) => Object.entries(S.nb).filter(([id, n]) => n.buddy === pid && nbActive(n) && who(id)).sort((x, y) => (x[1].started < y[1].started ? -1 : 1))
+    .map(([id]) => ({ emp: id, name: full(who(id)) }));
+  const nbCan = (p, empId) => { const e = who(empId), n = nbOf(empId); return !!e && !!n && e.restaurant === p.restaurant && (isLead(p) || n.buddy === p.id); };
+  function nbHelloCard(empId) {
+    const n = nbOf(empId), e = who(empId), b = n.buddy ? who(n.buddy) : null, f = nbFirst(empId, n.started);
+    const c = { t: "hello", emp: e.id, name: full(e), pos: e.position, greet: [] };
+    if (f) c.first = { day: f.day, from: f.from, name: f.name };
+    if (b) c.buddy = { id: b.id, name: full(b) };
+    return c;
+  }
+  function nbHello(empId, author) {
+    const n = nbOf(empId), c = teamOf(R0);
+    if (n.hello && msgOf(n.hello) && !msgOf(n.hello).del) return msgOf(n.hello);
+    const m = cardMsg(c, author, nbHelloCard(empId));
+    n.hello = m.id; n.helloAt = m.at;
+    return m;
+  }
+  function nbSolo(empId, author) {
+    const n = nbOf(empId), e = who(empId), b = n.buddy ? who(n.buddy) : null, f = nbFirst(empId, n.started);
+    const from = f && f.day <= TODAY ? f.day : n.started;
+    const card = { t: "solo", emp: e.id, name: full(e), pos: e.position, days: Math.max(0, nbDays(from, TODAY)), greet: [] };
+    if (b) card.buddy = { id: b.id, name: full(b) };
+    const m = cardMsg(teamOf(R0), author, card);
+    n.soloMsg = m.id;
+    return m;
+  }
+  // карточки «Знакомьтесь», которые уже висят в «Вся команда» (вчера и раньше), с теми, кто поздоровался
+  if (nbSeed) for (const x of [...(opts.newbies || [])].sort((u, v) => ((u.hello && u.hello.at) || 0) - ((v.hello && v.hello.at) || 0))) {
+    const h = x.hello, by = h && who(h.by), n = S.nb[x.emp];
+    if (!h || !by || !n || !teamOf(R0)) continue;
+    const m = nbHello(x.emp, by);
+    m.at = D(h.at || -1) + "T" + (h.time || "18:00") + ":00"; m.upd = m.at; n.helloAt = m.at;
+    m.card.greet = (h.greet || []).map((id, i) => ({ id, n: full(who(id)), at: D(h.at || -1) + "T" + String(19 + Math.min(i, 4)).padStart(2, "0") + ":1" + i + ":00" }));
+  }
+
   // ── вход и главные экраны ──
   const stateOf = (p) => ({ ok: true, v: 2, quiz: (S.quizzes[p.id] || []).slice(), lessons: (S.progress[p.id] || []).slice(), stars: {}, roles: [], last_role: "seasonal" });
 
@@ -298,7 +377,7 @@ export function makeServer(opts) {
         return { ok: true, code: S.srv.code, app: S.srv.app };
       }
       return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.slice() : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
-        cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }, { name: "sa-morning", on: true }], pg_net: true,
+        cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }, { name: "sa-morning", on: true }, { name: "sa-newbie", on: true }], pg_net: true,
         tg: { bot: true, name: "akademiya_demo_bot", hook: !!S.srv.hook, last: S.srv.last, linked: 5, auth: Object.values(S.tgAuth).filter((a) => !a.off).length + 2 },
         app: S.srv.app, staff: PEOPLE.length, tz: "Europe/Moscow", now: now() };
     }
@@ -352,6 +431,86 @@ export function makeServer(opts) {
       const cur = (S.cl[day] = S.cl[day] || {})[kind] || {};
       S.cl[day][kind] = { checked, done_at: done ? cur.done_at || now() : null, by_name: done ? cur.by_name || nm(full(p)) : null };
       return { ok: true, done_at: S.cl[day][kind].done_at };
+    }
+    // ── v107 (этап 41): новичок ──
+    if (/^newbie_/.test(fn) && !p) return { ok: false, error: "auth" };
+    if (fn === "newbie_me") {
+      const n = nbOf(p.id);
+      if (!nbActive(n)) return { ok: true, newbie: false, lead: isLead(p), buddy_of: nbBuddyOf(p.id), day: TODAY };
+      return { ...nbRow(p.id, "me"), ok: true, newbie: true, lead: isLead(p), buddy_of: nbBuddyOf(p.id) };
+    }
+    if (fn === "newbie_check") {
+      const n = nbOf(p.id);
+      if (!nbActive(n)) return { ok: false, error: "not_newbie" };
+      const own = NB_STEP_IDS.filter((x) => !NB_BUDDY_STEPS.includes(x));
+      for (const x of (Array.isArray(b.p_steps) ? b.p_steps : []).slice(0, 30).map(String)) {
+        if (!(own.includes(x) || /^f:.{1,60}$/.test(x))) continue;
+        if (b.p_on === false) delete n.checked[x]; else n.checked[x] = now();
+      }
+      return { ok: true, checked: clone(n.checked) };
+    }
+    if (fn === "newbie_list") {
+      const lead = isLead(p);
+      const list = Object.entries(S.nb).filter(([id, n]) => nbActive(n) && who(id) && who(id).restaurant === p.restaurant && (lead || n.buddy === p.id))
+        .sort((x, y) => (x[1].started > y[1].started ? -1 : x[1].started < y[1].started ? 1 : x[0] < y[0] ? -1 : 1)).map(([id]) => nbRow(id, lead ? "lead" : "buddy"));
+      const team = lead ? PEOPLE.filter((e) => e.restaurant === p.restaurant && !e.is_admin && !nbActive(nbOf(e.id)))
+        .map((e) => ({ id: e.id, name: full(e), pos: e.position, leads: Object.values(S.nb).filter((n) => n.buddy === e.id && nbActive(n)).length }))
+        .sort((x, y) => x.name.localeCompare(y.name, "ru")) : [];
+      const cands = lead ? S.cands.filter((c) => c.decision === "hire" && nbDays(c.date, TODAY) <= 120).sort((x, y) => (x.date > y.date ? -1 : x.date < y.date ? 1 : y.id - x.id))
+        .slice(0, 30).map((c) => ({ id: c.id, name: c.name, date: c.date, focus: focusFromPayload(c) })) : [];
+      const led = Object.entries(S.nb).filter(([id, n]) => n.buddy === p.id && n.solo && who(id)).sort((x, y) => (x[1].solo > y[1].solo ? -1 : 1)).slice(0, 20)
+        .map(([id, n]) => ({ name: full(who(id)), solo: n.solo.slice(0, 10) }));
+      return { ok: true, lead, day: TODAY, memo: memoOf(S.nbMemo), list, team, cands, led };
+    }
+    if (fn === "newbie_set") {
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      const id = String(b.p_emp || ""), n = nbOf(id);
+      if (!nbActive(n) || !nbCan(p, id)) return { ok: false, error: "not_found" };
+      if (b.p_buddy != null) {
+        if (b.p_buddy === "") { n.buddy = null; n.buddyBy = p.id; }
+        else {
+          const e = who(String(b.p_buddy));
+          if (!e || e.restaurant !== p.restaurant || e.id === id || nbActive(nbOf(e.id))) return { ok: false, error: "bad_buddy" };
+          n.buddy = e.id; n.buddyBy = p.id;
+        }
+      }
+      if (b.p_cand != null) {
+        const cid = Number(b.p_cand);
+        if (cid > 0 && !S.cands.some((c) => c.id === cid)) return { ok: false, error: "bad_cand" };
+        n.cand = cid === 0 ? null : cid < 0 ? -1 : cid;
+      }
+      let m = null;
+      if (b.p_hello) m = nbHello(id, p);
+      return { ok: true, item: nbRow(id, "lead"), msg: m ? smart(m, p) : null };
+    }
+    if (fn === "newbie_confirm") {
+      const id = String(b.p_emp || ""), st = String(b.p_step || ""), n = nbOf(id);
+      if (!NB_BUDDY_STEPS.includes(st)) return { ok: false, error: "bad_step" };
+      if (!nbActive(n)) return { ok: false, error: "not_found" };
+      if (!nbCan(p, id) || id === p.id) return { ok: false, error: "forbidden" };
+      if (b.p_on === false) {
+        delete n.confirm[st];
+        if (st === "d3b") { const sm = n.soloMsg && msgOf(n.soloMsg); if (sm) { sm.del = true; touch(sm); } n.solo = null; n.soloBy = null; n.soloName = null; n.soloMsg = null; }
+      } else {
+        if (!n.confirm[st]) n.confirm[st] = { by: p.id, name: full(p), at: now() };
+        if (st === "d3b" && !n.solo) { n.solo = now(); n.soloBy = p.id; n.soloName = full(p); nbSolo(id, p); }
+      }
+      return { ok: true, item: nbRow(id, isLead(p) ? "lead" : "buddy") };
+    }
+    if (fn === "newbie_memo_set") {
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      S.nbMemo = memoOf(b.p_memo && typeof b.p_memo === "object" ? b.p_memo : {});
+      return { ok: true, memo: clone(S.nbMemo) };
+    }
+    if (fn === "newbie_add") {
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      const e = who(String(b.p_emp || ""));
+      if (!e || e.restaurant !== p.restaurant || e.is_admin || e.id === p.id) return { ok: false, error: "not_found" };
+      const n = nbOf(e.id);
+      if (b.p_on === false) { if (n) n.off = true; }
+      else if (!n) S.nb[e.id] = { started: TODAY, added: p.id, cand: null, buddy: null, buddyBy: null, checked: {}, confirm: {}, hello: null, helloAt: null, solo: null, soloBy: null, soloName: null, soloMsg: null, off: false };
+      else if (n.off) { n.off = false; n.started = TODAY; }
+      return { ok: true, item: nbActive(nbOf(e.id)) ? nbRow(e.id, "lead") : null };
     }
     if (!/^chat_/.test(fn)) return { code: "PGRST202", message: "demo: " + fn };
     S.log.push({ fn, at: now() }); if (S.log.length > 200) S.log.splice(0, S.log.length - 200);
@@ -650,6 +809,22 @@ export function makeServer(opts) {
       const l = S.late[m.emp + "|" + m.card.day]; if (l && l.msg === m.id) l.ok = full(p);
       if (m.emp !== p.id) pingK(c, m.emp, nm(full(p)) + ": принято, ждём к " + (m.card.eta || "") + ".", null, m.id);
       return { ok: true, msg: smart(m, p) };
+    }
+    // v107 (этап 41): «Поздороваться» и «Поздравить» на карточках новичка; «Наставник новичков» в карточке коллеги
+    if (fn === "chat_greet") {
+      const m = msgOf(b.p_msg), c = m ? chatOf(m.chat) : null;
+      if (!m || m.del || m.kind !== "card" || !m.card || !["hello", "solo"].includes(m.card.t) || !visible(c, p)) return { ok: false, error: "not_found" };
+      if (m.card.emp === p.id) return { ok: false, error: "self", msg: smart(m, p) };
+      m.card.greet = Array.isArray(m.card.greet) ? m.card.greet : [];
+      if (!m.card.greet.some((g) => g.id === p.id) && m.card.greet.length < 300) { m.card.greet.push({ id: p.id, n: full(p), at: now() }); touch(m); }
+      return { ok: true, msg: smart(m, p) };
+    }
+    if (fn === "chat_newbie_mark") {
+      const e = who(String(b.p_emp || ""));
+      if (!e || (e.restaurant !== p.restaurant && !isLead(p))) return { ok: false, error: "not_found" };
+      const mine = Object.entries(S.nb).filter(([id, n]) => n.buddy === e.id && who(id));
+      return { ok: true, now: mine.filter(([, n]) => !n.solo && nbActive(n)).sort((x, y) => (x[1].started < y[1].started ? -1 : 1)).map(([id]) => ({ name: full(who(id)) })),
+        led: mine.filter(([, n]) => n.solo).sort((x, y) => (x[1].solo > y[1].solo ? -1 : 1)).slice(0, 20).map(([id, n]) => ({ name: full(who(id)), solo: n.solo.slice(0, 10) })) };
     }
     if (fn === "chat_ai_post") return { ok: false, error: "no_ai" };
     return { code: "PGRST202", message: "demo: " + fn };

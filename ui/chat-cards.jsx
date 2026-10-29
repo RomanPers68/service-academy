@@ -16,6 +16,7 @@ import { shiftState, shiftLine, wantLine, dayLong, dayShort, dayParts, nextDays,
   posWord, insteadLine, schedView } from "../lib/chat-smart";   // v97: «Ищем в смену», «График готов»
 import { IC, stop } from "./chat-kit";
 import { LATE_MINS, LATE_NOTE_MAX, lateChip, lateEta, lateMinText, lateView } from "../lib/late";   // v99 (Доп. 412): «Опаздываю»
+import { helloView, soloView } from "../lib/newbie";   // v107 (Доп. 420): «Знакомьтесь» и «Первая самостоятельная смена»
 
 export const CARDS_CSS = `
 /* v93: умные карточки */
@@ -163,6 +164,7 @@ function RingTile({ n, of }) {
 }
 const IcoTile = ({ ic, img, cap: c }) => <span className="ch-tl ch-tl-i" aria-hidden="true"><span className="ch-tl-box">{img ? <img src={img} alt="" /> : ic}</span>{c ? <i>{c}</i> : null}</span>;
 const NumTile = ({ ic, n, word }) => <span className="ch-tl ch-tl-d" aria-hidden="true"><span className="ch-tl-ic">{ic}</span><b>{n}</b><i>{word}</i></span>;
+const dayWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "день" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "дня" : "дней"; };
 const votesWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "голос" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "голоса" : "голосов"; };
 const St = ({ ok, wait, children, ...rest }) => <div className={"ch-card-st" + (ok ? " ok" : "")} {...rest}>{ok ? IC.check : wait ? IC.clock : null}<span>{children}</span></div>;
 
@@ -281,6 +283,19 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
       {v.note ? <div className="ch-card-n">«{v.note}»</div> : null}
       {v.ok ? <St ok data-chat-late-ok="">Принято: {v.ok}</St> : v.wait ? <St wait data-chat-late-wait="">Ждём ответа руководителя</St> : null}
       {v.act ? <div className="ch-card-acts"><button type="button" className="ch-cbtn" data-chat-lateok={m.id} disabled={busy} onClick={act("lateok")}>Принято</button></div> : null}
+    </>);
+  }
+  if (c.t === "hello" || c.t === "solo") {
+    // v107 (Доп. 420): новичок. «Знакомьтесь»: кто, должность, первая смена, наставник; «Поздороваться» — один раз.
+    // «Первая самостоятельная смена»: за сколько дней, наставник; «Поздравить». Сам новичок видит, кто поздоровался.
+    const hello = c.t === "hello", v = hello ? helloView(c, me) : soloView(c, me), days = Number(c.days) || 0;
+    const tile = hello ? <IcoTile ic={IC.person} cap="новичок" /> : days > 0 ? <NumTile ic={IC.star} n={days} word={dayWord(days)} /> : <IcoTile ic={IC.star} cap="сам" />;
+    return wrap("", tile, <>
+      <Head k={hello ? "Знакомьтесь" : "Самостоятельная смена"} m={m} me={me} />
+      <div className="ch-card-t" data-chat-nb={c.t}>{hello ? c.name : v.title}</div>
+      {v.sub ? <div className="ch-card-s">{cap(v.sub)}</div> : null}
+      <div className="ch-card-st" data-chat-greet-n={v.n}><span>{v.line}</span></div>
+      {v.act ? <div className="ch-card-acts"><button type="button" className="ch-cbtn" data-chat-greet={m.id} disabled={busy} onClick={act("greet")}>{v.btn}</button></div> : null}
     </>);
   }
   return wrap("done", <IcoTile ic={IC.share} />, <><Head k="Карточка" m={m} me={me} /><div className="ch-card-s">Эта карточка откроется в новой версии приложения.</div></>);

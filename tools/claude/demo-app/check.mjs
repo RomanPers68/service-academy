@@ -3,7 +3,9 @@
 // черновик, поиск, календарь и страница подписки), Мария (уведомление «Дарья Л. опаздывает» с «Принято», «Сегодня» в
 // «Графике»), Роман («Сервер», «Подключить бота», страница бота), новый телефон (вход через Telegram без кода).
 // v106 (Доп. 419): Марии и Роману при открытии — «Утро руководителя» в Telegram; «Открыть утро» — экран «Утро», «Напомнить».
-// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,phone]
+// v107 (Доп. 420): Ксения — новичок: памятка бота накануне первой смены, «Первая неделя», её карточка «Знакомьтесь» в чате;
+// Мария — «Новички»; Анна — наставник Ксении.
+// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
 import { readFileSync, statSync, mkdirSync } from "node:fs";
@@ -124,6 +126,15 @@ if (!ONLY || ONLY.includes("anna")) {
   await page.getByText("Смены в календаре телефона").first().click(); await page.waitForTimeout(1200);
   ok("после подписки: «Подписка работает»", /Подписка работает/.test(await txt()));
   await shot("a14-cal-used");
+  // v107 (Доп. 420): Анна — наставник Ксении: «Команда» → «Новички»
+  await page.locator("[data-cal-sheet] [data-sa-back]").click().catch(() => {}); await page.waitForTimeout(500);
+  await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1500);
+  ok("Анна: «Команда» → «Новички»: «Ты наставник: Ксения М.»", /Ты наставник: Ксения М\./.test(await txt()));
+  await page.getByText("Ты наставник: Ксения М.").first().click(); await page.waitForTimeout(1800);
+  await page.locator('[data-nbl-item="e-ksenia"] [role=button]').first().click().catch(() => {}); await page.waitForTimeout(600);
+  const nb = await page.locator('[data-nbl-open="e-ksenia"]').innerText().catch(() => "");
+  ok("Анна: у Ксении «Встретить к 11:45, сегодня», темы для занятий, «Подтвердить»", /Встретить к 11:45, сегодня/.test(nb) && /Темы для занятий: конфликты/.test(nb) && /Подтвердить/.test(nb), nb.replace(/\s+/g, " ").slice(0, 160));
+  await shot("a15-newbies");
 }
 if (!ONLY || ONLY.includes("maria")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "maria"); localStorage.removeItem("__demo_me"); });
@@ -156,6 +167,14 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("в «Графике» «Сегодня»: опаздывает Дарья (принято)", marks > 0 && /Лебедева Дарья к 12:20 \(принято\)/.test(ltxt), ltxt);
   await page.locator("[data-today-lates]").first().click().catch(() => {}); await page.waitForTimeout(700); await shot("m4-today-open");
   ok("раскрыто: у Дарьи «опоздает, к 12:20»", /опоздает, к 12:20/.test(await txt()));
+  // v107 (Доп. 420): «Команда» → «Новички»: Ксения (наставник Анна, представлена) и Тимур (наставник Илья)
+  await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1500);
+  await page.getByText("Наставники, памятка и темы с собеседования").first().click().catch(() => {}); await page.waitForTimeout(1800);
+  const ids = await page.evaluate(() => [...document.querySelectorAll("[data-nbl-item]")].map((e) => e.getAttribute("data-nbl-item")).join(","));
+  const ks = await page.locator('[data-nbl-item="e-ksenia"]').innerText().catch(() => "");
+  ok("Марии: «Новички» — Ксения и Тимур, у Ксении наставник Анна, представлена, поздоровались 3", ids === "e-ksenia,e-timur" && /Наставник: Анна С\./.test(ks) && /Представлена команде · поздоровались 3/.test(ks)
+    && (await page.locator("[data-nbl-memo]").count()) === 1, ids + " · " + ks.replace(/\s+/g, " ").slice(0, 160));
+  await shot("m5-newbies");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });
@@ -178,6 +197,34 @@ if (!ONLY || ONLY.includes("roman")) {
   await page.locator("#demo-page .bar button").click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(4800);
   ok("после подключения: «Кнопки и ответы в чат: подключены»", /Кнопки и ответы в чат: подключены/.test(await txt()));
   await shot("r4-server-after");
+}
+if (!ONLY || ONLY.includes("ksenia")) {
+  // v107 (Доп. 420): Ксения — новичок: вчера бот прислал памятку, сегодня первая смена, её представили команде
+  await page.evaluate(() => { localStorage.setItem("__demo_who", "ksenia"); localStorage.removeItem("__demo_me"); });
+  await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot();
+  await page.waitForSelector("#demo-tgchat", { timeout: 8000 }).catch(() => {});
+  const ev = await page.locator("#demo-tgchat .t").innerText().catch(() => "");
+  const day = await page.locator("#demo-tgchat .day").innerText().catch(() => "");
+  const btns = await page.locator("#demo-tgchat .kb button").allInnerTexts().catch(() => []);
+  ok("Ксении: вчера бот прислал памятку — к 11:45, как найти, форма, наставник Анна, «Первая неделя»", /^Завтра твоя первая смена/.test(ev) && /Приходи к 11:45/.test(ev) && /Как найти: Служебный вход/.test(ev)
+    && /Тебя встретит Анна С\., твой наставник/.test(ev) && day === "Вчера" && btns[0] === "Первая неделя", day + " · " + ev.replace(/\s+/g, " ").slice(0, 160) + " · " + btns.join("|"));
+  await shot("k1-eve-tg");
+  await page.locator('#demo-tgchat [data-demo-tgbtn="newbie"]').click().catch(() => {}); await page.waitForTimeout(2400);
+  const wk = await page.locator("[data-newbie]").innerText().catch(() => "");
+  ok("«Первая неделя» из памятки: смена сегодня, наставник Анна, первыми темы с собеседования", (await page.locator('[data-newbie="ready"]').count()) === 1 && /Сегодня, День 12:00–20:00/.test(wk)
+    && (await page.locator('[data-nb-buddy="e-anna"]').count()) === 1 && (await page.locator('[data-nb-sec="focus"]').count()) === 1, wk.replace(/\s+/g, " ").slice(0, 200));
+  await shot("k2-week");
+  await page.locator("[data-nb-team] [data-nb-chat]").click().catch(() => {}); await page.waitForTimeout(2000);
+  const hc = await page.locator('[data-chat-card="hello"]').last().innerText().catch(() => "");
+  ok("«Открыть чат»: в «Вся команда» её карточка — с ней поздоровались", /Ксения Миронова/.test(hc) && /С тобой поздоровались: .*Пётр О\./.test(hc.replace(/\s+/g, " ")), hc.replace(/\s+/g, " ").slice(0, 200));
+  await page.waitForFunction(() => { const c = [...document.querySelectorAll('[data-chat-card="hello"]')].pop(); return c && /Ольга Л\./.test(c.innerText); }, null, { timeout: 15000 }).catch(() => {});
+  ok("через несколько секунд здоровается Ольга", /Ольга Л\./.test(await page.locator('[data-chat-card="hello"]').last().innerText().catch(() => "")));
+  await shot("k3-hello");
+  for (let i = 0; i < 5 && await page.locator("[data-chat]").count(); i++) { await page.evaluate(() => { const b = document.querySelector('[data-chat] [data-sa-back]'); if (b) b.click(); }); await page.waitForTimeout(450); }
+  await page.evaluate(() => window.__saNav && window.__saNav("shift")); await page.waitForTimeout(1600);
+  const first = await page.evaluate(() => { const c = [...document.querySelectorAll(".sa-card.sa-pagein[aria-label]")].filter((e) => e.getClientRects().length); return c.length ? c[0].innerText.replace(/\s+/g, " ") : ""; });
+  ok("«Смена»: первым — «Первая неделя: первая смена сегодня»", /^Первая неделя Первая смена: сегодня, 12:00/.test(first), first);
+  await shot("k4-shift");
 }
 if (!ONLY || ONLY.includes("phone")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "anna"); localStorage.setItem("__demo_newphone", "1"); localStorage.removeItem("__demo_me"); });

@@ -350,6 +350,7 @@ import { shiftRoleOf, roleCard } from "./lib/shift-role";   // v87 (Доп. 400)
 import { ShiftRoleCard } from "./ui/shift-role";
 import { tgBind, tgOff } from "./lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 import { lateWindow } from "./lib/late";   // v99: «Опаздываю» — за 3 часа до смены и 2 часа после начала
+import { newbieModel, firstLine as nbFirstLine, dayDiff as nbDayDiff } from "./lib/newbie";   // v107 (Доп. 420): новичок
 const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
 const loadGamification = () => import("./ui/screens-gamification");
 const loadTeamScreens = () => import("./ui/screens-team");
@@ -376,6 +377,9 @@ const loadBriefing = () => import("./ui/briefing");   // v82 (Доп. 395): бр
 // v99 (Доп. 412): «Сервер» у владельца и «Смены в календаре телефона» — отдельными кусками, грузятся при открытии
 const ServerScreen = lazyOf(() => import("./ui/server"), "ServerScreen");
 const MorningScreen = lazyOf(() => import("./ui/morning"), "MorningScreen");   // v106 (Доп. 419): «Утро руководителя»
+const loadNewbie = () => import("./ui/newbie");   // v107 (Доп. 420): новичок — «Первая неделя» и «Новички»
+const NewbieScreen = lazyOf(loadNewbie, "NewbieScreen");
+const NewbiesScreen = lazyOf(loadNewbie, "NewbiesScreen");
 const CalSheet = lazyOf(() => import("./ui/cal-sheet"), "CalSheet");
 const BriefScreen = lazyOf(loadBriefing, "BriefScreen");
 const BriefCard = lazyOf(loadBriefing, "BriefCard");
@@ -1455,6 +1459,21 @@ function ServiceAcademy() {
       mod: { id: "cases", title: ((profile && profile.restaurant) || "Наш зал") + " · " + n + " " + pl3(n, "случай", "случая", "случаев"), lessons: sits.map((s) => ({ id: s._from })) } });
   }, [profile]);   // eslint-disable-line react-hooks/exhaustive-deps
   const casesOpened = useCallback(() => { markSince(ukP, new Date().toISOString()); setCaseCounts((c) => (c ? { ...c, fresh: 0, mine_new: 0 } : c)); }, [ukP]);
+  // v107 (Доп. 420): новичок — «Первая неделя» (новичку) и «Новички» (руководителю и наставнику). Этап 41 (newbie_me): при
+  // входе во вкладки «Смена» и «Команда», не чаще раза в пять минут; без этапа — прежние пункты (по треку «Новичок»)
+  const [nbInfo, setNbInfo] = useState(null);
+  const nbAskRef = useRef({ at: 0, off: false });
+  const loadNbInfo = useCallback((force) => {
+    const st = nbAskRef.current;
+    if (!profile || st.off || (!force && Date.now() - st.at < 5 * 60e3)) return;
+    st.at = Date.now();
+    rpc("newbie_me", { p_token: saToken() }).then((r) => {
+      if (rpcMissing(r)) { st.off = true; setNbInfo({ off: true }); return; }
+      if (r && r.ok) setNbInfo(newbieModel(r));
+    }).catch(() => { st.at = 0; });
+  }, [profile]);
+  useEffect(() => { if ((screen === "shift" || screen === "teamHub") && storageLoaded) loadNbInfo(false); }, [screen, storageLoaded, loadNbInfo]);
+  const nbOn = !!nbInfo && !nbInfo.off;
   // v84 (Доп. 397): спасибо от гостей — пункт в «Я» (свой QR) и в «Команде» у руководителя. Числа для подписи — my_thanks,
   // но только у тех, кто уже открывал экран (иначе код создавался бы каждому, кто заглянул во вкладку «Я»).
   const [thanksInfo, setThanksInfo] = useState(null);
@@ -1576,7 +1595,7 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing"].includes(v)
+      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
         || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»; v97: chat_<чат>_<сообщение>, lesson_<урок>, schedule — кнопки в сообщениях бота
     } catch (e) { goLinkRef.current = ""; }
   }
@@ -1607,6 +1626,8 @@ function ServiceAcademy() {
     else if (g === "schedule") navigate("schedule");
     else if (g === "morning") navigate("morning");     // v106 (Доп. 419): «Открыть утро» под сводкой руководителя
     else if (g === "briefing") navigate("brief");      // v106: «Собрать брифинг» оттуда же
+    else if (g === "newbie") navigate("newbie");       // v107 (Доп. 420): «Первая неделя» — бот накануне первой смены
+    else if (g === "newbies") navigate("newbies");     // v107: «Новички» — наставнику накануне первой смены новичка
   }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
@@ -2995,6 +3016,18 @@ function ServiceAcademy() {
             else if (dest === "checklist") navigate("checklist");
             else if (dest === "chat" && x && x.chat) setChatOpen({ intent: { kind: "chat", id: Number(x.chat), msg: x.msg ? Number(x.msg) : null, at: Date.now() } });
           }} /></Suspense></div>}
+        {/* v107 (Доп. 420): новичок — «Первая неделя» (первая смена с памяткой, наставник, план и темы с собеседования) и
+            «Новички» (руководитель: наставники, собеседования, памятка, «Представить команде»; наставник — свои новички) */}
+        {screen === "newbie" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><NewbieScreen T={T} a11y={a11y} profile={profile}
+          track={role} modules={programModules} completed={completed} quizDone={quizDone} onBack={() => goBack("shift")}
+          onOpenModule={(id) => { const m = (programModules || []).find((x) => x.id === id); if (m) { setActiveModule(m); navigate("module"); } }}
+          onDm={(x) => setChatOpen({ intent: { kind: "dm", emp: x.id, at: Date.now() } })}
+          onChat={(msg) => setChatOpen({ intent: { kind: "team", msg: msg || null, at: Date.now() } })}
+          onLegacy={() => navigate("onboarding")} /></Suspense></div>}
+        {screen === "newbies" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><NewbiesScreen T={T} a11y={a11y} profile={profile}
+          onBack={() => goBack("teamHub")} onChat={() => setChatOpen({ intent: { kind: "team", at: Date.now() } })}
+          onDm={(x) => setChatOpen({ intent: { kind: "dm", emp: x.id, at: Date.now() } })}
+          onLegacy={() => navigate("onboarding")} /></Suspense></div>}
         {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={customLessons} startSelf={reportSelf}
@@ -3161,6 +3194,9 @@ function ServiceAcademy() {
               data={briefStatus === "ok" ? (brief && brief.quest) || { ok: false } : briefStatus === "pending" ? null : undefined} onReload={() => refreshDay(true)}
               onTask={onQuestTask} onComplete={onQuestComplete} /></Suspense></>} items={[
           // v71: группами — «На смене» (дело) и «Потренироваться» (две минуты на практику)
+          // v107 (Доп. 420): новичку (этап 41) — «Первая неделя» первым пунктом: первая смена, наставник, план
+          nbOn && nbInfo.newbie && { key:"ob", group:"Первая неделя", icon:"onboarding", label:"Первая неделя",
+            sub: nbInfo.first && nbDayDiff(nbInfo.day, nbInfo.first.day) >= 0 ? nbFirstLine(nbInfo) : "План по дням и темы с собеседования", onClick:() => navigate("newbie") },
           isLead && { key:"morning", group:"На смене", icon:"morning", label:"Утро руководителя", sub:"Смена, неделя, стоп-лист и вчерашний день; каждое утро в Telegram", onClick:() => navigate("morning") },   // v106 (Доп. 419)
           lateOn && { key:"late", group:"На смене", icon:"late", label:"Опаздываю", sub:"Предупредить руководителя и команду: «буду в …»", onClick: openLate },   // v99 (Доп. 412)
           isLead && { key:"brief", group:"На смене", icon:"brief", label:"Брифинг смены", sub: teamBrief ? "Сегодня отправлен" + (teamBrief.author && !teamBrief.mine ? ": " + teamBrief.author : "") + ". Можно поправить" : "Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды", onClick:() => navigate("brief") },   // v82
@@ -3177,7 +3213,8 @@ function ServiceAcademy() {
           { key:"lg", group:"Потренироваться", icon:"guestai", label:"Живой гость", sub: guestSub(role, profile?.position), onClick: openGuest, badge: isNewFam("guest") ? "новое" : null },   // v30: Доп. 312; v40: «новое», пока не пробовал; v42: подпись — по роли
           { key:"wg", group:"Потренироваться", icon:"guest", label:"Гость недели", sub:"Живой диалог с гостем", onClick:() => navigate("weeklyGuest"), badge: isNewFam("dialogue") ? "новое" : null },
           { key:"rd", group:"Потренироваться", icon:"radio", label:"Радио в дорогу", sub:"Три коротких выпуска из твоих уроков, чтобы слушать по пути на смену", onClick: openRadio, badge: isNewFam("radio") ? "новое" : null },   // Доп. 319
-          role === "seasonal" && { key:"ob", group:"Первая неделя", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("onboarding") },
+          // без этапа 41 — по треку «Новичок», как раньше (новичку по серверу — первым пунктом, выше)
+          !nbOn && role === "seasonal" && { key:"ob", group:"Первая неделя", icon:"onboarding", label:"Первая неделя", sub:"Твой план адаптации по дням", onClick:() => navigate("newbie") },
         ]} /></div>}
         {screen === "teamHub" && profile && (() => {
           const staff = !!profile?.is_admin || ["manager","senior"].includes(profile?.position);
@@ -3199,7 +3236,10 @@ function ServiceAcademy() {
             { key:"lb", group:"Команда", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
             { key:"lg", group:"Команда", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника: в заведении и в сети", onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
             { key:"mt", group:"Команда", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },
-            role !== "seasonal" && { key:"ob", group:"Команда", icon:"onboarding", label:"Новички", sub:"План первой недели и прогресс новых сотрудников", onClick:() => navigate("onboarding") },
+            // v107 (Доп. 420): руководителю и наставнику (этап 41); без этапа — как раньше
+            (nbOn ? staff || nbInfo.buddyOf.length > 0 : nbInfo && nbInfo.off ? role !== "seasonal" : staff) && { key:"ob", group:"Команда", icon:"onboarding", label:"Новички",
+              sub: nbOn && !staff && nbInfo.buddyOf.length ? "Ты наставник: " + nbInfo.buddyOf.map((x) => x.name.split(" ").slice(0, 2).map((w, i) => (i ? w[0] + "." : w)).join(" ")).join(", ")
+                : nbOn ? "Наставники, памятка и темы с собеседования" : "План первой недели и прогресс новых сотрудников", onClick:() => navigate(nbInfo && nbInfo.off ? "onboarding" : "newbies") },
             { key:"mis", group:"Моё обучение", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
           ]} compactGroups={["Управление"]} /></div>;
         })()}

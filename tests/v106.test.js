@@ -116,7 +116,7 @@ describe("v106: приложение", () => {
   const APP = rd("App.jsx");
   it("экран, ссылки бота ?go=morning и ?go=briefing, пункт во вкладке «Смена» у руководителя", () => {
     expect(APP).toContain('const MorningScreen = lazyOf(() => import("./ui/morning"), "MorningScreen");');
-    expect(APP).toContain('"seat", "chat", "schedule", "morning", "briefing"].includes(v)');
+    expect(APP).toContain('"seat", "chat", "schedule", "morning", "briefing"');   // v107: следом newbie и newbies
     expect(APP).toContain('else if (g === "morning") navigate("morning");');
     expect(APP).toContain('else if (g === "briefing") navigate("brief");');
     expect(APP).toContain('isLead && { key:"morning", group:"На смене", icon:"morning", label:"Утро руководителя",');

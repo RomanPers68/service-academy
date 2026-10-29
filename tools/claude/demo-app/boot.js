@@ -13,6 +13,9 @@
 // с нами неделю, наставник — Илья, «5 столов» подтверждено, самостоятельной смены ещё нет. В демо можно стать Ксенией.
 // v108 (Доп. 421): тепло в команде. Сегодня у Ильи день рождения, Вера год в команде: утром в «Вся команда» карточки,
 // коллеги поздравляют; вчера Мария сказала Анне спасибо карточкой, сегодня Ольга — Илье. Сказал спасибо — двое присоединяются.
+// v109 (Доп. 422): «Что дало обучение» — журнал занятий команды и ответы в тестах за прошлый и этот месяц (Анна, Пётр и Мария
+// занимаются чаще, Дарья ни разу), «спасибо» гостей и коллег, двое новичков вышли на самостоятельную смену; у Марии и Романа
+// «Прислать этот итог в Telegram» показывает сообщение бота, его кнопка «Открыть итог» ведёт на экран.
 // Собирается в один скрипт (esbuild, IIFE) и подключается в index.html до приложения.
 import { makeServer, SHIFTS, full } from "./fake-server.js";
 import { RESTAURANT_MENUS } from "../../../data/menu.js";
@@ -113,6 +116,48 @@ Object.assign(SSTAFF[0], { bday: "14.02", joined: "01.03.2022" });
 Object.assign(SSTAFF[2], { bday: "21.11", joined: "02.06.2024" });
 Object.assign(SSTAFF[3], { bday: "07.07", joined: "15.04.2023" });
 const MENU = JSON.parse(JSON.stringify(RESTAURANT_MENUS[R0] || []));
+// v109 (Доп. 422): «Что дало обучение». Дни месяца → смещения от сегодня: прошлый месяц целиком, этот — до дня за 10 до сегодня
+// (последние девять дней — дни занятий «Утра руководителя», learn ниже); в каждый день — запись журнала и ответы в тестах.
+const dOff = (iso) => Math.round((Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) - Date.UTC(+TODAY.slice(0, 4), +TODAY.slice(5, 7) - 1, +TODAY.slice(8, 10))) / 864e5);
+const M0 = TODAY.slice(0, 8) + "01";
+const M1 = (() => { const d = new Date(Date.UTC(+TODAY.slice(0, 4), +TODAY.slice(5, 7) - 2, 1)); return d.toISOString().slice(0, 10); })();
+const dayOf = (m1, n) => { const d = new Date(Date.UTC(+m1.slice(0, 4), +m1.slice(5, 7) - 1, n)); const iso = d.toISOString().slice(0, 10); return iso.slice(0, 7) === m1.slice(0, 7) ? iso : null; };
+const LEARN = { "e-anna": [-1, -2, -3], "u-maria": [-1, -2, -3, -4, -5, -6], "e-vera": [-1, -3], "e-olga": [-1, -2], "e-ilya": [-1], "e-petr": [-9], "u-roman": [-1, -2],
+  "e-ksenia": [-1], "e-timur": [-1, -2, -4, -5] };
+//  p — дни прошлого месяца, c — этого, r — запись дня, t — тесты по кругу, w — раз в сколько дней один неверный ответ из четырёх
+//  (в прошлом месяце и в этом; 0 — без ошибок)
+const ACT = {
+  "e-anna": { p: [4, 11, 18, 25], c: [2, 4, 6, 9, 11, 13, 16, 18, 20], r: { st: 3, l: 2, q: 1 }, t: ["s4-q", "s1-q", "s3-q"], w: [2, 5] },
+  "e-petr": { p: [7, 21], c: [3, 5, 8, 10, 12, 15, 17, 19], r: { st: 3, l: 2, q: 1, p: 1 }, t: ["s4-q", "s-prod-q", "s3-q"], w: [1, 4] },
+  "u-maria": { p: [2, 9, 16, 23, 30], c: [1, 3, 6, 8, 10, 14, 17, 20], r: { st: 2, l: 1, q: 1 }, t: ["m3-q", "m4-q"], w: [2, 6] },
+  "e-vera": { p: [5, 12, 19, 26], c: [6, 13, 20], r: { st: 2, l: 1, q: 1 }, t: ["s4-q", "s1-q"], w: [3, 3] },
+  "e-olga": { p: [3, 10, 17, 24, 28], c: [9, 16], r: { st: 2, l: 1 }, t: [], w: [0, 0] },
+  "e-ilya": { p: [6, 13, 20, 27], c: [7, 14], r: { st: 2, l: 1, q: 1 }, t: ["bar1-q", "bar4-q"], w: [2, 2] },
+  "e-ksenia": { p: [], c: [], r: { st: 2, l: 2 }, t: ["s0-q"], w: [0, 2] },
+  "e-timur": { p: [], c: [], r: { st: 2, l: 1, q: 1 }, t: ["bar0-q"], w: [0, 3] },
+};
+const ACTIVITY = {}, QUIZ = [];
+for (const [id, a] of Object.entries(ACT)) {
+  const days = [...a.p.map((n) => [dayOf(M1, n), 0]), ...a.c.map((n) => [dayOf(M0, n), 1]), ...(LEARN[id] || []).map((n) => [null, 1, n])];
+  days.forEach(([iso, cur, off], i) => {
+    const n = off != null ? off : iso ? dOff(iso) : null;
+    if (n == null || n > -1 || (off == null && cur && n > -10)) return;
+    (ACTIVITY[id] = ACTIVITY[id] || {})[n] = { ...a.r };
+    if (a.t.length && a.r.q) QUIZ.push({ emp: id, lesson: a.t[i % a.t.length], at: n, n: 4, w: a.w[cur] && i % a.w[cur] === 0 ? 1 : 0 });
+  });
+}
+// «спасибо» гостей прошлых дней (вчерашние — в thanks ниже, их видит «Утро руководителя»): в прошлом месяце 24, в этом — чаще
+const THANKS_OLD = [];
+[[M1, [2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21, 23, 24, 25, 26, 27, 28, 29, 30, 31, 31]], [M0, [1, 2, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11, 12, 13, 13, 14, 15, 16, 16,
+  17, 18, 19, 19, 20, 21, 22, 22, 23, 24, 25, 25, 26, 27, 28]]].forEach(([m1, ns], k) => ns.forEach((n, i) => {
+  const iso = dayOf(m1, n); if (!iso) return; const off = dOff(iso); if (off >= -1) return;
+  THANKS_OLD.push({ emp: ["e-anna", "e-petr", "e-vera", "e-ilya", "e-olga", "e-anna", "u-maria"][(i + k) % 7], at: off, time: "20:" + String(10 + (i % 40)).padStart(2, "0"),
+    text: ["Спасибо за вечер", "", "Очень внимательно, спасибо", "Всё было вкусно и быстро", "", "Отличный сервис"][(i + 2 * k) % 6] });
+}));
+// новички, которые уже вышли на самостоятельную смену (в «Новичках» их больше нет): Ольга — в прошлом месяце за 11 дней,
+// Дарья — в этом за 6 (если это было больше двух недель назад)
+const NB_PAST = [{ emp: "e-olga", started: dOff(dayOf(M1, 4)), solo: dOff(dayOf(M1, 15)), buddy: "u-maria", buddyBy: "u-maria" }];
+if (dOff(dayOf(M0, 8)) <= -15) NB_PAST.push({ emp: "e-darya", started: dOff(dayOf(M0, 2)), solo: dOff(dayOf(M0, 8)), buddy: "e-vera", buddyBy: "u-maria" });
 // v106: утром в стопе два блюда — «Утро руководителя» показывает стоп-лист
 MENU.filter((d) => d && d.name && d.kind !== "cocktail").slice(3, 5).forEach((d) => Object.assign(d, { stop: { since: Date.now() - 3600e3, by: "Мария Ким" }, stopAt: Date.now() - 3600e3 }));
 
@@ -133,8 +178,10 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   tgKnown: { [TG_ANNA]: "e-anna" },
   // v106: вчерашний день и привычки команды — для «Утра руководителя» (смещения дней от сегодня)
   thanks: [{ emp: "e-anna", at: -1, time: "19:40", text: "Анна подсказала с вином, всё было идеально" }, { emp: "e-anna", at: -1, time: "21:10", text: "Спасибо за внимательность" },
-    { emp: "e-petr", at: -1, time: "20:05", text: "Быстро и вежливо, спасибо" }, { emp: "e-vera", at: -1, time: "18:30", text: "" }, { emp: "e-ilya", at: -2, time: "20:00", text: "Лучший негрони в городе" }],
-  learn: { "e-anna": [-1, -2, -3], "u-maria": [-1, -2, -3, -4, -5, -6], "e-vera": [-1, -3], "e-olga": [-1, -2], "e-ilya": [-1], "e-petr": [-9], "u-roman": [-1, -2] },
+    { emp: "e-petr", at: -1, time: "20:05", text: "Быстро и вежливо, спасибо" }, { emp: "e-vera", at: -1, time: "18:30", text: "" }, { emp: "e-ilya", at: -2, time: "20:00", text: "Лучший негрони в городе" },
+    ...THANKS_OLD],   // v109: и прошлые дни — для «Что дало обучение»
+  learn: LEARN,
+  activity: ACTIVITY, quiz: QUIZ,   // v109: журнал занятий и ответы в тестах за два месяца («Что дало обучение»)
   briefDays: { "-1": ["e-anna", "e-petr", "e-olga", "e-vera", "u-maria", "e-ilya"] },
   tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera", "e-ksenia"],
   // v107: новички (смещения дней от сегодня), памятка заведения, собеседования «Берём»
@@ -142,6 +189,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
     { emp: "e-ksenia", started: -1, buddy: "e-anna", buddyBy: "u-maria", checked: ["d1c"], hello: { at: -1, time: "18:40", by: "u-maria", greet: ["e-petr", "e-vera", "e-ilya"] } },
     { emp: "e-timur", started: -6, buddy: "e-ilya", buddyBy: "u-maria", checked: ["d1a", "d1b", "d1c", "d1d", "d2a", "d2b", "d2d"],
       confirm: { d2c: { by: "e-ilya", name: "Илья Белов", at: -2 } }, hello: { at: -6, time: "17:20", by: "u-maria", greet: ["e-anna", "e-petr", "e-olga", "e-vera"] } },
+    ...NB_PAST,   // v109: уже вышли на самостоятельную смену
   ],
   nbMemo: { addr: "Служебный вход со двора, звонок справа от двери", arrive: 15, dress: "Чёрный верх, тёмные брюки, закрытая обувь. Фартук выдадут на месте",
     meet: "", extra: "Обед для команды в 15:30" },
@@ -153,12 +201,17 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   peerThanks: [
     { from: "u-maria", to: "e-anna", text: "выручила с банкетом на веранде", at: -1, time: "21:50", plus: ["e-petr", "e-olga"] },
     { from: "e-olga", to: "e-ilya", text: "помог с гостями у бара", at: 0, time: "10:20", plus: ["e-vera"] },
+    // v109: и в прошлом месяце — для «Что дало обучение»
+    ...[["e-vera", "e-petr", "подменил в субботу", 12], ["e-ilya", "e-olga", "помогла с большой бронью", 20]].map(([from, to, text, n]) => ({ from, to, text, at: dOff(dayOf(M1, n)), time: "22:15", plus: [] })),
   ],
   checklists: { "-1": { open: { checked: ["o1", "o2", "o3", "o4", "o5", "o6"], done_at: iso(new Date(Date.now() - 86400000)) + "T09:52:00", by_name: "Ольга Л." },
     preshift: { checked: ["p1", "p2", "p3", "p4", "p5"], done_at: iso(new Date(Date.now() - 86400000)) + "T11:40:00", by_name: "Мария К." },
     close: { checked: ["c1", "c2", "c3", "c4"], done_at: null, by_name: null } } },
   // бот пишет в Telegram: мне — уведомлением сверху, остальным — никак (их телефонов в демо нет)
-  ping: (to, text, acts, chat, msg, o) => { if (to !== me.id) return; if (o && o.kind === "morning") setTimeout(() => tgChat(text, o.kb, nowHM()), 400); else setTimeout(() => tgToast(text, acts), 500); } });
+  ping: (to, text, acts, chat, msg, o) => { if (to !== me.id) return;
+    if (o && o.kind === "morning") setTimeout(() => tgChat(text, o.kb, nowHM()), 400);
+    else if (o && o.kind === "gain") setTimeout(() => tgChat(text, o.kb, nowHM(), { note: "Так 1-го числа в 10:00 приходит итог прошлого месяца. Кнопка открывает его в приложении." }), 400);   // v109
+    else setTimeout(() => tgToast(text, acts), 500); } });
 const save = () => { lsSet(K_SRV, JSON.stringify(srv.S)); lsSet(K_DAY, TODAY); };
 const D = srv.D;
 // приложение только что открыли: сейчас я ни в одном чате (бот пишет мне в Telegram, как в жизни)
@@ -399,7 +452,10 @@ function tgChat(html, kb, at, o = {}) {
     const r = document.createElement("div"); r.className = "row";
     for (const k of row) {
       const btn = document.createElement("button"); btn.type = "button"; btn.textContent = k.text; btn.setAttribute("data-demo-tgbtn", k.go);
-      btn.addEventListener("click", () => { close(); try { if (window.__saNav && go[k.go]) window.__saNav(go[k.go]); } catch (e) {} });
+      btn.addEventListener("click", () => { close(); try {
+        if (/^gain_/.test(k.go)) { if (window.__saGainMonth) window.__saGainMonth(k.go.slice(5)); if (window.__saNav) window.__saNav("gain"); }   // v109: «Открыть итог» за этот месяц
+        else if (window.__saNav && go[k.go]) window.__saNav(go[k.go]);
+      } catch (e) {} });
       r.appendChild(btn);
     }
     v.querySelector(".kb").appendChild(r);

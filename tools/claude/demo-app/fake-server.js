@@ -14,6 +14,8 @@ import { lateMinText } from "../../../lib/late.js";
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — текст, как у сервера
 import { focusFromPayload, memoOf, NB_KEEP_DAYS, NB_STEP_IDS, NB_BUDDY_STEPS } from "../../../lib/newbie.js";   // v107: новичок, как этап 41
 import { cheersDue, joinedOf, cheerDm, thxPing, cutText, THX_MAX, THX_DAY_MAX, BOT_NAME } from "../../../lib/team-warm.js";   // v108: как этап 42
+import { pointsOf } from "../../../lib/activity.js";   // v109: очки дня — как _sa_day_points этапа 24
+import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «Что дало обучение», как этап 43
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -71,13 +73,20 @@ export function makeServer(opts) {
   S.nb = S.nb || Object.fromEntries((opts.newbies || []).map((n) => [n.emp, { started: D(n.started || 0), added: n.added || null, cand: n.cand == null ? null : n.cand,
     buddy: n.buddy || null, buddyBy: n.buddyBy || null, checked: Object.fromEntries((n.checked || []).map((x) => [x, D(n.started || 0) + "T10:00:00Z"])),
     confirm: Object.fromEntries(Object.entries(n.confirm || {}).map(([k, v]) => [k, { by: v.by, name: v.name, at: D(v.at || 0) + "T21:00:00Z" }])),
-    hello: null, helloAt: null, solo: null, soloBy: null, soloName: null, soloMsg: null, off: false }]));
+    hello: null, helloAt: null, solo: n.solo != null ? D(n.solo) + "T12:00:00.000Z" : null, soloBy: null, soloName: null, soloMsg: null, off: false }]));   // v109: solo — давно вышел на самостоятельную
   S.nbMemo = S.nbMemo || clone(opts.nbMemo || {});
   S.cands = S.cands || (opts.cands || []).map((c) => ({ ...clone(c), date: D(c.at || 0) }));
   // v108 (этап 42): «спасибо» от коллег (строка на автора карточки и на каждого «Тоже спасибо»), праздники дня
   // («сотрудник|день|повод» → сообщение). Состояние прошлых версий демо — без этих полей: засеять (opts.peerThanks)
   const warmSeed = !S.thx;
   S.thx = S.thx || []; S.cheers = S.cheers || {}; S.thxSeq = S.thxSeq || 0;
+  // v109 (этап 43): «Что дало обучение» — журнал занятий по дням (как emp_learning с телефонов: { сотрудник: { день: запись } };
+  // opts.activity — смещения дней от сегодня) и ответы в тестах (как quiz_events; opts.quiz — смещение дня, урок, сколько
+  // ответов и сколько из них неверных). Состояние прошлых версий демо — без этих полей.
+  S.act = S.act || Object.fromEntries(Object.entries(opts.activity || {}).map(([id, days]) => [id, Object.fromEntries(Object.entries(days).map(([n, r]) => [D(Number(n)), { ...r }]))]));
+  S.quiz = S.quiz || (opts.quiz || []).flatMap((q) => Array.from({ length: q.n || 1 }, (_, i) => ({ emp: q.emp, rest: (PEOPLE.find((e) => e.id === q.emp) || {}).restaurant || R0,
+    lesson: q.lesson || "", day: D(q.at || 0), at: D(q.at || 0) + "T" + (q.time || "13:00") + ":00", ok: i >= (q.w || 0) })));
+  S.gainNow = S.gainNow || {};
   const monOf = (iso) => { const mk = iso.slice(0, 7); return S.months[mk] || (S.months[mk] = { plan: {}, locks: {}, days: {}, facts: {} }); };
   if (!opts.state) for (const [sid, row] of Object.entries(opts.plan || {})) for (const [n, k] of Object.entries(row)) { const iso = D(Number(n)); const mo = monOf(iso); (mo.plan[sid] = mo.plan[sid] || {})[dayN(iso)] = k; }
   // пожелания: { "ГГГГ-ММ": [{ staff_id, day, kind: "off" | "hard" }] }; opts.wishes — смещение дня от сегодня
@@ -479,6 +488,35 @@ export function makeServer(opts) {
       S.nudged[k] = full(p);
       ping(e.id, nm(full(p)) + " напоминает про разминку: 2 минуты, три ситуации из зала.", null);
       return { ok: true, sent: true };
+    }
+    // ── v109 (этап 43): «Что дало обучение», «Прислать в Telegram»; ответы в тестах и день журнала — как этапы 7 и 25 ──
+    if (fn === "gain_month" || fn === "gain_send_now") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      if (!p.restaurant) return { ok: false, error: "no_rest" };
+      const cur = TODAY.slice(0, 7), raw = b.p_month == null ? "" : String(b.p_month).trim();
+      const month = !raw ? (Number(TODAY.slice(8)) <= 7 ? monthAdd(cur, -1) : cur) : /^\d{4}-(0[1-9]|1[0-2])$/.test(raw) ? raw : null;
+      if (!month || month > cur || month < monthAdd(cur, -1)) return { ok: false, error: "month" };
+      const g = gainOf(p.restaurant, month);
+      if (fn === "gain_month") return { ...g, today: TODAY, months: [cur, monthAdd(cur, -1)], tg: { bot: true, linked: S.tgLinked.includes(p.id) } };
+      if (!S.tgLinked.includes(p.id)) return { ok: false, error: "not_linked" };
+      if (clock() - (S.gainNow[p.id] || 0) < 60000) return { ok: false, error: "too_fast" };
+      S.gainNow[p.id] = clock();
+      ping(p.id, gainText(g), null, null, null, { kind: "gain", kb: gainKb(g) });
+      return { ok: true, sent: true, month: g.month };
+    }
+    if (fn === "log_quiz_answer") {
+      if (!p) return { ok: false, error: "auth" };
+      S.quiz.push({ emp: p.id, rest: p.restaurant, lesson: String(b.p_lesson || "").slice(0, 80), day: TODAY, at: now(), ok: !!b.p_correct });
+      return { ok: true };
+    }
+    if (fn === "sa_day_push") {
+      if (!p) return { ok: false, error: "auth" };
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.p_day || "")) ? b.p_day : null;
+      if (!day) return { ok: false, error: "bad" };
+      const rec = ((S.act[p.id] = S.act[p.id] || {})[day] = S.act[p.id][day] || {});
+      for (const [k, v] of Object.entries(b.p_rec && typeof b.p_rec === "object" ? b.p_rec : {})) if (/^[a-z]{1,2}$/.test(k)) rec[k] = Math.max(Number(rec[k]) || 0, n1000(v));
+      return { ok: true };
     }
     if (fn === "checklist_get") {
       if (!p) return { ok: false, error: "auth" };
@@ -1027,6 +1065,65 @@ export function makeServer(opts) {
       late: lateOf.map((l) => ({ id: l.emp, n: nm(l.name), min: l.min, eta: l.eta })) };
   }
   const morningPrefs = (p) => { const m = S.morning[p.id] || { on: true, hour: 9 }; return { on: m.on, hour: m.hour, linked: S.tgLinked.includes(p.id), bot: true }; };
+
+  // ── v109 (этап 43): «Что дало обучение» — как _sa_gain_at на сервере ──
+  // журнал человека: свои записи и дни занятий «Утра руководителя» (learn) — записью «урок»
+  const actOf = (id) => { const out = { ...(S.act[id] || {}) }; for (const d of S.learn[id] || []) if (!out[d]) out[d] = { st: 1, l: 1 }; return out; };
+  const actOn = (r) => !!r && (Number(r.st) || 0) + (Number(r.f) || 0) + (Number(r.s) || 0) > 0;
+  const n1000 = (v) => Math.min(1000, Math.max(0, Number(v) || 0));
+  const between = (iso, a, b) => !!iso && iso >= a && iso <= b;
+  function gainRows(rest, from, to) {
+    const days = []; for (let d = from; d <= to; d = addD(d, 1)) days.push(d);
+    // кто пришёл позже конца периода (появился в «Новичках» позже), в команде этого периода не считается
+    return PEOPLE.filter((e) => e.restaurant === rest && !e.is_admin && (e.status || "active") === "active" && !(S.nb && S.nb[e.id] && S.nb[e.id].started > to)).map((e) => {
+      const a = actOf(e.id); let on = 0, l = 0, t = 0, pr = 0, g = 0, pts = 0;
+      for (const d of days) { const r = a[d]; if (!r) continue; if (actOn(r)) on++; l += n1000(r.l); t += n1000(r.q) + n1000(r.x); pr += n1000(r.p); g += n1000(r.g); pts += pointsOf(r); }
+      return { id: e.id, full_: full(e), days: on, lessons: l, tests: t, practice: pr, guest: g, pts };
+    });
+  }
+  const gainSum = (rows) => ({ people: rows.filter((x) => x.days > 0).length, lessons: rows.reduce((s, x) => s + x.lessons, 0), tests: rows.reduce((s, x) => s + x.tests, 0),
+    practice: rows.reduce((s, x) => s + x.practice, 0), guest: rows.reduce((s, x) => s + x.guest, 0), days: rows.reduce((s, x) => s + x.days, 0) });
+  function gainQuiz(rest, from, to) {
+    const ev = S.quiz.filter((q) => q.rest === rest && between(q.day, from, to)), people = {}, by = {};
+    for (const q of ev) {
+      const x = people[q.emp] || (people[q.emp] = [0, 0]); x[0]++; if (!q.ok) x[1]++;
+      if (q.lesson) { const t = by[q.lesson] || (by[q.lesson] = { id: q.lesson, who: new Set(), a: 0, w: 0 }); t.who.add(q.emp); t.a++; if (!q.ok) t.w++; }
+    }
+    const topics = Object.values(by).map((t) => ({ id: t.id, n: t.who.size, a: t.a, w: t.w })).sort((x, y) => y.n - x.n || y.a - x.a || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
+    return { n: ev.length, wrong: ev.filter((q) => !q.ok).length, people, topics: topics.slice(0, 3), topicsN: topics.length };
+  }
+  function gainNewbies(rest, from, to) {
+    let n = 0, tot = 0;
+    for (const [emp, nb] of Object.entries(S.nb || {})) {
+      const e = who(emp); if (!e || e.restaurant !== rest || !nb.solo) continue;
+      const so = String(nb.solo).slice(0, 10); if (!between(so, from, to)) continue;
+      const f = nbFirst(emp, nb.started), d0 = f && f.day <= so ? f.day : nb.started;
+      n++; tot += Math.max(0, nbDays(d0, so));
+    }
+    return { n, days: n ? Math.round(tot / n) : 0 };
+  }
+  function gainOf(rest, month, today = TODAY) {
+    const m0 = month + "-01", m1 = addD(monthAdd(month, 1) + "-01", -1);
+    if (today < m0) return { ok: false, error: "month" };
+    const part = today <= m1, vto = part ? today : m1, pf = monthAdd(month, -1) + "-01";
+    const pt = part ? [addD(m0, -1), addD(pf, nbDays(m0, vto))].sort()[0] : addD(m0, -1);
+    const lok = pf >= addD(today, -74);
+    const cur = gainRows(rest, m0, vto), prv = lok ? gainRows(rest, pf, pt) : null;
+    const q = gainQuiz(rest, m0, vto), pq = gainQuiz(rest, pf, pt);
+    const thx = (a, b) => S.thanks.filter((t) => !t.hidden && between(t.day, a, b) && (who(t.emp) || {}).restaurant === rest).length;
+    const peer = (a, b) => S.thx.filter((x) => x.rest === rest && between(x.day, a, b)).length;
+    const nb = gainNewbies(rest, m0, vto), pnb = gainNewbies(rest, pf, pt);
+    const qp = (z, id) => z.people[id] || [0, 0];
+    const grew = !lok ? [] : cur.map((c) => { const pr = prv.find((x) => x.id === c.id) || { pts: 0, lessons: 0, tests: 0 }; return { c, pr, pp: pr.pts }; }).filter((x) => x.c.pts >= 50 && x.c.pts > x.pp)
+      .sort((a, b) => (b.c.pts - b.pp) - (a.c.pts - a.pp) || b.c.pts - a.c.pts || (a.c.full_ < b.c.full_ ? -1 : a.c.full_ > b.c.full_ ? 1 : 0)).slice(0, 3)
+      .map(({ c, pr, pp }) => ({ id: c.id, n: nm(c.full_), pts: c.pts, ppts: pp, lessons: c.lessons, tests: c.tests, plessons: pr.lessons, ptests: pr.tests,
+        qn: qp(q, c.id)[0], qw: qp(q, c.id)[1], pqn: qp(pq, c.id)[0], pqw: qp(pq, c.id)[1] }));
+    const idle = cur.filter((x) => x.days === 0).sort((a, b) => (a.full_ < b.full_ ? -1 : a.full_ > b.full_ ? 1 : 0));
+    return { ok: true, rest, month, from: m0, to: vto, partial: part, pfrom: pf, pto: pt, team: cur.length, learn: gainSum(cur), plearn: lok ? gainSum(prv) : null,
+      quiz: { n: q.n, wrong: q.wrong }, pquiz: { n: pq.n, wrong: pq.wrong }, topics: q.topics, topicsN: q.topicsN,
+      thanks: { n: thx(m0, vto), prev: thx(pf, pt) }, peer: { n: peer(m0, vto), prev: peer(pf, pt) },
+      newbies: { n: nb.n, days: nb.days, pn: pnb.n, pdays: pnb.days }, grew, idle: idle.slice(0, 5).map((x) => ({ id: x.id, n: nm(x.full_) })), idleMore: Math.max(0, idle.length - 5) };
+  }
   // v99: смены человека по графику (как _sa_emp_shifts): со смещения from по to от сегодня
   function empShifts(e, from, to) {
     const st = staffOf(e.id); if (!st) return [];
@@ -1048,5 +1145,5 @@ export function makeServer(opts) {
     // кто из коллег (не я) может забрать или выйти по карточке
     taker: (m, notId) => PEOPLE.find((e) => e.id !== notId && e.id !== m.card.from && e.restaurant === R0 && (m.card.mode === "need" ? needCheck(m.card, e.id).can : check(m.card, e.id).can)) || null,
   };
-  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf, cheerDue, tokOf: (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null };
+  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf, cheerDue, gainOf, actOf, tokOf: (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null };
 }

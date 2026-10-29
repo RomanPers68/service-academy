@@ -7,6 +7,8 @@
 // Мария — «Новички»; Анна — наставник Ксении.
 // v108 (Доп. 421): Анна — день рождения Ильи и годовщина Веры в «Вся команда» («Поздравить»), «Спасибо коллеге» (двое
 // присоединяются), «Я» → «Спасибо от коллег»; Мария — в «Сегодня» «Графика» день рождения и годовщина.
+// v109 (Доп. 422): Мария — «Команда» → «Что дало обучение» (итог месяца), «Прислать этот итог в Telegram» — сообщение бота,
+// его кнопка «Открыть итог» ведёт на экран.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -218,6 +220,26 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("Марии: «Новички» — Ксения и Тимур, у Ксении наставник Анна, представлена, поздоровались 3", ids === "e-ksenia,e-timur" && /Наставник: Анна С\./.test(ks) && /Представлена команде · поздоровались 3/.test(ks)
     && (await page.locator("[data-nbl-memo]").count()) === 1, ids + " · " + ks.replace(/\s+/g, " ").slice(0, 160));
   await shot("m5-newbies");
+  // v109 (Доп. 422): «Команда» → «Что дало обучение»: итог месяца; «Прислать этот итог в Telegram» — как 1-го числа
+  await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1500);
+  await page.getByText("Чему учились и что изменилось в зале").first().click().catch(() => {});
+  await page.waitForSelector('[data-gain="ready"]', { timeout: 9000 }).catch(() => {}); await page.waitForTimeout(600);
+  const secs = await page.evaluate(() => [...document.querySelectorAll("[data-gain-sec]")].map((e) => e.getAttribute("data-gain-sec")).join(","));
+  const les = await page.locator('[data-gain-stat="lessons"]').innerText().catch(() => "");
+  ok("Марии: «Что дало обучение» — чему учились (с «было»), что изменилось в зале, темы, кто вырос, кто не занимался, Telegram",
+    secs === "learn,hall,topics,grew,idle,tg" && /было \d+/.test(les.replace(/\s+/g, " ")) && (await page.locator('[data-gain-sec="hall"] [data-gain-row]').count()) >= 3, secs + " · " + les.replace(/\s+/g, " "));
+  await shot("m6-gain");
+  await page.locator("[data-gain-send]").click().catch(() => {});
+  await page.waitForSelector("#demo-tgchat", { timeout: 8000 }).catch(() => {});
+  const gt = await page.locator("#demo-tgchat .t").innerText().catch(() => "");
+  const gb = await page.locator("#demo-tgchat .kb button").allInnerTexts().catch(() => []);
+  ok("«Прислать этот итог в Telegram»: сообщение бота «Что дало обучение · …», «Чему учились», «Что изменилось в зале», кнопка «Открыть итог»",
+    /^Что дало обучение · [а-я]+/.test(gt) && /Чему учились/.test(gt) && /Что изменилось в зале/.test(gt) && gb[0] === "Открыть итог", gt.replace(/\s+/g, " ").slice(0, 160) + " · " + gb.join("|"));
+  await shot("m7-gain-tg");
+  const go = await page.locator("#demo-tgchat [data-demo-tgbtn]").first().getAttribute("data-demo-tgbtn").catch(() => "");
+  await page.locator("#demo-tgchat [data-demo-tgbtn]").first().click().catch(() => {}); await page.waitForTimeout(1800);
+  ok("«Открыть итог» — экран итога за этот месяц", /^gain_\d{4}-\d{2}$/.test(go || "") && (await page.locator('[data-gain="ready"]').count()) === 1
+    && (await page.locator(`[data-gain-month="${String(go).slice(5)}"][aria-pressed="true"]`).count()) === 1, go);
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

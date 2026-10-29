@@ -378,6 +378,7 @@ const loadBriefing = () => import("./ui/briefing");   // v82 (Доп. 395): бр
 // v99 (Доп. 412): «Сервер» у владельца и «Смены в календаре телефона» — отдельными кусками, грузятся при открытии
 const ServerScreen = lazyOf(() => import("./ui/server"), "ServerScreen");
 const MorningScreen = lazyOf(() => import("./ui/morning"), "MorningScreen");   // v106 (Доп. 419): «Утро руководителя»
+const GainScreen = lazyOf(() => import("./ui/gain"), "GainScreen");   // v109 (Доп. 422): «Что дало обучение»
 const loadNewbie = () => import("./ui/newbie");   // v107 (Доп. 420): новичок — «Первая неделя» и «Новички»
 const NewbieScreen = lazyOf(loadNewbie, "NewbieScreen");
 const NewbiesScreen = lazyOf(loadNewbie, "NewbiesScreen");
@@ -1496,6 +1497,8 @@ function ServiceAcademy() {
   // v108 (Доп. 421): «Спасибо от коллег» — пункт в «Я» рядом со «Спасибо от гостей» (этап 42, thanks_peer): при входе в «Я»,
   // не чаще раза в пять минут; этапа нет — пункта нет
   const [peerInfo, setPeerInfo] = useState(null);
+  // v109 (Доп. 422): «Что дало обучение» — какой месяц открыть (из кнопки бота «Открыть итог»; пусто — сервер решит сам)
+  const [gainMonth, setGainMonth] = useState("");
   const peerAskRef = useRef({ at: 0, off: false });
   useEffect(() => {
     const st = peerAskRef.current;
@@ -1611,7 +1614,7 @@ function ServiceAcademy() {
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
       goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
-        || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) ? v : "";   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»; v97: chat_<чат>_<сообщение>, lesson_<урок>, schedule — кнопки в сообщениях бота
+        || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) ? v : "";   // v109: gain и gain_<месяц> — «Открыть итог»   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»; v97: chat_<чат>_<сообщение>, lesson_<урок>, schedule — кнопки в сообщениях бота
     } catch (e) { goLinkRef.current = ""; }
   }
   React.useEffect(() => {
@@ -1643,6 +1646,7 @@ function ServiceAcademy() {
     else if (g === "briefing") navigate("brief");      // v106: «Собрать брифинг» оттуда же
     else if (g === "newbie") navigate("newbie");       // v107 (Доп. 420): «Первая неделя» — бот накануне первой смены
     else if (g === "newbies") navigate("newbies");     // v107: «Новички» — наставнику накануне первой смены новичка
+    else if (g === "gain" || /^gain_/.test(g)) { setGainMonth(g.slice(5)); navigate("gain"); }   // v109 (Доп. 422): «Открыть итог» 1-го числа
   }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
@@ -2699,7 +2703,7 @@ function ServiceAcademy() {
       checklist: "checklist", reference: "reference", stats: "stats", guestbook: "guestbook", mentor: "mentor",
       menu: "menuTrainer", cocktails: "cocktails", barlab: "barLab", schedule: "schedule", mistakes: "mistakes",
       certificates: "certificates", guide: "guide", onboarding: "onboarding", weeklyguest: "weeklyGuest",
-      shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team", morning: "morning" };
+      shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team", morning: "morning", gain: "gain" };
     const boss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
     const k = String(dest || "").toLowerCase();
     // Доп. 310: разделы v28–v29 — разминка, чек недели и напоминания открываются поверх экрана,
@@ -3021,6 +3025,10 @@ function ServiceAcademy() {
         {screen === "server" && profile?.is_admin && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ServerScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("teamHub")} /></Suspense></div>}
         {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => navigate(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
         {/* v106 (Доп. 419): «Утро руководителя» — сводка дня; строки ведут в график, брифинг, меню, отзывы, отчёты, чек-листы и чат */}
+        {/* v109 (Доп. 422): «Что дало обучение» — итог месяца: чему учились и что изменилось в зале; 1-го числа — в Telegram */}
+        {screen === "gain" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><GainScreen T={T} a11y={a11y} profile={profile} month={gainMonth}
+          onBack={() => goBack("teamHub")} onRemind={() => setRemindOpen(true)}
+          onGo={(dest) => { if (dest === "report") { setReportSelf(false); navigate("report"); } }} /></Suspense></div>}
         {screen === "morning" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MorningScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("shift")}
           onRemind={() => setRemindOpen(true)} onGo={(dest, x) => {
             if (dest === "schedule") navigate("schedule");
@@ -3247,6 +3255,7 @@ function ServiceAcademy() {
               <TeamFeed a11y={a11y} items={teamFeed} /></>} items={[
             // v71: у руководителя «Управление» — сразу под лентой, строками в одной карточке (было в самом низу)
             staff && { key:"an", group:"Управление", icon:"analytics", label:"Аналитика", sub:"Сводка по команде и резервная копия", onClick:() => navigate("analytics") },
+            staff && { key:"gain", group:"Управление", icon:"gain", label:"Что дало обучение", sub:"Чему учились и что изменилось в зале", onClick:() => { setGainMonth(""); navigate("gain"); } },   // v109 (Доп. 422)
             profile?.is_admin && { key:"tm", group:"Управление", icon:"team", label:"Сотрудники", sub:"Карточки, коды, роли", onClick:() => navigate("team") },
             profile?.is_admin && { key:"srv", group:"Управление", icon:"server", label:"Сервер", sub:"Этапы базы, бот Telegram, расписания", onClick:() => navigate("server") },   // v99 (Доп. 412)
             staff && { key:"hire", group:"Управление", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },

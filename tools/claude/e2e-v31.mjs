@@ -419,7 +419,10 @@ if (want("MO")) {
   const pl = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
   const nl = now.getDate() * 2, nw = now.getDate();
   ok(tag + ": шаги — «N уроков · N разминок» с правильными окончаниями", all.includes(nl + " " + pl(nl, "урок", "урока", "уроков")) && all.includes(nw + " " + pl(nw, "разминка", "разминки", "разминок")), (all.match(/ШАГИ.{0,160}/i) || [""])[0]);
-  ok(tag + ": карточка сравнения — к прошлому числу", /к \d+-му числу/i.test(all) && /Шагов больше, чем в/.test(all), (all.match(/к \d+-му.{0,140}/i) || [""])[0]);
+  // v109: в последние дни месяца (сегодняшнее число не меньше, чем дней в прошлом месяце) прошлый сравнивается целиком —
+  // «К прошлому месяцу» (lib/month-recap.js, partial); 30 октября проверка ждала «к 30-му числу» и падала
+  const pDays = new Date(now.getFullYear(), now.getMonth(), 0).getDate(), cmpRe = now.getDate() < pDays ? /к \d+-му числу/i : /к прошлому месяцу/i;
+  ok(tag + ": карточка сравнения — к прошлому числу (в последние дни месяца — к прошлому месяцу)", cmpRe.test(all) && /Шагов больше, чем в/.test(all), (all.match(/к (\d+-му|прошлому).{0,140}/i) || [""])[0]);
   await shot(page, "mo1-end");
   await page.locator(".mr-btn[data-recap-pic]").click(); await sleep(2200);
   ok(tag + ": картинкой — просмотр с «Скачать картинку»", (await page.locator(".mr-pv img").count()) === 1 && (await page.locator(".mr-pv a.mr-btn[download]").count()) === 1);

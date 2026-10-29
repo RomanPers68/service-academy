@@ -24,6 +24,9 @@ const demoPlugin = {
       if (/[\\/]App\.jsx$/.test(args.path)) {
         const anchor = '  const goBack = useCallback((fallback = "roleSelect") => {';
         if (src.includes(anchor)) src = src.replace(anchor, '  if (typeof window !== "undefined") window.__saNav = navigate;\n' + anchor);
+        // v109: месяц «Что дало обучение» для кнопки «Открыть итог» в сообщении бота (в приложении — ссылка ?go=gain_<месяц>)
+        const gm = '  const [gainMonth, setGainMonth] = useState("");';
+        if (src.includes(gm)) src = src.replace(gm, gm + '\n  if (typeof window !== "undefined") window.__saGainMonth = setGainMonth;');
       }
       if (/[\\/]main\.jsx$/.test(args.path)) src = src.replace('"serviceWorker" in navigator', "false");
       return { contents: rel(src), loader: args.path.endsWith(".jsx") ? "jsx" : "js" };

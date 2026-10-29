@@ -140,7 +140,10 @@ describe("v91: экран чата", () => {
   });
   it("открытая переписка не закрывается опросом списка (новая личная без сообщений, очищенная личная)", () => {
     const src = rd("ui/chat.jsx");
-    expect(src).toContain("setChats(k && !list.some((c) => String(c.id) === String(k.id)) ? [...list, k] : list);");
+    // v108: открытую переписку список берёт по curIdRef и из прежнего списка (ответ мог прийти раньше отрисовки)
+    expect(src).toContain("const k = same(keepRef.current) ? keepRef.current : (prev || []).find(same) || null;");
+    expect(src).toContain("return k && !list.some((c) => String(c.id) === String(k.id)) ? [...list, k] : list;");
+    expect(src).toContain("const setCurId = React.useCallback((id) => { curIdRef.current = id; setCurId0(id); }, []);");
     expect(src).toContain("keepRef.current = cur;");
     expect(src).toContain("onBack={() => { keepRef.current = null; setInit(null); setCurId(null); load(); }}");   // v97: и сообщение, к которому пришли из приложения
   });

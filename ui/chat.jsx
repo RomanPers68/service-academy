@@ -42,6 +42,10 @@ import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts
 import { draftGet, draftSet, draftClear, draftLine } from "../lib/chat-draft";   // v99: черновик не пропадает
 import { searchQuery, searchSnippet } from "../lib/chat-search";   // v99: поиск по переписке
 import { mentorLine } from "../lib/newbie";   // v107 (Доп. 420): «Наставник новичков» в карточке коллеги
+import { thxChips, thxFromText, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо коллеге»
+import { isFemaleName } from "../lib/utils";
+
+let pokeAt = 0;   // v108: когда приложение последний раз просило поставить карточки праздников
 
 // ── вид: та же палитра, что у «Живого диалога» (ui/screens-dialogue.jsx), свой корень .sa-dlg.ch ──
 const wallSvg = (c, o) => `<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='${c}' stroke-opacity='${o}' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>` +
@@ -270,6 +274,8 @@ export const CHAT_CSS = `
 .ch-main{display:block;width:100%;margin-top:12px;min-height:50px;border-radius:999px;border:0;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold);font-weight:700;font-size:16px;cursor:pointer;
   box-shadow:0 4px 14px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.35)}
 .ch-main:disabled{opacity:.55}
+/* v108 (Доп. 421): второе действие в карточке коллеги — «Сказать спасибо»: стекло с золотой надписью (в «Линзе» — как остальные) */
+.ch-main.ghost{background:var(--opt);border:1px solid var(--opt-edge);color:var(--gold-ink);font-weight:600;box-shadow:none;margin-top:8px}
 .ch-act{display:flex;align-items:center;gap:12px;width:100%;padding:13px 6px;border:0;border-bottom:1px solid var(--edge);background:none;color:var(--text);font-size:16px;cursor:pointer;text-align:left}
 .ch-act:last-child{border-bottom:0}
 .ch-act svg{color:var(--gold-ink);flex:0 0 auto}
@@ -459,7 +465,11 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   const [me, setMe] = React.useState(me0);   // кто я — как считает сервер (руководитель ли, заведение)
   const [chats, setChats] = React.useState(null);
   const [err, setErr] = React.useState("");
-  const [curId, setCurId] = React.useState(openId);
+  const [curId, setCurId0] = React.useState(openId);
+  // v108: какая переписка открыта — и в ref сразу, без ожидания отрисовки: список с сервера, пришедший между «открыли
+  // личную» и отрисовкой, не теряет её (load ниже)
+  const curIdRef = React.useRef(openId);
+  const setCurId = React.useCallback((id) => { curIdRef.current = id; setCurId0(id); }, []);
   const [picker, setPicker] = React.useState(false);   // true — «Написать» (личное), "group" — новый свой чат (v92)
   const [callOpen, setCallOpen] = React.useState(false);
   const [note, setNote] = React.useState("");          // v92: «Этого чата у тебя больше нет» и т. п. — над списком
@@ -479,12 +489,18 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     if (it.kind === "chat" && it.id != null) { setInit(it.msg ? { msg: it.msg } : null); setCurId(it.id); return; }
     if (it.kind === "share" && it.item) { setCurId(null); setPicker(false); setShareItem(it.item); return; }
     if (it.kind === "dm" && it.emp) { openDm({ id: it.emp }); return; }   // eslint-disable-line no-use-before-define
-    if (it.kind === "give" || it.kind === "swap" || it.kind === "late" || it.kind === "team") wantRef.current = it;   // v99: «Опаздываю» из «Смены» и с главной; v107: «Вся команда» (карточка новичка)
+    if (it.kind === "give" || it.kind === "swap" || it.kind === "late" || it.kind === "team" || it.kind === "thx") wantRef.current = it;   // v99: «Опаздываю» из «Смены» и с главной; v107: «Вся команда» (карточка новичка); v108: «Спасибо коллеге»
   }, [intent]);   // eslint-disable-line react-hooks/exhaustive-deps
   const load = React.useCallback(() => Promise.resolve(api.list()).then((r) => {
     if (r && r.ok) {
-      const list = r.chats || [], k = keepRef.current;
-      setChats(k && !list.some((c) => String(c.id) === String(k.id)) ? [...list, k] : list);
+      const list = r.chats || [];
+      // v108: открытую переписку берём по curIdRef и из прежнего списка: личная, которую только что создали, есть в нём
+      // раньше, чем экран её отрисовал (иначе список, пришедший в этот миг, закрывал её и показывал список чатов)
+      setChats((prev) => {
+        const id = curIdRef.current, same = (c) => !!c && id != null && String(c.id) === String(id);
+        const k = same(keepRef.current) ? keepRef.current : (prev || []).find(same) || null;
+        return k && !list.some((c) => String(c.id) === String(k.id)) ? [...list, k] : list;
+      });
       setErr(""); if (r.me) setMe((m) => ({ ...m, ...r.me })); if (onUnread) onUnread(r);
     }
     else setErr(r && r.error === "missing" ? "На сервере ещё нет этапа 38 (supabase-stage38-chat.sql). Чат появится, когда руководитель его добавит." : "Чат не загрузился. Проверь связь.");
@@ -494,13 +510,20 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     const t = setInterval(() => { if (!hidden()) load(); }, 10000);
     return () => clearInterval(t);
   }, [load]);
+  // v108 (Доп. 421): дни рождения и годовщины — карточки дня; обычно их ставит расписание сервера, а приложение
+  // при открытии чата (не чаще раза в час) просит поставить сразу, если расписания нет
+  React.useEffect(() => {
+    if (!api.cheerPoke || Date.now() - pokeAt < 3600e3) return;
+    pokeAt = Date.now();
+    Promise.resolve(api.cheerPoke()).then((r) => { if (r && r.ok && Number(r.n) > 0) load(); }).catch(() => {});
+  }, [api]);   // eslint-disable-line react-hooks/exhaustive-deps
   const cur = (chats || []).find((c) => String(c.id) === String(curId)) || null;
   keepRef.current = cur;
   const team = (chats || []).find((c) => c.kind === "team") || null;
   React.useEffect(() => {
     const w = wantRef.current;
     if (!w || !team) return;
-    wantRef.current = null; setInit(w.kind === "late" ? { late: true } : w.kind === "team" ? (w.msg ? { msg: w.msg } : null) : { shift: w.kind, date: w.date || null }); setCurId(team.id);
+    wantRef.current = null; setInit(w.kind === "late" ? { late: true } : w.kind === "team" ? (w.msg ? { msg: w.msg } : null) : w.kind === "thx" ? { thx: w.to || true } : { shift: w.kind, date: w.date || null }); setCurId(team.id);
   }, [team]);   // eslint-disable-line react-hooks/exhaustive-deps
   function openDm(p) { return Promise.resolve(api.dm(p.id)).then((r) => {
     if (r && r.ok && r.chat) { setChats((cs) => (cs || []).some((c) => String(c.id) === String(r.chat.id)) ? cs : [...(cs || []), r.chat]); setPicker(false); setCurId(r.chat.id); }
@@ -772,16 +795,66 @@ function GroupAdd({ me, api, chat, members, onBack, onDone }) {
   return <People me={me} api={api} title={"Добавить в «" + chatTitle(chat) + "»"} onBack={onBack} onPick={(p) => setSel((s) => pickToggle(s, p))} multi={sel} exclude={inChat}
     emptyText="Все коллеги уже в этом чате." foot={foot} />;
 }
+// v108 (Доп. 421): «Спасибо коллеге» — кому (коллеги заведения) и за что; карточка уходит в «Вся команда», коллеге пишет
+// бот; to0 — уже выбран (из карточки коллеги или «@Имя» в строке ввода), locked — без «Другой»
+const thxErr = (r) => {
+  const e = r && r.error;
+  return e === "self" ? "Себе спасибо не отправить." : e === "limit" ? "Сегодня от тебя уже 15 «спасибо». Завтра снова."
+    : e === "not_found" ? "Не нашёл этого коллегу в команде заведения." : e === "missing" ? "На сервере ещё нет этапа 42. Руководителю: обновить сервер." : smartErr(r);
+};
+function ThanksSheet({ me, api, to0 = null, locked = false, text0 = "", onClose, onDone }) {
+  const [to, setTo] = React.useState(to0);
+  const [text, setText] = React.useState(text0);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const chips = thxChips(!!to && isFemaleName(to.name));
+  const go = () => {
+    if (!to || busy) return;
+    vibrate("light"); setBusy(true); setErr("");
+    Promise.resolve(api.thanks(to.id, text.trim())).then((r) => {
+      setBusy(false);
+      if (r && r.ok && r.msg) { vibrate("success"); onDone(r.msg, false, r); }
+      else if (r && r.error === "again" && r.msg) onDone(r.msg, true, r);
+      else setErr(thxErr(r));
+    }).catch(() => { setBusy(false); setErr(thxErr({ error: "net" })); });
+  };
+  return (
+    <div className="ch-veil" data-kbm="" onClick={onClose}>
+      <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Спасибо коллеге" data-chat-thxsheet={to ? "write" : "pick"} onClick={stop}>
+        <div className="ch-grip" aria-hidden="true" />
+        <div className="ch-sheet-h"><span className="ch-sheet-t">Спасибо коллеге</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
+        {!to ? <People me={me} api={api} inline title="" onPick={(p) => { setTo({ id: p.id, name: p.name, pos: p.pos }); setErr(""); }} emptyText="В команде пока никого." /> : (<>
+          <div className="ch-pp" data-chat-thx-who={to.id}>
+            <span className="ch-ava" aria-hidden="true">{chatInitials(to.name)}</span>
+            <div className="ch-pp-b"><b className="ch-pp-n">{to.name}</b>{posName(to.pos) ? <span className="ch-pp-p">{posName(to.pos)}</span> : null}</div>
+            {!locked ? <button type="button" className="ch-chip" data-chat-thx-other="" onClick={() => { vibrate("light"); setTo(null); }}>Другой</button> : null}
+          </div>
+          <div className="ch-lbl">За что</div>
+          <div className="ch-chips" role="group" aria-label="За что">
+            {chips.map((c) => <button key={c} type="button" className="ch-chip" aria-pressed={text.trim() === c} data-chat-thx-chip={c} onClick={() => { vibrate("light"); setText(c); setErr(""); }}>{c}</button>)}
+          </div>
+          <textarea className="ch-field sa-field" rows={2} maxLength={THX_MAX} value={text} onChange={(e) => setText(e.target.value)} placeholder="Своими словами, если хочешь"
+            aria-label="За что спасибо" data-chat-thx-field="" />
+          {err ? <div className="ch-err" role="alert" style={{ marginTop: 8 }} data-chat-thx-err="">{err}</div> : null}
+          <button type="button" className="ch-main" data-chat-thx-go="" disabled={busy} onClick={go}>{busy ? "Отправляю…" : "Сказать спасибо"}</button>
+          <div className="ch-hint">Карточка уйдёт в «Вся команда». У коллеги она останется в «Я» → «Спасибо от коллег» и добавит очки в «Сотруднике недели».</div>
+        </>)}
+      </div>
+    </div>);
+}
+
 // о своём чате: участники; руководитель и старший — переименовать, добавить, убрать, удалить; каждый — выйти
 // v97 (Доп. 410): карточка коллеги — нажатие на имя над сообщением или на шапку личной переписки: должность, смена
 // сегодня или ближайшая по графику (chat_person), «Написать лично»
-function PersonSheet({ api, emp, chat, onClose, onDm = null }) {
+function PersonSheet({ api, emp, chat, onClose, onDm = null, onThanks = null }) {
   const [p, setP] = React.useState(null);
   const [err, setErr] = React.useState("");
   const [mark, setMark] = React.useState("");   // v107 (Доп. 420): «Наставник новичков»
+  const [thx, setThx] = React.useState(0);      // v108 (Доп. 421): сколько «спасибо» от коллег
   React.useEffect(() => {
     let alive = true;
     if (api.newbieMark) Promise.resolve(api.newbieMark(emp)).then((r) => { if (alive && r && r.ok) setMark(mentorLine(r)); }).catch(() => {});
+    if (api.thanksOf) Promise.resolve(api.thanksOf(emp)).then((r) => { if (alive && r && r.ok) setThx(Number(r.n) || 0); }).catch(() => {});
     return () => { alive = false; };
   }, [api, emp]);
   React.useEffect(() => {
@@ -804,7 +877,9 @@ function PersonSheet({ api, emp, chat, onClose, onDm = null }) {
         {!p ? <div className="ch-hint" role={err ? "alert" : "status"}>{err || "Загружаю…"}</div> : (<>
           <div className="ch-pp-sh" data-chat-person-shift="">{IC.cal}<span>{personShiftLine(p)}</span></div>
           {mark ? <div className="ch-pp-sh" data-chat-person-mentor="">{IC.star}<span>{mark}</span></div> : null}
+          {thx ? <div className="ch-pp-sh" data-chat-person-thx={thx}>{IC.thx}<span>{"Спасибо от коллег: " + thx}</span></div> : null}
           {!p.me && !here && onDm ? <button type="button" className="ch-main" data-chat-person-dm={p.id} onClick={() => { vibrate("light"); onClose(); onDm({ id: p.id, name: p.name }); }}>Написать лично</button> : null}
+          {!p.me && p.same !== false && onThanks ? <button type="button" className="ch-main ghost" data-chat-person-thanks={p.id} onClick={() => { vibrate("light"); onThanks(p); }}>Сказать спасибо</button> : null}
         </>)}
       </div>
     </div>);
@@ -988,7 +1063,8 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   const stashRef = React.useRef(null);                 // v99: черновик на время правки своего сообщения
   const [pending, setPending] = React.useState([]);   // ещё не дошли до сервера: { tmp, body, at, failed, reply, photo }
   // v97: открыли из «Графика» — сразу лист «Отдать смену» или «Поменяться» с этим днём
-  const [sheet, setSheet] = React.useState(() => (init && init.shift ? { shift: init.shift, date: init.date || null } : init && init.late ? "late" : null));     // "call" | { msg }; v99: "late" — «Опаздываю» из «Смены»
+  const [sheet, setSheet] = React.useState(() => (init && init.shift ? { shift: init.shift, date: init.date || null } : init && init.late ? "late"
+    : init && init.thx ? { thx: { to: init.thx === true ? null : init.thx, text: "" } } : null));   // v108: «Спасибо коллеге» с другого экрана     // "call" | { msg }; v99: "late" — «Опаздываю» из «Смены»
   const [reply, setReply] = React.useState(null);     // отвечаю на (цитата)
   const [edit, setEdit] = React.useState(null);       // правлю своё
   const [shot, setShot] = React.useState(null);       // фото к отправке: { busy } | сжатое
@@ -1179,6 +1255,11 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     if (a === "vote") { addMsgs([{ id: m.id, card: { ...(m.card || {}), votes: withVote((m.card || {}).votes, extra, me) } }], { quiet: true }); upd(api.pollVote(m.id, extra)); return; }
     if (a === "unstop") { const d = (m.card || {}).dish || {}; upd(api.stopSet(chat.id, d, false, null, m.id)); return; }
     if (a === "lateok") { upd(api.lateOk(m.id)).then((r) => { if (r) flash("Принято. " + bubbleName(m.name).split(" ")[0] + " увидит это на карточке"); }); }   // v99
+    if ((a === "plus" || a === "cheer") && api.cheer) {   // v108: «Тоже спасибо», «Поздравить» (день рождения, годовщина) — своё имя сразу
+      const cd = m.card || {}, key = a === "plus" ? "plus" : "greet";
+      addMsgs([{ id: m.id, card: { ...cd, [key]: [...(Array.isArray(cd[key]) ? cd[key] : []), { id: me && me.id, n: me && me.name }] } }], { quiet: true });
+      upd(api.cheer(m.id));
+    }
     if (a === "greet" && api.greet) {   // v107: «Поздороваться», «Поздравить» — своё имя на карточке сразу
       const cd = m.card || {};
       addMsgs([{ id: m.id, card: { ...cd, greet: [...(Array.isArray(cd.greet) ? cd.greet : []), { id: me && me.id, n: me && me.name }] } }], { quiet: true });
@@ -1191,6 +1272,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     if (k === "late") { setSheet("late"); return; }   // v99 (Доп. 412)
     if (k === "give" || k === "swap") { setSheet({ shift: k }); return; }
     if (k === "poll") { setSheet({ poll: text.trim() }); return; }
+    if (k === "thx") { const x = thxFromText(text, members); setSheet({ thx: { to: x.to, text: x.text, fromText: !!x.text } }); return; }   // v108 (Доп. 421)
     if (k === "ai") {
       setSheet(null);
       setText((t) => (askAi(t) ? t : "@" + AI_NAME + " " + t.trim()).replace(/\s+$/, "") + " ");
@@ -1426,7 +1508,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
               <span className={"ch-ava" + (it.kind === "person" ? "" : " team")} aria-hidden="true">{it.kind === "all" ? IC.team : it.kind === "ai" ? IC.ai : chatInitials(it.name)}</span>
               {it.kind === "all" ? "Все" : it.disp}</button>))}
         </div>)
-        : !edit ? <Suggest items={sugg} onPick={(k) => (k === "stop" || k === "give" || k === "swap" || k === "poll" || k === "ai" ? onTile(k) : null)} /> : null}
+        : !edit ? <Suggest items={sugg} onPick={(k) => (k === "stop" || k === "give" || k === "swap" || k === "poll" || k === "ai" || k === "thx" ? onTile(k) : null)} /> : null}
       <div className="ch-bar-in" style={{ position: "relative" }}>
         {text.length > CHAT_MAX - 100 ? <span className={"ch-count" + (over ? " over" : "")}>{text.length} / {CHAT_MAX}</span> : null}
         {chat.kind === "team" && !edit ? <button type="button" className="ch-bell" data-chat-callbtn="" aria-label="Позвать" onClick={() => { vibrate("light"); setSheet("call"); }}>{IC.bell}</button> : null}
@@ -1450,7 +1532,16 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     {sheet && sheet.shift ? <ShiftSheet api={api} chat={chat} mode={sheet.shift} date={sheet.date || null} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
     {sheet && sheet.swap ? <SwapSheet api={api} msg={msgs.find((x) => String(x.id) === String(sheet.swap.id)) || sheet.swap} onClose={() => setSheet(null)} onDone={(m) => { cardDone(m); flash("Поменялись, график обновлён"); }} /> : null}
     {sheet === "task" ? <TaskSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
-    {sheet && sheet.person ? <PersonSheet api={api} emp={sheet.person} chat={chat} onClose={() => setSheet(null)} onDm={onDm} /> : null}
+    {sheet && sheet.person ? <PersonSheet api={api} emp={sheet.person} chat={chat} onClose={() => setSheet(null)} onDm={onDm}
+      onThanks={api.thanks ? (p) => setSheet({ thx: { to: { id: p.id, name: p.name, pos: p.pos }, text: "", locked: true } }) : null} /> : null}
+    {sheet && sheet.thx ? <ThanksSheet me={me} api={api} to0={sheet.thx.to} locked={!!sheet.thx.locked} text0={sheet.thx.text || ""} onClose={() => setSheet(null)}
+      onDone={(m, again, r) => {
+        const fromText = !!sheet.thx.fromText;
+        if (chat.kind === "team") { if (again) { setSheet(null); jumpTo(m.id); } else cardDone(m); } else setSheet(null);
+        if (fromText && !again) { setText(""); draftClear(meId, chat.id); }
+        flash(again ? "Сегодня ты уже благодарил" + (isFemaleName(me && me.name) ? "а" : "") + " этого коллегу" + (chat.kind === "team" ? ": карточка выше" : " в «Вся команда»")
+          : (chat.kind === "team" ? "Карточка в чате" : "Карточка в «Вся команда»") + (r && r.tg ? ", коллеге написал бот" : ""));
+      }} /> : null}
     {sheet === "share" ? <ShareSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}
     {sheet && typeof sheet.poll === "string" ? <PollSheet api={api} chat={chat} q0={sheet.poll} onClose={() => setSheet(null)} onDone={(m) => { cardDone(m); setText(""); }} /> : null}
     {sheet === "stop" ? <StopSheet app={app} api={api} chat={chat} onClose={() => setSheet(null)} onDone={cardDone} /> : null}

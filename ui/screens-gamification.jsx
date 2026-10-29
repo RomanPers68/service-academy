@@ -36,6 +36,7 @@ import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-car
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, goldText, labelStyle } from "./tokens";
 // v73 (Доп. 386): подписи разделов и бейджи — курсивом, обычными буквами (labelStyle); моноширинный — только цифрам
 import { masterRolesOf, masterTitle } from "../lib/mastery";
+import { weekThanks, weekStars } from "../lib/team-warm";   // v108 (Доп. 421): «спасибо» коллег в «Сотруднике недели»
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): рейтинг шире, сотрудники — в две колонки
 
 // v40: знак «Мастер роли» у имени — в рейтинге и в лиге недели (ui/league.jsx). v75: медаль на ленте вместо ✦.
@@ -225,6 +226,7 @@ export function WeekStar({ weekly, T }) {
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ ...T.modTitle, fontSize:16 }}>{top.name} {top.surname}</div>
           <div style={{ color:T.modSub.color, fontSize:12.5 }}>{top.restaurant || ""}</div>
+          {top.thx ? <div style={{ color:T.modSub.color, fontSize:12.5 }} data-week-thx={top.thx}>{"Спасибо от коллег: " + top.thx}</div> : null}
         </div>
         <div style={{ textAlign:"right", flexShrink:0 }}>
           <div style={{ color:gold, fontFamily:ACCENT_SERIF, fontSize:21, fontWeight:"bold", lineHeight:1 }}>{top.pts}</div>
@@ -311,6 +313,13 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
     }).catch(() => alive && setRecErr(true));
     return () => { alive = false; };
   }, [profile?.restaurant, recTry]);
+  // v108 (Доп. 421): «спасибо» от коллег за неделю (этап 42, thanks_week) — в «Сотрудника недели»; этапа нет — как раньше
+  const [thxRaw, setThxRaw] = React.useState(null);
+  React.useEffect(() => {
+    if (!profile) return; let alive = true;
+    rpc("thanks_week", { p_token: saToken() }).then((r) => { if (alive && r && r.ok) setThxRaw(r); }).catch(() => {});
+    return () => { alive = false; };
+  }, [profile?.restaurant]);   // eslint-disable-line react-hooks/exhaustive-deps
   const myPosition = profile?.position || "waiter";
   const isAdmin = !!profile?.is_admin;
   // Доступные вкладки по должности
@@ -440,21 +449,12 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   // не должна советовать пересдать тест, уже сданный на 100%)
   const weakLb = myRowLb ? dedupeBestScores(scores.filter((x) => isMe(x))).filter((x) => x.pct < 100).sort((a, b) => a.pct - b.pct)[0] || null : null;
 
-  // Сотрудник недели: сумма очков за текущую неделю (Пн–Вс) в рамках вкладки
+  // Сотрудник недели: сумма очков за текущую неделю (Пн–Вс) в рамках вкладки; v108 — и «спасибо» от коллег (по 5 очков)
   const weekStar = React.useMemo(() => {
     const d = new Date(); const dow = (d.getDay()+6)%7; d.setHours(0,0,0,0); d.setDate(d.getDate()-dow);
     const weekStart = d.getTime();
-    const map = {};
-    scores.forEach(s => {
-      if (!s.updated_at || new Date(s.updated_at).getTime() < weekStart) return;
-      if ((s.position || "waiter") !== tab) return;
-      if (scope === "rest" && (s.restaurant || "") !== myRest) return;   // Доп. 311
-      const k = `${s.name}|${s.surname||""}`;
-      if (!map[k]) map[k] = { name:s.name, surname:s.surname||"", restaurant:s.restaurant, pts:0 };
-      map[k].pts += (s.score || 0);
-    });
-    return Object.values(map).filter(p => p.pts > 0).sort((a,b) => b.pts - a.pts).slice(0,3);
-  }, [scores, tab, scope, myRest]);
+    return weekStars(scores, weekThanks(thxRaw, weekStart), { weekStart, tab, rest: scope === "rest" ? myRest : null });   // Доп. 311: своё заведение
+  }, [scores, tab, scope, myRest, thxRaw]);
 
   return (
     <div style={T.screen}>

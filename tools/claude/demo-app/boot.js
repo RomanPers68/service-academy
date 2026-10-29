@@ -11,6 +11,8 @@
 // v107 (Доп. 420): новички. Ксения Миронова (официант) пришла вчера, сегодня первая смена: вчера вечером бот прислал ей
 // памятку, в «Вся команда» её представили, наставник — Анна, первыми в плане — темы с собеседования. Тимур Ахметов (бармен)
 // с нами неделю, наставник — Илья, «5 столов» подтверждено, самостоятельной смены ещё нет. В демо можно стать Ксенией.
+// v108 (Доп. 421): тепло в команде. Сегодня у Ильи день рождения, Вера год в команде: утром в «Вся команда» карточки,
+// коллеги поздравляют; вчера Мария сказала Анне спасибо карточкой, сегодня Ольга — Илье. Сказал спасибо — двое присоединяются.
 // Собирается в один скрипт (esbuild, IIFE) и подключается в index.html до приложения.
 import { makeServer, SHIFTS, full } from "./fake-server.js";
 import { RESTAURANT_MENUS } from "../../../data/menu.js";
@@ -103,6 +105,13 @@ function planOf() {
 }
 const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 const TODAY = iso(new Date());
+// v108: даты в карточках сотрудников графика — сегодня у Ильи день рождения, Вера год в команде; у остальных — другие дни
+const DM = TODAY.slice(8, 10) + "." + TODAY.slice(5, 7);
+Object.assign(SSTAFF[6], { bday: DM, joined: "12.05.2024" });
+Object.assign(SSTAFF[4], { bday: "03.08", joined: DM + "." + (Number(TODAY.slice(0, 4)) - 1) });
+Object.assign(SSTAFF[0], { bday: "14.02", joined: "01.03.2022" });
+Object.assign(SSTAFF[2], { bday: "21.11", joined: "02.06.2024" });
+Object.assign(SSTAFF[3], { bday: "07.07", joined: "15.04.2023" });
 const MENU = JSON.parse(JSON.stringify(RESTAURANT_MENUS[R0] || []));
 // v106: утром в стопе два блюда — «Утро руководителя» показывает стоп-лист
 MENU.filter((d) => d && d.name && d.kind !== "cocktail").slice(3, 5).forEach((d) => Object.assign(d, { stop: { since: Date.now() - 3600e3, by: "Мария Ким" }, stopAt: Date.now() - 3600e3 }));
@@ -139,6 +148,11 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   cands: [
     { id: 501, name: "Ксения Миронова", at: -6, decision: "hire", aiScores: { "Сервис и гость": 78, "Конфликты и сложные ситуации": 45, "Приоритеты и организация": 70, "Честность и деньги": 62, "Команда": 85 } },
     { id: 502, name: "Глеб Соколов", at: -2, decision: "hire", aiScores: { "Сервис и гость": 66, "Конфликты и сложные ситуации": 72, "Приоритеты и организация": 58, "Честность и деньги": 80, "Команда": 74 } },
+  ],
+  // v108: «спасибо» от коллег в «Вся команда» (смещение дня и время; позже вчерашней карточки «Знакомьтесь»)
+  peerThanks: [
+    { from: "u-maria", to: "e-anna", text: "выручила с банкетом на веранде", at: -1, time: "21:50", plus: ["e-petr", "e-olga"] },
+    { from: "e-olga", to: "e-ilya", text: "помог с гостями у бара", at: 0, time: "10:20", plus: ["e-vera"] },
   ],
   checklists: { "-1": { open: { checked: ["o1", "o2", "o3", "o4", "o5", "o6"], done_at: iso(new Date(Date.now() - 86400000)) + "T09:52:00", by_name: "Ольга Л." },
     preshift: { checked: ["p1", "p2", "p3", "p4", "p5"], done_at: iso(new Date(Date.now() - 86400000)) + "T11:40:00", by_name: "Мария К." },
@@ -216,6 +230,9 @@ function after(fn, b, res) {
     if (t === "poll") later(5000, () => { const x = srv.msgOf(m.id); if (x) ["e-petr", "e-vera"].forEach((id, i) => srv.rpc("chat_poll_vote", { p_token: tokOf(id), p_msg: x.id, p_o: i % x.card.opts.length })); });
   }
   // v107: представили новичка — коллеги здороваются; самостоятельная смена — поздравляют
+  // v108: сказал спасибо коллеге — двое присоединяются
+  if (fn === "chat_thanks" && m && m.card) later(5000, () => ["e-vera", "e-petr", "e-olga"].filter((id) => id !== me.id && id !== b.p_to).slice(0, 2)
+    .forEach((id) => srv.rpc("chat_cheer", { p_token: tokOf(id), p_msg: m.id })));
   if (fn === "newbie_set" && b.p_hello && m) later(5000, () => ["e-petr", "e-vera", "e-olga"].filter((id) => id !== me.id && id !== b.p_emp).forEach((id) => srv.rpc("chat_greet", { p_token: tokOf(id), p_msg: m.id })));
   if (fn === "newbie_confirm" && b.p_step === "d3b" && b.p_on !== false) later(5000, () => { const n = srv.S.nb[b.p_emp]; if (n && n.soloMsg) ["e-vera", "e-petr", "e-olga", "e-anna"].filter((id) => id !== me.id && id !== b.p_emp).slice(0, 3).forEach((id) => srv.rpc("chat_greet", { p_token: tokOf(id), p_msg: n.soloMsg })); });
   if (fn === "chat_stop_note" && b.p_on && !res.again && m) later(4500, () => srv.bot.say("e-ilya", "Понял, гостям предложу замену", m.chat));
@@ -240,6 +257,8 @@ function after(fn, b, res) {
 // v99: события утра, по разу за демо: коллега упоминает тебя (через 15 с — увидишь уведомление бота, если ты не в чате);
 // Марии Дарья пишет, что опаздывает (через 25 с — уведомление бота с «Принято»)
 const EV = srv.S.demoEv || (srv.S.demoEv = {});
+const cheerBy = (id) => { if (id === me.id) return; for (const m of srv.S.msgs) if (m.card && (m.card.t === "bday" || m.card.t === "anniv") && m.card.day === TODAY && m.card.emp !== id && !m.del)
+  srv.rpc("chat_cheer", { p_token: tokOf(id), p_msg: m.id }); };
 const once = (key, ms, fn) => { if (EV[key]) return; later(ms, () => { if (EV[key]) return; EV[key] = 1; fn(); }); };
 if (!newPhone) {
   if (who === "anna") once("ment-anna", 15000, () => srv.bot.say("u-maria", "@Анна, возьмёшь сегодня банкет на веранде? Гости к 19:00, нужен один официант на весь вечер."));
@@ -256,6 +275,9 @@ if (!newPhone) {
     const r = srv.rpc("newbie_me", { p_token: tokOf(me.id) });
     if (r && r.ok && r.first) tgChat(eveText(r), eveKb(), "19:00", { day: "Вчера", note: "Так новичок получает памятку накануне первой смены. Кнопка открывает «Первую неделю»." });
   });
+  // v108: день рождения Ильи и годовщина Веры — коллеги поздравляют по одному
+  once("cheer-1", 6000, () => cheerBy("e-petr"));
+  once("cheer-2", 15000, () => cheerBy("e-olga"));
   if (who === "ksenia") once("greet-olga", 12000, () => { const n = srv.S.nb["e-ksenia"]; if (n && n.hello) srv.rpc("chat_greet", { p_token: tokOf("e-olga"), p_msg: n.hello }); });
 }
 
@@ -455,8 +477,8 @@ html.sa-tgfs body{padding-top:var(--sa-st,0px)}
 #demo-page pre{margin:0;padding:14px 14px 30px;white-space:pre-wrap;word-break:break-word;font:14px/1.5 ui-monospace,Menlo,monospace;color:#1d1d1d;background:#fff;flex:1;overflow:auto}
 `;
 const TIPS = {
-  anna: { t: "Анна Смирнова, официант", s: "Главная сотрудника: медальоны дня, приглашение, график и книга отзывов, инструменты, треки. В демо 11:00, смена с 12:00: на главной «Опаздываю?». Анна ведёт новичка: «Команда» → «Новички»." },
-  maria: { t: "Мария Ким, менеджер", s: "Главная менеджера: у инструментов ещё «AI-интервью». Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота. Утром бот прислал «Утро руководителя»: «Смена» → «Утро руководителя». «Команда» → «Новички»: Ксения и Тимур." },
+  anna: { t: "Анна Смирнова, официант", s: "Главная сотрудника: медальоны дня, приглашение, график и книга отзывов, инструменты, треки. В демо 11:00, смена с 12:00: на главной «Опаздываю?». Анна ведёт новичка: «Команда» → «Новички». Сегодня у Ильи день рождения и Вера год в команде: в «Вся команда» можно поздравить. Спасибо коллеге: нажми на имя в чате или «+» → «Спасибо коллеге»; свои — «Я» → «Спасибо от коллег»." },
+  maria: { t: "Мария Ким, менеджер", s: "Главная менеджера: у инструментов ещё «AI-интервью». Скоро Дарья напишет, что опаздывает: «Принято» на карточке в чате или под уведомлением бота. Утром бот прислал «Утро руководителя»: «Смена» → «Утро руководителя». «Команда» → «Новички»: Ксения и Тимур. В «Рейтинге» «Сотрудник недели» считает и «спасибо» от коллег." },
   roman: { t: "Роман, владелец", s: "Главная владельца: «Пульс недели» и все инструменты. «Команда» → «Сервер»: этапы базы, бот, расписания. Утром бот прислал «Утро руководителя»." },
   ksenia: { t: "Ксения Миронова, новичок", s: "Вчера пришла в команду, сегодня первая смена. Вчера вечером бот прислал памятку. «Смена» → «Первая неделя»: наставник, план и темы с собеседования. В «Вся команда» с ней здороваются." },
   phone: { t: "Анна: новый телефон", s: "Приложение открыли в Telegram на новом телефоне. Кода нет, а оно узнаёт Анну само: она подключала напоминания." },

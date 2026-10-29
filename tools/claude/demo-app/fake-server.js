@@ -13,6 +13,7 @@ import { mentionNames } from "../../../lib/chat-mention.js";
 import { lateMinText } from "../../../lib/late.js";
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — текст, как у сервера
 import { focusFromPayload, memoOf, NB_KEEP_DAYS, NB_STEP_IDS, NB_BUDDY_STEPS } from "../../../lib/newbie.js";   // v107: новичок, как этап 41
+import { cheersDue, joinedOf, cheerDm, thxPing, cutText, THX_MAX, THX_DAY_MAX, BOT_NAME } from "../../../lib/team-warm.js";   // v108: как этап 42
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -73,6 +74,10 @@ export function makeServer(opts) {
     hello: null, helloAt: null, solo: null, soloBy: null, soloName: null, soloMsg: null, off: false }]));
   S.nbMemo = S.nbMemo || clone(opts.nbMemo || {});
   S.cands = S.cands || (opts.cands || []).map((c) => ({ ...clone(c), date: D(c.at || 0) }));
+  // v108 (этап 42): «спасибо» от коллег (строка на автора карточки и на каждого «Тоже спасибо»), праздники дня
+  // («сотрудник|день|повод» → сообщение). Состояние прошлых версий демо — без этих полей: засеять (opts.peerThanks)
+  const warmSeed = !S.thx;
+  S.thx = S.thx || []; S.cheers = S.cheers || {}; S.thxSeq = S.thxSeq || 0;
   const monOf = (iso) => { const mk = iso.slice(0, 7); return S.months[mk] || (S.months[mk] = { plan: {}, locks: {}, days: {}, facts: {} }); };
   if (!opts.state) for (const [sid, row] of Object.entries(opts.plan || {})) for (const [n, k] of Object.entries(row)) { const iso = D(Number(n)); const mo = monOf(iso); (mo.plan[sid] = mo.plan[sid] || {})[dayN(iso)] = k; }
   // пожелания: { "ГГГГ-ММ": [{ staff_id, day, kind: "off" | "hard" }] }; opts.wishes — смещение дня от сегодня
@@ -284,6 +289,63 @@ export function makeServer(opts) {
     m.card.greet = (h.greet || []).map((id, i) => ({ id, n: full(who(id)), at: D(h.at || -1) + "T" + String(19 + Math.min(i, 4)).padStart(2, "0") + ":1" + i + ":00" }));
   }
 
+  // ── v108 (этап 42): «Спасибо коллеге», дни рождения и годовщины — как _sa_ty_* на сервере ──
+  const BOT = { id: "", name: BOT_NAME, surname: "", restaurant: R0, position: "" };   // автор карточек праздников — «Академия»
+  const tsOf = (x) => { const t = Date.parse(x); return Number.isFinite(t) ? t : 0; };
+  const thxAdd = (m, from, to, text, own, at, day) => S.thx.push({ id: ++S.thxSeq, msg: m.id, rest: m.rest || R0, from: from.id, fromName: full(from), to: to.id, toName: full(to),
+    text: text || "", own, at, day });
+  // у кого сегодня праздник: «Д.р.» и «В команде с» из графика, иначе день прихода в «Новички»; send — карточка и бот;
+  // all без send — весь день вместе с уже отмеченными (posted). Часы (с 9 до 21) — у сервера: демо ставит сразу.
+  function cheerDue(send, rest = null, all = false) {
+    const out = [];
+    for (const e of PEOPLE.filter((x) => x.restaurant && (!rest || x.restaurant === rest))) {
+      const st = staffOf(e.id), nb = S.nb && S.nb[e.id];
+      const joined = joinedOf(st && st.joined) || (nb && !nb.off ? nb.started : null);
+      for (const x of cheersDue(TODAY, { bday: st && st.bday, joined })) {
+        const key = e.id + "|" + TODAY + "|" + x.kind, done = !!S.cheers[key];
+        if (done && !(all && !send)) continue;
+        const card = { t: x.kind, emp: e.id, name: full(e), pos: e.position, ...(x.kind === "anniv" ? { years: x.years, since: x.since } : {}), day: TODAY, greet: [] };
+        if (send) {
+          const c = teamOf(e.restaurant); if (!c) continue;
+          const m = cardMsg(c, BOT, card); S.cheers[key] = m.id;
+          if (S.tgLinked.includes(e.id)) pingK(c, e.id, cheerDm(card), null, m.id);
+        }
+        out.push({ emp: e.id, name: full(e), rest: e.restaurant, kind: x.kind, years: x.years, card, text: cheerDm(card), ...(all && !send ? { posted: done } : {}) });
+      }
+    }
+    return out;
+  }
+  // засев: «спасибо» прошлых дней (opts.peerThanks: { from, to, text, at — смещение дня, time, plus }) и праздники сегодня
+  // (как будто расписание сервера поставило их в 9:00) — по времени, чтобы порядок в чате был как на сервере
+  if (warmSeed && !opts.state) {
+    const ev = [];
+    for (const x of opts.peerThanks || []) ev.push({ at: D(x.at || 0) + "T" + (x.time || "12:00") + ":00", x });
+    if (opts.cheers !== false) ev.push({ at: TODAY + "T09:00:00", cheer: true });
+    ev.sort((a, b) => tsOf(a.at) - tsOf(b.at));
+    for (const it of ev) {
+      if (it.cheer) {
+        const before = S.msgs.length;
+        cheerDue(true);
+        for (const m of S.msgs.slice(before)) { m.at = it.at; m.upd = it.at; }
+        continue;
+      }
+      const x = it.x, from = who(x.from), to = who(x.to), c = teamOf(R0);
+      if (!from || !to || !c) continue;
+      const text = cutText(x.text || "", THX_MAX);
+      const m = cardMsg(c, from, { t: "thx", to: { id: to.id, name: full(to), pos: to.position }, text, plus: [] });
+      m.at = it.at; m.upd = it.at;
+      delete S.seen[c.id + "|" + from.id];   // это было раньше: сейчас автора в чате нет (бот ему пишет)
+      const day = it.at.slice(0, 10);
+      thxAdd(m, from, to, text, true, it.at, day);
+      (x.plus || []).forEach((id, i) => {
+        const q = who(id); if (!q || id === to.id || id === from.id) return;
+        const at = day + "T" + String(Math.min(23, Number(it.at.slice(11, 13)) + 1)).padStart(2, "0") + ":" + String(10 + i).padStart(2, "0") + ":00";
+        m.card.plus.push({ id, n: full(q), at });
+        thxAdd(m, q, to, text, false, at, day);
+      });
+    }
+  } else if (warmSeed && opts.cheers !== false) cheerDue(true);
+
   // ── вход и главные экраны ──
   const stateOf = (p) => ({ ok: true, v: 2, quiz: (S.quizzes[p.id] || []).slice(), lessons: (S.progress[p.id] || []).slice(), stars: {}, roles: [], last_role: "seasonal" });
 
@@ -295,6 +357,7 @@ export function makeServer(opts) {
     if (fn === "my_reset_at") return { ok: true, reset_at: null };
     if (fn === "cms_list_lessons") return [];
     if (fn === "team_scores") return { ok: true, rows: [] };
+    if (fn === "team_achievements") return { ok: true, rows: [] };   // v108: рекордов в демо пока нет (без ответа карточка писала «не загрузились»)
     if (fn === "team_profiles") return { ok: true, rows: [], scope: "all" };
     if (fn === "my_mentors") return { ok: true, rows: [] };
     if (fn === "qday_inbox") return { ok: true, items: [] };
@@ -512,6 +575,36 @@ export function makeServer(opts) {
       else if (n.off) { n.off = false; n.started = TODAY; }
       return { ok: true, item: nbActive(nbOf(e.id)) ? nbRow(e.id, "lead") : null };
     }
+    // ── v108 (этап 42): «спасибо» от коллег и праздники ──
+    if ((/^thanks_/.test(fn) || fn === "cheer_poke") && !p) return { ok: false, error: "auth" };
+    if (fn === "thanks_peer") {
+      const mine = S.thx.filter((x) => x.to === p.id), dw = (new Date(TODAY + "T00:00:00Z").getUTCDay() + 6) % 7, mon = D(-dw), mstart = TODAY.slice(0, 8) + "01";
+      const items = mine.filter((x) => x.own).sort((a, b) => tsOf(b.at) - tsOf(a.at) || b.id - a.id).slice(0, 50).map((x) => {
+        const m = msgOf(x.msg);
+        return { msg: x.msg, chat: m && !m.del ? m.chat : null, from: x.from, name: x.fromName, text: x.text, at: x.at,
+          plus: S.thx.filter((q) => q.msg === x.msg && !q.own).sort((a, b) => tsOf(a.at) - tsOf(b.at) || a.id - b.id).map((q) => q.fromName) };
+      });
+      return { ok: true, day: TODAY, week: mine.filter((x) => x.day >= mon).length, month: mine.filter((x) => x.day >= mstart).length, total: mine.length, items };
+    }
+    if (fn === "thanks_week") {
+      const first = {};
+      for (const x of S.thx.filter((q) => tsOf(q.at) > clock() - 8 * 864e5)) {
+        const k = x.to + "|" + x.from + "|" + x.day;
+        if (!first[k] || tsOf(x.at) < tsOf(first[k].at)) first[k] = x;
+      }
+      const by = {};
+      for (const x of Object.values(first)) (by[x.to] = by[x.to] || []).push(x.at);
+      const list = Object.keys(by).sort().map((id) => who(id)).filter(Boolean).map((e) => ({ name: e.name, surname: e.surname || "", restaurant: e.restaurant,
+        position: String(e.position || "").toLowerCase(), at: by[e.id].sort((a, b) => tsOf(a) - tsOf(b)) }));
+      return { ok: true, list };
+    }
+    if (fn === "thanks_of") {
+      const e = who(String(b.p_emp || ""));
+      if (!e || (e.restaurant !== p.restaurant && !isLead(p))) return { ok: false, error: "not_found" };
+      const mine = S.thx.filter((x) => x.to === e.id);
+      return { ok: true, n: mine.length, month: mine.filter((x) => x.day >= TODAY.slice(0, 8) + "01").length };
+    }
+    if (fn === "cheer_poke") return { ok: true, n: p.restaurant ? cheerDue(true, p.restaurant).length : 0 };
     if (!/^chat_/.test(fn)) return { code: "PGRST202", message: "demo: " + fn };
     S.log.push({ fn, at: now() }); if (S.log.length > 200) S.log.splice(0, S.log.length - 200);
     if (!p) return { ok: false, error: "auth" };
@@ -810,6 +903,34 @@ export function makeServer(opts) {
       if (m.emp !== p.id) pingK(c, m.emp, nm(full(p)) + ": принято, ждём к " + (m.card.eta || "") + ".", null, m.id);
       return { ok: true, msg: smart(m, p) };
     }
+    // v108 (этап 42): «Спасибо коллеге» — в «Вся команда»; тому же — раз в день, от себя — до 15 в день
+    if (fn === "chat_thanks") {
+      if (String(b.p_to || "") === p.id) return { ok: false, error: "self" };
+      const e = who(String(b.p_to || "")), c = teamOf(p.restaurant);
+      if (!e || e.restaurant !== p.restaurant || !c) return { ok: false, error: "not_found" };
+      const old = S.thx.find((x) => x.own && x.from === p.id && x.to === e.id && x.day === TODAY && msgOf(x.msg) && !msgOf(x.msg).del);
+      if (old) return { ok: false, error: "again", msg: smart(msgOf(old.msg), p) };
+      if (S.thx.filter((x) => x.own && x.from === p.id && x.day === TODAY).length >= THX_DAY_MAX) return { ok: false, error: "limit" };
+      const t = cutText(b.p_text || "", THX_MAX);
+      const m = cardMsg(c, p, { t: "thx", to: { id: e.id, name: full(e), pos: e.position }, text: t, plus: [] });
+      thxAdd(m, p, e, t, true, m.at, TODAY);
+      const tg = S.tgLinked.includes(e.id) && pingK(c, e.id, thxPing(full(p), t), null, m.id);
+      return { ok: true, msg: smart(m, p), tg: !!tg };
+    }
+    if (fn === "chat_cheer") {
+      const m = msgOf(b.p_msg), c = m ? chatOf(m.chat) : null, t = m && m.card ? m.card.t : "";
+      if (!m || m.del || m.kind !== "card" || !["thx", "bday", "anniv"].includes(t) || !visible(c, p)) return { ok: false, error: "not_found" };
+      if ((t === "thx" && m.card.to && m.card.to.id === p.id) || (t !== "thx" && m.card.emp === p.id)) return { ok: false, error: "self", msg: smart(m, p) };
+      if (t === "thx" && m.emp === p.id) return { ok: false, error: "own", msg: smart(m, p) };
+      const k = t === "thx" ? "plus" : "greet";
+      m.card[k] = Array.isArray(m.card[k]) ? m.card[k] : [];
+      if (!m.card[k].some((g) => g.id === p.id) && m.card[k].length < 300) {
+        const at = now();
+        m.card[k].push({ id: p.id, n: full(p), at }); touch(m);
+        if (t === "thx" && !S.thx.some((x) => x.msg === m.id && x.from === p.id)) thxAdd(m, p, who(m.card.to.id) || { id: m.card.to.id, name: m.card.to.name, surname: "" }, m.card.text || "", false, at, TODAY);
+      }
+      return { ok: true, msg: smart(m, p) };
+    }
     // v107 (этап 41): «Поздороваться» и «Поздравить» на карточках новичка; «Наставник новичков» в карточке коллеги
     if (fn === "chat_greet") {
       const m = msgOf(b.p_msg), c = m ? chatOf(m.chat) : null;
@@ -927,5 +1048,5 @@ export function makeServer(opts) {
     // кто из коллег (не я) может забрать или выйти по карточке
     taker: (m, notId) => PEOPLE.find((e) => e.id !== notId && e.id !== m.card.from && e.restaurant === R0 && (m.card.mode === "need" ? needCheck(m.card, e.id).can : check(m.card, e.id).can)) || null,
   };
-  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf, tokOf: (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null };
+  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf, cheerDue, tokOf: (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null };
 }

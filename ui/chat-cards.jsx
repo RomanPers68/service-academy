@@ -10,13 +10,14 @@
 // Сеть — api (lib/chat-api.js, демо — tools/claude/chat-demo/demo-api.js), то, что знает приложение (уроки, меню,
 // брифинг, открыть экран), — app (App.jsx, демо — entry.jsx). Расчёт — lib/chat-smart.js.
 import React from "react";
-import { vibrate } from "../lib/utils";
-import { bubbleName, hhmm, quoteText } from "../lib/chat";
-import { shiftState, shiftLine, wantLine, dayLong, dayShort, dayParts, nextDays, taskLine, dueLine, dueChoices, pollView, pollProblem, POLL_MAX, actTiles, INTENT_LABEL, AI_NAME, aiQuestion,
+import { vibrate, isFemaleName } from "../lib/utils";
+import { bubbleName, hhmm, quoteText, chatInitials } from "../lib/chat";
+import { shiftState, shiftLine, wantLine, dayLong, dayShort, dayParts, nextDays, taskLine, dueLine, dueChoices, pollView, pollProblem, POLL_MAX, actTiles, actLayout, INTENT_LABEL, AI_NAME, aiQuestion,
   posWord, insteadLine, schedView } from "../lib/chat-smart";   // v97: «Ищем в смену», «График готов»
-import { IC, stop } from "./chat-kit";
+import { IC, stop, posName } from "./chat-kit";
 import { LATE_MINS, LATE_NOTE_MAX, lateChip, lateEta, lateMinText, lateView } from "../lib/late";   // v99 (Доп. 412): «Опаздываю»
 import { helloView, soloView } from "../lib/newbie";   // v107 (Доп. 420): «Знакомьтесь» и «Первая самостоятельная смена»
+import { thxView, cheerView, thxChips, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо», день рождения, годовщина
 
 export const CARDS_CSS = `
 /* v93: умные карточки */
@@ -92,12 +93,11 @@ export const CARDS_CSS = `
 .ch-sys.log svg{width:16px;height:16px;flex:0 0 auto;margin-top:2px}
 .ch-sys.log span{white-space:normal;overflow:visible}
 /* «+» и подсказки */
-.ch-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.ch-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 4px 10px;border-radius:16px;border:1px solid var(--opt-edge);background:var(--opt);color:var(--text);font-size:13.5px;line-height:1.2;text-align:center;cursor:pointer;min-width:0}
+.ch-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.ch-tile{grid-column:span 2;display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 4px 10px;border-radius:16px;border:1px solid var(--opt-edge);background:var(--opt);color:var(--text);font-size:13.5px;line-height:1.2;text-align:center;cursor:pointer;min-width:0}
 .ch-tile-i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold)}
-.ch-tile.wide{grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;padding:9px 12px;font-size:14.5px}
-.ch-tile.wide .ch-tile-i{width:34px;height:34px}
-.ch-tile.wide .ch-tile-i svg{width:19px;height:19px}
+.ch-tile.half{grid-column:span 3}
+.ch-tile.full{grid-column:1/-1}
 .ch-sugg{display:flex;gap:6px;max-width:640px;margin:0 auto 7px;overflow-x:auto;scrollbar-width:none;padding:0 2px}
 .ch-sugg::-webkit-scrollbar{display:none}
 /* v94: ряд подсказок листается пальцем вбок (в слое .sa-dlg жесты выключены всем, кроме лент) */
@@ -164,6 +164,7 @@ function RingTile({ n, of }) {
 }
 const IcoTile = ({ ic, img, cap: c }) => <span className="ch-tl ch-tl-i" aria-hidden="true"><span className="ch-tl-box">{img ? <img src={img} alt="" /> : ic}</span>{c ? <i>{c}</i> : null}</span>;
 const NumTile = ({ ic, n, word }) => <span className="ch-tl ch-tl-d" aria-hidden="true"><span className="ch-tl-ic">{ic}</span><b>{n}</b><i>{word}</i></span>;
+const yearWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "год" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "года" : "лет"; };
 const dayWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "день" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "дня" : "дней"; };
 const votesWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "голос" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "голоса" : "голосов"; };
 const St = ({ ok, wait, children, ...rest }) => <div className={"ch-card-st" + (ok ? " ok" : "")} {...rest}>{ok ? IC.check : wait ? IC.clock : null}<span>{children}</span></div>;
@@ -298,6 +299,28 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
       {v.act ? <div className="ch-card-acts"><button type="button" className="ch-cbtn" data-chat-greet={m.id} disabled={busy} onClick={act("greet")}>{v.btn}</button></div> : null}
     </>);
   }
+  if (c.t === "thx") {
+    // v108 (Доп. 421): «Спасибо коллеге»: кому и за что; «Тоже спасибо» — раз; ни автор, ни тот, кому спасибо, — нет
+    const v = thxView(c, me, m.emp);
+    return wrap("", v.n > 1 ? <NumTile ic={IC.thx} n={v.n} word="спасибо" /> : <IcoTile ic={IC.thx} cap="спасибо" />, <>
+      <Head k="Спасибо" m={m} me={me} />
+      <div className="ch-card-t" data-chat-thx-to={c.to && c.to.id}>{v.title}</div>
+      {v.sub ? <div className="ch-card-n" data-chat-thx-text="">«{v.sub}»</div> : null}
+      {v.line ? <div className="ch-card-st" data-chat-thx-n={v.n}><span>{v.line}</span></div> : null}
+      {v.act ? <div className="ch-card-acts"><button type="button" className="ch-cbtn" data-chat-plus={m.id} disabled={busy} onClick={act("plus")}>{v.btn}</button></div> : null}
+    </>);
+  }
+  if (c.t === "bday" || c.t === "anniv") {
+    // v108: день рождения и годовщина — «Поздравить» одной кнопкой, раз; сам — видит, кто поздравил
+    const v = cheerView(c, me), bday = c.t === "bday";
+    return wrap("", bday ? <IcoTile ic={IC.gift} cap="праздник" /> : <NumTile ic={IC.star} n={v.years} word={yearWord(v.years)} />, <>
+      <Head k={bday ? "День рождения" : "Годовщина"} m={m} me={me} />
+      <div className="ch-card-t" data-chat-cheer={c.t}>{v.title}</div>
+      {v.sub ? <div className="ch-card-s">{v.sub}</div> : null}
+      <div className="ch-card-st" data-chat-cheer-n={v.n}><span>{v.line}</span></div>
+      {v.act ? <div className="ch-card-acts"><button type="button" className="ch-cbtn" data-chat-cheer-go={m.id} disabled={busy} onClick={act("cheer")}>{v.btn}</button></div> : null}
+    </>);
+  }
   return wrap("done", <IcoTile ic={IC.share} />, <><Head k="Карточка" m={m} me={me} /><div className="ch-card-s">Эта карточка откроется в новой версии приложения.</div></>);
 }
 
@@ -323,19 +346,18 @@ export function AiMsg({ row, me, hl, onAct, onMenu }) {
 export const AiTyping = () => <div className="ch-typing" role="status" data-chat-ai-typing="">{AI_NAME} печатает<i /><i /><i /></div>;
 
 // ── «+»: все действия ──
-const TILE_IC = { photo: IC.photo, late: IC.late, give: IC.give, swap: IC.swap, task: IC.task, share: IC.share, poll: IC.poll, stop: IC.stop, brief: IC.brief, ai: IC.ai };
+const TILE_IC = { photo: IC.photo, late: IC.late, give: IC.give, swap: IC.swap, task: IC.task, share: IC.share, poll: IC.poll, stop: IC.stop, brief: IC.brief, ai: IC.ai, thx: IC.thx };
 export function ActSheet({ me, chat, onPick, onClose }) {
-  // v99 (Доп. 412): «Опаздываю» — во всю ширину под плитками: сетка остаётся ровной (3×3 у руководителя, 3×2 у сотрудника)
-  const all = actTiles(me, chat), tiles = all.filter((t) => t.id !== "late"), late = all.find((t) => t.id === "late") || null;
+  // v99 (Доп. 412): «Опаздываю», v108 (Доп. 421): «Спасибо коллеге» — в конце. v108: все плитки одного вида, значок над
+  // подписью (широкие кнопки внизу владелец счёл чужими); неполный последний ряд — плитки шире, без дыр (actLayout)
+  const tiles = actLayout(actTiles(me, chat));
   return (
     <div className="ch-veil" data-kbm="" onClick={onClose}>
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Действия" data-chat-acts="" onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-tiles">{tiles.map((t) => (
-          <button key={t.id} type="button" className="ch-tile" data-chat-act={t.id} onClick={() => { vibrate("light"); onPick(t.id); }}>
-            <span className="ch-tile-i" aria-hidden="true">{TILE_IC[t.id]}</span>{t.label}</button>))}
-          {late ? <button type="button" className="ch-tile wide" data-chat-act="late" onClick={() => { vibrate("light"); onPick("late"); }}>
-            <span className="ch-tile-i" aria-hidden="true">{TILE_IC.late}</span>{late.label}</button> : null}</div>
+          <button key={t.id} type="button" className={"ch-tile" + (t.span === 3 ? " half" : t.span === 6 ? " full" : "")} data-chat-act={t.id} onClick={() => { vibrate("light"); onPick(t.id); }}>
+            <span className="ch-tile-i" aria-hidden="true">{TILE_IC[t.id]}</span>{t.label}</button>))}</div>
         <div className="ch-hint">Карточки делают дело сами: смену можно забрать одним нажатием, урок открывается из чата, а {AI_NAME} отвечает прямо в переписке.</div>
       </div>
     </div>);

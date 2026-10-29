@@ -448,7 +448,7 @@ await run("SHIFT", async () => {
   await openChat(v.page);
   await plus(v.page);
   const tw = await acts(v.page);
-  ok("SHIFT: «+» у официанта — Фото, Отдать смену, Поменяться, Поделиться, Опрос, Наставник", tw.filter((x) => x !== "late").join(",") === "photo,give,swap,share,poll,ai", tw.join(","));   // v99: и «Опаздываю» (e2e-v99)
+  ok("SHIFT: «+» у официанта — Фото, Отдать смену, Поменяться, Поделиться, Опрос, Наставник", tw.filter((x) => x !== "late" && x !== "thx").join(",") === "photo,give,swap,share,poll,ai", tw.join(","));   // v99: и «Опаздываю» (e2e-v99); v108: и «Спасибо коллеге» (e2e-v108)
   await shot(v.page, "shift-plus");
   await v.page.locator('[data-chat-act="give"]').click(); await sleep(1100);
   const mine = await v.page.locator("[data-chat-myshift]").evaluateAll((els) => els.map((e) => e.getAttribute("data-chat-myshift")));
@@ -554,7 +554,7 @@ await run("TASK", async () => {
   await openChat(m.page);
   await plus(m.page);
   const tl = await acts(m.page);
-  ok("TASK: «+» у старшей — все девять: и Задание, Стоп-лист, Брифинг", tl.filter((x) => x !== "late").join(",") === "photo,give,swap,task,share,poll,stop,brief,ai", tl.join(","));   // v99: и «Опаздываю»
+  ok("TASK: «+» у старшей — все девять: и Задание, Стоп-лист, Брифинг", tl.filter((x) => x !== "late" && x !== "thx").join(",") === "photo,give,swap,task,share,poll,stop,brief,ai", tl.join(","));   // v99: и «Опаздываю»; v108: и «Спасибо коллеге»
   await shot(m.page, "task-plus");
   await m.page.locator('[data-chat-act="task"]').click(); await sleep(900);
   await m.page.locator("[data-chat-picksearch]").fill("Что такое сервис"); await sleep(400);
@@ -792,7 +792,7 @@ await run("NARROW", async () => {
     await shot(m.page, "narrow-feed-top" + (light ? "-light" : ""));
     await plus(m.page);
     f = await fits(m.page, "[data-chat] *");
-    ok(tag + ": «+» на 320 px — девять плиток без прокрутки вбок", (await m.page.locator("[data-chat-act]:not([data-chat-act='late'])").count()) === 9 && f.sw <= f.W && f.over === 0, JSON.stringify(f));
+    ok(tag + ": «+» на 320 px — девять плиток без прокрутки вбок", (await m.page.locator("[data-chat-act]:not([data-chat-act='late']):not([data-chat-act='thx'])").count()) === 9 && f.sw <= f.W && f.over === 0, JSON.stringify(f));
     await shot(m.page, "narrow-plus" + (light ? "-light" : ""));
     await m.page.locator('[data-chat-act="swap"]').click(); await sleep(900);
     await m.page.locator("[data-chat-myshift]").first().click(); await sleep(300);

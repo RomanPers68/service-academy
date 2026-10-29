@@ -166,7 +166,7 @@ describe("v99: «Опаздываю» (lib/late.js, chat_late)", () => {
   });
   it("плитка «Опаздываю» в «+» — в «Вся команда» и своих чатах; бот руководителям в смене с кнопкой «Принято»", async () => {
     const S = await import("../lib/chat-smart.js");
-    expect(S.actTiles({ lead: false }, { kind: "team" }).map((t) => t.id)).toEqual(["photo", "late", "give", "swap", "share", "poll", "ai"]);
+    expect(S.actTiles({ lead: false }, { kind: "team" }).map((t) => t.id).filter((id) => id !== "thx")).toEqual(["photo", "late", "give", "swap", "share", "poll", "ai"]);   // v108: и «Спасибо коллеге»
     expect(S.actTiles({ lead: false }, { kind: "group" }).map((t) => t.id)).toContain("late");
     expect(S.actTiles({ lead: true }, { kind: "dm" }).map((t) => t.id)).not.toContain("late");
     expect(S.actTiles({ lead: false }, { kind: "lead" }).map((t) => t.id)).not.toContain("late");
@@ -185,9 +185,10 @@ describe("v99: «Опаздываю» (lib/late.js, chat_late)", () => {
     expect(chat).toContain('if (it.kind === "give" || it.kind === "swap" || it.kind === "late"');   // v107: ещё «team» (карточка новичка)
     expect(chat).toContain('if (k === "late") { setSheet("late"); return; }');
     expect(rd("ui/chat-cards.jsx")).toContain('<Sheet title="Опаздываю" data={{ "data-chat-latesheet": "" }} onClose={onClose}>');
-    // в «+» — во всю ширину под плитками: сетка ровная (3×3 у руководителя, 3×2 у сотрудника)
-    expect(rd("ui/chat-cards.jsx")).toContain('<button type="button" className="ch-tile wide" data-chat-act="late"');
-    expect(rd("ui/chat-cards.jsx")).toContain(".ch-tile.wide{grid-column:1/-1;");
+    // в «+» — в конце плиток; v108 (Доп. 421): плитка того же вида, неполный последний ряд — шире (actLayout)
+    expect(rd("ui/chat-cards.jsx")).toContain("const tiles = actLayout(actTiles(me, chat));");
+    expect(rd("ui/chat-cards.jsx")).toContain('className={"ch-tile" + (t.span === 3 ? " half" : t.span === 6 ? " full" : "")} data-chat-act={t.id}');
+    expect(rd("ui/chat-cards.jsx")).toContain(".ch-tile.half{grid-column:span 3}");
     expect(rd("ui/schedule.jsx")).toContain('rpc("late_month", { p_token: saToken(), p_month: mkey })');
     const sch = rd("ui/schedule.jsx");   // «Сегодня» у руководителя: значок у лица и строка «опаздывает: … к 12:20 (принято)»
     expect(sch).toContain("data-today-late={o.who.id}");

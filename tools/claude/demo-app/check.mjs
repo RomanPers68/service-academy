@@ -5,6 +5,8 @@
 // v106 (Доп. 419): Марии и Роману при открытии — «Утро руководителя» в Telegram; «Открыть утро» — экран «Утро», «Напомнить».
 // v107 (Доп. 420): Ксения — новичок: памятка бота накануне первой смены, «Первая неделя», её карточка «Знакомьтесь» в чате;
 // Мария — «Новички»; Анна — наставник Ксении.
+// v108 (Доп. 421): Анна — день рождения Ильи и годовщина Веры в «Вся команда» («Поздравить»), «Спасибо коллеге» (двое
+// присоединяются), «Я» → «Спасибо от коллег»; Мария — в «Сегодня» «Графика» день рождения и годовщина.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -135,6 +137,45 @@ if (!ONLY || ONLY.includes("anna")) {
   const nb = await page.locator('[data-nbl-open="e-ksenia"]').innerText().catch(() => "");
   ok("Анна: у Ксении «Встретить к 11:45, сегодня», темы для занятий, «Подтвердить»", /Встретить к 11:45, сегодня/.test(nb) && /Темы для занятий: конфликты/.test(nb) && /Подтвердить/.test(nb), nb.replace(/\s+/g, " ").slice(0, 160));
   await shot("a15-newbies");
+  // v108 (Доп. 421): тепло в команде — в «Вся команда» день рождения Ильи и годовщина Веры, «Спасибо коллеге»,
+  // «Я» → «Спасибо от коллег»
+  await page.evaluate(() => window.__saNav && window.__saNav("home")); await page.waitForTimeout(1200);
+  await page.locator("[data-chat-disc]").first().click(); await page.waitForTimeout(1300);
+  await page.locator('[data-chat-item="team"]').first().click(); await page.waitForTimeout(1800);
+  const bd = page.locator('[data-chat-card="bday"]').last(), an = page.locator('[data-chat-card="anniv"]').last();
+  await bd.scrollIntoViewIfNeeded().catch(() => {});
+  const bt = (await bd.innerText().catch(() => "")).replace(/\s+/g, " "), at = (await an.innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("Анна: в «Вся команда» «У Ильи сегодня день рождения», Пётр и Ольга уже поздравили, «Поздравить»", /У Ильи сегодня день рождения/.test(bt) && /Поздравили: Пётр О\., Ольга Л\./.test(bt)
+    && (await bd.locator("[data-chat-cheer-go]").count()) === 1, bt.slice(0, 160));
+  ok("Анна: «Вера год с нами», «Поздравить»", /Вера год с нами/.test(at) && (await an.locator("[data-chat-cheer-go]").count()) === 1, at.slice(0, 160));
+  await shot("a16-cheer");
+  await bd.locator("[data-chat-cheer-go]").click().catch(() => {}); await page.waitForTimeout(900);
+  ok("«Поздравить»: «Поздравили: Пётр О., Ольга Л., ты», кнопки нет", /Поздравили: Пётр О\., Ольга Л\., ты/.test(await bd.innerText().catch(() => "")) && !(await bd.locator("[data-chat-cheer-go]").count()));
+  await tap("[data-chat-attach]");
+  await tap('[data-chat-act="thx"]'); await page.waitForTimeout(800);
+  ok("«+» → «Спасибо коллеге»: кому — коллеги", (await page.locator('[data-chat-thxsheet="pick"] [data-chat-person]').count()) >= 6);
+  await shot("a17-thx-pick");
+  await tap('[data-chat-thxsheet] [data-chat-person="e-petr"]');
+  await tap('[data-chat-thx-chip="подменил"]');
+  await shot("a18-thx-write");
+  await tap("[data-chat-thx-go]"); await page.waitForTimeout(1200);
+  const tc = page.locator('[data-chat-card="thx"]').last();
+  const t1 = (await tc.innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("карточка «Спасибо»: Пётр Орлов, «Подменил»", /Пётр Орлов/.test(t1) && /«Подменил»/.test(t1), t1.slice(0, 160));
+  await page.waitForTimeout(5800);
+  const t2 = (await tc.innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("через 5 секунд присоединились: «Ещё спасибо: Вера С., Ольга Л.»", /Ещё спасибо: Вера С\., Ольга Л\./.test(t2), t2.slice(0, 160));
+  await shot("a19-thx-card");
+  for (let i = 0; i < 5 && await page.locator("[data-chat]").count(); i++) { await page.evaluate(() => { const b = document.querySelector('[data-chat] [data-sa-back]'); if (b) b.click(); }); await page.waitForTimeout(450); }
+  await page.evaluate(() => window.__saNav && window.__saNav("me")); await page.waitForTimeout(1800);
+  const pi = page.locator('.sa-card[aria-label="Спасибо от коллег"]').first();
+  const ps = (await pi.innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("«Я»: «Спасибо от коллег» — 3 спасибо", /3 раза за неделю коллеги сказали спасибо|Всего спасибо от коллег: 3/.test(ps), ps);
+  await pi.click().catch(() => {}); await page.waitForTimeout(1800);
+  const pt = (await page.locator("[data-peer-item]").first().innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("«Спасибо от коллег»: вчера Мария К., «Выручила с банкетом на веранде», ещё Пётр О. и Ольга Л.", (await page.locator('[data-peer="ok"]').count()) === 1 && /вчера · Мария К\./i.test(pt)
+    && /Выручила с банкетом на веранде/.test(pt) && /Ещё спасибо: Пётр О\., Ольга Л\./.test(pt), pt.slice(0, 160));
+  await shot("a20-peer");
 }
 if (!ONLY || ONLY.includes("maria")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "maria"); localStorage.removeItem("__demo_me"); });
@@ -167,6 +208,8 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("в «Графике» «Сегодня»: опаздывает Дарья (принято)", marks > 0 && /Лебедева Дарья к 12:20 \(принято\)/.test(ltxt), ltxt);
   await page.locator("[data-today-lates]").first().click().catch(() => {}); await page.waitForTimeout(700); await shot("m4-today-open");
   ok("раскрыто: у Дарьи «опоздает, к 12:20»", /опоздает, к 12:20/.test(await txt()));
+  // v108 (Доп. 421): в «Сегодня» — день рождения и годовщина (даты — «Настройки» → «Сотрудники»)
+  ok("в «Сегодня»: «День рождения: Белов Илья», «Годовщина: Соколова Вера (год)»", /День рождения: Белов Илья/.test(await txt()) && /Годовщина: Соколова Вера \(год\)/.test(await txt()));
   // v107 (Доп. 420): «Команда» → «Новички»: Ксения (наставник Анна, представлена) и Тимур (наставник Илья)
   await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1500);
   await page.getByText("Наставники, памятка и темы с собеседования").first().click().catch(() => {}); await page.waitForTimeout(1800);

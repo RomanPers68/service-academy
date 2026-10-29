@@ -28,6 +28,7 @@ import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText }
 import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон лёжа и компьютер
 import { WEEKDAY_MON_SHORT, WEEKDAY_MON, WEEKDAY_SHORT, MONTH_NOM, MONTH_GEN } from "../lib/dates";   // v59
 import { isoDay, boardRows, boardNeeds, boardWho, mineWho, needProgress, boardErr } from "../lib/schedule-chat";   // v97: смены в чате
+import { cheersDue, yearsWord } from "../lib/team-warm";   // v108 (Доп. 421): годовщины в «Сегодня»
 
 const mono = "ui-monospace, Menlo, monospace";   // v73: только цифрам — время, часы, счёт, коды, телефоны
 const serif = "Georgia, serif";
@@ -232,13 +233,13 @@ function Num({ v, min, max, set, inp }) {
   );
 }
 // Текстовое поле: правки идут локально, наверх уходят по окончании ввода
-function Text({ v, set, inp, style, maxLength }) {
+function Text({ v, set, inp, style, maxLength, placeholder }) {   // v108: подсказка формата («дд.мм») видна
   const ref = React.useRef(null);
   React.useEffect(() => {
     if (ref.current && document.activeElement !== ref.current) ref.current.value = v;
   }, [v]);
   return (
-    <input ref={ref} defaultValue={v} maxLength={maxLength} style={{ ...inp, ...style }}
+    <input ref={ref} defaultValue={v} maxLength={maxLength} placeholder={placeholder} style={{ ...inp, ...style }}
       enterKeyHint="done" onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
       onFocus={focusScroll} onChange={e => set(e.target.value)} />
   );
@@ -2807,11 +2808,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <Pill key={v} a11y={a11y} P={P} on={(sf.rateMode || "hour") === v} style={{ flex:1, padding:"7px 4px", fontSize:11 }}
                   onClick={() => patch(c => { c.staff[i].rateMode = v; })}>{t}</Pill>
               ))}
+            </div>
+            {/* v108 (Доп. 421): день рождения и «В команде с» — в эти дни в «Вся команда» карточка, команда поздравляет
+                одной кнопкой (этап 42); «Д.р.» был и раньше (строка «День рождения» в «Сегодня») */}
+            <div style={{ ...rowStyle, borderTop:"none", display:"flex", gap:8 }} data-sched-dates="">
               <Field label="Д.р." P={P}>
-                <Text inp={{ ...inp, width:64 }} v={sf.bday || ""} maxLength={5} placeholder="дд.мм"
+                <Text inp={inp} style={{ width:"100%" }} v={sf.bday || ""} maxLength={5} placeholder="дд.мм"
                   set={val => patch(c => { c.staff[i].bday = val; })} />
               </Field>
+              <Field label="В команде с" P={P}>
+                <Text inp={inp} style={{ width:"100%" }} v={sf.joined || ""} maxLength={10} placeholder="дд.мм.гггг"
+                  set={val => patch(c => { const v = String(val || "").trim(); if (!v) delete c.staff[i].joined; else c.staff[i].joined = v; })} />
+              </Field>
             </div>
+            <div style={{ fontSize:11.5, color:P.sub, lineHeight:1.4, padding:"0 0 6px" }}>В день рождения и годовщину в «Вся команда» появится карточка, и команда поздравит одной кнопкой.</div>
 
             {/* Отпуска месяца списком: периодов может быть сколько угодно, и
                 каждый месяц независим. Правка всегда пишет в новый формат
@@ -5021,6 +5031,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           const bd = staff.filter(x => (x.bday || "") === dm);
           return bd.length ? (
             <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }}>День рождения: {bd.map(x => x.name).join(", ")}</div>
+          ) : null;
+        })()}
+        {(() => {
+          // v108 (Доп. 421): годовщина — по «В команде с»: «Годовщина: Соколова Вера (год)»
+          const iso = Y + "-" + String(M + 1).padStart(2, "0") + "-" + String(today).padStart(2, "0");
+          const an = staff.map((x) => ({ x, d: cheersDue(iso, { joined: x.joined }).find((q) => q.kind === "anniv") })).filter((q) => q.d);
+          return an.length ? (
+            <div style={{ fontSize:12.5, color:P.acc, margin:"2px 0 6px" }} data-sched-anniv="">Годовщина: {an.map((q) => q.x.name + " (" + yearsWord(q.d.years) + ")").join(", ")}</div>
           ) : null;
         })()}
         {/* Раскрыто — лица. Список «должность: капсула, капсула» отвечал на

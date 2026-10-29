@@ -345,6 +345,7 @@ import { chatApi, chatStt as chatSttOf } from "./lib/chat-api";   // v90 (Доп
 import { POLL_APP_MS, badge as chatBadge } from "./lib/chat";
 import { casesSub, isCaseMistake, markPlayed, readSince, markSince } from "./lib/cases";   // v83: случаи из нашего зала
 import { thanksSub } from "./lib/guest-thanks";   // v84: спасибо от гостей по QR
+import { peerSub } from "./lib/team-warm";   // v108 (Доп. 421): «Спасибо от коллег» — подпись пункта в «Я»
 import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
 import { shiftRoleOf, roleCard } from "./lib/shift-role";   // v87 (Доп. 400): «Смена» под роль
 import { ShiftRoleCard } from "./ui/shift-role";
@@ -386,6 +387,7 @@ const BriefCard = lazyOf(loadBriefing, "BriefCard");
 const BriefView = lazyOf(loadBriefing, "BriefView");
 const CasesScreen = lazyOf(() => import("./ui/cases"), "CasesScreen");   // v83 (Доп. 396): случаи из нашего зала
 const ThanksScreen = lazyOf(() => import("./ui/thanks"), "ThanksScreen");   // v84 (Доп. 397): спасибо от гостей по QR
+const PeerThanksScreen = lazyOf(() => import("./ui/peer-thanks"), "PeerThanksScreen");   // v108 (Доп. 421): спасибо от коллег
 const SeatingScreen = lazyOf(() => import("./ui/seating"), "SeatingScreen");   // v85 (Доп. 398): рассадка для хостес
 
 
@@ -1491,6 +1493,19 @@ function ServiceAcademy() {
     }).catch(() => { st.at = 0; });
   }, [screen, storageLoaded, profile, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
   const openThanks = (tab) => { vibrate("light"); setThanksTab(tab); navigate("thanks"); };
+  // v108 (Доп. 421): «Спасибо от коллег» — пункт в «Я» рядом со «Спасибо от гостей» (этап 42, thanks_peer): при входе в «Я»,
+  // не чаще раза в пять минут; этапа нет — пункта нет
+  const [peerInfo, setPeerInfo] = useState(null);
+  const peerAskRef = useRef({ at: 0, off: false });
+  useEffect(() => {
+    const st = peerAskRef.current;
+    if (screen !== "me" || !storageLoaded || !profile || st.off || Date.now() - st.at < 5 * 60e3) return;
+    st.at = Date.now();
+    rpc("thanks_peer", { p_token: saToken() }).then((r) => {
+      if (rpcMissing(r)) { st.off = true; setPeerInfo(null); return; }
+      if (r && r.ok) setPeerInfo(r);
+    }).catch(() => { st.at = 0; });
+  }, [screen, storageLoaded, profile]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v85 (Доп. 398): рассадка — пункт в «Смене»; без этапа 35 (экран ответил, что его нет) пункт пропадает до перезапуска
   const [seatOn, setSeatOn] = useState(true);
   // v86 (Доп. 399): «Твои столы» в пункте «Рассадка» — у официанта, которому посадили гостей (seat_board, этап 35):
@@ -3166,6 +3181,11 @@ function ServiceAcademy() {
         {screen === "thanks" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ThanksScreen T={T} a11y={a11y} profile={profile} lead={isLead} startTab={thanksTab}
           onLoaded={(r) => { setThanksInfo(r); setThanksOn(true); try { localStorage.setItem("sa_thanks_on" + ukP, "1"); } catch (e) {} }}
           onBack={() => goBack(thanksTab === "team" ? "teamHub" : "me")} /></Suspense></div>}
+        {/* v108 (Доп. 421): «Спасибо от коллег» — карточка открывается в чате, «Сказать спасибо коллеге» — «Вся команда» с листом */}
+        {screen === "peerThanks" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><PeerThanksScreen T={T} a11y={a11y} profile={profile}
+          onLoaded={(r) => setPeerInfo(r)} onBack={() => goBack("me")}
+          onOpenChat={(chat, msg) => setChatOpen({ intent: { kind: "chat", id: Number(chat), msg: msg ? Number(msg) : null, at: Date.now() } })}
+          onSay={() => setChatOpen({ intent: { kind: "thx", at: Date.now() } })} /></Suspense></div>}
         {screen === "cases" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CasesScreen T={T} a11y={a11y} profile={profile} uk={ukP} playedVer={casesPlayed}
           onPlay={openCases} onOpened={casesOpened} onBack={() => { caseAskRef.current.at = 0; goBack("shift"); }} /></Suspense></div>}
         {screen === "brief" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BriefScreen T={T} a11y={a11y} profile={profile}
@@ -3268,6 +3288,7 @@ function ServiceAcademy() {
           // v40: «Путь мастера» — значки и главная награда; «новое», пока не открывали
           // v71: группами; итоги и настройки — строками в одной карточке
           thanksOn && { key:"thanks", group:"Мой путь", icon:"thanks", label:"Спасибо от гостей", sub: thanksSub(thanksInfo), onClick:() => openThanks("mine") },   // v84
+          peerInfo && { key:"peer", group:"Мой путь", icon:"thanks", label:"Спасибо от коллег", sub: peerSub(peerInfo), onClick:() => navigate("peerThanks") },   // v108
           mShown && { key:"mastery", group:"Мой путь", icon:"mastery", label:"Путь мастера",
             sub: mShown.master.ok
               ? "Мастер роли · " + mShown.bronze + " из " + mShown.total + " значков"

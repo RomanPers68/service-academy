@@ -768,11 +768,11 @@ function MentorPinBlock({ T, gold }) {
         Этим PIN ты заверяешь допуски сотрудников. Вводи его только сам(а) и никому не сообщай. 4–6 цифр.
       </div>
       <div style={{ display:"flex", gap:8 }}>
-        <input value={pin}
+        <input data-lens-field="" value={pin}
           onChange={e => { setPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 6)); setState(null); }}
           inputMode="numeric" pattern="[0-9]*" type="password" autoComplete="new-password" placeholder="••••"
           style={{ flex:1, minWidth:0, boxSizing:"border-box", padding:"11px 13px", borderRadius:12, border:`1px solid ${gold}66`, background:"rgba(0,0,0,0.12)", color: T.modTitle.color, fontSize:16, letterSpacing:5, textAlign:"center", fontFamily:"monospace", outline:"none" }} />
-        <button className="sa-btn" onClick={savePin} {...onActivate(savePin)}
+        <button className="sa-btn" onClick={savePin} {...onActivate(savePin)} data-lens-btn={canSave ? "main" : "soft"}
           style={{ flexShrink:0, padding:"11px 16px", borderRadius:12, border:"none", background: canSave ? gold : gold+"44", color:"#1A1008", fontWeight:"bold", fontSize:12.5, cursor: canSave ? "pointer" : "default" }}>
           {state === "saving" ? "…" : "Сохранить"}
         </button>
@@ -806,7 +806,7 @@ function AccountSettings({ T, a11y, onA11y, themeAuto = false, onThemeAuto = nul
     </div>
   );
   return (
-    <div data-settings="" style={{ ...T.modCard, display:"block", padding:"4px 14px", marginBottom:12 }}>
+    <div data-settings="" data-lens-card="" style={{ ...T.modCard, display:"block", padding:"4px 14px", marginBottom:12 }}>
       <div style={{ ...labelStyle(a11y ? 14 : 13), color: gold, padding:"8px 2px 0" }}>Настройки</div>
       {row("theme", "Для чтения", "светлый фон и текст крупнее, удобно читать днём", !!a11y, () => { vibrate("light"); if (onA11y) onA11y(!a11y); }, true)}
       {/* v59 (Доп. 372): тема по системе — светлая у телефона или Telegram включает «Для чтения» сама */}
@@ -835,7 +835,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
       ) : null}
       {/* v57: снизу 24 (было 40); v59: ещё плотнее (16/20, заметка и карточки ближе) — с четвёртой настройкой экран по-прежнему помещается целиком */}
       <div style={{ flex:1, padding:"16px 18px 20px" }}>
-        <div ref={acRefCard} style={{ ...T.modCard, gap:12, marginBottom:12 }}>
+        <div ref={acRefCard} data-lens-card="" style={{ ...T.modCard, gap:12, marginBottom:12 }}>
           <div data-lens="avatar" style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
             <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown("#fff", 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
@@ -868,7 +868,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
 
         {/* ═══ Карта обучения — печатный документ для личного дела ═══ */}
         {onTrainingCard && (
-          <div className="sa-card" style={{ ...T.modCard, marginBottom:12, cursor:"pointer" }}
+          <div className="sa-card" data-lens-card="" style={{ ...T.modCard, marginBottom:12, cursor:"pointer" }}
             onClick={onTrainingCard} {...onActivate(onTrainingCard)}>
             <div data-lens="disc" style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(200,169,110,0.13)" }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h10v6H7z"/><path d="M5 9h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/><path d="M7 15h10"/></svg>
@@ -882,7 +882,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
         )}
 
         {!confirmOut ? (
-          <button className="sa-btn" onClick={() => setConfirmOut(true)}
+          <button className="sa-btn" data-lens-btn="danger" onClick={() => setConfirmOut(true)}
             style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:RED, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
             Выйти с этого устройства
           </button>
@@ -892,11 +892,11 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
               Для повторного входа понадобится код доступа. Точно выйти?
             </div>
             <div style={{ display:"flex", gap:10 }}>
-              <button className="sa-btn" onClick={() => setConfirmOut(false)}
+              <button className="sa-btn" data-lens-btn="soft" onClick={() => setConfirmOut(false)}
                 style={{ flex:1, padding:"13px", borderRadius:14, border:"1px solid rgba(200,160,80,0.4)", background:"transparent", color:GOLD, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
                 Остаться
               </button>
-              <button className="sa-btn" onClick={onLogout}
+              <button className="sa-btn" data-lens-btn="danger" onClick={onLogout}
                 style={{ flex:1, padding:"13px", borderRadius:14, border:"none", background:RED, color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer" }}>
                 Выйти
               </button>

@@ -273,7 +273,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v116</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v117</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -795,7 +795,7 @@ function EditorField({ value, onChange, placeholder, rows = 1, style, inputSt, t
   return (
     <div style={{ position: "relative", marginBottom: 10 }}>
       <textarea ref={ref} className="sa-field" rows={rows} value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder} onFocus={onFocusScroll}
-        style={{ ...inputSt, marginBottom: 2, paddingRight: value ? 38 : 13, resize: "none", overflow: "hidden", lineHeight: 1.45, fontFamily: "inherit", ...style }} />
+        data-lens-field="" style={{ ...inputSt, marginBottom: 2, paddingRight: value ? 38 : 13, resize: "none", overflow: "hidden", lineHeight: 1.45, fontFamily: "inherit", ...style }} />
       {value ? <span onClick={() => { onChange(""); vibrate("light"); ref.current && ref.current.focus(); }} {...onActivate(() => onChange(""))} aria-label="Очистить"
         style={{ position: "absolute", right: 10, top: 9, width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, color: textColor, background: a11y ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)", cursor: "pointer" }}>✕</span> : null}
     </div>
@@ -807,7 +807,7 @@ function PreviewCard({ d, T, gold, red, glass }) {
   const [back, setBack] = React.useState(false);
   const text = T.modTitle.color;
   return (
-    <div className="sa-card" onClick={() => setBack(b => !b)} style={{ ...glass(T), padding: "18px 18px 16px", minHeight: 300, cursor: "pointer", position: "relative", overflow: "hidden" }}>
+    <div className="sa-card" data-lens-card="" onClick={() => setBack(b => !b)} style={{ ...glass(T), padding: "18px 18px 16px", minHeight: 300, cursor: "pointer", position: "relative", overflow: "hidden" }}>
       {d.stop && <div style={{ position: "absolute", top: 14, right: -34, transform: "rotate(35deg)", background: red, color: "#fff", fontSize: 10.5, letterSpacing: 1.5, padding: "4px 40px" }}>СЕГОДНЯ НЕТ</div>}
       {!back ? (<>
         <DishPhoto src={d.img} h={190} />
@@ -1157,7 +1157,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               </span>
             ))}
           </div>
-          <input className="sa-field" style={{ ...inputSt, marginBottom: 4 }} placeholder={ingList.length ? "Ещё ингредиент: Enter или запятая" : "Ингредиент: Enter или запятая"}
+          <input className="sa-field" data-lens-field="" style={{ ...inputSt, marginBottom: 4 }} placeholder={ingList.length ? "Ещё ингредиент: Enter или запятая" : "Ингредиент: Enter или запятая"}
             onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
             onBlur={e => { if (e.currentTarget.value.trim()) { addIng(e.currentTarget.value); e.currentTarget.value = ""; } }}
             onChange={e => { if (e.target.value.includes(",")) { addIng(e.target.value); e.target.value = ""; } }} />
@@ -1204,7 +1204,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             const table = nutritionOf(form.name);
             const cell = (key, ph, w) => (
               <input inputMode="decimal" placeholder={ph} value={form[key] ?? ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                style={{ ...inputSt, width: w, flex: "none", textAlign: "center", padding: "9px 4px", marginTop: 2 }} />
+                data-lens-field="" style={{ ...inputSt, width: w, flex: "none", textAlign: "center", padding: "9px 4px", marginTop: 2 }} />
             );
             const fill = () => { if (!table) return; setForm(f => ({ ...f, out: table.out, kcal: table.kcal, prot: table.p, fat: table.f, carb: table.c })); vibrate("success"); };
             const clear = () => { setForm(f => ({ ...f, out: "", kcal: "", prot: "", fat: "", carb: "" })); vibrate("light"); };
@@ -1244,9 +1244,9 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           transform: typingMenu ? "translateY(120%)" : "none", transition: "transform .25s ease",
           background: a11y ? "rgba(245,238,222,0.92)" : "rgba(21,17,11,0.92)", borderTop: `1px solid ${gold}33`, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}66`, color: textColor, flex: 1 }} onClick={() => setForm(null)}>Отмена</button>
-            <button className="sa-btn" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, flex: 1, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={() => { setPreview2(true); vibrate("light"); }}>Как увидит официант</button>
-            <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1.4, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={save}>{isEdit ? "Сохранить" : "Добавить в меню"}</button>
+            <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}66`, color: textColor, flex: 1 }} onClick={() => setForm(null)}>Отмена</button>
+            <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: gold, flex: 1, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={() => { setPreview2(true); vibrate("light"); }}>Как увидит официант</button>
+            <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: gold, flex: 1.4, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={save}>{isEdit ? "Сохранить" : "Добавить в меню"}</button>
           </div>
           {!isEdit && <div style={{ textAlign: "center", marginTop: 8 }}><span style={{ fontSize: 12.5, color: gold, cursor: canSave ? "pointer" : "default", opacity: canSave ? 1 : 0.4 }} onClick={() => { if (!canSave) return; save(); setTimeout(() => setForm({ ...empty, cat: form.cat }), 0); }}>Сохранить и добавить ещё{form.cat ? ` в «${form.cat}»` : ""} ›</span></div>}
         </div>
@@ -1257,7 +1257,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               <div onClick={e => e.stopPropagation()} className="sa-fadein" style={{ width: "100%", maxWidth: 420 }}>
                 <div style={{ textAlign: "center", ...labelStyle(13.5), color: "#EFE4C8", marginBottom: 8 }}>Так увидит официант · переверни тапом</div>
                 <PreviewCard d={d} T={T} gold={gold} red={red} glass={glass} />
-                <button className="sa-btn" onClick={() => setPreview2(false)} style={{ ...T.doneBtn, width: "100%", marginTop: 12, background: gold }}>Вернуться к правке</button>
+                <button className="sa-btn" data-lens-btn="main" onClick={() => setPreview2(false)} style={{ ...T.doneBtn, width: "100%", marginTop: 12, background: gold }}>Вернуться к правке</button>
               </div>
             </div>
           );
@@ -1303,7 +1303,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             });
           })()}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setPreview(null)}>Отмена</button>
+            <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setPreview(null)}>Отмена</button>
             <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, flex: 1, background: green, color: "#fff" }} onClick={acceptImport} disabled={!preview.length}>Добавить ({preview.length}) ✓</button>
           </div>
         </div>
@@ -1325,10 +1325,10 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                 {unpublished
                   ? <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, flex: 1.5, background: green, color: "#fff", opacity: pubBusy ? 0.55 : 1 }} onClick={publish} disabled={pubBusy}>{pubBusy ? "Отправляю…" : `Опубликовать · ${unpublished}`}</button>
-                  : <button className="sa-btn" style={{ ...T.doneBtn, flex: 1.5, background: gold }} onClick={() => setForm({ ...empty })}>+ Добавить блюдо</button>}
+                  : <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, flex: 1.5, background: gold }} onClick={() => setForm({ ...empty })}>+ Добавить блюдо</button>}
                 {unpublished
-                  ? <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setForm({ ...empty })}>+ Блюдо</button>
-                  : <label className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
+                  ? <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setForm({ ...empty })}>+ Блюдо</button>
+                  : <label className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
                       {importing ? "Читаю PDF…" : "Из PDF"}
                       <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
                     </label>}
@@ -1353,7 +1353,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             </div>
             {localPhotos.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-                <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "9px 14px", opacity: reupBusy ? 0.55 : 1 }} disabled={reupBusy} onClick={reuploadAll}>{reupBusy ? "Отправляю…" : `Отправить в облако (${localPhotos.length})`}</button>
+                <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: gold, padding: "9px 14px", opacity: reupBusy ? 0.55 : 1 }} disabled={reupBusy} onClick={reuploadAll}>{reupBusy ? "Отправляю…" : `Отправить в облако (${localPhotos.length})`}</button>
                 {reupMsg && <span style={{ fontSize: 12.5, color: /✓/.test(reupMsg) ? green : red, lineHeight: 1.4 }}>{reupMsg}</span>}
               </div>
             )}
@@ -1376,10 +1376,10 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         )}
         {(list.length + orphanShared.length + sampleList.length) > 6 && (
           <div style={{ marginTop: 12 }}>
-            <input className="sa-field" value={eq} onChange={e => setEq(e.target.value)} placeholder="Найти блюдо в редакторе…" style={{ ...inputSt, marginBottom: 8, padding: "9px 12px", fontSize: 14 }} />
+            <input className="sa-field" value={eq} onChange={e => setEq(e.target.value)} placeholder="Найти блюдо в редакторе…" data-lens-field="" style={{ ...inputSt, marginBottom: 8, padding: "9px 12px", fontSize: 14 }} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
               {[{ cat: "", n: list.length + orphanShared.length + sampleList.length }, ...groupByCat([...list, ...orphanShared, ...sampleList]).map(g => ({ cat: g.cat, n: g.items.length }))].map(g => (
-                <span key={g.cat || "_all"} onClick={() => setEcat(g.cat === ecat ? "" : g.cat)} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${ecat === g.cat ? gold : gold + "55"}`, background: ecat === g.cat ? "rgba(214,178,102,0.16)" : "transparent", color: ecat === g.cat ? textColor : T.modSub.color }}>{g.cat || "Все"} · {g.n}</span>
+                <span key={g.cat || "_all"} data-lens-btn={(g.cat || "") === ecat ? "tab" : "soft"} data-lens-ink="" onClick={() => setEcat(g.cat === ecat ? "" : g.cat)} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${ecat === g.cat ? gold : gold + "55"}`, background: ecat === g.cat ? "rgba(214,178,102,0.16)" : "transparent", color: ecat === g.cat ? textColor : T.modSub.color }}>{g.cat || "Все"} · {g.n}</span>
               ))}
             </div>
           </div>
@@ -1388,7 +1388,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         {orphanShared.length > 0 && (
           <div style={{ ...glass(T), padding: "13px 14px", marginTop: 12, fontSize: 12.5, color: T.para?.color, lineHeight: 1.55 }}>
             На сервере команды есть блюда, которых нет в твоём редакторе: <b style={{ color: gold }}>{orphanShared.length}</b>. Их нельзя изменить или удалить, пока не заберёшь их сюда.
-            <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", border: `1px solid ${gold}88`, color: T.para?.color }}
+            <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", border: `1px solid ${gold}88`, color: T.para?.color }}
               onClick={() => { setCustom({ ...custom, [restaurant]: [...list, ...orphanShared] }); vibrate("light"); }}
               {...onActivate(() => { setCustom({ ...custom, [restaurant]: [...list, ...orphanShared] }); })}>
               Забрать в редактор ({orphanShared.length})
@@ -1396,7 +1396,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           </div>
         )}
         <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown }))}
-          className="sa-card"
+          className="sa-card" data-lens-card=""
           style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 14, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <span>Примеры-заготовки в тренажёре{hs === undefined && (shared || []).length ? <span style={{ color: T.modSub.color, fontSize: 12.5 }}> · скрыты сами: есть меню команды</span> : null}</span>
           <b style={{ color: samplesShown ? "#5DBB8A" : red, flexShrink: 0 }}>{samplesShown ? "видны" : "скрыты"}</b>
@@ -1411,7 +1411,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             {g.items.map(d => {
               const changed = !sameAsServer(d);
               return (
-                <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", flexWrap: "wrap", opacity: d.stop ? 0.85 : 1 }}>
+                <div key={d.id} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px", flexWrap: "wrap", opacity: d.stop ? 0.85 : 1 }}>
                   {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0, filter: d.stop ? "grayscale(1)" : "none" }} />}
                   <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") }))}>
                     <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
@@ -1439,7 +1439,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         <div style={{ padding: "0 14px 14px" }}>
           <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>По тапу поправишь (копия появится в своих), ✕ удалит. Изменения уйдут команде после «Опубликовать».</div>
           {vis(orphanShared).map(d => (
-            <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
+            <div key={d.id} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px" }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
                 <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
@@ -1462,7 +1462,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         <div style={{ padding: "0 14px 14px" }}>
           <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Убранные позиции. Официанты и Наставник их не видят. «Вернуть» вернёт в меню, «Навсегда» удалит без возврата.</div>
           {archived.map(d => (
-            <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 8px", opacity: 0.8 }}>
+            <div key={d.id} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 8px", opacity: 0.8 }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 9, flexShrink: 0, filter: "grayscale(1)" }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={T.modTitle}>{d.name}</div>
@@ -1479,7 +1479,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         <div style={{ padding: "0 14px 24px" }}>
           <div style={{ color: T.modSub.color, fontSize: 12.5, padding: "0 4px 8px", lineHeight: 1.5 }}>Учебные блюда для старта. По тапу переделаешь под своё, ✕ уберёт с этого телефона. После публикации меню команды они скроются сами.</div>
           {vis(sampleList).map(d => (
-            <div key={d.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: 0.85 }}>
+            <div key={d.id} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px", opacity: 0.85 }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
                 <div style={T.modTitle}>{d.name}</div>

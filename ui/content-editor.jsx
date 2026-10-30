@@ -657,7 +657,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           {loading ? <SkelCards a11y={!!T.a11y} rows={3} h={74} style={{ padding: "12px 0" }} />
           : loadErr ? <div style={{ textAlign: "center", padding: "40px 0", color: muted }}>Не удалось загрузить. <span onClick={load} style={{ color: gold, cursor: "pointer" }}>Повторить</span></div>
           : groups.length === 0 ? (
-            <div style={{ ...G({ padding: "34px 22px", marginTop: 12 }), textAlign: "center" }}>
+            <div data-lens-edge="" style={{ ...G({ padding: "34px 22px", marginTop: 12 }), textAlign: "center" }}>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>{MOD_SVG["📘"](gold, 34)}</div>
               <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 16, marginBottom: 6 }}>Пока ни одного своего урока</div>
               <div style={{ color: muted, fontSize: 13, lineHeight: 1.5 }}>Добавь первый: можно вставить регламент, и ассистент соберёт из него урок.</div>
@@ -668,7 +668,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div className="sa-g2">{secs.map(([name, ls]) => {
                 const ic = customIcon(name);
                 return (
-                  <div key={name} style={G({ padding: "12px 12px 6px", marginBottom: 10 })}>
+                  <div key={name} data-lens-edge="" style={G({ padding: "12px 12px 6px", marginBottom: 10 })}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                       <span style={{ width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center", flexShrink: 0, border: `1px solid ${t.color}55`, background: `${t.color}14` }}>{MOD_SVG[ic] ? MOD_SVG[ic](trackInk(t), 22) : null}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
@@ -703,7 +703,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>
           ))}
           {err && <div style={{ color: TN.bad, fontSize: 12.5, margin: "6px 0 10px", textAlign: "center" }}>{err}</div>}
-          {!loading && !loadErr && <button onClick={startNew} style={{ ...primary, marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus("#1F160A")} Новый урок</button>}
+          {!loading && !loadErr && <button onClick={startNew} data-lens-btn="main" style={{ ...primary, marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus("#1F160A")} Новый урок</button>}
         </div>
       </div>
     );
@@ -719,7 +719,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   // свёрнутая карточка: номер и вид, начало текста, ✓ «заполнено» / «!» — нет; порядок — прямо в строке
   const cardRow = (sec, id, label, text, ok, i, len, move) => (
     <div key={id} data-card={sec} onClick={() => toggleCard(sec, id)} role="button" aria-label={label + ", раскрыть"}
-      style={{ ...G({ padding: "9px 10px 9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+      data-lens-edge="" style={{ ...G({ padding: "9px 10px 9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...labelStyle(13), color: gold }}>{label}</div>
         <div style={{ color: text ? txt : muted, fontFamily: SERIF, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{text || "не заполнено"}</div>
@@ -794,7 +794,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {navPin && typeof document !== "undefined" ? createPortal(
           <div data-ednav-pin="" className="sa-ednav-pin" style={{ left: navPin.left, width: navPin.width, ...navBg }}>{navRow}</div>, document.body) : null}
         {draftNote ? (
-          <div style={{ ...G({ padding: "9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, color: muted, fontSize: 12.5 }}>
+          <div data-lens-edge="" style={{ ...G({ padding: "9px 12px", marginBottom: 6 }), display: "flex", alignItems: "center", gap: 8, color: muted, fontSize: 12.5 }}>
             <span style={{ flex: 1 }}>{draftNote}</span>
             <button onClick={discardDraft} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, padding: 2 }}>Начать заново</button>
           </div>) : null}
@@ -809,7 +809,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           {sections.map(s => <button key={s} disabled={!!draft.id} onClick={() => { toSection(draft.role, s); setNewSection(false); }} style={{ ...pill(!typingNew && draft.module.trim() === s, trackInk(track)), opacity: draft.id && draft.module.trim() !== s ? 0.4 : 1 }}>{s}</button>)}
           {!draft.id ? <button onClick={() => { setNewSection(true); toSection(draft.role, ""); }} style={{ ...pill(typingNew, gold), display: "inline-flex", alignItems: "center", gap: 4 }}>{ico.plus(typingNew && dark ? "#1A1008" : gold, 14)} Новый</button> : null}
         </div>
-        {typingNew && !draft.id ? <input style={input} value={draft.module} onChange={e => patch({ module: e.target.value })} placeholder="Напр. «Наше вино»" autoFocus={newSection} /> : null}
+        {typingNew && !draft.id ? <input data-lens-field="" style={input} value={draft.module} onChange={e => patch({ module: e.target.value })} placeholder="Напр. «Наше вино»" autoFocus={newSection} /> : null}
         {draft.id ? <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>Урок остаётся в своём разделе: практика, диалог и тест у раздела общие.</div> : null}
         {draft.module.trim() ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, color: muted, fontSize: 12 }}>
@@ -817,50 +817,50 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           </div>) : null}
 
         <SectionLabel a11y={a11y}>Название урока</SectionLabel>
-        <input style={input} value={draft.title} onChange={e => patch({ title: e.target.value })} placeholder="Напр. «Базовые сорта белого»" />
+        <input data-lens-field="" style={input} value={draft.title} onChange={e => patch({ title: e.target.value })} placeholder="Напр. «Базовые сорта белого»" />
 
         <div ref={secRef.lesson} />
         <SectionLabel a11y={a11y}>Текст урока</SectionLabel>
         <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-          <button onClick={() => fmt("bold")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent", fontWeight: "bold" }} aria-label="Жирный">Ж</button>
-          <button onClick={() => fmt("list")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>• Список</button>
-          <button onClick={() => fmt("head")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Заголовок</button>
+          <button onClick={() => fmt("bold")} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent", fontWeight: "bold" }} aria-label="Жирный">Ж</button>
+          <button onClick={() => fmt("list")} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>• Список</button>
+          <button onClick={() => fmt("head")} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Заголовок</button>
         </div>
-        <textarea ref={taRef} style={{ ...input, minHeight: 140, resize: "none", lineHeight: 1.6, overflow: "hidden" }} value={draft.content}
+        <textarea ref={taRef} data-lens-field="" style={{ ...input, minHeight: 140, resize: "none", lineHeight: 1.6, overflow: "hidden" }} value={draft.content}
           onChange={e => patch({ content: e.target.value })} placeholder={"Напиши текст урока или собери его ассистентом из регламента ниже.\n\n**Заголовок**\n• пункт списка"} />
         {textTall ? <button onClick={() => setTextFull(v => !v)} style={{ ...iconBtn, color: gold, fontFamily: SERIF, fontSize: 12.5, padding: "6px 2px" }}>{textFull ? "Свернуть текст ▴" : "Показать текст целиком ▾"}</button> : null}
 
         {/* Ассистент */}
-        <div style={G({ padding: "12px 12px", marginTop: 10 })}>
+        <div data-lens-edge="" style={G({ padding: "12px 12px", marginTop: 10 })}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             {UI_SVG.ai(gold, 17)}
             <span style={{ ...labelStyle(13), color: gold }}>Ассистент</span>
             <span style={{ color: muted, fontSize: 11.5 }}>· всё черновиком, сохраняешь ты</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button onClick={() => setAi(a => ({ ...a, mode: "lesson", err: null, result: null }))} style={aiBtn}>Урок из текста</button>
-            <button onClick={() => callAI("improve", { text: draft.content })} style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Улучшить текст</button>
-            <button onClick={() => callAI("situations", { text: sectionText })} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Придумать ситуации</button>
-            <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Собрать диалог</button>
-            <button onClick={() => callAI("questions", { text: sectionText })} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Придумать вопросы</button>
+            <button onClick={() => setAi(a => ({ ...a, mode: "lesson", err: null, result: null }))} data-lens-btn="soft" style={aiBtn}>Урок из текста</button>
+            <button onClick={() => callAI("improve", { text: draft.content })} data-lens-btn="soft" style={{ ...aiBtn, opacity: draft.content.trim().length >= 40 ? 1 : 0.45 }} disabled={draft.content.trim().length < 40}>Улучшить текст</button>
+            <button onClick={() => callAI("situations", { text: sectionText })} data-lens-btn="soft" style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Придумать ситуации</button>
+            <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} data-lens-btn="soft" style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Собрать диалог</button>
+            <button onClick={() => callAI("questions", { text: sectionText })} data-lens-btn="soft" style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }} disabled={sectionText.length < 40}>Придумать вопросы</button>
           </div>
           {ai.mode === "lesson" && !ai.result ? (
             <div style={{ marginTop: 10 }}>
-              <textarea style={{ ...input, minHeight: 110, lineHeight: 1.5, fontSize: 13 }} value={ai.material} onChange={e => setAi(a => ({ ...a, material: e.target.value }))}
+              <textarea data-lens-field="" style={{ ...input, minHeight: 110, lineHeight: 1.5, fontSize: 13 }} value={ai.material} onChange={e => setAi(a => ({ ...a, material: e.target.value }))}
                 placeholder="Вставь регламент, заметки или список правил, и ассистент сделает из этого урок в стиле приложения" />
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                 <label style={{ ...aiBtn, background: "transparent" }}>{ico.file(gold)} {ai.pdf ? ai.pdf.name.slice(0, 24) : "Прикрепить PDF"}
                   <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={e => pickPdf(e.target.files && e.target.files[0])} /></label>
                 <button onClick={() => callAI("lesson", { text: ai.material, pdfBase64: ai.pdf ? ai.pdf.b64 : "" })} disabled={ai.busy || (!ai.material.trim() && !ai.pdf)}
-                  style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: ai.busy || (!ai.material.trim() && !ai.pdf) ? 0.5 : 1 }}>{ai.busy ? "Пишу урок…" : "Собрать урок"}</button>
+                  data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: ai.busy || (!ai.material.trim() && !ai.pdf) ? 0.5 : 1 }}>{ai.busy ? "Пишу урок…" : "Собрать урок"}</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
           {ai.mode === "dialogue" && !ai.result && !ai.busy ? (
             <div style={{ marginTop: 10 }}>
-              <input style={{ ...input, fontSize: 13 }} value={ai.idea || ""} onChange={e => setAi(a => ({ ...a, idea: e.target.value }))} placeholder="О чём разговор (необязательно): «гость пришёл первым и ждёт коллегу»" />
+              <input data-lens-field="" style={{ ...input, fontSize: 13 }} value={ai.idea || ""} onChange={e => setAi(a => ({ ...a, idea: e.target.value }))} placeholder="О чём разговор (необязательно): «гость пришёл первым и ждёт коллегу»" />
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button onClick={() => callAI("dialogue", { text: sectionText, idea: ai.idea || "" })} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Собрать диалог</button>
+                <button onClick={() => callAI("dialogue", { text: sectionText, idea: ai.idea || "" })} data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Собрать диалог</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
@@ -870,7 +870,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: txt, fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5 }}>«{ai.result.review.text}»</div>
               <div style={{ color: muted, fontSize: 12, marginTop: 4 }}>— {ai.result.review.guest}{ai.result.review.table ? ", " + ai.result.review.table : ""}</div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <button onClick={() => { patch({ review: { ...ai.result.review } }); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.review ? "Заменить отзыв" : "Взять в раздел"}</button>
+                <button onClick={() => { patch({ review: { ...ai.result.review } }); aiClose(); }} data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.review ? "Заменить отзыв" : "Взять в раздел"}</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
@@ -883,7 +883,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               </div>
               {ai.result.build.steps.map((st, i) => <div key={i} style={{ color: muted, fontSize: 12.5, lineHeight: 1.45 }}>{i + 1}. <b style={{ color: txt }}>{st.label}</b>: {(st.options.find(o => o.ok) || {}).t}</div>)}
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <button onClick={() => { setBld(withBIds(ai.result.build)); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.build ? "Заменить сборку" : "Взять в урок"}</button>
+                <button onClick={() => { setBld(withBIds(ai.result.build)); aiClose(); }} data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.build ? "Заменить сборку" : "Взять в урок"}</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
@@ -893,7 +893,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: muted, fontSize: 12.5, marginBottom: 8 }}>{ai.result.dialogue.guest.context}</div>
               <div style={{ color: muted, fontSize: 12.5 }}>{ai.result.dialogue.steps.length} шагов · выборов: {ai.result.dialogue.steps.filter(x => x.type === "choice").length}</div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <button onClick={() => { setDlg(withIds(ai.result.dialogue)); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.dialogue ? "Заменить диалог" : "Взять в урок"}</button>
+                <button onClick={() => { setDlg(withIds(ai.result.dialogue)); aiClose(); }} data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.dialogue ? "Заменить диалог" : "Взять в урок"}</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
@@ -903,7 +903,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 15, marginBottom: 6 }}>{ai.result.title || "Урок"}</div>
               <div style={{ maxHeight: 260, overflowY: "auto" }}><Rich text={ai.result.content} T={T} color={track.color} a11y={a11y} /></div>
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                <button onClick={() => { patch({ content: ai.result.content, title: draft.title.trim() ? draft.title : (ai.result.title || "") }); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.content.trim() ? "Заменить текст" : "Взять в урок"}</button>
+                <button onClick={() => { patch({ content: ai.result.content, title: draft.title.trim() ? draft.title : (ai.result.title || "") }); aiClose(); }} data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.content.trim() ? "Заменить текст" : "Взять в урок"}</button>
                 {draft.content.trim() ? <button onClick={() => { patch({ content: draft.content.replace(/\s+$/, "") + "\n\n" + ai.result.content }); aiClose(); }} style={{ ...aiBtn }}>Добавить в конец</button> : null}
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
@@ -913,7 +913,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ ...labelStyle(13), color: gold, marginBottom: 6 }}>Стало</div>
               <div style={{ maxHeight: 260, overflowY: "auto" }}><Rich text={ai.result.content} T={T} color={track.color} a11y={a11y} /></div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <button onClick={() => { patch({ content: ai.result.content }); aiClose(); }} style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Принять</button>
+                <button onClick={() => { patch({ content: ai.result.content }); aiClose(); }} data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>Принять</button>
                 <button onClick={aiClose} style={{ ...aiBtn }}>Оставить как было</button>
               </div>
             </div>) : null}
@@ -932,7 +932,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 </div>); })}
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button disabled={!nPicked} onClick={() => { const add = ai.result.situations.filter((_, i) => ai.picked[i]).map(x => toDraftSit({ ...x, id: uid() })); setDraft(d => ({ ...d, situations: [...(d.situations || []), ...add] })); aiClose(); }}
-                  style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: nPicked ? 1 : 0.5 }}>Добавить выбранные ({nPicked})</button>
+                  data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: nPicked ? 1 : 0.5 }}>Добавить выбранные ({nPicked})</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
@@ -949,7 +949,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 </div>))}
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button disabled={!nPicked} onClick={() => { const add = ai.result.questions.filter((_, i) => ai.picked[i]).map(q => ({ id: uid(), img: "", ...q })); setDraft(d => ({ ...d, questions: [...d.questions, ...add] })); aiClose(); }}
-                  style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: nPicked ? 1 : 0.5 }}>Добавить выбранные ({nPicked})</button>
+                  data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5, opacity: nPicked ? 1 : 0.5 }}>Добавить выбранные ({nPicked})</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
               </div>
             </div>) : null}
@@ -969,7 +969,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {(draft.situations || []).map((x, si) => { const g = genreOfS(x); return openCard.sit !== x.id
           ? cardRow("sit", x.id, `Ситуация ${si + 1} · ${GENRE_RU[g]}`, sitHead(x), !sitProblem(x), si, draft.situations.length, moveS)
           : (
-          <div key={x.id} data-sit-card={g} style={G({ padding: "12px 12px", marginBottom: 10 })}>
+          <div key={x.id} data-sit-card={g} data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
               <span style={{ ...labelStyle(13), color: gold, flex: 1 }} onClick={() => toggleCard("sit", x.id)} role="button">Ситуация {si + 1} ▴</span>
               <button onClick={() => moveS(si, -1)} disabled={si === 0} style={{ ...iconBtn, opacity: si === 0 ? 0.3 : 1 }} aria-label="Ситуацию выше">{ico.up(muted)}</button>
@@ -989,12 +989,12 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>
             {g === "empathy" ? (<>
               <div style={fieldLab}>Мысли гостя</div>
-              <textarea style={{ ...input, minHeight: 52, lineHeight: 1.5, marginBottom: 8, resize: "vertical", fontStyle: "italic" }} value={x.guestThought || ""} onChange={e => setS(x.id, { guestThought: e.target.value })}
+              <textarea data-lens-field="" style={{ ...input, minHeight: 52, lineHeight: 1.5, marginBottom: 8, resize: "vertical", fontStyle: "italic" }} value={x.guestThought || ""} onChange={e => setS(x.id, { guestThought: e.target.value })}
                 placeholder="От лица гостя: «Я уже десять минут сижу без меню…»" aria-label="Мысли гостя" />
             </>) : null}
             {g === "truefalse" ? (<>
               <div style={fieldLab}>Утверждение</div>
-              <textarea style={{ ...input, minHeight: 56, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.statement || ""} onChange={e => setS(x.id, { statement: e.target.value })}
+              <textarea data-lens-field="" style={{ ...input, minHeight: 56, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.statement || ""} onChange={e => setS(x.id, { statement: e.target.value })}
                 placeholder="Напр. «Приборы можно выносить к столу голыми руками, если быстро»" aria-label="Утверждение" />
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }} role="group" aria-label="Правда или миф">
                 <span style={{ color: muted, fontSize: dark ? 12.5 : 13, marginRight: 2 }}>По уроку это:</span>
@@ -1004,19 +1004,19 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "0 2px 9px" }}>Сотрудник нажмёт одну из двух кнопок: «Правда» (так и есть) или «Миф» (так только кажется).</div>
             </>) : g === "complete" ? (<>
               <div style={fieldLab}>Начало правила</div>
-              <textarea style={{ ...input, minHeight: 52, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.start || ""} onChange={e => setS(x.id, { start: e.target.value })}
+              <textarea data-lens-field="" style={{ ...input, minHeight: 52, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.start || ""} onChange={e => setS(x.id, { start: e.target.value })}
                 placeholder="Напр. «Если сомневаешься, подходить ли к гостю, —»" aria-label="Начало правила" />
               <div style={fieldLab}>Продолжения</div>
             </>) : (<>
-              <textarea style={{ ...input, minHeight: 64, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.scene || ""} onChange={e => setS(x.id, { scene: e.target.value })}
+              <textarea data-lens-field="" style={{ ...input, minHeight: 64, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={x.scene || ""} onChange={e => setS(x.id, { scene: e.target.value })}
                 placeholder={SCENE_PH[g]} aria-label="Сцена" />
-              <input style={{ ...input, marginBottom: 8 }} value={x.question || ""} onChange={e => setS(x.id, { question: e.target.value })} placeholder={"Вопрос: «" + SIT_Q[g] + "»"} aria-label="Вопрос" />
+              <input data-lens-field="" style={{ ...input, marginBottom: 8 }} value={x.question || ""} onChange={e => setS(x.id, { question: e.target.value })} placeholder={"Вопрос: «" + SIT_Q[g] + "»"} aria-label="Вопрос" />
             </>)}
             {g !== "truefalse" ? (<>
               {x.options.map((opt, oi) => { const right = x.correct === oi; return (
                 <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                   <button onClick={() => setS(x.id, { correct: oi })} aria-label="Верный вариант" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${right ? TN.good : brd}`, background: right ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{right ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
-                  <input style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setS(x.id, { options: x.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`${OPT_PH[g]} ${oi + 1}`} />
+                  <input data-lens-field="" style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setS(x.id, { options: x.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`${OPT_PH[g]} ${oi + 1}`} />
                   {x.options.length > 2 ? <button onClick={() => setS(x.id, { options: x.options.filter((_, k) => k !== oi), correct: x.correct === oi ? 0 : x.correct > oi ? x.correct - 1 : x.correct })} style={iconBtn} aria-label="Убрать вариант">{ico.trash(muted, 15)}</button> : null}
                 </div>); })}
               <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0 8px" }}>
@@ -1027,38 +1027,38 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               {g === "complete" && String(x.start || "").trim() && String(x.options[x.correct] || "").trim()
                 ? <div data-reads="" style={{ color: muted, fontSize: dark ? 12 : 13, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Читается так: <span style={{ color: txt, fontFamily: SERIF }}>«{String(x.start).trim()} {String(x.options[x.correct]).trim()}»</span></div> : null}
             </>) : null}
-            <input style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Реакция, если верно: «Точно! …»" />
-            <input style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Реакция на любой неверный ответ: подсказка" />
+            <input data-lens-field="" style={{ ...input, fontSize: 13.5, marginBottom: 8 }} value={x.win || ""} onChange={e => setS(x.id, { win: e.target.value })} placeholder="Реакция, если верно: «Точно! …»" />
+            <input data-lens-field="" style={{ ...input, fontSize: 13.5 }} value={x.fail || ""} onChange={e => setS(x.id, { fail: e.target.value })} placeholder="Реакция на любой неверный ответ: подсказка" />
           </div>); })}
-        <button onClick={addS} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
+        <button onClick={addS} data-lens-btn="soft" data-lens-ink="" style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить ситуацию</button>
 
         {/* Живой диалог — после практики, перед тестом (правка 159) */}
         <div ref={secRef.dlg} />
         <SectionLabel a11y={a11y} right={draft.dialogue ? `${draft.dialogue.steps.length} шагов` : "необязательно"}>Живой диалог</SectionLabel>
         {!draft.dialogue ? (
-          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+          <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Разговор с гостем по шагам: гость говорит, сотрудник выбирает ответ, настроение гостя меняется. Как штатные «Живые диалоги».</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} disabled={sectionText.length < 40} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }}>Собрать с ассистентом</button>
-              <button onClick={() => setDlg(newDialogue())} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
+              <button onClick={() => setAi(a => ({ ...a, mode: "dialogue", err: null, result: null }))} disabled={sectionText.length < 40} data-lens-btn="soft" style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }}>Собрать с ассистентом</button>
+              <button onClick={() => setDlg(newDialogue())} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
             </div>
           </div>
         ) : (<>
-          <div style={G({ padding: "12px 12px", marginBottom: 10 })}>
+          <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ ...labelStyle(13), color: gold, marginBottom: 8 }}>Гость</div>
-            <input style={{ ...input, marginBottom: 8 }} value={draft.dialogue.guest.name} onChange={e => setGuest({ name: e.target.value })} placeholder="Имя гостя: «Михаил»" />
-            <textarea style={{ ...input, minHeight: 56, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={draft.dialogue.guest.context} onChange={e => setGuest({ context: e.target.value })} placeholder="Кто он и зачем пришёл: «Деловой ужин, ждёт коллегу, устал»" />
+            <input data-lens-field="" style={{ ...input, marginBottom: 8 }} value={draft.dialogue.guest.name} onChange={e => setGuest({ name: e.target.value })} placeholder="Имя гостя: «Михаил»" />
+            <textarea data-lens-field="" style={{ ...input, minHeight: 56, lineHeight: 1.5, marginBottom: 8, resize: "vertical" }} value={draft.dialogue.guest.context} onChange={e => setGuest({ context: e.target.value })} placeholder="Кто он и зачем пришёл: «Деловой ужин, ждёт коллегу, устал»" />
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: muted, fontSize: 12 }}>Настроение в начале:</span>
               {[1, 2, 3, 4, 5].map((k) => <button key={k} onClick={() => setGuest({ mood: k })} aria-label={"Настроение: " + MOOD_WORDS[k - 1]} aria-pressed={draft.dialogue.guest.mood === k} style={{ width: 32, height: 32, borderRadius: 10, cursor: "pointer", display: "grid", placeItems: "center", background: draft.dialogue.guest.mood === k ? `${gold}22` : "transparent", border: `1px solid ${draft.dialogue.guest.mood === k ? gold : brd}` }}>{moodFace(k, 19)}</button>)}
             </div>
-            <input style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора: главная мысль, покажется в конце" />
+            <input data-lens-field="" style={{ ...input, marginTop: 8, fontSize: 13.5 }} value={draft.dialogue.tip || ""} onChange={e => setDlg(dl => ({ ...dl, tip: e.target.value }))} placeholder="Итог разговора: главная мысль, покажется в конце" />
             {/* v40: уход гостя — своя фраза и заголовок (guest.walk / guest.walkTitle), как у штатных сценариев */}
             {(() => { const gn = (draft.dialogue.guest.name || "").trim() || "Гость"; const gr = dlgGram(gn); return (<>
               <div style={{ ...fieldLab, marginTop: 12 }}>Если гость уйдёт · необязательно</div>
-              <textarea style={{ ...input, minHeight: 48, lineHeight: 1.5, marginBottom: 8, resize: "vertical", fontSize: 13.5 }} value={draft.dialogue.guest.walk || ""} maxLength={240}
+              <textarea data-lens-field="" style={{ ...input, minHeight: 48, lineHeight: 1.5, marginBottom: 8, resize: "vertical", fontSize: 13.5 }} value={draft.dialogue.guest.walk || ""} maxLength={240}
                 onChange={e => setGuest({ walk: e.target.value })} placeholder={"Что происходит: «" + dlgWalkText(gn) + "»"} aria-label="Что происходит, когда гость уходит" />
-              <input style={{ ...input, fontSize: 13.5 }} value={draft.dialogue.guest.walkTitle || ""} maxLength={60} onChange={e => setGuest({ walkTitle: e.target.value })}
+              <input data-lens-field="" style={{ ...input, fontSize: 13.5 }} value={draft.dialogue.guest.walkTitle || ""} maxLength={60} onChange={e => setGuest({ walkTitle: e.target.value })}
                 placeholder={"Заголовок в конце: «" + gn + " " + (gr === "pl" ? "ушли" : gr === "f" ? "ушла" : "ушёл") + "»"} aria-label="Заголовок, когда гость ушёл" />
               <div style={{ color: muted, fontSize: dark ? 11 : 13, lineHeight: 1.45, margin: "6px 2px 0" }}>Гость уходит, если после неверного ответа его настроение падает до самого низкого. Пустые поля заменит серый текст.</div>
             </>); })()}
@@ -1067,7 +1067,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             ? cardRow("st", st.id, `${i + 1} · ${st.type === "choice" ? "выбор сотрудника" : st.type === "guest" ? "гость говорит" : "действие"}`, st.type === "choice" ? st.prompt : st.text,
                 st.type === "choice" ? !!(st.prompt || "").trim() && filled(st.options, o => o.correct) : !!(st.text || "").trim(), i, draft.dialogue.steps.length, moveStep)
             : (
-            <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8 })}>
+            <div key={st.id} data-lens-edge="" style={G({ padding: "11px 12px", marginBottom: 8 })}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
                 <span style={{ ...labelStyle(13), color: st.type === "choice" ? gold : muted, flex: 1 }} onClick={() => toggleCard("st", st.id)} role="button">{i + 1} · {st.type === "choice" ? "выбор сотрудника" : st.type === "guest" ? "гость говорит" : "действие"} ▴</span>
                 <button onClick={() => moveStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг выше">{ico.up(muted)}</button>
@@ -1075,18 +1075,18 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <button onClick={() => delStep(st.id)} style={iconBtn} aria-label="Удалить шаг">{ico.trash(TN.bad, 16)}</button>
               </div>
               {st.type !== "choice" ? (
-                <textarea style={{ ...input, minHeight: 48, lineHeight: 1.5, resize: "vertical" }} value={st.text} onChange={e => setStep(st.id, { text: e.target.value })}
+                <textarea data-lens-field="" style={{ ...input, minHeight: 48, lineHeight: 1.5, resize: "vertical" }} value={st.text} onChange={e => setStep(st.id, { text: e.target.value })}
                   placeholder={st.type === "guest" ? "Реплика гостя: «Добрый вечер. Нас двое, жду коллегу.»" : "Что происходит: «Ты провожаешь гостя к столу»"} />
               ) : (<>
-                <input style={{ ...input, marginBottom: 8 }} value={st.prompt} onChange={e => setStep(st.id, { prompt: e.target.value })} placeholder="Вопрос сотруднику: «Что ответишь?»" />
+                <input data-lens-field="" style={{ ...input, marginBottom: 8 }} value={st.prompt} onChange={e => setStep(st.id, { prompt: e.target.value })} placeholder="Вопрос сотруднику: «Что ответишь?»" />
                 {st.options.map((o, oi) => (
                   <div key={oi} style={{ border: `1px solid ${o.correct ? TN.good + "88" : brd}`, borderRadius: 12, padding: "8px 8px 6px", marginBottom: 7 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <button onClick={() => markRight(st.id, oi)} aria-label="Верный ответ" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${o.correct ? TN.good : brd}`, background: o.correct ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{o.correct ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
-                      <input style={{ ...input, padding: "9px 11px" }} value={o.text} onChange={e => setOpt(st.id, oi, { text: e.target.value })} placeholder={`Ответ ${oi + 1}`} />
+                      <input data-lens-field="" style={{ ...input, padding: "9px 11px" }} value={o.text} onChange={e => setOpt(st.id, oi, { text: e.target.value })} placeholder={`Ответ ${oi + 1}`} />
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingLeft: 34 }}>
-                      <input style={{ ...input, padding: "7px 10px", fontSize: 12.5 }} value={o.feedback || ""} onChange={e => setOpt(st.id, oi, { feedback: e.target.value })} placeholder="Почему так" />
+                      <input data-lens-field="" style={{ ...input, padding: "7px 10px", fontSize: 12.5 }} value={o.feedback || ""} onChange={e => setOpt(st.id, oi, { feedback: e.target.value })} placeholder="Почему так" />
                       {[-1, 0, 1].map(dv => <button key={dv} onClick={() => setOpt(st.id, oi, { moodDelta: dv })} aria-label={`Настроение ${dv}`}
                         style={{ flexShrink: 0, minWidth: 34, height: 30, borderRadius: 9, cursor: "pointer", fontSize: 12.5, fontFamily: SERIF, color: dv > 0 ? TN.good : dv < 0 ? TN.bad : muted,
                           background: (o.moodDelta | 0) === dv ? (dv > 0 ? TN.good : dv < 0 ? TN.bad : muted) + "22" : "transparent", border: `1px solid ${(o.moodDelta | 0) === dv ? (dv > 0 ? TN.good : dv < 0 ? TN.bad : muted) : brd}` }}>{dv > 0 ? "+1" : dv < 0 ? "−1" : "0"}</button>)}
@@ -1098,9 +1098,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             </div>
           ))}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-            <button onClick={() => addStep("guest")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Гость говорит</button>
-            <button onClick={() => addStep("action")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Действие</button>
-            <button onClick={() => addStep("choice")} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Выбор</button>
+            <button onClick={() => addStep("guest")} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Гость говорит</button>
+            <button onClick={() => addStep("action")} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Действие</button>
+            <button onClick={() => addStep("choice")} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Выбор</button>
           </div>
           <button onClick={() => setDlg(null)} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5, padding: "2px 0 6px" }}>Убрать диалог из урока</button>
         </>)}
@@ -1110,9 +1110,9 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         <div ref={secRef.bld} />
         <SectionLabel a11y={a11y} right={draft.build ? `${draft.build.steps.length} шагов` : "необязательно"}>Сборка</SectionLabel>
         {!draft.build ? (
-          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+          <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 8 }}>Собрать напиток по шагам: бокал, лёд, дозы, метод, гарниш. Бокал на экране наполняется, ошибка тянет за собой вкус. Как штатные «Сборки».</div>
-            <input style={{ ...input, fontSize: 13.5 }} value={ckQuery} onChange={e => setCkQuery(e.target.value)} placeholder="Найти коктейль из карты бара: «негрони»" />
+            <input data-lens-field="" style={{ ...input, fontSize: 13.5 }} value={ckQuery} onChange={e => setCkQuery(e.target.value)} placeholder="Найти коктейль из карты бара: «негрони»" />
             {ckQuery.trim().length >= 2 ? (() => {
               const qq = ckQuery.trim().toLowerCase().replace(/ё/g, "е");
               const found = [...barShared.map(c => ({ ...c, own: true })), ...COCKTAILS].filter(c => (c.name || "").toLowerCase().replace(/ё/g, "е").includes(qq)).slice(0, 6);
@@ -1124,13 +1124,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 </div>)) : <div style={{ color: muted, fontSize: 12.5, padding: "8px 2px" }}>Не нашёл. Проверь название или составь вручную.</div>;
             })() : null}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-              <button onClick={() => setBld(newBuild())} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
+              <button onClick={() => setBld(newBuild())} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Составить самому</button>
             </div>
           </div>
         ) : (<>
-          <div style={G({ padding: "12px 12px", marginBottom: 10 })}>
+          <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ ...labelStyle(13), color: gold, marginBottom: 8 }}>Напиток</div>
-            <input style={{ ...input, marginBottom: 8 }} value={draft.build.title} onChange={e => setBld(b => ({ ...b, title: e.target.value }))} placeholder="Название: «Негрони»" />
+            <input data-lens-field="" style={{ ...input, marginBottom: 8 }} value={draft.build.title} onChange={e => setBld(b => ({ ...b, title: e.target.value }))} placeholder="Название: «Негрони»" />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {GLASSES.map(([g, lab]) => <button key={g} onClick={() => setBld(b => ({ ...b, glass: g }))} style={{ ...pill(draft.build.glass === g, gold), padding: "6px 11px", fontSize: 12.5 }}>{lab}</button>)}
             </div>
@@ -1138,13 +1138,13 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <span style={{ color: muted, fontSize: 12 }}>Цвет напитка:</span>
               {TINTS.map(c => <button key={c} onClick={() => setBld(b => ({ ...b, tint: c }))} aria-label={"Цвет " + c} style={{ width: 26, height: 26, borderRadius: 8, cursor: "pointer", background: c, border: `2px solid ${draft.build.tint === c ? txt : brd}` }} />)}
             </div>
-            <input style={{ ...input, marginBottom: 8, fontSize: 13.5 }} value={draft.build.win} onChange={e => setBld(b => ({ ...b, win: e.target.value }))} placeholder="Если собрано чисто: «Негрони как надо. И завтра такой же»" />
-            <input style={{ ...input, fontSize: 13.5 }} value={draft.build.lose} onChange={e => setBld(b => ({ ...b, lose: e.target.value }))} placeholder="Если были ошибки: «Одна ошибка тянет за собой вкус»" />
+            <input data-lens-field="" style={{ ...input, marginBottom: 8, fontSize: 13.5 }} value={draft.build.win} onChange={e => setBld(b => ({ ...b, win: e.target.value }))} placeholder="Если собрано чисто: «Негрони как надо. И завтра такой же»" />
+            <input data-lens-field="" style={{ ...input, fontSize: 13.5 }} value={draft.build.lose} onChange={e => setBld(b => ({ ...b, lose: e.target.value }))} placeholder="Если были ошибки: «Одна ошибка тянет за собой вкус»" />
           </div>
           {draft.build.steps.map((st, i) => openCard.bst !== st.id
             ? cardRow("bst", st.id, `Шаг ${i + 1}${st.label ? " · " + st.label : ""}`, st.q, !!(st.q || "").trim() && filled(st.options, o => o.ok), i, draft.build.steps.length, moveBStep)
             : (
-            <div key={st.id} style={G({ padding: "11px 12px", marginBottom: 8 })}>
+            <div key={st.id} data-lens-edge="" style={G({ padding: "11px 12px", marginBottom: 8 })}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
                 <span style={{ ...labelStyle(13), color: gold, flex: 1 }} onClick={() => toggleCard("bst", st.id)} role="button">Шаг {i + 1} ▴</span>
                 <button onClick={() => moveBStep(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }} aria-label="Шаг сборки выше">{ico.up(muted)}</button>
@@ -1152,22 +1152,22 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
                 <button onClick={() => setBld(b => ({ ...b, steps: b.steps.filter(x => x.id !== st.id) }))} style={iconBtn} aria-label="Удалить шаг сборки">{ico.trash(TN.bad, 16)}</button>
               </div>
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <input style={{ ...input, flex: "0 0 34%", padding: "10px 11px" }} value={st.label} onChange={e => setBStep(st.id, { label: e.target.value })} placeholder="Бокал" />
-                <input style={{ ...input, padding: "10px 11px" }} value={st.q} onChange={e => setBStep(st.id, { q: e.target.value })} placeholder="Вопрос: «С чего начинаешь?»" />
+                <input data-lens-field="" style={{ ...input, flex: "0 0 34%", padding: "10px 11px" }} value={st.label} onChange={e => setBStep(st.id, { label: e.target.value })} placeholder="Бокал" />
+                <input data-lens-field="" style={{ ...input, padding: "10px 11px" }} value={st.q} onChange={e => setBStep(st.id, { q: e.target.value })} placeholder="Вопрос: «С чего начинаешь?»" />
               </div>
               {st.options.map((o, oi) => (
                 <div key={oi} style={{ border: `1px solid ${o.ok ? TN.good + "88" : brd}`, borderRadius: 12, padding: "7px 8px 6px", marginBottom: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <button onClick={() => markBOk(st.id, oi)} aria-label="Верный вариант сборки" style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", border: `2px solid ${o.ok ? TN.good : brd}`, background: o.ok ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{o.ok ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
-                    <input style={{ ...input, padding: "8px 10px", fontSize: 13.5 }} value={o.t} onChange={e => setBOpt(st.id, oi, { t: e.target.value })} placeholder={`Вариант ${oi + 1}`} />
+                    <input data-lens-field="" style={{ ...input, padding: "8px 10px", fontSize: 13.5 }} value={o.t} onChange={e => setBOpt(st.id, oi, { t: e.target.value })} placeholder={`Вариант ${oi + 1}`} />
                   </div>
-                  <input style={{ ...input, padding: "7px 10px", fontSize: 12.5, marginTop: 6 }} value={o.fb} onChange={e => setBOpt(st.id, oi, { fb: e.target.value })} placeholder="Почему так" />
+                  <input data-lens-field="" style={{ ...input, padding: "7px 10px", fontSize: 12.5, marginTop: 6 }} value={o.fb} onChange={e => setBOpt(st.id, oi, { fb: e.target.value })} placeholder="Почему так" />
                 </div>))}
-              <input style={{ ...input, padding: "8px 10px", fontSize: 12.5 }} value={st.cost} onChange={e => setBStep(st.id, { cost: e.target.value })} placeholder="Цена ошибки: «напиток выдохнется до второго глотка»" />
+              <input data-lens-field="" style={{ ...input, padding: "8px 10px", fontSize: 12.5 }} value={st.cost} onChange={e => setBStep(st.id, { cost: e.target.value })} placeholder="Цена ошибки: «напиток выдохнется до второго глотка»" />
             </div>
           ))}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
-            <button onClick={() => (() => { const st = blankBStep(); setBld(b => ({ ...b, steps: [...b.steps, st] })); setOpenCard(o => ({ ...o, bst: st.id })); })()} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Шаг</button>
+            <button onClick={() => (() => { const st = blankBStep(); setBld(b => ({ ...b, steps: [...b.steps, st] })); setOpenCard(o => ({ ...o, bst: st.id })); })()} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>{ico.plus(gold, 14)} Шаг</button>
             <button onClick={() => setBld(null)} style={{ ...iconBtn, color: TN.bad, fontFamily: SERIF, fontSize: 12.5 }}>Убрать сборку из урока</button>
           </div>
         </>)}
@@ -1178,18 +1178,18 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {draft.questions.map((q, qi) => openCard.q !== q.id
           ? cardRow("q", q.id, `Вопрос ${qi + 1}`, q.q, !!(q.q || "").trim() && filled(q.options, (o, k) => k === q.correct), qi, draft.questions.length, moveQ)
           : (
-          <div key={q.id} style={G({ padding: "12px 12px", marginBottom: 10 })}>
+          <div key={q.id} data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
               <span style={{ ...labelStyle(13), color: gold, flex: 1 }} onClick={() => toggleCard("q", q.id)} role="button">Вопрос {qi + 1} ▴</span>
               <button onClick={() => moveQ(qi, -1)} disabled={qi === 0} style={{ ...iconBtn, opacity: qi === 0 ? 0.3 : 1 }} aria-label="Выше">{ico.up(muted)}</button>
               <button onClick={() => moveQ(qi, 1)} disabled={qi === draft.questions.length - 1} style={{ ...iconBtn, opacity: qi === draft.questions.length - 1 ? 0.3 : 1 }} aria-label="Ниже">{ico.down(muted)}</button>
               <button onClick={() => delQ(q.id)} style={iconBtn} aria-label="Удалить вопрос">{ico.trash(TN.bad, 16)}</button>
             </div>
-            <input style={{ ...input, marginBottom: 8 }} value={q.q} onChange={e => setQ(q.id, { q: e.target.value })} placeholder="Текст вопроса" />
+            <input data-lens-field="" style={{ ...input, marginBottom: 8 }} value={q.q} onChange={e => setQ(q.id, { q: e.target.value })} placeholder="Текст вопроса" />
             {q.options.map((opt, oi) => { const right = q.correct === oi; return (
               <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                 <button onClick={() => setQ(q.id, { correct: oi })} aria-label="Верный ответ" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${right ? TN.good : brd}`, background: right ? TN.good : "transparent", cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{right ? ico.check(dark ? "#1A1008" : "#fff") : null}</button>
-                <input style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setQ(q.id, { options: q.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`Вариант ${oi + 1}`} />
+                <input data-lens-field="" style={{ ...input, padding: "10px 12px", border: `1px solid ${right ? TN.good + "88" : brd}` }} value={opt} onChange={e => setQ(q.id, { options: q.options.map((o, k) => k === oi ? e.target.value : o) })} placeholder={`Вариант ${oi + 1}`} />
                 {q.options.length > 2 ? <button onClick={() => setQ(q.id, { options: q.options.filter((_, k) => k !== oi), correct: q.correct === oi ? 0 : q.correct > oi ? q.correct - 1 : q.correct })} style={iconBtn} aria-label="Убрать вариант">{ico.trash(muted, 15)}</button> : null}
               </div>); })}
             <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0 8px" }}>
@@ -1197,34 +1197,34 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <span style={{ color: muted, fontSize: 11 }}>зелёный кружок: верный ответ</span>
             </div>
             {answerTell(q.options, q.correct) ? <div data-len-tell="" style={{ color: TN.mid, fontSize: 11.5, lineHeight: 1.45, margin: "-2px 2px 8px" }}>Верный вариант заметно длиннее остальных, его угадают по длине. Допиши неверные до той же длины: правдоподобно, но с ошибкой.</div> : null}
-            <input style={{ ...input, fontSize: 13.5 }} value={q.explanation || ""} onChange={e => setQ(q.id, { explanation: e.target.value })} placeholder="Пояснение: почему верно именно так" />
+            <input data-lens-field="" style={{ ...input, fontSize: 13.5 }} value={q.explanation || ""} onChange={e => setQ(q.id, { explanation: e.target.value })} placeholder="Пояснение: почему верно именно так" />
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <span style={{ flexShrink: 0 }}>{ico.photo(muted)}</span>
-              <input style={{ ...input, padding: "9px 12px", fontSize: 12.5 }} value={q.img || ""} onChange={e => setQ(q.id, { img: e.target.value })} placeholder="Ссылка на фото (необязательно)" />
+              <input data-lens-field="" style={{ ...input, padding: "9px 12px", fontSize: 12.5 }} value={q.img || ""} onChange={e => setQ(q.id, { img: e.target.value })} placeholder="Ссылка на фото (необязательно)" />
             </div>
             {q.img ? <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 150, objectFit: "cover", borderRadius: 9, marginTop: 8, display: "block" }} /> : null}
           </div>
         ))}
-        <button onClick={addQ} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить вопрос</button>
+        <button onClick={addQ} data-lens-btn="soft" data-lens-ink="" style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить вопрос</button>
 
         {/* Как увидит сотрудник */}
         {/* Страница в книге отзывов — общая для раздела (правка 166): откроется, когда раздел пройден */}
         <SectionLabel a11y={a11y} right={draft.review ? "есть" : "необязательно"}>Книга отзывов</SectionLabel>
         {!draft.review ? (
-          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+          <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Отзыв гостя — страница в «Книге отзывов», как у штатных модулей: откроется сотруднику, когда он пройдёт весь раздел.</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => callAI("review", { text: sectionText, title: secLabel })} disabled={sectionText.length < 40} style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }}>Написать с ассистентом</button>
-              <button onClick={() => patch({ review: { guest: "", table: "", text: "" } })} style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Написать самому</button>
+              <button onClick={() => callAI("review", { text: sectionText, title: secLabel })} disabled={sectionText.length < 40} data-lens-btn="soft" style={{ ...aiBtn, opacity: sectionText.length >= 40 ? 1 : 0.45 }}>Написать с ассистентом</button>
+              <button onClick={() => patch({ review: { guest: "", table: "", text: "" } })} data-lens-btn="soft" style={{ ...aiBtn, color: txt, borderColor: brd, background: "transparent" }}>Написать самому</button>
             </div>
           </div>
         ) : (
-          <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+          <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input style={{ ...input, flex: 1.6, padding: "10px 11px" }} value={draft.review.guest} onChange={e => patch({ review: { ...draft.review, guest: e.target.value } })} placeholder="Кто гость: «Пара на годовщине»" />
-              <input style={{ ...input, flex: 1, padding: "10px 11px" }} value={draft.review.table} onChange={e => patch({ review: { ...draft.review, table: e.target.value } })} placeholder="стол 7" />
+              <input data-lens-field="" style={{ ...input, flex: 1.6, padding: "10px 11px" }} value={draft.review.guest} onChange={e => patch({ review: { ...draft.review, guest: e.target.value } })} placeholder="Кто гость: «Пара на годовщине»" />
+              <input data-lens-field="" style={{ ...input, flex: 1, padding: "10px 11px" }} value={draft.review.table} onChange={e => patch({ review: { ...draft.review, table: e.target.value } })} placeholder="стол 7" />
             </div>
-            <textarea style={{ ...input, minHeight: 84, lineHeight: 1.5, resize: "vertical" }} value={draft.review.text} onChange={e => patch({ review: { ...draft.review, text: e.target.value } })}
+            <textarea data-lens-field="" style={{ ...input, minHeight: 84, lineHeight: 1.5, resize: "vertical" }} value={draft.review.text} onChange={e => patch({ review: { ...draft.review, text: e.target.value } })}
               placeholder="Отзыв от лица гостя: что сотрудник сделал так, что захотелось вернуться" />
             {(draft.review.text || "").trim() ? (
               <div style={{ margin: "10px 2px 2px", padding: "10px 12px", borderRadius: 12, borderLeft: `3px solid ${track.color}`, background: `${track.color}10` }}>
@@ -1236,25 +1236,25 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         )}
         {/* Доп. 310: навыки раздела — наставник подтверждает их в зале, как штатные */}
         <SectionLabel a11y={a11y} right={(draft.skills || []).length ? String((draft.skills || []).length) : "необязательно"}>Навыки в зале</SectionLabel>
-        <div style={G({ padding: "12px 12px", marginBottom: 6 })}>
+        <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
           <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: (draft.skills || []).length ? 10 : 8 }}>Что старший должен увидеть своими глазами в зале. Навык появится в «Наставничестве» у сотрудников этого трека: «Отправить старшему» или PIN, как у штатных навыков.</div>
           {(draft.skills || []).map((sk, i) => (
             <div key={sk.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <input style={{ ...input, padding: "10px 11px" }} value={sk.label} maxLength={80} onChange={e => setDraft(d => ({ ...d, skills: d.skills.map(x => x.id === sk.id ? { ...x, label: e.target.value } : x) }))} placeholder={"Навык " + (i + 1) + ": «Подача фирменного десерта»"} aria-label={"Навык " + (i + 1)} />
-                <input style={{ ...input, padding: "9px 11px", fontSize: 12.5, marginTop: 6 }} value={sk.hint} maxLength={140} onChange={e => setDraft(d => ({ ...d, skills: d.skills.map(x => x.id === sk.id ? { ...x, hint: e.target.value } : x) }))} placeholder="Как понять, что получилось (необязательно)" aria-label={"Признак навыка " + (i + 1)} />
+                <input data-lens-field="" style={{ ...input, padding: "10px 11px" }} value={sk.label} maxLength={80} onChange={e => setDraft(d => ({ ...d, skills: d.skills.map(x => x.id === sk.id ? { ...x, label: e.target.value } : x) }))} placeholder={"Навык " + (i + 1) + ": «Подача фирменного десерта»"} aria-label={"Навык " + (i + 1)} />
+                <input data-lens-field="" style={{ ...input, padding: "9px 11px", fontSize: 12.5, marginTop: 6 }} value={sk.hint} maxLength={140} onChange={e => setDraft(d => ({ ...d, skills: d.skills.map(x => x.id === sk.id ? { ...x, hint: e.target.value } : x) }))} placeholder="Как понять, что получилось (необязательно)" aria-label={"Признак навыка " + (i + 1)} />
               </div>
               <button onClick={() => setDraft(d => ({ ...d, skills: d.skills.filter(x => x.id !== sk.id) }))} style={{ ...iconBtn, padding: "10px 4px" }} aria-label={"Убрать навык " + (i + 1)}>{ico.trash(TN.bad)}</button>
             </div>
           ))}
-          {(draft.skills || []).length < 8 ? <button onClick={() => setDraft(d => ({ ...d, skills: [...(d.skills || []), { id: uid(), sid: uid(), label: "", hint: "" }] }))} style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить навык</button> : null}
+          {(draft.skills || []).length < 8 ? <button onClick={() => setDraft(d => ({ ...d, skills: [...(d.skills || []), { id: uid(), sid: uid(), label: "", hint: "" }] }))} data-lens-btn="soft" data-lens-ink="" style={{ ...ghost, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus(gold)} Добавить навык</button> : null}
         </div>
         </>)}
         {edWrap("sa-ed2-pv", pvRef, <>
         <div ref={secRef.prev} />
         <SectionLabel a11y={a11y}>Как увидит сотрудник</SectionLabel>
         {/* v40: проба на настоящих экранах игры — с черновиком, без записи прогресса */}
-        <div data-play-card="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
+        <div data-play-card="" data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 10 })}>
           <div style={{ color: muted, fontSize: dark ? 12.5 : 13, lineHeight: 1.45, marginBottom: 10 }}>Пройди практику и диалог на тех же экранах, что и сотрудник. Это проба: звёзды, ошибки и прогресс не записываются.</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={playPractice} disabled={!sitsAll.length || playBusy} style={{ ...aiBtn, flex: 1, minWidth: 0, justifyContent: "center", padding: "10px 6px", fontSize: 13.5, opacity: sitsAll.length ? 1 : 0.45 }}>{ico.play(gold)} {playBusy ? "Открываю…" : "Сыграть практику"}</button>
@@ -1273,14 +1273,14 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <div style={T.modSub}>Раздел вашего ресторана</div>
           </div>
         </div>
-        <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
+        <div data-lens-edge="" style={G({ padding: "14px 14px", marginBottom: 16 })}>
           <div style={{ color: txt, fontFamily: SERIF, fontWeight: "bold", fontSize: 17, marginBottom: 8 }}>{draft.title.trim() || "Название урока"}</div>
           {draft.content.trim() ? <Rich text={draft.content} T={T} color={track.color} a11y={a11y} /> : <div style={{ color: muted, fontSize: 13 }}>Здесь появится текст урока.</div>}
           {draft.questions.length ? <div style={{ color: muted, fontSize: 12, marginTop: 10 }}>В конце тест: {draft.questions.length} вопр.</div> : null}
         </div>
 
         {(draft.situations || []).length ? (() => { const x = draft.situations[0]; const g = genreOfS(x); return (
-          <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
+          <div data-lens-edge="" style={G({ padding: "14px 14px", marginBottom: 16 })}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
               <span style={{ ...labelStyle(dark ? 13 : 13.5), color: track.color }}>{GENRE_RU[g]}</span>
               <span style={{ color: muted, fontSize: 11.5 }}>практика · {draft.situations.length}</span>
@@ -1293,7 +1293,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре до 6 случайных ситуаций, варианты перемешаны, 3 жизни и звёзды.</div>
           </div>); })() : null}
         {draft.dialogue ? (
-          <div style={G({ padding: "14px 14px", marginBottom: 16 })}>
+          <div data-lens-edge="" style={G({ padding: "14px 14px", marginBottom: 16 })}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
               <span style={{ ...labelStyle(13), color: track.color }}>Живой диалог</span>
               <span style={{ display: "inline-flex" }} aria-label={"Настроение: " + MOOD_WORDS[(draft.dialogue.guest.mood || 3) - 1]}>{moodFace(draft.dialogue.guest.mood || 3, 18)}</span>
@@ -1311,7 +1311,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <div style={{ color: muted, fontSize: 11.5, marginTop: 6 }}>В игре варианты перемешаны. После выбора видно объяснение, настроение гостя меняется, при плохом он уходит.</div>
           </div>) : null}
         {draft.build ? (
-          <div style={G({ padding: "14px 14px", marginBottom: 16, display: "flex", gap: 12, alignItems: "center" })}>
+          <div data-lens-edge="" style={G({ padding: "14px 14px", marginBottom: 16, display: "flex", gap: 12, alignItems: "center" })}>
             <span style={{ width: 34, height: 46, borderRadius: draft.build.glass === "coupe" || draft.build.glass === "wine" ? "4px 4px 16px 16px" : 6, flexShrink: 0,
               background: `linear-gradient(180deg, transparent 22%, ${draft.build.tint}cc 22%)`, border: `2px solid ${brd}` }} />
             <div style={{ minWidth: 0 }}>
@@ -1320,8 +1320,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
               <div style={{ color: muted, fontSize: 12 }}>{(GLASSES.find(g => g[0] === draft.build.glass) || ["", ""])[1]} · шагов: {draft.build.steps.length} · бокал наполняется по ходу, звёзды за чистую сборку</div>
             </div>
           </div>) : null}
-          {two ? null : <button onClick={() => setShowPreview(false)} style={{ ...ghost, marginBottom: 12 }}>Скрыть предпросмотр ▴</button>}
-        </>) : <button onClick={() => setShowPreview(true)} style={{ ...ghost, marginBottom: 12 }}>Показать, как увидит сотрудник ▾</button>}
+          {two ? null : <button onClick={() => setShowPreview(false)} data-lens-btn="soft" data-lens-ink="" style={{ ...ghost, marginBottom: 12 }}>Скрыть предпросмотр ▴</button>}
+        </>) : <button onClick={() => setShowPreview(true)} data-lens-btn="soft" data-lens-ink="" style={{ ...ghost, marginBottom: 12 }}>Показать, как увидит сотрудник ▾</button>}
         {(() => {
           const extrasQ = [...draft.questions, ...(draft.situations || []).map(x => ({ kind: "situation", ...x })), ...(draft.dialogue ? [{ kind: "dialogue", ...draft.dialogue }] : []), ...(draft.build ? [{ kind: "build", ...draft.build }] : [])];
           const me = { id: draft.id || "new", title: draft.title || "Этот урок", sort: draft.sort || 0 };
@@ -1329,7 +1329,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           recs[0] = { ...recs[0], questions: extrasQ };
           const order = sectionSteps(secLabel, recs, draft.role, track.color);
           return (
-            <div style={G({ padding: "12px 14px", marginBottom: 16 })}>
+            <div data-lens-edge="" style={G({ padding: "12px 14px", marginBottom: 16 })}>
               <div style={{ ...labelStyle(13), color: track.color, marginBottom: 6 }}>Порядок шагов раздела</div>
               {order.map((st, i) => <div key={i} style={{ display: "flex", gap: 8, padding: "3px 0", color: st.id === "cms-l-" + (draft.id || "new") ? txt : muted, fontWeight: st.id === "cms-l-" + (draft.id || "new") ? "bold" : "normal", fontSize: 13, fontFamily: SERIF }}>
                 <span style={{ width: 18, color: muted }}>{i + 1}</span><span>{st.title}</span></div>)}
@@ -1342,8 +1342,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
           background: dark ? "rgba(21,17,11,0.94)" : "rgba(245,238,222,0.94)", borderTop: `1px solid ${gold}33`, WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}>
           {err && <div style={{ color: TN.bad, fontSize: 12.5, marginBottom: 6, textAlign: "center", lineHeight: 1.4 }}>{err}</div>}
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={cancel} style={{ ...ghost, width: "auto", flex: 1, padding: "12px" }}>Отменить</button>
-            <button onClick={save} disabled={busy} style={{ ...primary, flex: 1.6, padding: "12px", opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
+            <button onClick={cancel} data-lens-btn="soft" data-lens-ink="" style={{ ...ghost, width: "auto", flex: 1, padding: "12px" }}>Отменить</button>
+            <button onClick={save} disabled={busy} data-lens-btn="main" style={{ ...primary, flex: 1.6, padding: "12px", opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить урок"}</button>
           </div>
           <div style={{ color: muted, fontSize: 11, textAlign: "center", marginTop: 6 }}>{savedAt ? `Черновик сохранён на телефоне · ${hhmm(savedAt)}` : "Черновик сохраняется на телефоне сам"}</div>
         </div>

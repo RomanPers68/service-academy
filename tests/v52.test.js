@@ -132,7 +132,8 @@ describe("v52: редактор урока в две панели", () => {
   });
   it("предпросмотр в две панели открыт всегда, без «Скрыть»; в портрете — по кнопке, как раньше", () => {
     expect(ed).toContain("{showPreview || two ? (<>");
-    expect(ed).toContain("{two ? null : <button onClick={() => setShowPreview(false)} style={{ ...ghost, marginBottom: 12 }}>Скрыть предпросмотр ▴</button>}");
+    // v117: у кнопки — метки линзы (стекло, подпись золотом)
+    expect(ed).toContain("{two ? null : <button onClick={() => setShowPreview(false)} data-lens-btn=\"soft\" data-lens-ink=\"\" style={{ ...ghost, marginBottom: 12 }}>Скрыть предпросмотр ▴</button>}");
     expect(ed).toContain("Показать, как увидит сотрудник ▾</button>}");
   });
   it("«Просмотр» в полоске разделов — к началу предпросмотра с подсветкой", () => {

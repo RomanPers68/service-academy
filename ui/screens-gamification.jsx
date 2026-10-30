@@ -211,7 +211,7 @@ export function WeekStar({ weekly, T }) {
   const wrap = { background:`linear-gradient(150deg, ${gold}1f, ${gold}08)`, border:`1px solid ${gold}55`, borderRadius:14, padding:"14px 16px", marginBottom:12, boxShadow:"0 4px 14px rgba(0,0,0,0.18)" };
   if (!weekly || weekly.length === 0) {
     return (
-      <div style={wrap}>
+      <div data-lens-edge="" style={wrap}>
         <div style={{ ...labelStyle(13.5), color:gold, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} Сотрудник недели</div>
         <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.5 }}>На этой неделе пока никто не занимался. Пройди урок, и окажешься первым.</div>
       </div>
@@ -219,7 +219,7 @@ export function WeekStar({ weekly, T }) {
   }
   const top = weekly[0]; const rest = weekly.slice(1);
   return (
-    <div style={wrap}>
+    <div data-lens-edge="" style={wrap}>
       <div style={{ ...labelStyle(13.5), color:gold, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} Сотрудник недели</div>
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
         <div data-lens="avatar" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #7A5D2A)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#FBF7EE", 24)}</div>
@@ -509,7 +509,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           ) : null}
           {/* v30 (Доп. 317): лига недели — очки за занятия, каждую неделю с нуля */}
           {onLeague ? (
-            <div role="button" tabIndex={0} onClick={onLeague} {...onActivate(onLeague)} className="sa-card"
+            <div role="button" tabIndex={0} onClick={onLeague} {...onActivate(onLeague)} className="sa-card" data-lens-card=""
               style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 14px", marginBottom:12, borderRadius:14, cursor:"pointer", border:`1px solid ${GOLD}55`, background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.07)" }}>
               <span style={{ flex:1, minWidth:0 }}>
                 <span style={{ ...labelStyle(13.5), display:"block", color: goldText(!!T.a11y) }}>Лига недели</span>
@@ -520,7 +520,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           ) : null}
           <WeekStar weekly={weekStar} T={T} />
           {/* Доп. 216: Рекорды команды — соревновательный дух: спринт, час пик, печати, серия */}
-          <div className="sa-card" style={{ padding:"12px 14px", marginBottom:12, borderRadius:14, border:`1px solid ${GOLD}55`, background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.07)" }}>
+          <div className="sa-card" data-lens-card="" style={{ padding:"12px 14px", marginBottom:12, borderRadius:14, border:`1px solid ${GOLD}55`, background: T.a11y ? "rgba(250,242,222,0.55)" : "rgba(226,186,116,0.07)" }}>
             <div onClick={() => setShowRec(v => !v)} {...onActivate(() => setShowRec(v => !v))} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
               <div>
                 <div style={{ ...labelStyle(13.5), color: goldText(!!T.a11y) }}>Рекорды команды</div>
@@ -565,7 +565,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
             const ach = getAchievements(p, leaderboard, scores);
             return (
             <div key={i} onClick={() => { setSelected(p); setDetailTab(true); }} {...onActivate(() => { setSelected(p); setDetailTab(true); })}
-              style={{ ...T.modCard, marginBottom:10, cursor:"pointer", gap:12 }}>
+              data-lens-card="" style={{ ...T.modCard, marginBottom:10, cursor:"pointer", gap:12 }}>
               <div style={{ flexShrink:0, minWidth:28, display:"flex", alignItems:"center", justifyContent:"center" }}>{(() => { const med = [["#F0CE72","rgba(232,196,106,0.20)"],["#D2D7DE","rgba(200,205,212,0.16)"],["#D6A06A","rgba(214,160,106,0.18)"]][i]; const fg = med ? med[0] : (T.modTitle?.color||GOLD); const bg = med ? med[1] : (T.modSub?.color||"#9A8C74")+"22"; const bd = med ? med[0]+"99" : (T.modTitle?.color||GOLD)+"44"; return <div style={{ width:27, height:27, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:bg, border:`1.5px solid ${bd}`, color:fg, fontSize:12.5, fontWeight:"bold" }}>{i+1}</div>; })()}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
@@ -600,7 +600,7 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
       ) : (
         <div style={{ flex:1, padding:"12px 16px", overflowY:"auto" }}>
           {(() => { const selAch = selected ? getAchievements(selected, leaderboard, scores) : []; const selMaster = selected ? masterOf(selected) : null; return (
-          <div style={{ ...T.modCard, marginBottom:16, flexDirection:"column", alignItems:"flex-start", gap:8 }}>
+          <div data-lens-card="" style={{ ...T.modCard, marginBottom:16, flexDirection:"column", alignItems:"flex-start", gap:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, width:"100%" }}>
               <div style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||GOLD}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||GOLD, fontFamily:"Georgia, serif" }}>
                 {selected?.name?.[0]}{selected?.surname?.[0]}
@@ -1269,7 +1269,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
       <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
 
         {/* Профиль */}
-        <div style={{ ...T.modCard, marginBottom:12, gap:12 }}>
+        <div data-lens-card="" style={{ ...T.modCard, marginBottom:12, gap:12 }}>
           <div data-lens="disc" style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:"bold", color: goldText(a11y), fontFamily:"Georgia, serif", flexShrink:0 }}>
             {profile?.is_admin ? UI_SVG.crown(GOLD, 24) : `${profile?.name?.[0]}${(profile?.surname||"")[0]||""}`.toUpperCase()}
           </div>
@@ -1288,12 +1288,12 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
         </div>
 
         {empty ? (
-          <div data-stats-empty="" style={{ ...T.modCard, flexDirection:"column", alignItems:"center", textAlign:"center", gap:8, padding:"22px 18px", marginBottom:12 }}>
+          <div data-stats-empty="" data-lens-card="" style={{ ...T.modCard, flexDirection:"column", alignItems:"center", textAlign:"center", gap:8, padding:"22px 18px", marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"center" }}>{UI_SVG.chartLine(GOLD, 34)}</div>
             <div style={{ ...T.modTitle }}>Здесь появятся твои баллы</div>
             <div style={{ color:T.modSub.color, fontSize:13.5, lineHeight:1.55, maxWidth:300 }}>Пройди первый урок, и здесь появятся средний балл, тесты и прогресс по ролям.</div>
             {onStart ? (
-              <button type="button" data-stats-start="" className="sa-btn" onClick={onStart} style={{ marginTop:6, padding:"12px 22px", borderRadius:14, border:"none",
+              <button type="button" data-stats-start="" className="sa-btn" onClick={onStart} data-lens-btn="main" style={{ marginTop:6, padding:"12px 22px", borderRadius:14, border:"none",
                 fontSize:15, fontFamily:"Georgia, serif", fontWeight:"bold", color:"#fff", cursor:"pointer",
                 background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", boxShadow:"0 4px 14px rgba(200,160,80,0.22)" }}>К первому уроку</button>
             ) : null}
@@ -1310,7 +1310,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
             { label:"Уроков пройдено", value:completedLessons, icon:"book", color:"#7B8FAB" },
             { label:"Ролей завершено", value:`${rolesCompleted}/${STAT_ROLES.length}`, icon:"gradcap", color: goldText(a11y) },
           ].map((s, i) => (
-            <div key={i} ref={s.label === "Ролей завершено" ? stRefRoles : undefined} style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
+            <div key={i} ref={s.label === "Ролей завершено" ? stRefRoles : undefined} data-lens-edge="" style={{ ...T.modCard, flexDirection:"column", gap:4, padding:"12px 14px" }}>
               <div style={{ display:"flex", alignItems:"center", height:24 }}>{UI_SVG[s.icon] ? UI_SVG[s.icon](s.color, 22) : s.icon}</div>
               <div style={{ color: inkOf(s.color, a11y), fontSize: T.modSub?.fontSize ? T.modSub.fontSize + 10 : 20, fontWeight:"bold", fontFamily:"Georgia, serif" }}>{s.value}</div>
               <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15 }}>{s.label}</div>
@@ -1334,7 +1334,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
           const displayPct = lessonPct;
           const hasAnyProgress = totalDone > 0;
           return (
-            <div key={r} style={{ ...T.modCard, marginBottom:8, gap:12, opacity: done || hasAnyProgress ? 1 : 0.4 }}>
+            <div key={r} data-lens-card="" style={{ ...T.modCard, marginBottom:8, gap:12, opacity: done || hasAnyProgress ? 1 : 0.4 }}>
               <div style={{ flexShrink:0, display:"flex", alignItems:"center" }}>{ROLE_SVG[r] ? ROLE_SVG[r](roleColor[r], 24) : null}</div>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>

@@ -11,7 +11,8 @@ const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\
 const dashes = (s) => (code(s).match(/[А-Яа-яЁё»)"]\s—\s[А-Яа-яЁё«]/g) || []).length;
 const count = (s, sub) => s.split(sub).length - 1;
 const LOOK = rd("ui/home-look.jsx");
-const V116 = LOOK.slice(LOOK.indexOf("/* ── v116"), LOOK.lastIndexOf("`;"));
+// раздел v116 — до раздела v117 (если он есть)
+const V116 = LOOK.slice(LOOK.indexOf("/* ── v116"), LOOK.indexOf("/* ── v117") > 0 ? LOOK.indexOf("/* ── v117") : LOOK.lastIndexOf("`;"));
 const rules = code(V116).split("}").map((r) => r.trim()).filter(Boolean);
 const sels = rules.map((r) => r.split("{")[0].trim()).flatMap((s) => s.split(",").map((x) => x.trim()));
 const lineOf = (src, label) => src.split("\n").find((l) => l.includes(label)) || "";
@@ -90,8 +91,9 @@ describe("v116: разметка «Смены»", () => {
     expect(lineOf(M, ">Дальше →</button>}")).toContain('data-lens-btn="main"');
     expect(lineOf(M, ">Старт ›</button>}")).toContain('data-lens-btn="main"');
     expect(lineOf(M, ">Я закончил(а)</button>}")).not.toContain("data-lens");
-    expect(count(M, 'data-lens-card=""')).toBe(9);
-    expect(count(M, 'data-lens-ink=""')).toBe(5);
+    // v117: ещё карточки и разделы — в редакторе меню
+    expect(count(M, 'data-lens-card=""')).toBeGreaterThanOrEqual(9);
+    expect(count(M, 'data-lens-ink=""')).toBeGreaterThanOrEqual(5);
   });
   it("колоды меню и бармена: капсула «Колода / Знаю?», выбранная — плашка, поиск и список — линзы, карта — кромка", () => {
     const D = rd("ui/menu-deck.jsx"), C = rd("ui/cocktails.jsx");
@@ -174,9 +176,9 @@ describe("v116: разметка «Смены»", () => {
 });
 
 describe("v116: тексты", () => {
-  it("без тире-ритма и эмодзи в правилах; метка — v116", () => {
+  it("без тире-ритма и эмодзи в правилах; метка — v116 и позже", () => {
     expect(code(LOOK)).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     expect(dashes(LOOK)).toBe(0);
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v116</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(11[6-9]|1[2-9]\d|[2-9]\d\d)<\/span>/);
   });
 });

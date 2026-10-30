@@ -211,7 +211,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
 
       {/* Звание и прогресс */}
       <div style={{ padding: "10px 16px 0" }}>
-        <div style={{ ...T.modCard, alignItems: "center", gap: 12 }}>
+        <div data-lens-card="" style={{ ...T.modCard, alignItems: "center", gap: 12 }}>
           <div data-lens="disc" style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, border: `1.5px solid ${GOLD}66`, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="1.6"/></svg>
           </div>
@@ -359,7 +359,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
         {/* Листание */}
         {pages.length > 1 && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, padding: "0 4px" }}>
-            <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 18, padding: "6px 15px", fontSize: 14, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
+            <button onClick={() => go(-1)} disabled={idx === 0} data-lens={idx === 0 ? undefined : "disc"} style={{ background: "transparent", border: `1px solid ${idx === 0 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === 0 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 18, padding: "6px 15px", fontSize: 14, cursor: idx === 0 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>‹</button>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", maxWidth: 220 }}>
               {pages.map((p, i) => {
                 const isUnread = (p.kind === "earned" || p.kind === "legend") && !readList.includes(p.key);
@@ -369,7 +369,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
                 );
               })}
             </div>
-            <button onClick={() => go(1)} disabled={idx === pages.length - 1} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 18, padding: "6px 15px", fontSize: 14, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
+            <button onClick={() => go(1)} disabled={idx === pages.length - 1} data-lens={idx === pages.length - 1 ? undefined : "disc"} style={{ background: "transparent", border: `1px solid ${idx === pages.length - 1 ? "rgba(120,100,60,.25)" : GOLD + "66"}`, color: idx === pages.length - 1 ? "rgba(120,100,60,.4)" : GOLD, borderRadius: 18, padding: "6px 15px", fontSize: 14, cursor: idx === pages.length - 1 ? "default" : "pointer", fontFamily: "Georgia, serif" }}>›</button>
           </div>
         )}
         <div style={{ ...labelStyle(13), color: T.modSub.color, textAlign: "center", marginTop: 10, opacity: .8 }}>

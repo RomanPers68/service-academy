@@ -140,7 +140,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
       <div style={{ padding: "12px 16px 100px" }}>
         {hint && hsteps.length ? <HintBubble a11y={!!T.a11y} text={hsteps[hstep]} arrow="up" step={hstep + 1} total={hsteps.length}
           onNext={hstep >= hsteps.length - 1 ? null : () => setHstep((v) => v + 1)} onClose={hintDone} /> : null}
-        <div style={card}>
+        <div data-lens-card="" style={card}>
           <div style={{ ...labelStyle(13.5), color: gold }}>Неделя с {ws.getDate()}.{String(ws.getMonth() + 1).padStart(2, "0")} · {left ? "до финала " + left + " " + plural(left, "день", "дня", "дней") : "финал сегодня"}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
             <span style={{ fontFamily: "Georgia, serif", fontSize: 30, fontWeight: "bold", color: text }}>{myPts}</span>
@@ -159,15 +159,15 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
           ) : null}
         </div>
         {st.status === "loading" ? <div style={{ color: sub, fontSize: 13.5, padding: "10px 2px" }}>Загружаю лигу…</div> : null}
-        {st.status === "missing" ? <div style={{ ...card, color: sub, fontSize: 13.5 }}>{serverMissing({ what: "общая лига", admin: !!(profile && profile.is_admin), sql: "supabase-stage24-together.sql" })} Свои очки уже считаются.</div> : null}
+        {st.status === "missing" ? <div data-lens-card="" style={{ ...card, color: sub, fontSize: 13.5 }}>{serverMissing({ what: "общая лига", admin: !!(profile && profile.is_admin), sql: "supabase-stage24-together.sql" })} Свои очки уже считаются.</div> : null}
         {st.status === "offline" || st.status === "error" ? (
-          <div style={{ ...card, color: sub, fontSize: 13.5 }}>Нет связи с сервером. <button type="button" onClick={load} style={{ border: 0, background: "none", color: gold, font: "700 13px Georgia, serif", cursor: "pointer" }}>Ещё раз</button></div>
+          <div data-lens-card="" style={{ ...card, color: sub, fontSize: 13.5 }}>Нет связи с сервером. <button type="button" onClick={load} style={{ border: 0, background: "none", color: gold, font: "700 13px Georgia, serif", cursor: "pointer" }}>Ещё раз</button></div>
         ) : null}
         {st.status === "ok" ? (
           <>
             {twoScopes ? <PlaceCard T={T} tabLabel="лига недели" rest={myRest} restIdx={meIdx([...restRows].sort((a, b) => ptsOf(b) - ptsOf(a)))} restN={restRows.length} netIdx={meIdx([...rows].sort((a, b) => ptsOf(b) - ptsOf(a)))} netN={rows.length} netR={restCount} scope={scope} onScope={setScope} /> : null}
             {mePrev || (wins && (wins.rest || wins.net)) ? (
-              <div style={{ ...card, display: "flex", alignItems: "center", gap: 10 }} role="group" aria-label="Прошлая неделя">
+              <div data-lens-card="" style={{ ...card, display: "flex", alignItems: "center", gap: 10 }} role="group" aria-label="Прошлая неделя">
                 <CupArt size={30} a11y={a11y} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: sub, lineHeight: 1.45 }}>
                   {mePrev ? <>Прошлая неделя: <b style={{ color: text }}>{mePrev.rank_rest}-е место</b> в заведении{twoScopes && mePrev.rank_net ? ", " + mePrev.rank_net + "-е в сети" : ""} · {mePrev.pts} {plural(mePrev.pts, "очко", "очка", "очков")}</> : "На прошлой неделе очков не было"}
@@ -205,7 +205,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
                 const m = mv(r, i);
                 const mr = leagueMasterRoles(masters, r, profile);   // v40: знак «Мастер роли» после имени
                 return (
-                  <div key={r.id} role="listitem" style={{ ...T.modCard, marginBottom: 8, gap: 12, alignItems: "center", ...(r.me ? { boxShadow: `inset 0 0 0 1.5px ${GOLD}AA` } : null) }}>
+                  <div key={r.id} role="listitem" data-lens-card={r.me ? "hi" : ""} style={{ ...T.modCard, marginBottom: 8, gap: 12, alignItems: "center", ...(r.me ? { boxShadow: `inset 0 0 0 1.5px ${GOLD}AA` } : null) }}>
                     <div style={{ width: 27, height: 27, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: "bold",
                       color: med || text, background: med ? med + "33" : "transparent", border: `1.5px solid ${med ? med + "99" : (T.modSub.color + "55")}` }}>{i + 1}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -223,7 +223,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
               })}
             </div>
             {restCount > 1 ? (
-              <div style={{ ...card, marginTop: 16 }} role="group" aria-label="Кубок заведений">
+              <div data-lens-card="" style={{ ...card, marginTop: 16 }} role="group" aria-label="Кубок заведений">
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <CupArt a11y={a11y} />
                   <div style={{ flex: 1, minWidth: 0 }}>

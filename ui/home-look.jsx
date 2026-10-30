@@ -404,6 +404,35 @@ html.sa-lens.sa-light .sa-dlg.dc .dc-next{color:#6B4E1A;background:radial-gradie
 html.sa-lens .sa-dlg.dc .dc-next::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
 html.sa-lens.sa-light .sa-dlg.dc .dc-next::after{border-color:rgba(139,106,48,0.45)}
 
+/* ── v117: «Команда и Я». Владелец (30.10): «Пройдёмся по приложению, добьём то, что осталось? Чтобы приложение
+   визуально было едино». Третья часть (v115 «Учусь», v116 «Смена», v117 «Команда и Я»). Аккаунт и настройки
+   (ui/screens-team.jsx), статистика, рейтинг и «Сотрудник недели» (ui/screens-gamification.jsx), лига (ui/league.jsx),
+   книга отзывов (ui/guestbook.jsx), аналитика (ui/screens-admin.jsx), сервер (ui/server.jsx), редакторы уроков, коктейлей
+   и меню (ui/content-editor.jsx, ui/cocktail-editor.jsx, ui/menu-trainer.jsx) — метками data-lens-* (правила v111–v116).
+   Здесь — то, чего не было: «нужно сделать» на экране сервера — жёлтая кромка (data-lens-card="warn"); отчёты
+   (ui/report.jsx, оболочка .rp, стили по классам): карточки, строки людей и плитки — кромка и блик, «Требуют внимания» —
+   своя красная кромка; «PDF-карточка» и «Excel по команде» — плашки с кольцом, остальные кнопки — стекло; фильтры —
+   стекло, выбранный — плашка; поиск — стекло. Полоски, столбики дней и пометки «ok / bad» — прежние ── */
+html.sa-lens [data-lens-card="warn"]{border-color:rgba(228,179,106,0.7)!important}
+html.sa-lens.sa-light [data-lens-card="warn"]{border-color:rgba(139,90,18,0.6)!important}
+html.sa-lens .rp .rp-card,html.sa-lens .rp .rp-row,html.sa-lens .rp .rp-tile,html.sa-lens .rp .rp-q{box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),var(--lk-shadow)}
+html.sa-lens .rp .rp-card,html.sa-lens .rp .rp-row:not(.att),html.sa-lens .rp .rp-tile,html.sa-lens .rp .rp-q{border-color:var(--lk-edge)}
+html.sa-lens .rp .rp-btn:not(.main),html.sa-lens .rp .rp-chip:not(.on){background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .rp .rp-chip:not(.on){color:var(--lk-gold)}
+html.sa-lens.sa-light .rp .rp-btn:not(.main),html.sa-lens.sa-light .rp .rp-chip:not(.on){color:#6B4E1A}
+html.sa-lens .rp .rp-chip.on{color:var(--lk-hi);font-weight:bold;border-color:transparent;background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.26),rgba(200,169,110,0.13) 62%);
+  box-shadow:inset 0 0 0 1px rgba(232,201,131,0.62),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(0,0,0,0.25)}
+html.sa-lens.sa-light .rp .rp-chip.on{color:#6B4E1A;background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.9),rgba(176,138,70,0.2) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.55),inset 0 1.5px 0 var(--lk-hl),0 3px 8px rgba(120,85,25,0.16)}
+html.sa-lens .rp .rp-btn.main{position:relative;color:var(--lk-hi);background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .rp .rp-btn.main{color:#6B4E1A;background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)}
+html.sa-lens .rp .rp-btn.main::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light .rp .rp-btn.main::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens .rp .rp-search input{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .rp .rp-search input:focus{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

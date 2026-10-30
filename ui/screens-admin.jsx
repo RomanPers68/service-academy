@@ -379,11 +379,11 @@ function BackupCard({ C, cardBase, serif }) {
     }).catch(() => { setSt("error"); setMsg("Нет связи с сервером. Попробуй ещё раз"); });
   };
   return (
-    <div style={{ ...cardBase, padding: "14px 16px", marginTop: 12 }}>
+    <div data-lens-edge="" style={{ ...cardBase, padding: "14px 16px", marginTop: 12 }}>
       <div style={{ color: "#D6A33A", fontSize: 11, letterSpacing: 1.5, fontWeight: "bold", marginBottom: 6 }}>РЕЗЕРВНАЯ КОПИЯ</div>
       <div style={{ color: C.text, fontSize: 14, lineHeight: 1.5 }}>Все таблицы базы одним файлом JSON: сотрудники, меню, графики, результаты. Скачивай копию раз в неделю.</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-        <button className="sa-btn" onClick={run} disabled={st === "working"} {...onActivate(run)}
+        <button className="sa-btn" data-lens-btn="soft" onClick={run} disabled={st === "working"} {...onActivate(run)}
           style={{ padding: "10px 16px", borderRadius: 12, border: `1px solid ${C.gold}88`, background: "transparent", color: C.gold,
             fontFamily: serif, fontSize: 14, fontWeight: "bold", cursor: "pointer", opacity: st === "working" ? 0.6 : 1 }}>
           {st === "working" ? "Собираю…" : "Скачать копию"}
@@ -602,7 +602,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
 
       {/* Доп. 309: отчёт по сотруднику — Excel по команде и PDF-карточки */}
       {onReport ? (
-        <div role="button" tabIndex={0} onClick={onReport} {...onActivate(onReport)} style={G({ margin:"10px 14px 0", padding:"12px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer" })}>
+        <div role="button" tabIndex={0} onClick={onReport} {...onActivate(onReport)} data-lens-edge="" style={G({ margin:"10px 14px 0", padding:"12px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer" })}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9.5 17v-3M12.5 17v-5M15.5 17v-2"/></svg>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>Отчёт по сотруднику</div>
@@ -613,7 +613,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
       ) : null}
       {/* Динамика (выбор владельца из трёх вариантов): кольцо недели, изменение к прошлой,
           график среднего результата за 6 недель — видно на любой вкладке */}
-      <div style={G({ margin:"10px 14px 10px", padding:"14px 14px 8px" })}>
+      <div data-lens-edge="" style={G({ margin:"10px 14px 10px", padding:"14px 14px 8px" })}>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <Ring pct={dg.avg} size={64} tone={dg.lessons ? toneOfScore(dg.avg) : "gold"} a11y={a11y} label={dg.lessons ? `${dg.avg}%` : "—"} />
           <div style={{ flex:1, minWidth:0 }}>
@@ -632,7 +632,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
       </div>
       {/* Рестораны — тем, кто видит больше одного (админ, руководящий состав) */}
       {allScope && rests.length > 1 ? (
-        <div style={G({ margin:"0 14px 12px", padding:"12px 14px" })}>
+        <div data-lens-edge="" style={G({ margin:"0 14px 12px", padding:"12px 14px" })}>
           <div style={{ ...labelStyle(13), color:TN.gold, marginBottom:8 }}>Рестораны · средний результат</div>
           {rests.map((r, i) => (
             <div key={i} style={{ marginBottom: i < rests.length - 1 ? 9 : 0 }}>
@@ -662,7 +662,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
             const open = openWho === p.who; const toggle = () => setOpenWho(open ? null : p.who);
             const tone = personTone(p.fails);
             return (
-              <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
+              <div key={i} data-lens-edge="" style={G({ padding:"12px 12px", marginBottom:8 })}>
                 <div onClick={toggle} {...onActivate(toggle)} style={{ cursor:"pointer", display:"flex", gap:11, alignItems:"center" }}>
                   <Avatar who={p.who} tone={tone} a11y={a11y} />
                   <div style={{ flex:1, minWidth:0 }}>
@@ -717,7 +717,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           {retryPeople.some(p => p.keys) ? (<>
             <SectionLabel a11y={a11y}>Тайный зачёт ключей</SectionLabel>
             {Object.entries(retryPeople.filter(p => p.keys).reduce((m, p) => { (m[p.restaurant] = m[p.restaurant] || []).push(p); return m; }, {})).map(([rest, list], i) => (
-              <div key={i} style={G({ padding:"10px 12px", marginBottom:8 })}>
+              <div key={i} data-lens-edge="" style={G({ padding:"10px 12px", marginBottom:8 })}>
                 {allScope ? <div style={{ color:muted, fontSize:11, marginBottom:4 }}>{rest}</div> : null}
                 {list.slice(0, 5).map((p, j) => (
                   <div key={j} style={{ display:"flex", alignItems:"center", gap:10, padding:"5px 0", borderTop: j ? `1px solid ${a11y ? "rgba(107,78,20,0.10)" : "rgba(214,178,102,0.08)"}` : "none" }}>
@@ -733,7 +733,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           </>) : null}
           {retryPeople.length ? <SectionLabel a11y={a11y}>Кто и что стёр</SectionLabel> : null}
           {retryPeople.map((p, i) => (
-            <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
+            <div key={i} data-lens-edge="" style={G({ padding:"12px 12px", marginBottom:8 })}>
               <div style={{ display:"flex", alignItems:"center", gap:11 }}>
                 <Avatar who={p.who} a11y={a11y} />
                 <div style={{ flex:1, minWidth:0 }}>
@@ -769,7 +769,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
             : serverMissing({ what: "вопросы с наибольшим процентом ошибок", many: true, admin: !!profile?.is_admin, sql: "supabase-stage7-quiz-analytics.sql" }))}
           {Array.isArray(hardQ) && hardQ.length === 0 && note("Пока нет трудных вопросов: данных мало (нужно минимум 3 ответа на вопрос) или команда отвечает без ошибок.")}
           {Array.isArray(hardQ) && hardQ.map((q, i) => { const tone = toneOfFail(q.fail_pct); const tt = indexTitle[q.lesson_id] || titleById[q.lesson_id]; return (
-            <div key={i} style={G({ padding:"12px 12px", marginBottom:8 })}>
+            <div key={i} data-lens-edge="" style={G({ padding:"12px 12px", marginBottom:8 })}>
               <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
                 <span style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center", fontFamily:serif, fontWeight:"bold", fontSize:12,
                   color: i < 3 ? "#1F160A" : muted, background: i < 3 ? "linear-gradient(135deg, #F1DFA8, #B8914A)" : "transparent", border: i < 3 ? "none" : `1px solid ${muted}55` }}>{i + 1}</span>
@@ -795,7 +795,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
               </div>
             </div>) : note("Для слабого места пока мало данных.")}
           <SectionLabel a11y={a11y} right="7+ дней">Уснули</SectionLabel>
-          <div style={G({ padding:"12px 12px" })}>
+          <div data-lens-edge="" style={G({ padding:"12px 12px" })}>
             {dg.asleep.length === 0 ? (
               <div style={{ display:"flex", alignItems:"center", gap:8, color:TN.good, fontSize:13 }}>{Icon.check(TN.good, 17)} Все активны</div>
             ) : (
@@ -810,7 +810,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           </div>
           <SectionLabel a11y={a11y}>Темы с самым низким результатом</SectionLabel>
           {weak.map((q, i) => { const tone = toneOfScore(q.avg); return (
-            <div key={i} style={G({ padding:"11px 12px", marginBottom:7 })}>
+            <div key={i} data-lens-edge="" style={G({ padding:"11px 12px", marginBottom:7 })}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
                 <span style={{ color:C.text, fontFamily:serif, fontSize:14, fontWeight:"bold", flex:1, minWidth:0 }}>{q.title}</span>
                 <span style={{ color:TN[tone], fontFamily:serif, fontSize:17, fontWeight:"bold" }}>{q.avg}%</span>

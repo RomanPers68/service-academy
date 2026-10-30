@@ -166,7 +166,7 @@ describe("v113: «Команда»", () => {
     expect(T).toContain('<div data-lens-card="hi" onClick={() => copyCode(issued.code)}');
   });
   it("красные «Отключить», «Удалить» — прежнего цвета, только капсулой (data-lens-btn=\"danger\": правил, кроме скругления, нет)", () => {
-    expect(count(T, 'data-lens-btn="danger"')).toBe(4);
+    expect(count(T, 'data-lens-btn="danger"')).toBe(6);   // v117: и «Выйти с этого устройства», «Выйти» в аккаунте
     expect(LOOK).not.toMatch(/\[data-lens-btn="danger"\]/);
     expect(LOOK).toContain("html.sa-lens [data-lens-btn]{border-radius:999px!important}");
   });

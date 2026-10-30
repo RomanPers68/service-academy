@@ -317,7 +317,7 @@ export function BriefCard({ a11y, brief, seen, reads, onOpen }) {
   if (!pts.length) return null;
   const st = reads ? readStats(d, reads.rows, brief.author) : null;
   return (
-    <div data-brief-card="" data-seen={seen ? "1" : "0"} role="button" tabIndex={0} aria-label={"Брифинг смены" + (brief.author ? ", отправил(а) " + brief.author : "") + ": открыть"}
+    <div data-brief-card="" data-lens-card="" data-seen={seen ? "1" : "0"} role="button" tabIndex={0} aria-label={"Брифинг смены" + (brief.author ? ", отправил(а) " + brief.author : "") + ": открыть"}
       onClick={onOpen} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       style={{ ...c.frost, margin: "0 0 12px", padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>

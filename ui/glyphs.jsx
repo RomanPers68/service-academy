@@ -2,6 +2,7 @@
 // стоп-листа, «спасибо», брифинга и занятий был один и тот же кружок с точкой (похож на переключатель), строки сливались.
 // Теперь в кружке — значок того, о чём строка, а то, что требует внимания или уже сделано, — маленькой отметкой на кружке
 // («!» или галочка): цвет не единственный знак.
+// v111 (Доп. 424): в виде «Линза» кружок — линза с ободком цвета строки (data-lens="glyph", правила — ui/home-look.jsx).
 import React from "react";
 
 const P = (d) => <path d={d} />;
@@ -33,13 +34,14 @@ export function GlyphMark({ icon, kind = "info", c, mark = "#20180E", size = 28 
   const col = kind === "ok" ? c.ok : kind === "warn" ? c.warn : c.gold;
   const g = GLYPH[icon];
   return (
-    <span aria-hidden="true" data-glyph={icon || ""} data-glyph-kind={kind}
+    <span aria-hidden="true" data-glyph={icon || ""} data-glyph-kind={kind} data-lens="glyph"
       style={{ position: "relative", flex: "0 0 auto", width: size, height: size, borderRadius: "50%", display: "inline-grid", placeItems: "center",
         border: "1.5px solid " + col, color: col, background: c.chip, boxSizing: "border-box" }}>
       {g ? <svg width={Math.round(size * 0.54)} height={Math.round(size * 0.54)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{g}</svg>
         : <span style={{ width: 6, height: 6, borderRadius: "50%", background: col }} />}
+      {/* v111 (Доп. 424): в виде «Линза» кружок — линза (ui/home-look.jsx, data-lens="glyph"); отметка — поверх её кольца */}
       {kind !== "info" ? (
-        <span style={{ position: "absolute", right: -5, bottom: -5, width: 13, height: 13, borderRadius: "50%", background: col, border: "2px solid " + mark,
+        <span data-glyph-mark="" style={{ position: "absolute", zIndex: 1, right: -5, bottom: -5, width: 13, height: 13, borderRadius: "50%", background: col, border: "2px solid " + mark,
           display: "grid", placeItems: "center", boxSizing: "content-box" }}>
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={mark} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
             {kind === "ok" ? <path d="M5 12.5l4.2 4.2L19 7" /> : <path d="M12 5v9M12 19.5v.5" />}

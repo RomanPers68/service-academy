@@ -4,6 +4,7 @@
 // редактор брифинга, стоп-лист в меню, «спасибо» в отзывы гостей, занятия в отчёты. Плюс вчерашние чек-листы
 // (checklist_get за вчера), «Напомнить» тем, кто давно не занимался (morning_nudge), и настройки: присылать ли сводку
 // в Telegram и во сколько (morning_set), «Прислать сейчас» (morning_send_now).
+// v111 (Доп. 424): в виде «Линза» карточки, кружки строк и кнопки — линзой (метки data-lens-*, правила — ui/home-look.jsx).
 import React from "react";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { vibrate } from "../lib/utils";
@@ -121,19 +122,19 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
       <div style={T.lessHead}>
         <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button>
         <div style={T.lessHeadTitle}>Утро</div>
-        {st.phase === "ready" ? <button type="button" style={{ ...ghost, alignSelf: "auto" }} data-mo-again="" onClick={() => { vibrate("light"); load(); }}>{st.again ? "Обновляю…" : "Обновить"}</button> : null}
+        {st.phase === "ready" ? <button type="button" style={{ ...ghost, alignSelf: "auto" }} data-lens-btn="soft" data-mo-again="" onClick={() => { vibrate("light"); load(); }}>{st.again ? "Обновляю…" : "Обновить"}</button> : null}
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Собираю утро…</div> : null}
         {st.phase === "missing" ? (
-          <div style={card} data-mo-missing="">
+          <div style={card} data-lens-card="" data-mo-missing="">
             {row("stage", "warn", "Нужен этап 40 на сервере", { first: true, icon: "server", sub: profile && profile.is_admin
               ? "Supabase → SQL Editor → New query → вставь supabase-stage40-morning.sql → Run. После этого здесь будет сводка, а бот начнёт присылать её по утрам."
               : "Сводка появится, когда владелец обновит сервер (этап 40).",
-              act: profile && profile.is_admin ? <button type="button" style={ghost} onClick={() => openOut(REPO + "supabase-stage40-morning.sql")}>Файл</button> : null })}
+              act: profile && profile.is_admin ? <button type="button" style={ghost} data-lens-btn="soft" onClick={() => openOut(REPO + "supabase-stage40-morning.sql")}>Файл</button> : null })}
           </div>) : null}
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
-          <div><button type="button" style={{ ...ghost, marginTop: 10 }} onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
+          <div><button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
         {st.phase === "ready" && b ? (<>
           <div style={{ margin: "0 2px 14px" }} data-mo-hello="">
             <div style={{ fontFamily: "'Piazzolla', Georgia, serif", fontWeight: 700, fontSize: 21, color: text, lineHeight: 1.25 }}>Доброе утро{first ? ", " + first : ""}</div>
@@ -141,7 +142,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
           </div>
 
           {h("Сегодня", b.sched && b.count ? "в смене " + b.count : null, "today")}
-          <div style={card} data-mo-sec="today">
+          <div style={card} data-lens-card="" data-mo-sec="today">
             {!b.sched ? row("nosched", "info", "Графика пока нет", { first: true, icon: "calendar", sub: "Составь его в «Графике», и здесь будет видно, кто сегодня в смене.", go: () => onGo("schedule") }) : null}
             {b.sched && !b.shifts.length ? row("noshift", "info", "По графику сегодня смен нет", { first: true, icon: "calendar", go: () => onGo("schedule") }) : null}
             {b.shifts.map((g, i) => row("sh-" + g.k, "info", g.people.map((p) => p.n).join(", "), { first: i === 0, icon: shiftIcon(g.from), sub: g.name + " · " + hh(g.from) + "–" + hh(g.to), go: () => onGo("schedule") }))}
@@ -149,12 +150,12 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
             {holesText(b, b.day) ? row("hole-today", "warn", "Не хватает " + holesText(b, b.day), { icon: "userPlus", sub: "Найди замену в «Графике» или позови в чате", go: () => onGo("schedule") }) : null}
             {b.brief.done ? row("brief", "ok", "Брифинг отправлен" + (b.brief.at ? " в " + b.brief.at : ""), { icon: "brief", go: () => onGo("brief") })
               : row("brief", "warn", "Брифинг на сегодня ещё не собран", { icon: "brief", sub: "Стоп-лист, акценты дня, брони: соберёшь за пару минут, команда получит в Telegram.",
-                extra: <button type="button" style={main} data-mo-brief="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onGo("brief"); }}>Собрать брифинг</button> })}
+                extra: <button type="button" style={main} data-lens-btn="main" data-mo-brief="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onGo("brief"); }}>Собрать брифинг</button> })}
           </div>
 
           {b.sched || b.open.length ? (<>
             {h("На неделе", null, "week")}
-            <div style={card} data-mo-sec="week">
+            <div style={card} data-lens-card="" data-mo-sec="week">
               {weekHoleDays(b).map((d, i) => row("hole-" + d, "warn", "Не хватает " + holesText(b, d), { first: i === 0, icon: "userPlus", sub: upFirst(dLong(d)), go: () => onGo("schedule") }))}
               {b.open.map((o, i) => row("open-" + (o.id || i), "warn",
                 o.mode === "give" ? o.who + " отдаёт смену" : o.mode === "swap" ? o.who + " ищет обмен" : "Ищем в смену " + posAcc(o.pos, o.n),
@@ -164,7 +165,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
           </>) : null}
 
           {h("Стоп-лист", b.stop.n || null, "stop")}
-          <div style={card} data-mo-sec="stop">
+          <div style={card} data-lens-card="" data-mo-sec="stop">
             {b.stop.n ? row("stop", "info", b.stop.names.join(", ") + (b.stop.n > b.stop.names.length ? " и ещё " + (b.stop.n - b.stop.names.length) : ""), { first: true, icon: "stop", go: () => onGo("menu") })
               : row("stop", "ok", "Стоп-лист пуст", { first: true, icon: "stop" })}
           </div>
@@ -182,16 +183,16 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
               rows.push(row("cl-" + k, done ? "ok" : "warn", t + ": " + (done ? String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0") + (x.log.by_name ? " · " + x.log.by_name : "")
                 : ch ? "отмечено " + ch + " из " + x.total : "не отмечено"), { first: !rows.length, icon: "checklist", go: () => onGo("checklist") }));
             });
-            return rows.length ? (<>{h("Вчера", null, "yday")}<div style={card} data-mo-sec="yday">{rows}</div></>) : null;
+            return rows.length ? (<>{h("Вчера", null, "yday")}<div style={card} data-lens-card="" data-mo-sec="yday">{rows}</div></>) : null;
           })()}
 
           {b.idle.list.length ? (<>
             {h("Давно не занимались", null, "idle")}
-            <div style={card} data-mo-sec="idle">
+            <div style={card} data-lens-card="" data-mo-sec="idle">
               {b.idle.list.map((x, i) => {
                 const s = nudged[x.id];
                 const act = !x.tg ? <span style={{ flex: "0 0 auto", alignSelf: "center", fontSize: 12, color: sub, fontStyle: "italic" }}>нет Telegram</span>
-                  : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-mo-nudge={x.id} disabled={!!s && s !== "fail"}
+                  : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-lens-btn="soft" data-mo-nudge={x.id} disabled={!!s && s !== "fail"}
                       onClick={(e) => { e.stopPropagation(); nudge(x.id); }}>{s === "sent" ? "Напомнили" : s === "already" ? "Уже сегодня" : s === "busy" ? "Минуту…" : s === "fail" ? "Ещё раз" : "Напомнить"}</button>;
                 return row("idle-" + x.id, "warn", x.n, { first: i === 0, icon: "person", sub: x.days == null ? "Ещё ни разу не занимались" : daysText(x.days) + " без занятий", act });
               })}
@@ -200,7 +201,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
           </>) : null}
 
           {h("Каждое утро в Telegram", null, "tg")}
-          <div style={card} data-mo-sec="tg">
+          <div style={card} data-lens-card="" data-mo-sec="tg">
             {prefs ? (<>
               <button type="button" role="switch" aria-checked={!!prefs.on} data-mo-on={prefs.on ? "1" : "0"} disabled={busy === "prefs"} onClick={() => savePrefs(!prefs.on, null)}
                 style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 0", border: 0, background: "none", cursor: "pointer", color: text }}>
@@ -221,8 +222,8 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
                 </div>) : null}
               {!prefs.bot ? row("nobot", "warn", "Бот на сервере не подключён", { icon: "plane", sub: "Пока сводка только здесь. Подключает владелец: «Команда» → «Сервер»." })
                 : !prefs.linked ? row("nolink", "warn", "Telegram не подключён", { icon: "plane", sub: "Включи «Напоминания в Telegram», и сводка начнёт приходить каждое утро.",
-                    act: onRemind ? <button type="button" style={ghost} data-mo-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })
-                : <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginTop: 2 }} data-mo-send="" disabled={busy === "send"} onClick={sendNow}>{busy === "send" ? "Отправляю…" : "Прислать сейчас"}</button>}
+                    act: onRemind ? <button type="button" style={ghost} data-lens-btn="soft" data-mo-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })
+                : <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginTop: 2 }} data-lens-btn="soft" data-mo-send="" disabled={busy === "send"} onClick={sendNow}>{busy === "send" ? "Отправляю…" : "Прислать сейчас"}</button>}
             </>) : row("prefs", "info", "Настройки появятся вместе с этапом 40 на сервере", { first: true, icon: "server" })}
             {note ? <div role="status" data-mo-note="" style={{ fontSize: 12.5, color: text, lineHeight: 1.5, marginTop: 8 }}>{note}</div> : null}
           </div>

@@ -129,7 +129,7 @@ describe("v40: баннер «✦ МАСТЕР РОЛИ»", () => {
   it("вчера: «Анна Смирнова стала мастером роли «Ядро»», «вчера», «Путь мастера ›»; кнопка-карточка", async () => {
     const { MastersBanner } = await import("../ui/home-hubs");
     const html = R(h(MastersBanner, { a11y: false, rows: [ROWS[0]], onOpen: noop }));
-    expect(html).toMatch(/^<div class="sa-card sa-pagein" data-ms-banner="" role="button" tabindex="0"/);
+    expect(html).toMatch(/^<div class="sa-card sa-pagein" data-ms-banner="" (data-lens-card="" )?role="button" tabindex="0"/);   // v111: карточка — стекло со светом в виде «Линза»
     expect(html).toContain(">Мастер роли<");   // v73: курсивом, без ✦ и капса
     expect(html).toContain(">Анна Смирнова стала мастером роли «Ядро»<");
     expect(html).toContain(">вчера<");

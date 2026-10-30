@@ -3,6 +3,8 @@
 // месяцем (сервер — этап 43, gain_month; разбор и слова — lib/gain.js). Месяц — текущий («пока», с теми же днями прошлого) или
 // прошлый. Темы — уроки, по которым сдавали тесты (названия — из уроков приложения и своих уроков заведения). Кто вырос
 // больше всех и кто не занимался ни разу («Напомнить» — morning_nudge, этап 40). «Прислать в Telegram» — gain_send_now.
+// v111 (Доп. 424): в виде «Линза» карточки, кружки с инициалами, кнопки и выбор месяца — линзой (метки data-lens-*, правила —
+// ui/home-look.jsx): выбранный месяц — стеклянная плашка с кольцом.
 import React from "react";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { vibrate } from "../lib/utils";
@@ -31,7 +33,7 @@ const errText = (r) => (r && r.error === "auth" ? "Сессия устарела
 // v110 (Доп. 423): кружок с инициалами у «Больше всех выросли» и «Не занимались» (как в «Новичках»)
 const ini = (name) => String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
 const Ava = ({ name, size = 32 }) => (
-  <span aria-hidden="true" style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
+  <span aria-hidden="true" data-lens="person" style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
     background: "linear-gradient(135deg,#C8A96E,#7A5D2A)", color: "#fff", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 12 }}>{ini(name)}</span>);
 
 /** month — открыть этот месяц («ГГГГ-ММ», из кнопки бота); onGo("report") — «Отчёты по сотрудникам»; onRemind — подключить Telegram. */
@@ -125,19 +127,19 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Собираю итог месяца…</div> : null}
         {st.phase === "missing" ? (
-          <div style={card} data-gain-missing="">
+          <div style={card} data-lens-card="" data-gain-missing="">
             {row("stage", "Нужен этап 43 на сервере", { first: true, sub: profile && profile.is_admin
               ? "Supabase → SQL Editor → New query → вставь supabase-stage43-gain.sql → Run. После этого здесь будет итог месяца, а 1-го числа его пришлёт бот."
               : "Итог появится, когда владелец обновит сервер (этап 43).",
-              act: profile && profile.is_admin ? <button type="button" style={ghost} onClick={() => openOut(REPO + "supabase-stage43-gain.sql")}>Файл</button> : null })}
+              act: profile && profile.is_admin ? <button type="button" style={ghost} data-lens-btn="soft" onClick={() => openOut(REPO + "supabase-stage43-gain.sql")}>Файл</button> : null })}
           </div>) : null}
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
-          <div><button type="button" style={{ ...ghost, marginTop: 10 }} onClick={() => { vibrate("light"); load(month); }}>Ещё раз</button></div></div> : null}
+          <div><button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" onClick={() => { vibrate("light"); load(month); }}>Ещё раз</button></div></div> : null}
         {st.phase === "ready" && m ? (<>
           {m.months.length > 1 ? (
             <div role="group" aria-label="Месяц" style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "0 2px 10px" }}>
               {m.months.map((x, i) => { const sel = x === m.month;
-                return <button key={x} type="button" aria-pressed={sel} data-gain-month={x} onClick={() => pick(x)} disabled={!!st.again && !sel}
+                return <button key={x} type="button" aria-pressed={sel} data-lens-btn={sel ? "main" : "soft"} data-gain-month={x} onClick={() => pick(x)} disabled={!!st.again && !sel}
                   style={{ padding: "7px 14px", borderRadius: 999, border: "1px solid " + (sel ? c.gold : c.line), background: sel ? c.soft : "transparent",
                     color: sel ? text : sub, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer" }}>{monthNom(x) + (i === 0 ? " пока" : "")}</button>; })}
             </div>) : null}
@@ -152,7 +154,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
             </div>) : null}
 
           {h("Чему учились", null, "learn")}
-          <div style={{ ...card, padding: "12px 10px" }} data-gain-sec="learn">
+          <div style={{ ...card, padding: "12px 10px" }} data-lens-card="" data-gain-sec="learn">
             <div style={{ display: "flex", textAlign: "center" }}>
               {lr.map((x) => (
                 <div key={x.key} data-gain-stat={x.key} style={{ flex: 1, minWidth: 0, padding: "0 4px" }}>
@@ -168,32 +170,32 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
           </div>
 
           {h("Что изменилось в зале", null, "hall")}
-          <div style={card} data-gain-sec="hall">
+          <div style={card} data-lens-card="" data-gain-sec="hall">
             {hr.length ? hr.map((x, i) => row(x.key, x.label, { first: i === 0, value: x.text, sub: was(x), vsub: delta(x, { "data-gain-delta": x.key }), attrs: { "data-gain-good": x.good == null ? "" : x.good ? "1" : "0" } }))
               : row("none", "Пока сравнивать нечего", { first: true, sub: "Здесь будут «спасибо» гостей и коллег, ошибки в тестах и самостоятельные смены новичков." })}
           </div>
 
           {topics.length ? (<>
             {h("Темы месяца", m.topicsN ? m.topicsN + " " + plural(m.topicsN, "тема", "темы", "тем") : null, "topics")}
-            <div style={card} data-gain-sec="topics">
+            <div style={card} data-lens-card="" data-gain-sec="topics">
               {topics.map((t, i) => row("t-" + t.id, t.title, { first: i === 0, sub: topicLine(t), attrs: { "data-gain-topic": t.id } }))}
             </div>
           </>) : null}
 
           {m.grew.length ? (<>
             {h("Больше всех выросли", null, "grew")}
-            <div style={card} data-gain-sec="grew">
+            <div style={card} data-lens-card="" data-gain-sec="grew">
               {m.grew.map((g, i) => row("g-" + g.id, g.n, { first: i === 0, sub: grewWhy(g), ava: g.n, attrs: { "data-gain-grew": g.id } }))}
             </div>
           </>) : null}
 
           {m.idle.length ? (<>
             {h("Не занимались в " + monthPrep(m.month), m.idle.length + m.idleMore, "idle")}
-            <div style={card} data-gain-sec="idle">
+            <div style={card} data-lens-card="" data-gain-sec="idle">
               {m.idle.map((x, i) => {
                 const s = nudged[x.id];
                 const act = s === "no_tg" ? <span style={{ flex: "0 0 auto", fontSize: 12, color: sub, fontStyle: "italic" }}>нет Telegram</span>
-                  : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-gain-nudge={x.id} disabled={!!s && s !== "fail"}
+                  : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-lens-btn="soft" data-gain-nudge={x.id} disabled={!!s && s !== "fail"}
                       onClick={(e) => { e.stopPropagation(); nudge(x.id); }}>{s === "sent" ? "Напомнили" : s === "already" ? "Уже сегодня" : s === "busy" ? "Минуту…" : s === "fail" ? "Ещё раз" : "Напомнить"}</button>;
                 return row("i-" + x.id, x.n, { first: i === 0, act, ava: x.n, attrs: { "data-gain-idle": x.id } });
               })}
@@ -202,14 +204,14 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
           </>) : null}
 
           {h("1-го числа в Telegram", null, "tg")}
-          <div style={card} data-gain-sec="tg">
+          <div style={card} data-lens-card="" data-gain-sec="tg">
             {!st.tg ? row("tg", "Итог прошлого месяца бот присылает 1-го числа", { first: true })
               : !st.tg.bot ? row("nobot", "Бот на сервере не подключён", { first: true, sub: "Итог пока только здесь. Подключает владелец: «Команда» → «Сервер»." })
               : !st.tg.linked ? row("nolink", "Telegram не подключён", { first: true, sub: "Включи «Напоминания в Telegram», и 1-го числа итог прошлого месяца придёт туда.",
-                  act: onRemind ? <button type="button" style={ghost} data-gain-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })
+                  act: onRemind ? <button type="button" style={ghost} data-lens-btn="soft" data-gain-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })
               : (<>
                 {row("tg", "Итог прошлого месяца бот присылает 1-го числа в 10:00", { first: true, sub: "С кнопкой «Открыть итог»: она ведёт сюда." })}
-                <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginTop: 4 }} data-gain-send="" disabled={busy} onClick={send}>
+                <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginTop: 4 }} data-lens-btn="soft" data-gain-send="" disabled={busy} onClick={send}>
                   {busy ? "Отправляю…" : "Прислать этот итог в Telegram"}</button>
               </>)}
             {note ? <div role="status" data-gain-note="" style={{ fontSize: 12.5, color: text, lineHeight: 1.5, marginTop: 8 }}>{note}</div> : null}

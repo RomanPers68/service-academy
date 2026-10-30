@@ -2,6 +2,8 @@
 // как найти, форма, кто встретит), наставник, план по дням, первыми — темы с собеседования (урок открывается сразу).
 // NewbiesScreen — «Новички»: у руководителя все новички заведения (наставник, собеседование, «Представить команде»,
 // подтверждения, памятка), у наставника — свои. Сервер — этап 41 (newbie_me, newbie_list, …), слова — lib/newbie.js.
+// v111 (Доп. 424): в виде «Линза» карточки, кружки с инициалами, кнопки, поля и «закрыть» листа — линзой (метки
+// data-lens-*, правила — ui/home-look.jsx); галочки шагов, плашки тем, выбор минут и полоски — прежние.
 import React from "react";
 import { createPortal } from "react-dom";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
@@ -34,7 +36,7 @@ function Check({ on, c, size = 23 }) {
     </span>);
 }
 const Ava = ({ name, c, size = 40 }) => (
-  <span aria-hidden="true" style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
+  <span aria-hidden="true" data-lens="person" style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
     background: "linear-gradient(135deg,#C8A96E,#7A5D2A)", color: "#fff", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: size > 34 ? 14 : 12 }}>{ini(name)}</span>);
 function Bar({ done, total, c }) {
   const p = total ? Math.round((done / total) * 100) : 0;
@@ -54,7 +56,7 @@ function Sheet({ a11y, title, onClose, children, mark }) {
           boxShadow: "0 -10px 40px rgba(0,0,0,0.35)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
           <h3 style={{ flex: 1, margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 19, color: text }}>{title}</h3>
-          <button type="button" className="sa-btn" data-sa-back="" aria-label="Закрыть" onClick={onClose}
+          <button type="button" className="sa-btn" data-sa-back="" data-lens="disc" data-nb-x="" aria-label="Закрыть" onClick={onClose}
             style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "none", color: c.gold, cursor: "pointer", fontSize: 22, lineHeight: 1 }}>×</button>
         </div>
         {children}
@@ -147,10 +149,10 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Собираю твою неделю…</div> : null}
-        {st.phase === "missing" ? <div style={card} data-nb-missing="">{serverMissing({ what: "«Первая неделя»", admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
-        {st.phase === "notnew" ? <div style={card} data-nb-notnew="">«Первая неделя» открыта новичкам. Если ты только пришёл в команду, скажи руководителю: он добавит тебя в «Новички».</div> : null}
+        {st.phase === "missing" ? <div style={card} data-lens-card="" data-nb-missing="">{serverMissing({ what: "«Первая неделя»", admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
+        {st.phase === "notnew" ? <div style={card} data-lens-card="" data-nb-notnew="">«Первая неделя» открыта новичкам. Если ты только пришёл в команду, скажи руководителю: он добавит тебя в «Новички».</div> : null}
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
-          <div><button type="button" style={{ ...ghost, marginTop: 10 }} onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
+          <div><button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
         {st.phase === "ready" && nb ? (<>
           <div style={{ margin: "0 2px 14px" }} data-nb-hello="">
             <div style={{ fontFamily: "'Piazzolla', Georgia, serif", fontWeight: 700, fontSize: 21, color: text, lineHeight: 1.25 }}>{"Добро пожаловать" + (me ? ", " + me : "")}</div>
@@ -159,7 +161,7 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
 
           {nb.first && dayDiff(nb.day, nb.first.day) >= 0 ? (<>
             {h("Первая смена", null, "first")}
-            <div style={card} data-nb-sec="first">
+            <div style={card} data-lens-card="" data-nb-sec="first">
               <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: "bold", color: text }} data-nb-first={nb.first.day}>{upFirst(whenWord(nb.first.day, nb.day))}, {shiftLabel(nb.first)}</div>
               <div style={{ fontSize: 12.5, color: sub, margin: "2px 0 8px" }}>{upFirst(dLong(nb.first.day))}</div>
               {line("arrive", "Приходи к", <b>{arriveAt(nb.first.from, nb.memo.arrive)}</b>)}
@@ -172,7 +174,7 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
           </>) : null}
 
           {h("Наставник", null, "buddy")}
-          <div style={card} data-nb-sec="buddy">
+          <div style={card} data-lens-card="" data-nb-sec="buddy">
             {nb.buddy ? (
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Ava name={nb.buddy.name} c={c} />
@@ -180,17 +182,17 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: text }} data-nb-buddy={nb.buddy.id}>{nb.buddy.name}</div>
                   <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.4 }}>{[upFirst(posWord(nb.buddy.pos)), "покажет, где что, и подтвердит шаги плана"].filter(Boolean).join(" · ")}</div>
                 </div>
-                {onDm ? <button type="button" style={ghost} data-nb-dm={nb.buddy.id} onClick={() => { vibrate("light"); onDm({ id: nb.buddy.id, name: nb.buddy.name }); }}>Написать</button> : null}
+                {onDm ? <button type="button" style={ghost} data-lens-btn="soft" data-nb-dm={nb.buddy.id} onClick={() => { vibrate("light"); onDm({ id: nb.buddy.id, name: nb.buddy.name }); }}>Написать</button> : null}
               </div>
             ) : <div style={{ fontSize: 14, color: sub, lineHeight: 1.45 }} data-nb-nobuddy="">Наставника назначит руководитель. Пока с вопросами подходи к менеджеру смены.</div>}
             {!nb.first ? <div style={{ fontSize: 12.5, color: sub, marginTop: 8 }}>{firstLine(nb)}</div> : nb.first && dayDiff(nb.day, nb.first.day) < 0 ? <div style={{ fontSize: 12.5, color: sub, marginTop: 8 }}>{firstLine(nb)}</div> : null}
           </div>
 
           {nb.solo ? (
-            <div style={{ ...card, border: "1px solid " + c.ok }} data-nb-solo="">
+            <div style={{ ...card, border: "1px solid " + c.ok }} data-lens-card="ok" data-nb-solo="">
               <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: c.ok }}>{"Ты " + (female ? "вышла" : "вышел") + " на самостоятельную смену"}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 3 }}>{dayMon(String(nb.solo.at).slice(0, 10))}{nb.solo.name ? " · " + (isFemaleName(...String(nb.solo.name).split(" ")) ? "подтвердила " : "подтвердил ") + nm(nb.solo.name) : ""}</div>
-              {onChat ? <button type="button" style={{ ...ghost, marginTop: 8 }} data-nb-chat="" onClick={() => { vibrate("light"); onChat(); }}>Открыть «Вся команда»</button> : null}
+              {onChat ? <button type="button" style={{ ...ghost, marginTop: 8 }} data-lens-btn="soft" data-nb-chat="" onClick={() => { vibrate("light"); onChat(); }}>Открыть «Вся команда»</button> : null}
             </div>) : null}
 
           {h("План недели", "сделано " + plan.done + " из " + plan.total, "plan")}
@@ -201,10 +203,10 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
             <div key={sec.key} style={{ marginBottom: 4 }} data-nb-sec={sec.key} data-nb-now={now ? "1" : "0"}>
               <div data-nb-sec-h={sec.key} style={{ ...labelStyle(13.5), color: c.gold, margin: "4px 2px 8px", display: "flex", gap: 8, alignItems: "baseline" }}>
                 <span style={{ flex: 1 }}>{upFirst(String(sec.title).toLowerCase())}</span>
-                {now ? <span style={{ fontStyle: "normal", fontSize: 11.5, padding: "1px 9px", borderRadius: 999, background: c.soft, color: text }}>сейчас</span> : null}
+                {now ? <span data-lens-tag="" style={{ fontStyle: "normal", fontSize: 11.5, padding: "1px 9px", borderRadius: 999, background: c.soft, color: text }}>сейчас</span> : null}
               </div>
               {sec.key === "focus" ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, margin: "-2px 2px 8px" }}>На собеседовании эти темы дались труднее всего. Начни с них.</div> : null}
-              <div style={{ ...card, padding: "2px 14px", ...(now ? { border: "1px solid " + c.gold } : {}) }}>
+              <div style={{ ...card, padding: "2px 14px", ...(now ? { border: "1px solid " + c.gold } : {}) }} data-lens-card={now ? "hi" : ""}>
               {sec.steps.map((s, i) => {
                 const can = !s.buddy && !s.auto;
                 const subLine = s.buddy ? (s.conf ? "Подтверждено: " + nm(s.conf.name) + ", " + dayMon(String(s.conf.at).slice(0, 10)) : "Подтверждает наставник") : s.sub || "";
@@ -217,16 +219,16 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
                       <div style={{ color: s.done ? sub : text, fontSize: 14, lineHeight: 1.4, textDecoration: s.done && !s.module ? "line-through" : "none" }}>{s.text}</div>
                       {subLine ? <div style={{ fontSize: 12, color: s.buddy && s.conf ? c.ok : sub, marginTop: 2, lineHeight: 1.4 }}>{subLine}</div> : null}
                     </div>
-                    {s.module ? <button type="button" style={ghost} data-nb-open={s.module} onClick={(e) => { e.stopPropagation(); vibrate("light"); onOpenModule(s.module); }}>{s.done ? "Повторить" : "Открыть"}</button> : null}
+                    {s.module ? <button type="button" style={ghost} data-lens-btn="soft" data-nb-open={s.module} onClick={(e) => { e.stopPropagation(); vibrate("light"); onOpenModule(s.module); }}>{s.done ? "Повторить" : "Открыть"}</button> : null}
                   </div>);
               })}
               </div>
             </div>); })}
 
           {nb.hello ? (
-            <div style={card} data-nb-team="">
+            <div style={card} data-lens-card="" data-nb-team="">
               <div style={{ fontSize: 14, color: text, lineHeight: 1.45 }}>{"Тебя представили в «Вся команда»" + (nb.hello.n ? ": поздоровались " + nb.hello.n : "")}</div>
-              {onChat ? <button type="button" style={{ ...ghost, marginTop: 8 }} data-nb-chat="" onClick={() => { vibrate("light"); onChat(nb.hello.msg); }}>Открыть чат</button> : null}
+              {onChat ? <button type="button" style={{ ...ghost, marginTop: 8 }} data-lens-btn="soft" data-nb-chat="" onClick={() => { vibrate("light"); onChat(nb.hello.msg); }}>Открыть чат</button> : null}
             </div>) : null}
         </>) : null}
       </div>
@@ -243,9 +245,9 @@ function MemoSheet({ a11y, memo, onClose, onSaved }) {
     <label style={{ display: "block", marginTop: 10 }}>
       <span style={{ display: "block", fontSize: 12.5, color: sub, marginBottom: 4 }}>{label}</span>
       {rows > 1
-        ? <textarea className="sa-field" data-nb-memo={k} rows={rows} maxLength={NB_MEMO_MAX[k]} value={m[k]} placeholder={ph} onChange={(e) => setM({ ...m, [k]: e.target.value })}
+        ? <textarea className="sa-field" data-lens-field="" data-nb-memo={k} rows={rows} maxLength={NB_MEMO_MAX[k]} value={m[k]} placeholder={ph} onChange={(e) => setM({ ...m, [k]: e.target.value })}
             style={{ width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 12, border: "1px solid " + c.line, background: "transparent", color: text, fontFamily: "Georgia, serif", fontSize: 14, resize: "vertical" }} />
-        : <input className="sa-field" data-nb-memo={k} maxLength={NB_MEMO_MAX[k]} value={m[k]} placeholder={ph} onChange={(e) => setM({ ...m, [k]: e.target.value })}
+        : <input className="sa-field" data-lens-field="" data-nb-memo={k} maxLength={NB_MEMO_MAX[k]} value={m[k]} placeholder={ph} onChange={(e) => setM({ ...m, [k]: e.target.value })}
             style={{ width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 12, border: "1px solid " + c.line, background: "transparent", color: text, fontFamily: "Georgia, serif", fontSize: 14 }} />}
     </label>);
   const save = () => {
@@ -273,7 +275,7 @@ function MemoSheet({ a11y, memo, onClose, onSaved }) {
       {fld("meet", "Кто встретит, если наставника ещё нет", "Менеджер смены")}
       {fld("extra", "Ещё", "Обед для команды в 15:30, шкафчик выдаст менеджер", 3)}
       {err ? <p role="alert" style={{ margin: "10px 0 0", fontSize: 13, color: c.bad }}>{err}</p> : null}
-      <button type="button" data-nb-memo-save="" disabled={busy} onClick={save}
+      <button type="button" data-lens-btn="main" data-nb-memo-save="" disabled={busy} onClick={save}
         style={{ display: "block", width: "100%", marginTop: 14, padding: 13, borderRadius: 999, border: 0, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: "#1A1008", background: "linear-gradient(180deg,#E4C88C,#C8A96E)" }}>
         {busy ? "Сохраняю…" : "Сохранить"}</button>
     </Sheet>);
@@ -292,7 +294,7 @@ function PickSheet({ a11y, title, mark, rows: all, onPick, onClose, note = "" })
   return (
     <Sheet a11y={a11y} title={title} onClose={onClose} mark={mark}>
       {note ? <p style={{ margin: "0 0 8px", fontSize: 13, color: sub, lineHeight: 1.5 }}>{note}</p> : null}
-      {many ? <input className="sa-field" type="search" data-nb-search="" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени"
+      {many ? <input className="sa-field" type="search" data-lens-field="" data-nb-search="" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени"
         style={{ width: "100%", boxSizing: "border-box", margin: "2px 0 8px", padding: "10px 14px", borderRadius: 14, border: "1px solid " + c.line, background: c.chip, color: text, fontFamily: "Georgia, serif", fontSize: 14.5 }} /> : null}
       {rows.length ? rows.map((r) => (
         <button key={r.key} type="button" data-nb-pick={r.key} onClick={() => { vibrate("light"); onPick(r); }}
@@ -347,13 +349,13 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
     const rest = [m.addr, m.dress, "встретит наставник или " + (m.meet || "менеджер смены"), m.extra].filter(Boolean).join(" · ");
     return (<>
       {h("Памятка новичку", null, "memo")}
-      <div style={card} data-nbl-memo="">
+      <div style={card} data-lens-card="" data-nbl-memo="">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, color: text, lineHeight: 1.4 }} data-nbl-memo-arrive="">{"Приходить " + (m.arrive ? "за " + m.arrive + " минут до смены" : "к началу смены")}</div>
             <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }} data-nbl-memo-rest="">{rest}</div>
           </div>
-          <button type="button" style={ghost} data-nbl-memo-edit="" onClick={() => { vibrate("light"); setSheet("memo"); }}>Изменить</button>
+          <button type="button" style={ghost} data-lens-btn="soft" data-nbl-memo-edit="" onClick={() => { vibrate("light"); setSheet("memo"); }}>Изменить</button>
         </div>
       </div>
     </>);
@@ -365,7 +367,7 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
     const confBtn = (step, label) => {
       const cf = conf(step);
       return line("cf-" + step, "", <>{label}<div style={{ fontSize: 12, color: cf ? c.ok : sub, marginTop: 2 }}>{cf ? "Подтверждено: " + nm(cf.name) + ", " + dayMon(String(cf.at).slice(0, 10)) : "Ещё не подтверждено"}</div></>,
-        <button type="button" style={cf ? ghost : { ...ghost, border: "1px solid " + c.gold, color: text }} data-nbl-confirm={step} data-nbl-emp={n.emp} disabled={!!busy}
+        <button type="button" style={cf ? ghost : { ...ghost, border: "1px solid " + c.gold, color: text }} data-lens-btn="soft" data-lens-hi={cf ? undefined : ""} data-nbl-confirm={step} data-nbl-emp={n.emp} disabled={!!busy}
           onClick={() => act(n.emp, "newbie_confirm", { p_emp: n.emp, p_step: step, p_on: !cf })}>{cf ? "Снять" : "Подтвердить"}</button>);
     };
     // v110: темы с собеседования — плашками «конфликты и сложные ситуации 45 из 100» (было «…45, честность и деньги 62»)
@@ -373,7 +375,7 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
       : n.noCand ? "Без собеседования" : "Собеседование не найдено") : null;
     const chip = { display: "inline-block", padding: "2px 9px", borderRadius: 999, border: "1px solid " + c.line, background: c.chip, fontSize: 12, color: text, lineHeight: 1.6, margin: "4px 2px 0 0" };
     return (
-      <div key={n.emp} style={{ ...card, padding: 0 }} data-nbl-item={n.emp}>
+      <div key={n.emp} style={{ ...card, padding: 0 }} data-lens-card="" data-nbl-item={n.emp}>
         <div role="button" tabIndex={0} aria-expanded={isOpen} onClick={() => { vibrate("light"); setOpen(isOpen ? null : n.emp); setSure(""); }}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(isOpen ? null : n.emp); } }}
           style={{ padding: "12px 14px", cursor: "pointer" }}>
@@ -404,17 +406,17 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
         {isOpen ? (
           <div style={{ padding: "0 14px 12px" }} data-nbl-open={n.emp}>
             {lead ? line("buddy", "Наставник:", n.buddy ? n.buddy.name : <span style={{ color: c.warn }}>не назначен</span>,
-              <button type="button" style={ghost} data-nbl-buddy={n.emp} onClick={() => { vibrate("light"); setSheet({ buddy: n.emp }); }}>{n.buddy ? "Сменить" : "Назначить"}</button>) : null}
+              <button type="button" style={ghost} data-lens-btn="soft" data-nbl-buddy={n.emp} onClick={() => { vibrate("light"); setSheet({ buddy: n.emp }); }}>{n.buddy ? "Сменить" : "Назначить"}</button>) : null}
             {lead ? line("cand", "Собеседование:", n.cand ? (n.cand.name && n.cand.name !== n.name ? n.cand.name + ", " : "") + dayMon(n.cand.date) : n.noCand ? "нет" : "не найдено",
-              <button type="button" style={ghost} data-nbl-cand={n.emp} onClick={() => { vibrate("light"); setSheet({ cand: n.emp }); }}>{n.cand || n.noCand ? "Сменить" : "Выбрать"}</button>) : null}
+              <button type="button" style={ghost} data-lens-btn="soft" data-nbl-cand={n.emp} onClick={() => { vibrate("light"); setSheet({ cand: n.emp }); }}>{n.cand || n.noCand ? "Сменить" : "Выбрать"}</button>) : null}
             {!lead && n.first && dayDiff(n.day, n.first.day) >= 0 ? line("arrive", "", "Встретить к " + arriveAt(n.first.from, n.memo.arrive) + ", " + whenWord(n.first.day, n.day)) : null}
             {n.focus.length && !lead ? line("focus", "Темы для занятий:", focusLine(n.focus, false)) : null}
             {confBtn("d2c", "5 столов под присмотром наставника")}
             {confBtn("d3b", "Первая самостоятельная смена")}
-            {lead && !n.hello ? <button type="button" style={main} data-nbl-hello={n.emp} disabled={!!busy}
+            {lead && !n.hello ? <button type="button" style={main} data-lens-btn="main" data-nbl-hello={n.emp} disabled={!!busy}
               onClick={() => act(n.emp, "newbie_set", { p_emp: n.emp, p_hello: true }, () => setNote((x) => ({ ...x, [n.emp]: "Карточка «Знакомьтесь» в «Вся команда»" })))}>Представить команде</button> : null}
-            {lead && n.hello && onChat ? <button type="button" style={{ ...ghost, marginTop: 10 }} data-nbl-chat="" onClick={() => { vibrate("light"); onChat(); }}>Открыть «Вся команда»</button> : null}
-            {!lead && onDm ? <button type="button" style={{ ...ghost, marginTop: 10 }} data-nbl-dm={n.emp} onClick={() => { vibrate("light"); onDm({ id: n.emp, name: n.name }); }}>{"Написать: " + firstName(n.name)}</button> : null}
+            {lead && n.hello && onChat ? <button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" data-nbl-chat="" onClick={() => { vibrate("light"); onChat(); }}>Открыть «Вся команда»</button> : null}
+            {!lead && onDm ? <button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" data-nbl-dm={n.emp} onClick={() => { vibrate("light"); onDm({ id: n.emp, name: n.name }); }}>{"Написать: " + firstName(n.name)}</button> : null}
             {note[n.emp] ? <div role="status" style={{ fontSize: 12.5, color: text, marginTop: 8 }} data-nbl-note="">{note[n.emp]}</div> : null}
             {lead ? <button type="button" data-nbl-off={n.emp} disabled={!!busy}
               onClick={() => { if (sure !== n.emp) { vibrate("light"); setSure(n.emp); return; } setSure(""); act(n.emp, "newbie_add", { p_emp: n.emp, p_on: false }, () => setSt((x) => ({ ...x, list: x.list.filter((y) => y.emp !== n.emp) }))); }}
@@ -433,18 +435,18 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Загружаю…</div> : null}
-        {st.phase === "missing" ? <div style={card} data-nbl-missing="">{serverMissing({ what: "«Новички»", many: true, admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
+        {st.phase === "missing" ? <div style={card} data-lens-card="" data-nbl-missing="">{serverMissing({ what: "«Новички»", many: true, admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
-          <div><button type="button" style={{ ...ghost, marginTop: 10 }} onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
+          <div><button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
         {st.phase === "ready" ? (<>
           {/* v110 (Доп. 423): сначала новички (раньше их закрывала памятка), под ними «Добавить», выведенные и памятка */}
           {h(lead ? "Новички" : "Ты наставник", list.length || null, "list")}
           {list.length ? list.map(item) : (
-            <div style={card} data-nbl-empty="">{lead ? "Сейчас новичков нет. Новый сотрудник появится здесь сам, когда владелец заведёт его в «Сотрудниках»." : "Сейчас ты никого не ведёшь. Наставника назначает руководитель в «Новичках»."}</div>)}
-          {lead ? <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginBottom: 16 }} data-nbl-add="" onClick={() => { vibrate("light"); setSheet("add"); }}>Добавить новичка из команды</button> : null}
+            <div style={card} data-lens-card="" data-nbl-empty="">{lead ? "Сейчас новичков нет. Новый сотрудник появится здесь сам, когда владелец заведёт его в «Сотрудниках»." : "Сейчас ты никого не ведёшь. Наставника назначает руководитель в «Новичках»."}</div>)}
+          {lead ? <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginBottom: 16 }} data-lens-btn="main" data-nbl-add="" onClick={() => { vibrate("light"); setSheet("add"); }}>Добавить новичка из команды</button> : null}
           {st.led.length ? (<>
             {h("Ты " + (isFemaleName(profile && profile.name, profile && profile.surname) ? "вывела" : "вывел") + " на самостоятельную смену", st.led.length, "led")}
-            <div style={card} data-nbl-led="">{st.led.map((x, i) => line("led" + i, "", nm(x.name) + (x.solo ? ", " + dayMon(x.solo) : ""), null, i > 0))}</div>
+            <div style={card} data-lens-card="" data-nbl-led="">{st.led.map((x, i) => line("led" + i, "", nm(x.name) + (x.solo ? ", " + dayMon(x.solo) : ""), null, i > 0))}</div>
           </>) : null}
           {lead ? memoCard() : null}
         </>) : null}

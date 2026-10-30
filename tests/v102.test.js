@@ -91,6 +91,15 @@ describe("v102: что стало линзой", () => {
     expect(rd("ui/cocktails.jsx")).toContain('data-lens={view === "index" ? undefined : "disc"}');
   });
   it("значки в списках «Смены», «Команды» и «Я» — без кружков: плашки убраны намеренно (v78)", () => {
-    expect(rd("ui/home-hubs.jsx")).not.toContain("data-lens");
+    // v111 (Доп. 424): линзы — только значки кнопок-групп (свёрнутая группа и группа из одного раздела) и «Жизни команды»;
+    // строки внутри групп и плитки — без кружков, как было
+    const src = rd("ui/home-hubs.jsx").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/[^\n]*/g, "$1");   // без комментариев
+    expect((src.match(/data-lens="disc"/g) || []).length).toBe(3);
+    expect((src.match(/data-lens="disc" data-hub-disc=""/g) || []).length).toBe(2);
+    const rows = src.slice(src.indexOf("function rowList(group)"), src.indexOf("const toggle = (name, names)"));
+    expect(rows).toContain("data-hub-ic");
+    expect(rows).not.toContain("data-lens=");
+    const tile = src.slice(src.indexOf("const card = (it, idx) => {"), src.indexOf("const head = (g, k) =>"));
+    expect(tile).not.toContain("data-lens=");
   });
 });

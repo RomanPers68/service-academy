@@ -46,7 +46,7 @@ export function ShiftRoleCard({ a11y, card, onSeat, onBrief }) {
   if (card.role === "host") {
     const h = card.hall;
     return (
-      <div className="sa-card sa-pagein" data-shift-role="host" onClick={seat} {...onActivate(seat)} aria-label={"Зал сейчас: " + hallHead(h).toLowerCase()} style={{ ...shell, cursor: "pointer" }}>
+      <div className="sa-card sa-pagein" data-shift-role="host" data-lens-card="" onClick={seat} {...onActivate(seat)} aria-label={"Зал сейчас: " + hallHead(h).toLowerCase()} style={{ ...shell, cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ ...tag, flex: 1 }}>Зал сейчас</div><Chevron color={c.gold} /></div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 23, color: c.text, marginTop: 4, lineHeight: 1.15 }}>{hallHead(h)}{h.guests ? <span style={{ fontSize: 14, color: c.sub }}> · {guestsWord(h.guests)}</span> : null}</div>
         <HallBar a11y={a11y} hall={h} />
@@ -62,7 +62,7 @@ export function ShiftRoleCard({ a11y, card, onSeat, onBrief }) {
   if (card.role === "lead") {
     const row = { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer" };
     return (
-      <div className="sa-card sa-pagein" data-shift-role="lead" style={shell}>
+      <div className="sa-card sa-pagein" data-shift-role="lead" data-lens-card="" style={shell}>
         <div style={tag}>Руководителю смены</div>
         {card.brief === "none" ? (
           <div data-role-brief="" onClick={brief} {...onActivate(brief)} aria-label="Брифинг на сегодня ещё не отправлен. Собрать" style={{ ...row, borderBottom: card.hall ? `1px solid ${c.line}` : 0 }}>
@@ -85,7 +85,7 @@ export function ShiftRoleCard({ a11y, card, onSeat, onBrief }) {
   }
   // официант: свои столы
   return (
-    <div className="sa-card sa-pagein" data-shift-role="staff" onClick={seat} {...onActivate(seat)} aria-label={(card.mine.length === 1 ? "Твой стол " : "Твои столы ") + card.mine.map((t) => t.n).join(", ")} style={{ ...shell, cursor: "pointer" }}>
+    <div className="sa-card sa-pagein" data-shift-role="staff" data-lens-card="" onClick={seat} {...onActivate(seat)} aria-label={(card.mine.length === 1 ? "Твой стол " : "Твои столы ") + card.mine.map((t) => t.n).join(", ")} style={{ ...shell, cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ ...tag, flex: 1 }}>{card.mine.length === 1 ? "Твой стол" : "Твои столы"}</div><Chevron color={c.gold} /></div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
         {card.mine.map((t) => (

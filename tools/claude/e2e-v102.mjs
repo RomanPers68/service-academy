@@ -150,7 +150,7 @@ if (want("DISC")) {
 if (want("CALM")) {
   const o = await open({ who: MARIA });
   const hubs = [];
-  for (const s of ["shift", "teamHub", "me"]) { await nav(o.page, s); hubs.push(await o.page.evaluate(() => document.querySelectorAll("[data-hub-ic] [data-lens], [data-hub-ic][data-lens], [data-hub-compact] [data-lens]").length)); }
+  for (const s of ["shift", "teamHub", "me"]) { await nav(o.page, s); hubs.push(await o.page.evaluate(() => document.querySelectorAll("[data-hub-ic] [data-lens], [data-hub-ic][data-lens]:not([data-hub-disc]), [data-hub-compact] [data-lens]").length)); }   // v111: значки кнопок-групп — линзы (e2e-v111)
   ok("CALM: значки в списках «Смены», «Команды» и «Я» — без кружков (плашки убраны в v78)", hubs.every((n) => n === 0), JSON.stringify(hubs));
   await nav(o.page, "checklist");
   const ck = await o.page.evaluate(() => document.querySelectorAll("[data-lens]").length);

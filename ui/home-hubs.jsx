@@ -16,6 +16,8 @@ import { labelStyle } from "./tokens";   // v73 (Доп. 386): подписи �
 // карточек-разделов в стиле «Морозный след» — иней без блюра: мягкое внутреннее
 // свечение по всей площади, светящаяся кромка. Работает в тёмной и светлой темах.
 // Ничего нового не делает — только ведёт в существующие экраны.
+// v111 (Доп. 424): в виде «Линза» карточки вкладок — стекло со светом и золотой кромкой (data-lens-card), значки
+// кнопок-групп и «Жизни команды» — линзы (data-lens="disc"); строки внутри групп и плитки — значки без кружков (v78).
 
 const ICON = {
   schedule: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>,
@@ -151,7 +153,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };
           return (
-            <div key={it.key} className="sa-card sa-pagein" onClick={go} {...onActivate(go)} aria-label={it.label}
+            <div key={it.key} className="sa-card sa-pagein" data-lens-card="" onClick={go} {...onActivate(go)} aria-label={it.label}
               style={{ ...frost, animationDelay: `${Math.min(idx, 8) * 45}ms`, borderRadius: 18, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", position: "relative", overflow: "hidden", WebkitTapHighlightColor: "transparent" }}>
               {/* v73 (Доп. 386): косого блика поверх плитки больше нет — примета сгенерированных интерфейсов */}
               {/* v78 (Доп. 391): значок без плашки — квадрат со значком, заголовок, подпись и «›» на каждом экране был
@@ -175,7 +177,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
             style={{ gridColumn: "1 / -1", ...labelStyle(a11y ? 16 : 14.5), color: gold, opacity: 0.9, margin: k ? "10px 4px 0" : "2px 4px 0" }}>{g}</div>
         );
         const rows = (group, idx0, attrs = {}) => (
-          <div key={"c:" + group[0].key} data-hub-compact className="sa-pagein" {...attrs} style={{ ...frost, borderRadius: 18, padding: "2px 0", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+          <div key={"c:" + group[0].key} data-hub-compact data-lens-card="" className="sa-pagein" {...attrs} style={{ ...frost, borderRadius: 18, padding: "2px 0", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
             {rowList(group)}
           </div>
         );
@@ -215,19 +217,19 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           const ic = GROUP_ICON[name] || run[0].icon;
           const rid = "hubg-" + hid + "-" + idx0;
           return (
-            <div key={"f:" + name} data-hub-group={name} data-hub-open={open ? "1" : "0"} className="sa-pagein"
+            <div key={"f:" + name} data-hub-group={name} data-hub-open={open ? "1" : "0"} data-lens-card="" className="sa-pagein"
               style={{ ...frost, borderRadius: 18, padding: 0, overflow: "hidden", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
               <button type="button" data-hub-toggle={name} aria-expanded={open} aria-controls={rid} onClick={() => toggle(name, names)}
                 aria-label={name + (bdg ? (bdg.text === "новое" ? ", есть новое" : ", новых: " + bdg.text) : "")}
                 style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 14px", minHeight: 60, boxSizing: "border-box", border: 0, background: "none",
                   textAlign: "left", cursor: "pointer", color: text, WebkitTapHighlightColor: "transparent", font: "inherit" }}>
                 {/* счётчик свёрнутой группы — кружком на значке (число) или точкой («новое»): название и разделы не теснит */}
-                <span data-hub-ic="" style={{ position: "relative", width: 32, height: 32, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                <span data-hub-ic="" data-lens="disc" data-hub-disc="" style={{ position: "relative", width: 32, height: 32, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                   {(ICON[ic] || ICON.book)(gold)}
                   {bdg ? (bdg.text === "новое"
-                    ? <span data-hub-badge="новое" aria-hidden="true" style={{ position: "absolute", top: 1, right: -1, width: 10, height: 10, borderRadius: "50%", background: bdg.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold,
+                    ? <span data-hub-badge="новое" aria-hidden="true" style={{ position: "absolute", zIndex: 1, top: 1, right: -1, width: 10, height: 10, borderRadius: "50%", background: bdg.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold,
                         boxShadow: "0 0 0 2px " + (a11y ? "#F6EEDC" : "#2A2114") }} />
-                    : <span data-hub-badge={bdg.text} aria-hidden="true" style={{ position: "absolute", top: -6, right: -9, minWidth: 18, height: 18, padding: "0 5px", boxSizing: "border-box", borderRadius: 10,
+                    : <span data-hub-badge={bdg.text} aria-hidden="true" style={{ position: "absolute", zIndex: 1, top: -6, right: -9, minWidth: 18, height: 18, padding: "0 5px", boxSizing: "border-box", borderRadius: 10,
                         background: bdg.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold, color: a11y ? "#fff" : "#1a160f", fontSize: 11, fontWeight: "bold", lineHeight: "18px", textAlign: "center",
                         boxShadow: "0 0 0 2px " + (a11y ? "#F6EEDC" : "#2A2114") }}>{bdg.text}</span>) : null}
                 </span>
@@ -247,10 +249,10 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };
           return (
-            <div key={"s:" + it.key} data-hub-group={name} data-hub-single="" className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: 0, animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+            <div key={"s:" + it.key} data-hub-group={name} data-hub-single="" data-lens-card="" className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: 0, animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
               <div className="sa-card" onClick={go} {...onActivate(go)} aria-label={it.label}
                 style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px", minHeight: 60, boxSizing: "border-box", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
-                <span data-hub-ic="" style={{ width: 32, height: 32, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{(ICON[it.icon] || ICON.book)(c)}</span>
+                <span data-hub-ic="" data-lens="disc" data-hub-disc="" style={{ width: 32, height: 32, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{(ICON[it.icon] || ICON.book)(c)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: it.red ? c : text, lineHeight: 1.25 }}>{it.label}</div>
                   {it.sub ? <div style={{ fontSize: 12, color: sub, marginTop: 2, lineHeight: 1.35, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.sub}</div> : null}
@@ -332,7 +334,7 @@ export function ShiftHero({ a11y, onOpen, shift = null }) {
   const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const go = () => { vibrate("light"); onOpen && onOpen(); };
   return (
-    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+    <div className="sa-card sa-pagein" data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={tagStyle(a11y)}>Сегодня · {DAYS[t.getDay()]}, {t.getDate()} {MONTHS[t.getMonth()]}</div>
       {label ? (<>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 6 }}>
@@ -365,7 +367,7 @@ export function NewbieHero({ a11y, line = "", done = 0, total = 0, onOpen }) {
   const go = () => { vibrate("light"); onOpen && onOpen(); };
   const p = total ? Math.round((done / total) * 100) : 0;
   return (
-    <div className="sa-card sa-pagein" data-nb-hero="" aria-label="Первая неделя" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+    <div className="sa-card sa-pagein" data-nb-hero="" data-lens-card="" aria-label="Первая неделя" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
         <div style={{ ...tagStyle(a11y), flex: 1 }}>Первая неделя</div>
         {total ? <div style={{ fontSize: 12, color: sub }} data-nb-hero-done={done}>сделано {done} из {total}</div> : null}
@@ -394,7 +396,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
   const meNet = mine && nets > 1 ? leaderboard.findIndex(p => p.name === profile?.name && (p.surname || "") === (profile?.surname || "")) : -1;
   const go = () => { vibrate("light"); onOpen && onOpen(); };
   if (!top.length) return (
-    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+    <div className="sa-card sa-pagein" data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={tagStyle(a11y)}>Лидеры ресторана</div>
       <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 6 }}>Пока пусто</div>
       <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>Первый пройденный тест откроет рейтинг</div>
@@ -402,7 +404,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
   );
   const medal = ["#E8C56A", "#C9C9C9", "#C89A6E"];
   return (
-    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+    <div className="sa-card sa-pagein" data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <div style={tagStyle(a11y)}>Лидеры ресторана</div>
         {me >= 0 && <div style={{ fontSize: 11, color: sub }}>ты <span style={{ color: gold }}>{me + 1}-й</span>{meNet >= 0 ? <> · в сети <span style={{ color: gold }}>{meNet + 1}-й</span></> : null}</div>}
@@ -436,7 +438,7 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
   const days = streak?.count || 0;
   const dword = days % 10 === 1 && days % 100 !== 11 ? "день" : days % 10 >= 2 && days % 10 <= 4 && (days % 100 < 12 || days % 100 > 14) ? "дня" : "дней";
   return (
-    <div className="sa-card sa-pagein" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4, display: "flex", alignItems: "center", gap: 12 }}>
+    <div className="sa-card sa-pagein" data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4, display: "flex", alignItems: "center", gap: 12 }}>
       <svg width="68" height="68" viewBox="0 0 68 68" aria-hidden="true" style={{ flexShrink: 0 }}>
         <circle cx="34" cy="34" r={R} fill="none" stroke={a11y ? "rgba(139,106,48,0.22)" : "rgba(214,178,102,0.18)"} strokeWidth="6" />
         <circle cx="34" cy="34" r={R} fill="none" stroke={gold} strokeWidth="6" strokeLinecap="round"
@@ -493,7 +495,7 @@ export function MastersBanner({ a11y, rows = [], onOpen }) {
   // «роли «Ядро»» не разрываем: название роли не остаётся одно на строке
   const line = news.who + (news.female ? " стала" : " стал") + " мастером роли" + (news.title ? "\u00A0«" + news.title + "»" : "");
   return (
-    <div className="sa-card sa-pagein" data-ms-banner="" role="button" tabIndex={0} onClick={go} {...onActivate(go)}
+    <div className="sa-card sa-pagein" data-ms-banner="" data-lens-card="" role="button" tabIndex={0} onClick={go} {...onActivate(go)}
       style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px", cursor: "pointer", marginBottom: 4, WebkitTapHighlightColor: "transparent" }}>
       <div style={{ ...labelStyle(a11y ? 14 : 13.5), color: gold }}>Мастер роли</div>
       <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: text, lineHeight: 1.3, marginTop: 4 }}>{line}</div>
@@ -522,12 +524,12 @@ export function TeamFeed({ a11y, items = [], now = Date.now(), first = 3 }) {
   const shown = open ? items : items.slice(0, first);
   const toggle = () => { vibrate("light"); setOpen((v) => !v); };
   return (
-    <div className="sa-card sa-pagein" data-team-feed="" style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 4px", marginBottom: 4 }}>
+    <div className="sa-card sa-pagein" data-team-feed="" data-lens-card="" style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 4px", marginBottom: 4 }}>
       <div style={{ ...labelStyle(a11y ? 14 : 13.5), color: gold, marginBottom: 2 }}>Жизнь команды</div>
       {shown.map((it, i) => (
         <div key={i} data-feed-item={it.kind} className={i >= first ? "sa-fadein" : undefined}
           style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderTop: i ? "1px solid " + line : "none" }}>
-          <span aria-hidden="true" style={{ width: 24, height: 24, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center",
+          <span aria-hidden="true" data-lens="disc" style={{ width: 24, height: 24, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center",
             border: "1px solid " + (a11y ? "rgba(122,93,42,0.4)" : "rgba(214,178,102,0.4)"), background: a11y ? "rgba(255,250,238,0.6)" : "rgba(214,178,102,0.07)" }}>
             {(FEED_ICON[it.kind] || FEED_ICON.test)(gold)}
           </span>

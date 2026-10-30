@@ -161,6 +161,53 @@ html.sa-lens .ch-sg,html.sa-lens .ch-mc,html.sa-lens .ch-ai-nm .ch-ai-d,html.sa-
   box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
 html.sa-lens .ch-ai-nm .ch-ai-d{color:var(--lk-gold)}
 
+/* ── v111: новые экраны («Утро руководителя», «Новички», «Первая неделя», «Спасибо от коллег», «Что дало обучение») и
+   вкладки «Смена», «Команда», «Я». Владелец (30.10): «Мы можем в них интегрировать линзы?». Тем же языком, что главная и
+   чат: кружки значков строк (data-lens="glyph" — стекло с ободком цвета строки; отметка «!» или галочка — поверх кольца)
+   и людей (data-lens="person" — стекло, инициалы золотом, как в листе «Спасибо коллеге») — линзы; главные кнопки
+   (data-lens-btn="main") — стеклянные плашки с кольцом и золотой надписью, как «Предупредить»; остальные кнопки
+   (data-lens-btn="soft") — стекло с ободком; поля (data-lens-field) — стекло, в фокусе ободок ярче; карточки
+   (data-lens-card) — золотая кромка, блик сверху и свет слева сверху, как на главной («hi» — раздел «сейчас», «ok» —
+   «вышел на самостоятельную смену»). Свет — только у верхнего края (до 42 px: там заголовок или золотая подпись), фон и
+   свечение по краям — прежние: мелкие подписи ниже читаются так же, как в v110 (контраст 4,5 — e2e-v30 K). Значки
+   кнопок-групп вкладок — линзы (data-hub-disc), строки внутри групп — без кружков (v78). Галочки шагов, переключатели,
+   выбор часа и минут, плашки тем и полоски — прежние ── */
+html.sa-lens{--lk-edge:rgba(214,178,102,0.30);--lk-shadow:0 5px 16px rgba(0,0,0,0.45);--lk-light:rgba(214,178,102,0.10);--lk-cglow:rgba(255,248,230,0.07)}
+html.sa-lens.sa-light{--lk-edge:rgba(139,106,48,0.30);--lk-shadow:0 4px 12px rgba(120,85,25,0.18);--lk-light:rgba(255,255,255,0.55);--lk-cglow:rgba(255,255,255,0.5)}
+html.sa-lens [data-lens-card]{border-color:var(--lk-edge)!important;background-image:radial-gradient(120% 70px at 20% 0%,var(--lk-light),transparent 60%)!important;
+  box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),var(--lk-shadow)!important}
+html.sa-lens [data-lens-card="hi"]{border-color:var(--lk-hi)!important}
+html.sa-lens [data-lens-card="ok"]{border-color:rgba(138,216,175,0.7)!important}
+html.sa-lens.sa-light [data-lens-card="ok"]{border-color:rgba(44,107,72,0.6)!important}
+html.sa-lens [data-lens="glyph"]{--g:214,178,102;background:rgba(var(--g),0.10)!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px rgba(var(--g),0.55),inset 0 0 12px rgba(var(--g),0.16),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens="glyph"]::after{border-color:rgba(var(--g),0.42)}
+html.sa-lens [data-lens="glyph"][data-glyph-kind="warn"]{--g:228,179,106}
+html.sa-lens [data-lens="glyph"][data-glyph-kind="ok"]{--g:138,216,175}
+html.sa-lens.sa-light [data-lens="glyph"]{--g:139,106,48}
+html.sa-lens.sa-light [data-lens="glyph"][data-glyph-kind="warn"]{--g:139,90,18}
+html.sa-lens.sa-light [data-lens="glyph"][data-glyph-kind="ok"]{--g:44,107,72}
+html.sa-lens [data-lens="person"]{background:var(--lk-glass)!important;color:var(--lk-gold)!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens-btn]{border-radius:999px!important}
+html.sa-lens [data-lens-btn="main"]{position:relative;color:var(--lk-hi)!important;font-weight:bold!important;border-color:transparent!important;
+  background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%)!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)!important}
+html.sa-lens.sa-light [data-lens-btn="main"]{background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%)!important;
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)!important}
+html.sa-lens [data-lens-btn="main"]::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light [data-lens-btn="main"]::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens [data-lens-btn="soft"]{background:var(--lk-glass)!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens-btn="soft"][data-lens-hi]{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens-field]{background:var(--lk-glass)!important;border-color:transparent!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens-field]:focus{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens-tag]{background:var(--lk-glass)!important;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1px 0 var(--lk-hl)!important}
+html.sa-lens [data-hub-disc]{width:38px!important;height:38px!important;border-radius:50%}
+html.sa-lens [data-hub-disc]>svg{width:21px;height:21px}
+html.sa-lens [data-nb-x]{width:32px!important;height:32px!important;margin:2px;font-size:20px!important}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

@@ -173,14 +173,16 @@ await run("HUBS", async () => {
   const unread = srv.rpc("chat_unread", { p_token: tok(MARIA) });
   ok("HUBS: «Смена» — кнопки «На смене» и «Потренироваться», свёрнуты; строк нет", st.map((g) => g.name + ":" + g.open).join(",") === "На смене:0,Потренироваться:0"
     && !(await m.page.locator("[data-hub-compact]").count()), JSON.stringify(st));
-  ok("HUBS: на кнопке — разделы одной строкой: «Утро руководителя · Опаздываю · Брифинг смены…»", st[0].preview.startsWith("Утро руководителя · Опаздываю · Брифинг смены · Чат смены"), st[0].preview);
+  // «Опаздываю» — только от 3 часов до начала смены (12:00) до 2 часов после (lib/late.js lateWindow): в другое время его нет
+  ok("HUBS: на кнопке — разделы одной строкой: «Утро руководителя · Опаздываю · Брифинг смены…»", /^Утро руководителя · (Опаздываю · )?Брифинг смены · Чат смены/.test(st[0].preview), st[0].preview);
   ok("HUBS: непрочитанные в чате — числом на значке свёрнутой «На смене»", /^\d+$/.test(st[0].badge) && Number(st[0].badge) > 0, JSON.stringify(st[0]) + " " + JSON.stringify(unread).slice(0, 80));
   await shot(m.page, "hub-shift-folded");
   await m.page.locator('[data-hub-toggle="На смене"]').click(); await sleep(600);
   const st2 = await groupsOf(m.page);
   const rows = await m.page.evaluate(() => [...document.querySelectorAll('[data-hub-group="На смене"] [data-hub-compact] .sa-card[aria-label]')].map((e) => e.getAttribute("aria-label")));
   ok("HUBS: нажал «На смене» — развернулась строками (Утро руководителя, Опаздываю, Брифинг, Чат, График, Чек-листы…); счётчик — в строке чата", st2[0].open === 1 && !st2[0].badge
-    && rows.slice(0, 6).join(",") === "Утро руководителя,Опаздываю,Брифинг смены,Чат смены,График,Чек-листы" && /\d+$/.test(await txt(hubItem(m.page, "Чат смены"))), rows.join(","));
+    && rows.filter((x) => x !== "Опаздываю").slice(0, 5).join(",") === "Утро руководителя,Брифинг смены,Чат смены,График,Чек-листы" && (!rows.includes("Опаздываю") || rows[1] === "Опаздываю")
+    && /\d+$/.test(await txt(hubItem(m.page, "Чат смены"))), rows.join(","));
   ok("HUBS: стрелка — вверх, aria-expanded", (await m.page.locator('[data-hub-toggle="На смене"]').getAttribute("aria-expanded")) === "true");
   await shot(m.page, "hub-shift-open");
   const one = await m.page.evaluate(() => [...document.querySelectorAll("[data-hub-compact] .sa-card")].every((r) => { const s = r.querySelector("div > div + div"); return !s || getComputedStyle(s).whiteSpace === "nowrap"; }));
@@ -374,7 +376,8 @@ await run("PAPER", async () => {
   const m = await open({ who: MARIA, srv, light: true });
   await nav(m.page, "morning", 1500);
   await ready(m.page, "data-morning"); await sleep(300);
-  const col = await m.page.evaluate(() => { const s = document.querySelector('[data-glyph-kind="warn"]'); return s ? getComputedStyle(s).borderTopColor : ""; });
+  // v111: в виде «Линза» обводка кружка — ободок линзы, цвет строки — у значка (color)
+  const col = await m.page.evaluate(() => { const s = document.querySelector('[data-glyph-kind="warn"]'); return s ? getComputedStyle(s).color : ""; });
   ok("PAPER: «Для чтения» — значок «нужно внимание» тёмно-янтарный", col === "rgb(139, 90, 18)", col);
   await shot(m.page, "paper-morning");
   await nav(m.page, "shift", 1500);

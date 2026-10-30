@@ -2,6 +2,7 @@
 // коллег за неделю, месяц и всего; карточки — кто, за что, кто присоединился; карточка ещё в чате — открывается там.
 // «Сказать спасибо коллеге» — «Вся команда» с листом «Спасибо коллеге». Сервер — этап 42 (thanks_peer); без него экран
 // говорит, что этапа нет.
+// v111 (Доп. 424): в виде «Линза» карточки, кружки с инициалами и кнопки — линзой (метки data-lens-*, правила — ui/home-look.jsx).
 import React from "react";
 import { LineArt } from "./line-art";
 import { vibrate } from "../lib/utils";
@@ -22,7 +23,7 @@ export function whenOf(iso, now = new Date()) {
 const ini = (name) => String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
 // v110 (Доп. 423): кружок с инициалами того, кто сказал спасибо (как в «Новичках» и листе «Спасибо коллеге»)
 const Ava = ({ name, size = 34 }) => (
-  <span aria-hidden="true" style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
+  <span aria-hidden="true" data-lens="person" style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
     background: "linear-gradient(135deg,#C8A96E,#7A5D2A)", color: "#fff", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 12.5 }}>{ini(name)}</span>);
 const C = (a11y) => ({
   gold: a11y ? "#7A5D2A" : "#D2A85A",
@@ -50,7 +51,7 @@ export function PeerThanksScreen({ T, a11y, profile, onBack, onOpenChat = null, 
   React.useEffect(() => { load(); }, [load]);
   const items = Array.isArray(st.items) ? st.items : [];
   const say = onSay ? (
-    <button type="button" data-peer-say="" onClick={() => { vibrate("light"); onSay(); }}
+    <button type="button" data-lens-btn="main" data-peer-say="" onClick={() => { vibrate("light"); onSay(); }}
       style={{ display: "block", width: "100%", marginTop: 4, padding: "12px 14px", borderRadius: 16, border: `1px solid ${c.gold}`, background: "transparent", color: c.text,
         fontFamily: "Georgia, serif", fontSize: 14.5, cursor: "pointer" }}>Сказать спасибо коллеге</button>) : null;
   return (
@@ -61,16 +62,16 @@ export function PeerThanksScreen({ T, a11y, profile, onBack, onOpenChat = null, 
       </div>
       <div style={{ padding: "4px 16px 110px" }}>
         {st.status === "loading" ? <div style={{ fontSize: 13, color: c.sub, padding: "6px 2px" }}>Загружаю…</div> : null}
-        {st.status === "missing" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }} data-peer-missing="">
+        {st.status === "missing" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }} data-lens-card="" data-peer-missing="">
           {serverMissing({ what: "«Спасибо от коллег»", many: true, admin: !!(profile && profile.is_admin), sql: "supabase-stage42-thanks.sql" })}</div> : null}
-        {st.status === "error" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>Не загрузилось. Проверь связь.
-          <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }}
+        {st.status === "error" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }} data-lens-card="">Не загрузилось. Проверь связь.
+          <button type="button" data-lens-btn="soft" onClick={() => { setSt({ status: "loading" }); load(); }}
             style={{ display: "block", marginTop: 10, padding: "9px 14px", borderRadius: 16, border: `1px solid ${c.gold}`, background: "transparent", color: c.text, fontFamily: "Georgia, serif", cursor: "pointer" }}>Ещё раз</button></div> : null}
         {st.status === "ok" ? (<>
           {/* v110 (Доп. 423): крупно — за неделю и сколько это очков в «Сотруднике недели», месяц и всего мельче; пока «спасибо» нет —
               без «0 0 0» (пустой экран ниже сам всё объясняет) */}
           {Number(st.total) > 0 ? (
-            <div style={{ ...c.frost, padding: "14px 16px", margin: "6px 0 12px" }} data-peer-stats="">
+            <div style={{ ...c.frost, padding: "14px 16px", margin: "6px 0 12px" }} data-lens-card="" data-peer-stats="">
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 34, color: c.text, lineHeight: 1 }} data-peer-week={st.week || 0}>{st.week || 0}</div>
                 <div style={{ fontSize: 13.5, color: c.text }}>спасибо за неделю</div>
@@ -85,7 +86,7 @@ export function PeerThanksScreen({ T, a11y, profile, onBack, onOpenChat = null, 
             const plus = Array.isArray(x.plus) ? x.plus : [];
             const can = !!(onOpenChat && x.chat);
             return (
-              <div key={x.msg} data-peer-item={x.msg} role={can ? "button" : undefined} tabIndex={can ? 0 : undefined}
+              <div key={x.msg} data-lens-card="" data-peer-item={x.msg} role={can ? "button" : undefined} tabIndex={can ? 0 : undefined}
                 onClick={can ? () => { vibrate("light"); onOpenChat(x.chat, x.msg); } : undefined}
                 onKeyDown={can ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenChat(x.chat, x.msg); } } : undefined}
                 style={{ ...c.frost, padding: "11px 14px", marginBottom: 8, cursor: can ? "pointer" : "default", display: "flex", gap: 12, alignItems: "flex-start" }}>

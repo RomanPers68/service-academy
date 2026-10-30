@@ -287,7 +287,7 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
   const restDay = off && !(team && team.me_on);   // выходной: задания смены — не твои сегодня
   const myTasks = restDay ? [] : tasks;
   return (
-    <div className={"sa-card sa-pagein tg-quest" + (open ? " open" : "")} style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 10px" }} data-quest="" data-quest-off={restDay ? "1" : undefined}>
+    <div className={"sa-card sa-pagein tg-quest" + (open ? " open" : "")} data-lens-card="" style={{ ...frostOf(a11y), borderRadius: 18, padding: "12px 14px 10px" }} data-quest="" data-quest-off={restDay ? "1" : undefined}>
       <div className="tg-qtop">
         <div className="tg-tag">Квест {team && !team.known ? "заведения" : "смены"}{shift ? " · " + shift : restDay ? " · выходной" : ""}</div>
         <button type="button" className="tg-more" aria-expanded={open} onClick={toggleOpen} data-quest-more="" aria-label={open ? "Свернуть квест" : "Подробнее: люди, спасибо, все задания"} title={open ? "Свернуть" : "Подробнее"}><span aria-hidden="true">▾</span></button>

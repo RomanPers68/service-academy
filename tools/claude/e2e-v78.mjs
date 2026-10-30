@@ -134,7 +134,7 @@ if (want("HUB")) {
     const o = await open({ who, light, menu: true });
     for (const [s, title] of [["shift", "Смена"], ["teamHub", "Команда"], ["me", who === "admin" ? "Роман" : "Анна"]]) {
       await nav(o.page, s, 1500);
-      const t = await tiles(o.page, "[data-hub-ic]");
+      const t = await tiles(o.page, "[data-hub-ic]:not([data-hub-disc])");   // v111 (Доп. 424): значки кнопок-групп — линзы (e2e-v111), разделов — без плашки
       const text = await o.page.evaluate(() => document.body.innerText);
       if (who === "staff") await shot(o.page, s + (light ? "-light" : ""));
       ok(tag + " «" + title + "»: значки разделов без плашки (" + t.length + ")", t.length >= 2 && t.every(plain), JSON.stringify(t.find((x) => !plain(x)) || t[0] || null));

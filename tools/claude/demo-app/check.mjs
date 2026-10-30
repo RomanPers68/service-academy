@@ -11,6 +11,7 @@
 // его кнопка «Открыть итог» ведёт на экран.
 // v110 (Доп. 423): вкладки одним видом — все группы строками в одной карточке; Мария — значки в «Утре», «Новички» (сначала
 // новички, поиск в листе «Наставник»), итог с главным одной строкой; Ксения — «Первая неделя» карточкой с прогрессом.
+// v111 (Доп. 424): «Утро» у Марии в виде «Линза» — кружки строк и «Собрать брифинг» с кольцом линзы.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -264,6 +265,11 @@ if (!ONLY || ONLY.includes("maria")) {
   await page.evaluate(() => window.__saNav && window.__saNav("morning")); await page.waitForTimeout(2000);
   const gl = await page.evaluate(() => [...document.querySelectorAll("[data-mo-row] [data-glyph]")].map((e) => e.getAttribute("data-glyph")));
   ok("«Утро»: у строк значки по смыслу (солнце, брифинг, стоп-лист…)", gl.includes("sun") && gl.includes("brief") && gl.includes("stop") && !gl.includes(""), gl.join(","));
+  // v111 (Доп. 424): в виде «Линза» (по умолчанию) кружки строк — линзы с кольцом, «Собрать брифинг» — плашка с кольцом
+  const lz = await page.evaluate(() => { const g = document.querySelector("[data-mo-row] [data-glyph]"), b = document.querySelector("[data-mo-brief]");
+    const ring = (e) => (e ? getComputedStyle(e, "::after").content : "none");
+    return { lens: document.documentElement.classList.contains("sa-lens"), g: ring(g), b: b ? ring(b) : "нет" }; });
+  ok("«Утро» в виде «Линза»: кружки строк и «Собрать брифинг» — с кольцом линзы", lz.lens && lz.g === '""' && lz.b !== "none", JSON.stringify(lz));
   await shot("m9-morning-glyphs");
 }
 if (!ONLY || ONLY.includes("roman")) {

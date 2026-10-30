@@ -86,7 +86,7 @@ describe("v110: «Новички» и «Первая неделя»", () => {
     expect(src).toContain('line("led" + i, "", nm(x.name) + (x.solo ? ", " + dayMon(x.solo) : ""), null, i > 0)');
     expect(src).toContain('borderTop: top ? "1px solid " + c.line : 0');
     expect(src).toContain('data-nbl-add="" onClick');
-    expect(src).toMatch(/padding: "10px 12px", marginBottom: 16 \}\} data-nbl-add=""/);
+    expect(src).toMatch(/padding: "10px 12px", marginBottom: 16 \}\} (data-lens-btn="main" )?data-nbl-add=""/);   // v111: линза — data-lens-btn
   });
   it("листы «Наставник» и «Добавить новичка»: поиск по имени от шести человек; строки без человека видны всегда", async () => {
     const { pickFilter, NB_SEARCH_FROM } = await import("../ui/newbie.jsx");

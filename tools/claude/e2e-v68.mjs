@@ -68,7 +68,7 @@ async function open({ light = false, w = 393, h = 852, dsf = 2, at = null, shift
     if (/\/functions\/v1\/ai-chat/.test(u)) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, reply: "Разберём по шагам.", remaining: 18 }) });
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
     ...(noToken ? {} : { sa_session_token: "tok-preview", sa_profile: JSON.stringify(OWNER) }),
     ["sa_last_role" + uk]: JSON.stringify("spg"),
     ...(fresh ? {} : { ["sa_completed" + uk]: JSON.stringify(DONE), ["sa_goal" + uk]: "1",

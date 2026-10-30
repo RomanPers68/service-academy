@@ -89,7 +89,7 @@ async function open({ role = "seasonal", profile = STAFF, light = false, w = 390
     }
     return route.abort();
   });
-  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(profile), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify(role), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
+  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(profile), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify(role), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
     sa_guest_voice: "0",
     sa_menu_custom: JSON.stringify({ "Два моря, Океан": [{ id: "d1", name: "Борщ с говядиной", allergens: ["сельдерей"] }, { id: "d2", name: "Салат с орехами", allergens: ["орехи"], stop: { since: Date.now() } }] }) };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
@@ -142,7 +142,7 @@ async function talk(page, lines) {
 
 // ── TILE. Подпись плитки «Живой гость» на «Смене» — по роли ──
 if (want("TILE")) {
-  for (const [role, profile, re] of [["spg", STAFF, /Гость-ИИ у входа: встреча, бронь, рассадка · чек разбора/], ["manager", BOSS, /Гость-ИИ позвал менеджера · чек разбора/], ["bar", STAFF, /Гость-ИИ у барной стойки · чек разбора/], ["seasonal", STAFF, /Разговор с гостем-ИИ из твоего меню · чек разбора/]]) {
+  for (const [role, profile, re] of [["spg", STAFF, /Гость-ИИ у входа · чек разбора/], ["manager", BOSS, /Гость-ИИ позвал менеджера · чек разбора/], ["bar", STAFF, /Гость-ИИ у барной стойки · чек разбора/], ["seasonal", STAFF, /Гость-ИИ из твоего меню · чек разбора/]]) {
     const { ctx, page, errors } = await open({ role, profile });
     await page.evaluate(() => window.__saNav("shift")); await sleep(1100);
     const sub = (await page.locator('.sa-card[aria-label="Живой гость"]').first().innerText().catch(() => "")).replace(/\s+/g, " ");

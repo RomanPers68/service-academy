@@ -62,7 +62,7 @@ describe("v78: вкладки — без слоганов, подписи раз
   it("«Отчёты», «Лига недели», «Погреб тем» — без перечней через «·»", () => {
     const app = code(rd("App.jsx"));
     expect(app).toContain('sub:"Кто где ошибается и что не прошёл, в Excel и PDF"');
-    expect(app).toContain('sub: leagueSub(brief) || "Очки за занятия с понедельника: в заведении и в сети"');
+    expect(app).toContain('sub: leagueSub(brief) || "Очки за занятия с понедельника"');   // v110: подпись в одну строку
     expect(app).toContain('return (f ? f + " " + pl3(f, "тема выдыхается", "темы выдыхаются", "тем выдыхаются") : "Всё свежее") + (g ? ", золотых " + g : ""); })(),');
     for (const s of ["освежить, раунд мастера, зачёт", "заведение, сеть и кубок", "· Excel и PDF"]) expect([s, app.includes(s)]).toEqual([s, false]);
   });

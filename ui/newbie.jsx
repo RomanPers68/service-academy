@@ -17,19 +17,19 @@ import { dLong, upFirst, nm } from "../lib/morning";
 const SQL = "supabase-stage41-newbie.sql";
 const P = (a11y) => (a11y
   ? { ok: "#2C6B48", warn: "#8B5A12", line: "rgba(139,106,48,0.22)", chip: "rgba(139,106,48,0.10)", gold: "#7A5D2A", soft: "rgba(139,106,48,0.16)", bad: "#A33A2A",
-      track: "rgba(140,105,40,0.16)", sheet: "#F6EEDC", veil: "rgba(70,52,24,0.35)" }
+      track: "rgba(140,105,40,0.16)", sheet: "#F6EEDC", veil: "rgba(70,52,24,0.35)", ring: "rgba(122,93,42,0.5)" }
   : { ok: "#8AD8AF", warn: "#E4B36A", line: "rgba(214,178,102,0.18)", chip: "rgba(214,178,102,0.10)", gold: "#D9B87C", soft: "rgba(200,169,110,0.22)", bad: "#E07878",
-      track: "rgba(160,120,60,0.2)", sheet: "#1C1710", veil: "rgba(8,6,3,0.62)" });
+      track: "rgba(160,120,60,0.2)", sheet: "#1C1710", veil: "rgba(8,6,3,0.62)", ring: "rgba(217,184,124,0.55)" });
 const errText = (r) => (r && r.error === "auth" ? "Сессия устарела. Войди заново." : r && r.error === "forbidden" ? "Это могут руководитель и наставник." : "Нет связи. Попробуй ещё раз.");
 const ini = (name) => String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
 const dayMon = (iso) => { const s = dLong(iso); return s ? s.split(", ")[1] || s : ""; };
 const firstName = (name) => String(name || "").trim().split(/\s+/)[0] || "";
 
-// кружок-отметка шага: сделано — галочка
+// кружок-отметка шага: сделано — галочка. v110: пустой кружок — золотым ободком (был почти не виден: цвет полоски прогресса)
 function Check({ on, c, size = 23 }) {
   return (
     <span aria-hidden="true" style={{ width: size, height: size, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
-      background: on ? "radial-gradient(circle at 35% 30%, #4FB484, #2A6B45 72%)" : "transparent", border: on ? "none" : "2px solid " + c.track, color: "#fff" }}>
+      background: on ? "radial-gradient(circle at 35% 30%, #4FB484, #2A6B45 72%)" : "transparent", border: on ? "none" : "2px solid " + c.ring, color: "#fff" }}>
       {on ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.2 4.2L19 7" /></svg> : null}
     </span>);
 }
@@ -73,12 +73,25 @@ function useStyles(T, a11y) {
     <div data-nb-h={key} style={{ ...labelStyle(13.5), color: c.gold, margin: "6px 2px 8px", display: "flex", gap: 8, alignItems: "baseline" }}>
       <span style={{ flex: 1 }}>{t}</span>{n != null ? <span style={{ color: sub, fontStyle: "normal" }}>{n}</span> : null}
     </div>);
-  const line = (key, label, value, extra = null) => (
-    <div key={key} data-nb-line={key} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", borderTop: "1px solid " + c.line }}>
+  // top: false — первая строка карточки, без черты сверху (v110: в «Ты вывела на самостоятельную смену» черта висела над первой строкой)
+  const line = (key, label, value, extra = null, top = true) => (
+    <div key={key} data-nb-line={key} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", borderTop: top ? "1px solid " + c.line : 0 }}>
       <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.45, color: text }}>{label ? <span style={{ color: sub }}>{label} </span> : null}{value}</div>
       {extra}
     </div>);
   return { c, card, sub, text, ghost, main, h, line };
+}
+
+/** v110: раздел плана, с которого начать сейчас: до первой смены — темы с собеседования (или «День 1»), в первую смену — «День 1»,
+ *  на 2–3 день — «Дни 2–3», дальше — «К концу недели». Всё сделано — ни один. */
+export function nowSection(nb, plan) {
+  if (!plan || !plan.sections.length || plan.done >= plan.total) return "";
+  const has = (k) => plan.sections.some((s) => s.key === k);
+  const until = nb && nb.first ? dayDiff(nb.day, nb.first.day) : null;   // дней до первой смены
+  if (until == null || until > 0) return has("focus") ? "focus" : plan.sections[0].key;
+  const d = 1 - until;                                                    // какой день с первой смены
+  const k = d <= 1 ? "d1" : d <= 3 ? "d2" : "d3";
+  return has(k) ? k : plan.sections[0].key;
 }
 
 // ── «Первая неделя» новичка ───────────────────────────────────────────────────────
@@ -125,6 +138,7 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
   };
   const me = String((profile && profile.name) || "").trim().split(/\s+/)[0];
   const female = isFemaleName(profile && profile.name, profile && profile.surname);
+  const nowSec = plan ? nowSection(nb, plan) : "";
   return (
     <div style={T.screen} className="sa-screen" data-newbie={st.phase}>
       <div style={T.lessHead}>
@@ -151,8 +165,8 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
               {line("arrive", "Приходи к", <b>{arriveAt(nb.first.from, nb.memo.arrive)}</b>)}
               {nb.memo.addr ? line("addr", "Как найти:", nb.memo.addr) : null}
               {nb.memo.dress ? line("dress", "Форма:", nb.memo.dress) : null}
-              {line("meet", "", nb.buddy ? "Тебя встретит " + nm(nb.buddy.name) + ", твой наставник" : nb.memo.meet ? "Тебя встретит: " + nb.memo.meet : "Тебя встретит менеджер смены",
-                nb.buddy && onDm ? <button type="button" style={ghost} data-nb-dm={nb.buddy.id} onClick={() => { vibrate("light"); onDm({ id: nb.buddy.id, name: nb.buddy.name }); }}>Написать</button> : null)}
+              {/* v110: «Написать» наставнику — одна, в карточке «Наставник» ниже (было две на одном экране) */}
+              {line("meet", "", nb.buddy ? "Тебя встретит " + nm(nb.buddy.name) + ", твой наставник" : nb.memo.meet ? "Тебя встретит: " + nb.memo.meet : "Тебя встретит менеджер смены")}
               {nb.memo.extra ? line("extra", "", nb.memo.extra) : null}
             </div>
           </>) : null}
@@ -180,18 +194,24 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
             </div>) : null}
 
           {h("План недели", "сделано " + plan.done + " из " + plan.total, "plan")}
-          <div style={{ margin: "0 2px 12px" }}><Bar done={plan.done} total={plan.total} c={c} /></div>
-          {plan.sections.map((sec) => (
-            <div key={sec.key} style={{ marginBottom: 12 }} data-nb-sec={sec.key}>
-              <div style={{ color: c.gold, fontSize: 11, letterSpacing: 2, fontWeight: "bold", marginBottom: 6, paddingLeft: 2 }}>{sec.title}</div>
-              {sec.key === "focus" ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, margin: "0 2px 8px" }}>На собеседовании эти темы дались труднее всего. Начни с них.</div> : null}
-              {sec.steps.map((s) => {
+          <div style={{ margin: "0 2px 14px" }}><Bar done={plan.done} total={plan.total} c={c} /></div>
+          {/* v110 (Доп. 423): шаги — строками в одной карточке на раздел (были отдельные «таблетки»), заголовки разделов — как у
+              остальных разделов экрана, раздел, с которого начать сейчас, — золотой рамкой и «сейчас» */}
+          {plan.sections.map((sec) => { const now = sec.key === nowSec; return (
+            <div key={sec.key} style={{ marginBottom: 4 }} data-nb-sec={sec.key} data-nb-now={now ? "1" : "0"}>
+              <div data-nb-sec-h={sec.key} style={{ ...labelStyle(13.5), color: c.gold, margin: "4px 2px 8px", display: "flex", gap: 8, alignItems: "baseline" }}>
+                <span style={{ flex: 1 }}>{upFirst(String(sec.title).toLowerCase())}</span>
+                {now ? <span style={{ fontStyle: "normal", fontSize: 11.5, padding: "1px 9px", borderRadius: 999, background: c.soft, color: text }}>сейчас</span> : null}
+              </div>
+              {sec.key === "focus" ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, margin: "-2px 2px 8px" }}>На собеседовании эти темы дались труднее всего. Начни с них.</div> : null}
+              <div style={{ ...card, padding: "2px 14px", ...(now ? { border: "1px solid " + c.gold } : {}) }}>
+              {sec.steps.map((s, i) => {
                 const can = !s.buddy && !s.auto;
                 const subLine = s.buddy ? (s.conf ? "Подтверждено: " + nm(s.conf.name) + ", " + dayMon(String(s.conf.at).slice(0, 10)) : "Подтверждает наставник") : s.sub || "";
                 return (
                   <div key={s.id} data-nb-step={s.id} data-nb-done={s.done ? "1" : "0"} role={can ? "checkbox" : undefined} aria-checked={can ? s.done : undefined} tabIndex={can ? 0 : undefined}
                     onClick={can ? () => toggle(s) : undefined} onKeyDown={can ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(s); } } : undefined}
-                    style={{ ...T.modCard, display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", marginBottom: 8, cursor: can ? "pointer" : "default" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: i ? "1px solid " + c.line : 0, cursor: can ? "pointer" : "default" }}>
                     <Check on={s.done} c={c} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ color: s.done ? sub : text, fontSize: 14, lineHeight: 1.4, textDecoration: s.done && !s.module ? "line-through" : "none" }}>{s.text}</div>
@@ -200,7 +220,8 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
                     {s.module ? <button type="button" style={ghost} data-nb-open={s.module} onClick={(e) => { e.stopPropagation(); vibrate("light"); onOpenModule(s.module); }}>{s.done ? "Повторить" : "Открыть"}</button> : null}
                   </div>);
               })}
-            </div>))}
+              </div>
+            </div>); })}
 
           {nb.hello ? (
             <div style={card} data-nb-team="">
@@ -258,11 +279,21 @@ function MemoSheet({ a11y, memo, onClose, onSaved }) {
     </Sheet>);
 }
 
-function PickSheet({ a11y, title, mark, rows, onPick, onClose, note = "" }) {
+// v110 (Доп. 423): от шести человек — поиск по имени сверху, как в «Спасибо коллеге»; строки без человека («Без наставника»,
+// «Найти само») видны всегда
+export const NB_SEARCH_FROM = 6;
+const norm = (s) => String(s || "").toLowerCase().replace(/ё/g, "е").trim();
+export const pickFilter = (rows, q) => { const k = norm(q); return k ? rows.filter((r) => !r.name || norm(r.title).includes(k)) : rows; };
+function PickSheet({ a11y, title, mark, rows: all, onPick, onClose, note = "" }) {
   const c = P(a11y), text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#A99B7E";
+  const [q, setQ] = React.useState("");
+  const many = all.filter((r) => r.name).length >= NB_SEARCH_FROM;
+  const rows = many ? pickFilter(all, q) : all;
   return (
     <Sheet a11y={a11y} title={title} onClose={onClose} mark={mark}>
       {note ? <p style={{ margin: "0 0 8px", fontSize: 13, color: sub, lineHeight: 1.5 }}>{note}</p> : null}
+      {many ? <input className="sa-field" type="search" data-nb-search="" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени"
+        style={{ width: "100%", boxSizing: "border-box", margin: "2px 0 8px", padding: "10px 14px", borderRadius: 14, border: "1px solid " + c.line, background: c.chip, color: text, fontFamily: "Georgia, serif", fontSize: 14.5 }} /> : null}
       {rows.length ? rows.map((r) => (
         <button key={r.key} type="button" data-nb-pick={r.key} onClick={() => { vibrate("light"); onPick(r); }}
           style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 4px", border: 0, borderTop: "1px solid " + c.line, background: "none", cursor: "pointer", color: text }}>
@@ -272,7 +303,7 @@ function PickSheet({ a11y, title, mark, rows, onPick, onClose, note = "" }) {
             {r.sub ? <span style={{ display: "block", fontSize: 12.5, color: sub, lineHeight: 1.4 }}>{r.sub}</span> : null}
           </span>
           {r.on ? <span style={{ color: c.gold, fontSize: 12.5 }}>сейчас</span> : null}
-        </button>)) : <p style={{ fontSize: 13.5, color: sub }}>Пока некого выбрать.</p>}
+        </button>)) : <p style={{ fontSize: 13.5, color: sub }} data-nb-none="">{q ? "Никого с таким именем." : "Пока некого выбрать."}</p>}
     </Sheet>);
 }
 
@@ -310,18 +341,20 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
   const list = st.list || [];
   const nbOf = (emp) => list.find((n) => n.emp === emp);
 
+  // v110 (Доп. 423): памятка — под списком новичков и коротко (раньше занимала весь первый экран); целиком — в «Изменить»
   const memoCard = () => {
     const m = st.memo;
+    const rest = [m.addr, m.dress, "встретит наставник или " + (m.meet || "менеджер смены"), m.extra].filter(Boolean).join(" · ");
     return (<>
       {h("Памятка новичку", null, "memo")}
       <div style={card} data-nbl-memo="">
-        <div style={{ fontSize: 13, color: sub, lineHeight: 1.45, marginBottom: 4 }}>Её получает новичок накануне первой смены и видит в «Первой неделе».</div>
-        {line("arrive", "Приходить:", m.arrive ? "за " + m.arrive + " минут до смены" : "к началу смены")}
-        {line("addr", "Как найти:", m.addr || <span style={{ color: sub }}>не указано</span>)}
-        {line("dress", "Форма:", m.dress || <span style={{ color: sub }}>не указано</span>)}
-        {line("meet", "Встретит:", "наставник; если его нет, " + (m.meet || "менеджер смены"))}
-        {m.extra ? line("extra", "Ещё:", m.extra) : null}
-        <button type="button" style={{ ...ghost, marginTop: 8 }} data-nbl-memo-edit="" onClick={() => { vibrate("light"); setSheet("memo"); }}>Изменить</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, color: text, lineHeight: 1.4 }} data-nbl-memo-arrive="">{"Приходить " + (m.arrive ? "за " + m.arrive + " минут до смены" : "к началу смены")}</div>
+            <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }} data-nbl-memo-rest="">{rest}</div>
+          </div>
+          <button type="button" style={ghost} data-nbl-memo-edit="" onClick={() => { vibrate("light"); setSheet("memo"); }}>Изменить</button>
+        </div>
       </div>
     </>);
   };
@@ -335,34 +368,44 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
         <button type="button" style={cf ? ghost : { ...ghost, border: "1px solid " + c.gold, color: text }} data-nbl-confirm={step} data-nbl-emp={n.emp} disabled={!!busy}
           onClick={() => act(n.emp, "newbie_confirm", { p_emp: n.emp, p_step: step, p_on: !cf })}>{cf ? "Снять" : "Подтвердить"}</button>);
     };
-    const candLine = lead ? (n.cand ? "Собеседование " + dayMon(n.cand.date) + (n.focus.length ? ": " + focusLine(n.focus) : ": сильные по всем темам")
+    // v110: темы с собеседования — плашками «конфликты и сложные ситуации 45 из 100» (было «…45, честность и деньги 62»)
+    const candLine = lead ? (n.cand ? "Собеседование " + dayMon(n.cand.date) + (n.focus.length ? ", слабые темы:" : ": сильные по всем темам")
       : n.noCand ? "Без собеседования" : "Собеседование не найдено") : null;
+    const chip = { display: "inline-block", padding: "2px 9px", borderRadius: 999, border: "1px solid " + c.line, background: c.chip, fontSize: 12, color: text, lineHeight: 1.6, margin: "4px 2px 0 0" };
     return (
       <div key={n.emp} style={{ ...card, padding: 0 }} data-nbl-item={n.emp}>
         <div role="button" tabIndex={0} aria-expanded={isOpen} onClick={() => { vibrate("light"); setOpen(isOpen ? null : n.emp); setSure(""); }}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(isOpen ? null : n.emp); } }}
-          style={{ display: "flex", gap: 12, padding: "12px 14px", cursor: "pointer" }}>
-          <Ava name={n.name} c={c} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: text }}>{n.name}</div>
-            <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45 }}>{[upFirst(posWord(n.pos)), "с нами " + withUs(n.days)].filter(Boolean).join(" · ")}</div>
-            <div style={{ fontSize: 13, color: text, lineHeight: 1.45, marginTop: 4 }} data-nbl-first="">{firstLine(n)}</div>
+          style={{ padding: "12px 14px", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Ava name={n.name} c={c} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: text }}>{n.name}</div>
+              <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45 }}>{[upFirst(posWord(n.pos)), "с нами " + withUs(n.days)].filter(Boolean).join(" · ")}</div>
+            </div>
+            <span aria-hidden="true" style={{ alignSelf: "center", color: sub, fontSize: 18, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
+          </div>
+          {/* v110: подробности — на всю ширину карточки, а не узкой колонкой под аватаркой (на 320 px строки были по два-три слова) */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 13, color: text, lineHeight: 1.45 }} data-nbl-first="">{firstLine(n)}</div>
             {lead ? <div style={{ fontSize: 13, color: n.buddy ? text : c.warn, lineHeight: 1.45 }} data-nbl-buddy-line="">{n.buddy ? "Наставник: " + nm(n.buddy.name) : "Наставник не назначен"}</div> : null}
-            {candLine ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45 }} data-nbl-cand-line="">{candLine}</div> : null}
+            {candLine ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2 }} data-nbl-cand-line="">{candLine}
+              {n.cand && n.focus.length ? <div data-nbl-focus="">{n.focus.map((f) => <React.Fragment key={f.topic}><span style={chip}>{f.topic.replace(/^Свой раздел:\s*/, "").toLowerCase() + (f.score != null ? " " + f.score + " из 100" : "")}</span>{" "}</React.Fragment>)}</div> : null}
+            </div> : null}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <span style={{ fontSize: 12, color: sub }}>План недели</span>
               <div style={{ flex: 1 }}><Bar done={done} total={total} c={c} /></div>
               <span style={{ fontSize: 12, color: sub }} data-nbl-done={done}>{done} из {total}</span>
             </div>
             {n.solo ? <div style={{ fontSize: 12.5, color: c.ok, marginTop: 6 }} data-nbl-solo="">{"Самостоятельная смена: " + dayMon(String(n.solo.at).slice(0, 10))}</div>
               : n.hello ? <div style={{ fontSize: 12.5, color: sub, marginTop: 6 }} data-nbl-hello-st="">{(isFemaleName(...n.name.split(" ")) ? "Представлена" : "Представлен") + " команде" + (n.hello.n ? " · поздоровались " + n.hello.n : "")}</div> : null}
           </div>
-          <span aria-hidden="true" style={{ alignSelf: "center", color: sub, fontSize: 18, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
         </div>
         {isOpen ? (
           <div style={{ padding: "0 14px 12px" }} data-nbl-open={n.emp}>
             {lead ? line("buddy", "Наставник:", n.buddy ? n.buddy.name : <span style={{ color: c.warn }}>не назначен</span>,
               <button type="button" style={ghost} data-nbl-buddy={n.emp} onClick={() => { vibrate("light"); setSheet({ buddy: n.emp }); }}>{n.buddy ? "Сменить" : "Назначить"}</button>) : null}
-            {lead ? line("cand", "Собеседование:", n.cand ? n.cand.name + ", " + dayMon(n.cand.date) : n.noCand ? "нет" : "не найдено",
+            {lead ? line("cand", "Собеседование:", n.cand ? (n.cand.name && n.cand.name !== n.name ? n.cand.name + ", " : "") + dayMon(n.cand.date) : n.noCand ? "нет" : "не найдено",
               <button type="button" style={ghost} data-nbl-cand={n.emp} onClick={() => { vibrate("light"); setSheet({ cand: n.emp }); }}>{n.cand || n.noCand ? "Сменить" : "Выбрать"}</button>) : null}
             {!lead && n.first && dayDiff(n.day, n.first.day) >= 0 ? line("arrive", "", "Встретить к " + arriveAt(n.first.from, n.memo.arrive) + ", " + whenWord(n.first.day, n.day)) : null}
             {n.focus.length && !lead ? line("focus", "Темы для занятий:", focusLine(n.focus, false)) : null}
@@ -394,15 +437,16 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
           <div><button type="button" style={{ ...ghost, marginTop: 10 }} onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
         {st.phase === "ready" ? (<>
-          {lead ? memoCard() : null}
+          {/* v110 (Доп. 423): сначала новички (раньше их закрывала памятка), под ними «Добавить», выведенные и памятка */}
           {h(lead ? "Новички" : "Ты наставник", list.length || null, "list")}
           {list.length ? list.map(item) : (
             <div style={card} data-nbl-empty="">{lead ? "Сейчас новичков нет. Новый сотрудник появится здесь сам, когда владелец заведёт его в «Сотрудниках»." : "Сейчас ты никого не ведёшь. Наставника назначает руководитель в «Новичках»."}</div>)}
-          {lead ? <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px" }} data-nbl-add="" onClick={() => { vibrate("light"); setSheet("add"); }}>Добавить новичка из команды</button> : null}
+          {lead ? <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginBottom: 16 }} data-nbl-add="" onClick={() => { vibrate("light"); setSheet("add"); }}>Добавить новичка из команды</button> : null}
           {st.led.length ? (<>
             {h("Ты " + (isFemaleName(profile && profile.name, profile && profile.surname) ? "вывела" : "вывел") + " на самостоятельную смену", st.led.length, "led")}
-            <div style={card} data-nbl-led="">{st.led.map((x, i) => line("led" + i, "", nm(x.name) + (x.solo ? ", " + dayMon(x.solo) : "")))}</div>
+            <div style={card} data-nbl-led="">{st.led.map((x, i) => line("led" + i, "", nm(x.name) + (x.solo ? ", " + dayMon(x.solo) : ""), null, i > 0))}</div>
           </>) : null}
+          {lead ? memoCard() : null}
         </>) : null}
       </div>
       {sheet === "memo" ? <MemoSheet a11y={a11y} memo={st.memo} onClose={() => setSheet(null)} onSaved={(m) => { setSt((x) => ({ ...x, memo: memoOf(m), list: x.list.map((n) => ({ ...n, memo: memoOf(m) })) })); setSheet(null); }} /> : null}

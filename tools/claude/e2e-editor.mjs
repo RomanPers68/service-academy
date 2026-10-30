@@ -62,7 +62,7 @@ await ctx.route("**/*", async (route) => {
   return route.abort();
 });
 const seed = { sa_session_token: "p", sa_profile: JSON.stringify({ id: "u", name: "Роман", surname: "Петров", restaurant: "Два моря, Океан", position: "manager", is_admin: true }),
-  sa_a11y: "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify("seasonal") };
+  sa_a11y: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify("seasonal") };
 for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
 await ctx.addInitScript((s) => { if (localStorage.getItem("__s")) return; localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); localStorage.setItem("__s", "1"); }, seed);
 const page = await ctx.newPage(); const errors = [];

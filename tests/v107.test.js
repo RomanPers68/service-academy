@@ -192,7 +192,8 @@ describe("v107: приложение", () => {
     expect(APP).toContain('"morning", "briefing", "newbie", "newbies"].includes(v)');
     expect(APP).toContain('else if (g === "newbie") navigate("newbie");');
     expect(APP).toContain('else if (g === "newbies") navigate("newbies");');
-    const shift = APP.indexOf('nbOn && nbInfo.newbie && { key:"ob", group:"Первая неделя"'), morning = APP.indexOf('isLead && { key:"morning"');
+    // v110 (Доп. 423): «Первая неделя» новичка — карточкой с прогрессом над пунктами (NewbieHero), а не пунктом группы
+    const shift = APP.indexOf('{nbOn && nbInfo.newbie ? <NewbieHero a11y={a11y}'), morning = APP.indexOf('isLead && { key:"morning"');
     expect(shift).toBeGreaterThan(0);
     expect(shift).toBeLessThan(morning);
     expect(APP).toContain('(nbOn ? staff || nbInfo.buddyOf.length > 0 : nbInfo && nbInfo.off ? role !== "seasonal" : staff) && { key:"ob", group:"Команда"');

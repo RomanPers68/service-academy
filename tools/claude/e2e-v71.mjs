@@ -62,7 +62,7 @@ async function open({ who = "staff", light = false, w = 393, h = 852, fs = false
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0",
     sa_session_token: "tok-preview", sa_profile: JSON.stringify(prof), sa_ai_fab: "1", ["sa_last_role" + uk]: JSON.stringify(role), ["sa_ach_pioneer" + uk]: "1" };
   if (who !== "admin") { seed["sa_completed" + uk] = JSON.stringify(DONE.c); seed["sa_quiz_done" + uk] = JSON.stringify(DONE.q); seed["sa_mastery" + uk] = JSON.stringify({ tiers: {}, fw: false, master: {} }); }
   if (menu) seed.sa_menu_shared = JSON.stringify({ [R0]: TEAM_MENU });
@@ -241,7 +241,9 @@ if (want("HUBS")) {
   await nav(o.page, "me", 1800);
   const me = await o.page.evaluate(() => ({ groups: [...document.querySelectorAll("[data-hub-group]")].map((g) => g.getAttribute("data-hub-group")), compact: [...document.querySelectorAll("[data-hub-compact]")].map((c) => [...c.querySelectorAll(".sa-card")].map((x) => x.getAttribute("aria-label"))) }));
   ok("HUBS «Я»: группы по порядку", JSON.stringify(me.groups) === JSON.stringify(["Мой путь", "Итоги и документы", "Вместе", "Помощь и настройки"]), JSON.stringify(me.groups));
-  ok("HUBS «Я»: итоги и настройки — строками в одной карточке", me.compact.length === 2 && me.compact[0].includes("Итоги месяца") && me.compact[1].includes("Аккаунт и настройки") && me.compact[1].includes("Без сети"), JSON.stringify(me.compact));
+  // v110 (Доп. 423): группы — кнопками, открытые — строками в одной карточке (проверка открывает все: sa_hub_open "all");
+  // группа из одного раздела («Вместе») — сам раздел
+  ok("HUBS «Я»: открытые группы — строками в одной карточке", me.compact.length === 3 && me.compact[1].includes("Итоги месяца") && me.compact[2].includes("Аккаунт и настройки") && me.compact[2].includes("Без сети"), JSON.stringify(me.compact));
   await shot(o.page, "hub-me");
   await nav(o.page, "shift", 1800);
   const sh = await o.page.evaluate(() => [...document.querySelectorAll("[data-hub-group]")].map((g) => g.getAttribute("data-hub-group")));

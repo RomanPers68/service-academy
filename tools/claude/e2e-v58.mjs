@@ -89,7 +89,7 @@ async function open({ fresh = false, noToken = false, mobile = true, dsf = 2, st
     }
     return route.abort();
   });
-  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(profile), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify("__role" in storage ? storage.__role : "seasonal"), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0",
+  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(profile), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify("__role" in storage ? storage.__role : "seasonal"), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0",
     // v32: квест смены по умолчанию свёрнут — здешние проверки писались для раскрытого
     sa_quest_open: "1" };
   if (!fresh) for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
@@ -662,13 +662,13 @@ if (want("SERVER")) {
 }
 
 if (want("WIDE")) {
-  const o = await open({ fresh: true, profile: ANNA, storage: { __role: null, ...HINTS_SEEN, sa_welcome_seen_v11: "1" }, w: 844, h: 390, dsf: 1, rpcs: baseRpcs(), fixedTime: at(14, 20) });
+  const o = await open({ fresh: true, profile: ANNA, storage: { __role: null, ...HINTS_SEEN, sa_welcome_seen_v11: "1", sa_hub_open: "all" }, w: 844, h: 390, dsf: 1, rpcs: baseRpcs(), fixedTime: at(14, 20) });
   await sleep(1600); await dismissToasts(o.page);
   let r = await roleInfo(o.page);
   ok("WIDE: лёжа (844×390) — «по должности · сменить» на месте", r.role && /Новичок/.test(r.role) && /сменить/.test(r.auto || ""), JSON.stringify(r));
   await shot(o.page, "wide-land");
   await o.ctx.close();
-  const d = await open({ fresh: true, profile: ANNA, storage: { __role: null, ...HINTS_SEEN, sa_welcome_seen_v11: "1" }, w: 1440, h: 900, dsf: 1, mobile: false, rpcs: baseRpcs(), fixedTime: at(14, 20) });
+  const d = await open({ fresh: true, profile: ANNA, storage: { __role: null, ...HINTS_SEEN, sa_welcome_seen_v11: "1", sa_hub_open: "all" }, w: 1440, h: 900, dsf: 1, mobile: false, rpcs: baseRpcs(), fixedTime: at(14, 20) });
   await sleep(1600); await dismissToasts(d.page);
   r = await roleInfo(d.page);
   const two = await d.page.evaluate(() => !!document.querySelector("[data-home2-title][data-tracks-title]"));

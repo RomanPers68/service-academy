@@ -9,22 +9,17 @@ import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { vibrate } from "../lib/utils";
 import { lateMinText } from "../lib/late";
 import { GOLD, labelStyle } from "./tokens";
+import { GlyphMark } from "./glyphs";   // v110 (Доп. 423): значки строк по смыслу
 import { DEFAULT_CHECKLISTS, CL_KINDS } from "./screens-admin";
-import { morningModel, dLong, dShort, hh, holesText, weekHoleDays, posAcc, thanksPeople, daysText, plural, upFirst, isoAdd, MORNING_HOURS, hourLabel } from "../lib/morning";
+import { morningModel, dLong, hh, holesText, weekHoleDays, posAcc, thanksPeople, daysText, plural, upFirst, isoAdd, MORNING_HOURS, hourLabel } from "../lib/morning";
 
 const REPO = "https://github.com/RomanPers68/service-academy/blob/main/supabase/";
 const P = (a11y) => (a11y
   ? { ok: "#2C6B48", warn: "#8B5A12", line: "rgba(139,106,48,0.22)", chip: "rgba(139,106,48,0.10)", gold: "#7A5D2A", soft: "rgba(139,106,48,0.16)" }
   : { ok: "#8AD8AF", warn: "#E4B36A", line: "rgba(214,178,102,0.18)", chip: "rgba(214,178,102,0.10)", gold: GOLD, soft: "rgba(200,169,110,0.22)" });
-// кружок-отметка слева от строки: всё хорошо — галочка, нужно внимание — восклицательный знак, просто сведения — точка
-const Mark = ({ kind, c }) => {
-  const col = kind === "ok" ? c.ok : kind === "warn" ? c.warn : c.gold;
-  return (
-    <span aria-hidden="true" style={{ flex: "0 0 auto", width: 22, height: 22, borderRadius: "50%", display: "inline-grid", placeItems: "center", marginTop: 1, border: "1.5px solid " + col, color: col }}>
-      {kind === "info" ? <span style={{ width: 6, height: 6, borderRadius: "50%", background: col }} />
-        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">{kind === "ok" ? <path d="M5 12.5l4.2 4.2L19 7" /> : <path d="M12 6v8M12 18.5v.5" />}</svg>}
-    </span>);
-};
+// v110 (Доп. 423): слева от строки — кружок со значком того, о чём строка (смена, брифинг, стоп-лист, «спасибо»…); нужно
+// внимание — отметка «!» на кружке, сделано — галочка (ui/glyphs.jsx). Было: у всех сведений одна точка в кружке.
+const shiftIcon = (from) => (from >= 15 || from < 5 ? "moon" : "sun");
 const openOut = (url) => {
   try { const tg = window.Telegram && window.Telegram.WebApp; if (tg && tg.initData && typeof tg.openLink === "function") { tg.openLink(url); return; } } catch (e) { /* */ }
   try { window.open(url, "_blank", "noopener"); } catch (e) { /* */ }
@@ -100,15 +95,15 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
     fontSize: 12.5, fontFamily: "Georgia, serif", cursor: "pointer", whiteSpace: "nowrap" };
   const main = { marginTop: 8, width: "100%", padding: "11px", borderRadius: 999, border: 0, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: 14.5,
     fontWeight: "bold", color: "#1A1008", background: "linear-gradient(180deg,#E4C88C,#C8A96E)" };
-  // строка: отметка, текст, подпись, справа — кнопка; вся строка — переход (go), если он есть
+  // строка: значок, текст, подпись, справа — кнопка; вся строка — переход (go), если он есть
   const row = (key, kind, title, opt = {}) => {
-    const { sub: s = null, go = null, act = null, first = false, extra = null } = opt;
+    const { sub: s = null, go = null, act = null, first = false, extra = null, icon = "" } = opt;
     const on = go ? () => { vibrate("light"); go(); } : null;
     return (
       <div key={key} data-mo-row={key} data-mo-kind={kind} role={on ? "button" : undefined} tabIndex={on ? 0 : undefined} onClick={on || undefined}
         onKeyDown={on ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); on(); } } : undefined}
         style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 0", borderTop: first ? 0 : "1px solid " + c.line, cursor: on ? "pointer" : "default" }}>
-        <Mark kind={kind} c={c} />
+        <span style={{ marginTop: -2, flex: "0 0 auto" }}><GlyphMark icon={icon} kind={kind} c={c} mark={a11y ? "#F5ECD8" : "#322716"} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: text, lineHeight: 1.4 }}>{title}</div>
           {s ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2 }}>{s}</div> : null}
@@ -132,7 +127,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Собираю утро…</div> : null}
         {st.phase === "missing" ? (
           <div style={card} data-mo-missing="">
-            {row("stage", "warn", "Нужен этап 40 на сервере", { first: true, sub: profile && profile.is_admin
+            {row("stage", "warn", "Нужен этап 40 на сервере", { first: true, icon: "server", sub: profile && profile.is_admin
               ? "Supabase → SQL Editor → New query → вставь supabase-stage40-morning.sql → Run. После этого здесь будет сводка, а бот начнёт присылать её по утрам."
               : "Сводка появится, когда владелец обновит сервер (этап 40).",
               act: profile && profile.is_admin ? <button type="button" style={ghost} onClick={() => openOut(REPO + "supabase-stage40-morning.sql")}>Файл</button> : null })}
@@ -147,45 +142,45 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
 
           {h("Сегодня", b.sched && b.count ? "в смене " + b.count : null, "today")}
           <div style={card} data-mo-sec="today">
-            {!b.sched ? row("nosched", "info", "Графика пока нет", { first: true, sub: "Составь его в «Графике», и здесь будет видно, кто сегодня в смене.", go: () => onGo("schedule") }) : null}
-            {b.sched && !b.shifts.length ? row("noshift", "info", "По графику сегодня смен нет", { first: true, go: () => onGo("schedule") }) : null}
-            {b.shifts.map((g, i) => row("sh-" + g.k, "info", g.people.map((p) => p.n).join(", "), { first: i === 0, sub: g.name + " · " + hh(g.from) + "–" + hh(g.to), go: () => onGo("schedule") }))}
-            {b.late.map((x) => row("late-" + (x.id || x.n), "warn", x.n + " опаздывает на " + lateMinText(x.min), { sub: x.eta ? "Будет в " + x.eta : null, go: () => onGo("schedule") }))}
-            {holesText(b, b.day) ? row("hole-today", "warn", "Не хватает: " + holesText(b, b.day), { sub: "Найди замену в «Графике» или позови в чате", go: () => onGo("schedule") }) : null}
-            {b.brief.done ? row("brief", "ok", "Брифинг отправлен" + (b.brief.at ? " в " + b.brief.at : ""), { go: () => onGo("brief") })
-              : row("brief", "warn", "Брифинг на сегодня ещё не собран", { sub: "Стоп-лист, акценты дня, брони: соберёшь за пару минут, команда получит в Telegram.",
+            {!b.sched ? row("nosched", "info", "Графика пока нет", { first: true, icon: "calendar", sub: "Составь его в «Графике», и здесь будет видно, кто сегодня в смене.", go: () => onGo("schedule") }) : null}
+            {b.sched && !b.shifts.length ? row("noshift", "info", "По графику сегодня смен нет", { first: true, icon: "calendar", go: () => onGo("schedule") }) : null}
+            {b.shifts.map((g, i) => row("sh-" + g.k, "info", g.people.map((p) => p.n).join(", "), { first: i === 0, icon: shiftIcon(g.from), sub: g.name + " · " + hh(g.from) + "–" + hh(g.to), go: () => onGo("schedule") }))}
+            {b.late.map((x) => row("late-" + (x.id || x.n), "warn", x.n + " опаздывает на " + lateMinText(x.min), { icon: "clock", sub: x.eta ? "Будет в " + x.eta : null, go: () => onGo("schedule") }))}
+            {holesText(b, b.day) ? row("hole-today", "warn", "Не хватает " + holesText(b, b.day), { icon: "userPlus", sub: "Найди замену в «Графике» или позови в чате", go: () => onGo("schedule") }) : null}
+            {b.brief.done ? row("brief", "ok", "Брифинг отправлен" + (b.brief.at ? " в " + b.brief.at : ""), { icon: "brief", go: () => onGo("brief") })
+              : row("brief", "warn", "Брифинг на сегодня ещё не собран", { icon: "brief", sub: "Стоп-лист, акценты дня, брони: соберёшь за пару минут, команда получит в Telegram.",
                 extra: <button type="button" style={main} data-mo-brief="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onGo("brief"); }}>Собрать брифинг</button> })}
           </div>
 
           {b.sched || b.open.length ? (<>
             {h("На неделе", null, "week")}
             <div style={card} data-mo-sec="week">
-              {weekHoleDays(b).map((d, i) => row("hole-" + d, "warn", dShort(d) + ": не хватает " + holesText(b, d), { first: i === 0, go: () => onGo("schedule") }))}
+              {weekHoleDays(b).map((d, i) => row("hole-" + d, "warn", "Не хватает " + holesText(b, d), { first: i === 0, icon: "userPlus", sub: upFirst(dLong(d)), go: () => onGo("schedule") }))}
               {b.open.map((o, i) => row("open-" + (o.id || i), "warn",
                 o.mode === "give" ? o.who + " отдаёт смену" : o.mode === "swap" ? o.who + " ищет обмен" : "Ищем в смену " + posAcc(o.pos, o.n),
-                { first: i === 0 && !weekHoleDays(b).length, sub: upFirst(dLong(o.day)) + (o.mode === "need" ? "" : ". Пока никто не взял"), go: () => onGo("chat", { chat: o.chat, msg: o.id }) }))}
-              {!weekHoleDays(b).length && !b.open.length ? row("week-ok", "ok", "Людей хватает, открытых заявок нет", { first: true }) : null}
+                { first: i === 0 && !weekHoleDays(b).length, icon: o.mode === "need" ? "userPlus" : "swap", sub: upFirst(dLong(o.day)) + (o.mode === "need" ? "" : ". Пока никто не взял"), go: () => onGo("chat", { chat: o.chat, msg: o.id }) }))}
+              {!weekHoleDays(b).length && !b.open.length ? row("week-ok", "ok", "Людей хватает, открытых заявок нет", { first: true, icon: "team" }) : null}
             </div>
           </>) : null}
 
           {h("Стоп-лист", b.stop.n || null, "stop")}
           <div style={card} data-mo-sec="stop">
-            {b.stop.n ? row("stop", "info", b.stop.names.join(", ") + (b.stop.n > b.stop.names.length ? " и ещё " + (b.stop.n - b.stop.names.length) : ""), { first: true, go: () => onGo("menu") })
-              : row("stop", "ok", "Стоп-лист пуст", { first: true })}
+            {b.stop.n ? row("stop", "info", b.stop.names.join(", ") + (b.stop.n > b.stop.names.length ? " и ещё " + (b.stop.n - b.stop.names.length) : ""), { first: true, icon: "stop", go: () => onGo("menu") })
+              : row("stop", "ok", "Стоп-лист пуст", { first: true, icon: "stop" })}
           </div>
 
           {(() => {
             const rows = [];
             if (b.thanks) rows.push(row("thanks", "info", b.thanks.n === 1 ? "Гость сказал спасибо: " + thanksPeople(b.thanks) : "Гости сказали спасибо " + b.thanks.n + " " + plural(b.thanks.n, "раз", "раза", "раз") + ": " + thanksPeople(b.thanks),
-              { first: !rows.length, go: () => onGo("thanks"), extra: b.thanks.quote ? <div style={{ fontSize: 13, color: sub, fontStyle: "italic", lineHeight: 1.45, marginTop: 4 }}>«{b.thanks.quote}»{b.thanks.by ? " · " + b.thanks.by : ""}</div> : null }));
-            if (b.ybrief) rows.push(row("yreads", "info", "Брифинг прочитали " + b.ybrief.reads + (b.ybrief.of ? " из " + b.ybrief.of + " в смене" : ""), { first: !rows.length }));
-            if (b.learn) rows.push(row("learn", b.learn.done ? "info" : "warn", "Занимались " + b.learn.done + " из " + b.learn.of + ", кто был в смене", { first: !rows.length, go: () => onGo("report") }));
+              { first: !rows.length, icon: "heart", go: () => onGo("thanks"), extra: b.thanks.quote ? <div style={{ fontSize: 13, color: sub, fontStyle: "italic", lineHeight: 1.45, marginTop: 4 }}>«{b.thanks.quote}»{b.thanks.by ? " · " + b.thanks.by : ""}</div> : null }));
+            if (b.ybrief) rows.push(row("yreads", "info", "Брифинг прочитали " + b.ybrief.reads + (b.ybrief.of ? " из " + b.ybrief.of + " в смене" : ""), { first: !rows.length, icon: "eye" }));
+            if (b.learn) rows.push(row("learn", b.learn.done ? "info" : "warn", "Занимались " + b.learn.done + " из " + b.learn.of + ", кто был в смене", { first: !rows.length, icon: "book", go: () => onGo("report") }));
             if (cl) CL_KINDS.forEach(([k, t]) => {
               const x = cl[k], ch = (x.log.checked || []).filter((id) => x.ids.includes(id)).length;
               const at = x.log.done_at ? new Date(x.log.done_at) : null;
               const done = !!(at && !isNaN(at));
               rows.push(row("cl-" + k, done ? "ok" : "warn", t + ": " + (done ? String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0") + (x.log.by_name ? " · " + x.log.by_name : "")
-                : ch ? "отмечено " + ch + " из " + x.total : "не отмечено"), { first: !rows.length, go: () => onGo("checklist") }));
+                : ch ? "отмечено " + ch + " из " + x.total : "не отмечено"), { first: !rows.length, icon: "checklist", go: () => onGo("checklist") }));
             });
             return rows.length ? (<>{h("Вчера", null, "yday")}<div style={card} data-mo-sec="yday">{rows}</div></>) : null;
           })()}
@@ -198,9 +193,9 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
                 const act = !x.tg ? <span style={{ flex: "0 0 auto", alignSelf: "center", fontSize: 12, color: sub, fontStyle: "italic" }}>нет Telegram</span>
                   : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-mo-nudge={x.id} disabled={!!s && s !== "fail"}
                       onClick={(e) => { e.stopPropagation(); nudge(x.id); }}>{s === "sent" ? "Напомнили" : s === "already" ? "Уже сегодня" : s === "busy" ? "Минуту…" : s === "fail" ? "Ещё раз" : "Напомнить"}</button>;
-                return row("idle-" + x.id, "warn", x.n, { first: i === 0, sub: x.days == null ? "Ещё ни разу не занимались" : daysText(x.days) + " без занятий", act });
+                return row("idle-" + x.id, "warn", x.n, { first: i === 0, icon: "person", sub: x.days == null ? "Ещё ни разу не занимались" : daysText(x.days) + " без занятий", act });
               })}
-              {b.idle.more ? row("idle-more", "info", "И ещё " + b.idle.more, { go: () => onGo("report") }) : null}
+              {b.idle.more ? row("idle-more", "info", "И ещё " + b.idle.more, { icon: "team", go: () => onGo("report") }) : null}
             </div>
           </>) : null}
 
@@ -224,11 +219,11 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
                       style={{ padding: "5px 10px", borderRadius: 999, border: "1px solid " + (sel ? c.gold : c.line), background: sel ? c.soft : "transparent", color: sel ? text : sub,
                         fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer" }}>{hourLabel(x)}</button>; })}
                 </div>) : null}
-              {!prefs.bot ? row("nobot", "warn", "Бот на сервере не подключён", { sub: "Пока сводка только здесь. Подключает владелец: «Команда» → «Сервер»." })
-                : !prefs.linked ? row("nolink", "warn", "Telegram не подключён", { sub: "Включи «Напоминания в Telegram», и сводка начнёт приходить каждое утро.",
+              {!prefs.bot ? row("nobot", "warn", "Бот на сервере не подключён", { icon: "plane", sub: "Пока сводка только здесь. Подключает владелец: «Команда» → «Сервер»." })
+                : !prefs.linked ? row("nolink", "warn", "Telegram не подключён", { icon: "plane", sub: "Включи «Напоминания в Telegram», и сводка начнёт приходить каждое утро.",
                     act: onRemind ? <button type="button" style={ghost} data-mo-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })
                 : <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginTop: 2 }} data-mo-send="" disabled={busy === "send"} onClick={sendNow}>{busy === "send" ? "Отправляю…" : "Прислать сейчас"}</button>}
-            </>) : row("prefs", "info", "Настройки появятся вместе с этапом 40 на сервере", { first: true })}
+            </>) : row("prefs", "info", "Настройки появятся вместе с этапом 40 на сервере", { first: true, icon: "server" })}
             {note ? <div role="status" data-mo-note="" style={{ fontSize: 12.5, color: text, lineHeight: 1.5, marginTop: 8 }}>{note}</div> : null}
           </div>
         </>) : null}

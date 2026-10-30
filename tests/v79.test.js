@@ -55,8 +55,8 @@ describe("v79: «Живой гость» — лёгкая часть отдел�
     expect(full.readGuestRuns).toBe(lite.readGuestRuns);
     expect(full.placeOf).toBe(lite.placeOf);
     expect(full.GUEST_RUNS_KEY).toBe("sa_guest_runs");
-    expect(lite.guestSub("seasonal", "waiter")).toBe("Разговор с гостем-ИИ из твоего меню · чек разбора");
-    expect(lite.guestSub("spg")).toBe("Гость-ИИ у входа: встреча, бронь, рассадка · чек разбора");
+    expect(lite.guestSub("seasonal", "waiter")).toBe("Гость-ИИ из твоего меню · чек разбора");   // v110: короче
+    expect(lite.guestSub("spg")).toBe("Гость-ИИ у входа · чек разбора");   // v110: короче
     expect(lite.placeOf("", "senior_bartender")).toBe("bar");
     expect(code(rd("lib/guest-lite.js"))).not.toMatch(/^import /m);   // без зависимостей
   });

@@ -269,6 +269,11 @@ export const injectStyles = () => {
     /* Переход между экранами: каждый мягко въезжает (fade + сдвиг) */
     @keyframes saPageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
     .sa-pagein { animation: saPageIn .28s cubic-bezier(.16,1,.3,1) backwards; }
+    /* v110 (Доп. 423): группа вкладки разворачивается — строки мягко выезжают из-под кнопки, стрелка поворачивается */
+    @keyframes saHubOpen { from { max-height: 0; opacity: 0; } to { max-height: 900px; opacity: 1; } }
+    .sa-hubrows { overflow: hidden; animation: saHubOpen .32s cubic-bezier(.16,1,.3,1) backwards; }
+    .sa-hubchev { transition: transform .22s ease; }
+    @media (prefers-reduced-motion: reduce) { .sa-hubrows { animation: none; } .sa-hubchev { transition: none; } }
     /* Колода бармена: 3D-переворот и перелистывание */
     .sa-ck-wrap { perspective: 1200px; }
     .sa-ck-inner { position: relative; transform-style: preserve-3d; -webkit-transform-style: preserve-3d;

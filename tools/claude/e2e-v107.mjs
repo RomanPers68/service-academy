@@ -116,7 +116,7 @@ async function open({ who = ANNA, srv, rpcs = () => undefined, light = false, w 
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_session_token: tok(who), sa_profile: JSON.stringify(who), sa_ai_fab: "1", ["sa_last_role" + UK]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + UK]: "1",
     ["sa_mastery" + UK]: JSON.stringify({ tiers: {}, fw: false, master: {} }), sa_menu_shared: JSON.stringify({ [R0]: MENU }), sa_boot_missing: String(Date.now() + SHIFT_MS), ...seedExtra };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1"; seed[`sa_hint_v${HINTS_VERSION}_track_orb`] = "1";
@@ -211,7 +211,7 @@ await run("WEEK", async () => {
   const foc = await txt(k.page.locator('[data-nb-sec="focus"]'));
   const order = await k.page.evaluate(() => [...document.querySelectorAll("[data-nb-sec]")].map((e) => e.getAttribute("data-nb-sec")));
   ok("WEEK: план начинается с тем собеседования — «Конфликты…» (урок «Работа с жалобами»), «Честность и деньги»", order.indexOf("focus") >= 0 && order.indexOf("focus") < order.indexOf("d1")
-    && /С СОБЕСЕДОВАНИЯ/.test(foc) && /дались труднее всего/.test(foc) && (await step(k.page, F1).count()) === 1 && /Работа с жалобами/.test(await txt(step(k.page, F1)))
+    && /С собеседования/i.test(foc) && /дались труднее всего/.test(foc) && (await step(k.page, F1).count()) === 1 && /Работа с жалобами/.test(await txt(step(k.page, F1)))
     && (await step(k.page, F2).count()) === 1 && (await k.page.locator('[data-nb-open="s4"]').count()) === 1, order.join(",") + " · " + foc.slice(0, 200));
   ok("WEEK: «сделано 1 из 12»", /сделано 1 из 12/.test(await txt(k.page.locator('[data-nb-h="plan"]'))), await txt(k.page.locator('[data-nb-h="plan"]')));
   await shot(k.page, "week");
@@ -263,13 +263,14 @@ await run("LEAD", async () => {
   await toList(m.page);
   const memo = await txt(m.page.locator("[data-nbl-memo]"));
   ok("LEAD: руководитель; памятка — за 15 минут, как найти, форма, кто встретит, ещё", (await m.page.locator('[data-newbies-lead="1"]').count()) === 1
-    && /Приходить: за 15 минут до смены/.test(memo) && /Как найти: Служебный вход со двора/.test(memo) && /Форма: Чёрный верх/.test(memo)
-    && /Встретит: наставник; если его нет, менеджер смены/.test(memo) && /Ещё: Обед для команды/.test(memo), memo);
+    // v110 (Доп. 423): памятка — внизу и коротко: «Приходить за 15 минут до смены», остальное строкой
+    && /Приходить за 15 минут до смены/.test(memo) && /Служебный вход со двора/.test(memo) && /Чёрный верх/.test(memo)
+    && /встретит наставник или менеджер смены/.test(memo) && /Обед для команды/.test(memo), memo);
   const ids = await m.page.evaluate(() => [...document.querySelectorAll("[data-nbl-item]")].map((e) => e.getAttribute("data-nbl-item")));
   const ks = await txt(item(m.page, "e-ksenia")), tm = await txt(item(m.page, "e-timur"));
   ok("LEAD: двое, новые сверху: Ксения, Тимур", ids.join(",") === "e-ksenia,e-timur", ids.join(","));
   ok("LEAD: Ксения — первая смена завтра, наставник не назначен, собеседование с темами и баллами, 1 из 12",
-    /Первая смена: завтра, 12:00/.test(ks) && /Наставник не назначен/.test(ks) && ks.includes("Собеседование " + dayMon(D(-6)) + ": конфликты и сложные ситуации 45, честность и деньги 62") && /1 из 12/.test(ks), ks);
+    /Первая смена: завтра, 12:00/.test(ks) && /Наставник не назначен/.test(ks) && ks.includes("Собеседование " + dayMon(D(-6)) + ", слабые темы: конфликты и сложные ситуации 45 из 100 честность и деньги 62 из 100")   /* v110: темы плашками */ && /1 из 12/.test(ks), ks);
   ok("LEAD: Тимур — первая смена была, наставник Илья Б., собеседование не найдено, 3 из 10",
     tm.includes("Первая смена была " + dayMon(D(-5))) && /Наставник: Илья Б\./.test(tm) && /Собеседование не найдено/.test(tm) && /3 из 10/.test(tm), tm);
   await shot(m.page, "lead");
@@ -321,7 +322,7 @@ await run("MEMO", async () => {
   await m.page.locator("[data-nb-memo-save]").click(); await sleep(1000);
   const memo = await txt(m.page.locator("[data-nbl-memo]"));
   ok("MEMO: сохранено — на сервере и в карточке", srv.S.nbMemo.addr === "Вход с улицы, дверь с вывеской" && srv.S.nbMemo.arrive === 20 && srv.S.nbMemo.meet === "Ольга, хостес"
-    && !(await m.page.locator("[data-nb-sheet]").count()) && /за 20 минут/.test(memo) && /Вход с улицы, дверь с вывеской/.test(memo) && /если его нет, Ольга, хостес/.test(memo), memo);
+    && !(await m.page.locator("[data-nb-sheet]").count()) && /за 20 минут/.test(memo) && /Вход с улицы, дверь с вывеской/.test(memo) && /встретит наставник или Ольга, хостес/.test(memo), memo);
   const k = await open({ who: KSENIA, srv });
   await toWeek(k.page);
   const first = await txt(k.page.locator('[data-nb-sec="first"]'));

@@ -36,7 +36,7 @@ await ctx.route("**/*", async (route) => {
   if (u.includes("/rest/v1/")) return json([]);
   return route.abort();
 });
-const seed = { sa_session_token: "p", sa_a11y: "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify("spg"),
+const seed = { sa_session_token: "p", sa_a11y: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify("spg"),
   sa_profile: JSON.stringify({ id: "adm", name: "Роман", surname: "Переверзев", restaurant: "Два моря, Океан", position: "senior", is_admin: true }),
   sa_admin_swipe_seen: "1" };   // подсказка-приоткрытие не должна мешать замеру
 for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";

@@ -9,6 +9,8 @@
 // присоединяются), «Я» → «Спасибо от коллег»; Мария — в «Сегодня» «Графика» день рождения и годовщина.
 // v109 (Доп. 422): Мария — «Команда» → «Что дало обучение» (итог месяца), «Прислать этот итог в Telegram» — сообщение бота,
 // его кнопка «Открыть итог» ведёт на экран.
+// v110 (Доп. 423): вкладки одним видом — все группы строками в одной карточке; Мария — значки в «Утре», «Новички» (сначала
+// новички, поиск в листе «Наставник»), итог с главным одной строкой; Ксения — «Первая неделя» карточкой с прогрессом.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -36,6 +38,8 @@ const ok = (name, v, extra = "") => { const l = (v ? "✓ " : "✗ ") + name + (
 const shot = (n) => page.screenshot({ path: OUT + "/" + n + ".png" });
 const boot = async () => { await page.waitForFunction(() => !document.getElementById("sa-splash"), null, { timeout: 25000 }).catch(() => errs.push("заставка не ушла")); await page.waitForTimeout(1800); };
 const txt = async () => (await page.locator("body").innerText()).replace(/\s+/g, " ");
+// v110 (Доп. 423): группы вкладок — кнопками, свёрнуты; открыть все (или одну по названию)
+const openGroups = async (name = null) => { await page.evaluate((n) => document.querySelectorAll('[data-hub-toggle][aria-expanded="false"]').forEach((b) => { if (!n || b.getAttribute("data-hub-toggle") === n) b.click(); }), name); await page.waitForTimeout(500); };
 const tap = async (sel) => { await page.locator(sel).first().click(); await page.waitForTimeout(500); };
 
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" });
@@ -112,8 +116,12 @@ if (!ONLY || ONLY.includes("anna")) {
   for (let i = 0; i < 5 && await page.locator("[data-chat]").count(); i++) { await page.evaluate(() => { const b = document.querySelector('[data-chat] [data-sa-back]'); if (b) b.click(); }); await page.waitForTimeout(450); }
   ok("чат закрыт кнопкой «Назад»", (await page.locator("[data-chat]").count()) === 0);
   await page.evaluate(() => window.__saNav && window.__saNav("shift")); await page.waitForTimeout(1500);
+  const fold0 = await page.evaluate(() => [...document.querySelectorAll("[data-hub-toggle]")].map((b) => b.getAttribute("data-hub-toggle") + ":" + b.getAttribute("aria-expanded")));
+  ok("«Смена»: группы — кнопками «На смене» и «Потренироваться», свёрнуты", fold0.join(",") === "На смене:false,Потренироваться:false", fold0.join(","));
+  await shot("a09-shift-folded");
+  await openGroups("На смене");
   t = await txt();
-  ok("«Смена»: «Опаздываю» и «Смены в календаре телефона»", t.includes("Опаздываю") && t.includes("Смены в календаре телефона"));
+  ok("«На смене» развернулась: «Опаздываю» и «Смены в календаре телефона»", t.includes("Опаздываю") && t.includes("Смены в календаре телефона"));
   await shot("a10-shift");
   await page.getByText("Смены в календаре телефона").first().click(); await page.waitForTimeout(1200);
   ok("лист календаря: ближайшие смены", (await page.locator("[data-cal-next]").getAttribute("data-cal-next").catch(() => "0")) === "3");
@@ -133,6 +141,7 @@ if (!ONLY || ONLY.includes("anna")) {
   // v107 (Доп. 420): Анна — наставник Ксении: «Команда» → «Новички»
   await page.locator("[data-cal-sheet] [data-sa-back]").click().catch(() => {}); await page.waitForTimeout(500);
   await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1500);
+  await openGroups();
   ok("Анна: «Команда» → «Новички»: «Ты наставник: Ксения М.»", /Ты наставник: Ксения М\./.test(await txt()));
   await page.getByText("Ты наставник: Ксения М.").first().click(); await page.waitForTimeout(1800);
   await page.locator('[data-nbl-item="e-ksenia"] [role=button]').first().click().catch(() => {}); await page.waitForTimeout(600);
@@ -170,6 +179,7 @@ if (!ONLY || ONLY.includes("anna")) {
   await shot("a19-thx-card");
   for (let i = 0; i < 5 && await page.locator("[data-chat]").count(); i++) { await page.evaluate(() => { const b = document.querySelector('[data-chat] [data-sa-back]'); if (b) b.click(); }); await page.waitForTimeout(450); }
   await page.evaluate(() => window.__saNav && window.__saNav("me")); await page.waitForTimeout(1800);
+  await openGroups();
   const pi = page.locator('.sa-card[aria-label="Спасибо от коллег"]').first();
   const ps = (await pi.innerText().catch(() => "")).replace(/\s+/g, " ");
   ok("«Я»: «Спасибо от коллег» — 3 спасибо", /3 раза за неделю коллеги сказали спасибо|Всего спасибо от коллег: 3/.test(ps), ps);
@@ -214,6 +224,7 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("в «Сегодня»: «День рождения: Белов Илья», «Годовщина: Соколова Вера (год)»", /День рождения: Белов Илья/.test(await txt()) && /Годовщина: Соколова Вера \(год\)/.test(await txt()));
   // v107 (Доп. 420): «Команда» → «Новички»: Ксения (наставник Анна, представлена) и Тимур (наставник Илья)
   await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1500);
+  await openGroups();
   await page.getByText("Наставники, памятка и темы с собеседования").first().click().catch(() => {}); await page.waitForTimeout(1800);
   const ids = await page.evaluate(() => [...document.querySelectorAll("[data-nbl-item]")].map((e) => e.getAttribute("data-nbl-item")).join(","));
   const ks = await page.locator('[data-nbl-item="e-ksenia"]').innerText().catch(() => "");
@@ -222,6 +233,7 @@ if (!ONLY || ONLY.includes("maria")) {
   await shot("m5-newbies");
   // v109 (Доп. 422): «Команда» → «Что дало обучение»: итог месяца; «Прислать этот итог в Telegram» — как 1-го числа
   await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1500);
+  await openGroups();
   await page.getByText("Чему учились и что изменилось в зале").first().click().catch(() => {});
   await page.waitForSelector('[data-gain="ready"]', { timeout: 9000 }).catch(() => {}); await page.waitForTimeout(600);
   const secs = await page.evaluate(() => [...document.querySelectorAll("[data-gain-sec]")].map((e) => e.getAttribute("data-gain-sec")).join(","));
@@ -240,6 +252,19 @@ if (!ONLY || ONLY.includes("maria")) {
   await page.locator("#demo-tgchat [data-demo-tgbtn]").first().click().catch(() => {}); await page.waitForTimeout(1800);
   ok("«Открыть итог» — экран итога за этот месяц", /^gain_\d{4}-\d{2}$/.test(go || "") && (await page.locator('[data-gain="ready"]').count()) === 1
     && (await page.locator(`[data-gain-month="${String(go).slice(5)}"][aria-pressed="true"]`).count()) === 1, go);
+  // v110 (Доп. 423): итог — главное одной строкой; вкладки — группы строками; «Утро» — значки по смыслу
+  ok("итог: главное одной строкой и разница цифрой", /^Команда прошла \d+ урок/.test(await page.locator("[data-gain-head-learn]").innerText().catch(() => ""))
+    && (await page.locator("[data-gain-delta]").count()) >= 3);
+  await page.evaluate(() => window.__saNav && window.__saNav("shift")); await page.waitForTimeout(1500);
+  const hub = await page.evaluate(() => ({ g: document.querySelectorAll("[data-hub-toggle]").length, b: (document.querySelector('[data-hub-group="На смене"] [data-hub-badge]') || { getAttribute: () => "" }).getAttribute("data-hub-badge") }));
+  ok("«Смена» у Марии: «На смене» и «Потренироваться» кнопками, на «На смене» — счётчик чата", hub.g === 2 && /^\d+$/.test(hub.b || ""), JSON.stringify(hub));
+  await openGroups("На смене");
+  ok("«На смене» развернулась строками", (await page.locator('[data-hub-group="На смене"] [data-hub-compact] .sa-card').count()) >= 6);
+  await shot("m8-shift-rows");
+  await page.evaluate(() => window.__saNav && window.__saNav("morning")); await page.waitForTimeout(2000);
+  const gl = await page.evaluate(() => [...document.querySelectorAll("[data-mo-row] [data-glyph]")].map((e) => e.getAttribute("data-glyph")));
+  ok("«Утро»: у строк значки по смыслу (солнце, брифинг, стоп-лист…)", gl.includes("sun") && gl.includes("brief") && gl.includes("stop") && !gl.includes(""), gl.join(","));
+  await shot("m9-morning-glyphs");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });
@@ -249,7 +274,8 @@ if (!ONLY || ONLY.includes("roman")) {
   ok("Роману: «Утро руководителя» в Telegram", /^Доброе утро, Роман/.test(await page.locator("#demo-tgchat .t").innerText().catch(() => "")));
   await page.locator("#demo-tgchat .done").click().catch(() => {}); await page.waitForTimeout(400);
   await page.evaluate(() => window.__saNav && window.__saNav("teamHub")); await page.waitForTimeout(1200);
-  ok("«Команда»: пункт «Сервер»", /Этапы базы, бот Telegram, расписания/.test(await txt()));
+  await openGroups("Управление");
+  ok("«Команда» → «Управление»: пункт «Сервер»", /Этапы базы, бот Telegram, расписания/.test(await txt()));
   await shot("r1-team");
   await page.getByText("Этапы базы, бот Telegram, расписания").first().click(); await page.waitForTimeout(1800);
   await shot("r2-server");
@@ -288,7 +314,8 @@ if (!ONLY || ONLY.includes("ksenia")) {
   for (let i = 0; i < 5 && await page.locator("[data-chat]").count(); i++) { await page.evaluate(() => { const b = document.querySelector('[data-chat] [data-sa-back]'); if (b) b.click(); }); await page.waitForTimeout(450); }
   await page.evaluate(() => window.__saNav && window.__saNav("shift")); await page.waitForTimeout(1600);
   const first = await page.evaluate(() => { const c = [...document.querySelectorAll(".sa-card.sa-pagein[aria-label]")].filter((e) => e.getClientRects().length); return c.length ? c[0].innerText.replace(/\s+/g, " ") : ""; });
-  ok("«Смена»: первым — «Первая неделя: первая смена сегодня»", /^Первая неделя Первая смена: сегодня, 12:00/.test(first), first);
+  // v110 (Доп. 423): карточкой с прогрессом под сменой: «Первая неделя · сделано 1 из 12 · Первая смена: сегодня, 12:00»
+  ok("«Смена»: первым — «Первая неделя» с прогрессом и первой сменой сегодня", /^Первая неделя сделано \d+ из \d+ Первая смена: сегодня, 12:00/.test(first), first);
   await shot("k4-shift");
 }
 if (!ONLY || ONLY.includes("phone")) {

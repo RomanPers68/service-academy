@@ -94,11 +94,11 @@ describe("v83: тренировка на случаях", () => {
   });
   it("подпись пункта в «Смене»: ждут разбора (руководителю), новые, ответ на свой; иначе — сколько случаев", () => {
     expect(casesSub({ inbox: 2, fresh: 3, mine_new: 1 }, true)).toBe("2 ждут разбора · 3 новых случая · ответ на твой случай");
-    expect(casesSub({ inbox: 2, fresh: 0 }, false)).toBe("Живые истории смены: расскажи свой, команда потренируется");
+    expect(casesSub({ inbox: 2, fresh: 0 }, false)).toBe("Расскажи свой, команда потренируется");   // v110: подпись в одну строку
     expect(casesSub({ team: 5 }, false)).toBe("5 случаев для тренировки. Расскажи свой");
     expect(casesSub({ inbox: 1 }, true)).toBe("1 ждёт разбора");
     expect(casesSub({ fresh: 1 }, false)).toBe("1 новый случай");
-    expect(casesSub(null, false)).toBe("Живые истории смены: расскажи свой, команда потренируется");
+    expect(casesSub(null, false)).toBe("Расскажи свой, команда потренируется");
   });
 });
 

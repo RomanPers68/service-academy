@@ -39,7 +39,7 @@ await ctx.route("**/*", async (route) => {
   return route.abort();
 });
 const seed = { sa_session_token: "p", sa_profile: JSON.stringify({ id: "u", name: "Анна", surname: "Смирнова", restaurant: "Два моря, Океан", position: "waiter" }),
-  sa_a11y: "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify("seasonal"),
+  sa_a11y: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify("seasonal"),
   "sa_mistakes_Анна_Смирнова": JSON.stringify([
     { q: "Вопрос из удалённого урока?", options: ["a", "b"], correct: 0, lessonTitle: "Тест: Удалённый раздел", stage: 0, due: 1 },
     { q: "Кто главный в смене без менеджера?", options: ["Старший смены", "Повар"], correct: 0, lessonTitle: "Тест: Субординация", stage: 0, due: 1 }]) };

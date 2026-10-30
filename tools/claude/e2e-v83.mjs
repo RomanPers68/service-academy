@@ -74,7 +74,7 @@ async function open({ who = STAFF, rpcs = () => undefined, calls = [], telegram 
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_session_token: "tok-preview", sa_profile: JSON.stringify(who), sa_ai_fab: "1", ["sa_last_role" + UK]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + UK]: "1",
     ["sa_mastery" + UK]: JSON.stringify({ tiers: {}, fw: false, master: {} }) };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
@@ -147,7 +147,7 @@ if (want("TELL")) {
     const o = await open({ who: STAFF, light, rpcs: S.rpc });
     await sleep(1200); await toShift(o.page);
     const it = await txt(item(o.page));
-    ok(tag + ": в «Смене» → «Потренироваться» пункт «Случаи из нашего зала»", /Случаи из нашего зала Живые истории смены: расскажи свой, команда потренируется/.test(it), it);
+    ok(tag + ": в «Смене» → «Потренироваться» пункт «Случаи из нашего зала»", /Случаи из нашего зала Расскажи свой, команда потренируется/.test(it), it);
     await item(o.page).first().click(); await sleep(1800);
     const train = await txt(o.page.locator("[data-case-train]"));
     ok(tag + ": случаев пока нет — так и сказано, кнопки тренировки нет", /Пока ни одного\. Расскажи случай со смены/.test(train) && !(await o.page.locator("[data-case-play]").count()), train);

@@ -129,8 +129,8 @@ describe("слова экрана по роли", () => {
     expect(placeUi({ place: "hall", table: 3, phone: true, exit: true }).eye).toBe("СТОЛ 3");
   });
   it("подпись плитки на «Смене» — по роли", () => {
-    expect(guestSub("seasonal", "waiter")).toBe("Разговор с гостем-ИИ из твоего меню · чек разбора");
-    expect(guestSub("spg")).toBe("Гость-ИИ у входа: встреча, бронь, рассадка · чек разбора");
+    expect(guestSub("seasonal", "waiter")).toBe("Гость-ИИ из твоего меню · чек разбора");   // v110: короче
+    expect(guestSub("spg")).toBe("Гость-ИИ у входа · чек разбора");   // v110
     expect(guestSub("bar")).toBe("Гость-ИИ у барной стойки · чек разбора");
     expect(guestSub("manager")).toBe("Гость-ИИ позвал менеджера · чек разбора");
   });

@@ -53,7 +53,7 @@ async function open({ who = ANNA, light = false, w = 393, h = 852, look = null, 
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
     sa_session_token: "tok-preview", sa_profile: JSON.stringify(who), ["sa_last_role" + uk]: JSON.stringify("seasonal"), ["sa_completed" + uk]: JSON.stringify(DONE), ["sa_goal" + uk]: "2",
     ["sa_activity" + uk]: JSON.stringify({ [YDAY]: { st: 2, l: 2 } }), ["sa_streak" + uk]: JSON.stringify({ count: 3, best: 5, last: YDAY, days: [YDAY] }),
     sa_today_shift: JSON.stringify({ date: TODAY, label: "День · 12:00–20:00" }), ...(look ? { sa_home_look: look } : {}) };

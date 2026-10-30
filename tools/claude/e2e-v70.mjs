@@ -51,7 +51,7 @@ async function open({ light = false, w = 440, h = 956, dsf = 2, fs = false, pair
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1",
     sa_session_token: "tok-preview", sa_profile: JSON.stringify(OWNER), sa_ai_fab: "1",
     ["sa_last_role" + uk]: JSON.stringify("spg"), ["sa_completed" + uk]: JSON.stringify(DONE), ["sa_goal" + uk]: "1",
     ["sa_activity" + uk]: JSON.stringify({ [YDAY]: { st: 2, l: 2 } }),

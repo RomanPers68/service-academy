@@ -62,7 +62,7 @@ async function open({ storage = {}, light = false, w = 390, h = 844, url = "/", 
     }
     return route.abort();
   });
-  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(profile), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0" };
+  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(profile), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0" };
   if (storage.__role !== null) seed.sa_last_role = JSON.stringify(storage.__role || "seasonal");
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
   const ukx = "_" + profile.name + "_" + (profile.surname || "");

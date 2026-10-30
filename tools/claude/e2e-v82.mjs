@@ -99,7 +99,7 @@ async function open({ who = STAFF, rpcs = () => undefined, calls = [], telegram 
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_session_token: "tok-preview", sa_profile: JSON.stringify(who), sa_ai_fab: "1", ["sa_last_role" + UK]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + UK]: "1",
     ["sa_mastery" + UK]: JSON.stringify({ tiers: {}, fw: false, master: {} }) };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
@@ -146,12 +146,13 @@ if (want("LEAD")) {
     const item = o.page.locator('.sa-card[aria-label="Брифинг смены"]');
     const itemTxt = await txt(item);
     // v106 (Доп. 419): первым в «На смене» — «Утро руководителя», брифинг — сразу за ним
-    ok(tag + ": в «Смене» у руководителя пункт «Брифинг смены» в «На смене», первым (с v106 — сразу за «Утро руководителя»)", /Пять минут перед сменой: график, стоп-лист, фокус по ошибкам команды/.test(itemTxt)
+    ok(tag + ": в «Смене» у руководителя пункт «Брифинг смены» в «На смене», первым (с v106 — сразу за «Утро руководителя»)", /Пять минут перед сменой: график и фокус/.test(itemTxt)
       && (await o.page.evaluate(() => {
-        const is = (el, l) => !!el && (el.getAttribute("aria-label") === l || !!el.querySelector('[aria-label="' + l + '"]'));
-        const g = document.querySelector('[data-hub-group="На смене"]'); let c = g && g.nextElementSibling;
-        if (is(c, "Утро руководителя")) c = c.nextElementSibling;
-        return is(c, "Брифинг смены"); })), itemTxt);
+        // v110 (Доп. 423): «На смене» — кнопка-группа со строками внутри; брифинг — сразу за «Утром руководителя» (или за «Опаздываю»)
+        const g = document.querySelector('[data-hub-group="На смене"]');
+        const rows = g ? [...g.querySelectorAll(".sa-card[aria-label]")].map((e) => e.getAttribute("aria-label")) : [];
+        const m = rows.indexOf("Утро руководителя"), b = rows.indexOf("Брифинг смены");
+        return b >= 0 && (m < 0 ? b === 0 : b === m + 1 || (b === m + 2 && rows[m + 1] === "Опаздываю")); })), itemTxt);
     ok(tag + ": брифинга сегодня ещё нет — карточки в «Смене» нет", !(await o.page.locator("[data-brief-card]").count()));
     await item.first().click(); await sleep(2600);
     const block = (k) => o.page.locator(`[data-brief-block="${k}"]`);

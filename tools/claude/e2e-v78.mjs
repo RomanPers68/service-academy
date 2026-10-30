@@ -65,7 +65,7 @@ async function open({ who = "staff", light = false, w = 393, h = 852, role = "se
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_session_token: "tok-preview", sa_profile: JSON.stringify(prof), sa_ai_fab: "1", ["sa_last_role" + uk]: JSON.stringify(role), ["sa_ach_pioneer" + uk]: "1" };
   if (who !== "admin") { seed["sa_completed" + uk] = JSON.stringify(DONE.c); seed["sa_quiz_done" + uk] = JSON.stringify(DONE.q); seed["sa_mastery" + uk] = JSON.stringify({ tiers: {}, fw: false, master: {} }); }
   if (menu) seed.sa_menu_shared = JSON.stringify({ [R0]: TEAM_MENU });
@@ -141,7 +141,7 @@ if (want("HUB")) {
       if (s !== "me") ok(tag + " «" + title + "»: без слогана под названием", !/Всё для рабочего дня|Люди, цифры и найм|Рейтинг и наставничество/.test(text), "");
       else ok(tag + " «Я»: под именем — ресторан", /Два моря, Океан/.test(text), "");
       if (s === "me") ok(tag + " «Погреб тем» — без перечня «освежить, раунд мастера, зачёт»", /Всё свежее|выдыха/.test(text) && !/освежить, раунд мастера, зачёт/.test(text), (text.match(/Погреб тем\n[^\n]*/) || [""])[0]);
-      if (s === "teamHub") ok(tag + " «Лига недели» — без «· заведение, сеть и кубок»", !/заведение, сеть и кубок/.test(text) && /Очки за занятия с понедельника: в заведении и в сети/.test(text), (text.match(/Лига недели\n[^\n]*/) || [""])[0]);
+      if (s === "teamHub") ok(tag + " «Лига недели» — без «· заведение, сеть и кубок»", !/заведение, сеть и кубок/.test(text) && /Очки за занятия с понедельника/.test(text), (text.match(/Лига недели\n[^\n]*/) || [""])[0]);
       if (s === "teamHub" && who === "admin") ok(tag + " «Отчёты по сотрудникам» — обычной фразой", /Кто где ошибается и что не прошёл, в Excel и PDF/.test(text), "");
     }
     ok(tag + ": без ошибок в консоли", !o.errors.length, o.errors.slice(0, 3).join(" | "));

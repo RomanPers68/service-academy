@@ -223,7 +223,7 @@ describe("v108: приложение", () => {
   });
   it("«Я» → «Спасибо от коллег» рядом со «Спасибо от гостей»; рейтинг; график — «В команде с» и годовщины в «Сегодня»", () => {
     const APP = rd("App.jsx");
-    const g = APP.indexOf('thanksOn && { key:"thanks", group:"Мой путь"'), p = APP.indexOf('peerInfo && { key:"peer", group:"Мой путь", icon:"thanks", label:"Спасибо от коллег"');
+    const g = APP.indexOf('thanksOn && { key:"thanks", group:"Мой путь"'), p = APP.indexOf('peerInfo && { key:"peer", group:"Мой путь", icon:"peer", label:"Спасибо от коллег"');   // v110: свой значок
     expect(g).toBeGreaterThan(0);
     expect(p).toBeGreaterThan(g);
     expect(APP).toContain('const PeerThanksScreen = lazyOf(() => import("./ui/peer-thanks"), "PeerThanksScreen");');

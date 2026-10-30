@@ -41,7 +41,7 @@ async function open({ storage = {}, telegram = false, light = false, w = 390, h 
     }
     return route.abort();
   });
-  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(prof), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify("seasonal"), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0" };
+  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(prof), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify("seasonal"), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0" };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
   for (const [k, v] of Object.entries(storage)) seed[k.replace("{uk}", uk)] = typeof v === "string" ? v : JSON.stringify(v);
   await ctx.addInitScript(([seed, telegram]) => {

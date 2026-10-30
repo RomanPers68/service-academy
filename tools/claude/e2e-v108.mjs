@@ -112,7 +112,7 @@ async function open({ who = ANNA, srv, rpcs = () => undefined, light = false, w 
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_session_token: tok(who), sa_profile: JSON.stringify(who), sa_ai_fab: "1", ["sa_last_role" + UK]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + UK]: "1",
     ["sa_mastery" + UK]: JSON.stringify({ tiers: {}, fw: false, master: {} }), sa_menu_shared: JSON.stringify({ [R0]: MENU }), sa_boot_missing: String(Date.now() + SHIFT_MS), ...seedExtra };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1"; seed[`sa_hint_v${HINTS_VERSION}_track_orb`] = "1";
@@ -330,7 +330,7 @@ await run("ME", async () => {
   await hubItem(a.page, "Спасибо от коллег").click();
   await until(() => a.page.locator('[data-peer="ok"]').count(), 9000); await sleep(400);
   const st = await txt(a.page.locator("[data-peer-stats]")), it = await txt(a.page.locator("[data-peer-item]"));
-  ok("ME: за неделю 3, за месяц 3, всего 3; карточка — сегодня, Мария К., за что, «Ещё спасибо: Пётр О., Ольга Л.»", /^3 за неделю 3 за месяц 3 всего$/.test(st)
+  ok("ME: за неделю 3 (+15 очков), за месяц 3, всего 3; карточка — сегодня, Мария К., за что, «Ещё спасибо: Пётр О., Ольга Л.»", /^3 спасибо за неделю \+15 очков в «Сотруднике недели» За месяц 3 · всего 3$/.test(st)   /* v110: крупно неделя и очки */
     && /сегодня · Мария К\./i.test(it) && /Выручила с банкетом на веранде/.test(it) && /Ещё спасибо: Пётр О\., Ольга Л\./.test(it), st + " · " + it);
   await shot(a.page, "me");
   await a.page.locator("[data-peer-item]").first().click();

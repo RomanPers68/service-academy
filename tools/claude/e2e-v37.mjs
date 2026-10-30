@@ -55,7 +55,7 @@ async function open({ staff, role = "seasonal", telegram = false, light = false,
     }
     return route.abort();
   });
-  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(STAFF), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify(role), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1", sa_track_swiped: "1" };
+  const seed = { sa_session_token: "tok-preview", sa_profile: JSON.stringify(STAFF), sa_a11y: light ? "1" : "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify(role), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_quest_open: "1", sa_track_swiped: "1" };
   for (const k of Object.keys(HINTS)) if (!hintsOff.includes(k)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
   const ukx = "_" + STAFF.name + "_" + (STAFF.surname || "");
   for (const [k, v] of Object.entries(storage)) seed[k.replace("{uk}", ukx)] = typeof v === "string" ? v : JSON.stringify(v);

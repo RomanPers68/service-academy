@@ -837,7 +837,8 @@ function ThanksSheet({ me, api, to0 = null, locked = false, text0 = "", onClose,
             aria-label="За что спасибо" data-chat-thx-field="" />
           {err ? <div className="ch-err" role="alert" style={{ marginTop: 8 }} data-chat-thx-err="">{err}</div> : null}
           <button type="button" className="ch-main" data-chat-thx-go="" disabled={busy} onClick={go}>{busy ? "Отправляю…" : "Сказать спасибо"}</button>
-          <div className="ch-hint">Карточка уйдёт в «Вся команда». У коллеги она останется в «Я» → «Спасибо от коллег» и добавит очки в «Сотруднике недели».</div>
+          {/* v110 (Доп. 423): сноска в одну строку (была в три) */}
+          <div className="ch-hint" data-chat-thx-hint="">Карточку увидит вся команда, коллеге +5 очков.</div>
         </>)}
       </div>
     </div>);

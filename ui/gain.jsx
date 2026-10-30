@@ -10,7 +10,7 @@ import { GOLD, labelStyle } from "./tokens";
 import { MODULES_INDEX } from "../data/modules";
 import { cmsTitleMap } from "../lib/custom-modules";
 import { plural } from "../lib/morning";
-import { gainModel, learnRows, hallRows, grewWhy, topicTitle, topicLine, compareLabel, monthNom, monthPrep, monthOf } from "../lib/gain";
+import { gainModel, learnRows, hallRows, grewWhy, topicTitle, topicLine, compareLabel, monthNom, monthPrep, monthOf, deltaText, gainHeadline } from "../lib/gain";
 
 const REPO = "https://github.com/RomanPers68/service-academy/blob/main/supabase/";
 const P = (a11y) => (a11y
@@ -28,11 +28,11 @@ const openOut = (url) => {
 };
 const errText = (r) => (r && r.error === "auth" ? "Сессия устарела. Войди заново." : r && r.error === "forbidden" ? "Этот экран только у руководителей."
   : r && r.error === "no_rest" ? "У тебя не указано заведение." : "Нет связи. Попробуй ещё раз.");
-// стрелка сравнения: вверх или вниз; цвет — лучше стало или хуже
-const Arrow = ({ up, col }) => (
-  <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" style={{ flex: "0 0 auto" }}>
-    <path d={up ? "M5 1.2L9.2 8H.8z" : "M5 8.8L.8 2h8.4z"} fill={col} />
-  </svg>);
+// v110 (Доп. 423): кружок с инициалами у «Больше всех выросли» и «Не занимались» (как в «Новичках»)
+const ini = (name) => String(name || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
+const Ava = ({ name, size = 32 }) => (
+  <span aria-hidden="true" style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-grid", placeItems: "center",
+    background: "linear-gradient(135deg,#C8A96E,#7A5D2A)", color: "#fff", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 12 }}>{ini(name)}</span>);
 
 /** month — открыть этот месяц («ГГГГ-ММ», из кнопки бота); onGo("report") — «Отчёты по сотрудникам»; onRemind — подключить Telegram. */
 export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo = () => {}, onRemind = null }) {
@@ -85,24 +85,27 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
     </div>);
   const ghost = { flex: "0 0 auto", alignSelf: "center", padding: "6px 12px", borderRadius: 999, border: "1px solid " + c.line, background: c.chip, color: text,
     fontSize: 12.5, fontFamily: "Georgia, serif", cursor: "pointer", whiteSpace: "nowrap" };
-  const was = (x) => (x.was == null ? null : (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, color: sub }}>
-      {"было " + x.wasText}
-      {x.good == null ? null : <Arrow up={x.now > x.was} col={x.good ? c.ok : c.warn} />}
-    </span>));
+  // v110: разница цифрой («+44» зелёным, хуже — жёлтым), «было» рядом мельче (было: «было 30» и стрелка)
+  const dcol = (x) => (x.good == null ? sub : x.good ? c.ok : c.warn);
+  const delta = (x, attrs = {}) => { const d = deltaText(x); return d ? <span {...attrs} style={{ color: dcol(x), fontWeight: "bold" }}>{d}</span> : null; };
+  const was = (x) => (x.was == null ? null : <span style={{ fontSize: 12.5, color: sub }}>{"было " + x.wasText}</span>);
   // строка: слева что и «было», справа значение; act — кнопка справа вместо значения
   const row = (key, title, opt = {}) => {
-    const { sub: s = null, value = null, act = null, first = false, go = null, attrs = {} } = opt;
+    const { sub: s = null, value = null, act = null, first = false, go = null, attrs = {}, ava = "", vsub = null } = opt;
     const on = go ? () => { vibrate("light"); go(); } : null;
     return (
       <div key={key} data-gain-row={key} {...attrs} role={on ? "button" : undefined} tabIndex={on ? 0 : undefined} onClick={on || undefined}
         onKeyDown={on ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); on(); } } : undefined}
         style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: first ? 0 : "1px solid " + c.line, cursor: on ? "pointer" : "default" }}>
+        {ava ? <Ava name={ava} /> : null}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: text, lineHeight: 1.4 }}>{title}</div>
           {s ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2 }}>{s}</div> : null}
         </div>
-        {value != null ? <div style={{ flex: "0 0 auto", fontFamily: "Georgia, serif", fontSize: 20, color: text }}>{value}</div> : null}
+        {value != null ? <div style={{ flex: "0 0 auto", textAlign: "right" }}>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 20, color: text, lineHeight: 1.2 }}>{value}</div>
+          {vsub ? <div style={{ fontSize: 12.5, lineHeight: 1.3 }}>{vsub}</div> : null}
+        </div> : null}
         {act}
         {on && !act ? <span aria-hidden="true" style={{ flex: "0 0 auto", color: sub, fontSize: 18, lineHeight: 1 }}>›</span> : null}
       </div>);
@@ -111,6 +114,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
   const m = st.m;
   const topics = m ? m.topics.map((t) => ({ ...t, title: topicTitle(t.id, titles) })).filter((t) => t.title) : [];
   const lr = m ? learnRows(m) : [], hr = m ? hallRows(m) : [];
+  const hd = m ? gainHeadline(m) : { learn: "", hall: "", tone: "" };
   const quiet = m && !m.learn.people && !m.learn.days;
   return (
     <div style={T.screen} className="sa-screen" data-gain={st.phase}>
@@ -140,6 +144,12 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
           <div data-gain-period="" style={{ fontSize: 13, color: sub, lineHeight: 1.45, margin: "0 2px 14px" }}>
             {[m.rest, compareLabel(m)].filter(Boolean).join(" · ")}{st.again ? " · обновляю…" : ""}
           </div>
+          {/* v110 (Доп. 423): главное одной строкой — как в образце, который выбрал владелец */}
+          {hd.learn || hd.hall ? (
+            <div style={{ margin: "-4px 2px 16px" }} data-gain-head="">
+              {hd.learn ? <div style={{ fontFamily: "'Piazzolla', Georgia, serif", fontWeight: 700, fontSize: 19, color: text, lineHeight: 1.3 }} data-gain-head-learn="">{hd.learn}</div> : null}
+              {hd.hall ? <div style={{ fontSize: 14, marginTop: 4, color: hd.tone === "good" ? c.ok : hd.tone === "bad" ? c.warn : text }} data-gain-head-hall={hd.tone}>{hd.hall}</div> : null}
+            </div>) : null}
 
           {h("Чему учились", null, "learn")}
           <div style={{ ...card, padding: "12px 10px" }} data-gain-sec="learn">
@@ -148,7 +158,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
                 <div key={x.key} data-gain-stat={x.key} style={{ flex: 1, minWidth: 0, padding: "0 4px" }}>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 26, color: text, lineHeight: 1.15 }}>{x.text}</div>
                   <div style={{ fontSize: 12, color: sub, marginTop: 2 }}>{x.key === "lessons" ? plural(x.now, "урок", "урока", "уроков") : x.key === "tests" ? plural(x.now, "тест", "теста", "тестов") : "занимались"}</div>
-                  {x.was != null ? <div style={{ marginTop: 4 }}>{was(x)}</div> : null}
+                  {x.was != null ? <div style={{ marginTop: 4, fontSize: 12.5 }}>{delta(x, { "data-gain-delta": x.key })}{deltaText(x) ? <span style={{ color: sub }}> · </span> : null}{was(x)}</div> : null}
                 </div>))}
             </div>
             {quiet ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 10, textAlign: "center" }} data-gain-quiet="">
@@ -159,7 +169,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
 
           {h("Что изменилось в зале", null, "hall")}
           <div style={card} data-gain-sec="hall">
-            {hr.length ? hr.map((x, i) => row(x.key, x.label, { first: i === 0, value: x.text, sub: was(x), attrs: { "data-gain-good": x.good == null ? "" : x.good ? "1" : "0" } }))
+            {hr.length ? hr.map((x, i) => row(x.key, x.label, { first: i === 0, value: x.text, sub: was(x), vsub: delta(x, { "data-gain-delta": x.key }), attrs: { "data-gain-good": x.good == null ? "" : x.good ? "1" : "0" } }))
               : row("none", "Пока сравнивать нечего", { first: true, sub: "Здесь будут «спасибо» гостей и коллег, ошибки в тестах и самостоятельные смены новичков." })}
           </div>
 
@@ -173,7 +183,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
           {m.grew.length ? (<>
             {h("Больше всех выросли", null, "grew")}
             <div style={card} data-gain-sec="grew">
-              {m.grew.map((g, i) => row("g-" + g.id, g.n, { first: i === 0, sub: grewWhy(g), attrs: { "data-gain-grew": g.id } }))}
+              {m.grew.map((g, i) => row("g-" + g.id, g.n, { first: i === 0, sub: grewWhy(g), ava: g.n, attrs: { "data-gain-grew": g.id } }))}
             </div>
           </>) : null}
 
@@ -185,7 +195,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
                 const act = s === "no_tg" ? <span style={{ flex: "0 0 auto", fontSize: 12, color: sub, fontStyle: "italic" }}>нет Telegram</span>
                   : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-gain-nudge={x.id} disabled={!!s && s !== "fail"}
                       onClick={(e) => { e.stopPropagation(); nudge(x.id); }}>{s === "sent" ? "Напомнили" : s === "already" ? "Уже сегодня" : s === "busy" ? "Минуту…" : s === "fail" ? "Ещё раз" : "Напомнить"}</button>;
-                return row("i-" + x.id, x.n, { first: i === 0, act, attrs: { "data-gain-idle": x.id } });
+                return row("i-" + x.id, x.n, { first: i === 0, act, ava: x.n, attrs: { "data-gain-idle": x.id } });
               })}
               {m.idleMore ? row("idle-more", "И ещё " + m.idleMore, { go: () => onGo("report") }) : null}
             </div>

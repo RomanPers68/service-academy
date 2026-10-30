@@ -31,7 +31,7 @@ const check = (name, cond, extra = "") => results.push(`${cond ? "✓" : "✗"} 
 
 async function run(name, body) {
   const browser = await chromium.launch();
-  const seed = { sa_session_token: "preview", sa_profile: JSON.stringify(prof), sa_a11y: "0", sa_welcome_seen_v11: "1",
+  const seed = { sa_session_token: "preview", sa_profile: JSON.stringify(prof), sa_a11y: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all",
     sa_last_role: JSON.stringify("spg"), sa_hint_mistakes: "1" };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,

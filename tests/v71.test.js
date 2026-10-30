@@ -202,8 +202,9 @@ describe("v71: разделы группами", () => {
   });
   it("«Я», «Смена», «Команда» — группы в App; ни один пункт не пропал", () => {
     const app = rd("App.jsx");
-    expect(app).toContain('groupOrder={["Мой путь", "Итоги и документы", "Вместе", "Помощь и настройки"]} compactGroups={["Итоги и документы", "Помощь и настройки"]}');
-    expect(app).toContain(']} compactGroups={["Управление"]} /></div>;');
+    // v110 (Доп. 423): группы — кнопками, внутри строками (владелец: «кнопка «На смене», нажимаешь — и там всё про смену»)
+    expect(app).toContain('groupOrder={["Мой путь", "Итоги и документы", "Вместе", "Помощь и настройки"]} compactGroups={true} fold hubId="me"');
+    expect(app).toContain(']} compactGroups={true} fold hubId="team" /></div>;');
     for (const k of ["mastery", "guide", "st", "week", "month", "cellar", "myrep", "pair", "cert", "acc", "roles"]) expect(app).toMatch(new RegExp('key:"' + k + '", group:"'));
     expect(app).toContain('{ ...offlineHelp, group:"Помощь и настройки" }');
     for (const k of ["sch", "cl", "remind", "daily", "lg", "wg", "rd", "ob"]) expect(app).toMatch(new RegExp('key:"' + k + '", group:"(На смене|Потренироваться|Первая неделя|Команда)"'));

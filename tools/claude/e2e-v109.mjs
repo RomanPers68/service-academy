@@ -123,7 +123,7 @@ async function open({ who = MARIA, srv, rpcs = () => undefined, light = false, w
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_session_token: tok(who), sa_profile: JSON.stringify(who), sa_ai_fab: "1", ["sa_last_role" + UK]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + UK]: "1",
     ["sa_mastery" + UK]: JSON.stringify({ tiers: {}, fw: false, master: {} }), sa_menu_shared: JSON.stringify({ [R0]: MENU }), sa_boot_missing: String(Date.now() + SHIFT_MS), ...seedExtra };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1"; seed[`sa_hint_v${HINTS_VERSION}_track_orb`] = "1";
@@ -159,8 +159,11 @@ const toGain = async (page) => {
   return ready(page);
 };
 const chips = (page) => page.evaluate(() => [...document.querySelectorAll("[data-gain-month]")].map((e) => e.getAttribute("data-gain-month") + ":" + e.getAttribute("aria-pressed") + ":" + e.innerText.trim()));
-const statLine = (x) => x.text + " " + (x.key === "lessons" ? plural(x.now, "урок", "урока", "уроков") : x.key === "tests" ? plural(x.now, "тест", "теста", "тестов") : "занимались") + (x.was != null ? " было " + x.wasText : "");
-const hallLine = (x) => x.label + (x.was != null ? " было " + x.wasText : "") + " " + x.text;
+// v110 (Доп. 423): у строк — разница цифрой («+8 · было 16»; в зале — под значением), у людей — кружок с инициалами
+const dl = (x) => (G.deltaText ? G.deltaText(x) : "");
+const ini = (n) => String(n || "").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
+const statLine = (x) => x.text + " " + (x.key === "lessons" ? plural(x.now, "урок", "урока", "уроков") : x.key === "tests" ? plural(x.now, "тест", "теста", "тестов") : "занимались") + (x.was != null ? (dl(x) ? " " + dl(x) + " ·" : "") + " было " + x.wasText : "");
+const hallLine = (x) => x.label + (x.was != null ? " было " + x.wasText : "") + " " + x.text + (dl(x) ? " " + dl(x) : "");
 // экран — то же, что ответ сервера за этот месяц (числа и слова — lib/gain.js)
 async function sameAsServer(page, g, tag) {
   const m = G.gainModel(g), bad = [];
@@ -179,11 +182,11 @@ async function sameAsServer(page, g, tag) {
   if (tops.length && (await txt(page.locator('[data-gain-h="topics"]'))) !== "Темы месяца " + m.topicsN + " " + plural(m.topicsN, "тема", "темы", "тем")) bad.push("заголовок тем: " + (await txt(page.locator('[data-gain-h="topics"]'))));
   const grew = await page.evaluate(() => [...document.querySelectorAll("[data-gain-grew]")].map((e) => e.getAttribute("data-gain-grew")));
   if (grew.join(",") !== m.grew.map((x) => x.id).join(",")) bad.push("выросли: " + grew.join(","));
-  for (const x of m.grew) { const s = await txt(page.locator(`[data-gain-grew="${x.id}"]`)); if (s !== x.n + " " + G.grewWhy(x)) bad.push(x.id + ": " + s); }
+  for (const x of m.grew) { const s = await txt(page.locator(`[data-gain-grew="${x.id}"]`)); if (s !== ini(x.n) + " " + x.n + " " + G.grewWhy(x)) bad.push(x.id + ": " + s); }
   const idle = await page.evaluate(() => [...document.querySelectorAll("[data-gain-idle]")].map((e) => e.getAttribute("data-gain-idle")));
   if (idle.join(",") !== m.idle.map((x) => x.id).join(",")) bad.push("не занимались: " + idle.join(","));
   if (m.idle.length && (await txt(page.locator('[data-gain-h="idle"]'))) !== "Не занимались в " + G.monthPrep(m.month) + " " + (m.idle.length + m.idleMore)) bad.push("заголовок: " + (await txt(page.locator('[data-gain-h="idle"]'))));
-  for (const x of m.idle) { const s = await txt(page.locator(`[data-gain-idle="${x.id}"]`)); if (!s.startsWith(x.n + " ")) bad.push(x.id + ": " + s); }
+  for (const x of m.idle) { const s = await txt(page.locator(`[data-gain-idle="${x.id}"]`)); if (!s.startsWith(ini(x.n) + " " + x.n + " ")) bad.push(x.id + ": " + s); }
   ok(tag, !bad.length, bad.slice(0, 4).join(" | "));
 }
 
@@ -225,8 +228,8 @@ await run("SCREEN", async () => {
     (await txt(m.page.locator("[data-gain-period]"))) === R0 + " · 1–10 " + G.monthGen(M) + ", сравниваем с 1–10 " + G.monthGen(MP), await txt(m.page.locator("[data-gain-period]")));
   await sameAsServer(m.page, g, "SCREEN: «Чему учились», «Что изменилось в зале», темы, кто вырос и кто не занимался — как у сервера");
   ok("SCREEN: в зале стало лучше — стрелки «лучше» у всех четырёх строк", (await m.page.locator('[data-gain-sec="hall"] [data-gain-good="1"]').count()) === 4);
-  ok("SCREEN: «Больше всех выросли»: Анна С. «10 уроков и 5 тестов, было 1 и 0», Пётр О.", /^Анна С\. 10 уроков и 5 тестов, было 1 и 0$/.test(await txt(m.page.locator('[data-gain-grew="e-anna"]')))
-    && /^Пётр О\. /.test(await txt(m.page.locator('[data-gain-grew="e-petr"]'))), await txt(m.page.locator('[data-gain-sec="grew"]')));
+  ok("SCREEN: «Больше всех выросли»: Анна С. «10 уроков и 5 тестов, было 1 и 0», Пётр О.", /^АС Анна С\. 10 уроков и 5 тестов, было 1 и 0$/.test(await txt(m.page.locator('[data-gain-grew="e-anna"]')))
+    && /^ПО Пётр О\. /.test(await txt(m.page.locator('[data-gain-grew="e-petr"]'))), await txt(m.page.locator('[data-gain-sec="grew"]')));
   ok("SCREEN: «Темы месяца»: «Работа с жалобами» — тест проходили 2 человека", /^Работа с жалобами тест проходили 2 человека$/.test(await txt(m.page.locator('[data-gain-topic="s4-q"]'))),
     await txt(m.page.locator('[data-gain-topic="s4-q"]')));
   ok("SCREEN: «1-го числа в Telegram»: «бот присылает 1-го числа в 10:00», «Прислать этот итог в Telegram»",
@@ -291,7 +294,7 @@ await run("NUDGE", async () => {
   ok("NUDGE: «Напомнить» Дарье — «Напомнили»; бот написал Дарье про разминку", await until(async () => /Напомнили/.test(await txt(m.page.locator('[data-gain-nudge="e-darya"]'))), 5000)
     && lastCall(srv, "morning_nudge").body.p_emp === "e-darya" && srv.pings.some((x) => x.to === "e-darya" && /Мария К\. напоминает про разминку/.test(x.text)), JSON.stringify(srv.pings.slice(-2)));
   await m.page.locator('[data-gain-nudge="e-ilya"]').click();
-  ok("NUDGE: у Ильи нет Telegram — вместо кнопки «нет Telegram»", await until(async () => /^Илья Б\. нет Telegram$/.test(await txt(m.page.locator('[data-gain-idle="e-ilya"]'))), 5000),
+  ok("NUDGE: у Ильи нет Telegram — вместо кнопки «нет Telegram»", await until(async () => /^ИБ Илья Б\. нет Telegram$/.test(await txt(m.page.locator('[data-gain-idle="e-ilya"]'))), 5000),
     await txt(m.page.locator('[data-gain-idle="e-ilya"]')));
   await m.page.locator('[data-gain-sec="idle"]').scrollIntoViewIfNeeded().catch(() => {});
   await shot(m.page, "nudge");
@@ -380,8 +383,9 @@ await run("PAPER", async () => {
   const m = await open({ who: MARIA, srv, light: true });
   await toGain(m.page);
   const bg = await m.page.evaluate(() => getComputedStyle(document.querySelector('[data-gain-sec="learn"]')).backgroundColor);
-  const ar = await m.page.evaluate(() => { const p = document.querySelector('[data-gain-sec="hall"] [data-gain-good="1"] svg path'); return p ? p.getAttribute("fill") : ""; });
-  ok("PAPER: «Для чтения» — светлые карточки, стрелка «лучше» — тёмно-зелёная", /rgba\(250, 242, 222/.test(bg) && ar.toUpperCase() === "#2C6B48", bg + " " + ar);
+  // v110: вместо стрелки — разница цифрой; «лучше» — тёмно-зелёная
+  const ar = await m.page.evaluate(() => { const p = document.querySelector('[data-gain-sec="hall"] [data-gain-good="1"] [data-gain-delta]'); return p ? getComputedStyle(p).color : ""; });
+  ok("PAPER: «Для чтения» — светлые карточки, разница «лучше» — тёмно-зелёная", /rgba\(250, 242, 222/.test(bg) && ar === "rgb(44, 107, 72)", bg + " " + ar);
   await shot(m.page, "paper");
   await m.ctx.close();
 });

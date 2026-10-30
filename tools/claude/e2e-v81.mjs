@@ -64,7 +64,7 @@ async function open({ rpcs = () => undefined, calls = [], telegram = false, ligh
     }
     return route.abort();
   });
-  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
+  const seed = { sa_a11y: light ? "1" : "0", sa_theme_auto: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_session_token: "tok-preview", sa_profile: JSON.stringify(STAFF), sa_ai_fab: "1", ["sa_last_role" + UK]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + UK]: "1",
     ["sa_completed" + UK]: JSON.stringify(DONE.c), ["sa_quiz_done" + UK]: JSON.stringify(DONE.q), ["sa_mastery" + UK]: JSON.stringify({ tiers: {}, fw: false, master: {} }),
     ["sa_mistakes" + UK]: JSON.stringify(BANK) };

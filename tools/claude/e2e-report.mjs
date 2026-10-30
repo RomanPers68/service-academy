@@ -54,7 +54,7 @@ async function open({ profile, telegram = false, stage23 = true }) {
     }
     return route.abort();
   });
-  const seed = { sa_session_token: "tok", sa_profile: JSON.stringify(profile), sa_a11y: "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify("seasonal"), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_track_swiped: "1" };
+  const seed = { sa_session_token: "tok", sa_profile: JSON.stringify(profile), sa_a11y: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify("seasonal"), sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_track_swiped: "1" };
   for (const k of Object.keys(HINTS)) seed[`sa_hint_v${HINTS_VERSION}_${k}`] = "1";
   await ctx.addInitScript(([seed, telegram]) => {
     if (!sessionStorage.getItem("__s")) { sessionStorage.setItem("__s", "1"); localStorage.clear(); for (const [k, v] of Object.entries(seed)) localStorage.setItem(k, v); }

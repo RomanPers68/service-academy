@@ -50,6 +50,15 @@ const ICON = {
   seat: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 3.2v1.6M12 19.2v1.6M3.2 12h1.6M19.2 12h1.6"/><rect x="9.5" y="1.5" width="5" height="2.6" rx="1"/><rect x="9.5" y="19.9" width="5" height="2.6" rx="1"/></svg>,
   // v84: спасибо от гостей — сердце с галочкой
   thanks: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M9.5 11.5l1.8 1.8 3.4-3.6"/></svg>,
+  // v110 (Доп. 423): значки кнопок-групп вкладок — «На смене» (клош), «Потренироваться» (гантель), «Управление» (ползунки),
+  // «Мой путь» (флажок), «Помощь и настройки» (шестерёнка)
+  cloche: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18h18"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 11V9.5"/><circle cx="12" cy="8.2" r="1.3"/><path d="M8.5 14.5a3.6 3.6 0 0 1 2-2"/></svg>,
+  dumbbell: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M7 12h10"/><rect x="4" y="7.5" width="3" height="9" rx="1.2"/><rect x="17" y="7.5" width="3" height="9" rx="1.2"/><path d="M2.5 10v4M21.5 10v4"/></svg>,
+  sliders: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>,
+  flag: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V4"/><path d="M5 4.5h12.5l-2.4 4 2.4 4H5"/></svg>,
+  gear: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M18.92 10.02L21.42 10.17L21.42 13.83L18.92 13.98L18.30 15.49L19.96 17.37L17.37 19.96L15.49 18.30L13.98 18.92L13.83 21.42L10.17 21.42L10.02 18.92L8.51 18.30L6.63 19.96L4.04 17.37L5.70 15.49L5.08 13.98L2.58 13.83L2.58 10.17L5.08 10.02L5.70 8.51L4.04 6.63L6.63 4.04L8.51 5.70L10.02 5.08L10.17 2.58L13.83 2.58L13.98 5.08L15.49 5.70L17.37 4.04L19.96 6.63L18.30 8.51Z"/><circle cx="12" cy="12" r="3"/></svg>,
+  // v110 (Доп. 423): «Спасибо от коллег» — сердце в облачке чата (их говорят карточкой в «Вся команда»); было то же сердце, что у гостей
+  peer: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z"/><path d="M12 13.4s-3.3-2-3.3-4.3a1.75 1.75 0 0 1 3.3-.85 1.75 1.75 0 0 1 3.3.85c0 2.3-3.3 4.3-3.3 4.3z"/></svg>,
   // v83: случаи из нашего зала — реплика с историей
   cases: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z"/><path d="M8 8.5h8M8 11.5h5"/></svg>,
   // v90: чат смены — два облачка разговора (как значок в верхней строке)
@@ -69,7 +78,33 @@ const ICON = {
   gain: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 20h18"/><path d="M5 16l4.5-4.5 3.5 3 6-6.5"/><path d="M14.5 8h4.5v4.5"/></svg>,   // v109 (Доп. 422): «Что дало обучение»
 };
 
-export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null }) {
+// v110 (Доп. 423): какой значок у кнопки-группы
+export const GROUP_ICON = { "На смене": "cloche", "Потренироваться": "dumbbell", "Первая неделя": "onboarding", "Управление": "sliders", "Команда": "team",
+  "Моё обучение": "book", "Мой путь": "flag", "Итоги и документы": "report", "Вместе": "pair", "Помощь и настройки": "gear" };
+// какие группы открыты: { shift: [названия], team: […], me: […] }; "all" — все (так их открывают старые проверки)
+export const HUB_OPEN_KEY = "sa_hub_open";
+export function readHubOpen() {
+  try { const v = localStorage.getItem(HUB_OPEN_KEY); if (v === "all") return "all"; const o = JSON.parse(v || "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch (e) { return {}; }
+}
+/** Подпись свёрнутой группы — разделы внутри: «Утро руководителя · Опаздываю · Брифинг смены…» */
+export const groupPreview = (run) => run.map((it) => it.label).join(" · ");
+/** Счётчик на свёрнутой группе: первое число внутри (непрочитанные в чате, «ждут разбора»), иначе «новое» */
+export function groupBadge(run) {
+  const n = run.find((it) => it.badge != null && /^\d+$/.test(String(it.badge)));
+  if (n) return { text: String(n.badge), red: !!n.red };
+  const t = run.find((it) => it.badge);
+  return t ? { text: "новое", red: !!t.red } : null;
+}
+
+export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null, fold = false, hubId = "" }) {
+  // v110 (Доп. 423): fold — группы кнопками (владелец, 30.10: «кнопка «На смене», нажимаешь — и там всё, что связано со
+  // сменой»): нажал — группа развернулась строками, ещё раз — свернулась; что открыто, помнится
+  const hid = hubId || String(title || "");
+  const [openAll, setOpenAll] = React.useState(() => readHubOpen());
+  const isOpen = (name) => openAll === "all" || (Array.isArray(openAll[hid]) && openAll[hid].includes(name));
+  // v110 (Доп. 423): compactGroups === true — все группы строками в одной карточке (владелец, 30.10: «навести порядок и прийти
+  // к минимализму» — раньше одни группы строками, другие отдельными плашками)
+  const compactOf = (name) => compactGroups === true || (Array.isArray(compactGroups) && compactGroups.includes(name));
   // Подсказка вкладки. Ключ и тексты приходят снаружи: HubScreen общий для
   // «Смены» и «Команды», а объяснять им надо разное — и по-разному для
   // сотрудника и руководителя.
@@ -139,8 +174,13 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           <div key={"g:" + k} data-hub-group={g} role="heading" aria-level={2}
             style={{ gridColumn: "1 / -1", ...labelStyle(a11y ? 16 : 14.5), color: gold, opacity: 0.9, margin: k ? "10px 4px 0" : "2px 4px 0" }}>{g}</div>
         );
-        const rows = (group, idx0) => (
-          <div key={"c:" + group[0].key} data-hub-compact className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: "2px 0", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+        const rows = (group, idx0, attrs = {}) => (
+          <div key={"c:" + group[0].key} data-hub-compact className="sa-pagein" {...attrs} style={{ ...frost, borderRadius: 18, padding: "2px 0", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+            {rowList(group)}
+          </div>
+        );
+        function rowList(group) {
+          return (<>
             {group.map((it, j) => {
               const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
               const go = () => { vibrate("light"); it.onClick && it.onClick(); };
@@ -148,7 +188,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
                 <div key={it.key} className="sa-card" onClick={go} {...onActivate(go)} aria-label={it.label}
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", minHeight: 48, boxSizing: "border-box", cursor: "pointer", WebkitTapHighlightColor: "transparent",
                     borderTop: j ? `1px solid ${a11y ? "rgba(139,106,48,0.16)" : "rgba(255,240,210,0.08)"}` : "none" }}>
-                  <span style={{ width: 24, height: 24, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", transform: "scale(0.86)" }}>{(ICON[it.icon] || ICON.book)(c)}</span>
+                  <span data-hub-ic="" style={{ width: 24, height: 24, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", transform: "scale(0.86)" }}>{(ICON[it.icon] || ICON.book)(c)}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: "Georgia, serif", fontSize: 15.5, color: it.red ? c : text, lineHeight: 1.25 }}>{it.label}</div>
                     {it.sub && it.subCompact !== false ? <div style={{ fontSize: 12, color: sub, marginTop: 1, lineHeight: 1.35, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.sub}</div> : null}
@@ -157,8 +197,69 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
                 </div>
               );
             })}
-          </div>
-        );
+          </>);
+        }
+        // v110: кнопка-группа: значок, название, разделы одной строкой, счётчик (пока свёрнута), стрелка; развёрнута — строки
+        const toggle = (name, names) => {
+          vibrate("light");
+          setOpenAll((prev) => {
+            const cur = prev === "all" ? names.slice() : Array.isArray(prev[hid]) ? prev[hid] : [];
+            const nextList = cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name];
+            const next = { ...(prev === "all" ? {} : prev), [hid]: nextList };
+            try { localStorage.setItem(HUB_OPEN_KEY, JSON.stringify(next)); } catch (e) { /* */ }
+            return next;
+          });
+        };
+        const foldCard = (name, run, idx0, names) => {
+          const open = isOpen(name), bdg = !open ? groupBadge(run) : null;
+          const ic = GROUP_ICON[name] || run[0].icon;
+          const rid = "hubg-" + hid + "-" + idx0;
+          return (
+            <div key={"f:" + name} data-hub-group={name} data-hub-open={open ? "1" : "0"} className="sa-pagein"
+              style={{ ...frost, borderRadius: 18, padding: 0, overflow: "hidden", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+              <button type="button" data-hub-toggle={name} aria-expanded={open} aria-controls={rid} onClick={() => toggle(name, names)}
+                aria-label={name + (bdg ? (bdg.text === "новое" ? ", есть новое" : ", новых: " + bdg.text) : "")}
+                style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 14px", minHeight: 60, boxSizing: "border-box", border: 0, background: "none",
+                  textAlign: "left", cursor: "pointer", color: text, WebkitTapHighlightColor: "transparent", font: "inherit" }}>
+                {/* счётчик свёрнутой группы — кружком на значке (число) или точкой («новое»): название и разделы не теснит */}
+                <span data-hub-ic="" style={{ position: "relative", width: 32, height: 32, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  {(ICON[ic] || ICON.book)(gold)}
+                  {bdg ? (bdg.text === "новое"
+                    ? <span data-hub-badge="новое" aria-hidden="true" style={{ position: "absolute", top: 1, right: -1, width: 10, height: 10, borderRadius: "50%", background: bdg.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold,
+                        boxShadow: "0 0 0 2px " + (a11y ? "#F6EEDC" : "#2A2114") }} />
+                    : <span data-hub-badge={bdg.text} aria-hidden="true" style={{ position: "absolute", top: -6, right: -9, minWidth: 18, height: 18, padding: "0 5px", boxSizing: "border-box", borderRadius: 10,
+                        background: bdg.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold, color: a11y ? "#fff" : "#1a160f", fontSize: 11, fontWeight: "bold", lineHeight: "18px", textAlign: "center",
+                        boxShadow: "0 0 0 2px " + (a11y ? "#F6EEDC" : "#2A2114") }}>{bdg.text}</span>) : null}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span data-hub-name="" style={{ display: "block", fontFamily: "Georgia, serif", fontSize: 17, color: text, lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+                  {!open ? <span data-hub-preview="" style={{ display: "block", fontSize: 12, color: sub, marginTop: 2, lineHeight: 1.35, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{groupPreview(run)}</span> : null}
+                </span>
+                <svg className="sa-hubchev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  style={{ flexShrink: 0, opacity: 0.8, transform: open ? "rotate(180deg)" : "none" }}><path d="M6 9.5l6 6 6-6"/></svg>
+              </button>
+              {open ? <div id={rid} data-hub-compact="" className="sa-hubrows" style={{ borderTop: `1px solid ${a11y ? "rgba(139,106,48,0.16)" : "rgba(255,240,210,0.08)"}` }}>{rowList(run)}</div> : null}
+            </div>
+          );
+        };
+        // группа из одного раздела — сам раздел, того же вида, что кнопка-группа (значок, название, подпись, «›»)
+        const soloCard = (it, idx0, name) => {
+          const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
+          const go = () => { vibrate("light"); it.onClick && it.onClick(); };
+          return (
+            <div key={"s:" + it.key} data-hub-group={name} data-hub-single="" className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: 0, animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+              <div className="sa-card" onClick={go} {...onActivate(go)} aria-label={it.label}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px", minHeight: 60, boxSizing: "border-box", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+                <span data-hub-ic="" style={{ width: 32, height: 32, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{(ICON[it.icon] || ICON.book)(c)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: it.red ? c : text, lineHeight: 1.25 }}>{it.label}</div>
+                  {it.sub ? <div style={{ fontSize: 12, color: sub, marginTop: 2, lineHeight: 1.35, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.sub}</div> : null}
+                </div>
+                {badgeEl(it, c)}
+              </div>
+            </div>
+          );
+        };
         const grouped = list.some((it) => it.group);
         const tiles = [];
         if (!grouped) list.forEach((it, idx) => tiles.push(card(it, idx)));
@@ -169,11 +270,17 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           const rank = (n) => { const k = (groupOrder || []).indexOf(n); return k < 0 ? 100 + names.indexOf(n) : k; };
           names.sort((a, b) => rank(a) - rank(b));
           let idx = 0;
+          const multi = names.filter((n) => n && list.filter((it) => (it.group || "") === n).length > 1);
           names.forEach((name, g) => {
             const run = list.filter((it) => (it.group || "") === name);
-            if (name) tiles.push(head(name, g));
-            if (!wide && compactGroups && compactGroups.includes(name)) tiles.push(rows(run, idx));
-            else run.forEach((it, j) => tiles.push(card(it, idx + j)));
+            // v110: группы кнопками — заголовка над ними нет (название — на самой кнопке); группа из одного раздела — сам раздел
+            if (!wide && fold && name && run.length > 1) tiles.push(foldCard(name, run, idx, multi));
+            else if (!wide && fold && name) tiles.push(soloCard(run[0], idx, name));
+            else {
+              if (name) tiles.push(head(name, g));
+              if (!wide && compactOf(name)) tiles.push(rows(run, idx));
+              else run.forEach((it, j) => tiles.push(card(it, idx + j)));
+            }
             idx += run.length;
           });
         }
@@ -247,6 +354,30 @@ export function ShiftHero({ a11y, onOpen, shift = null }) {
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** v110 (Доп. 423): «Смена» новичка — «Первая неделя» карточкой с прогрессом под сегодняшней сменой (было: группа «Первая неделя»
+ *  с единственным пунктом «Первая неделя»). line — первая смена или «План по дням…», done из total — план недели. */
+export function NewbieHero({ a11y, line = "", done = 0, total = 0, onOpen }) {
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760";
+  const go = () => { vibrate("light"); onOpen && onOpen(); };
+  const p = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <div className="sa-card sa-pagein" data-nb-hero="" aria-label="Первая неделя" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <div style={{ ...tagStyle(a11y), flex: 1 }}>Первая неделя</div>
+        {total ? <div style={{ fontSize: 12, color: sub }} data-nb-hero-done={done}>сделано {done} из {total}</div> : null}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+        <div style={{ flex: 1, minWidth: 0, fontFamily: "Georgia, serif", fontSize: 18, color: text, lineHeight: 1.3 }}>{line}</div>
+        <span aria-hidden="true" style={{ color: a11y ? "#7A5D2A" : "#D2A85A", fontSize: 21, opacity: 0.7, flexShrink: 0 }}>›</span>
+      </div>
+      {total ? (
+        <div aria-hidden="true" style={{ height: 6, borderRadius: 6, marginTop: 10, overflow: "hidden", background: a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)" }}>
+          <div style={{ width: p + "%", height: "100%", borderRadius: 6, background: "linear-gradient(90deg,#C8A96E,#7A5D2A)" }} />
+        </div>) : null}
     </div>
   );
 }

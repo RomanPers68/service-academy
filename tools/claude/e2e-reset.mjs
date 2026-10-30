@@ -30,7 +30,7 @@ await ctx.route("**/*", async (route) => {
   return route.abort();
 });
 const progress = { "spg-m0-l0": true, "spg-m0-l1": true };
-const seed = { sa_session_token: "p", sa_a11y: "0", sa_welcome_seen_v11: "1", sa_last_role: JSON.stringify("spg"),
+const seed = { sa_session_token: "p", sa_a11y: "0", sa_welcome_seen_v11: "1", sa_hub_open: "all", sa_last_role: JSON.stringify("spg"),
   sa_profile: JSON.stringify({ id: "u", name: "Анна", surname: "Смирнова", restaurant: "Два моря, Океан", position: "waiter" }),
   ["sa_completed" + UK]: JSON.stringify(progress), ["sa_quiz_done" + UK]: JSON.stringify({ "spg-0-q": true }),   // Доп. 286: ключ личный
   ["sa_mistakes" + UK]: JSON.stringify([{ q: "Старый вопрос?", options: ["a", "b"], correct: 0, lessonTitle: "Тест", stage: 0, due: 1 }]),

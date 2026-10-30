@@ -118,6 +118,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
       <div style={{ padding: "10px 16px 6px" }}>
         <input
           autoFocus
+          data-lens-field=""
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpenKey(null); }}
           placeholder="Блюдо, аллерген, коктейль, термин…"

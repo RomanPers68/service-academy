@@ -96,7 +96,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     </div>
     {/* Строка поиска: справочник растёт, листать 26+ глав дольше, чем спросить */}
     <div style={{ padding: "4px 18px 2px" }}>
-      <div onClick={onSearch} {...onActivate(onSearch)} role="search" aria-label="Поиск по справочнику"
+      <div onClick={onSearch} {...onActivate(onSearch)} role="search" aria-label="Поиск по справочнику" data-lens-field=""
         style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 15px", borderRadius: 14, cursor: "pointer",
           border: `1px solid ${gold}55`, borderTop: `1px solid ${gold}88`,
           background: dark ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.5)",

@@ -320,6 +320,43 @@ html.sa-lens .sa-schedno::after{content:"";position:absolute;inset:-3.5px;border
    глоссария (они не круглые) и пузыри переписки — прежние ── */
 html.sa-lens [data-lens-field]:focus-within{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
 
+/* ── v115: «Учусь». Владелец (30.10): «Пройдёмся по приложению, добьём то, что осталось? Чтобы приложение визуально было
+   едино». Практика у стола, проверка ситуаций и «Чек недели» (ui/table.jsx, оболочка .tb-table): «закрыть», значок,
+   звук и инструменты — линзы с кольцом (инструменты — круглые, как у «Живого гостя»); «Дальше», «К итогам» — плашки с
+   кольцом (полоска автоперехода — по форме плашки); ответы (продолжения правила, действия, «правда / миф») — стекло с
+   ободком и бликом, реплики «скажи» — прежний пунктир цветом ободка, верный и неверный — прежние; метки — стекло. Карточка
+   ситуации — бумага; тарелки, бусины, звёзды — прежние. Трек (ui/module-menu.jsx): «Дальше» и «Начать» текущего шага —
+   плашка с кольцом. Тест и «Работа над ошибками» (ui/screens-learning.jsx): ответы — стекло (data-lens-opt; верный и
+   неверный — прежние зелёный и красный), правило зачёта — кромка; «Погреб тем», «Путь мастера», сертификаты, путеводитель,
+   поиск и «Справочник» — метками data-lens-* (правила v111) ── */
+html.sa-lens .tb-table .tb-x,html.sa-lens .tb-table .tb-av,html.sa-lens .tb-table .tb-tool{position:relative;background:var(--lk-glass);border-color:transparent;color:var(--lk-gold);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-table .tb-tool{border-radius:50%}
+html.sa-lens .tb-table .tb-tool.on{color:var(--lk-hi);box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens.sa-light .tb-table .tb-x,html.sa-lens.sa-light .tb-table .tb-av,html.sa-lens.sa-light .tb-table .tb-tool{color:#6B4E1A}
+html.sa-lens .tb-table .tb-x::after,html.sa-lens .tb-table .tb-av::after,html.sa-lens .tb-table .tb-tool::after{content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .tb-table .tb-main:not(:disabled){position:relative;overflow:visible;color:var(--lk-hi);background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .tb-table .tb-main:not(:disabled){color:#6B4E1A;background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)}
+html.sa-lens .tb-table .tb-main:not(:disabled)::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light .tb-table .tb-main:not(:disabled)::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens .tb-table .tb-main>.auto{border-radius:inherit}
+html.sa-lens .tb-table .tb-chip2,html.sa-lens .tb-table .tb-actc,html.sa-lens .tb-table .tb-myth button:not(.right):not(.wrong){background:var(--lk-glass);border-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-table .tb-reply{border-color:var(--lk-rim);box-shadow:inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-table .tb-chip{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1px 0 var(--lk-hl)}
+html.sa-lens.sa-light .tb-table .tb-chip{color:#6B4E1A}
+html.sa-lens .tbm-cta{position:relative;color:var(--lk-hi);background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .tbm-cta{color:#6B4E1A;background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)}
+html.sa-lens .tbm-cta::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light .tbm-cta::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens [data-lens-opt=""]{background:var(--lk-glass)!important;border-color:transparent!important;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)!important}
+/* «Для чтения»: ответ — светлое стекло (на тёмном стекле буквы А–Г опускались до 4,3) */
+html.sa-lens.sa-light [data-lens-opt=""]{background:rgba(255,255,255,0.55)!important}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

@@ -135,7 +135,7 @@ export function QuizMeta({ n, step, light = false }) {
 // Правило словами — на первом вопросе, пока не ответил (дальше его заменяют тарелки и бусины)
 export function QuizRuleNote({ n, light = false }) {
   return (
-    <div data-quiz-rule role="note" style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "12px 0 4px", padding: "10px 12px", borderRadius: 12,
+    <div data-quiz-rule role="note" data-lens-edge="" style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "12px 0 4px", padding: "10px 12px", borderRadius: 12,
       background: light ? "rgba(139,106,48,0.07)" : "rgba(214,178,102,0.07)", boxShadow: "inset 0 0 0 1px " + (light ? "rgba(139,106,48,0.22)" : "rgba(214,178,102,0.20)") }}>
       <span style={{ marginTop: 1 }}><Plate ok light={light} /></span>
       <span style={{ fontSize: light ? 15 : 13, lineHeight: 1.5, color: light ? INK : CREAM, opacity: light ? 0.9 : 0.86 }}>{rulePhrase(n)}</span>

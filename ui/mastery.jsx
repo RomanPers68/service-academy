@@ -172,7 +172,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
 
   // ── HERO «Мастер роли» ──
   const hero = ms ? (
-    <section data-ms-hero="" aria-label="Мастер роли" style={card(a11y, true)}>
+    <section data-ms-hero="" aria-label="Мастер роли" data-lens-edge="" style={card(a11y, true)}>
       <div style={{ ...eye, color: c.gold, marginBottom: 8 }}>Главная награда</div>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         {achieved ? <Medal id="master" tier={3} size={96} a11y={a11y} ring={false} title={"Мастер роли" + roleQ} /> : <MasterRing have={ms.have} need={ms.need} a11y={a11y} c={c} />}
@@ -213,7 +213,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
       </div>
       {achieved ? (
         <button type="button" className="sa-btn" data-ms-certopen="" onClick={() => { vibrate("light"); setCert(true); }}
-          style={{ ...msPrimary, width: "100%", minHeight: 52, marginTop: 12, fontSize: a11y ? 17 : 16 }}>Сертификат мастера</button>
+          data-lens-btn="main" style={{ ...msPrimary, width: "100%", minHeight: 52, marginTop: 12, fontSize: a11y ? 17 : 16 }}>Сертификат мастера</button>
       ) : null}
       {prize || (masters && masters.can_prize) ? (
         <div data-ms-prize="" style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid " + c.line }}>
@@ -237,8 +237,8 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 10 }}>
                 <button type="button" className="sa-btn" disabled={busy || !draft.trim()} onClick={() => savePrize(draft)}
-                  style={{ ...msPrimary, minHeight: 44, padding: "0 20px", fontSize: a11y ? 16 : 15, opacity: busy || !draft.trim() ? 0.55 : 1 }}>{busy ? "Минуту…" : "Сохранить"}</button>
-                {prize ? <button type="button" className="sa-btn" disabled={busy} onClick={() => savePrize("")} style={ghostBtn(a11y, c)}>Убрать приз</button> : null}
+                  data-lens-btn="main" style={{ ...msPrimary, minHeight: 44, padding: "0 20px", fontSize: a11y ? 16 : 15, opacity: busy || !draft.trim() ? 0.55 : 1 }}>{busy ? "Минуту…" : "Сохранить"}</button>
+                {prize ? <button type="button" className="sa-btn" disabled={busy} onClick={() => savePrize("")} data-lens-btn="soft" style={ghostBtn(a11y, c)}>Убрать приз</button> : null}
                 <button type="button" onClick={() => { setEdit(false); setPmsg(null); }} style={{ ...linkBtn(a11y, c), color: c.sub, padding: "0 6px" }}>Отмена</button>
               </div>
             </div>
@@ -252,10 +252,10 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
   // ── ШАГ ДНЯ ──
   const stepDone = !!(step && step.done);
   const stepCard = step ? (
-    <section data-ms-step="" aria-label="Шаг дня" style={card(a11y, false)}>
+    <section data-ms-step="" aria-label="Шаг дня" data-lens-card="" style={card(a11y, false)}>
       <div style={{ ...eye, color: c.gold }}>Шаг дня</div>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginTop: 8 }}>
-        <span aria-hidden="true" style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", boxSizing: "border-box",
+        <span aria-hidden="true" data-lens="glyph" style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", boxSizing: "border-box",
           border: "1.5px solid " + (stepDone ? c.okLine : c.line), color: stepDone ? c.ok : c.gold }}>
           {stepDone ? <Check size={20} color={c.ok} /> : <FamIcon id={step.kind === "first" ? "first" : step.fam || "track"} size={22} color={c.gold} />}
         </span>
@@ -265,7 +265,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
         </div>
       </div>
       {!stepDone ? (
-        <button type="button" className="sa-btn" onClick={() => go(step.go, step.payload)} style={{ ...msPrimary, width: "100%", minHeight: 48, marginTop: 12, fontSize: a11y ? 17 : 16 }}>Сделать ›</button>
+        <button type="button" className="sa-btn" onClick={() => go(step.go, step.payload)} data-lens-btn="main" style={{ ...msPrimary, width: "100%", minHeight: 48, marginTop: 12, fontSize: a11y ? 17 : 16 }}>Сделать ›</button>
       ) : null}
     </section>
   ) : null;
@@ -274,7 +274,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
   let firstBlock = null;
   if (fw && fwGot) {
     firstBlock = (
-      <section data-ms-first="" data-ms-first-got="" style={{ ...card(a11y, false), display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
+      <section data-ms-first="" data-ms-first-got="" data-lens-card="" style={{ ...card(a11y, false), display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
         <Medal id="first" tier={3} size={40} a11y={a11y} ring={false} />
         <span style={{ flex: 1, minWidth: 0, fontFamily: BODY, fontSize: a11y ? 16 : 15, lineHeight: 1.35, color: c.text }}>Значок «Первые шаги» получен</span>
       </section>
@@ -282,9 +282,9 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
   } else if (fwOpen) {
     const dl = fw.daysLeft || 0;
     firstBlock = (
-      <section data-ms-first="" aria-label="Первые шаги в академии" style={card(a11y, false)}>
+      <section data-ms-first="" aria-label="Первые шаги в академии" data-lens-card="" style={card(a11y, false)}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span aria-hidden="true" style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", border: "1.5px solid " + c.line }}><FamIcon id="first" size={24} color={c.gold} /></span>
+          <span aria-hidden="true" data-lens="glyph" style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", border: "1.5px solid " + c.line }}><FamIcon id="first" size={24} color={c.gold} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: SERIF, fontWeight: 700, fontSize: a11y ? 18 : 17, lineHeight: 1.25, color: c.text }}>Первые шаги в академии</div>
             <div style={{ fontSize: small(13), color: c.sub, marginTop: 2 }}>{fw.done + " из " + fw.total + (dl ? " · " + (plural(dl, "остался ", "осталось ", "осталось ") + dl + " " + plural(dl, "день", "дня", "дней")) : "")}</div>
@@ -360,7 +360,7 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
   if (mstatus === "ok") {
     const rows = Array.isArray(masters.rows) ? masters.rows : [];
     mastersBlock = (
-      <section data-ms-masters="" aria-label="Мастера заведения" style={card(a11y, false)}>
+      <section data-ms-masters="" aria-label="Мастера заведения" data-lens-card="" style={card(a11y, false)}>
         <div style={{ ...eye, color: c.gold }}>{"Мастера заведения" + (rows.length ? " · " + rows.length : "")}</div>
         {!rows.length ? <div style={{ fontFamily: BODY, fontSize: a11y ? 16 : 15, color: c.text, marginTop: 8 }}>Пока никого. Первым мастером в заведении можешь стать ты</div> : null}
         {rows.length ? (
@@ -482,7 +482,7 @@ function BadgeSheet({ a11y, fam, fresh, onClose, onShow }) {
         </div>
         <div style={{ ...msEye(a11y), color: c.gold, marginTop: 16 }}>Как получить</div>
         <p style={{ margin: "5px 0 0", fontSize: a11y ? 16 : 15, lineHeight: 1.5, color: c.text }}>{msTie(fam.how || F.how)}</p>
-        <button type="button" className="sa-btn" data-ms-show="" onClick={onShow} style={{ ...msPrimary, width: "100%", minHeight: 50, marginTop: 16, fontSize: a11y ? 17 : 16 }}>Показать ›</button>
+        <button type="button" className="sa-btn" data-ms-show="" onClick={onShow} data-lens-btn="main" style={{ ...msPrimary, width: "100%", minHeight: 50, marginTop: 16, fontSize: a11y ? 17 : 16 }}>Показать ›</button>
       </div>
     </div>
   );
@@ -578,10 +578,10 @@ function MasterCertificate({ a11y, profile, role, state, earned, shareUrl, onClo
             <div style={{ fontSize: a11y ? 14 : 13, lineHeight: 1.5, color: ink.sub }}>{MASTER_PARTS.split(" · ").map((x) => x.replace(/ (?=\S+$)|(?<=^\S+) /g, "\u00A0")).join("\u00A0· ")}</div>
           </div>
         </div>
-        <button type="button" className="sa-btn" data-ms-sharepic="" onClick={sharePic} disabled={busy} style={{ ...msPrimary, width: "100%", minHeight: 52, marginTop: 16, fontSize: a11y ? 17 : 16, opacity: busy ? 0.65 : 1 }}>
+        <button type="button" className="sa-btn" data-ms-sharepic="" onClick={sharePic} disabled={busy} data-lens-btn="main" style={{ ...msPrimary, width: "100%", minHeight: 52, marginTop: 16, fontSize: a11y ? 17 : 16, opacity: busy ? 0.65 : 1 }}>
           <ShareIc />{busy ? "Рисуем картинку…" : "Поделиться картинкой"}
         </button>
-        <button type="button" className="sa-btn" data-ms-sharetext="" onClick={shareText} style={{ ...ghostBtn(a11y, c), width: "100%", minHeight: 48, marginTop: 8, color: a11y ? "#2A1F0E" : "#F3E9D2" }}>Поделиться текстом</button>
+        <button type="button" className="sa-btn" data-ms-sharetext="" onClick={shareText} data-lens-btn="soft" style={{ ...ghostBtn(a11y, c), width: "100%", minHeight: 48, marginTop: 8, color: a11y ? "#2A1F0E" : "#F3E9D2" }}>Поделиться текстом</button>
         {sent ? <p role="status" style={{ margin: "10px 0 0", textAlign: "center", fontSize: a11y ? 14 : 13.5, color: a11y ? "#2A1F0E" : "rgba(243,233,210,0.86)" }}>{sent}</p> : null}
         <button type="button" className="sa-btn" data-sa-back={pv ? undefined : ""} onClick={onClose}
           style={{ display: "block", width: "100%", minHeight: 46, marginTop: 4, border: 0, background: "none", cursor: "pointer", color: a11y ? "#5E4E30" : "rgba(243,233,210,0.8)", fontFamily: BODY, fontWeight: "bold", fontSize: a11y ? 16 : 15 }}>Закрыть</button>

@@ -133,7 +133,7 @@ describe("v58: обрезки и заголовки (неудобства 13, 14
     expect(c).toContain('WebkitLineClamp: 2, overflow: "hidden", wordBreak: "break-word" };');
     expect(c).toContain('<div data-cellar-title="" style={title2}>{r.m.title}</div>');
     expect(c).toContain('maxWidth: primary ? undefined : 96, padding: primary ? "11px 16px" : "7px 12px", flexShrink: 0 });');
-    expect(c).toContain('<button type="button" data-cellar-action="" style={rowBtn(a.primary)}');
+    expect(c).toContain('<button type="button" data-cellar-action="" data-lens-btn={a.primary ? "main" : "soft"} style={rowBtn(a.primary)}');   // v115: метка линзы
   });
   it("вкладки-«линзы» переключаются и мышью: выбор — на отпускании указателя, клик-хвост кнопки гасится флагом (не временем)", () => {
     const w = rd("ui/widgets.jsx");

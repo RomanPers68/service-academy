@@ -261,7 +261,7 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
             : untilStr ? `Сдано · ${res.score}% · действует до ${untilStr}`
             : `Сдано · ${res.score}%`;
           return (
-            <div key={id} style={{ ...T.modCard, padding:"14px 16px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:10 }}>
+            <div key={id} data-lens-card="" style={{ ...T.modCard, padding:"14px 16px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, width:"100%" }}>
                 <div data-lens="disc" style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, "--tint": color + "55" }}>{passed ? UI_SVG.gradcap(color, 19) : (ROLE_SVG[r.id] ? ROLE_SVG[r.id](color, 19) : r.icon)}</div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -270,11 +270,11 @@ export function CertificatesScreen({ T, a11y, profile, completedRoles = new Set(
                 </div>
               </div>
               {passed && expired && hasQuestions
-                ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:redC, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Пересдать экзамен</button>
+                ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" data-lens-btn="danger" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:redC, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Пересдать экзамен</button>
                 : passed
-                ? <button onClick={() => onCertificate && onCertificate(id)} {...onActivate(() => onCertificate && onCertificate(id))} style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:`1px solid ${color}`, background:"transparent", color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Открыть сертификат</button>
+                ? <button onClick={() => onCertificate && onCertificate(id)} {...onActivate(() => onCertificate && onCertificate(id))} data-lens-btn="soft" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:`1px solid ${color}`, background:"transparent", color, fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Открыть сертификат</button>
                 : (eligible && hasQuestions)
-                  ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:color, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Сдать экзамен</button>
+                  ? <button onClick={() => onExam && onExam(id)} {...onActivate(() => onExam && onExam(id))} className="sa-btn" data-lens-btn="main" style={{ alignSelf:"stretch", padding:"10px", borderRadius:12, border:"none", background:color, color:"#1A1008", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, cursor:"pointer" }}>Сдать экзамен</button>
                   : null
               }
             </div>

@@ -29,7 +29,7 @@ describe("v114: панели Наставника — под шапкой и в 
     expect(css).toContain(".sa-hubscreen .sa-pagein > div { animation: none; }");
     expect(css.indexOf(".sa-hubscreen .sa-pagein > div { animation: none; }")).toBeGreaterThan(css.indexOf(".sa-pagein > div:nth-child(6)"));
   });
-  it("метка — v114", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v114</span>");
+  it("метка — v114 и позже", () => {
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(11[4-9]|1[2-9]\d|[2-9]\d\d)<\/span>/);
   });
 });

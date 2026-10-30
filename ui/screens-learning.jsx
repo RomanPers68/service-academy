@@ -202,7 +202,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
             else if (i === pick) st = { ...st, background: "rgba(224,120,120,0.15)", border: "1px solid #E07878", borderTop: "1px solid #E07878" };
             else st = { ...st, opacity: 0.5 };
           }
-          return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
+          return <div key={i} className="sa-opt" data-lens-opt={pick === null ? "" : i === q.correct ? "ok" : i === pick ? "bad" : ""} style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
         })}
         {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
         {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={next}>{pick === q.correct ? "Верно, убрать ✓" : "Дальше →"}</button>}
@@ -1866,7 +1866,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               revealTimer.current = setTimeout(() => { pendingPick.current = null; revealTimer.current = null; setReveal(null); onQuiz(i); }, ok ? 600 : 1400);
             };
             const mark = reveal === null ? null : i === q.correct ? "ok" : i === reveal ? "bad" : null;
-            return <div key={i} className="sa-opt" data-quiz-opt={i} style={st} onClick={pickIt} {...onActivate(pickIt)}><OptLetter i={i} state={mark} light={light} /><span style={{ flex: 1, minWidth: 0 }}>{opt}</span></div>;
+            return <div key={i} className="sa-opt" data-quiz-opt={i} data-lens-opt={mark || ""} style={st} onClick={pickIt} {...onActivate(pickIt)}><OptLetter i={i} state={mark} light={light} /><span style={{ flex: 1, minWidth: 0 }}>{opt}</span></div>;
           })}
         </div>
       </div>

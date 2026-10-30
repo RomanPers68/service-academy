@@ -304,6 +304,8 @@ function useScrollBody(dep) {
 
 // inline — без портала (дымовой тест на сервере, встраивание); обычно — слой поверх приложения
 // v112 (Доп. 425): cls — свой класс оболочки (у радио — tb-radio: по нему линза в ui/home-look.jsx, «Живой гость» и урок у стола не задеты)
+// v115 (Доп. 428): практика у стола, проверка ситуаций и «Чек недели» — оболочка tb-table: в виде «Линза» их кнопки — линзы
+// и стекло (ui/home-look.jsx, раздел v115); «Живой гость» — tb-guest (v113), радио — tb-radio (v112)
 function shell(children, vars, inline, cls = "") {
   const el = <div className={"tb" + (cls ? " " + cls : "")} style={vars}>{children}</div>;
   return inline ? el : createPortal(el, document.body);
@@ -489,7 +491,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
       <>
         <div className="tb-head"><div className="tb-col tb-top"><button type="button" className="tb-x" data-sa-back="" aria-label="Назад" onClick={onBack}><Ic n="x" s={18} /></button><div className="tb-host"><span className="tb-host-t"><b>{lesson.title}</b><span>практика</span></span></div></div></div>
         <div className="tb-body"><div className="tb-col"><p className="tb-hint">В этой практике пока нет ситуаций.</p></div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-table");
   }
 
   // ── итог раунда: чек ──
@@ -564,7 +566,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
           <button type="button" className="tb-main" onClick={preview && onBack ? onBack : onComplete}>Продолжить</button>
           <button type="button" className="tb-ghost" onClick={restart}>Сыграть ещё раз</button>
         </div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-table");
   }
 
   // ── игра ──
@@ -632,7 +634,7 @@ export function TablePractice({ lesson, mod, color, a11y, practiceState: ps, set
       ) : null}</div>
       {peek ? <PeekSheet data={peek.empty ? null : peek} onClose={() => setPeek(null)} /> : null}
       {sheet ? <ExitSheet title={exitTx.title} text={exitTx.text} onStay={() => setSheet(false)} onLeave={() => { setSheet(false); onBack(); }} /> : null}
-    </>, vars, inline);
+    </>, vars, inline, "tb-table");
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -903,7 +905,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
             <button type="button" className="tb-main" onClick={onClose}>{passed && mode === "credit" ? "Тема засчитана ✓" : "Готово"}</button>
           )}
         </div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-table");
   }
 
   if (result) {
@@ -978,7 +980,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
             </>
           )}
         </div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-table");
   }
 
   const okTitle = isBank ? "Закреплено" : OKW[(hashOf(sitKey(sit)) + pos) % OKW.length];
@@ -1033,7 +1035,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
           <button type="button" className="tb-main" onClick={() => { sfx("tap"); vibrate("light"); t0.current = Date.now(); setStarted(true); }}>{intro.cta || "Начать"}</button>
           <button type="button" className="tb-ghost" onClick={onClose}>Не сейчас</button>
         </div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-table");
   }
 
   return shell(
@@ -1105,7 +1107,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
       ) : null}</div>
       {peek ? <PeekSheet data={peek.empty ? null : peek} onClose={() => setPeek(null)} /> : null}
       {sheet ? <ExitSheet title={M ? M.exitQ : warm ? "Выйти из разминки?" : "Выйти из проверки?"} text={M ? M.exitT : warm ? "Разминку можно начать заново в любой момент до конца дня." : "Урок останется непройденным. Отметить его можно кнопкой «Урок пройден ✓» в конце урока."} onStay={() => setSheet(false)} onLeave={() => { setSheet(false); onClose(); }} /> : null}
-    </>, vars, inline);
+    </>, vars, inline, "tb-table");
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1203,5 +1205,5 @@ export function WeekReceipt({ a11y, profile, streak, summary, goal = 2, prev = f
         {sent ? <p className="tb-autohint" role="status">{sent}</p> : null}
         <button type="button" className="tb-ghost" onClick={onClose}>Закрыть</button>
       </div></div>
-    </>, roleVars("#C8A96E", a11y), inline);
+    </>, roleVars("#C8A96E", a11y), inline, "tb-table");
 }

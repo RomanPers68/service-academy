@@ -141,7 +141,7 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
           Человек закрыл подсказку, а через месяц забыл, как устроен раздел.
           Раньше вернуть их можно было только подняв версию — то есть сразу
           всем. Здесь каждый решает за себя. */}
-      <div onClick={() => { const n = resetHints(); setReset(n); vibrate("light"); }}
+      <div data-lens-card="" onClick={() => { const n = resetHints(); setReset(n); vibrate("light"); }}
         {...onActivate(() => { const n = resetHints(); setReset(n); })}
         style={{ margin:"4px 16px 10px", padding:"10px 13px", borderRadius:14, cursor:"pointer",
           textAlign:"center", ...frost }}>
@@ -167,7 +167,7 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
                   const isOpen = open === it.key;
                   const toggle = () => { vibrate("light"); setOpen(isOpen ? null : it.key); };
                   return (
-                    <div key={it.key} style={{ ...frost, borderRadius: 14, overflow: "hidden" }}>
+                    <div key={it.key} data-lens-card="" style={{ ...frost, borderRadius: 14, overflow: "hidden" }}>
                       <div onClick={toggle} {...onActivate(toggle)} aria-expanded={isOpen} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
                         <div style={{ flex: 1, fontFamily: "Georgia, serif", fontSize: 16, color: text }}>{it.title}</div>
                         <span style={{ color: gold, fontSize: 18, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .3s cubic-bezier(.25,.8,.25,1)" }}>›</span>
@@ -176,7 +176,7 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
                         <div className="sa-fadein" style={{ padding: "0 14px 12px" }}>
                           <div style={{ fontSize: 14, color: sub, lineHeight: 1.6 }}>{it.text}</div>
                           {it.go && onOpen && (
-                            <button className="sa-btn" onClick={() => { vibrate("light"); onOpen(it.go); }}
+                            <button className="sa-btn" data-lens-btn="soft" onClick={() => { vibrate("light"); onOpen(it.go); }}
                               style={{ marginTop: 10, border: `1px solid ${gold}88`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", borderRadius: 12, padding: "8px 14px", cursor: "pointer" }}>
                               Открыть ›
                             </button>

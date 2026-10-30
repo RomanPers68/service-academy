@@ -95,11 +95,11 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
       <div style={{ padding: "12px 16px 100px" }}>
         {hint && hsteps.length ? <HintBubble a11y={!!a11y} text={hsteps[hstep]} arrow="up" step={hstep + 1} total={hsteps.length}
           onNext={hstep >= hsteps.length - 1 ? null : () => setHstep((v) => v + 1)} onClose={hintDone} /> : null}
-        <div style={card} role="group" aria-label="Сводка">
+        <div style={card} role="group" aria-label="Сводка" data-lens-card="">
           <div style={{ ...labelStyle(13.5), color: gold }}>Твой погреб · {doneN} {plural(doneN, "тема", "темы", "тем")} из {rows.length}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10 }}>
             {[[freshN, "свежих", 1], [fading.length, plural(fading.length, "выдыхается", "выдыхаются", "выдыхаются"), 0.35], [goldN + (goldMax ? "/" + goldMax : ""), "золото", null]].map(([v, l, lv], k) => (
-              <div key={k} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 12, border: `1px solid ${GOLD}33` }}>
+              <div key={k} data-lens-edge="" style={{ textAlign: "center", padding: "8px 4px", borderRadius: 12, border: `1px solid ${GOLD}33` }}>
                 <div style={{ display: "flex", justifyContent: "center" }}><WineGlass level={lv == null ? 1 : lv} gold={lv == null} size={22} a11y={a11y} /></div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 20, fontWeight: "bold", color: text, lineHeight: 1.1, marginTop: 2 }}>{v}</div>
                 <div style={{ fontSize: small(11.5), color: sub }}>{l}</div>
@@ -108,13 +108,13 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
           </div>
           <div style={{ fontSize: small(12.5), color: sub, marginTop: 10, lineHeight: 1.45 }}>Пройденная тема выдыхается, как открытое вино: бокал под номером темы пустеет. Освежил, и он снова полный, а следующий повтор позже{creditN ? ". По опыту засчитано: " + creditN : ""}.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-            {fading.length && onFreshAll ? <button type="button" style={btn(true)} onClick={onFreshAll}>Освежить всё выдохшееся · {Math.min(3, fading.length) === 1 ? "1 мин" : "≈ 3 мин"}</button> : null}
-            {probeCount >= 2 && onProbe ? <button type="button" style={btn(false)} onClick={onProbe}>Проверка по треку · {probeCount * 2} {plural(probeCount * 2, "задание", "задания", "заданий")}</button> : null}
+            {fading.length && onFreshAll ? <button type="button" data-lens-btn="main" style={btn(true)} onClick={onFreshAll}>Освежить всё выдохшееся · {Math.min(3, fading.length) === 1 ? "1 мин" : "≈ 3 мин"}</button> : null}
+            {probeCount >= 2 && onProbe ? <button type="button" data-lens-btn="soft" style={btn(false)} onClick={onProbe}>Проверка по треку · {probeCount * 2} {plural(probeCount * 2, "задание", "задания", "заданий")}</button> : null}
           </div>
         </div>
         <div role="group" aria-label="Какие темы показать" style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           {[["all", "Все"], ["fade", "Освежить" + (fading.length ? " · " + fading.length : "")], ["gold", "Золото"]].map(([id, l]) => (
-            <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}
+            <button key={id} type="button" aria-pressed={filter === id} data-lens-btn={filter === id ? "tab" : "soft"} onClick={() => setFilter(id)}
               style={{ padding: "7px 13px", borderRadius: 999, cursor: "pointer", font: "700 " + small(12.5) + "px Georgia, serif", border: `1px solid ${filter === id ? GOLD + "AA" : GOLD + "33"}`,
                 background: filter === id ? (a11y ? "rgba(255,255,255,0.6)" : "rgba(226,186,116,0.12)") : "transparent", color: filter === id ? text : sub }}>{l}</button>
           ))}
@@ -125,7 +125,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
             const a = action(r);
             const open = () => { vibrate("light"); onOpenTopic && onOpenTopic(r.m); };
             return (
-              <div key={r.m.id} role="listitem" className="sa-card" style={{ ...T.modCard, marginBottom: 8, gap: 10, alignItems: "center" }}>
+              <div key={r.m.id} role="listitem" className="sa-card" data-lens-card="" style={{ ...T.modCard, marginBottom: 8, gap: 10, alignItems: "center" }}>
                 <div role="button" tabIndex={0} onClick={open} {...onActivate(open)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, cursor: "pointer" }}
                   aria-label={"Тема " + topicNoText(r.label) + ": " + r.m.title + ", " + status(r)}>
                   <div style={{ position: "relative", width: 34, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -137,7 +137,7 @@ export function CellarScreen({ T, a11y, modules = [], completed = {}, quizDone =
                     <div style={{ color: r.f && r.f.level === "faded" ? (a11y ? "#8A4B1E" : "#E0A070") : sub, fontSize: small(12.5) }}>{status(r)}</div>
                   </div>
                 </div>
-                {a ? <button type="button" data-cellar-action="" style={rowBtn(a.primary)} onClick={() => { vibrate("light"); a.go(); }}>{a.label}</button> : null}
+                {a ? <button type="button" data-cellar-action="" data-lens-btn={a.primary ? "main" : "soft"} style={rowBtn(a.primary)} onClick={() => { vibrate("light"); a.go(); }}>{a.label}</button> : null}
               </div>
             );
           })}

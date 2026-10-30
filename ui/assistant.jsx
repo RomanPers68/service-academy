@@ -535,6 +535,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         </div>
       </div>
 
+      {/* v114 (Доп. 427): панели — под шапкой и в полноэкранном Telegram: сверху у экрана отступ под кнопки Telegram
+          (--sa-st, v69), а панели отсчитывали 62 px от самого верха и уезжали под «Назад» и «…» (владелец, 30.10, запись экрана) */}
       {/* ── Оверлеи под шапкой: подтверждение очистки и список чатов ──
           Абсолютные, поверх ленты — видны при любой длине переписки.
           Подложка-ловушка: тап мимо панели закрывает её */}
@@ -543,7 +545,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           style={{ position: "absolute", inset: 0, zIndex: 5 }} />
       )}
       {confirmClear && (
-        <div className="sa-pagein" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,
+        <div className="sa-pagein" style={{ position: "absolute", top: "calc(62px + var(--sa-st, 0px))", left: 12, right: 12, zIndex: 6,
             ...panel, padding: 14, borderColor: RED }}>
           <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Очистить переписку?</div>
           <div style={{ color: sub, fontSize: 12.5, marginBottom: 12 }}>История хранится только на этом устройстве и восстановлению не подлежит.</div>
@@ -556,7 +558,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         </div>
       )}
       {showChats && (
-        <div className="sa-pagein sa-dlgscroll" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,   // v94: беседы листаются пальцем
+        <div className="sa-pagein sa-dlgscroll" style={{ position: "absolute", top: "calc(62px + var(--sa-st, 0px))", left: 12, right: 12, zIndex: 6,   // v94: беседы листаются пальцем
             ...panel, padding: "6px 6px", maxHeight: "55vh", overflowY: "auto", WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain" }} >
           {store.sessions.map(s => (

@@ -98,6 +98,8 @@ export function groupBadge(run) {
   return t ? { text: "новое", red: !!t.red } : null;
 }
 
+// v114 (Доп. 427): карточки хаба въезжают все разом (без очереди по 45 мс: «как будто подгружается», владелец, 30.10);
+// общего въезда экрана у вкладок-хабов нет (App.jsx, HUB_TABS) — карточка въезжает один раз, а не дважды
 export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null, fold = false, hubId = "" }) {
   // v110 (Доп. 423): fold — группы кнопками (владелец, 30.10: «кнопка «На смене», нажимаешь — и там всё, что связано со
   // сменой»): нажал — группа развернулась строками, ещё раз — свернулась; что открыто, помнится
@@ -128,7 +130,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
       : "inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.45)",
   };
   return (
-    <div style={T.screen} className="sa-screen">
+    <div style={T.screen} className="sa-screen sa-hubscreen">
       <div style={{ padding: "18px 16px 8px", display: "flex", alignItems: "center", gap: 12 }}>
         <img src={LOGO_SRC_DARK} alt="" aria-hidden="true" decoding="sync" style={{ width: 44, height: 36, objectFit: "contain", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -154,7 +156,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };
           return (
             <div key={it.key} className="sa-card sa-pagein" data-lens-card="" onClick={go} {...onActivate(go)} aria-label={it.label}
-              style={{ ...frost, animationDelay: `${Math.min(idx, 8) * 45}ms`, borderRadius: 18, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", position: "relative", overflow: "hidden", WebkitTapHighlightColor: "transparent" }}>
+              style={{ ...frost, borderRadius: 18, padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", position: "relative", overflow: "hidden", WebkitTapHighlightColor: "transparent" }}>
               {/* v73 (Доп. 386): косого блика поверх плитки больше нет — примета сгенерированных интерфейсов */}
               {/* v78 (Доп. 391): значок без плашки — квадрат со значком, заголовок, подпись и «›» на каждом экране был
                   самым узнаваемым шаблоном сгенерированных интерфейсов; цвет, свечение карточки и сам значок — прежние */}
@@ -177,7 +179,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
             style={{ gridColumn: "1 / -1", ...labelStyle(a11y ? 16 : 14.5), color: gold, opacity: 0.9, margin: k ? "10px 4px 0" : "2px 4px 0" }}>{g}</div>
         );
         const rows = (group, idx0, attrs = {}) => (
-          <div key={"c:" + group[0].key} data-hub-compact data-lens-card="" className="sa-pagein" {...attrs} style={{ ...frost, borderRadius: 18, padding: "2px 0", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+          <div key={"c:" + group[0].key} data-hub-compact data-lens-card="" className="sa-pagein" {...attrs} style={{ ...frost, borderRadius: 18, padding: "2px 0" }}>
             {rowList(group)}
           </div>
         );
@@ -218,7 +220,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           const rid = "hubg-" + hid + "-" + idx0;
           return (
             <div key={"f:" + name} data-hub-group={name} data-hub-open={open ? "1" : "0"} data-lens-card="" className="sa-pagein"
-              style={{ ...frost, borderRadius: 18, padding: 0, overflow: "hidden", animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+              style={{ ...frost, borderRadius: 18, padding: 0, overflow: "hidden" }}>
               <button type="button" data-hub-toggle={name} aria-expanded={open} aria-controls={rid} onClick={() => toggle(name, names)}
                 aria-label={name + (bdg ? (bdg.text === "новое" ? ", есть новое" : ", новых: " + bdg.text) : "")}
                 style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 14px", minHeight: 60, boxSizing: "border-box", border: 0, background: "none",
@@ -249,7 +251,7 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
           const c = it.red ? (a11y ? "#A33A2A" : "#E07A6E") : gold;
           const go = () => { vibrate("light"); it.onClick && it.onClick(); };
           return (
-            <div key={"s:" + it.key} data-hub-group={name} data-hub-single="" data-lens-card="" className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: 0, animationDelay: `${Math.min(idx0, 8) * 45}ms` }}>
+            <div key={"s:" + it.key} data-hub-group={name} data-hub-single="" data-lens-card="" className="sa-pagein" style={{ ...frost, borderRadius: 18, padding: 0 }}>
               <div className="sa-card" onClick={go} {...onActivate(go)} aria-label={it.label}
                 style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px", minHeight: 60, boxSizing: "border-box", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
                 <span data-hub-ic="" data-lens="disc" data-hub-disc="" style={{ width: 32, height: 32, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{(ICON[it.icon] || ICON.book)(c)}</span>

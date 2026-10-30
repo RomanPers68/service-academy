@@ -303,6 +303,8 @@ export const injectStyles = () => {
     .sa-pagein > div:nth-child(4) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .09s; }
     .sa-pagein > div:nth-child(5) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .12s; }
     .sa-pagein > div:nth-child(6) { animation: saPageIn .3s cubic-bezier(.16,1,.3,1) backwards; animation-delay: .15s; }
+    /* v114 (Доп. 427): во вкладках-хабах строки внутри карточки не въезжают по очереди — карточка въезжает целиком */
+    .sa-hubscreen .sa-pagein > div { animation: none; }
     /* Виньетка глубины: сценический свет — углы чуть темнее, морозные
        карточки выступают вперёд; статична, обе темы переживают */
     body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;

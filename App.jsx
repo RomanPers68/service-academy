@@ -12,6 +12,8 @@ import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPa
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf, MastersBanner, TeamFeed, NewbieHero } from "./ui/home-hubs";
+// v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
+const HUB_TABS = ["shift", "teamHub", "me"];
 import { buildFeed, quizTitles } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
 import { MODULES_INDEX } from "./data/modules-index";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
@@ -2995,7 +2997,9 @@ function ServiceAcademy() {
               {celebrate}
             </div>
           </div>, document.body) : null}
-        <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className="sa-pagein">
+        {/* v114 (Доп. 427): вкладки «Смена», «Команда», «Я» — без общего въезда экрана: их карточки въезжают сами, все разом
+            (раньше экран въезжал целиком, а карточки ещё и по очереди — «как будто подгружается», владелец, 30.10) */}
+        <div key={screen + (screen === "candidate" ? "" : (a11y ? "|r" : "|d"))} className={HUB_TABS.includes(screen) ? undefined : "sa-pagein"}>
         {screen === "login" && <Suspense fallback={<ScreenLoader T={S} />}><CodeLoginScreen T={S} onSuccess={handleLogin} /></Suspense>}
         {/* ── Книга отзывов ── */}
         {screen === "guestbook" && <Suspense fallback={<ScreenLoader T={T} />}><GuestBookScreen T={T} a11y={a11y} profile={profile} role={role} completed={completed} quizDone={quizDone} examResults={examResults} practiceStars={practiceStars} focusId={bookFocus} onBack={() => { setBookFocus(null); goBack(); }} onWeekly={() => navigate("weeklyGuest")} /></Suspense>}

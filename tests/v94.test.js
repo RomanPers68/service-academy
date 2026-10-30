@@ -99,7 +99,8 @@ describe("v94: листы чата листаются пальцем", () => {
   it("листы, подпись к фото — по вертикали, ряд подсказок — вбок; беседы Наставника — лента", () => {
     expect(rd("ui/chat.jsx")).toContain(".sa-dlg .ch-sheet,.sa-dlg .ch-sheet *,.ch-view .ch-view-cap,.ch-view .ch-view-cap *{touch-action:pan-y !important}");
     expect(rd("ui/chat-cards.jsx")).toContain(".sa-dlg .ch-sugg,.sa-dlg .ch-sugg *{touch-action:pan-x !important}");
-    expect(rd("ui/assistant.jsx")).toContain('<div className="sa-pagein sa-dlgscroll" style={{ position: "absolute", top: 62, left: 12, right: 12, zIndex: 6,');
+    // v114: отступ панели — с учётом кнопок Telegram сверху (--sa-st)
+    expect(rd("ui/assistant.jsx")).toContain('<div className="sa-pagein sa-dlgscroll" style={{ position: "absolute", top: "calc(62px + var(--sa-st, 0px))", left: 12, right: 12, zIndex: 6,');
     // правило слоя прежнее: жесты выключены всем, кроме лент
     expect(rd("ui/css.js")).toContain(".sa-dlg, .sa-dlg * { touch-action: none !important; }");
   });

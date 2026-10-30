@@ -10,6 +10,9 @@
 // «ещё раз с этим гостем» и «было/стало»; свои гости заведения — их пишет руководитель (этап 25).
 // v42 (Доп. 355): гость знает роль — на карточке сказано, кто ты в этой сцене (хостес, официант, бармен,
 // менеджер); кнопки, конец разговора и пункты чека — по роли; в ai-chat уходит трек (track).
+// v113 (Доп. 426): в виде «Линза» — оболочка tb-guest: «закрыть», значок гостя, звук и «сказать» — линзы, «Подойти к гостю» —
+// плашка с кольцом, поле реплики — стекло, реплики — стекло с ободком (правила — ui/home-look.jsx, раздел v113); карточка гостя
+// и чек разбора — бумага, как были; настроение гостя — прежнее.
 import React from "react";
 import { TableCheck, TableMood, TableLine, TableEdge, tableShell, tableVars, TableSound, TABLE_MOOD_WORD } from "./table";
 import { Ic } from "./table-bits";
@@ -592,7 +595,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
         {editor ? <PersonaEditor rows={own} myPlace={guest.place === "manager" ? "hall" : guest.place} onClose={() => setEditor(false)} onPlay={playOwn}
           onSaved={(row) => { const rows = own.some((x) => x.id === row.id) ? own.map((x) => (x.id === row.id ? row : x)) : own.concat([row]); ownRef.current = rows; setOwn(rows); }}
           onDeleted={(id) => { const rows = own.filter((x) => x.id !== id); ownRef.current = rows; setOwn(rows); if (guest.id === id) setGuest(pick(Date.now())); }} /> : null}
-      </>, vars, inline);
+      </>, vars, inline, "tb-guest");
   }
 
   if (phase === "eval") {
@@ -600,7 +603,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
       <>
         {head}
         <div className="tb-body"><div className="tb-col"><div className="lg-wait" role="status"><Ic n="clipboard" s={28} />Наставник пишет чек разбора…</div></div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-guest");
   }
 
   if (phase === "receipt" && receipt) {
@@ -646,7 +649,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
             <button type="button" className="tb-ghost" onClick={onClose}>Готово</button>
           </div>
         </div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-guest");
   }
 
   // ── разговор ──
@@ -712,7 +715,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
           </>
         )}
       </div></div>
-    </>, vars, inline);
+    </>, vars, inline, "tb-guest");
 }
 
 export default LiveGuestScreen;

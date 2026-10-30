@@ -4,7 +4,7 @@
 //            кольцом; пластинка — в кольце; вкладки выпусков — капсула с кольцом, выбранный — плашка; обложка и «Вся дорога» —
 //            золотая кромка, фон прежний; «К вопросам» — плашка с кольцом; деления фраз, точки и переключатель — прежние;
 //   QUIZ   — ответы — стекло; верный и неверный — прежние зелёный и красный;
-//   GUEST  — «Живой гость» (та же оболочка урока) — без линзы;
+//   GUEST  — «Живой гость» — без .tb-radio и без правил радио (v113: своя оболочка .tb-guest и свои линзы — e2e-v113);
 //   PAPER  — «Для чтения»: тёмное золото; NOW — вид «как сейчас»: радио прежнее; NARROW — 320 px: без сдвига вбок.
 // Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> [E2E_SRC=<исходники>] node e2e-v112.mjs [разделы]
 import { createRequire } from "node:module";
@@ -245,7 +245,8 @@ await run("GUEST", async () => {
   await until(() => a.page.locator(".tb .tb-x").count(), 9000); await sleep(600);
   const cls = await a.page.evaluate(() => (document.querySelector(".tb") || {}).className || "");
   const x = await st(a.page, ".tb .tb-x");
-  ok("GUEST: «Живой гость» — та же оболочка без .tb-radio, «закрыть» без линзы", cls === "tb" && !!x && !x.ring && x.sh === "none", cls + " " + JSON.stringify(x));
+  // v113: у гостя своя оболочка .tb-guest и свои линзы (e2e-v113); здесь — только что правила радио его не касаются
+  ok("GUEST: «Живой гость» — без .tb-radio (своя оболочка .tb-guest, v113)", /^tb( tb-guest)?$/.test(cls) && !!x && (cls === "tb" ? !x.ring : x.ring === RING), cls + " " + JSON.stringify(x));
   await shot(a.page, "guest");
   const [e1, e2] = noErr(a); ok("GUEST: без ошибок", e1, e2);
   await a.ctx.close();

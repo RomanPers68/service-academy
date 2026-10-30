@@ -512,19 +512,19 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           <span style={{ ...labelStyle(13), color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "1px 8px" }}>AI</span>
         </div>
         <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-          <button className="sa-btn" style={miniBtn} aria-label="Список чатов"
+          <button className="sa-btn" data-lens="disc" style={miniBtn} aria-label="Список чатов"
             onClick={() => { vibrate("light"); setConfirmClear(false); setDelArm(null); setShowChats(v => !v); }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>
             </svg>
           </button>
-          <button className="sa-btn" style={miniBtn} aria-label="Новый чат" onClick={newChat}>
+          <button className="sa-btn" data-lens="disc" style={miniBtn} aria-label="Новый чат" onClick={newChat}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14"/><path d="M5 12h14"/>
             </svg>
           </button>
           {msgs.length > 0 && (
-            <button className="sa-btn" style={miniBtn} aria-label="Очистить переписку"
+            <button className="sa-btn" data-lens="disc" style={miniBtn} aria-label="Очистить переписку"
               onClick={() => { setShowChats(false); setConfirmClear(true); }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
@@ -548,9 +548,9 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Очистить переписку?</div>
           <div style={{ color: sub, fontSize: 12.5, marginBottom: 12 }}>История хранится только на этом устройстве и восстановлению не подлежит.</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="sa-btn" onClick={() => setConfirmClear(false)}
+            <button className="sa-btn" data-lens-btn="soft" onClick={() => setConfirmClear(false)}
               style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>Оставить</button>
-            <button className="sa-btn" onClick={clearChat}
+            <button className="sa-btn" data-lens-btn="danger" onClick={clearChat}
               style={{ flex: 1, padding: "11px", borderRadius: RADIUS.md, cursor: "pointer", border: `1px solid ${RED}66`, background: "transparent", color: RED, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>Очистить</button>
           </div>
         </div>
@@ -594,7 +594,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         style={{ position: "absolute", inset: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", padding: "14px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
 
         {msgs.length === 0 && !confirmClear && (
-          <div className="sa-pagein" style={{ ...glass, padding: "20px 18px" }}>
+          <div className="sa-pagein" data-lens-card="" style={{ ...glass, padding: "20px 18px" }}>
             {/* Подсказка первым ребёнком карточки: снаружи, сразу после «&& (»,
                 ожидается JSX-элемент, а не выражение в фигурных скобках —
                 сборка падала с «Expected } but found &&». */}
@@ -607,7 +607,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
             {/* v77 (Доп. 390): владелец вернул Наставнику человеческое приветствие — по имени и от первого лица
                 (в v76 была безличная строка «Наставник знает уроки…»). */}
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-              <div className="sa-pop" style={{ width: 54, height: 54, borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
+              <div className="sa-pop" data-lens="disc" style={{ width: 54, height: 54, borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(200,169,110,0.12)", border: `1px solid ${gold}55` }}>
                 {UI_SVG.ai(gold, 26)}
               </div>
             </div>
@@ -624,7 +624,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         {msgs.length === 0 && !confirmClear && !talk && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {quickFor(profile?.position).map((q, i) => (
-              <button key={i} className="sa-btn sa-pagein" onClick={() => send(q)}
+              <button key={i} className="sa-btn sa-pagein" data-lens-card="" onClick={() => send(q)}
                 style={{ ...glass, animationDelay: (i * 0.06) + "s", padding: "12px 14px", textAlign: "left", cursor: "pointer", color: T.modTitle.color, fontFamily: "Georgia, serif", fontSize: a11y ? 14.5 : 13.5, lineHeight: 1.45 }}>
                 {q}
               </button>
@@ -649,7 +649,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
                   <Rich text={m.role === "assistant" ? cleanReply(clean) : clean} color={gold} />
                   {cards.map((card, k) => <VisualCard key={k} card={card} />)}
                   {nav && onNavigate && (
-                    <button className="sa-btn" onClick={() => { vibrate("light"); onNavigate(nav.lesson ? { lesson: nav.lesson } : nav.key); }}
+                    <button className="sa-btn" data-lens-btn="soft" onClick={() => { vibrate("light"); onNavigate(nav.lesson ? { lesson: nav.lesson } : nav.key); }}
                       style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px",
                         borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}66`,
                         background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.12)",
@@ -691,7 +691,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           <div className="sa-pagein" style={{ ...glass, padding: "12px 14px", borderColor: `${RED}66` }}>
             <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginBottom: lastUser ? 10 : 0 }}>{error}</div>
             {lastUser && (
-              <button className="sa-btn" onClick={() => send(lastUser.content)}
+              <button className="sa-btn" data-lens-btn="soft" onClick={() => send(lastUser.content)}
                 style={{ padding: "9px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>
                 ↻ Повторить
               </button>
@@ -730,7 +730,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
           <TalkBar who="mentor" name="Наставник" voice="mentor" phone={{ pitch: 1, rate: 1 }} maxSpeak={VOICE_MAX}
             ask={askVoice} onState={setTalkState} onClose={() => setTalk(false)} />
         ) : (
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 28,
+        <div data-lens-field="" style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "6px 6px 6px 16px", borderRadius: 28,
             background: a11y ? "rgba(255,252,244,0.55)" : "rgba(28,21,9,0.55)",
             backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
             border: a11y ? "1px solid rgba(139,106,48,0.38)" : "1px solid rgba(200,160,80,0.30)",

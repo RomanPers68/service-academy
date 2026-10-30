@@ -368,6 +368,15 @@ export function makeServer(opts) {
     if (fn === "team_scores") return { ok: true, rows: [] };
     if (fn === "team_achievements") return { ok: true, rows: [] };   // v108: рекордов в демо пока нет (без ответа карточка писала «не загрузились»)
     if (fn === "team_profiles") return { ok: true, rows: [], scope: "all" };
+    // v113: «Команда» у владельца — список сотрудников заведения (раньше в демо: «Не получилось загрузить список»).
+    // Кто когда заходил — для подписей и итогов: Тимур ещё ждёт код, Илья не заходил больше недели
+    if (fn === "admin_list_employees") {
+      if (!p || !p.is_admin) return { ok: false, error: "forbidden" };
+      const seen = { "e-anna": 0.1, "u-maria": 0.2, "e-olga": 1.2, "e-petr": 0.5, "e-vera": 3.4, "e-darya": 1.6, "e-ilya": 9.2, "u-roman": 0, "e-ksenia": 0.3 };
+      return PEOPLE.map((e) => ({ id: e.id, name: e.name, surname: e.surname, restaurant: e.restaurant, position: e.position, is_admin: !!e.is_admin, status: "active",
+        last_seen_at: e.id in seen ? new Date(Date.now() - seen[e.id] * 86400e3).toISOString() : null,
+        has_pending_code: !(e.id in seen), has_session: e.id in seen }));
+    }
     if (fn === "my_mentors") return { ok: true, rows: [] };
     if (fn === "qday_inbox") return { ok: true, items: [] };
     if (fn === "menu_progress_team") return { ok: true, rows: [] };

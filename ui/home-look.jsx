@@ -247,6 +247,79 @@ html.sa-lens.sa-light .tb-radio .tb-main:not(:disabled)::after{border-color:rgba
 html.sa-lens .tb-radio .rd-q button:not(.ok):not(.bad),html.sa-lens .tb-radio .rd-next li button{background:var(--lk-glass);border-color:transparent;
   box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
 
+/* ── v113: «Брифинг смены» (ui/briefing.jsx) и «Случаи из нашего зала» (ui/cases.jsx) — метками data-lens-* (правила v111),
+   «закрыть» показа брифинга — линза 32 px (data-lens-x); «Живой гость» (ui/live-guest.jsx, оболочка .tb-guest — урок у стола
+   и гость по сценарию не задеты): «закрыть», значок гостя, звук и «сказать» — линзы с кольцом, «Разговор голосом» — золотая
+   линза (data-talk-open — та же кнопка-волна у Наставника и в AI-интервью), «Подойти к гостю», «Новый гость», «Добавить гостя» — плашки с кольцом, «Добавить своих» — стекло, поле реплики и
+   поля гостя заведения — стекло, в фокусе ободок ярче, реплики гостя — стекло с ободком, свои — с бликом; карточка гостя и
+   чек разбора — бумага, как были; настроение гостя — прежнее. Микрофон (ui/mic.jsx, data-lens="mic") — тонкое кольцо, пока
+   не пишет (во время записи — своё кольцо-таймер). Владелец (30.10, снимки и запись): «Ещё брифинг, живой гость и случай из
+   нашего зала» ── */
+html.sa-lens [data-lens-x]{width:32px!important;height:32px!important;min-width:32px;display:inline-grid!important;place-items:center;padding:0!important;border-radius:50%!important;
+  font-size:22px!important;line-height:1!important;color:var(--lk-gold)!important}
+html.sa-lens .tb-guest .tb-x,html.sa-lens .tb-guest .tb-av,html.sa-lens .tb-guest .tb-tool,html.sa-lens .tb-guest .lg-send{position:relative;background:var(--lk-glass);border-color:transparent;color:var(--lk-gold);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-guest .tb-tool{border-radius:50%}
+html.sa-lens .tb-guest .lg-send{color:var(--lk-hi)}
+html.sa-lens .tb-guest .tb-x::after,html.sa-lens .tb-guest .tb-av::after,html.sa-lens .tb-guest .tb-tool::after,html.sa-lens .tb-guest .lg-send::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens [data-talk-open]{position:relative;color:var(--lk-hi)!important;background:radial-gradient(circle at 50% 28%,rgba(240,214,150,0.38),rgba(200,169,110,0.16) 62%,rgba(200,169,110,0.10))!important;
+  box-shadow:inset 0 0 0 1px rgba(232,201,131,0.7),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 12px rgba(0,0,0,0.3)!important}
+html.sa-lens.sa-light [data-talk-open]{background:radial-gradient(circle at 50% 28%,rgba(255,255,255,0.95),rgba(176,138,70,0.24) 72%)!important;
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.18)!important}
+html.sa-lens [data-talk-open]::after{content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .tb-guest .tb-main:not(:disabled){position:relative;overflow:visible;color:var(--lk-hi);background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .tb-guest .tb-main:not(:disabled){background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)}
+html.sa-lens .tb-guest .tb-main:not(:disabled)::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light .tb-guest .tb-main:not(:disabled)::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens .tb-guest .lg-own button,html.sa-lens .tb-guest .lg-ed li button:not(.del){background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-guest .lg-in,html.sa-lens .tb-guest .lg-ed input,html.sa-lens .tb-guest .lg-ed textarea{background:var(--lk-glass);border-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-guest .lg-in:focus,html.sa-lens .tb-guest .lg-ed input:focus,html.sa-lens .tb-guest .lg-ed textarea:focus{outline:none;box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-guest .lg-g,html.sa-lens .tb-guest .lg-gp,html.sa-lens .tb-guest .tb-typing{border-color:transparent;box-shadow:inset 0 0 0 1px rgba(214,178,102,0.30),inset 0 1.5px 0 rgba(255,255,255,0.07),0 2px 8px rgba(0,0,0,0.30)}
+html.sa-lens.sa-light .tb-guest .lg-g,html.sa-lens.sa-light .tb-guest .lg-gp,html.sa-lens.sa-light .tb-guest .tb-typing{box-shadow:inset 0 0 0 1px rgba(139,106,48,0.30),inset 0 1.5px 0 rgba(255,255,255,1),0 2px 7px rgba(120,85,25,0.16)}
+html.sa-lens .tb-guest .tb-mine{box-shadow:inset 0 1.5px 0 rgba(255,255,255,0.22),0 2px 8px rgba(0,0,0,0.30)}
+html.sa-lens.sa-light .tb-guest .tb-mine{box-shadow:inset 0 1.5px 0 rgba(255,255,255,0.75),0 2px 7px rgba(120,85,25,0.16)}
+html.sa-lens .tb-guest .lg-mood{border-color:var(--lk-edge);box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 18px var(--inner),0 4px 12px rgba(0,0,0,0.2)}
+/* v113: «График» (ui/schedule.jsx). Владелец (30.10, запись): «И график». Карточки — золотая кромка и блик без света сверху
+   (data-lens-edge, без света и без замены своего фона: у итогов месяца он градиентом; надзаголовки карточек — мелкий серый курсив, свет опустил бы их ниже 4,5); «Заполнить черновик»,
+   «Отправить», «Сохранить», «График на … готов» — плашки с кольцом, остальные кнопки — стекло; вкладки «График / Настройки» —
+   капсула с кольцом (data-lens-seg), выбранная — плашка с ободком без кольца (data-lens-btn="tab"), так же «неделя / месяц»;
+   лица в «Сегодня» — линзы (старший — только кольцо, его золото остаётся), стрелка раскрытия и номера разделов — линзы;
+   поля настроек — стекло. У сотрудника (ui/schedule-hero.jsx и «Мой месяц»): карточка ближайшей смены и итоги месяца —
+   кромка; «Чек-лист смены», «Забрать», «Выйду», «Отдать в чате» — плашки с кольцом; «Кто со мной», «Поменяться», «В чат»,
+   «Отметить период» — стекло (пока отмечаешь период — ободок ярче, data-lens-hi); «месяц / списком» — как «неделя / месяц».
+   Таблица, буквы смен, фильтры по должностям, полоски покрытия и кнопки с предупреждением или удалением — прежние ── */
+html.sa-lens [data-lens-edge]{border-color:var(--lk-edge)!important;box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),var(--lk-shadow)!important}
+html.sa-lens [data-lens-btn="tab"]{color:var(--lk-hi)!important;font-weight:bold!important;background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.26),rgba(200,169,110,0.13) 62%)!important;
+  box-shadow:inset 0 0 0 1px rgba(232,201,131,0.62),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(0,0,0,0.25)!important}
+html.sa-lens.sa-light [data-lens-btn="tab"]{color:#6B4E1A!important;background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.9),rgba(176,138,70,0.2) 70%)!important;
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.55),inset 0 1.5px 0 var(--lk-hl),0 3px 8px rgba(120,85,25,0.16)!important}
+/* «Для чтения»: надписи стекла и плашек вкладок — тёмным золотом #6B4E1A (на светлом стекле #7A5D2A давал 4,17, #8A6524 на
+   светлой плашке — 4,1 при норме 4,5); «Ещё» графика — золотом в обоих состояниях (серый на стекле — 4,26), раскрыт — ободок ярче */
+html.sa-lens.sa-light [data-lens-btn="soft"]{color:#6B4E1A!important}
+html.sa-lens [data-sched-more]{color:var(--lk-gold)!important}
+html.sa-lens [data-lens-seg]{position:relative;border-color:transparent!important;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens [data-lens-seg=""]::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .sa-schedsec{border-color:var(--lk-edge)!important;box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 14px var(--lk-cglow),0 4px 14px rgba(0,0,0,0.28)!important}
+html.sa-lens.sa-light .sa-schedsec{box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 14px var(--lk-cglow),0 3px 10px rgba(120,85,25,0.12)!important}
+html.sa-lens .sa-schedno{position:relative;background:var(--lk-glass)!important;border-color:transparent!important;color:var(--lk-gold)!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 10px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+html.sa-lens .sa-schedno::after{content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+
+/* v113: «Команда» (ui/screens-team.jsx), AI HR («Собеседование», ui/candidate.jsx, «Проверка AI HR», ui/hr-eval.jsx),
+   «Глоссарий» (ui/screens-learning.jsx) и «Наставник» (ui/assistant.jsx) — метками data-lens-* (правила v111). Владелец
+   (30.10, снимки): «Так же, AI HR, команда и глоссарий», «Так же наставник». Карточки — кромка, блик и свет сверху (плитки
+   итогов команды и лента AI-интервью — без света); выбранная роль и опыт кандидата — «hi»; главные кнопки — плашки с
+   кольцом («+ Добавить», «Начать собеседование», «Начать тест», «Запустить проверку»…), остальные — стекло; включённые
+   «Только избранное» и «Вопросы твоего ресторана» — плашка с ободком (data-lens-btn="tab"); поля — стекло, у строки
+   Наставника ободок ярче, пока пишешь (:focus-within); кнопки шапки Наставника и его значок — линзы с кольцом, аватар
+   сотрудника — с кольцом. Красные кнопки («Отключить доступ», «Удалить», «Прервать», «Очистить») — прежнего цвета, только капсулой, как
+   соседние (data-lens-btn="danger": одно скругление). Ответы теста, решения «Берём / Не берём», фильтры, звёздочки
+   глоссария (они не круглые) и пузыри переписки — прежние ── */
+html.sa-lens [data-lens-field]:focus-within{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

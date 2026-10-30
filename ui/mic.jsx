@@ -44,7 +44,7 @@ export function MicButton({ onText, onError, a11y, sttUrl, headers, size = 44, o
 
   const ringMask = `radial-gradient(farthest-side, transparent calc(100% - 2px), #000 0)`;
   return (
-    <button className="sa-btn" onClick={toggle} aria-label={rec ? "Остановить запись" : "Сказать голосом"}
+    <button className="sa-btn" onClick={toggle} aria-label={rec ? "Остановить запись" : "Сказать голосом"} data-lens={rec ? undefined : "mic"}
       title={rec ? "Остановить" : "Сказать голосом"}
       style={{ width: size, height: size, borderRadius: size / 2, border: "none", cursor: "pointer", flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center", position: "relative",

@@ -221,9 +221,10 @@ function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, b
   const text = T.modTitle?.color || (a11y ? "#3A2E1C" : "#EFE4C8");
   const small = { ...T.modSub, color: sub, fontSize: 12.5, lineHeight: 1.55 };
   const box = compact ? { marginTop: 10 } : { ...glass, marginBottom: 12 };
+  const lensBox = compact ? {} : { "data-lens-card": "" };   // v113: отдельный отчёт — карточки линзы; в строке истории — нет
   return (
     <div data-ai-report={rec.id}>
-      <div style={box}>
+      <div style={box} {...lensBox}>
         {!compact ? (
           <div style={{ ...T.bold, marginTop: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             Вердикт ИИ
@@ -243,7 +244,7 @@ function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, b
       </div>
 
       {rec.aiScores ? (
-        <div style={box} data-ai-comps="">
+        <div style={box} {...lensBox} data-ai-comps="">
           <div style={{ ...T.bold, marginTop: compact ? 0 : 2, marginBottom: 8, fontSize: compact ? 13 : undefined }}>По компетенциям</div>
           {names.map((c) => {
             const v = Number(rec.aiScores[c] ?? 0), ev = (rec.aiEvidence && rec.aiEvidence[c]) || null;
@@ -266,14 +267,14 @@ function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, b
       ) : null}
 
       {rec.aiAsk?.length > 0 && (
-        <div style={box} data-ai-ask="">
+        <div style={box} {...lensBox} data-ai-ask="">
           <div style={{ ...T.bold, marginTop: compact ? 0 : 2, marginBottom: 6, fontSize: compact ? 13 : undefined }}>Спросите на встрече</div>
           {rec.aiAsk.map((q, i) => <div key={i} style={{ ...small, marginBottom: 4 }}>— {q}</div>)}
         </div>
       )}
 
       {rec.aiTranscript?.length > 0 && (
-        <div style={box}>
+        <div style={box} {...lensBox}>
           <button type="button" className="sa-btn" data-ai-answers="" onClick={(e) => { e.stopPropagation(); vibrate("light"); setShowAll(v => !v); }}
             style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: gold, fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13 }}>
             {showAll ? "Скрыть ответы кандидата" : `Ответы кандидата · ${rec.aiTranscript.length}`} {showAll ? "▴" : "▾"}
@@ -289,15 +290,15 @@ function AiReport({ rec, T, a11y, gold, sub, glass, onDecide, compact = false, b
         </div>
       )}
 
-      {onDecide ? <Decision rec={rec} onDecide={onDecide} sub={sub} T={T} style={box} /> : null}
+      {onDecide ? <Decision rec={rec} onDecide={onDecide} sub={sub} T={T} style={box} lens={!compact} /> : null}
     </div>
   );
 }
 export const decisionColor = (id) => (id === "hire" ? GREEN : id === "reject" ? RED : GOLD_SOFT);
 // «Ваше решение»: подпись сверху, три равные кнопки в ряд (на 320 тоже в одну строку); повторный тап — снять
-function Decision({ rec, onDecide, sub, T, style }) {
+function Decision({ rec, onDecide, sub, T, style, lens }) {
   return (
-    <div style={style} data-ai-decision={rec.decision || ""}>
+    <div style={style} data-ai-decision={rec.decision || ""} data-lens-card={lens ? "" : undefined}>
       <div style={{ ...T.modSub, color: sub, fontSize: 12.5, marginBottom: 8 }}>
         Ваше решение{rec.decision && rec.decidedBy ? <span style={{ opacity: 0.75 }}> · отметил(а): {rec.decidedBy}</span> : null}
       </div>
@@ -824,8 +825,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             <div style={{ ...T.bold, marginBottom: 6 }}>Прервать собеседование?</div>
             <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.5, marginBottom: 12 }}>Ответы кандидата не сохранятся.</div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="sa-btn" style={{ ...ghostBtn, flex: 1 }} onClick={() => setConfirmLeave(false)}>Продолжить</button>
-              <button className="sa-btn" style={{ ...ghostBtn, flex: 1, color: RED, borderColor: RED }}
+              <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, flex: 1 }} onClick={() => setConfirmLeave(false)}>Продолжить</button>
+              <button className="sa-btn" data-lens-btn="danger" style={{ ...ghostBtn, flex: 1, color: RED, borderColor: RED }}
                 onClick={() => { setConfirmLeave(false); setPhase("intro"); }}>Прервать</button>
             </div>
           </div>
@@ -834,7 +835,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {/* ── ГЛАВНАЯ ── */}
         {phase === "intro" && (
           <>
-            <div style={{ ...glass, marginBottom: 16 }}>
+            <div data-lens-card="" style={{ ...glass, marginBottom: 16 }}>
               <div style={{ marginBottom: 8, display: "flex" }}>{MOD_SVG["🤝"](gold, 26)}</div>
               <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Собеседование в приложении</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
@@ -844,10 +845,10 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 результат открываешь ты, когда телефон вернётся.
               </div>
             </div>
-            <button className="sa-btn" style={goldBtn} onClick={startSetup}>Начать собеседование</button>
+            <button className="sa-btn" data-lens-btn="main" style={goldBtn} onClick={startSetup}>Начать собеседование</button>
 
             {/* v66 (Доп. 379): AI HR — бета или проверен; два условия коротко, тап — «Проверка AI HR» */}
-            <div className="sa-btn" data-hr-row={hrSt.beta ? "beta" : "ok"} role="button" tabIndex={0}
+            <div className="sa-btn" data-lens-card="" data-hr-row={hrSt.beta ? "beta" : "ok"} role="button" tabIndex={0}
               onClick={() => { vibrate("light"); setPhase("eval"); }} {...onActivate(() => setPhase("eval"))}
               style={{ ...glass, padding: "12px 14px", marginTop: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ display: "flex", flexShrink: 0 }}>{hrSt.beta ? UI_SVG.target(gold, 20) : UI_SVG.checkCircle(GREEN, 20)}</span>
@@ -879,7 +880,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   const open = openedResult === r.id;
                   const cal = calibrationOf(r.selfBand, r.pct);
                   return (
-                    <div key={r.id} data-cand-row={r.id} style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer" }}
+                    <div key={r.id} data-cand-row={r.id} data-lens-card="" style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer" }}
                       onClick={() => { vibrate("light"); setOpenedResult(open ? null : r.id); }}
                       {...onActivate(() => setOpenedResult(open ? null : r.id))}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -921,7 +922,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                           ))}
                           <Decision rec={r} onDecide={decide} sub={sub} T={T} style={{ marginTop: 10 }} />
                       </>)}
-                          <button className="sa-btn" style={{ ...ghostBtn, marginTop: 10, color: RED, borderColor: "rgba(224,120,120,0.4)" }}
+                          <button className="sa-btn" data-lens-btn="danger" style={{ ...ghostBtn, marginTop: 10, color: RED, borderColor: "rgba(224,120,120,0.4)" }}
                             onClick={(e) => { e.stopPropagation(); removeResult(r.id); }}>Удалить запись</button>
                         </div>
                       )}
@@ -945,12 +946,12 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {phase === "setup" && (
           <>
             <div style={secLabel}>Кого собеседуем</div>
-            <input
+            <input data-lens-field=""
               style={{ ...inputStyle, marginBottom: 16 }}
               placeholder="Имя кандидата" value={name} maxLength={40}
               onChange={e => setName(e.target.value)} />
             {TEST_ROLES.map(rl => (
-              <div key={rl.id} className="sa-btn" onClick={() => { vibrate("light"); setRole(rl); }} {...onActivate(() => setRole(rl))}
+              <div key={rl.id} className="sa-btn" data-lens-card={role.id === rl.id ? "hi" : ""} onClick={() => { vibrate("light"); setRole(rl); }} {...onActivate(() => setRole(rl))}
                 style={{ ...glass, padding: "13px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
                   // v65: рамку выбранного меняем целиком (border и borderTop вместе) — иначе React ругается на смесь
@@ -967,7 +968,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             ))}
             {customQs.length > 0 && (
               <div style={{ marginTop: 6 }}>
-                <button className="sa-btn" onClick={() => { vibrate("light"); setUseCustom(v => !v); }}
+                <button className="sa-btn" data-lens-btn={useCustom ? "tab" : "soft"} onClick={() => { vibrate("light"); setUseCustom(v => !v); }}
                   style={{ padding: "9px 14px", borderRadius: RADIUS.lg, cursor: "pointer",
                     border: `1px solid ${gold}${useCustom ? "" : "55"}`,
                     background: useCustom ? gold : "transparent",
@@ -980,7 +981,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 </div>
               </div>
             )}
-            <button className="sa-btn" style={{ ...goldBtn, marginTop: 12, opacity: name.trim().length < 2 ? 0.5 : 1 }}
+            <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, marginTop: 12, opacity: name.trim().length < 2 ? 0.5 : 1 }}
               onClick={() => { if (name.trim().length >= 2) { vibrate("light"); setPhase("profile"); } }}>
               Дальше: анкета опыта
             </button>
@@ -995,7 +996,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             </div>
             <div style={secLabel}>Опыт в гостеприимстве и гастрономии</div>
             {EXPERIENCE.map(x => (
-              <div key={x.id} className="sa-btn" onClick={() => { vibrate("light"); setExp(x); }} {...onActivate(() => setExp(x))}
+              <div key={x.id} className="sa-btn" data-lens-card={exp?.id === x.id ? "hi" : ""} onClick={() => { vibrate("light"); setExp(x); }} {...onActivate(() => setExp(x))}
                 style={{ ...glass, padding: "12px 14px", marginBottom: 8, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
                   ...(exp?.id === x.id ? { border: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E", borderTop: a11y ? "1.5px solid #7A5D2A" : "1px solid #C8A96E" } : {}) }}>
@@ -1024,7 +1025,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               items={[{ id: "__none", label: "—" }, ...AGES.map(a => ({ id: a, label: a }))]}
               activeId={age || "__none"}
               onSelect={(id) => { vibrate("light"); setAge(id === "__none" ? null : id); }} />
-            <button className="sa-btn" style={{ ...goldBtn, marginTop: 16, opacity: exp ? 1 : 0.5 }}
+            <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, marginTop: 16, opacity: exp ? 1 : 0.5 }}
               onClick={() => { if (exp) { vibrate("light"); setPhase("handoff"); } }}>
               Дальше
             </button>
@@ -1034,7 +1035,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {/* ── ПЕРЕДАЧА ТЕЛЕФОНА ── */}
         {phase === "handoff" && (
           <>
-            <div style={{ ...glass, textAlign: "center", padding: "30px 20px", marginBottom: 16 }}>
+            <div data-lens-card="" style={{ ...glass, textAlign: "center", padding: "30px 20px", marginBottom: 16 }}>
               <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>{MOD_SVG["🤲"](gold, 30)}</div>
               <div style={{ ...T.bold, marginTop: 2, marginBottom: 8 }}>Передайте телефон кандидату</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.65 }}>
@@ -1045,8 +1046,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 Отвечайте честно, как в жизни: здесь важно, как вы рассуждаете.
               </div>
             </div>
-            <button className="sa-btn" style={goldBtn} onClick={startTest}>Начать тест</button>
-            <button className="sa-btn" onClick={startAi}
+            <button className="sa-btn" data-lens-btn="main" style={goldBtn} onClick={startTest}>Начать тест</button>
+            <button className="sa-btn" data-lens-btn="soft" onClick={startAi}
               style={{ ...goldBtn, marginTop: 10, background: "transparent", color: gold,
                 border: `1px solid ${gold}66`, boxShadow: "none" }}>
               {hrSt.beta ? "AI-интервью · бета" : "AI-интервью"}
@@ -1078,7 +1079,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 })}
               </div>
             ) : null}
-            <div ref={aiListRef} className="sa-dlgscroll"
+            <div ref={aiListRef} className="sa-dlgscroll" data-lens-edge=""
               style={{ ...glass, padding: 12, marginBottom: 12, maxHeight: "46vh", overflowY: "auto",
                 WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
                 display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1121,7 +1122,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 <div style={{ color: RED, fontSize: 12.5, lineHeight: 1.5, padding: "4px 2px" }}>
                   {aiErr}
                   <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                    <button className="sa-btn" data-hr-retry="" onClick={() => (aiInput.trim() ? aiSend() : aiTurn(aiMsgs))}
+                    <button className="sa-btn" data-lens-btn="soft" data-hr-retry="" onClick={() => (aiInput.trim() ? aiSend() : aiTurn(aiMsgs))}
                       style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>↻ Повторить</button>
                     <button className="sa-btn" onClick={() => { setPhase("handoff"); }}
                       style={{ padding: "8px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: "none", background: "transparent", color: sub, fontFamily: "Georgia, serif", fontSize: 12.5 }}>Назад</button>
@@ -1139,6 +1140,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
               <textarea
                 ref={aiInputRef}
+                data-lens-field=""
                 className={a11y ? "sa-aiinput-light" : "sa-aiinput-dark"}
                 value={aiInput}
                 rows={1}
@@ -1173,10 +1175,10 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
             )}
             {/* v66: с планом — «Завершить», когда пройдены все темы (раньше — после 4 ответов); можно и раньше */}
             {(hrInfo.v2 ? hrInfo.done : aiAnswered >= 4) && !aiBusy && (
-              <button className="sa-btn" style={goldBtn} onClick={finishAi}>Завершить интервью → оценка</button>
+              <button className="sa-btn" data-lens-btn="main" style={goldBtn} onClick={finishAi}>Завершить интервью → оценка</button>
             )}
             {hrInfo.v2 && !hrInfo.done && aiAnswered >= 4 && !aiBusy && (
-              <button className="sa-btn" data-hr-early="" onClick={finishAi}
+              <button className="sa-btn" data-lens-btn="soft" data-hr-early="" onClick={finishAi}
                 style={{ ...ghostBtn, marginTop: 4, padding: "9px", fontSize: 12.5 }}>Завершить раньше: оценка по пройденным темам</button>
             )}
             <div style={{ ...T.modSub, ...labelStyle(13.5), color: sub, textAlign: "center", marginTop: 8, opacity: 0.75 }}>
@@ -1219,7 +1221,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   );
                 })}
                 {ordSeq.length > 0 && ordSeq.length < q.options.length && (
-                  <button className="sa-btn" style={{ ...ghostBtn, marginTop: 4 }} onClick={() => { vibrate("light"); setOrdSeq([]); }}>
+                  <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, marginTop: 4 }} onClick={() => { vibrate("light"); setOrdSeq([]); }}>
                     Сбросить порядок
                   </button>
                 )}
@@ -1239,7 +1241,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {/* ── САМООЦЕНКА ── */}
         {phase === "selfcheck" && (
           <>
-            <div style={{ ...glass, marginBottom: 12 }}>
+            <div data-lens-card="" style={{ ...glass, marginBottom: 12 }}>
               <div style={{ marginBottom: 8, display: "flex" }}>{UI_SVG.target(gold, 24)}</div>
               <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Последний вопрос: о себе</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
@@ -1259,14 +1261,14 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         {/* ── ШЛЮЗ ── */}
         {phase === "gate" && (
           <>
-            <div style={{ ...glass, textAlign: "center", padding: "36px 20px", marginBottom: 16 }}>
+            <div data-lens-card="" style={{ ...glass, textAlign: "center", padding: "36px 20px", marginBottom: 16 }}>
               <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}>{MOD_SVG["🤝"](gold, 30)}</div>
               <div style={{ ...T.bold, marginTop: 2, marginBottom: 8 }}>Готово, спасибо!</div>
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.6 }}>
                 {name.trim()}, верните телефон менеджеру, пожалуйста.
               </div>
             </div>
-            <button className="sa-btn" style={ghostBtn} onClick={openResult}>Результат для менеджера</button>
+            <button className="sa-btn" data-lens-btn="soft" style={ghostBtn} onClick={openResult}>Результат для менеджера</button>
           </>
         )}
 
@@ -1277,7 +1279,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           const cc = cat === "Рекомендован" ? GREEN : cat === "Не рекомендован" ? RED : GOLD_SOFT;
           return (
             <div data-ai-result="">
-              <div style={{ ...glass, marginBottom: 12, padding: "22px 16px 16px" }}>
+              <div data-lens-card="" style={{ ...glass, marginBottom: 12, padding: "22px 16px 16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <div style={{ ...T.resultCircle, borderColor: cc }}>
                     <span style={{ ...T.resultScore, color: cc }}>{lastRec.pct}</span>
@@ -1293,8 +1295,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
                 ИИ может ошибаться, решение всегда за вами. Отметьте его выше: по таким отметкам видно, насколько ИИ совпадает с вами.
               </div>
-              <button className="sa-btn" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>
-              <button className="sa-btn" style={ghostBtn} onClick={startSetup}>Собеседовать ещё одного</button>
+              <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>
+              <button className="sa-btn" data-lens-btn="soft" style={ghostBtn} onClick={startSetup}>Собеседовать ещё одного</button>
             </div>
           );
         })()}
@@ -1303,7 +1305,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           const cal = calibrationOf(selfBand, pct);
           return (
             <>
-              <div style={{ ...glass, marginBottom: 12, padding: "22px 16px 16px" }}>
+              <div data-lens-card="" style={{ ...glass, marginBottom: 12, padding: "22px 16px 16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <div style={{ ...T.resultCircle, borderColor: v.color }}>
                     <span style={{ ...T.resultScore, color: v.color }}>{pct}%</span>
@@ -1318,7 +1320,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               </div>
 
               {cal && (
-                <div style={{ ...glass, marginBottom: 12, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div data-lens-card="" style={{ ...glass, marginBottom: 12, display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <span style={{ display: "flex", flexShrink: 0 }}>{UI_SVG.target(gold, 20)}</span>
                   <div>
                     <div style={{ ...T.bold, marginTop: 2, marginBottom: 2 }}>
@@ -1330,7 +1332,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               )}
 
               {aiVerdict && (
-                <div style={{ ...glass, marginBottom: 12 }}>
+                <div data-lens-card="" style={{ ...glass, marginBottom: 12 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
                     Вердикт ИИ
                     <span style={{ ...labelStyle(13), color: gold, border: `1px solid ${gold}66`, borderRadius: RADIUS.pill, padding: "1px 7px" }}>бета</span>
@@ -1355,7 +1357,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               )}
 
               {topics.length > 0 && (
-                <div style={{ ...glass, marginBottom: 12 }}>
+                <div data-lens-card="" style={{ ...glass, marginBottom: 12 }}>
                   <div style={{ ...T.bold, marginTop: 2, marginBottom: 10 }}>Компетенции от слабых к сильным</div>
                   {topics.map((t, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
@@ -1372,8 +1374,8 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
               <div style={{ ...T.modSub, color: sub, lineHeight: 1.55, marginBottom: 12 }}>
                 Результат сохранён на этом устройстве. Решение принимай после личного разговора с кандидатом.
               </div>
-              <button className="sa-btn" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>
-              <button className="sa-btn" style={ghostBtn} onClick={startSetup}>Собеседовать ещё одного</button>
+              <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, marginBottom: 8 }} onClick={() => { vibrate("light"); setPhase("intro"); }}>К списку кандидатов</button>
+              <button className="sa-btn" data-lens-btn="soft" style={ghostBtn} onClick={startSetup}>Собеседовать ещё одного</button>
             </>
           );
         })()}

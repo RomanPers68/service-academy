@@ -99,7 +99,7 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
   return (
     <div data-hr-eval="">
       {/* ── два условия ── */}
-      <div style={{ ...glass, marginBottom: 12 }} data-hr-status={status.beta ? "beta" : "ok"}>
+      <div style={{ ...glass, marginBottom: 12 }} data-lens-card="" data-hr-status={status.beta ? "beta" : "ok"}>
         <div style={{ ...T.bold, marginTop: 2, marginBottom: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           AI HR
           <span style={{ ...labelStyle(13), color: status.beta ? gold : GREEN, border: `1px solid ${status.beta ? gold : GREEN}66`, borderRadius: RADIUS.pill, padding: "1px 7px" }}>
@@ -135,7 +135,7 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
       </div>
 
       {/* ── что проверяем и запуск ── */}
-      <div style={{ ...glass, marginBottom: 12 }}>
+      <div data-lens-card="" style={{ ...glass, marginBottom: 12 }}>
         <div style={{ ...T.bold, marginTop: 2, marginBottom: 6 }}>Проверка на эталонах</div>
         <div style={{ ...small, marginBottom: 12 }}>
           {HR_EVAL.length} собеседований с заранее известным итогом: официанты, хостес, бармены, менеджеры. Есть сильные и слабые,
@@ -152,10 +152,10 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
             <div style={{ height: 5, borderRadius: 3, background: "rgba(160,120,60,0.18)", overflow: "hidden", marginBottom: 12 }}>
               <div style={{ height: "100%", width: pctOf(doneN, HR_EVAL.length) + "%", background: gold, transition: "width .4s ease" }} />
             </div>
-            <button className="sa-btn" style={ghostBtn} onClick={stop} data-hr-eval-stop="">Остановить</button>
+            <button className="sa-btn" data-lens-btn="soft" style={ghostBtn} onClick={stop} data-hr-eval-stop="">Остановить</button>
           </>
         ) : (
-          <button className="sa-btn" style={goldBtn} onClick={start} data-hr-eval-start="">{ref || run ? "Проверить ещё раз" : "Запустить проверку"}</button>
+          <button className="sa-btn" data-lens-btn="main" style={goldBtn} onClick={start} data-hr-eval-start="">{ref || run ? "Проверить ещё раз" : "Запустить проверку"}</button>
         )}
         {fatal ? <div style={{ ...small, color: RED, marginTop: 10 }} data-hr-eval-error="">{fatal}</div> : null}
         {run && !busy && !fatal && sum && !sum.complete ? (
@@ -176,7 +176,7 @@ export function HrEval({ T, a11y, gold, sub, glass, goldBtn, ghostBtn, secLabel,
         const flagTxt = c.flag ? (it.missed ? "флаг пропущен" : "флаг найден") : it.risks ? "лишний флаг" : "";
         const catColor = it.got === "Рекомендован" ? GREEN : it.got === "Не рекомендован" ? RED : GOLD_SOFT;
         return (
-          <div key={c.id} data-hr-case={c.id} data-hr-case-ok={it.ok ? "1" : "0"} className="sa-btn"
+          <div key={c.id} data-hr-case={c.id} data-hr-case-ok={it.ok ? "1" : "0"} className="sa-btn" data-lens-card=""
             onClick={() => { vibrate("light"); setOpen(isOpen ? null : c.id); }}
             style={{ ...glass, padding: "11px 13px", marginBottom: 8, cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

@@ -10,7 +10,7 @@ const rd = (f) => readFileSync(f, "utf8");
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/[^\n]*/g, "$1");
 const dashes = (s) => (code(s).match(/[А-Яа-яЁё»)"]\s—\s[А-Яа-яЁё«]/g) || []).length;
 const LOOK = rd("ui/home-look.jsx");
-const V112 = LOOK.slice(LOOK.indexOf("/* ── v112"), LOOK.lastIndexOf("`;"));
+const V112 = LOOK.slice(LOOK.indexOf("/* ── v112"), LOOK.indexOf("/* ── v113") > 0 ? LOOK.indexOf("/* ── v113") : LOOK.lastIndexOf("`;"));   // v113: дальше — свой раздел
 const sels = code(V112).split("}").map((r) => r.split("{")[0].trim()).filter(Boolean).flatMap((s) => s.split(",").map((x) => x.trim()));
 
 describe("v112: оболочка радио со своим классом", () => {
@@ -83,6 +83,6 @@ describe("v112: тексты и метка", () => {
     }
     expect(dashes(rd("ui/radio.jsx"))).toBe(0);
     expect(dashes(rd("ui/home-look.jsx"))).toBe(0);
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v112</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(11[2-9]|1[2-9]\d|[2-9]\d\d)<\/span>/);   // v112 и позже
   });
 });

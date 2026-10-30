@@ -73,7 +73,7 @@ describe("v49: день по часам", () => {
     expect(day).toContain("const z = miss ? holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf }) : null;");
     expect(day).toContain('data-day-note="" onClick={() => { setDayEdit(d); vibrate("light"); }}');
     expect(day).toContain("const toShot = () => { setBossDay(0); exportToday(shotMode, d);");
-    expect(src).toContain('<div data-shot-card="" style={{ ...card }}>');
+    expect(src).toContain('<div data-shot-card="" data-lens-edge="" style={{ ...card }}>');   // v113: метка линзы
   });
   it("картинка смены — любого дня: заголовок днём недели, имя файла с датой; без дня — «Сегодня», как было", () => {
     expect(src).toContain("const drawTodayCard = (print = false, dd = 0) => {");

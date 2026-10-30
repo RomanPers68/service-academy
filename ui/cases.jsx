@@ -7,6 +7,9 @@
 // Сервер — этап 33 (case_submit / case_review / case_list); без него экран честно говорит, что этапа нет.
 // v88 (Доп. 401): рассказать можно голосом (микрофон у полей, распознавание — функция stt); руководителю — «Черновик от
 // ИИ»: Наставник раскладывает рассказ на сцену, вопрос, варианты, разбор и «как было у нас», руководитель проверяет.
+// v113 (Доп. 426): в виде «Линза» карточки — стекло с золотой кромкой и светом сверху, «Разобрать», «Отправить
+// руководителю», «Опубликовать» — плашки с кольцом, «Рассказать случай», «Черновик от ИИ» — стекло, поля — стекло (метки
+// data-lens-*, правила — ui/home-look.jsx); «Удалить», переключатели и «Чем закончилось» — прежние.
 import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { vibrate } from "../lib/utils";
@@ -53,8 +56,8 @@ function Field({ c, a11y, label, hint, value, onChange, max, rows = 3, placehold
     <div style={{ marginBottom: 12 }}>
       {label || micEl ? <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
         <label htmlFor={id} style={{ flex: 1, minWidth: 0, ...labelStyle(13), color: c.gold }}>{label}</label>{micEl}</div> : null}
-      {multi ? <textarea id={id} className="sa-field" data-case-field={name} rows={rows} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />
-        : <input id={id} className="sa-field" data-case-field={name} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />}
+      {multi ? <textarea id={id} className="sa-field" data-lens-field="" data-case-field={name} rows={rows} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />
+        : <input id={id} className="sa-field" data-lens-field="" data-case-field={name} value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={st} />}
       {hint ? <span style={{ display: "block", fontSize: 12, color: c.sub, marginTop: 4, lineHeight: 1.4 }}>{hint}</span> : null}
     </div>
   );
@@ -129,16 +132,16 @@ function Review({ c, a11y, item, onDone, onCancel }) {
   };
   return (
     <div data-case-review={item.id}>
-      <div style={{ ...c.frost, padding: "12px 14px", marginBottom: 14 }}>
+      <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 14 }}>
         <div style={{ ...labelStyle(13), color: c.gold }}>Рассказ · {item.author || "сотрудник"}{item.anon ? " · без имени для команды" : ""} · {dayOf(item.at)}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: c.text, lineHeight: 1.5, marginTop: 6 }}>{item.story}</div>
         {item.did ? <div style={{ fontSize: 13.5, color: c.text, marginTop: 8, lineHeight: 1.45 }}><span style={{ color: c.sub }}>Что сделал(а): </span>{item.did}</div> : null}
         {item.outcome ? <div style={{ fontSize: 13, color: c.sub, marginTop: 6 }}>Итог: {outcomeLabel(item.outcome).toLowerCase()}</div> : null}
       </div>
       <div style={{ ...labelStyle(15), color: c.gold, margin: "4px 2px 10px" }}>Ситуация для команды</div>
-      <div data-case-ai="" style={{ ...c.frost, padding: "10px 12px", marginBottom: 14 }}>
+      <div data-case-ai="" data-lens-card="" style={{ ...c.frost, padding: "10px 12px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" data-case-ai-go="" onClick={askAi} disabled={aiBusy} style={{ ...btn(c), padding: "9px 14px", fontSize: 14, opacity: aiBusy ? 0.6 : 1 }}>{aiBusy ? "Наставник пишет черновик…" : undo ? "Ещё вариант от ИИ" : "Черновик от ИИ"}</button>
+          <button type="button" data-case-ai-go="" data-lens-btn="soft" onClick={askAi} disabled={aiBusy} style={{ ...btn(c), padding: "9px 14px", fontSize: 14, opacity: aiBusy ? 0.6 : 1 }}>{aiBusy ? "Наставник пишет черновик…" : undo ? "Ещё вариант от ИИ" : "Черновик от ИИ"}</button>
           {undo && !aiBusy ? <button type="button" data-case-ai-undo="" onClick={() => { vibrate("light"); setD(undo); setUndo(null); setAiMsg(""); }} style={{ border: 0, background: "none", color: c.sub, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer", textDecoration: "underline" }}>Вернуть как было</button> : null}
         </div>
         <div data-case-ai-msg="" style={{ fontSize: 12.5, color: aiMsg ? c.text : c.sub, lineHeight: 1.45, marginTop: 6 }}>{aiMsg || "Наставник разложит рассказ на сцену, вопрос, верный и неверные варианты и разбор. Ты проверяешь и публикуешь."}</div>
@@ -159,15 +162,15 @@ function Review({ c, a11y, item, onDone, onCancel }) {
       {!declineOpen && !published ? <Field c={c} name="note" label="Слово автору (по желанию)" value={note} onChange={setNote} max={CASE_LIMITS.note} rows={2} placeholder="Спасибо, хороший пример" /> : null}
       {err ? <div role="alert" style={{ fontSize: 13, color: c.red, margin: "2px 2px 10px", lineHeight: 1.45 }}>{err}</div> : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-        {!declineOpen ? <button type="button" data-case-publish="" onClick={() => send("publish")} disabled={!!busy} style={{ ...btn(c, "main"), opacity: busy || problem ? 0.6 : 1 }}>
+        {!declineOpen ? <button type="button" data-case-publish="" data-lens-btn="main" onClick={() => send("publish")} disabled={!!busy} style={{ ...btn(c, "main"), opacity: busy || problem ? 0.6 : 1 }}>
           {busy === "publish" ? "Публикую…" : published ? "Сохранить правку" : "Опубликовать для команды"}</button> : null}
         {!declineOpen ? (
-          <button type="button" data-case-decline="" onClick={() => { vibrate("light"); if (published) send("decline"); else setDeclineOpen(true); }} disabled={!!busy} style={btn(c)}>
+          <button type="button" data-case-decline="" data-lens-btn="soft" onClick={() => { vibrate("light"); if (published) send("decline"); else setDeclineOpen(true); }} disabled={!!busy} style={btn(c)}>
             {busy === "decline" ? "Снимаю…" : published ? "Снять с тренировки" : "Не для тренировки"}</button>
         ) : (
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={() => setDeclineOpen(false)} style={{ ...btn(c), flex: 1 }}>Назад к разбору</button>
-            <button type="button" data-case-decline-send="" onClick={() => send("decline")} disabled={!!busy} style={{ ...btn(c, "main"), flex: 1.3 }}>{busy === "decline" ? "Отправляю…" : "Ответить автору"}</button>
+            <button type="button" data-lens-btn="soft" onClick={() => setDeclineOpen(false)} style={{ ...btn(c), flex: 1 }}>Назад к разбору</button>
+            <button type="button" data-case-decline-send="" data-lens-btn="main" onClick={() => send("decline")} disabled={!!busy} style={{ ...btn(c, "main"), flex: 1.3 }}>{busy === "decline" ? "Отправляю…" : "Ответить автору"}</button>
           </div>
         )}
         <button type="button" data-case-delete="" onClick={() => { if (!sure) { vibrate("light"); setSure(true); return; } send("delete"); }} disabled={!!busy} style={btn(c, "danger")}>
@@ -215,7 +218,7 @@ function Tell({ c, a11y, onSent }) {
       </div>
       <Toggle c={c} a11y={a11y} name="anon" on={f.anon} onChange={set("anon")} label="Без моего имени для команды" sub="Руководитель увидит, кто рассказал, а команда не увидит." />
       {err ? <div role="alert" style={{ fontSize: 13, color: c.red, margin: "2px 2px 10px", lineHeight: 1.45 }}>{err}</div> : null}
-      <button type="button" data-case-send="" onClick={send} disabled={busy} style={{ ...btn(c, "main"), width: "100%", opacity: busy || short ? 0.6 : 1 }}>{busy ? "Отправляю…" : "Отправить руководителю"}</button>
+      <button type="button" data-case-send="" data-lens-btn="main" onClick={send} disabled={busy} style={{ ...btn(c, "main"), width: "100%", opacity: busy || short ? 0.6 : 1 }}>{busy ? "Отправляю…" : "Отправить руководителю"}</button>
     </div>
   );
 }
@@ -254,14 +257,14 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
       </div>
       <div style={{ padding: "4px 16px 110px" }}>
         {review ? <Review c={c} a11y={a11y} item={review} onDone={done} onCancel={() => setReview(null)} /> : <>
-          {msg ? <div role="status" style={{ ...card, fontSize: 13.5, color: c.text, lineHeight: 1.45 }}>{msg}</div> : null}
+          {msg ? <div role="status" data-lens-card="" style={{ ...card, fontSize: 13.5, color: c.text, lineHeight: 1.45 }}>{msg}</div> : null}
           {st.status === "loading" ? <div style={{ fontSize: 13, color: c.sub, padding: "6px 2px" }}>Загружаю случаи…</div> : null}
-          {st.status === "missing" ? <div style={{ ...card, fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>На сервере ещё нет этапа 33 (supabase-stage33-cases.sql). Когда руководитель его добавит, здесь можно будет рассказывать случаи и тренироваться на них.</div> : null}
-          {st.status === "offline" || st.status === "error" ? <div style={{ ...card, fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>Случаи не загрузились. Проверь связь.
-            <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px", fontSize: 14 }}>Ещё раз</button></div> : null}
+          {st.status === "missing" ? <div data-lens-card="" style={{ ...card, fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>На сервере ещё нет этапа 33 (supabase-stage33-cases.sql). Когда руководитель его добавит, здесь можно будет рассказывать случаи и тренироваться на них.</div> : null}
+          {st.status === "offline" || st.status === "error" ? <div data-lens-card="" style={{ ...card, fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>Случаи не загрузились. Проверь связь.
+            <button type="button" data-lens-btn="soft" onClick={() => { setSt({ status: "loading" }); load(); }} style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px", fontSize: 14 }}>Ещё раз</button></div> : null}
           {ok ? <>
             {/* тренировка */}
-            <div data-case-train="" style={{ ...card, padding: "14px 16px" }}>
+            <div data-case-train="" data-lens-card="" style={{ ...card, padding: "14px 16px" }}>
               <div style={{ ...labelStyle(13.5), color: c.gold }}>Тренировка на наших случаях</div>
               {team.length ? <>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
@@ -269,7 +272,7 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
                   <span style={{ fontSize: 13.5, color: c.sub }}>{pl(team.length, "случай", "случая", "случаев")} из зала{fresh ? " · новых для тебя " + fresh : ""}</span>
                 </div>
                 <div style={{ fontSize: 13, color: c.sub, marginTop: 4, lineHeight: 1.45 }}>Ситуация, вопрос и разбор от руководителя. После ответа видно, как было у нас.</div>
-                <button type="button" data-case-play="" onClick={play} style={{ ...btn(c, "main"), width: "100%", marginTop: 12 }}>{fresh ? "Разобрать новые" : "Разобрать ещё раз"}</button>
+                <button type="button" data-case-play="" data-lens-btn="main" onClick={play} style={{ ...btn(c, "main"), width: "100%", marginTop: 12 }}>{fresh ? "Разобрать новые" : "Разобрать ещё раз"}</button>
               </> : <>
                 <LineArt kind="tray" color={c.gold} size={130} style={{ margin: "10px auto 2px" }} />
                 <div style={{ fontSize: 13.5, color: c.text, marginTop: 6, lineHeight: 1.5 }}>Пока ни одного. Расскажи случай со смены: руководитель разберёт его, и команда потренируется на живой истории.</div>
@@ -279,7 +282,7 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
             {lead ? <>
               {sectionT("Ждут разбора", (st.inbox || []).length)}
               {(st.inbox || []).length ? (st.inbox || []).map((x) => (
-                <div key={x.id} data-case-inbox={x.id} role="button" tabIndex={0} onClick={() => { vibrate("light"); setMsg(""); setReview(x); }}
+                <div key={x.id} data-case-inbox={x.id} data-lens-card="" role="button" tabIndex={0} onClick={() => { vibrate("light"); setMsg(""); setReview(x); }}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setReview(x); } }} style={{ ...card, cursor: "pointer" }}>
                   <div style={{ ...labelStyle(12.5), color: c.gold }}>{x.author || "сотрудник"}{x.anon ? " (без имени для команды)" : ""} · {dayOf(x.at)}{x.outcome ? " · " + outcomeLabel(x.outcome).toLowerCase() : ""}</div>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text, marginTop: 5, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{x.story}</div>
@@ -288,18 +291,18 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
             </> : null}
             {/* рассказать */}
             {sectionT("Рассказать случай")}
-            <div style={card}>
+            <div data-lens-card="" style={card}>
               {tell ? <Tell c={c} a11y={a11y} onSent={() => { setTell(false); setMsg("Отправлено. Руководитель разберёт случай, и команда потренируется на нём."); load(); }} />
                 : <>
                   <div style={{ fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>Был непростой гость или ты нашёл(ла) хороший выход? Расскажи: руководитель превратит историю в ситуацию для тренировки.</div>
-                  <button type="button" data-case-tell-open="" onClick={() => { vibrate("light"); setMsg(""); setTell(true); }} style={{ ...btn(c), width: "100%", marginTop: 12 }}>Рассказать случай</button>
+                  <button type="button" data-case-tell-open="" data-lens-btn="soft" onClick={() => { vibrate("light"); setMsg(""); setTell(true); }} style={{ ...btn(c), width: "100%", marginTop: 12 }}>Рассказать случай</button>
                 </>}
             </div>
             {/* мои */}
             {(st.mine || []).length ? <>
               {sectionT("Мои случаи", (st.mine || []).length)}
               {(st.mine || []).map((x) => (
-                <div key={x.id} data-case-mine={x.id} data-status={x.status} style={card}>
+                <div key={x.id} data-case-mine={x.id} data-status={x.status} data-lens-card="" style={card}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ ...labelStyle(12.5), color: x.status === "published" ? c.green : x.status === "declined" ? c.sub : c.gold, flex: 1 }}>{STATUS[x.status] || x.status} · {dayOf(x.at)}</span>
                     {x.status === "new" ? <MineDelete c={c} id={x.id} onDone={() => { setMsg("Случай удалён."); load(); }} /> : null}
@@ -312,7 +315,7 @@ export function CasesScreen({ T, a11y, profile, uk = "", playedVer = 0, onBack, 
             {lead && (st.done || []).length ? <>
               {sectionT("Разобранные", (st.done || []).length)}
               {(st.done || []).map((x) => (
-                <div key={x.id} data-case-done={x.id} data-status={x.status} role="button" tabIndex={0} onClick={() => { vibrate("light"); setMsg(""); setReview(x); }}
+                <div key={x.id} data-case-done={x.id} data-status={x.status} data-lens-card="" role="button" tabIndex={0} onClick={() => { vibrate("light"); setMsg(""); setReview(x); }}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setReview(x); } }} style={{ ...card, cursor: "pointer", opacity: x.status === "declined" ? 0.7 : 1 }}>
                   <div style={{ ...labelStyle(12.5), color: x.status === "published" ? c.green : c.sub }}>{STATUS[x.status]} · {x.author || "сотрудник"} · {dayOf(x.reviewed_at || x.at)}</div>
                   <div style={{ fontSize: 14, color: c.text, marginTop: 5, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{(x.sit && x.sit.scene) || x.story}</div>

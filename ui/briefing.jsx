@@ -8,6 +8,9 @@
 // v86 (Доп. 399): на карточке — главное из брифинга («Стоп-лист: … · брони: 3 · новинка: …»), внизу чтения —
 //   «Прочитал(а)» (этап 36), руководителю — «Прочитали 4 из 6 в графике» и кто ещё не отметил; голос шефа и сомелье
 //   к новинке — прямо в блоке «Новинки меню».
+// v113 (Доп. 426): в виде «Линза» блоки — стекло с золотой кромкой и светом сверху, «Отправить команде», «Дальше»,
+//   «Прочитал(а)» — плашки с кольцом, «Провести», «Назад», «Показать ответ» — стекло, «Своё» — поле-стекло, «закрыть» показа —
+//   линза (метки data-lens-*, правила — ui/home-look.jsx); переключатели блоков и полоски показа — прежние.
 import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
@@ -101,7 +104,7 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
         <div key={i} style={{ fontSize: small + 1, color: reveal && i === b.correct ? c.gold : c.text, fontWeight: reveal && i === b.correct ? "bold" : "normal", marginBottom: 3 }}>{LETTERS[i]}. {o}</div>))}</div>
       {reveal ? (b.why ? <div style={{ fontSize: small, color: c.sub, marginTop: 6, lineHeight: 1.45 }}>{b.why}</div> : null)
         : <button type="button" data-brief-reveal="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onReveal && onReveal(); }}
-            style={{ marginTop: 10, padding: "8px 16px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent", color: c.gold, fontFamily: "Georgia, serif", fontSize: small, cursor: "pointer" }}>Показать ответ</button>}
+            data-lens-btn="soft" style={{ marginTop: 10, padding: "8px 16px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent", color: c.gold, fontFamily: "Georgia, serif", fontSize: small, cursor: "pointer" }}>Показать ответ</button>}
     </div>);
   // v83: случай из зала — сцена, вопрос и варианты; ответ, разбор и «как было у нас» — по кнопке, как у вопроса команде
   if (k === "case") return (
@@ -114,7 +117,7 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
         {b.why ? <div style={{ fontSize: small, color: c.sub, marginTop: 6, lineHeight: 1.45 }}>{b.why}</div> : null}
         {b.real ? <RealPlaque real={b.real} author={b.author} c={c} small={small} /> : null}
       </> : <button type="button" data-brief-reveal="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onReveal && onReveal(); }}
-          style={{ marginTop: 10, padding: "8px 16px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent", color: c.gold, fontFamily: "Georgia, serif", fontSize: small, cursor: "pointer" }}>Показать ответ</button>}
+          data-lens-btn="soft" style={{ marginTop: 10, padding: "8px 16px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent", color: c.gold, fontFamily: "Georgia, serif", fontSize: small, cursor: "pointer" }}>Показать ответ</button>}
       {b.author && !(reveal && b.real) ? <div style={{ fontSize: small - 1, color: c.sub, marginTop: 6 }}>Рассказал(а) {b.author}</div> : null}
     </div>);
   if (k === "thanks") return (
@@ -144,7 +147,7 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
     <div data-brief-show="" role="dialog" aria-modal="true" aria-label="Брифинг смены" className="sa-layer sa-safex" style={{ ...SHELL(a11y), display: "flex", flexDirection: "column" }}
       onTouchStart={(e) => { tx.current = e.touches[0].clientX; }} onTouchEnd={(e) => { const s = tx.current; tx.current = null; if (s == null) return; const dx = e.changedTouches[0].clientX - s; if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); }}>
       <div style={HEAD}>
-        <button type="button" data-sa-back="" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.sub, fontSize: 28, cursor: "pointer", lineHeight: 1, padding: "0 6px 2px 0" }}>×</button>
+        <button type="button" data-sa-back="" data-lens="disc" data-lens-x="" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.sub, fontSize: 28, cursor: "pointer", lineHeight: 1, padding: "0 6px 2px 0" }}>×</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: c.text }}>Брифинг · {brief.dayLabel}</div>
           {author ? <div style={{ fontSize: 12, color: c.sub }}>{author}</div> : null}
@@ -160,10 +163,10 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
         </> : <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: c.sub }}>В брифинге пока пусто.</div>}
       </div>
       <div style={{ display: "flex", gap: 10, padding: "10px 16px 14px" }}>
-        <button type="button" onClick={() => go(-1)} disabled={i === 0} style={{ flex: 1, padding: 14, borderRadius: 16, border: `1px solid ${c.line}`, background: "transparent", color: c.text, fontFamily: "Georgia, serif", fontSize: 15, opacity: i === 0 ? 0.4 : 1, cursor: "pointer" }}>‹ Назад</button>
+        <button type="button" data-lens-btn="soft" onClick={() => go(-1)} disabled={i === 0} style={{ flex: 1, padding: 14, borderRadius: 16, border: `1px solid ${c.line}`, background: "transparent", color: c.text, fontFamily: "Georgia, serif", fontSize: 15, opacity: i === 0 ? 0.4 : 1, cursor: "pointer" }}>‹ Назад</button>
         {i < pages.length - 1
-          ? <button type="button" data-brief-next="" onClick={() => go(1)} style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Дальше ›</button>
-          : <button type="button" onClick={onClose} style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Хорошей смены</button>}
+          ? <button type="button" data-brief-next="" data-lens-btn="main" onClick={() => go(1)} style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Дальше ›</button>
+          : <button type="button" data-lens-btn="main" onClick={onClose} style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Хорошей смены</button>}
       </div>
     </div>
   );
@@ -263,7 +266,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
         <div style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, marginBottom: 12 }}>
           {brief.dayLabel}{restaurant ? " · " + restaurant : ""}. Собрано из графика, меню, ошибок команды и лиги недели. Лишнее выключи, своё допиши.
         </div>
-        {today ? <div data-brief-sent="" style={{ ...c.frost, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: c.text, lineHeight: 1.45 }}>
+        {today ? <div data-brief-sent="" data-lens-card="" style={{ ...c.frost, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: c.text, lineHeight: 1.45 }}>
           Сегодня уже отправлен{today.mine ? "" : " (" + (today.author || "руководитель") + ")"}: команда видит его в «Смене»{today.sent ? ", в Telegram ушло " + today.sent : ""}. Новая отправка заменит его правкой, и прочитать её нужно будет заново.
           {reads ? (() => { const s = readStats(today.data, reads.rows, today.author); return <div data-brief-reads="" style={{ marginTop: 6 }}>
             <span style={{ color: c.gold }}>{readLine(s, reads.n)}.</span>{s.missing.length ? " Ещё не отметили: " + s.missing.join(", ") + "." : s.total ? " Отметили все." : ""}</div>; })() : null}
@@ -273,13 +276,13 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
           const has = Array.isArray(b) ? b.length > 0 : !!b;
           const isOn = !!brief.on[k];
           if (k === "note") return (
-            <div key={k} data-brief-block={k} style={{ ...c.frost, padding: "12px 14px", marginBottom: 10 }}>
+            <div key={k} data-brief-block={k} data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 10 }}>
               <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 6 }}>{BRIEF_TITLE[k]}</div>
-              <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 600))} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} rows={3} placeholder="Банкет на 12 человек в 19:00, VIP-гость за пятым столом, новый сомелье…" className="sa-field"
+              <textarea data-lens-field="" value={note} onChange={(e) => setNote(e.target.value.slice(0, 600))} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} rows={3} placeholder="Банкет на 12 человек в 19:00, VIP-гость за пятым столом, новый сомелье…" className="sa-field"
                 style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: `1px solid ${c.line}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", color: c.text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none", resize: "vertical" }} />
             </div>);
           return (
-            <div key={k} data-brief-block={k} data-on={isOn ? "1" : "0"} style={{ ...c.frost, padding: "12px 14px", marginBottom: 10, opacity: has && !isOn ? 0.55 : 1 }}>
+            <div key={k} data-brief-block={k} data-on={isOn ? "1" : "0"} data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 10, opacity: has && !isOn ? 0.55 : 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: has ? 8 : 0 }}>
                 <div style={{ ...labelStyle(13.5), color: c.gold, flex: 1 }}>{BRIEF_TITLE[k]}</div>
                 {has ? <button type="button" role="switch" aria-checked={isOn} aria-label={(isOn ? "Убрать из брифинга: " : "Включить в брифинг: ") + BRIEF_TITLE[k]} onClick={() => toggle(k)}
@@ -297,9 +300,9 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
       {portal(<div className="sa-colbar" data-brief-bar="" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
         background: a11y ? "rgba(245,238,222,0.94)" : "rgba(21,17,11,0.94)", borderTop: `1px solid ${c.line}`, display: "flex", gap: 10, fontFamily: "Georgia, serif",
         transform: typing ? "translateY(120%)" : "none", transition: "transform .25s ease" }}>
-        <button type="button" data-brief-present="" onClick={() => { vibrate("medium"); setShow(true); }} disabled={!count}
+        <button type="button" data-brief-present="" data-lens-btn="soft" onClick={() => { vibrate("medium"); setShow(true); }} disabled={!count}
           style={{ flex: 1, padding: 14, borderRadius: 16, border: `1px solid ${c.gold}`, background: "transparent", color: c.text, fontFamily: "Georgia, serif", fontSize: 15, cursor: "pointer", opacity: count ? 1 : 0.5 }}>Провести</button>
-        <button type="button" data-brief-publish="" onClick={publish} disabled={busy || !count || loading}
+        <button type="button" data-brief-publish="" data-lens-btn="main" onClick={publish} disabled={busy || !count || loading}
           style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer", opacity: busy || !count || loading ? 0.55 : 1 }}>{busy ? "Отправляю…" : today ? "Отправить правку" : "Отправить команде"}</button>
       </div>)}
       {show ? <BriefPresenter brief={brief} a11y={a11y} author={author} onClose={() => setShow(false)} /> : null}
@@ -368,7 +371,7 @@ export function BriefView({ a11y, brief, onClose, onRead }) {
       </div>
       <div style={{ padding: "4px 16px 28px" }}>
         {pages.map((k) => (
-          <div key={k} data-brief-block={k} style={{ ...c.frost, padding: "12px 14px", marginBottom: 10 }}>
+          <div key={k} data-brief-block={k} data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 10 }}>
             <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 8 }}>{BRIEF_TITLE[k]}</div>
             <BlockBody k={k} b={d.blocks[k]} c={c} reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
           </div>))}
@@ -376,8 +379,8 @@ export function BriefView({ a11y, brief, onClose, onRead }) {
         {me === true ? <div data-brief-read-done="" style={{ fontSize: 12.5, color: c.sub, textAlign: "center", margin: "4px 0 2px" }}>Отметка «Прочитал(а)» уже стоит.</div> : null}
         {err ? <div role="alert" style={{ fontSize: 13, color: c.red, textAlign: "center", margin: "4px 0 2px" }}>{err}</div> : null}
         {me === false
-          ? <button type="button" data-brief-read="" onClick={read} disabled={busy} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "Отмечаю…" : "Прочитал(а)"}</button>
-          : <button type="button" onClick={onClose} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Понятно</button>}
+          ? <button type="button" data-brief-read="" data-lens-btn="main" onClick={read} disabled={busy} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "Отмечаю…" : "Прочитал(а)"}</button>
+          : <button type="button" data-lens-btn="main" onClick={onClose} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>Понятно</button>}
       </div>
     </div>
   );

@@ -165,8 +165,8 @@ describe("v50: график в широкой раскладке", () => {
     expect(sc).toContain(": <>{head}{kids}</>; })()}");
     expect(sc).toContain('</>, { arrows: tab !== "setup", two: twoCols && tab !== "setup" });');
     expect(sc).toContain("</>, { arrows: true, two: twoCols && !!me });");
-    expect(sc).toContain('<div data-sched-tabs="" style=');
-    expect(sc).toContain('<div style={card} data-sched-month="">');
+    expect(sc).toContain('<div data-sched-tabs="" data-lens-seg="" style=');   // v113: капсула вкладок в линзе
+    expect(sc).toContain('<div data-lens-edge="" style={card} data-sched-month="">');   // v113: метка линзы
     expect(sc).toContain('padding: vpS.short ? "14px 18px 4px" : "max(14px, calc(44px - var(--sa-st, 0px))) 18px 4px"');   // v69: слой графика уже под кнопками Telegram
   });
   it("сетка: вкладки на всю ширину, «Смены» и календарь — во второй колонке на все строки; «Сохранить» — плашкой внизу", () => {

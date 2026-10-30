@@ -222,7 +222,7 @@ function Num({ v, min, max, set, inp }) {
     if (ref.current && document.activeElement !== ref.current) ref.current.value = String(v);
   }, [v]);
   return (
-    <input ref={ref} type="number" inputMode="numeric" defaultValue={String(v)} min={min} max={max}
+    <input ref={ref} type="number" inputMode="numeric" data-lens-field="" defaultValue={String(v)} min={min} max={max}
       style={{ ...inp, width:60, textAlign:"center" }}
       onFocus={focusScroll}
       onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
@@ -239,7 +239,7 @@ function Text({ v, set, inp, style, maxLength, placeholder }) {   // v108: по�
     if (ref.current && document.activeElement !== ref.current) ref.current.value = v;
   }, [v]);
   return (
-    <input ref={ref} defaultValue={v} maxLength={maxLength} placeholder={placeholder} style={{ ...inp, ...style }}
+    <input ref={ref} data-lens-field="" defaultValue={v} maxLength={maxLength} placeholder={placeholder} style={{ ...inp, ...style }}
       enterKeyHint="done" onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
       onFocus={focusScroll} onChange={e => set(e.target.value)} />
   );
@@ -422,6 +422,8 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
  * «Забрать» и «Выйду» отсюда, «Отдать / Поменяться в чате» открывает лист в чате с этим днём (open — intent чата),
  * руководителю «Спросить в чате» в «Кто вместо?» и «Кто может выйти?», «График готов» и «Пожелания» карточкой.
  * Нет чата или на сервере ещё нет chat_shift_board — обмен как раньше (swap_*). */
+/* v113 (Доп. 426): в виде «Линза» карточки, кнопки, вкладки, лица в «Сегодня», номера разделов и поля — метками data-lens-*
+ * (правила — ui/home-look.jsx, раздел v113); таблица, буквы смен, фильтры, полоски и кнопки с предупреждением — прежние. */
 export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist, chat = null, onCal = null }) {
   // Редактор графика — не только владелец: менеджеры и руководители тоже
   // (та же формула, что у собеседования кандидатов — canHire в App).
@@ -1619,9 +1621,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     setTimeout(() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] }), 0);
   }
 
-  if (state === "load") return shell(<div style={{ ...card, textAlign:"center", color:P.sub }}>Загружаю график…</div>);
+  if (state === "load") return shell(<div data-lens-edge="" style={{ ...card, textAlign:"center", color:P.sub }}>Загружаю график…</div>);
   if (state === "error") return shell(
-    <div style={{ ...card }}>
+    <div data-lens-edge="" style={{ ...card }}>
       <div style={{ color:P.warn, marginBottom:6, fontSize:14 }}>{msg}</div>
       <div style={{ fontSize:11, color:P.sub, lineHeight:1.55, marginBottom:12 }}>
         Ресторан в профиле: «{profile?.restaurant || "не задан"}» · месяц {mkey}
@@ -1632,19 +1634,19 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           background: a11y ? "rgba(120,90,30,0.07)" : "rgba(0,0,0,0.28)",
           border:`1px solid ${a11y ? "rgba(175,140,65,0.22)" : "rgba(145,108,40,0.28)"}` }}>{dbg}</div>
       ) : null}
-      <button style={ghost} className="sa-btn" onClick={load}>Попробовать снова</button>
+      <button data-lens-btn="soft" style={ghost} className="sa-btn" onClick={load}>Попробовать снова</button>
     </div>
   );
 
   const monthNav = (
     <div style={{ display:"flex", alignItems:"center", gap:8, margin:"12px 14px 0" }}>
-      <button className="sa-btn" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
+      <button className="sa-btn" data-lens-btn="soft" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
         onClick={() => { const m = M - 1; if (m < 0) { setM(11); setY(Y - 1); } else setM(m); }}>‹</button>
       <div style={{ flex:1, textAlign:"center" }}>
         <div style={{ fontSize:16, color:P.text }}>{MONTHS_N[M]} {Y}</div>
         <div style={{ ...labelStyle(11.5), color:P.sub }}>{DAYS} дней</div>
       </div>
-      <button className="sa-btn" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
+      <button className="sa-btn" data-lens-btn="soft" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
         onClick={() => { const m = M + 1; if (m > 11) { setM(0); setY(Y + 1); } else setM(m); }}>›</button>
     </div>
   );
@@ -2216,7 +2218,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       setMsg("Настроено. Жми «Заполнить», и я расставлю смены"); setTimeout(() => setMsg(""), 7000); vibrate("success");
     };
     return shell(
-      <div style={{ ...card }}>
+      <div data-lens-edge="" style={{ ...card }}>
         <div style={{ display:"flex", gap:4, marginBottom:12 }}>{[1,2,3,4].map(i => <span key={i} style={{ flex:1, height:3, borderRadius:3, background: i <= step ? P.acc : `${P.acc}33` }} />)}</div>
         <div style={{ ...labelStyle(11.5), color:P.acc }}>Шаг {step} из 4</div>
         {step === 1 && <>
@@ -2265,7 +2267,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <span onClick={() => set({ rows: W.rows.filter((_, i) => i !== k) })} style={{ color:P.warn, cursor:"pointer", padding:"0 4px", fontSize:16 }}>✕</span>
             </div>
           ))}
-          <button className="sa-btn" style={{ ...ghost, marginTop:6, padding:"9px 12px", fontSize:12.5 }} onClick={() => set({ rows: [...(W.rows || []), { name:"", pos:"waiter" }] })}>+ ещё человек</button>
+          <button className="sa-btn" data-lens-btn="soft" style={{ ...ghost, marginTop:6, padding:"9px 12px", fontSize:12.5 }} onClick={() => set({ rows: [...(W.rows || []), { name:"", pos:"waiter" }] })}>+ ещё человек</button>
           {nextBtn("Готово", finish, !(W.rows || []).some(r => String(r.name).trim()))}
         </>}
         <div onClick={() => { markWizDone(); setWiz(null); }} {...onActivate(() => { markWizDone(); setWiz(null); })}
@@ -2287,11 +2289,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     const nVac = staff.filter(vacOn).length;
     const sum5 = `${staff.length} чел.` + (nVac ? ` · в отпуске: ${nVac}` : "");
     return (
-    <div style={card}>
+    <div data-lens-edge="" style={card}>
       <div style={eyebrow}><span>Настройки графика</span><span style={{ color:P.acc }}>{staff.length} чел.</span></div>
 
       {/* Паспорт заведения: контекст до того, как открыл хоть одну секцию */}
-      <div style={{ ...card, marginBottom:10, padding:"12px 14px" }}>
+      <div data-lens-edge="" style={{ ...card, marginBottom:10, padding:"12px 14px" }}>
         <div style={{ fontFamily:serif, fontSize:14, color:P.text, marginBottom:6 }}>
           {profile?.restaurant || "Заведение"}
         </div>
@@ -2334,7 +2336,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <Sec no={<IcoBulb size={13} />} title="Настроить за один тап" hint="типовые заведения: часы, смены и правила разом" P={P} open={openSec===9} onToggle={() => setOpenSec(openSec===9?0:9)}>
             <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.55, marginBottom:10 }}>Выбери, на что похоже заведение, и часы работы, смены и правила выставятся сами. Останется вписать людей в разделе «Сотрудники» и нажать «Заполнить».</div>
             <button className="sa-btn" onClick={() => setWiz({ step: 1, preset: null, need: { waiter: 4, bar: 1, host: 1, manager: 1 }, peak: {}, rows: [{ name: "", pos: "waiter" }] })}
-              style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:12.5, marginBottom:12 }}>Мастер настройки: четыре вопроса</button>
+              data-lens-btn="soft" style={{ ...ghost, width:"100%", padding:"10px 12px", fontSize:12.5, marginBottom:12 }}>Мастер настройки: четыре вопроса</button>
             {PRESETS.map(pr => (
               <div key={pr.id} className="sa-card" onClick={() => apply(pr)} {...onActivate(() => apply(pr))}
                 style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 13px", marginBottom:8, borderRadius:14, border:`1px solid ${P.acc}44`, cursor:"pointer" }}>
@@ -2425,7 +2427,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 padding:0, display:"grid", placeItems:"center" }}>✕</button>
           </div>
         ))}
-        <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"8px 12px", fontSize:12.5 }}
+        <button className="sa-btn" data-lens-btn="soft" style={{ ...ghost, marginTop:10, padding:"8px 12px", fontSize:12.5 }}
           onClick={() => patch(c => { c.shifts.push({ k:"С" + (c.shifts.length+1), name:"Новая смена", from:12, to:20 }); })}>
           + добавить смену
         </button>
@@ -2874,7 +2876,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     ))}
                     <button className="sa-btn" onClick={() => patch(c => {
                       const list = vacsOf(sf).map(x => [x[0], x[1]]); list.push([1, 1]); writeVacs(c, list);
-                    })} style={{ ...ghost, fontSize:12.5, padding:"7px 11px" }}>
+                    })} data-lens-btn="soft" style={{ ...ghost, fontSize:12.5, padding:"7px 11px" }}>
                       {rs.length ? "+ ещё период" : "+ добавить отпуск"}
                     </button>
                     {rs.length ? (
@@ -2992,7 +2994,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             </>) : null}
           </div>
         ); })}
-        <button className="sa-btn" style={{ ...ghost, marginTop:10, padding:"10px 12px", fontSize:12.5 }}
+        <button className="sa-btn" data-lens-btn="soft" style={{ ...ghost, marginTop:10, padding:"10px 12px", fontSize:12.5 }}
           onClick={() => {
             const nid = Math.max(0, ...(cfg.staff || []).map(x => +x.id || 0)) + 1;
             patch(c => { c.staff.push({ id: nid, name:"Новый сотрудник", pos:"waiter", norm: monthNorm(40) }); });
@@ -3011,10 +3013,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         <textarea value={backupText} onChange={e => setBackupText(e.target.value)}
           style={{ ...inp, width:"100%", minHeight:120, fontFamily:mono, fontSize:11, boxSizing:"border-box" }} />
         <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap" }}>
-          <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
+          <button data-lens-btn="soft" style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
             onClick={() => { setBackupText(JSON.stringify(cfg)); setMsg("Настройки в поле. Выдели всё и скопируй в заметки"); setTimeout(() => setMsg(""), 3000); }}>
             Выгрузить в поле</button>
-          <button style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
+          <button data-lens-btn="soft" style={{ ...ghost, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
             onClick={() => { try {
               const o = JSON.parse(backupText);
               if (!o || !Array.isArray(o.shifts) || !Array.isArray(o.staff)) throw new Error("bad");
@@ -3084,7 +3086,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     };
     return shell(<>
       {!me ? (
-        <div style={{ ...card, color:P.sub }}>
+        <div data-lens-edge="" style={{ ...card, color:P.sub }}>
           Тебя пока нет в графике этого месяца. Если это ошибка, скажи менеджеру,
           он добавит тебя в настройках заведения.
         </div>
@@ -3130,13 +3132,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             prev: prevPay[me.id] || 0, shifts: n, peaks, avg: n > 0 ? Math.max(1, Math.round(h / n)) : 12 });
           return <MonthMedals a11y={a11y} cells={cells} note={note} payMain={po ? <NumUp v={po.sum} /> : null} />;
         })()}
-        <div style={card} data-sched-month="">
+        <div data-lens-edge="" style={card} data-sched-month="">
           <div style={eyebrow}><span>Мой месяц</span>
             {/* v46: месяц календарём (по умолчанию) или прежним списком — выбор помнит устройство */}
-            <span data-sched-viewtoggle="" style={{ display:"inline-flex", padding:3, gap:2, borderRadius:999, flexShrink:0,
+            <span data-sched-viewtoggle="" data-lens-seg="flat" style={{ display:"inline-flex", padding:3, gap:2, borderRadius:999, flexShrink:0,
               border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)"}`, background: a11y ? "rgba(120,90,30,0.08)" : "rgba(0,0,0,0.25)" }}>
               {[["cal", "месяц"], ["list", "списком"]].map(([kv, t]) => (
-                <button key={kv} className="sa-btn" aria-pressed={calView === kv} onClick={() => { setCalView(kv); setWishRange(null); setDaySheet(0); vibrate("light"); }}
+                <button key={kv} className="sa-btn" aria-pressed={calView === kv} data-lens-btn={calView === kv ? "tab" : undefined} onClick={() => { setCalView(kv); setWishRange(null); setDaySheet(0); vibrate("light"); }}
                   style={{ border:"none", cursor:"pointer", padding:"5px 12px", borderRadius:999, fontFamily:serif, fontSize: a11y ? 12.5 : 11.5, letterSpacing:0, textTransform:"none",
                     background: calView === kv ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent", color: calView === kv ? INK_DEEP : P.sub, fontWeight: calView === kv ? "bold" : "normal" }}>{t}</button>
               ))}
@@ -3212,7 +3214,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         {wN && wH ? " · " : null}{wH ? <b style={{ color:P.warn }}>{wH} «не смогу»</b> : null}</>) : <span style={{ color:P.sub }}>Пожеланий пока нет</span>}
                       {wDl ? <div style={{ fontSize:11, color: wLate ? P.warn : P.sub, marginTop:2 }}>{wLate ? `Приём на этот месяц закрыт. Принимали до ${wDl} числа` : `Принимаем до ${wDl} числа, потом собираем график`}</div> : null}
                     </div>
-                    <button className="sa-btn" disabled={wLate} onClick={() => { setWishRange(wishRange ? null : { from: 0, to: null }); vibrate("light"); }}
+                    <button className="sa-btn" disabled={wLate} data-lens-btn="soft" data-lens-hi={wishRange ? "" : undefined} onClick={() => { setWishRange(wishRange ? null : { from: 0, to: null }); vibrate("light"); }}
                       style={{ ...ghost, flex:"0 0 auto", fontSize:12.5, padding:"8px 12px", opacity: wLate ? .5 : 1, background: wishRange ? "rgba(214,178,102,0.16)" : "transparent",
                         color: a11y ? "#7A5A22" : GOLD, borderColor: a11y ? "rgba(122,90,34,0.5)" : GOLD + "66" }}>
                       {wishRange ? "Отмена периода" : "Отметить период"}</button>
@@ -3225,7 +3227,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     <div style={{ flex:"1 1 170px", minWidth:0, fontSize:12.5, color:P.text, lineHeight:1.45 }}>Смены в календаре телефона
                       <div style={{ fontSize:11, color:P.sub, marginTop:2 }}>Подпишись, и они обновятся сами, когда меняется график</div></div>
                     <button className="sa-btn" onClick={() => { vibrate("light"); onCal(); }}
-                      style={{ ...ghost, flex:"0 0 auto", fontSize:12.5, padding:"8px 12px", color: a11y ? "#7A5A22" : GOLD, borderColor: a11y ? "rgba(122,90,34,0.5)" : GOLD + "66" }}>В календарь</button>
+                      data-lens-btn="soft" style={{ ...ghost, flex:"0 0 auto", fontSize:12.5, padding:"8px 12px", color: a11y ? "#7A5A22" : GOLD, borderColor: a11y ? "rgba(122,90,34,0.5)" : GOLD + "66" }}>В календарь</button>
                   </div>
                 ) : null}
               </div>
@@ -3262,27 +3264,27 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 {mine.map(r => (
                   <div key={r.msg} data-sched-chat-mine={r.day} style={{ fontSize:12.5, color:P.text, marginTop:6, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                     <span style={{ flex:"1 1 170px", minWidth:0 }}>{mineWho(r)} {r.when}. Ждём, кто {r.mode === "swap" ? "согласится" : "заберёт"}</span>
-                    <span role="button" tabIndex={0} onClick={() => toChat(r)} {...onActivate(() => toChat(r))} style={ghostPill}>В чат ›</span>
+                    <span role="button" tabIndex={0} data-lens-btn="soft" onClick={() => toChat(r)} {...onActivate(() => toChat(r))} style={ghostPill}>В чат ›</span>
                   </div>
                 ))}
                 {take.map(r => (
                   <div key={r.msg} data-sched-chat-offer={r.mode} data-sched-chat-day={r.day} style={{ fontSize:12.5, color:P.text, marginTop:6, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                     <span style={{ flex:"1 1 170px", minWidth:0 }}><b style={{ color:P.acc, fontWeight:"normal" }}>{boardWho(r)}</b> · {r.when}</span>
                     {r.mode === "swap"
-                      ? <span role="button" tabIndex={0} data-sched-chat-swap={r.msg} onClick={() => toChat(r)} {...onActivate(() => toChat(r))} style={ghostPill}>Поменяться ›</span>
-                      : <span role="button" tabIndex={0} data-sched-chat-take={r.msg} onClick={() => boardTake(r, me.id, r.same)} {...onActivate(() => boardTake(r, me.id, r.same))}
+                      ? <span role="button" tabIndex={0} data-sched-chat-swap={r.msg} data-lens-btn="soft" onClick={() => toChat(r)} {...onActivate(() => toChat(r))} style={ghostPill}>Поменяться ›</span>
+                      : <span role="button" tabIndex={0} data-sched-chat-take={r.msg} data-lens-btn="main" onClick={() => boardTake(r, me.id, r.same)} {...onActivate(() => boardTake(r, me.id, r.same))}
                           style={{ ...goldPill, opacity: boardBusy && boardBusy !== r.msg ? .5 : 1 }}>{boardBusy === r.msg ? "Секунду…" : r.mode === "need" ? "Выйду" : "Забрать"}</span>}
                   </div>
                 ))}
                 {myDays.length ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginTop: mine.length || take.length ? 10 : 0 }}>
-                    <select value={dSel} onChange={e => setSwapDay(+e.target.value)} aria-label="Моя смена"
+                    <select value={dSel} onChange={e => setSwapDay(+e.target.value)} aria-label="Моя смена" data-lens-field=""
                       style={{ ...inp, padding:"6px 8px", fontSize:12.5 }}>
                       {myDays.map(d => <option key={d} value={d}>{d}-е · {shiftOf(plan[me.id][d]).name}</option>)}
                     </select>
-                    <span role="button" tabIndex={0} data-sched-chat-give={dSel} onClick={() => { vibrate("light"); chat.open({ kind: "give", date: isoDay(mkey, dSel) }); }}
+                    <span role="button" tabIndex={0} data-sched-chat-give={dSel} data-lens-btn="main" onClick={() => { vibrate("light"); chat.open({ kind: "give", date: isoDay(mkey, dSel) }); }}
                       {...onActivate(() => chat.open({ kind: "give", date: isoDay(mkey, dSel) }))} style={goldPill}>Отдать в чате</span>
-                    <span role="button" tabIndex={0} data-sched-chat-swapgo={dSel} onClick={() => { vibrate("light"); chat.open({ kind: "swap", date: isoDay(mkey, dSel) }); }}
+                    <span role="button" tabIndex={0} data-sched-chat-swapgo={dSel} data-lens-btn="soft" onClick={() => { vibrate("light"); chat.open({ kind: "swap", date: isoDay(mkey, dSel) }); }}
                       {...onActivate(() => chat.open({ kind: "swap", date: isoDay(mkey, dSel) }))} style={ghostPill}>Поменяться</span>
                   </div>
                 ) : null}
@@ -3404,7 +3406,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             const cellState = wishCell, sel = wishSelOn, tap = wishTap;
             return (
               <div className={hint && hintStep === 1 ? "sa-pulse" : undefined}
-                style={{ ...card, marginTop: 12, padding: 14 }}>
+                data-lens-edge="" style={{ ...card, marginTop: 12, padding: 14 }}>
                 <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:8 }}>
                   <div style={{ ...eyebrow, color:P.sub }}>Мои пожелания · {MONTHS_N[M].toLowerCase()}</div>
                   <button className="sa-btn" onClick={() => { setWishOpen(o => !o); setWishRange(null); vibrate("light"); }}
@@ -3428,7 +3430,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 {wishOpen ? (
                   <>
                     <div style={{ display:"flex", gap:6, margin:"11px 0 9px" }}>
-                      <button className="sa-btn" disabled={late}
+                      <button className="sa-btn" disabled={late} data-lens-btn="soft" data-lens-hi={wishRange ? "" : undefined}
                         onClick={() => { setWishRange(wishRange ? null : { from: 0, to: null }); vibrate("light"); }}
                         style={{ ...ghost, flex:1, fontSize:12.5, padding:"8px 10px", opacity: late ? .5 : 1,
                           background: wishRange ? "rgba(214,178,102,0.16)" : "transparent" }}>
@@ -3537,7 +3539,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     </button>
                   ) : null}
                   {(curWish || curHard) && one ? (
-                    <button className="sa-btn" style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:8, fontSize:12.5, padding:"9px 10px" }}
+                    <button className="sa-btn" data-lens-btn="soft" style={{ ...ghost, width:"100%", boxSizing:"border-box", marginTop:8, fontSize:12.5, padding:"9px 10px" }}
                       onClick={() => go(curHard ? "hard" : "off", false)}>Убрать отметку</button>
                   ) : null}
                   <div style={{ fontSize:11, color:P.sub, marginTop:10, fontStyle:"italic", lineHeight:1.5 }}>
@@ -3664,8 +3666,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         <button className="sa-btn" style={{ ...act2, flex:"0 0 auto", padding:"9px 14px" }} onClick={() => { setDaySheet(0); toChat(chatMine); }}>Открыть в чате</button>
                       </div>
                     ) : (<>
-                      <button className="sa-btn" data-sheet-chatgive="" style={act2} onClick={() => { setDaySheet(0); vibrate("light"); chat.open({ kind: "give", date: isoDay(mkey, d) }); }}>Отдать в чате</button>
-                      <button className="sa-btn" data-sheet-chatswap="" style={act2} onClick={() => { setDaySheet(0); vibrate("light"); chat.open({ kind: "swap", date: isoDay(mkey, d) }); }}>Поменяться в чате</button>
+                      <button className="sa-btn" data-sheet-chatgive="" data-lens-btn="soft" style={act2} onClick={() => { setDaySheet(0); vibrate("light"); chat.open({ kind: "give", date: isoDay(mkey, d) }); }}>Отдать в чате</button>
+                      <button className="sa-btn" data-sheet-chatswap="" data-lens-btn="soft" style={act2} onClick={() => { setDaySheet(0); vibrate("light"); chat.open({ kind: "swap", date: isoDay(mkey, d) }); }}>Поменяться в чате</button>
                     </>)) : null}
                     {board && !sh && canSwap ? chatTake.map(r => (
                       <div key={r.msg} data-sheet-chattake={r.mode} style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
@@ -3685,7 +3687,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     ) : myAct ? (
                       <div style={{ flex:"1 1 100%", fontSize:11.5, color:P.sub, fontStyle:"italic" }}>Ты уже отдаёшь смену {swapWhen(myAct.day, myAct.k)}. Сначала отзови ту заявку</div>
                     ) : (
-                      <button className="sa-btn" data-sheet-giveaway="" style={act2}
+                      <button className="sa-btn" data-sheet-giveaway="" data-lens-btn="soft" style={act2}
                         onClick={() => swapCall("swap_create", { p_venue: venueKey, p_month: mkey, p_day: d, p_k: kk, p_staff: String(me.id), p_name: me.name }, "Предложение отправлено")}>⇄ Отдать смену</button>
                     )) : null}
                     {!sh && taking ? (
@@ -3868,7 +3870,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                         <div style={{ marginTop:8 }}>
                           <button className="sa-btn" disabled={wishes === null}
                             onClick={() => setWish(me.id, d, !wishOf(me.id, d))}
-                            style={{ ...ghost, width:"100%", boxSizing:"border-box",
+                            data-lens-btn="soft" style={{ ...ghost, width:"100%", boxSizing:"border-box",
                               padding:"9px 10px", fontSize:12.5,
                               borderColor: wishOf(me.id, d) ? GOLD : GOLD + "66", color: wishOf(me.id, d) ? (a11y ? "#6B4E1A" : GOLD) : GOLD }}>
                             {wishes === null ? "…" : wishOf(me.id, d)
@@ -3909,23 +3911,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           }) : null}
         </div>
         <div style={{ margin:"0 14px", display:"flex", gap:8 }}>
-          <button style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
+          <button data-lens-btn="soft" style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
             className="sa-btn" disabled={shotBusy} onClick={() => exportMy(me)}>
             {shotBusy ? "Собираю…" : "Месяц картинкой"}
           </button>
-          <button style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
+          <button data-lens-btn="soft" style={{ ...ghost, flex:1, boxSizing:"border-box", padding:"11px 8px", fontSize:12.5 }}
             className="sa-btn" disabled={shotBusy} onClick={() => exportWeek(me)}>
             {shotBusy ? "Собираю…" : "Карточка недели"}
           </button>
         </div>
         {shot ? (
-          <div style={{ ...card }}>
+          <div data-lens-edge="" style={{ ...card }}>
             <div style={eyebrow}><span>Мои смены</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
             <img src={shot.url} alt="Мои смены" style={{ width:"100%", borderRadius:12, display:"block",
               border:`1px solid ${a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.32)"}` }} />
             <div style={{ display:"flex", gap:8, marginTop:10 }}>
-              <button style={btn} className="sa-btn" onClick={shareShot}>Отправить</button>
-              <button style={ghost} className="sa-btn"
+              <button data-lens-btn="main" style={btn} className="sa-btn" onClick={shareShot}>Отправить</button>
+              <button data-lens-btn="soft" style={ghost} className="sa-btn"
                 onClick={() => { URL.revokeObjectURL(shot.url); setShot(null); }}>Закрыть</button>
             </div>
             <div style={{ fontSize:11, color:P.sub, marginTop:10, lineHeight:1.55 }}>
@@ -4018,12 +4020,12 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         {st && st.ok ? (<>
           <div data-chat-ask-ok="" style={{ fontSize:12.5, color:P.text, lineHeight:1.45 }}>
             {st.again ? "Такая карточка уже в чате команды." : "Готово: карточка в чате команды."} Кто нажмёт «Выйду», сразу встанет в график.</div>
-          {open ? <button className="sa-btn" onClick={open} style={{ ...ghostInk, width:"100%", marginTop:8, padding:"9px" }}>Открыть в чате</button> : null}
+          {open ? <button className="sa-btn" onClick={open} data-lens-btn="soft" style={{ ...ghostInk, width:"100%", marginTop:8, padding:"9px" }}>Открыть в чате</button> : null}
         </>) : (<>
           <div style={{ fontSize:12.5, color:P.sub, lineHeight:1.45, marginBottom:8 }}>
             {dirty ? "Сначала сохрани график: в чат уходит смена из сохранённого." : "Или спроси команду: карточка в чате, и кто свободен, нажмёт «Выйду»."}</div>
           <button className="sa-btn" data-chat-ask-go="" disabled={dirty || !!(st && st.busy)} onClick={() => askInChat(key, args)}
-            style={{ ...btn, width:"100%", padding:"10px", opacity: dirty ? .5 : 1, display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+            data-lens-btn="main" style={{ ...btn, width:"100%", padding:"10px", opacity: dirty ? .5 : 1, display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
             <IcoChat size={15} color={INK_DEEP} />{st && st.busy ? "Отправляю…" : "Спросить в чате команды"}</button>
           {st && st.err ? <div role="alert" style={{ fontSize:12, color:P.warn, marginTop:6 }}>{st.err}</div> : null}
         </>)}
@@ -4077,11 +4079,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   };
 
   return shell(<>
-    <div data-sched-tabs="" style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
+    <div data-sched-tabs="" data-lens-seg="" style={{ position:"relative", display:"flex", gap:2, margin:"12px 14px 0", padding:4,
       background: a11y ? "rgba(120,90,30,0.10)" : "rgba(0,0,0,0.3)",
       border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)"}`, borderRadius:999 }}>
       {[["plan","График"],["setup","Настройки"]].map(([k, t]) => (
-        <button key={k} className="sa-btn" onClick={() => setTab(k)} style={{
+        <button key={k} className="sa-btn" data-lens-btn={tab === k ? "tab" : undefined} onClick={() => setTab(k)} style={{
           flex:1, border:"none", cursor:"pointer", padding:"9px 4px", borderRadius:999, fontFamily:serif, fontSize:12.5,
           background: tab === k ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent",
           color: tab === k ? INK_DEEP : P.sub, fontWeight: tab === k ? "bold" : "normal",
@@ -4114,7 +4116,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         setTimeout(() => { try { const el = document.querySelector("[data-sec-audit]"); if (el) el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }, 80); };
       const calm = !confl.length && !holes.length && !waiting.length;
       return (
-        <div data-attn="" style={{ ...card, flexShrink:0 }}>
+        <div data-attn="" data-lens-edge="" style={{ ...card, flexShrink:0 }}>
           <div style={{ ...eyebrow, marginBottom:2 }}><span>Требует внимания</span>
             <span>{win.length ? (isCur ? "ближайшие 7 дней" : "весь месяц") : ""}</span></div>
           {confl.map(c => (
@@ -4124,7 +4126,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <div style={{ fontSize:13.5, color:P.text }}>{c.name} не сможет выйти</div>
                 <div style={{ fontSize:11.5, color:P.sub, marginTop:1 }}>{DOWL[dow(c.d)]}, {c.d} {MONTHS_R[M]} · стоит смена «{shName(c.k)}»</div>
               </div>
-              <button className="sa-btn" style={chipBtn} onClick={() => { setReplAsk({ id: c.id, d: c.d }); vibrate("light"); }}>Кто вместо?</button>
+              <button className="sa-btn" data-lens-btn="soft" style={chipBtn} onClick={() => { setReplAsk({ id: c.id, d: c.d }); vibrate("light"); }}>Кто вместо?</button>
             </div>
           ))}
           {holes.map(h => (
@@ -4140,7 +4142,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                   {h.days.length > 8 ? <span style={{ fontSize:11.5, color:P.sub }}>и ещё {h.days.length - 8}</span> : null}
                 </div>
               </div>
-              <button className="sa-btn" style={chipBtn} onClick={() => { setFillAsk({ d: h.days[0].d, pos: h.pos }); vibrate("light"); }}>Кто может?</button>
+              <button className="sa-btn" data-lens-btn="soft" style={chipBtn} onClick={() => { setFillAsk({ d: h.days[0].d, pos: h.pos }); vibrate("light"); }}>Кто может?</button>
             </div>
           ))}
           {waiting.map(w => (
@@ -4166,7 +4168,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <div style={{ fontSize:13.5, color:P.text }}>В чате: {boardWho(r).replace(/^И/, "и")}</div>
                 <div style={{ fontSize:11.5, color:P.sub, marginTop:1 }}>{DOWL[dow(r.day)]}, {r.day} {MONTHS_R[M]} · {shName(r.k)} · {needProgress(r)}</div>
               </div>
-              <button className="sa-btn" style={chipBtn} onClick={() => toChat(r)}>В чат ›</button>
+              <button className="sa-btn" data-lens-btn="soft" style={chipBtn} onClick={() => toChat(r)}>В чат ›</button>
             </div>
           ))}
           {calm ? (
@@ -4310,9 +4312,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               ✎ {note || "Заметка ко дню: банкет, инвентаризация…"}
             </div>
             <div style={{ display:"flex", gap:8, marginTop:10 }}>
-              <button className="sa-btn" data-day-shot="" disabled={shotBusy} onClick={toShot} style={{ ...ghostInk, flex:1, padding:"10px 8px", fontSize:12.5 }}>
+              <button className="sa-btn" data-day-shot="" disabled={shotBusy} onClick={toShot} data-lens-btn="soft" style={{ ...ghostInk, flex:1, padding:"10px 8px", fontSize:12.5 }}>
                 {shotBusy ? "Собираю…" : "Картинкой в чат"}</button>
-              <button className="sa-btn" onClick={() => setBossDay(0)} style={{ ...ghostInk, flex:"0 0 auto", padding:"10px 16px", fontSize:12.5 }}>Закрыть</button>
+              <button className="sa-btn" onClick={() => setBossDay(0)} data-lens-btn="soft" style={{ ...ghostInk, flex:"0 0 auto", padding:"10px 16px", fontSize:12.5 }}>Закрыть</button>
             </div>
             <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", textAlign:"center", marginTop:8 }}>Тап по человеку открывает его смену</div>
           </div>
@@ -4404,8 +4406,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               {!wl.length && !hl.length && !vr.length && !offW.length && !lates.some((x) => x && String(x.sid) === String(s.id)) ? <span style={{ color:P.sub }}>Пожеланий на этот месяц нет</span> : null}
             </div>
             <div style={{ display:"flex", gap:8, marginTop:12 }}>
-              <button className="sa-btn" data-person-setup="" onClick={toSetup} style={{ ...ghostInk, flex:1, padding:"10px 8px", fontSize:12.5 }}>Настройки сотрудника ›</button>
-              <button className="sa-btn" onClick={() => setPersonSheet(null)} style={{ ...ghostInk, flex:"0 0 auto", padding:"10px 16px", fontSize:12.5 }}>Закрыть</button>
+              <button className="sa-btn" data-person-setup="" onClick={toSetup} data-lens-btn="soft" style={{ ...ghostInk, flex:1, padding:"10px 8px", fontSize:12.5 }}>Настройки сотрудника ›</button>
+              <button className="sa-btn" onClick={() => setPersonSheet(null)} data-lens-btn="soft" style={{ ...ghostInk, flex:"0 0 auto", padding:"10px 16px", fontSize:12.5 }}>Закрыть</button>
             </div>
             <div style={{ fontSize:11, color:P.sub, fontStyle:"italic", textAlign:"center", marginTop:8 }}>Тап по дню открывает выбор смены, как в таблице</div>
           </div>
@@ -4522,9 +4524,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             ) : null}
             {cur ? (
               <div style={{ display:"flex", gap:6, marginTop:10, flexWrap:"wrap" }}>
-                <button className="sa-btn" style={{ ...ghostInk, flex:"1 1 46%", fontSize:12.5, padding:"9px 8px" }}
+                <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostInk, flex:"1 1 46%", fontSize:12.5, padding:"9px 8px" }}
                   onClick={() => { setPick(null); setReplAsk({ id: who.id, d }); }}>Кто вместо?</button>
-                <button className="sa-btn" style={{ ...ghostInk, flex:"1 1 46%", fontSize:12.5, padding:"9px 8px" }}
+                <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostInk, flex:"1 1 46%", fontSize:12.5, padding:"9px 8px" }}
                   onClick={() => { setPick(null); setFactEdit({ id: who.id, d }); }}>Факт часов</button>
               </div>
             ) : null}
@@ -4589,7 +4591,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 </div>))}
             </> : null}
             {chatAskBlock("fill:" + d + ":" + pos + ":" + z.k, { day: d, pos, k: z.k, n: Math.max(1, Math.min(5, needN - haveN)) })}
-            <button className="sa-btn" onClick={() => setFillAsk(null)} style={{ ...ghostInk, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
+            <button className="sa-btn" onClick={() => setFillAsk(null)} data-lens-btn="soft" style={{ ...ghostInk, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
           </div>
         </div>
       );
@@ -4639,7 +4641,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 </div>))}
             </> : null}
             {chatAskBlock("repl:" + who.id + ":" + d, { day: d, pos: who.pos, k, instead: who.id })}
-            <button className="sa-btn" onClick={() => setReplAsk(null)} style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
+            <button className="sa-btn" onClick={() => setReplAsk(null)} data-lens-btn="soft" style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
           </div>
         </div>
       );
@@ -4662,13 +4664,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     {/* v46: «Сохранить» — плашкой внизу экрана, только когда есть изменения (раньше большая кнопка
         «Сохранено» стояла здесь всегда). В ряду — «Заполнить черновик», «↩» и «Ещё» (раньше — строкой ниже). */}
     <div ref={refSave} data-sched-actions="" style={{ display:"flex", gap:8, margin:"12px 14px 0" }}>
-      <button ref={refFill} style={btn} className={"sa-btn" + (hint && hintStep === 0 ? " sa-pulse" : "")} onClick={() => generate(posFilter || null)}>
+      <button ref={refFill} data-lens-btn="main" style={btn} className={"sa-btn" + (hint && hintStep === 0 ? " sa-pulse" : "")} onClick={() => generate(posFilter || null)}>
         {posFilter ? `Заполнить: ${posName(posFilter)}` : "Заполнить черновик"}
       </button>
       {undoRef.current ? (
-        <button style={{ ...ghostInk, flex:"0 0 auto", fontSize:12.5, padding:"9px 13px" }} className="sa-btn" onClick={undo} data-tick={undoTick} aria-label="Отменить">↩</button>
+        <button data-lens-btn="soft" style={{ ...ghostInk, flex:"0 0 auto", fontSize:12.5, padding:"9px 13px" }} className="sa-btn" onClick={undo} data-tick={undoTick} aria-label="Отменить">↩</button>
       ) : null}
-      <button style={{ ...ghost, flex:"0 0 auto", fontSize:12.5, padding:"9px 13px", color: more ? GOLD : P.sub, borderColor: more ? GOLD : GOLD + "66" }}
+      <button data-lens-btn="soft" data-sched-more="" data-lens-hi={more ? "" : undefined} style={{ ...ghost, flex:"0 0 auto", fontSize:12.5, padding:"9px 13px", color: more ? GOLD : P.sub, borderColor: more ? GOLD : GOLD + "66" }}
         className="sa-btn" onClick={() => { setMore(m => !m); vibrate("light"); }} aria-expanded={more}>Ещё{more ? " ▴" : " ▾"}</button>
     </div>
     {/* Ряд из четырёх режимов убран. «Кто вместо?» и «Факт часов» живут в листе
@@ -4685,27 +4687,27 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     ) : null}
     {more ? (
       <div className="sa-fadein" style={{ display:"flex", gap:8, margin:"8px 14px 0", flexWrap:"wrap" }}>
-        <button style={{ ...btn, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { exportImage(); setMore(false); }} disabled={!staff.length || shotBusy}>
+        <button data-lens-btn="main" style={{ ...btn, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { exportImage(); setMore(false); }} disabled={!staff.length || shotBusy}>
           {shotBusy ? "Собираю…" : "Картинкой команде"}
         </button>
-        {prevPlan ? <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { copyPrevMonth(); setMore(false); }}>Как в прошлом месяце</button> : null}
+        {prevPlan ? <button data-lens-btn="soft" style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn" onClick={() => { copyPrevMonth(); setMore(false); }}>Как в прошлом месяце</button> : null}
         {/* Генератор теперь детерминирован: один месяц — один график. Другой
             вариант запрашивается явно. Когда людей впритык, вариант один и тот
             же — это честно: другого хорошего расклада просто нет. */}
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
+        <button data-lens-btn="soft" style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
           onClick={() => { setSwap(true); setSwapSel(null); setMore(false); vibrate("light"); }}>Обмен сменами</button>
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
+        <button data-lens-btn="soft" style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
           onClick={() => { setMix(m => m + 1); setMore(false);
             setMsg("Посев сменён. Жми «Заполнить черновик» для другого варианта"); setTimeout(() => setMsg(""), 4000); }}>
           Перемешать
         </button>
-        <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
+        <button data-lens-btn="soft" style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%" }} className="sa-btn"
           onClick={() => { snapUndo(); setLocks({}); setDirty(true); setMore(false); }}>Снять закрепления</button>
         <button style={{ ...ghost, fontSize:12.5, padding:"9px 10px", flex:"1 1 46%", borderColor: P.danger + "77", color: P.danger }} className="sa-btn"
           onClick={() => { setConfirmClear(true); setMore(false); }}>Очистить месяц</button>
         {/* v97 (Доп. 410): «График готов» и «Пожелания до…» карточкой в чат команды */}
         {chat && board && chat.api.cardSend && new Date(Y, M) >= new Date(now.getFullYear(), now.getMonth()) ? (
-          <button style={{ ...btn, fontSize:12.5, padding:"9px 10px", flex:"1 1 100%", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }} className="sa-btn" data-sched-chatnote=""
+          <button data-lens-btn="main" style={{ ...btn, fontSize:12.5, padding:"9px 10px", flex:"1 1 100%", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }} className="sa-btn" data-sched-chatnote=""
             onClick={() => { setChatNote({}); setMore(false); vibrate("light"); }}><IcoChat size={15} color={INK_DEEP} />Сообщить в чат команды</button>
         ) : null}
       </div>
@@ -4736,26 +4738,26 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <div data-chatnote-ok="" style={{ fontSize:13, color:P.text, lineHeight:1.45 }}>
                 Готово: {chatNote.done === "wishes" ? "«Пожелания на " + mon + "» в чате команды." : "«График на " + mon + " готов» в чате команды."}</div>
               {chatNote.row ? <button className="sa-btn" onClick={() => { const rr = chatNote.row; setChatNote(false); toChat(rr); }}
-                style={{ ...ghostInk, width:"100%", marginTop:10, padding:"10px" }}>Открыть в чате</button> : null}
+                data-lens-btn="soft" style={{ ...ghostInk, width:"100%", marginTop:10, padding:"10px" }}>Открыть в чате</button> : null}
             </>) : (<>
               <button className="sa-btn" data-chatnote-ready="" disabled={dirty || !!chatNote.busy} onClick={() => send("ready")}
-                style={{ ...btn, width:"100%", padding:"11px", opacity: dirty ? .5 : 1 }}>{chatNote.busy === "ready" ? "Отправляю…" : "График на " + mon + " готов"}</button>
+                data-lens-btn="main" style={{ ...btn, width:"100%", padding:"11px", opacity: dirty ? .5 : 1 }}>{chatNote.busy === "ready" ? "Отправляю…" : "График на " + mon + " готов"}</button>
               {dirty ? <div style={{ fontSize:11.5, color:P.warn, marginTop:6 }}>Сначала сохрани график: команда откроет сохранённый.</div> : null}
               <div style={{ ...labelStyle(11.5), color:P.sub, margin:"14px 0 6px" }}>Пожелания на {mon}: принимаем до</div>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                 <input type="date" value={until} min={iso(today0)} max={iso(maxD)} onChange={(e) => setChatNote((s) => ({ ...s, until: e.target.value }))}
                   aria-label="Принимаем пожелания до" data-chatnote-until="" style={{ ...inp, flex:1, padding:"9px 10px", fontSize:13 }} />
                 <button className="sa-btn" data-chatnote-wishes="" disabled={!!chatNote.busy || !until} onClick={() => send("wishes")}
-                  style={{ ...ghostInk, flex:"0 0 auto", padding:"9px 14px", fontSize:12.5 }}>{chatNote.busy === "wishes" ? "Отправляю…" : "Позвать"}</button>
+                  data-lens-btn="soft" style={{ ...ghostInk, flex:"0 0 auto", padding:"9px 14px", fontSize:12.5 }}>{chatNote.busy === "wishes" ? "Отправляю…" : "Позвать"}</button>
               </div>
             </>)}
             {chatNote.err ? <div role="alert" style={{ fontSize:12, color:P.warn, marginTop:8 }}>{chatNote.err}</div> : null}
-            <button className="sa-btn" onClick={() => setChatNote(false)} style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
+            <button className="sa-btn" onClick={() => setChatNote(false)} data-lens-btn="soft" style={{ ...ghost, width:"100%", marginTop:12, padding:"11px" }}>Закрыть</button>
           </div>
         </div>);
     })() : null}
     {shot ? (
-      <div data-shot-card="" style={{ ...card }}>
+      <div data-shot-card="" data-lens-edge="" style={{ ...card }}>
         <div style={eyebrow}><span>{shot.kind === "today" ? "Смена картинкой" : "График картинкой"}</span><span style={{ color:P.acc }}>{MONTHS_N[M]} {Y}</span></div>
         <img src={shot.url} alt="График" style={{ width:"100%", borderRadius:12, display:"block",
           border:`1px solid ${a11y ? "rgba(175,140,65,.3)" : "rgba(145,108,40,.32)"}` }} />
@@ -4770,8 +4772,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           ))}
         </div>
         <div style={{ display:"flex", gap:8, marginTop:8 }}>
-          <button style={btn} className="sa-btn" onClick={shareShot}>Отправить</button>
-          <button style={ghost} className="sa-btn"
+          <button data-lens-btn="main" style={btn} className="sa-btn" onClick={shareShot}>Отправить</button>
+          <button data-lens-btn="soft" style={ghost} className="sa-btn"
             onClick={() => { URL.revokeObjectURL(shot.url); setShot(null); }}>Закрыть</button>
         </div>
         <div style={{ fontSize:11, color:P.sub, marginTop:10, lineHeight:1.55 }}>
@@ -4817,10 +4819,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <Num inp={inp} v={val} min={0} max={24} set={setFact} />
             </Field>
             {typeof cur === "number" ? (
-              <button style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
+              <button data-lens-btn="soft" style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
                 onClick={() => { setFact(null); vibrate("light"); }}>Вернуть по плану</button>
             ) : null}
-            <button style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
+            <button data-lens-btn="soft" style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn"
               onClick={() => setFactEdit(null)}>Готово</button>
           </div>
           <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
@@ -4843,7 +4845,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         <Text inp={inp} v={days[dayEdit]?.note || ""} maxLength={80} style={{ width:"100%" }}
           set={val => { setDays(dd => ({ ...dd, [dayEdit]: { ...(dd[dayEdit] || {}), note: val || undefined } })); setDirty(true); }} />
         <div style={{ display:"flex", gap:8, marginTop:8 }}>
-          <button style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
+          <button data-lens-btn="soft" style={{ ...ghostInk, padding:"9px 11px", fontSize:12.5 }} className="sa-btn" onClick={() => setDayEdit(null)}>Готово</button>
         </div>
         <div style={{ fontSize:11, color:P.sub, marginTop:8, fontStyle:"italic" }}>
           Короткая строка у даты: банкет, инвентаризация, проверка. Не забудь «Сохранить».
@@ -4852,7 +4854,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       </div>
     ) : null}
     {confirmClear ? (
-      <div style={{ ...card, marginTop:10 }}>
+      <div data-lens-edge="" style={{ ...card, marginTop:10 }}>
         <div style={{ fontSize:14, lineHeight:1.6, color:P.text, marginBottom:10 }}>
           Что стереть за {MONTHS_N[M].toLowerCase()} {Y}? Расстановка и закрепления сотрутся
           <b> только в черновике</b>: на сервере всё останется, пока не нажмёшь «Сохранить».
@@ -4866,7 +4868,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         </div>
         <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
           {POS.filter(pp => staff.some(x => x.pos === pp.id)).map(pp => (
-            <button key={pp.id} style={{ ...ghost, padding:"7px 11px", fontSize:12.5 }} className="sa-btn"
+            <button key={pp.id} data-lens-btn="soft" style={{ ...ghost, padding:"7px 11px", fontSize:12.5 }} className="sa-btn"
               onClick={() => clearScope({ pos: pp.id })}>{pp.t}</button>
           ))}
         </div>
@@ -4902,14 +4904,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           <option value="">Выбрать уходящего…</option>
           {staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
-        <button style={{ ...ghost, width:"100%", boxSizing:"border-box" }} className="sa-btn"
+        <button data-lens-btn="soft" style={{ ...ghost, width:"100%", boxSizing:"border-box" }} className="sa-btn"
           onClick={() => setConfirmClear(false)}>Отмена</button>
       </div>
     ) : null}
     {msg ? <div style={{ textAlign:"center", fontSize:12.5, color:P.sub, marginTop:8 }}>{msg}</div> : null}
 
     {today ? (
-      <div style={card}>
+      <div data-lens-edge="" style={card}>
         {/* Шапка. Стрелка сидела в конце строки «старший: ФАМИЛИЯ ИМЯ», строка
             переносилась, и стрелка уезжала под текст отдельным огрызком —
             целиться в неё было нечем. Теперь она в кружке фиксированного
@@ -4924,7 +4926,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               старший: {leadOn(today)}
             </span>
           ) : null}
-          <span style={{ flexShrink:0, width:26, height:26, borderRadius:"50%", display:"grid", placeItems:"center",
+          <span data-lens="disc" style={{ flexShrink:0, width:26, height:26, borderRadius:"50%", display:"grid", placeItems:"center",
             fontSize:11, color:P.acc,
             border:`1px solid ${a11y ? "rgba(150,112,40,0.35)" : "rgba(145,108,40,0.4)"}`,
             background: a11y ? "rgba(250,242,222,0.7)" : "rgba(255,250,238,0.04)" }}>
@@ -5083,7 +5085,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       borderRadius:12, padding:"3px 0",
                       background: on ? (a11y ? "rgba(214,178,102,0.16)" : "rgba(214,178,102,0.10)") : "transparent" }}>
                     <div style={{ position:"relative", width:44, margin:"0 auto 5px" }}>
-                      <div style={{ width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
+                      <div data-lens={lead ? "ring" : "person"} style={{ width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
                           fontFamily:serif, fontSize:14, color:P.text,
                           background: lead
                             ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
@@ -5141,21 +5143,21 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             borderTop:`1px dashed ${a11y ? "rgba(120,90,30,0.25)" : "rgba(255,255,255,0.1)"}` }}>
           свернуть ▴
         </div>
-        <button style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12.5, marginTop:10 }}
+        <button data-lens-btn="soft" style={{ ...ghost, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12.5, marginTop:10 }}
           className="sa-btn" disabled={shotBusy} onClick={() => exportToday()}>
           {shotBusy ? "Собираю…" : "Сегодня картинкой в чат"}
         </button>
-        <button data-today-hours="" style={{ ...ghostInk, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12.5, marginTop:8 }}
+        <button data-today-hours="" data-lens-btn="soft" style={{ ...ghostInk, width:"100%", boxSizing:"border-box", padding:"9px 10px", fontSize:12.5, marginTop:8 }}
           className="sa-btn" onClick={() => { setBossDay(today); vibrate("light"); }}>Сегодня по часам ›</button>
         </> : null}
       </div>
     ) : null}
-    <div style={card} data-sched-gridcard="">
+    <div data-lens-edge="" style={card} data-sched-gridcard="">
       {/* v49 (Доп. 362): «неделя / месяц» — переключателем в заголовке; покрытие — крупно под ним, у полоски месяца */}
       <div style={eyebrow}>
         <span>Смены</span>
         {staff.length ? (
-          <span data-sched-weekmode="" style={{ display:"inline-flex", padding:3, gap:2, borderRadius:999, flexShrink:0, textTransform:"none", letterSpacing:0,
+          <span data-sched-weekmode="" data-lens-seg="flat" style={{ display:"inline-flex", padding:3, gap:2, borderRadius:999, flexShrink:0, textTransform:"none", letterSpacing:0,
             border:`1px solid ${a11y ? "rgba(175,140,65,0.3)" : "rgba(150,112,42,0.3)"}`, background: a11y ? "rgba(120,90,30,0.08)" : "rgba(0,0,0,0.25)" }}>
             {[["week", "неделя"], ["month", "месяц"]].map(([kv, t]) => {
               const onB = kv === "month" ? weekIdx == null : weekIdx != null;
@@ -5163,7 +5165,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 const td = (now.getFullYear() === Y && now.getMonth() === M) ? now.getDate() : 1;
                 const wi = weeks.findIndex(w => w.includes(td)); setWeekIdx(wi >= 0 ? wi : 0); } vibrate("light"); };
               return (
-                <button key={kv} className="sa-btn" aria-pressed={onB} onClick={pickWeek}
+                <button key={kv} className="sa-btn" aria-pressed={onB} data-lens-btn={onB ? "tab" : undefined} onClick={pickWeek}
                   style={{ border:"none", cursor:"pointer", padding:"5px 12px", borderRadius:999, fontFamily:serif, fontSize: a11y ? 12.5 : 11.5,
                     background: onB ? `linear-gradient(180deg,#E4C88C,${GOLD})` : "transparent", color: onB ? INK_DEEP : P.sub, fontWeight: onB ? "bold" : "normal" }}>{t}</button>
               );
@@ -5574,7 +5576,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     })() : null}
 
     {!staff.length ? (
-      <div style={card}>
+      <div data-lens-edge="" style={card}>
         <div style={eyebrow}><span>С чего начать</span></div>
         <div style={{ fontSize:12.5, lineHeight:1.6, color:P.sub }}>
           Открой «Настройки» вверху и заведи людей: по одному, с должностью и нормой часов.
@@ -5638,7 +5640,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div data-savebar-count={n} style={{ fontSize:13, color:P.text }}>{changesText(n)}</div>
             <div style={{ fontSize:11, color:P.sub }}>команда их пока не видит</div>
           </div>
-          <button className="sa-btn" onClick={save} style={{ ...btn, flex:"0 0 auto", padding:"9px 16px", fontSize:13 }}>Сохранить</button>
+          <button className="sa-btn" onClick={save} data-lens-btn="main" style={{ ...btn, flex:"0 0 auto", padding:"9px 16px", fontSize:13 }}>Сохранить</button>
         </div>
       );
     })() : null}

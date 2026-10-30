@@ -1914,6 +1914,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Поиск термина..."
+          data-lens-field=""
           style={{ width:"100%", padding:"10px 14px", borderRadius:12, border:`1px solid ${color}44`,
             background: T.modCard?.background || "rgba(255,255,255,0.05)",
             color: T.para?.color || CREAM, fontSize:14, fontFamily:"Georgia, serif",
@@ -1927,7 +1928,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
             onSelect={setCat} />
         </div>
         <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
-          <button onClick={() => setFavOnly(v => !v)} aria-pressed={favOnly}
+          <button onClick={() => setFavOnly(v => !v)} aria-pressed={favOnly} data-lens-btn={favOnly ? "tab" : "soft"}
             style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:18, cursor:"pointer",
               border:`1px solid ${color}${favOnly ? "" : "55"}`,
               background: favOnly ? color : "transparent",
@@ -1953,7 +1954,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
           const fav = !!entry.fav;
           const note = entry.note || "";
           const card = (
-          <div key={"t" + i} style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
+          <div key={"t" + i} data-lens-card="" style={{ ...T.modCard, marginBottom:10, padding:"12px 14px", borderRadius:14, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, width:"100%" }}>
               <div style={{ color: a11y ? BROWN_GOLD : "#E8C87A", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:14, flex:1 }}>{g.term}</div>
               <button onClick={() => onToggleFav(k)} aria-label={fav ? "Убрать из избранного" : "В избранное"} title={fav ? "Убрать из избранного" : "В избранное"}
@@ -1965,7 +1966,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
             {/* Заметка: не обязательна — появляется только по кнопке */}
             {editingNote === k ? (
               <div style={{ width:"100%" }}>
-                <textarea autoFocus value={note} onChange={e => onSetNote(k, e.target.value)} placeholder="Моя заметка..." rows={2}
+                <textarea autoFocus value={note} onChange={e => onSetNote(k, e.target.value)} placeholder="Моя заметка..." rows={2} data-lens-field=""
                   style={{ width:"100%", marginTop:4, padding:"8px 10px", borderRadius:9, border:`1px solid ${color}55`,
                     background: T.modCard?.background || "rgba(255,255,255,0.04)", color: T.para?.color || "#F0E8D8",
                     fontSize:16, fontFamily:"Georgia, serif", lineHeight:1.5, outline:"none", boxSizing:"border-box", resize:"vertical" }} />

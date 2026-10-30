@@ -101,7 +101,7 @@ export function MonthMedals({ a11y, cells, note, payMain, style, compact }) {
   const p = palette(a11y), ms = compact ? 30 : 34, dz = compact ? 2 : 0;
   return (
     <div data-sched-medals="" style={{ margin: "12px 14px 0", flexShrink: 0, ...(style || {}) }}>
-      <div style={{ display: "flex", alignItems: "stretch", borderRadius: 16, border: `1px solid ${p.panelLine}`, borderTop: `1px solid ${p.panelTop}`, background: p.panel, boxShadow: p.shadow }}>
+      <div data-lens-edge="" style={{ display: "flex", alignItems: "stretch", borderRadius: 16, border: `1px solid ${p.panelLine}`, borderTop: `1px solid ${p.panelTop}`, background: p.panel, boxShadow: p.shadow }}>
         {cells.map((x, i) => (
           <div key={x.key} data-medal-cell={x.key} style={{ flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 4px 9px", borderLeft: i ? `1px solid ${p.panelLine}` : "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
@@ -139,7 +139,7 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
   return (
     // flexShrink 0: экран графика — колонка flex фиксированной высоты, и карточка с overflow:hidden иначе
     // сжимается в полоску (как секции до Доп. 66)
-    <div data-sched-hero="" data-hero-status={st.kind} style={{ ...card, position: "relative", overflow: "hidden", flexShrink: 0, paddingBottom: isToday ? 16 : 14 }}>
+    <div data-sched-hero="" data-hero-status={st.kind} data-lens-edge="" style={{ ...card, position: "relative", overflow: "hidden", flexShrink: 0, paddingBottom: isToday ? 16 : 14 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div style={{ paddingTop: 5 }}><CalendarPage day={d} p={p} a11y={a11y} w={46} h={50} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -166,13 +166,13 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
         </div>
       ) : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-        {onChecklist ? <span data-hero-checklist="" style={gold} {...act(onChecklist)}>✓ Чек-лист смены</span> : null}
-        <span data-hero-mates="" style={ghost} {...act(onMates)}>Кто со мной{mates > 0 ? " · " + mates : ""}</span>
+        {onChecklist ? <span data-hero-checklist="" data-lens-btn="main" style={gold} {...act(onChecklist)}>✓ Чек-лист смены</span> : null}
+        <span data-hero-mates="" data-lens-btn="soft" style={ghost} {...act(onMates)}>Кто со мной{mates > 0 ? " · " + mates : ""}</span>
       </div>
       {due && due.n > 0 && due.onMistakes ? (
         <div data-hero-due="" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10, fontSize: 12.5, color: p.text }}>
           <span><b style={{ color: p.gold }}>{due.n}</b> {due.n === 1 ? "вопрос ждёт" : due.n < 5 ? "вопроса ждут" : "вопросов ждут"} повтора</span>
-          <span style={{ ...ghost, padding: "5px 11px", fontSize: 11.5 }} {...act(due.onMistakes)}>Повторить перед сменой</span>
+          <span data-lens-btn="soft" style={{ ...ghost, padding: "5px 11px", fontSize: 11.5 }} {...act(due.onMistakes)}>Повторить перед сменой</span>
         </div>
       ) : null}
       {isToday ? <DayThread sh={sh} h={nowH} p={p} a11y={a11y} /> : null}
@@ -184,7 +184,7 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
 export function NoShiftHero({ a11y, card, todayD }) {
   const p = palette(a11y);
   return (
-    <div data-sched-hero="" data-hero-status="none" style={{ ...card, flexShrink: 0, display: "flex", alignItems: "center", gap: 14 }}>
+    <div data-sched-hero="" data-hero-status="none" data-lens-edge="" style={{ ...card, flexShrink: 0, display: "flex", alignItems: "center", gap: 14 }}>
       <CalendarPage day={todayD} p={p} a11y={a11y} off w={40} h={44} />
       <div>
         <div style={{ ...labelStyle(a11y ? 13.5 : 13), color: p.sub }}>Ближайшая смена</div>

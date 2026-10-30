@@ -303,7 +303,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:4, marginBottom:24 }}>{issued.emp.restaurant}</div>
 
           <div style={{ ...labelStyle(13.5), color:"#9A8C74", marginBottom:10 }}>Код доступа</div>
-          <div onClick={() => copyCode(issued.code)} {...onActivate(() => copyCode(issued.code))} style={{
+          <div data-lens-card="hi" onClick={() => copyCode(issued.code)} {...onActivate(() => copyCode(issued.code))} style={{
             fontSize:36, fontWeight:"bold", fontFamily:"Georgia, serif", letterSpacing:5, color: a11y ? "#4A3525" : CREAM,
             padding:"18px 28px", borderRadius:18, cursor:"pointer",
             background:"rgba(200,169,110,0.12)", border:"1.5px solid rgba(200,160,80,0.5)",
@@ -320,10 +320,10 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               : <>Код показывается <b>только сейчас</b>. Отправь его сразу. Вводится один раз на одном устройстве.</>}
           </div>
 
-          <button className="sa-btn" style={{ ...goldBtn, maxWidth:300 }} onClick={() => shareCode(issued.code, issued.emp)}>
+          <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, maxWidth:300 }} onClick={() => shareCode(issued.code, issued.emp)}>
             Поделиться кодом
           </button>
-          <button className="sa-btn" style={{ ...ghostBtn, maxWidth:300, marginTop:10 }}
+          <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, maxWidth:300, marginTop:10 }}
             onClick={() => { setIssued(null); setSelected(null); setView("list"); }}>
             Готово
           </button>
@@ -342,9 +342,9 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            <input style={inputStyle} placeholder="Имя" value={form.name}
+            <input data-lens-field="" style={inputStyle} placeholder="Имя" value={form.name}
               onChange={e => setForm({ ...form, name:e.target.value })} />
-            <input style={inputStyle} placeholder="Фамилия" value={form.surname}
+            <input data-lens-field="" style={inputStyle} placeholder="Фамилия" value={form.surname}
               onChange={e => setForm({ ...form, surname:e.target.value })} />
           </div>
 
@@ -368,7 +368,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
           {actionError && <div className="sa-fast" style={{ color:RED, fontSize:12.5, marginTop:16 }}>{actionError}</div>}
 
-          <button className="sa-btn" style={{ ...goldBtn, marginTop:24, opacity: form.name.trim().length < 2 ? 0.5 : 1 }}
+          <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, marginTop:24, opacity: form.name.trim().length < 2 ? 0.5 : 1 }}
             disabled={busy} onClick={submitAdd}>
             {busy ? "Создаём..." : "Создать и получить код"}
           </button>
@@ -388,8 +388,8 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           <div style={T.lessHeadTitle}>Сотрудник</div>
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
-          <div style={{ ...T.modCard, gap:12, marginBottom:12 }}>
-            <div style={{ width:50, height:50, borderRadius:"50%", flexShrink:0,
+          <div data-lens-card="" style={{ ...T.modCard, gap:12, marginBottom:12 }}>
+            <div data-lens="avatar" style={{ width:50, height:50, borderRadius:"50%", flexShrink:0,
               background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)",
               display:"flex", alignItems:"center", justifyContent:"center" }}>
               <span style={{ color:"#fff", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
@@ -401,11 +401,11 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 {selected.name} {selected.surname}
                 {isSelf && <span style={{ ...labelStyle(13), marginLeft:8, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"1px 7px", verticalAlign:"2px" }}>это ты</span>}
               </div>
-              <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:2 }}>{selected.restaurant} · {POS_LABELS[selected.position] || selected.position}</div>
+              <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:2 }}>{selected.restaurant} · {positionLabel(selected.position)}</div>
             </div>
           </div>
 
-          <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:10, marginBottom:20 }}>
+          <div data-lens-card="" style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:10, marginBottom:20 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <span style={{ color:T.modSub.color, fontSize:12.5 }}>Статус</span>
               <span style={{ display:"inline-flex", alignItems:"center", gap:6, color:st.color, fontSize:14, fontWeight:"bold" }}>
@@ -427,10 +427,10 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
           {isSelf ? (
             <div>
-              <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:8, marginBottom:12 }}>
+              <div data-lens-card="" style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:8, marginBottom:12 }}>
                 <div style={{ ...labelStyle(13.5), color:GOLD }}>Постоянный код входа</div>
                 <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.6 }}>Не сгорает при входе: один код подходит для Telegram, Safari на экране «Домой» и нового телефона. Показывается один раз.</div>
-                <button className="sa-btn" style={{ ...goldBtn, marginTop:4 }} disabled={busy} onClick={doPermanent}>{busy ? "Выдаю…" : "Выдать себе постоянный код"}</button>
+                <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, marginTop:4 }} disabled={busy} onClick={doPermanent}>{busy ? "Выдаю…" : "Выдать себе постоянный код"}</button>
               </div>
               <div style={{ color:T.modSub.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", padding:"0 10px" }}>
                 Остальное в своей записи изменить нельзя, чтобы случайно не закрыть себе вход.
@@ -442,8 +442,8 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 Старый код и все входы на устройствах перестанут работать. Выдать новый код?
               </div>
               <div style={{ display:"flex", gap:10 }}>
-                <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
-                <button className="sa-btn" style={{ ...goldBtn, flex:1 }} disabled={busy} onClick={doReset}>{busy ? "..." : "Выдать"}</button>
+                <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
+                <button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, flex:1 }} disabled={busy} onClick={doReset}>{busy ? "..." : "Выдать"}</button>
               </div>
             </div>
           ) : confirm === "toggle" ? (
@@ -454,8 +454,8 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                   : "Закрыть доступ? Человек выйдет из приложения, но вся его история сохранится."}
               </div>
               <div style={{ display:"flex", gap:10 }}>
-                <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
-                <button className="sa-btn" disabled={busy} onClick={doToggle}
+                <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
+                <button className="sa-btn" data-lens-btn="danger" disabled={busy} onClick={doToggle}
                   style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
                     background: selected.status === "disabled" ? GREEN : RED, color:"#fff" }}>
                   {busy ? "..." : selected.status === "disabled" ? "Включить" : "Отключить"}
@@ -468,12 +468,12 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 Как правильно зовут сотрудника? Имя показывается в приветствии, рейтинге и книге отзывов.
               </div>
               <div style={{ display:"flex", gap:10, marginBottom:12 }}>
-                <input style={{ ...inputStyle, flex:1 }} placeholder="Имя" value={editNS.name} onChange={e => setEditNS(s => ({ ...s, name: e.target.value }))} />
-                <input style={{ ...inputStyle, flex:1 }} placeholder="Фамилия" value={editNS.surname} onChange={e => setEditNS(s => ({ ...s, surname: e.target.value }))} />
+                <input data-lens-field="" style={{ ...inputStyle, flex:1 }} placeholder="Имя" value={editNS.name} onChange={e => setEditNS(s => ({ ...s, name: e.target.value }))} />
+                <input data-lens-field="" style={{ ...inputStyle, flex:1 }} placeholder="Фамилия" value={editNS.surname} onChange={e => setEditNS(s => ({ ...s, surname: e.target.value }))} />
               </div>
               <div style={{ display:"flex", gap:10 }}>
-                <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
-                <button className="sa-btn" disabled={busy} onClick={doRename}
+                <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
+                <button className="sa-btn" data-lens-btn="main" disabled={busy} onClick={doRename}
                   style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:GOLD, color:"#1A1008", opacity: editNS.name.trim().length < 2 ? 0.5 : 1 }}>
                   {busy ? "..." : "Сохранить"}
                 </button>
@@ -485,8 +485,8 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 Удалить <b>{selected.name} {selected.surname}</b> из команды? Профиль, прогресс, результаты и код входа будут стёрты безвозвратно.
               </div>
               <div style={{ display:"flex", gap:10 }}>
-                <button className="sa-btn" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
-                <button className="sa-btn" disabled={busy} onClick={doDelete}
+                <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, flex:1 }} onClick={() => setConfirm(null)}>Отмена</button>
+                <button className="sa-btn" data-lens-btn="danger" disabled={busy} onClick={doDelete}
                   style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:RED, color:"#fff" }}>
                   {busy ? "..." : "Удалить"}
                 </button>
@@ -494,19 +494,19 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             </div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              <button className="sa-btn" style={goldBtn} onClick={() => setConfirm("reset")}>
+              <button className="sa-btn" data-lens-btn="main" style={goldBtn} onClick={() => setConfirm("reset")}>
                 Сбросить код (новое устройство)
               </button>
-              <button className="sa-btn" style={ghostBtn} onClick={() => { setEditNS({ name: selected.name || "", surname: selected.surname || "" }); setConfirm("edit"); }}>
+              <button className="sa-btn" data-lens-btn="soft" style={ghostBtn} onClick={() => { setEditNS({ name: selected.name || "", surname: selected.surname || "" }); setConfirm("edit"); }}>
                 Изменить имя и фамилию
               </button>
-              <button className="sa-btn" onClick={() => setConfirm("toggle")}
+              <button className="sa-btn" data-lens-btn="danger" onClick={() => setConfirm("toggle")}
                 style={{ ...ghostBtn,
                   border: selected.status === "disabled" ? "1px solid rgba(93,187,138,0.5)" : "1px solid rgba(224,120,120,0.45)",
                   color: selected.status === "disabled" ? GREEN : RED }}>
                 {selected.status === "disabled" ? "Включить доступ" : "Отключить доступ"}
               </button>
-              <button className="sa-btn" onClick={() => setConfirm("delete")}
+              <button className="sa-btn" data-lens-btn="danger" onClick={() => setConfirm("delete")}
                 style={{ ...ghostBtn, border:"1px solid rgba(224,120,120,0.55)", color:RED, marginTop:2 }}>
                 Удалить из команды
               </button>
@@ -525,7 +525,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           <div style={{ ...T.lessHeadTitle, display:"flex", alignItems:"center", gap:8 }}>
             {NAV_ICONS.team(GOLD)}<span>Команда</span>
           </div>
-          <button className="sa-btn" onClick={() => { setActionError(null); setView("add"); }}
+          <button className="sa-btn" data-lens-btn="main" onClick={() => { setActionError(null); setView("add"); }}
             style={{ padding:"9px 16px", borderRadius:18, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer",
               color:"#fff", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", boxShadow:"0 3px 12px rgba(200,160,80,0.3)" }}>
             + Добавить
@@ -533,7 +533,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         </div>
 
         {onCandidate && (
-          <button className="sa-btn" onClick={() => { vibrate("light"); onCandidate(); }}
+          <button className="sa-btn" data-lens-card="" onClick={() => { vibrate("light"); onCandidate(); }}
             style={{ width:"100%", marginBottom:12, padding:"13px 16px", borderRadius:14, cursor:"pointer",
               border:"1px solid rgba(200,160,80,0.35)", background:"rgba(200,169,110,0.08)",
               fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", textAlign:"left", color:GOLD,
@@ -551,7 +551,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               { n: summary.wait,  label:"ждут код", c:"#D9C75B" },
               { n: summary.sleep, label:"спят 7д+", c:"#9A8C74" },
             ].map((s, i) => (
-              <div key={i} style={{ flex:1, minWidth:88, textAlign:"center", padding:"10px 6px", borderRadius:14,
+              <div key={i} data-lens-edge="" style={{ flex:1, minWidth:88, textAlign:"center", padding:"10px 6px", borderRadius:14,
                 background:"rgba(200,169,110,0.07)", border:"1px solid rgba(200,160,80,0.2)" }}>
                 <div style={{ color:s.c, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF }}>{s.n}</div>
                 <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>{s.label}</div>
@@ -560,7 +560,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
           </div>
         )}
 
-        <input style={{ ...inputStyle, marginBottom:16 }} placeholder="Поиск по имени или ресторану..."
+        <input data-lens-field="" style={{ ...inputStyle, marginBottom:16 }} placeholder="Поиск по имени или ресторану..."
           value={search} onChange={e => setSearch(e.target.value)} />
 
         {list === null && <SkelCards a11y={!!T.a11y} rows={4} h={64} label="Загружаем команду…" style={{ padding:"4px 0 16px" }} />}
@@ -568,7 +568,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         {loadError && (
           <div style={{ textAlign:"center", padding:"20px 0" }}>
             <div style={{ color:RED, fontSize:12.5, marginBottom:12 }}>Не получилось загрузить список.</div>
-            <button className="sa-btn" style={{ ...ghostBtn, width:"auto", padding:"10px 24px" }} onClick={() => { setList(null); loadList(); }}>Повторить</button>
+            <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, width:"auto", padding:"10px 24px" }} onClick={() => { setList(null); loadList(); }}>Повторить</button>
           </div>
         )}
 
@@ -588,7 +588,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               {emps.map(e => {
                 const st = statusOf(e);
                 return (
-                  <div key={e.id} className="sa-btn" onClick={() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); }} {...onActivate(() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); })}
+                  <div key={e.id} className="sa-btn" data-lens-card="" onClick={() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); }} {...onActivate(() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); })}
                     style={{ ...T.modCard, gap:12, cursor:"pointer", padding:"13px 14px" }}>
                     <span style={{ width:9, height:9, borderRadius:6, flexShrink:0, background:st.color, boxShadow:`0 0 8px ${st.color}55` }} />
                     <div style={{ flex:1, minWidth:0 }}>
@@ -597,7 +597,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                         {e.is_admin && <span style={{ ...labelStyle(12.5), marginLeft:6, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"0 5px", verticalAlign:"2px" }}>владелец</span>}
                       </div>
                       <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>
-                        {POS_LABELS[e.position] || e.position} · {ago(e.last_seen_at)}
+                        {positionLabel(e.position)} · {ago(e.last_seen_at)}
                       </div>
                     </div>
                     <span style={{ ...labelStyle(13), color:st.color, flexShrink:0 }}>{st.label}</span>
@@ -759,7 +759,7 @@ function MentorPinBlock({ T, gold }) {
     }
   };
   return (
-    <div style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:10, marginBottom:20 }}>
+    <div data-lens-card="" style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:10, marginBottom:20 }}>
       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v2.5"/></svg>
         <span style={{ color: T.modTitle.color, fontSize:14, fontWeight:"bold" }}>PIN наставника</span>

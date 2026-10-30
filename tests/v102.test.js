@@ -82,7 +82,7 @@ describe("v102: что стало линзой", () => {
     expect(rd("ui/screens-team.jsx")).toContain('<div data-lens="disc" style={{ width:34, height:34, borderRadius:"50%"');
     expect(rd("ui/screens-gamification.jsx")).toContain('<div data-lens="disc" style={{ width:48, height:48, borderRadius:"50%"');
     expect(rd("ui/screens-gamification.jsx")).toContain('<div data-lens="avatar" style={{ width:46, height:46, borderRadius:"50%"');
-    expect((rd("ui/schedule.jsx").match(/data-lens="disc"/g) || []).length).toBe(3);
+    expect((rd("ui/schedule.jsx").match(/data-lens="disc"/g) || []).length).toBe(4);   // v113: + стрелка раскрытия «Сегодня»
     expect(rd("App.jsx")).toContain('data-top-search data-lens="disc"');
   });
   it("кружки с состоянием — прежние: подтверждённый навык (зелёный ✓), открытый фильтр и список колоды", () => {

@@ -83,7 +83,7 @@ describe("v46: карточка смены и медальоны — вид", ()
   it("сегодня: листок 46×50 с числом, «сегодня · суббота», «Вечер», время золотом, «8 ч · через 1 ч 40 мин», нить суток", () => {
     const html = hero();
     expect(html).toContain('data-sched-hero="" data-hero-status="soon"');
-    expect(html).toMatch(/data-hero-status="soon" style="[^"]*overflow:hidden;flex-shrink:0/);   // в колонке flex не сжимается в полоску
+    expect(html).toMatch(/data-hero-status="soon"(?: data-lens-edge="")? style="[^"]*overflow:hidden;flex-shrink:0/);   // v113: метка линзы   // в колонке flex не сжимается в полоску
     expect(html).toMatch(/data-sched-page="" style="position:relative;display:block;width:46px;height:50px/);
     expect(html).toMatch(/data-sched-day=""[^>]*font-size:24px[^>]*color:#E2C484">17</);
     expect(text(html)).toContain("Сегодня · суббота");   // v73: подпись курсивом, с заглавной
@@ -286,7 +286,7 @@ describe("v46: в графике (исходник)", () => {
     // светлая тема: «Кто может?», «Кто вместо?», «↩» и «Закрыть» в листе — тёмным золотом
     expect(src).toContain('const ghostInk = a11y ? { ...ghost, color:"#7A5A22", border:"1px solid rgba(122,90,34,0.45)" } : ghost;');
     expect(src).toContain('const chipBtn = { ...ghostInk, flex:"0 0 auto"');
-    expect(src).toContain('onClick={() => setFillAsk(null)} style={{ ...ghostInk, width:"100%"');
+    expect(src).toContain('onClick={() => setFillAsk(null)} data-lens-btn="soft" style={{ ...ghostInk, width:"100%"');   // v113: метка линзы
     expect(src).toMatch(/style=\{\{ \.\.\.ghostInk, flex:"0 0 auto", fontSize:12\.5, padding:"9px 13px" \}\} className="sa-btn" onClick=\{undo\}/);
   });
   it("подсказки — про новое место; метка сборки — v46; CHANGES — «Дополнение 359»", () => {

@@ -315,7 +315,9 @@ function buildFx() {
   const r = generateSchedule({ cfg, DAYS, dow, lvlOf, plan: {}, locks: {}, POS, mkey, wishes, hardOff, prevTail: {}, freezeBefore: 0, restarts: 24, repairSweeps: 2, seed: 20261017 });
   const plan = r.plan || {}, T0 = now.getDate();
   plan[9] = { ...(plan[9] || {}), [T0]: "В" };
-  const offerDay = Math.min(DAYS, T0 + 5);
+  // v118 (Доп. 431): в последний день месяца «через пять дней» упиралось в этот же день, и строкой ниже у Анны стиралась
+  // сегодняшняя смена — в квесте и на «сейчас» был выходной; в последний день предложение смены — вчера
+  const offerDay = T0 < DAYS ? Math.min(DAYS, T0 + 5) : T0 - 1;
   plan[9][offerDay] = ""; plan[10] = { ...(plan[10] || {}), [offerDay]: "Д" };
   // обмен «Соколов → Новиков» через два дня: у Соколова в этот день смена, Новиков свободен — при любой дате прогона
   const swapDay = Math.min(DAYS, T0 + 2);

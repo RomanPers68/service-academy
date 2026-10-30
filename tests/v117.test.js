@@ -109,9 +109,9 @@ describe("v117: разметка «Команды и Я»", () => {
 });
 
 describe("v117: тексты", () => {
-  it("без тире-ритма и эмодзи в правилах; метка — v117", () => {
+  it("без тире-ритма и эмодзи в правилах; метка — v117 и позже", () => {
     expect(code(LOOK)).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     expect(dashes(LOOK)).toBe(0);
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v117</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(11[7-9]|1[2-9]\d|[2-9]\d\d)<\/span>/);
   });
 });

@@ -301,7 +301,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
     // Помощник называется tile, а не card: под именем card он перекрывал карту
     // бара из компонента, и «· своя карта» горела всегда, а «Час пик» отсюда
     // брал заказы из всех коктейлей вместо своей карты (функция — не список).
-    const tile = (props, children) => <div className="sa-card" {...props} style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 10, cursor: props.onClick ? "pointer" : "default", ...(props.style || {}) }}>{children}</div>;
+    const tile = (props, children) => <div className="sa-card" data-lens-card="" {...props} style={{ ...frost, borderRadius: 18, padding: "14px 15px", marginBottom: 10, cursor: props.onClick ? "pointer" : "default", ...(props.style || {}) }}>{children}</div>;
     return (
       <div style={T.screen} className="sa-screen">
         <LabStyle />
@@ -367,7 +367,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
       <div style={T.screen} className="sa-screen">
         {Head(current.name, () => setView("hub"))}
         <div style={{ padding: "4px 16px 100px" }}>
-          <div style={{ ...frost, borderRadius: 18, padding: 16, display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+          <div data-lens-card="" style={{ ...frost, borderRadius: 18, padding: 16, display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
             <div style={{ width: 96, height: 96, flexShrink: 0 }}><GlassView glass={current.glass} fill={0.75} colors={current.ing.map(i => ING_COLOR(i[0]))} ice={current.ice === "crushed" ? "crushed" : current.ice ? "cube" : null} garnish={current.garnish} a11y={a11y} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12.5, color: sub }}>{current.method} · {GLASS_RU[current.glass]} · {current.ing.length} ингр.</div>
@@ -375,11 +375,11 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
               {onOpenDeck && <div onClick={() => onOpenDeck(current.id)} style={{ fontSize: 12.5, color: gold, marginTop: 8, cursor: "pointer" }}>Карточка в Колоде ›</div>}
             </div>
           </div>
-          <div className="sa-card" onClick={() => startPlay(current, "hint")} {...onActivate(() => startPlay(current, "hint"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
+          <div className="sa-card" data-lens-card="" onClick={() => startPlay(current, "hint")} {...onActivate(() => startPlay(current, "hint"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>С подсказкой</div>
             <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Следующий шаг подсвечен, ошибка объясняется словами урока.</div>
           </div>
-          <div className="sa-card" onClick={() => startPlay(current, "memory")} {...onActivate(() => startPlay(current, "memory"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", cursor: "pointer", borderColor: gold + "88" }}>
+          <div className="sa-card" data-lens-card="hi" onClick={() => startPlay(current, "memory")} {...onActivate(() => startPlay(current, "memory"))} style={{ ...frost, borderRadius: 18, padding: "14px 16px", cursor: "pointer", borderColor: gold + "88" }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>По памяти</div>
             <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.5 }}>Как за стойкой, без подсказок: ошибся, вылил и собираешь заново. Чистая сборка даёт печать.</div>
           </div>
@@ -400,7 +400,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
         <div style={{ ...labelStyle(13.5), color: gold }}>{rush.total <= rushBest ? "Новый рекорд" : "Смена отработана"}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 44, color: text, margin: "6px 0" }}>{rush.total} с</div>
         <div style={{ fontSize: 12.5, color: sub }}>{rush.orders.map(o => o.name).join(" · ")}{rush.penalties ? ` · штрафы +${rush.penalties} с` : " · без ошибок"}</div>
-        <button className="sa-btn" onClick={() => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 20, width: "100%" }}>Ещё смену ›</button>
+        <button className="sa-btn" data-lens-btn="main" onClick={() => { const orders = rushOrders(ALL, mastery, 3, card); setRush({ orders, i: 0, started: Date.now(), penalties: 0 }); setCurrent(orders[0]); setMode("memory"); setView("play"); }} style={{ ...T.doneBtn, background: gold, marginTop: 20, width: "100%" }}>Ещё смену ›</button>
       </div>
     </div>
   );
@@ -578,7 +578,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
                 <div style={{ ...labelStyle(13.5), color: "#5DBB8A" }}>{finished.clean ? "Подано · чисто" : "Подано"}</div>
                 <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginTop: 4 }}>{c.name}</div>
                 <div style={{ fontSize: 12.5, color: sub, marginTop: 4, lineHeight: 1.5 }}>{mode === "memory" && finished.clean ? "Печать на карточке твоя." : mistakes ? `Ошибок: ${mistakes}. Собери по памяти без ошибок, и будет печать.` : "Теперь попробуй по памяти."}</div>
-                {!rush && <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>}
+                {!rush && <button className="sa-btn" data-lens-btn="main" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 10, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>}
               </div>
             ) : msg ? (
               <div className="sa-fadein" style={{ padding: narrowW ? "6px 12px 8px" : "10px 12px 12px", borderRadius: 6, background: "linear-gradient(180deg,#2E211A,#1A160F)", border: narrowW ? "3px solid #5a3a1e" : "4px solid #5a3a1e", boxShadow: "inset 0 0 24px rgba(0,0,0,.5)" }}>
@@ -636,7 +636,7 @@ function Play({ c, mode, T, a11y, gold, frost, Head, rush, onPenalty, onExit, on
             <div data-labstation="" style={{ marginTop: 12 }}>
               <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8 }}>
                 {TABS.map(([key, label]) => { const on = tab === key; const doneMark = key === "glass" ? glassDone : key === "ice" ? iceAllDone : key === "ing" ? allIngsDone : key === "garnish" ? (!!garnishDone || !garnishStep) : false;
-                  return <span key={key} onClick={() => { setTab(key); vibrate("light"); }} {...onActivate(() => setTab(key))} style={{ padding: "7px 13px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, border: `1px solid ${on ? gold : gold + "44"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : doneMark ? gold : sub }}>{label}{doneMark ? " ✓" : ""}</span>; })}
+                  return <span key={key} data-lens-btn={on ? "tab" : "soft"} data-lens-ink="" onClick={() => { setTab(key); vibrate("light"); }} {...onActivate(() => setTab(key))} style={{ padding: "7px 13px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, border: `1px solid ${on ? gold : gold + "44"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: on ? text : doneMark ? gold : sub }}>{label}{doneMark ? " ✓" : ""}</span>; })}
               </div>
               {content}
             </div>
@@ -688,7 +688,7 @@ function StationPrep({ T, a11y, gold, frost, Head, onExit, uk }) {
               <div style={{ ...labelStyle(13.5), color: "#5DBB8A" }}>{took <= best ? "Станция собрана · рекорд" : "Станция собрана"}</div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, marginTop: 4 }}>{took} с{mistakes ? ` · ошибок ${mistakes}` : " · без ошибок"}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>Дальше смена идёт на автомате — ты не ищешь, ты берёшь.</div>
-              <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 12, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>
+              <button className="sa-btn" data-lens-btn="main" onClick={onExit} style={{ ...T.doneBtn, background: gold, marginTop: 12, padding: "10px 14px", fontSize: 14 }}>Готово ›</button>
             </div>
           ) : msg ? (
             <div className="sa-fadein" style={{ fontSize: 14, lineHeight: 1.5, color: msg.ok ? text : "#E07878" }}>{msg.text}</div>
@@ -698,7 +698,7 @@ function StationPrep({ T, a11y, gold, frost, Head, onExit, uk }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {order.map(it => { const on = placed.includes(it.id); return (
-            <div key={it.id} className="sa-card" onClick={() => tap(it)} {...onActivate(() => tap(it))} style={{ ...frost, borderRadius: 14, padding: "11px 14px", cursor: on ? "default" : "pointer", opacity: on ? 0.45 : 1, display: "flex", alignItems: "center", gap: 10 }}>
+            <div key={it.id} className="sa-card" data-lens-card="" onClick={() => tap(it)} {...onActivate(() => tap(it))} style={{ ...frost, borderRadius: 14, padding: "11px 14px", cursor: on ? "default" : "pointer", opacity: on ? 0.45 : 1, display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ width: 22, color: on ? "#5DBB8A" : gold, fontSize: 14 }}>{on ? "✓" : "○"}</span>
               <span style={{ flex: 1, fontSize: 14, color: text }}>{it.t}</span>
               {on && <span style={{ ...labelStyle(13), color: sub }}>{it.phase}</span>}

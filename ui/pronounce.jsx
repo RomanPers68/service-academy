@@ -62,7 +62,7 @@ export function SayButton({ w, o, lang, orig = false, slow = false, gold, sub, a
   };
   const on = st !== "idle";
   return (
-    <button type="button" onClick={tap} data-say={orig ? "orig" : slow ? "slow" : "ru"} data-say-state={st}
+    <button type="button" onClick={tap} data-say={orig ? "orig" : slow ? "slow" : "ru"} data-say-state={st} data-lens={on || label ? undefined : "disc"} data-lens-btn={on || !label ? undefined : "soft"} data-lens-ink={on || !label ? undefined : ""}
       aria-label={(orig ? "Послушать в оригинале: " + (o || "") : (slow ? "Послушать медленно: " : "Послушать, как произносить: ") + plainText(w))}
       style={{ display: "inline-flex", alignItems: "center", gap: 6, height: size, padding: label ? "0 11px 0 4px" : 0, width: label ? "auto" : size, justifyContent: "center",
         borderRadius: size / 2, border: `1px solid ${gold}${on ? "" : "88"}`, background: on ? gold : "transparent", color: on ? "#1A1008" : sub,
@@ -126,11 +126,11 @@ function Repeat({ e, gold, text, sub, a11y, red }) {
     border: `1px solid ${on ? (red || "#D9776A") : gold + "88"}`, background: on ? "rgba(217,119,106,0.14)" : "transparent", color: on ? (red || "#D9776A") : sub });
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <button type="button" data-repeat={st} onClick={go} style={pill(st === "rec")} aria-label={st === "rec" ? "Остановить запись" : "Повторить за голосом: записать себя"}>
+      <button type="button" data-repeat={st} data-lens-btn={st === "rec" ? undefined : "soft"} data-lens-ink={st === "rec" ? undefined : ""} onClick={go} style={pill(st === "rec")} aria-label={st === "rec" ? "Остановить запись" : "Повторить за голосом: записать себя"}>
         {st === "rec" ? <span className="sa-rec-dot" style={{ width: 8, height: 8, borderRadius: 4, background: red || "#D9776A" }} /> : null}
         {st === "rec" ? "стоп" : mine ? "ещё раз" : "повторить"}
       </button>
-      {mine && st !== "rec" ? <button type="button" data-repeat-mine="" onClick={playMine} style={pill(false)}>я</button> : null}
+      {mine && st !== "rec" ? <button type="button" data-repeat-mine="" data-lens-btn="soft" data-lens-ink="" onClick={playMine} style={pill(false)}>я</button> : null}
       {err ? <span style={{ fontSize: 11, color: red || "#D9776A" }}>{err}</span> : null}
     </span>
   );
@@ -172,10 +172,10 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
         <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginBottom: 10 }}>
           Знак над гласной показывает ударение, ниже слово по слогам: ударный слог заглавными. Динамик включает голос, «медленно» повторит его не спеша, «ориг.» звучит на языке оригинала, «повторить» запишет тебя, чтобы сравнить.
         </div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти: шардоне, burrata, апероль…" className="sa-field"
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти: шардоне, burrata, апероль…" className="sa-field" data-lens-field=""
           style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none", marginBottom: 10 }} />
         <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
-          {cats.map((c) => <button type="button" key={c.id} data-pron-cat={c.id} style={chip(!q && cat === c.id)} onClick={() => { setCat(c.id); setQ(""); vibrate("light"); }}>{c.label}</button>)}
+          {cats.map((c) => <button type="button" key={c.id} data-pron-cat={c.id} data-lens-btn={!q && cat === c.id ? "tab" : "soft"} data-lens-ink="" style={chip(!q && cat === c.id)} onClick={() => { setCat(c.id); setQ(""); vibrate("light"); }}>{c.label}</button>)}
         </div>
       </div>
       <div style={{ padding: "8px 16px 100px" }}>
@@ -185,7 +185,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
             {q ? "Такого слова в словаре нет. Как произносить свои блюда, менеджер пишет в карточке блюда." : "Пока пусто."}
           </div>
         ) : list.map((e, i) => (
-          <div key={(e.w || "") + i} data-pron-item="" style={{ ...glass(T), padding: "12px 14px", marginBottom: 8 }}>
+          <div key={(e.w || "") + i} data-pron-item="" data-lens-card="" style={{ ...glass(T), padding: "12px 14px", marginBottom: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div data-pron-word="" style={{ fontFamily: "Georgia, serif", fontSize: 19, color: text, lineHeight: 1.25 }}>{stressText(e.w)}</div>

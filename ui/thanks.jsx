@@ -103,7 +103,7 @@ function LayoutPicker({ c, a11y, url, name, pos, restaurant, onMsg }) {
           borderRadius: kind === "sticker" ? 18 : 4, boxShadow: "0 8px 22px rgba(0,0,0,0.30)" }} />
           : <div style={{ fontSize: 13, color: c.sub }}>{prev === "x" ? "Предпросмотр не нарисовался, картинку всё равно можно сохранить." : "Рисую…"}</div>}
       </div>
-      <button type="button" data-thanks-save="" onClick={save} disabled={!prev} style={{ ...btn(c, true), width: "100%", marginTop: 12, opacity: prev ? 1 : 0.6 }}>Сохранить картинку</button>
+      <button type="button" data-thanks-save="" onClick={save} disabled={!prev} data-lens-btn="main" style={{ ...btn(c, true), width: "100%", marginTop: 12, opacity: prev ? 1 : 0.6 }}>Сохранить картинку</button>
     </div>
   );
 }
@@ -184,16 +184,16 @@ function Mine({ c, a11y, st, profile, onRotate, rotating }) {
   return (
     <div>
       <QrCard c={c} url={url} name={st.name} pos={pos} restaurant={st.restaurant} />
-      <button type="button" data-thanks-show="" onClick={() => { vibrate("light"); setFull(true); }} style={{ ...btn(c, true), width: "100%", marginTop: 12 }}>Показать гостю на весь экран</button>
+      <button type="button" data-thanks-show="" data-lens-btn="main" onClick={() => { vibrate("light"); setFull(true); }} style={{ ...btn(c, true), width: "100%", marginTop: 12 }}>Показать гостю на весь экран</button>
       <div style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, margin: "12px 2px" }}>Покажи гостю или поставь распечатку на стол: гость наводит камеру и говорит спасибо лично тебе. Без регистрации, за пару секунд.</div>
       <div style={{ display: "flex", gap: 10 }}>
-        <button type="button" data-thanks-share="" onClick={share} style={{ ...btn(c), flex: 1 }}>Поделиться ссылкой</button>
-        <button type="button" data-thanks-print="" aria-expanded={print} onClick={() => { vibrate("light"); setMsg(""); setPrint((v) => !v); }}
+        <button type="button" data-thanks-share="" data-lens-btn="soft" onClick={share} style={{ ...btn(c), flex: 1 }}>Поделиться ссылкой</button>
+        <button type="button" data-thanks-print="" data-lens-btn="soft" data-lens-hi={print ? "" : undefined} aria-expanded={print} onClick={() => { vibrate("light"); setMsg(""); setPrint((v) => !v); }}
           style={{ ...btn(c), flex: 1, ...(print ? { background: a11y ? "rgba(139,106,48,0.16)" : "rgba(200,169,110,0.20)" } : null) }}>Картинка для печати</button>
       </div>
       {print ? <LayoutPicker c={c} a11y={a11y} url={url} name={st.name} pos={pos} restaurant={st.restaurant} onMsg={setMsg} /> : null}
       {msg ? <div role="status" style={{ fontSize: 13, color: c.text, margin: "10px 2px 0", lineHeight: 1.45, wordBreak: /^https?:/.test(msg) ? "break-all" : "normal" }}>{msg}</div> : null}
-      <div style={{ ...c.frost, padding: "14px 16px", margin: "16px 0 10px", display: "flex", textAlign: "center" }} data-thanks-stats="">
+      <div style={{ ...c.frost, padding: "14px 16px", margin: "16px 0 10px", display: "flex", textAlign: "center" }} data-thanks-stats="" data-lens-card="">
         {[["за неделю", st.week], ["за месяц", st.month], ["всего", st.total]].map(([t, v]) => (
           <div key={t} style={{ flex: 1 }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 26, color: c.text }}>{v || 0}</div>
@@ -201,7 +201,7 @@ function Mine({ c, a11y, st, profile, onRotate, rotating }) {
           </div>))}
       </div>
       {(st.items || []).length ? (st.items || []).map((x) => (
-        <div key={x.id} data-thanks-item={x.id} style={{ ...c.frost, padding: "11px 14px", marginBottom: 8 }}>
+        <div key={x.id} data-thanks-item={x.id} data-lens-card="" style={{ ...c.frost, padding: "11px 14px", marginBottom: 8 }}>
           <div style={{ ...labelStyle(12.5), color: c.gold }}>{dayOf(x.at)}{(x.tags || []).length ? " · " + x.tags.map((k) => tagLabel(k).toLowerCase()).join(", ") : ""}</div>
           {x.text ? <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text, marginTop: 4, lineHeight: 1.45 }}>«{x.text}»</div>
             : <div style={{ fontSize: 13, color: c.sub, marginTop: 3 }}>Спасибо без слов</div>}
@@ -252,14 +252,14 @@ function ReviewLinks({ c, a11y }) {
   const field = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: `1px solid ${c.line}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)",
     color: c.text, fontFamily: "Georgia, serif", fontSize: 13.5, outline: "none", marginBottom: 8 };
   return (
-    <div data-review-links="" style={{ ...c.frost, padding: "14px 14px 12px", marginTop: 18 }}>
+    <div data-review-links="" data-lens-card="" style={{ ...c.frost, padding: "14px 14px 12px", marginTop: 18 }}>
       <div style={{ ...labelStyle(15), color: c.gold, marginBottom: 6 }}>Отзывы о заведении</div>
       {st === "missing" ? <div style={{ fontSize: 13, color: c.sub, lineHeight: 1.5 }}>Ссылки на отзывы появятся, когда на сервер добавят этап 36 (supabase-stage36-comfort.sql).</div> : <>
         <div style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.5, marginBottom: 10 }}>Ссылка на ваше заведение в Яндекс Картах, 2ГИС или Google Картах. После «Спасибо передано» гость увидит кнопку и, если захочет, оставит отзыв.</div>
-        {[0, 1].map((i) => <input key={i} data-review-input={i} value={vals[i]} onChange={(e) => { setMsg(null); const v = e.target.value; setVals((a) => a.map((x, k) => (k === i ? v : x))); }}
+        {[0, 1].map((i) => <input key={i} data-review-input={i} data-lens-field="" value={vals[i]} onChange={(e) => { setMsg(null); const v = e.target.value; setVals((a) => a.map((x, k) => (k === i ? v : x))); }}
           placeholder={i ? "https://2gis.ru/…/firm/…" : "https://yandex.ru/maps/org/…"} inputMode="url" autoCapitalize="off" autoCorrect="off" spellCheck={false} style={field} />)}
         {msg ? <div role={msg.ok ? "status" : "alert"} style={{ fontSize: 12.5, color: msg.ok ? c.text : c.red, lineHeight: 1.45, margin: "0 2px 8px", wordBreak: "break-word" }}>{msg.text}</div> : null}
-        <button type="button" data-review-save="" onClick={save} disabled={busy} style={{ ...btn(c), width: "100%", padding: "10px 14px", opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить ссылки"}</button>
+        <button type="button" data-review-save="" data-lens-btn="soft" onClick={save} disabled={busy} style={{ ...btn(c), width: "100%", padding: "10px 14px", opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить ссылки"}</button>
       </>}
     </div>
   );
@@ -286,7 +286,7 @@ function Team({ c, a11y }) {
     <div data-thanks-team="">
       <div style={{ ...labelStyle(15), color: c.gold, margin: "4px 2px 10px" }}>Кого благодарят · 30 дней</div>
       {rows.length ? rows.map((r) => (
-        <div key={r.emp_id} data-thanks-row={r.emp_id} style={{ ...c.frost, padding: "11px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+        <div key={r.emp_id} data-thanks-row={r.emp_id} data-lens-card="" style={{ ...c.frost, padding: "11px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 15.5, color: c.text }}>{r.name || "Сотрудник"}</div>
             {tagsLine(r.tags) ? <div style={{ fontSize: 12.5, color: c.sub, marginTop: 2 }}>{tagsLine(r.tags)}</div> : null}
@@ -299,7 +299,7 @@ function Team({ c, a11y }) {
       {items.length ? <>
         <div style={{ ...labelStyle(15), color: c.gold, margin: "18px 2px 10px" }}>Последние</div>
         {items.map((x) => (
-          <div key={x.id} data-thanks-titem={x.id} data-hidden={x.hidden ? "1" : "0"} style={{ ...c.frost, padding: "11px 14px", marginBottom: 8, opacity: x.hidden ? 0.55 : 1 }}>
+          <div key={x.id} data-thanks-titem={x.id} data-hidden={x.hidden ? "1" : "0"} data-lens-card="" style={{ ...c.frost, padding: "11px 14px", marginBottom: 8, opacity: x.hidden ? 0.55 : 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ ...labelStyle(12.5), color: c.gold, flex: 1 }}>{x.name || "Сотрудник"} · {dayOf(x.at)}{(x.tags || []).length ? " · " + x.tags.map((k) => tagLabel(k).toLowerCase()).join(", ") : ""}</div>
               {x.text ? <button type="button" data-thanks-hide={x.id} onClick={() => hide(x)} style={{ border: 0, background: "none", color: c.sub, fontSize: 12.5, cursor: "pointer", fontFamily: "Georgia, serif" }}>{x.hidden ? "Вернуть" : "Скрыть"}</button> : null}
@@ -330,7 +330,7 @@ export function ThanksScreen({ T, a11y, profile, lead = false, startTab = "mine"
     rpc("thanks_rotate", { p_token: saToken() }).then((r) => { setRotating(false); if (r && r.ok) { vibrate("success"); load(); } }).catch(() => setRotating(false));
   };
   const tabBtn = (k, t) => (
-    <button key={k} type="button" role="tab" aria-selected={tab === k} data-thanks-tab={k} onClick={() => { vibrate("light"); setTab(k); }}
+    <button key={k} type="button" role="tab" aria-selected={tab === k} data-thanks-tab={k} data-lens-btn={tab === k ? "tab" : "soft"} onClick={() => { vibrate("light"); setTab(k); }}
       style={{ flex: 1, padding: "9px 10px", borderRadius: 999, border: `1px solid ${tab === k ? c.gold : c.line}`, background: tab === k ? (a11y ? "rgba(139,106,48,0.18)" : "rgba(200,169,110,0.22)") : "transparent",
         color: tab === k ? c.text : c.sub, fontFamily: "Georgia, serif", fontSize: 14, cursor: "pointer" }}>{t}</button>);
   return (
@@ -343,9 +343,9 @@ export function ThanksScreen({ T, a11y, profile, lead = false, startTab = "mine"
         {lead ? <div role="tablist" style={{ display: "flex", gap: 8, marginBottom: 14 }}>{[tabBtn("mine", "Мой QR"), tabBtn("team", "Команда")]}</div> : null}
         {tab === "team" ? <Team c={c} a11y={a11y} /> : <>
           {st.status === "loading" ? <div style={{ fontSize: 13, color: c.sub, padding: "6px 2px" }}>Загружаю…</div> : null}
-          {st.status === "missing" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>На сервере ещё нет этапа 34 (supabase-stage34-guest-thanks.sql). Когда руководитель его добавит, здесь появится твой QR для гостей.</div> : null}
-          {st.status === "offline" || st.status === "error" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>Не загрузилось. Проверь связь.
-            <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
+          {st.status === "missing" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>На сервере ещё нет этапа 34 (supabase-stage34-guest-thanks.sql). Когда руководитель его добавит, здесь появится твой QR для гостей.</div> : null}
+          {st.status === "offline" || st.status === "error" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>Не загрузилось. Проверь связь.
+            <button type="button" data-lens-btn="soft" onClick={() => { setSt({ status: "loading" }); load(); }} style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
           {st.status === "ok" ? <Mine c={c} a11y={a11y} st={st} profile={profile} onRotate={rotate} rotating={rotating} /> : null}
         </>}
       </div>

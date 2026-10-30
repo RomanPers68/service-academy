@@ -134,22 +134,22 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
       {Head("Колода меню")}
       <div style={{ padding: "6px 16px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <div style={{ display: "flex", border: `1px solid ${bd}`, borderRadius: 999, padding: 3, background: bg, gap: 2 }}>
-            <span style={{ ...pill(mode === "deck"), border: "none", padding: "6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
-            <span style={{ ...pill(mode === "quiz"), border: "none", padding: "6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
+          <div data-lens-seg="flat" style={{ display: "flex", border: `1px solid ${bd}`, borderRadius: 999, padding: 3, background: bg, gap: 2 }}>
+            <span style={{ ...pill(mode === "deck"), border: "none", padding: "6px 12px" }} data-lens-btn={mode === "deck" ? "tab" : undefined} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
+            <span style={{ ...pill(mode === "quiz"), border: "none", padding: "6px 12px" }} data-lens-btn={mode === "quiz" ? "tab" : undefined} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
           </div>
           <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: sub, whiteSpace: "nowrap" }}>{total ? (idx % total) + 1 : 0}/{total}{reverse ? " ↺" : ""}</span>
-          <span style={iconBtn(open)} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и разделы">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
-          <span style={iconBtn(view === "index")} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
+          <span style={iconBtn(open)} data-lens={open ? undefined : "disc"} onClick={() => setFilters(f => !f)} {...onActivate(() => setFilters(f => !f))} aria-label="Поиск и разделы">{ic("M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4")}</span>
+          <span style={iconBtn(view === "index")} data-lens={view === "index" ? undefined : "disc"} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
         </div>
         {open && (
           <div className="sa-fadein" style={{ marginBottom: 12 }}>
-            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…" autoFocus={filters && !q}
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…" autoFocus={filters && !q} data-lens-field=""
               style={{ width: "100%", padding: "9px 12px", borderRadius: 12, border: `1px solid ${bd}`, background: bg, color: text, fontFamily: "Georgia, serif", fontSize: 12.5, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
-              <span style={{ ...pill(reverse), padding: "4px 10px", fontSize: 11 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
-              <span style={{ ...pill(!cat), padding: "4px 10px", fontSize: 11 }} onClick={() => setCat("")}>Все · {dishes.filter(x => dishMatches(x, q)).length}</span>
-              {groups.map(g => <span key={g.cat} style={{ ...pill(cat === g.cat), padding: "4px 10px", fontSize: 11 }} onClick={() => setCat(cat === g.cat ? "" : g.cat)}>{g.cat} · {g.items.length}</span>)}
+              <span style={{ ...pill(reverse), padding: "4px 10px", fontSize: 11 }} data-lens-btn={reverse ? "tab" : "soft"} data-lens-ink="" onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
+              <span style={{ ...pill(!cat), padding: "4px 10px", fontSize: 11 }} data-lens-btn={!cat ? "tab" : "soft"} data-lens-ink="" onClick={() => setCat("")}>Все · {dishes.filter(x => dishMatches(x, q)).length}</span>
+              {groups.map(g => <span key={g.cat} style={{ ...pill(cat === g.cat), padding: "4px 10px", fontSize: 11 }} data-lens-btn={cat === g.cat ? "tab" : "soft"} data-lens-ink="" onClick={() => setCat(cat === g.cat ? "" : g.cat)}>{g.cat} · {g.items.length}</span>)}
             </div>
           </div>
         )}
@@ -165,7 +165,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                 return (
                   <div key={x.id} className="sa-card" onClick={() => { const i = list.indexOf(x); if (i >= 0) { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); } else { setMode("deck"); setTimeout(() => { setIdx(pool.indexOf(x)); setView("cards"); }, 0); } }}
                     {...onActivate(() => { const i = list.indexOf(x); if (i >= 0) { setIdx(i); setView("cards"); } })}
-                    style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
+                    data-lens-card="" style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
                     {x.img ? <img src={x.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0, filter: x.stop ? "grayscale(1)" : "none" }} /> : <div style={{ width: 54, height: 54, borderRadius: 12, border: `1px dashed ${bd}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: gold }}><Sign n="cloche" s={24} /></div>}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "Georgia, serif" }}>{x.name}{x.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
@@ -193,7 +193,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
               onClick={() => { if (moved.current || busy.current) return; toggleFlip(); vibrate("light"); }}
               style={{ cursor: "pointer", willChange: "transform, opacity", touchAction: "pan-y" }}>
               <div className={"sa-ck-inner" + (settled ? " sa-ck-settled" : "")} style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
-                <div className="sa-ck-face sa-ck-front" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
+                <div className="sa-ck-face sa-ck-front" data-lens-edge="" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
                   {d.stop && <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red || "#B8352A", color: "#fff", fontSize: 10.5, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div>}
                   <div style={{ position: "relative" }}>
                     <DishPhoto src={d.img} h={a11y ? 270 : 230} />
@@ -207,7 +207,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                   <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginTop: 10 }}>{reverse ? "Так гость и спросит: «а что вот это?». Вспомни название и переверни." : "Вспомни состав, аллергены и как описать гостю. Потом переверни и сверься."}</div>
                   <div style={{ marginTop: 12, fontSize: 11, color: gold, fontStyle: "italic", textAlign: "center" }}>{reverse ? "название по тапу" : "состав по тапу"}</div>
                 </div>
-                <div className="sa-ck-face sa-ck-back" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
+                <div className="sa-ck-face sa-ck-back" data-lens-edge="" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
                   <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 4 }}>{d.cat || "Блюдо"}</div>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginBottom: 8 }}>{d.name}{d.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                   {String(d.short || "").trim() && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div>}
@@ -225,13 +225,13 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                   {(() => { const links = cocktailLinks(d.pairing); return links.length && onOpenCocktail ? (
                     <div style={{ marginTop: 8 }}>
                       <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>К нему из бара</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenCocktail(l.id); }} style={{ ...pill(false), fontSize: 11, color: text }}>{l.name} ›</span>)}</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenCocktail(l.id); }} data-lens-btn="soft" style={{ ...pill(false), fontSize: 11, color: text }}>{l.name} ›</span>)}</div>
                     </div>) : null; })()}
                   {/* v97 (Доп. 410): блюдо — в чат команды карточкой, коллега откроет его в своей Колоде */}
                   {onShareChat ? (
                     <div style={{ marginTop: 10 }}>
                       <span role="button" tabIndex={0} data-share-chat={"dish:" + d.id} onClick={(e) => { e.stopPropagation(); vibrate("light"); onShareChat(dishShareItem(d)); }}
-                        {...onActivate(() => onShareChat(dishShareItem(d)))} style={{ ...pill(false), fontSize: 11.5, color: text, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        {...onActivate(() => onShareChat(dishShareItem(d)))} data-lens-btn="soft" style={{ ...pill(false), fontSize: 11.5, color: text, display: "inline-flex", alignItems: "center", gap: 6 }}>
                         {CHAT_SHARE_IC(gold)}Поделиться в чат</span>
                     </div>) : null}
                 </div>
@@ -242,13 +242,13 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
             {mode === "quiz" ? (
               <div style={{ display: "flex", gap: 10 }}>
                 <button className="sa-btn" onClick={() => mark(false)} style={{ ...pill(false), flex: 1, padding: "12px", textAlign: "center", color: red || "#D96A5E", borderColor: (red || "#D96A5E") + "66", fontSize: 12.5 }}>Повторить</button>
-                <button className="sa-btn" onClick={() => mark(true)} style={{ ...pill(true), flex: 1, padding: "12px", textAlign: "center", fontSize: 12.5 }}>Знал</button>
+                <button className="sa-btn" data-lens-btn="main" onClick={() => mark(true)} style={{ ...pill(true), flex: 1, padding: "12px", textAlign: "center", fontSize: 12.5 }}>Знал</button>
               </div>
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
+                <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
                 <span style={{ ...labelStyle(13), color: sub, whiteSpace: "nowrap" }}>Свайп · листать</span>
-                <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
+                <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
               </div>
             )}
           </div>
@@ -318,12 +318,12 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
       {Head("Аллергены на скорость")}
       <div style={{ padding: "6px 16px 100px" }}>
         {phase === "intro" && (
-          <div style={{ ...frost, padding: 18, textAlign: "center" }}>
+          <div data-lens-card="" style={{ ...frost, padding: 18, textAlign: "center" }}>
             <div style={{ ...labelStyle(13.5), color: gold }}>30 секунд</div>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, margin: "8px 0" }}>Есть или нет?</div>
             <div style={{ fontSize: 14, color: sub, lineHeight: 1.55 }}>Фото, название и один аллерген. Свайп вправо: «есть», влево: «нет». Ошибка объясняется и вернётся через две карточки. Считаем верные.</div>
             {best > 0 && <div style={{ fontSize: 12.5, color: gold, marginTop: 8 }}>Твой рекорд: {best}</div>}
-            <button className="sa-btn sa-btn-pulse" onClick={start} disabled={pool.length < 3} style={{ ...T.doneBtn, background: gold, marginTop: 16, width: "100%" }}>{pool.length < 3 ? "Нужно хотя бы три блюда" : "Поехали ›"}</button>
+            <button className="sa-btn sa-btn-pulse" data-lens-btn="main" onClick={start} disabled={pool.length < 3} style={{ ...T.doneBtn, background: gold, marginTop: 16, width: "100%" }}>{pool.length < 3 ? "Нужно хотя бы три блюда" : "Поехали ›"}</button>
           </div>
         )}
         {phase === "play" && q && (
@@ -333,7 +333,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
               <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 21, color: left <= 5 ? red : gold }}>{left}с</div>
             </div>
             <div style={{ height: 4, borderRadius: 3, background: a11y ? "rgba(139,106,48,0.2)" : "rgba(214,178,102,0.16)", marginBottom: 12 }}><div style={{ width: `${(left / 30) * 100}%`, height: "100%", borderRadius: 3, background: left <= 5 ? red : gold, transition: "width 1s linear" }} /></div>
-            <div onTouchStart={onTS} onTouchEnd={onTE} className="sa-fadein" key={q.d.id + q.al} style={{ ...frost, padding: 16, position: "relative", overflow: "hidden", borderColor: flash ? (flash.ok ? green : red) : undefined, transition: "border-color .15s" }}>
+            <div onTouchStart={onTS} onTouchEnd={onTE} className="sa-fadein" key={q.d.id + q.al} data-lens-card={flash ? (flash.ok ? "ok" : "bad") : ""} style={{ ...frost, padding: 16, position: "relative", overflow: "hidden", borderColor: flash ? (flash.ok ? green : red) : undefined, transition: "border-color .15s" }}>
               <DishPhoto src={q.d.img} h={a11y ? 200 : 170} />
               <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{q.d.name}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{(q.d.ingredients || []).slice(0, 5).join(", ")}</div>
@@ -344,20 +344,20 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
               {flash && !flash.ok && <div className="sa-fadein" style={{ marginTop: 10, fontSize: 12.5, color: red, lineHeight: 1.45 }}>{flash.why}</div>}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <button className="sa-btn" onClick={() => answer(false)} style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: text }}>‹ Нет</button>
-              <button className="sa-btn" onClick={() => answer(true)} style={{ ...T.doneBtn, flex: 1, background: gold }}>Есть ›</button>
+              <button className="sa-btn" data-lens-btn="soft" onClick={() => answer(false)} style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: text }}>‹ Нет</button>
+              <button className="sa-btn" data-lens-btn="main" onClick={() => answer(true)} style={{ ...T.doneBtn, flex: 1, background: gold }}>Есть ›</button>
             </div>
             <div style={{ textAlign: "center", ...labelStyle(13.5), color: sub, marginTop: 8 }}>Свайп влево · нет &nbsp;·&nbsp; вправо · есть</div>
           </>
         )}
         {phase === "done" && (
-          <div className="sa-fadein" style={{ ...frost, padding: 18, textAlign: "center" }}>
+          <div className="sa-fadein" data-lens-card="" style={{ ...frost, padding: 18, textAlign: "center" }}>
             <div style={{ ...labelStyle(13.5), color: score >= best && score > 0 ? green : gold }}>{score > 0 && score >= best ? "Рекорд" : "Время"}</div>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 44, color: text, margin: "4px 0" }}>{score}</div>
             <div style={{ fontSize: 12.5, color: sub }}>{miss ? `Ошибок: ${miss}, каждая вернулась в круг` : "без единой ошибки"}{best ? ` · рекорд ${Math.max(best, score)}` : ""}</div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button className="sa-btn" onClick={onExit} style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: text }}>Хватит</button>
-              <button className="sa-btn sa-btn-pulse" onClick={start} style={{ ...T.doneBtn, flex: 1.4, background: gold }}>Ещё 30 секунд ›</button>
+              <button className="sa-btn" data-lens-btn="soft" onClick={onExit} style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: text }}>Хватит</button>
+              <button className="sa-btn sa-btn-pulse" data-lens-btn="main" onClick={start} style={{ ...T.doneBtn, flex: 1.4, background: gold }}>Ещё 30 секунд ›</button>
             </div>
           </div>
         )}

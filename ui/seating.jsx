@@ -203,7 +203,7 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
   const first = anyOn ? list.filter((e) => shiftMap[e.id] || e.id === row.waiter_id) : list;   // выбранный раньше — сразу виден
   const rest = anyOn ? list.filter((e) => !first.includes(e)) : [];
   const wChip = (e) => (
-    <button key={e.id} type="button" data-waiter={e.id} onClick={() => { vibrate("light"); setWaiter(e.id); }} style={chip(c, waiter === e.id, a11y)}>
+    <button key={e.id} type="button" data-waiter={e.id} onClick={() => { vibrate("light"); setWaiter(e.id); }} data-lens-btn={waiter === e.id ? "tab" : "soft"} data-lens-ink="" style={chip(c, waiter === e.id, a11y)}>
       {shortName(e.name + " " + (e.surname || ""))}{load[e.id] ? " · " + load[e.id] : ""}</button>);
   const save = (status) => {
     if (busy) return;
@@ -228,14 +228,14 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
         </div>
         <div role="radiogroup" aria-label="Что со столом" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0 14px" }}>
           {[["seat", "Гости"], ["bill", "Счёт"], ["clean", "Уборка"], ["free", "Свободен"], ["res", "Бронь"]].map(([k, l]) => (
-            <button key={k} type="button" role="radio" aria-checked={st === k} data-sheet-status={k} onClick={() => { vibrate("light"); setErr(""); setSt(k); }} style={chip(c, st === k, a11y)}>{l}</button>))}
+            <button key={k} type="button" role="radio" aria-checked={st === k} data-sheet-status={k} onClick={() => { vibrate("light"); setErr(""); setSt(k); }} data-lens-btn={st === k ? "tab" : "soft"} data-lens-ink="" style={chip(c, st === k, a11y)}>{l}</button>))}
         </div>
         {st === "seat" || st === "res" ? (
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <span style={{ ...labelStyle(13.5), color: c.gold, flex: 1 }}>{st === "seat" ? "Гостей" : "Гостей в брони"}</span>
-            <button type="button" aria-label="Меньше" data-cnt-minus="" onClick={() => setCnt((n) => Math.max(1, n - 1))} style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>−</button>
+            <button type="button" aria-label="Меньше" data-cnt-minus="" onClick={() => setCnt((n) => Math.max(1, n - 1))} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>−</button>
             <span data-cnt="" style={{ minWidth: 28, textAlign: "center", fontSize: 22, color: c.text }}>{cnt}</span>
-            <button type="button" aria-label="Больше" data-cnt-plus="" onClick={() => setCnt((n) => Math.min(40, n + 1))} style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>+</button>
+            <button type="button" aria-label="Больше" data-cnt-plus="" onClick={() => setCnt((n) => Math.min(40, n + 1))} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>+</button>
           </div>) : null}
         {st === "res" ? (
           <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
@@ -248,9 +248,9 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
           <div style={{ marginBottom: 14 }}>
             <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 6 }}>Официант</div>
             <div data-waiters-pick="" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" data-waiter="" onClick={() => setWaiter("")} style={chip(c, !waiter, a11y)}>Не назначен</button>
+              <button type="button" data-waiter="" onClick={() => setWaiter("")} data-lens-btn={!waiter ? "tab" : "soft"} data-lens-ink="" style={chip(c, !waiter, a11y)}>Не назначен</button>
               {first.map(wChip)}
-              {rest.length && !all ? <button type="button" data-waiter-more="" onClick={() => { vibrate("light"); setAll(true); }} style={{ ...chip(c, false, a11y), borderStyle: "dashed" }}>Ещё {rest.length}</button> : null}
+              {rest.length && !all ? <button type="button" data-waiter-more="" onClick={() => { vibrate("light"); setAll(true); }} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), borderStyle: "dashed" }}>Ещё {rest.length}</button> : null}
             </div>
             {rest.length && all ? <>
               <div style={{ fontSize: 12, color: c.sub, margin: "10px 2px 6px" }}>Сегодня не в графике</div>
@@ -259,7 +259,7 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
             <div style={{ fontSize: 11.5, color: c.sub, marginTop: 8, lineHeight: 1.45 }}>{anyOn ? "Сначала те, кто сегодня в графике. " : ""}Число после имени: столы с гостями у официанта сейчас. Если у официанта подключён бот, он получит сообщение.</div>
           </div>) : null}
         {err ? <div role="alert" style={{ fontSize: 13, color: c.red, marginBottom: 10 }}>{err}</div> : null}
-        <button type="button" data-sheet-save="" onClick={() => save(st)} disabled={busy} style={{ ...btn(c, true), width: "100%", opacity: busy ? 0.6 : 1 }}>
+        <button type="button" data-sheet-save="" onClick={() => save(st)} disabled={busy} data-lens-btn="main" style={{ ...btn(c, true), width: "100%", opacity: busy ? 0.6 : 1 }}>
           {busy ? "Сохраняю…" : st === "seat" ? (isBusy(row) ? "Сохранить" : "Посадить") : st === "bill" ? "Попросили счёт" : st === "res" ? (row.status === "res" ? "Сохранить бронь" : "Забронировать") : st === "clean" ? "На уборку" : "Освободить стол"}</button>
       </div>
     </div>
@@ -368,8 +368,8 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, onSaved, onCancel }) {
     <div data-floor-editor="">
       {floor2 ? (
         <div data-zone-tabs="" role="tablist" aria-label="Залы" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          {zs.map((q) => <button key={q.id} type="button" role="tab" aria-selected={q.id === z} data-zone-tab={q.id} onClick={() => pickZone(q.id)} style={chip(c, q.id === z, a11y)}>{q.name}</button>)}
-          {zs.length < MAX_ZONES ? <button type="button" data-zone-add="" onClick={newZone} style={{ ...chip(c, false, a11y), borderStyle: "dashed" }}>＋ Зал</button> : null}
+          {zs.map((q) => <button key={q.id} type="button" role="tab" aria-selected={q.id === z} data-zone-tab={q.id} onClick={() => pickZone(q.id)} data-lens-btn={q.id === z ? "tab" : "soft"} data-lens-ink="" style={chip(c, q.id === z, a11y)}>{q.name}</button>)}
+          {zs.length < MAX_ZONES ? <button type="button" data-zone-add="" onClick={newZone} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), borderStyle: "dashed" }}>＋ Зал</button> : null}
         </div>) : null}
       {floor2 && zs.length > 1 ? (
         <div data-zone-edit={z} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
@@ -378,11 +378,11 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, onSaved, onCancel }) {
         </div>) : null}
       {floor2 ? (
         <div data-tools="" role="radiogroup" aria-label="Что ставить" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          {TOOLS.map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={tool === k} data-tool={k} onClick={() => pickTool(k)} style={chip(c, tool === k, a11y)}>{l}</button>)}
+          {TOOLS.map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={tool === k} data-tool={k} onClick={() => pickTool(k)} data-lens-btn={tool === k ? "tab" : "soft"} data-lens-ink="" style={chip(c, tool === k, a11y)}>{l}</button>)}
         </div>
       ) : <div data-need37="" style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.5, marginBottom: 8 }}>Залы, стены, бар и вход появятся, когда на сервер добавят этап 37 (supabase-stage37-halls-qday.sql).</div>}
       <div data-editor-hint="" style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, marginBottom: 10 }}>{hint}</div>
-      <div style={{ ...c.frost, padding: 10, marginBottom: 12 }}>
+      <div data-lens-card="" style={{ ...c.frost, padding: 10, marginBottom: 12 }}>
         <Floor c={c} a11y={a11y} plan={plan} zone={z} map={{}} now={Date.now()} sel={sel} selItem={selItem} edit tool={tool} pend={pend}
           onCell={cell} onNode={node} onDrop={drop}
           onItem={(i) => { setErr(""); setSel(null); setMoving(false); setSelItem(selItem === i.id ? null : i.id); }}
@@ -391,38 +391,38 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, onSaved, onCancel }) {
       {floor2 && zoneItems(plan, z).length ? (
         <div data-items="" role="group" aria-label="Стены, бар и вход" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           {zoneItems(plan, z).map((q, i) => <button key={q.id} type="button" data-item-chip={q.id} aria-pressed={selItem === q.id} onClick={() => { vibrate("light"); setErr(""); setSel(null); setSelItem(selItem === q.id ? null : q.id); }}
-            style={{ ...chip(c, selItem === q.id, a11y), fontSize: 12.5, padding: "5px 10px" }}>{ITEM_KINDS[q.kind]}{q.kind === "wall" ? " " + (zoneItems(plan, z).filter((x) => x.kind === "wall").indexOf(q) + 1) : ""}</button>)}
+            data-lens-btn={selItem === q.id ? "tab" : "soft"} data-lens-ink="" style={{ ...chip(c, selItem === q.id, a11y), fontSize: 12.5, padding: "5px 10px" }}>{ITEM_KINDS[q.kind]}{q.kind === "wall" ? " " + (zoneItems(plan, z).filter((x) => x.kind === "wall").indexOf(q) + 1) : ""}</button>)}
         </div>) : null}
       {it ? (
-        <div data-item-edit={it.id} style={{ ...c.frost, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
+        <div data-item-edit={it.id} data-lens-card="" style={{ ...c.frost, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ flex: 1, fontSize: 14, color: c.text }}>{ITEM_KINDS[it.kind]}{it.kind === "bar" ? " · " + it.w + " × " + it.h : it.kind === "wall" ? " · " + (Math.abs(it.x2 - it.x) + Math.abs(it.y2 - it.y)) + " " + pl(Math.abs(it.x2 - it.x) + Math.abs(it.y2 - it.y), "клетка", "клетки", "клеток") : ""}</span>
           <button type="button" data-item-remove="" onClick={() => { vibrate("light"); setPlan((p) => removeItem(p, it.id)); setSelItem(null); }} style={{ border: 0, background: "none", color: c.red, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer" }}>Убрать</button>
         </div>) : null}
       {t && tool === "table" ? (
-        <div data-table-edit={t.id} style={{ ...c.frost, padding: "12px 14px", marginBottom: 12 }}>
+        <div data-table-edit={t.id} data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
             <span style={{ ...labelStyle(13.5), color: c.gold }}>Номер</span>
             <input value={t.n} maxLength={6} data-edit-n="" aria-label="Номер стола" onChange={(e) => { setErr(""); setPlan((p) => updateTable(p, t.id, { n: e.target.value })); }}
               style={{ ...field, width: 80 }} />
             <span style={{ flex: 1 }} />
-            <button type="button" data-edit-move="" aria-pressed={moving} onClick={() => { vibrate("light"); setErr(""); setMoving(!moving); }} style={chip(c, moving, a11y)}>Передвинуть</button>
+            <button type="button" data-edit-move="" aria-pressed={moving} onClick={() => { vibrate("light"); setErr(""); setMoving(!moving); }} data-lens-btn={moving ? "tab" : "soft"} data-lens-ink="" style={chip(c, moving, a11y)}>Передвинуть</button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }} role="group" aria-label="Мест">
             <span style={{ ...labelStyle(13.5), color: c.gold, flex: 1 }}>Мест</span>
-            <button type="button" aria-label="Меньше мест" data-seats-minus="" onClick={() => seats(-1)} style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>−</button>
+            <button type="button" aria-label="Меньше мест" data-seats-minus="" onClick={() => seats(-1)} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>−</button>
             <span data-seats="" style={{ minWidth: 28, textAlign: "center", fontSize: 20, color: c.text }}>{t.seats}</span>
-            <button type="button" aria-label="Больше мест" data-seats-plus="" onClick={() => seats(1)} style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>+</button>
+            <button type="button" aria-label="Больше мест" data-seats-plus="" onClick={() => seats(1)} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>+</button>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="group" aria-label="Форма">
-            {SHAPES.map(([k, l]) => <button key={k} type="button" data-edit-shape={k} onClick={() => { const p = updateTable(plan, t.id, { shape: k }); if (p === plan && k === "long") setErr("Справа нет места для длинного стола"); else { setErr(""); setPlan(p); } }} style={chip(c, t.shape === k, a11y)}>{l}</button>)}
+            {SHAPES.map(([k, l]) => <button key={k} type="button" data-edit-shape={k} onClick={() => { const p = updateTable(plan, t.id, { shape: k }); if (p === plan && k === "long") setErr("Справа нет места для длинного стола"); else { setErr(""); setPlan(p); } }} data-lens-btn={t.shape === k ? "tab" : "soft"} data-lens-ink="" style={chip(c, t.shape === k, a11y)}>{l}</button>)}
             <span style={{ flex: 1 }} />
             <button type="button" data-edit-remove="" onClick={() => { vibrate("light"); setPlan((p) => removeTable(p, t.id)); setSel(null); setMoving(false); }} style={{ border: 0, background: "none", color: c.red, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer" }}>Убрать стол</button>
           </div>
         </div>) : null}
       {err ? <div role="alert" style={{ fontSize: 13, color: c.red, margin: "0 2px 10px" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: 10 }}>
-        <button type="button" onClick={onCancel} style={{ ...btn(c), flex: 1 }}>Отмена</button>
-        <button type="button" data-floor-save="" onClick={save} disabled={busy} style={{ ...btn(c, true), flex: 1.4, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить схему"}</button>
+        <button type="button" onClick={onCancel} data-lens-btn="soft" style={{ ...btn(c), flex: 1 }}>Отмена</button>
+        <button type="button" data-floor-save="" onClick={save} disabled={busy} data-lens-btn="main" style={{ ...btn(c, true), flex: 1.4, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить схему"}</button>
       </div>
     </div>
   );
@@ -515,24 +515,24 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
       </div>
       <div style={{ padding: "4px 16px 110px" }}>
         {st.status === "loading" ? <div style={{ fontSize: 13, color: c.sub, padding: "6px 2px" }}>Загружаю зал…</div> : null}
-        {st.status === "missing" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>На сервере ещё нет этапа 35 (supabase-stage35-seating.sql). Когда руководитель его добавит, здесь будет схема зала и рассадка.</div> : null}
-        {st.status === "norest" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>В профиле не указано заведение.</div> : null}
-        {st.status === "offline" || st.status === "error" ? <div style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>Зал не загрузился. Проверь связь.
-          <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
+        {st.status === "missing" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text, lineHeight: 1.5 }}>На сервере ещё нет этапа 35 (supabase-stage35-seating.sql). Когда руководитель его добавит, здесь будет схема зала и рассадка.</div> : null}
+        {st.status === "norest" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>В профиле не указано заведение.</div> : null}
+        {st.status === "offline" || st.status === "error" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>Зал не загрузился. Проверь связь.
+          <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} data-lens-btn="soft" style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
         {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
         {ok && !edit ? <>
           {msg ? <div role="status" style={{ fontSize: 13.5, color: c.text, margin: "2px 2px 10px" }}>{msg}</div> : null}
           {st.offline ? <div style={{ fontSize: 12.5, color: c.red, margin: "0 2px 8px" }}>Нет связи: показано последнее, что пришло.</div> : null}
           {!plan || !(plan.tables || []).length ? (
-            <div style={{ ...c.frost, padding: "14px 16px", lineHeight: 1.5 }} data-floor-empty="">
+            <div data-lens-card="" style={{ ...c.frost, padding: "14px 16px", lineHeight: 1.5 }} data-floor-empty="">
               <LineArt kind="table" color={c.gold} size={140} style={{ margin: "4px auto 12px" }} />
               <div style={{ fontSize: 14.5, color: c.text }}>{st.lead ? "Схемы зала ещё нет. Нарисуй её: где какие столы и сколько за ними мест. Её увидит вся смена." : "Руководитель ещё не нарисовал схему зала."}</div>
-              {st.lead ? <button type="button" data-floor-edit="" onClick={() => { vibrate("light"); setMsg(""); setEdit(true); }} style={{ ...btn(c, true), width: "100%", marginTop: 12 }}>Нарисовать схему</button> : null}
+              {st.lead ? <button type="button" data-floor-edit="" onClick={() => { vibrate("light"); setMsg(""); setEdit(true); }} data-lens-btn="main" style={{ ...btn(c, true), width: "100%", marginTop: 12 }}>Нарисовать схему</button> : null}
             </div>
           ) : <>
             {multi ? (
               <div data-board-zones="" role="tablist" aria-label="Залы" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "2px 0 10px" }}>
-                {zs.map((q) => <button key={q.id} type="button" role="tab" aria-selected={q.id === z} data-board-zone={q.id} onClick={() => pickZone(q.id)} style={{ ...chip(c, q.id === z, a11y), display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {zs.map((q) => <button key={q.id} type="button" role="tab" aria-selected={q.id === z} data-board-zone={q.id} onClick={() => pickZone(q.id)} data-lens-btn={q.id === z ? "tab" : "soft"} data-lens-ink="" style={{ ...chip(c, q.id === z, a11y), display: "inline-flex", alignItems: "center", gap: 6 }}>
                   {q.name}<span aria-label={"свободно " + zoneFree(q.id)} style={{ fontSize: 12, color: q.id === z ? c.gold : c.sub }}>{zoneFree(q.id)}</span>
                   {zoneHi(q.id) && q.id !== z ? <span data-zone-hi="" aria-label="есть подходящий стол" style={{ width: 7, height: 7, borderRadius: 4, background: c.gold }} /> : null}</button>)}
               </div>) : null}
@@ -546,12 +546,12 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }} role="group" aria-label="Посадить компанию">
               <span style={{ ...labelStyle(13), color: c.gold }}>Посадить:</span>
-              {PARTY.map(([n, l]) => <button key={n} type="button" data-party={n} onClick={() => { vibrate("light"); setParty(party === n ? 0 : n); }} style={chip(c, party === n, a11y)}>{l}</button>)}
+              {PARTY.map(([n, l]) => <button key={n} type="button" data-party={n} onClick={() => { vibrate("light"); setParty(party === n ? 0 : n); }} data-lens-btn={party === n ? "tab" : "soft"} data-lens-ink="" style={chip(c, party === n, a11y)}>{l}</button>)}
             </div>
             {party ? <div data-suggest="" style={{ fontSize: 13, color: hi.length || soon.length ? c.text : c.red, margin: "0 2px 10px", lineHeight: 1.45 }}>
               {suggestLine(hi, tn0, multi ? (id) => zoneOfX(plan, tById(id)) : null, z, zName)}
               {soon.length ? <span data-soon=""> Скоро освободится: {soon.map(tn).join(", ")} (попросили счёт).</span> : null}</div> : null}
-            <div style={{ ...c.frost, padding: 10 }}>
+            <div data-lens-card="" style={{ ...c.frost, padding: 10 }}>
               <Floor c={c} a11y={a11y} plan={plan} zone={z} map={map} now={now} hi={hi} sel={sel} onTable={(t) => { vibrate("light"); setMsg(""); setSel(t.id); }} />
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "10px 2px 0", fontSize: 12, color: c.sub }}>
@@ -560,14 +560,14 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
             </div>
             {team.busy.length || team.idle.length ? <div data-waiters="" style={{ marginTop: 16 }}>
               <div style={{ ...labelStyle(15), color: c.gold, margin: "0 2px 6px" }}>Официанты</div>
-              <div style={{ ...c.frost, padding: "10px 14px", fontSize: 13.5, color: c.sub, lineHeight: 1.6 }}>
+              <div data-lens-card="" style={{ ...c.frost, padding: "10px 14px", fontSize: 13.5, color: c.sub, lineHeight: 1.6 }}>
                 {team.busy.map((x) => <div key={x.id}><span style={{ color: c.text }}>{x.name}</span>: {x.tables.length === 1 ? "стол " : "столы "}{x.tables.join(", ")} · {x.guests} {pl(x.guests, "гость", "гостя", "гостей")}</div>)}
                 {team.idle.length ? <div>В графике, без столов: <span style={{ color: c.text }}>{team.idle.join(", ")}</span></div> : null}
               </div>
             </div> : null}
             {res.length ? <div data-res-list="" style={{ marginTop: 16 }}>
               <div style={{ ...labelStyle(15), color: c.gold, margin: "0 2px 8px" }}>Брони сегодня</div>
-              {res.map((x) => <div key={x.tid} role="button" tabIndex={0} onClick={() => setSel(x.tid)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSel(x.tid); } }} style={{ ...c.frost, padding: "10px 14px", marginBottom: 8, display: "flex", gap: 10, cursor: "pointer" }}>
+              {res.map((x) => <div key={x.tid} role="button" tabIndex={0} data-lens-card="" onClick={() => setSel(x.tid)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSel(x.tid); } }} style={{ ...c.frost, padding: "10px 14px", marginBottom: 8, display: "flex", gap: 10, cursor: "pointer" }}>
                 <span style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, minWidth: 52 }}>{x.rtime}</span>
                 <span style={{ flex: 1, fontSize: 14, color: c.text }}>{x.name || "Без имени"} · {x.cnt} {pl(x.cnt, "гость", "гостя", "гостей")}</span>
                 <span style={{ fontSize: 13, color: c.sub }}>стол {x.n}{multi ? " · " + zName(zoneOfX(plan, tById(x.tid))) : ""}</span>

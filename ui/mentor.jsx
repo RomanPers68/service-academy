@@ -201,7 +201,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
       </div>
 
       {canRevoke && Array.isArray(inbox) ? (
-        <div style={{ ...glass(T), margin: "14px 16px 4px", padding: "14px 14px 6px" }} data-hall-inbox="">
+        <div style={{ ...glass(T), margin: "14px 16px 4px", padding: "14px 14px 6px" }} data-hall-inbox="" data-lens-card="">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
             <span style={{ ...labelStyle(13.5), color: gold }}>Ждут подтверждения в зале</span>
             <b style={{ color: inbox.length ? gold : T.modSub.color, fontSize: 13 }}>{inbox.length}</b>
@@ -216,15 +216,15 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
                 <div style={{ fontSize: 13, color: T.para?.color, lineHeight: 1.45, marginTop: 2 }}>«{r.skill_label || r.skill_id}»<span style={{ color: T.modSub.color }}>{ro ? " · " + ro.label : ""} · {ago(r.created_at)}</span></div>
                 {declineFor === r.id ? (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                    {DECLINE_NOTES.map(n => <button key={n} className="sa-btn" disabled={inboxBusy === r.id} onClick={() => decide(r, false, n)} style={{ padding: "7px 11px", borderRadius: 999, border: `1px solid ${gold}77`, background: "transparent", color: textColor, fontSize: 12.5, cursor: "pointer" }}>{n}</button>)}
-                    <button className="sa-btn" disabled={inboxBusy === r.id} onClick={() => decide(r, false, "")} style={{ padding: "7px 11px", borderRadius: 999, border: `1px solid ${gold}44`, background: "transparent", color: T.modSub.color, fontSize: 12.5, cursor: "pointer" }}>Без записки</button>
+                    {DECLINE_NOTES.map(n => <button key={n} className="sa-btn" data-lens-btn="soft" disabled={inboxBusy === r.id} onClick={() => decide(r, false, n)} style={{ padding: "7px 11px", borderRadius: 999, border: `1px solid ${gold}77`, background: "transparent", color: textColor, fontSize: 12.5, cursor: "pointer" }}>{n}</button>)}
+                    <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" disabled={inboxBusy === r.id} onClick={() => decide(r, false, "")} style={{ padding: "7px 11px", borderRadius: 999, border: `1px solid ${gold}44`, background: "transparent", color: T.modSub.color, fontSize: 12.5, cursor: "pointer" }}>Без записки</button>
                     <button className="sa-btn" onClick={() => setDeclineFor(null)} style={{ padding: "7px 8px", border: 0, background: "none", color: T.modSub.color, fontSize: 12.5, cursor: "pointer" }}>Отмена</button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                     <button className="sa-btn" disabled={inboxBusy === r.id} onClick={() => { if (armed) decide(r, true); else { setArm(r.id); vibrate("light"); } }}
                       style={{ flex: 1, padding: "9px 10px", borderRadius: 999, border: 0, cursor: "pointer", fontSize: 13, fontWeight: "bold", color: "#fff", background: armed ? "#3E9A6B" : green }}>{inboxBusy === r.id ? "…" : armed ? "Точно видел(а)? Нажми ещё раз" : "Видел(а), подтверждаю ✓"}</button>
-                    <button className="sa-btn" disabled={inboxBusy === r.id} onClick={() => { setArm(null); setDeclineFor(r.id); }}
+                    <button className="sa-btn" data-lens-btn="soft" disabled={inboxBusy === r.id} onClick={() => { setArm(null); setDeclineFor(r.id); }}
                       style={{ flexShrink: 0, padding: "9px 12px", borderRadius: 999, border: `1px solid ${gold}77`, background: "transparent", color: textColor, fontSize: 13, cursor: "pointer" }}>Ещё рано</button>
                   </div>
                 )}
@@ -234,7 +234,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
         </div>
       ) : null}
 
-      <div style={{ ...glass(T), margin: "14px 16px 4px", padding: "16px", ...(allDone ? { border: `1px solid ${green}77`, borderTop: `1px solid ${green}99` } : {}) }}>
+      <div data-lens-card={allDone ? "ok" : ""} style={{ ...glass(T), margin: "14px 16px 4px", padding: "16px", ...(allDone ? { border: `1px solid ${green}77`, borderTop: `1px solid ${green}99` } : {}) }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 12.5, color: T.para?.color }}>{roleObj?.label || ""} · допуск</span>
           <b style={{ color: allDone ? green : gold, fontSize: 14 }}>{doneCount} / {skills.length}</b>
@@ -251,10 +251,10 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
         {skills.map((s, i) => {
           const rec = confirmed[s.id];
           return (
-            <div key={s.id} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", alignItems: "flex-start", opacity: 1 }}
+            <div key={s.id} className="sa-card" data-lens-edge="" style={{ ...T.modCard, margin: "0 0 10px", alignItems: "flex-start", opacity: 1 }}
               onClick={() => !rec && setModal(s)} {...onActivate(() => !rec && setModal(s))}>
               {/* v73 (Доп. 386): цветной полоски слева больше нет — «подтверждён» видно по зелёному кружку ✓ и заголовку */}
-              <div data-lens={rec ? undefined : "disc"} style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, border: rec ? "none" : `1.5px solid ${gold}66`, background: rec ? green : "transparent", color: rec ? "#fff" : T.modSub.color, fontSize: rec ? 15 : 13 }}>{rec ? "✓" : i + 1}</div>
+              <div data-lens={rec ? undefined : "disc"} data-lens-ink={rec ? undefined : ""} style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, border: rec ? "none" : `1.5px solid ${gold}66`, background: rec ? green : "transparent", color: rec ? "#fff" : T.modSub.color, fontSize: rec ? 15 : 13 }}>{rec ? "✓" : i + 1}</div>
               <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <div style={{ ...T.modTitle, color: rec ? green : T.modTitle.color }}>{s.label}</div>
                 <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.45 }}>{s.hint}</div>
@@ -283,7 +283,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
             <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Подтверждение навыка</div>
             <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 6, color: T.bold?.color }}>{modal.label}</div>
             {/* Доп. 303: старший подтвердит у себя в телефоне */}
-            <div style={{ margin: "0 0 14px", padding: "12px 12px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.45)" : "rgba(255,250,238,0.04)" }}>
+            <div data-lens-edge="" style={{ margin: "0 0 14px", padding: "12px 12px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.45)" : "rgba(255,250,238,0.04)" }}>
               <div style={{ fontSize: 14, fontWeight: "bold", color: textColor, marginBottom: 4 }}>Старшего нет рядом с твоим телефоном?</div>
               <div style={{ fontSize: 12.5, lineHeight: 1.45, color: T.para?.color, marginBottom: 10 }}>Отправь запрос: старший увидит его у себя в «Наставничестве» и подтвердит, когда посмотрит, как у тебя получается в зале.</div>
               {reqs[modal.id] && reqs[modal.id].status === "pending" ? (
@@ -291,7 +291,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
               ) : hall === "missing" ? (
                 <div style={{ fontSize: 12.5, color: T.modSub.color }}>Заработает, когда владелец обновит сервер. Пока есть PIN ниже.</div>
               ) : (
-                <button className="sa-btn" disabled={busy} onClick={() => askHall(modal)}
+                <button className="sa-btn" data-lens-btn="main" disabled={busy} onClick={() => askHall(modal)}
                   style={{ width: "100%", padding: "11px 14px", borderRadius: 999, border: `1px solid ${gold}`, background: "transparent", color: textColor, fontSize: 14, fontWeight: "bold", cursor: "pointer" }}>{busy ? "Отправляю…" : "Отправить старшему ›"}</button>
               )}
               {hallErr ? <div style={{ color: "#E07878", fontSize: 12.5, marginTop: 8 }}>{hallErr}</div> : null}
@@ -308,6 +308,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
                   onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
                   inputMode="numeric" pattern="[0-9]*" type="password" autoComplete="one-time-code"
                   placeholder="PIN наставника (4–6 цифр)"
+                  data-lens-field={pinErr ? undefined : ""}
                   style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${pinErr ? "#E07878" : gold + "88"}`, borderTop: `1px solid ${pinErr ? "#E07878" : gold + "55"}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, letterSpacing: 6, textAlign: "center", fontFamily: "monospace", outline: "none", marginBottom: pinErr ? 6 : 12 }}
                 />
                 {pinErr && <div style={{ color: "#E07878", fontSize: 12.5, marginBottom: 10, textAlign: "center" }}>{pinErr}</div>}
@@ -322,6 +323,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
                   onChange={e => setMentorName(e.target.value)}
                   onFocus={e => { const el = e.target; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 300); }}
                   placeholder="Фамилия и имя наставника"
+                  data-lens-field=""
                   style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, outline: "none", marginBottom: 8 }}
                 />
                 <div onClick={() => setByName(false)} {...onActivate(() => setByName(false))} style={{ fontSize: 12.5, color: T.modSub?.color || gold, textAlign: "center", marginBottom: 12, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
@@ -334,7 +336,7 @@ export function MentorScreen({ T, a11y, profile, role, roleObj, onBack, onInbox,
               <div style={{ fontSize: 12.5, lineHeight: 1.45, color: T.para?.color }}>Подтверждаю: наблюдал(а) выполнение этого навыка сотрудником в реальной работе.</div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={closeModal}>Отмена</button>
+              <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={closeModal}>Отмена</button>
               <button className="sa-btn" style={{ ...T.doneBtn, flex: 1, background: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? green : gold + "55", color: (byName ? mentorName.trim() && agree : /^[0-9]{4,6}$/.test(pin) && agree && !busy) ? "#fff" : (a11y ? "#735F44" : "#e8dcc0"), transition: "background .25s" }} onClick={byName ? confirm : confirmByPin}>{busy ? "Проверяю…" : "Подтвердить ✓"}</button>
             </div>
           </div>

@@ -159,7 +159,7 @@ export function SOSScreen({ T, a11y, onBack }) {
   return (
     <div style={T.screen} className="sa-screen">
       <div style={{ padding: "18px 18px 26px" }}>
-        <button className="sa-hit" style={T.backBtn} onClick={onBack} {...onActivate(onBack)}>‹ Назад</button>
+        <button className="sa-hit" style={T.backBtn} data-lens="back" aria-label="Назад" onClick={onBack} {...onActivate(onBack)}><span>‹ <span data-lens-hide="">Назад</span></span></button>
         {sHint && sSteps.length ? (
           <HintBubble a11y={a11y} text={sSteps[0]} arrow="up" step={1} total={1}
             onClose={sHintDone} style={{ margin:"10px 0 0" }} />
@@ -183,7 +183,7 @@ export function SOSScreen({ T, a11y, onBack }) {
         </div>
 
         {/* ── Номера — всегда на виду ── */}
-        <div style={{
+        <div data-lens-card="sos" style={{
           display: "flex", alignItems: "center", gap: 10, margin: "12px 0 16px",
           padding: "9px 13px", borderRadius: 12,
           background: a11y ? "rgba(160,56,40,0.07)" : "rgba(224,120,120,0.08)",
@@ -199,7 +199,7 @@ export function SOSScreen({ T, a11y, onBack }) {
         {(() => { const cards = SOS_CARDS.map((c) => {
             const isOpen = open === c.id;
             return (
-              <div key={c.id} style={{ ...glass(T, a11y, isOpen), overflow: "hidden" }}>
+              <div key={c.id} data-lens-card={isOpen ? "sos" : ""} style={{ ...glass(T, a11y, isOpen), overflow: "hidden" }}>
                 <div onClick={() => toggle(c.id)} {...onActivate(() => toggle(c.id))}
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
                   <div data-lens="sos" style={{

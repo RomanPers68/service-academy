@@ -357,6 +357,53 @@ html.sa-lens [data-lens-opt=""]{background:var(--lk-glass)!important;border-colo
 /* «Для чтения»: ответ — светлое стекло (на тёмном стекле буквы А–Г опускались до 4,3) */
 html.sa-lens.sa-light [data-lens-opt=""]{background:rgba(255,255,255,0.55)!important}
 
+/* ── v116: «Смена». Владелец (30.10): «Пройдёмся по приложению, добьём то, что осталось? Чтобы приложение визуально было
+   едино». Вторая часть (v115 «Учусь», v116 «Смена», v117 «Команда и Я»). Чек-листы смены (ui/screens-admin.jsx), SOS
+   (ui/sos.jsx), меню-тренажёр и его режимы, колоды меню и бармена, «Аллергены на скорость», «Как произносить», меню и
+   карта бара для печати, «Сборка руками» и «Сборка» (ui/menu-trainer.jsx, ui/menu-deck.jsx, ui/cocktails.jsx,
+   ui/pronounce.jsx, ui/menu-print.jsx, ui/bar-card-print.jsx, ui/bar-lab.jsx, ui/build.jsx), «Спасибо от гостей»
+   (ui/thanks.jsx), рассадка (ui/seating.jsx) и «Допуск наставника» (ui/mentor.jsx) — метками data-lens-* (правила v111,
+   v113 и v115). Здесь — то, чего не было: «назад» SOS — линза, подпись «Назад» в линзе скрыта (data-lens-hide; вся подпись —
+   в одном span, иначе отступ кнопки встал бы между «‹» и «Назад» и вид «как сейчас» сдвинулся бы); строка
+   номеров и раскрытая карточка SOS — красная кромка и красный свет (data-lens-card="sos"); неверный ответ «Аллергенов на
+   скорость» — красная кромка (data-lens-card="bad"). «Живой диалог» и «Гость недели» (ui/screens-dialogue.jsx, оболочка
+   .sa-dlg.dc, стили по классам): «назад», голос, звук и «вниз» — линзы с кольцом; карточка гостя — кромка, блик и свет;
+   метки гостя и ответы — стекло; «Ещё раз» — стекло, «Дальше» — плашка с кольцом. Аватар гостя с кольцом настроения,
+   реплики, разбор наставника, отзыв гостя (бумага) и бусины — прежние ── */
+html.sa-lens [data-lens-hide]{display:none}
+html.sa-lens [data-lens-card="sos"]{border-color:rgba(var(--lk-sos),0.55)!important;background-image:radial-gradient(120% 70px at 20% 0%,rgba(var(--lk-sos),0.10),transparent 60%)!important}
+html.sa-lens [data-lens-card="bad"]{border-color:rgba(224,120,120,0.7)!important}
+html.sa-lens.sa-light [data-lens-card="bad"]{border-color:rgba(160,56,40,0.6)!important}
+/* «Для чтения»: строка номеров SOS — без красного света (на нём «112» опускалось до 4,4), «SOS» в печати — темнее (4,5) */
+html.sa-lens.sa-light [data-lens-card="sos"]{background-image:none!important}
+html.sa-lens.sa-light [data-lens="sos"]>span{color:#8A3020!important}
+/* стекло с приглушённой подписью (разделы, «назад / дальше» колод, «ориг.», чипсы рассадки): на стекле она опускалась до 4,4 —
+   в линзе подпись золотом (data-lens-ink), у выбранной вкладки — своя */
+html.sa-lens [data-lens-ink]:not([data-lens-btn="tab"]){color:var(--lk-gold)!important}
+html.sa-lens.sa-light [data-lens-ink]:not([data-lens-btn="tab"]){color:#6B4E1A!important}
+html.sa-lens .sa-dlg.dc .dc-back,html.sa-lens .sa-dlg.dc .dc-tool{position:relative}
+html.sa-lens .sa-dlg.dc .dc-back{width:34px;height:34px;margin:0 3px}
+html.sa-lens .sa-dlg.dc .dc-back,html.sa-lens .sa-dlg.dc .dc-tool,html.sa-lens .sa-dlg.dc .dc-down{background:var(--lk-glass);border-color:transparent;color:var(--lk-gold);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .sa-dlg.dc .dc-down{box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.3)}
+html.sa-lens .sa-dlg.dc .dc-tool.on{color:var(--lk-hi);box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens.sa-light .sa-dlg.dc .dc-back,html.sa-lens.sa-light .sa-dlg.dc .dc-tool,html.sa-lens.sa-light .sa-dlg.dc .dc-down{color:#6B4E1A}
+html.sa-lens .sa-dlg.dc .dc-back::after,html.sa-lens .sa-dlg.dc .dc-tool::after,html.sa-lens .sa-dlg.dc .dc-down::after{content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .sa-dlg.dc .dc-intro,html.sa-lens .sa-dlg.dc .dc-load{border-color:var(--lk-edge);background-image:radial-gradient(120% 70px at 20% 0%,var(--lk-light),transparent 60%);
+  box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),var(--lk-shadow)}
+html.sa-lens .sa-dlg.dc .dc-chip{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1px 0 var(--lk-hl)}
+html.sa-lens .sa-dlg.dc .dc-opt:not(.pick){background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens.sa-light .sa-dlg.dc .dc-opt:not(.pick){background:rgba(255,255,255,0.55)}
+html.sa-lens .sa-dlg.dc .dc-send{border-color:var(--lk-rim);box-shadow:inset 0 1px 0 var(--lk-hl)}
+html.sa-lens .sa-dlg.dc .dc-again{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens.sa-light .sa-dlg.dc .dc-again{color:#6B4E1A}
+html.sa-lens .sa-dlg.dc .dc-next{position:relative;color:var(--lk-hi);background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .sa-dlg.dc .dc-next{color:#6B4E1A;background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)}
+html.sa-lens .sa-dlg.dc .dc-next::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light .sa-dlg.dc .dc-next::after{border-color:rgba(139,106,48,0.45)}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

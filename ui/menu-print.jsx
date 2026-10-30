@@ -113,8 +113,8 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
         </div>
       </div>
       <div style={{ padding: "4px 16px 10px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button className="sa-btn" onClick={draw} disabled={busy || !list.length} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold, opacity: busy || !list.length ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
-        <span onClick={() => setWithPhoto(v => !v)} {...onActivate(() => setWithPhoto(v => !v))} style={{ padding: "8px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${withPhoto ? gold : gold + "44"}`, background: withPhoto ? "rgba(214,178,102,0.16)" : "transparent", color: withPhoto ? text : sub }}>{withPhoto ? "С фото ✓" : "Без фото"}</span>
+        <button className="sa-btn" data-lens-btn="main" onClick={draw} disabled={busy || !list.length} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold, opacity: busy || !list.length ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
+        <span data-lens-btn="soft" data-lens-hi={withPhoto ? "" : undefined} onClick={() => setWithPhoto(v => !v)} {...onActivate(() => setWithPhoto(v => !v))} style={{ padding: "8px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${withPhoto ? gold : gold + "44"}`, background: withPhoto ? "rgba(214,178,102,0.16)" : "transparent", color: withPhoto ? text : sub }}>{withPhoto ? "С фото ✓" : "Без фото"}</span>
       </div>
       {hint && <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: gold }}>{hint}</div>}
       <div style={{ padding: "0 16px 8px", fontSize: 12.5, color: sub, lineHeight: 1.5 }}>Блюд: {list.length}, по {PER_PAGE} на страницу. Сохраняется в галерею и уходит в любой мессенджер, коды входа не нужны.</div>

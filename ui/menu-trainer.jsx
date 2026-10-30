@@ -208,7 +208,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Выбери ресторан</div>
       <div style={{ padding: "0 14px" }}>
         {RESTAURANTS.map(r => (
-          <div key={r} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }} onClick={() => setRestaurant(r)} {...onActivate(() => setRestaurant(r))}>
+          <div key={r} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px" }} onClick={() => setRestaurant(r)} {...onActivate(() => setRestaurant(r))}>
             <div style={{ ...T.modTitle, flex: 1 }}>{r}</div>
             <div style={T.modArrow}>›</div>
           </div>
@@ -273,7 +273,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v115</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v116</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -300,7 +300,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Тренировка</div>
       <div className="sa-g2" style={{ padding: "0 14px" }}>
         {newDishes.length > 0 && (
-          <div className="sa-card" data-span="" style={{ ...T.modCard, margin: "0 0 12px", border: `1px solid ${learned ? green : gold}${learned ? "77" : "AA"}` }}
+          <div className="sa-card" data-span="" data-lens-card={learned ? "ok" : "hi"} style={{ ...T.modCard, margin: "0 0 12px", border: `1px solid ${learned ? green : gold}${learned ? "77" : "AA"}` }}
             onClick={startNew} {...onActivate(startNew)}>
             <div style={{ ...iconBox, background: learned ? "rgba(93,187,138,0.14)" : iconBox.background }}>{learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -312,7 +312,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
         )}
         {/* Доп. 282: колода всегда открывается обычной — «Наоборот» включают руками */}
         {modes.map(m => { const isDay = dayKey === m.key; const live = dishes.length || m.any; const open = () => { if (!live) return; if (isDay && m.key === "cards") setFocusNew(false); setMode(m.key); }; return (
-          <div key={m.key} data-menu-mode={m.key} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px", opacity: live ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
+          <div key={m.key} data-menu-mode={m.key} className="sa-card" data-lens-card={isDay ? (dayDone ? "ok" : "hi") : ""} style={{ ...T.modCard, margin: "0 0 10px", opacity: live ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
             onClick={open} {...onActivate(open)}>
             <div style={iconBox}>{m.icon(gold)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -328,7 +328,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
         ); })}
         {/* Доп. 261: меню на лист — учить с бумаги, раздать распечатки */}
         {dishes.length > 0 && (
-          <div className="sa-card" style={{ ...T.modCard, margin: "10px 0" }}
+          <div className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "10px 0" }}
             onClick={() => setMode("print")} {...onActivate(() => setMode("print"))}>
             <div style={iconBox}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg></div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -339,7 +339,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           </div>
         )}
         {canEdit && (
-          <div className="sa-card" style={{ ...T.modCard, margin: "14px 0 10px", border: `1px dashed ${gold}88` }}
+          <div className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "14px 0 10px", border: `1px dashed ${gold}88` }}
             onClick={() => { setEditStart(null); setMode("edit"); }} {...onActivate(() => { setEditStart(null); setMode("edit"); })}>
             <div style={{ ...iconBox, marginLeft: 2 }}>{UI_SVG.pencil(gold, 19)}</div>
             <div style={{ flex: 1 }}>
@@ -350,7 +350,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           </div>
         )}
         {canEdit && (
-          <div className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}
+          <div className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px" }}
             onClick={() => setMode("team")} {...onActivate(() => setMode("team"))}>
             <div style={iconBox}>{UI_SVG.eye(gold, 19)}</div>
             <div style={{ flex: 1 }}>
@@ -408,7 +408,7 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
       {!err && rows && rows.length > 0 && (
         <div style={{ padding: "10px 14px" }}>
           {rows.map((r, i) => (
-            <div key={i} className="sa-card" style={{ ...T.modCard, margin: "0 0 10px" }}>
+            <div key={i} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={T.modTitle}>{r.employee || "Сотрудник"}</div>
                 <div style={{ ...T.modSub, whiteSpace: "normal" }}>{r.status === "passed" ? "Выучил ✓" : "Открыл, ещё учит"} · {fmtDate(r.ts)}</div>
@@ -442,7 +442,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
       <div style={T.screen} className="sa-screen">
         {Head(open.cat || "Блюдо")}
         <div style={{ padding: "8px 16px 100px" }}>
-          <div className="sa-card sa-cardpage-r" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
+          <div className="sa-card sa-cardpage-r" data-lens-card="" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
             <DishPhoto src={open.img} h={190} />
             <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{open.name}</div>
             {String(open.short || "").trim() && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.5, margin: "8px 0 4px", fontStyle: "italic" }}>«{open.short.trim()}»</div>}
@@ -450,11 +450,11 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
           </div>
           {/* Доп. 180: низ как в колодах — капсулы, счётчик одной строкой между ними */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-            <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
+            <button className="sa-btn" onClick={() => go(-1)} data-lens-btn="soft" data-lens-ink="" style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>‹ назад</button>
             <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: sub, letterSpacing: 1, whiteSpace: "nowrap" }}>{i + 1} / {flat.length}</span>
-            <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
+            <button className="sa-btn" onClick={() => go(1)} data-lens-btn="soft" data-lens-ink="" style={{ ...pill(false), padding: "10px 18px", fontSize: 12.5 }}>дальше ›</button>
           </div>
-          <button className="sa-btn" onClick={() => setOpen(null)} style={{ ...pill(false), width: "100%", marginTop: 10, padding: "11px", textAlign: "center", fontSize: 12.5, color: sub }}>К списку</button>
+          <button className="sa-btn" onClick={() => setOpen(null)} data-lens-btn="soft" data-lens-ink="" style={{ ...pill(false), width: "100%", marginTop: 10, padding: "11px", textAlign: "center", fontSize: 12.5, color: sub }}>К списку</button>
         </div>
       </div>
     );
@@ -464,11 +464,11 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
     <div style={T.screen} className="sa-screen">
       {Head("Меню по разделам")}
       <div style={{ padding: "8px 16px 0" }}>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…"
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…" data-lens-field=""
           style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.05)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none" }} />
         <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px", WebkitOverflowScrolling: "touch" }}>
-          <span style={pill(!cat)} onClick={() => setCat("")}>Все · {dishes.filter(d => dishMatches(d, q)).length}</span>
-          {allGroups.map(g => <span key={g.cat} style={pill(cat === g.cat)} onClick={() => setCat(cat === g.cat ? "" : g.cat)}>{g.cat} · {g.items.length}</span>)}
+          <span style={pill(!cat)} data-lens-btn={!cat ? "tab" : "soft"} data-lens-ink="" onClick={() => setCat("")}>Все · {dishes.filter(d => dishMatches(d, q)).length}</span>
+          {allGroups.map(g => <span key={g.cat} style={pill(cat === g.cat)} data-lens-btn={cat === g.cat ? "tab" : "soft"} data-lens-ink="" onClick={() => setCat(cat === g.cat ? "" : g.cat)}>{g.cat} · {g.items.length}</span>)}
         </div>
       </div>
       <div style={{ padding: "4px 16px 100px" }}>
@@ -477,7 +477,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
           <div key={g.cat} style={{ marginTop: 12 }}>
             <div style={{ ...labelStyle(13.5), color: gold, margin: "0 2px 8px" }}>{g.cat} · {g.items.length}</div>
             {g.items.map(d => (
-              <div key={d.id} className="sa-card" onClick={() => { setOpen(d); vibrate("light"); }} {...onActivate(() => setOpen(d))}
+              <div key={d.id} className="sa-card" onClick={() => { setOpen(d); vibrate("light"); }} {...onActivate(() => setOpen(d))} data-lens-card=""
                 style={{ ...glass(T), display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
                 {d.img
                   ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
@@ -568,14 +568,14 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
       {Head("Флеш-карточки")}
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-          <div style={{ width: 76, height: 76, borderRadius: "50%", background: `${gold}1F`, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>{UI_SVG.trophy(gold, 38)}</div>
+          <div data-lens="glyph" style={{ width: 76, height: 76, borderRadius: "50%", background: `${gold}1F`, border: `1px solid ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>{UI_SVG.trophy(gold, 38)}</div>
         </div>
         <div style={{ ...T.bold, marginBottom: 8 }}>Колода пройдена</div>
         <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>Знал сразу: {known} из {total}{repeats ? ` · повторов: ${repeats}` : ""}</div>
         {onLearned && (
           <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: green, width: "100%", marginBottom: 10 }} onClick={onLearned}>Выучил новинки ✓</button>
         )}
-        <button className="sa-btn" style={{ ...T.doneBtn, background: onLearned ? "transparent" : gold, border: onLearned ? `1px solid ${gold}88` : "none", color: onLearned ? (T.para?.color || "#F5EFE2") : (T.doneBtn?.color || "#fff"), padding: "13px 30px", width: "100%" }} onClick={() => { setDeck(shuffleArray(dishes)); setKnown(0); setRepeats(0); setFlipped(false); }}>Ещё раз</button>
+        <button className="sa-btn" data-lens-btn={onLearned ? "soft" : "main"} style={{ ...T.doneBtn, background: onLearned ? "transparent" : gold, border: onLearned ? `1px solid ${gold}88` : "none", color: onLearned ? (T.para?.color || "#F5EFE2") : (T.doneBtn?.color || "#fff"), padding: "13px 30px", width: "100%" }} onClick={() => { setDeck(shuffleArray(dishes)); setKnown(0); setRepeats(0); setFlipped(false); }}>Ещё раз</button>
       </div>
     </div>
   );
@@ -593,7 +593,7 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
       {Head("Флеш-карточки")}
       <div style={{ padding: "6px 18px", color: T.modSub.color, fontSize: 12.5 }}>Осталось в колоде: {deck.length} · {restaurant}</div>
       <div style={{ padding: "8px 16px" }}>
-        <div key={`${deck.length}_${d.name || ""}`} className="sa-card sa-cardpage-r" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default", overflow: "hidden" }}>
+        <div key={`${deck.length}_${d.name || ""}`} className="sa-card sa-cardpage-r" onClick={() => !flipped && setFlipped(true)} {...(!flipped ? onActivate(() => setFlipped(true)) : {})} data-lens-card="" style={{ ...glass(T), padding: "22px 18px", minHeight: 220, cursor: !flipped ? "pointer" : "default", overflow: "hidden" }}>
           <DishPhoto src={d.img} h={flipped ? 120 : 175} />
           <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>{d.cat || "Блюдо"}</div>
           <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{d.name}</div>
@@ -606,7 +606,7 @@ function FlashCards({ T, gold, green, red, dishes, Head, restaurant, onLearned }
       </div>
       <div style={{ padding: "4px 16px 20px", display: "flex", gap: 10 }}>
         {!flipped ? (
-          <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setFlipped(true)}>Развернуть ↻</button>
+          <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setFlipped(true)}>Развернуть ↻</button>
         ) : (
           <>
             <button className="sa-btn" style={{ ...T.doneBtn, background: red, flex: 1 }} onClick={() => answer(false)}>Не знал ↻</button>
@@ -695,7 +695,7 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
           </div>
           <div style={{ ...T.bold, fontSize: 21, marginBottom: 8 }}>{score} из {questions.length}</div>
           <div style={{ color: T.modSub.color, fontSize: 14, marginBottom: 20 }}>{pct >= 80 ? "Меню знаешь хорошо." : pct >= 50 ? "Неплохо, но повтори Колоду меню." : "Пройди Колоду меню и возвращайся."}</div>
-          <button className="sa-btn" style={{ ...T.doneBtn, background: gold, padding: "13px 30px" }} onClick={() => { setQuestions(buildQuiz(dishes)); setStep(0); setScore(0); setPick(null); }}>Ещё раз</button>
+          <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: gold, padding: "13px 30px" }} onClick={() => { setQuestions(buildQuiz(dishes)); setStep(0); setScore(0); setPick(null); }}>Ещё раз</button>
         </div>
       </div>
     );
@@ -716,10 +716,10 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
             else if (i === pick) st = { ...st, background: "rgba(224,120,120,0.15)", border: `1px solid ${red}` };
             else st = { ...st, opacity: 0.5 };
           }
-          return <div key={i} className="sa-opt" style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
+          return <div key={i} className="sa-opt" data-lens-opt={pick === null ? "" : i === q.correct ? "ok" : i === pick ? "bad" : ""} style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
         })}
         {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
-        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={() => { setPick(null); setStep(s => s + 1); }}>Дальше →</button>}
+        {pick !== null && <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={() => { setPick(null); setStep(s => s + 1); }}>Дальше →</button>}
       </div>
     </div>
   );
@@ -741,7 +741,7 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
     <div style={T.screen} className="sa-screen">
       {Head("Опиши за 60 секунд")}
       <div style={{ padding: "8px 16px" }}>
-        <div key={dish.name} className="sa-cardpage-r" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
+        <div key={dish.name} className="sa-cardpage-r" data-lens-card="" style={{ ...glass(T), padding: "22px 18px", overflow: "hidden" }}>
           <DishPhoto src={dish.img} h={165} />
           <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>{dish.cat || "Блюдо"} · {restaurant}</div>
           <div style={{ fontSize: 21, fontWeight: "bold", marginBottom: 12, color: T.bold?.color }}>{dish.name}</div>
@@ -775,9 +775,9 @@ function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
         </div>
       </div>
       <div style={{ padding: "4px 16px 20px", display: "flex", gap: 10 }}>
-        {phase === "ready" && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setPhase("speaking")}>Старт ›</button>}
+        {phase === "ready" && <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={() => setPhase("speaking")}>Старт ›</button>}
         {phase === "speaking" && <button className="sa-btn" style={{ ...T.doneBtn, background: green, flex: 1 }} onClick={() => setPhase("compare")}>Я закончил(а)</button>}
-        {phase === "compare" && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={nextDish}>Следующее блюдо →</button>}
+        {phase === "compare" && <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: gold, flex: 1 }} onClick={nextDish}>Следующее блюдо →</button>}
       </div>
     </div>
   );

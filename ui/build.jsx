@@ -579,9 +579,9 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
               ))}
             </div>
           )}
-          <button style={btn} className="sa-btn" onClick={() => restart(false)}>Собрать заново</button>
-          <button style={ghost} className="sa-btn" onClick={() => restart(true)}>Пересобрать этот же сценарий</button>
-          <button style={{ ...ghost, borderColor: a11y ? "rgba(107,78,26,0.3)" : "rgba(255,255,255,0.14)", color: P.faint }} className="sa-btn" onClick={() => onClose && onClose()}>
+          <button style={btn} className="sa-btn" data-lens-btn="main" onClick={() => restart(false)}>Собрать заново</button>
+          <button style={ghost} className="sa-btn" data-lens-btn="soft" onClick={() => restart(true)}>Пересобрать этот же сценарий</button>
+          <button style={{ ...ghost, borderColor: a11y ? "rgba(107,78,26,0.3)" : "rgba(255,255,255,0.14)", color: P.faint }} className="sa-btn" data-lens-btn="soft" onClick={() => onClose && onClose()}>
             Готово
           </button>
         </div>
@@ -606,7 +606,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
         {cur.options.map((o, i) => {
           const state = answered == null ? null : o.ok ? "win" : i === answered ? "lose" : "off";
           return (
-            <button key={i} className={"sa-bld-opt" + (state ? " " + state : "") + (state === "win" ? " pop" : "")} disabled={answered != null}
+            <button key={i} className={"sa-bld-opt" + (state ? " " + state : "") + (state === "win" ? " pop" : "")} disabled={answered != null} data-lens-opt={state === "win" ? "ok" : state === "lose" ? "bad" : ""}
               onClick={answered == null ? () => choose(i, o.ok) : undefined}
               style={{ ...(T.simOpt || {}), ...optState(state) }}>
               <span className="sa-bld-optk" style={optKey(state)}>{"ABCD"[i]}</span>
@@ -647,7 +647,7 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
         </div>
 
         {answered != null && (
-          <button style={btn} className="sa-btn" onClick={next}>
+          <button style={btn} className="sa-btn" data-lens-btn="main" onClick={next}>
             {step < total - 1 ? "Дальше" : "Показать итог"}
           </button>
         )}

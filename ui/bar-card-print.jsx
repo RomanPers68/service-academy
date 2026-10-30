@@ -139,9 +139,9 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
         </div>
       </div>
       <div style={{ padding: "4px 16px 12px", display: "flex", gap: 8 }} className="sa-noprint">
-        <button className="sa-btn" onClick={drawSheet} disabled={busy} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold, opacity: busy ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
-        <button className="sa-btn" onClick={copy} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}88`, color: text }}>{copied ? "Скопировано ✓" : "Текстом"}</button>
-        <button className="sa-btn" onClick={print} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}55`, color: sub }}>{inTelegram ? "В браузере" : "Печать"}</button>
+        <button className="sa-btn" data-lens-btn="main" onClick={drawSheet} disabled={busy} style={{ ...T.doneBtn, flex: 1.4, marginTop: 2, background: gold, opacity: busy ? 0.6 : 1 }}>{busy ? "Собираю…" : "Картинкой"}</button>
+        <button className="sa-btn" data-lens-btn="soft" onClick={copy} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}88`, color: text }}>{copied ? "Скопировано ✓" : "Текстом"}</button>
+        <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" onClick={print} style={{ ...T.doneBtn, flex: 1, marginTop: 2, background: "transparent", border: `1px solid ${gold}55`, color: sub }}>{inTelegram ? "В браузере" : "Печать"}</button>
       </div>
       {hint && <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: gold, lineHeight: 1.5 }} className="sa-noprint">{hint}</div>}
       <div style={{ padding: "0 16px 6px", fontSize: 12.5, color: sub, lineHeight: 1.5 }} className="sa-noprint">Коктейлей в карте без стопа: {list.length}. «Картинкой» соберёт лист PNG: сохрани в галерею или отправь в чат, вход не нужен. {inTelegram ? "Для PDF нажми «В браузере» (там придётся войти заново)." : "«Печать» откроет системный диалог."}</div>

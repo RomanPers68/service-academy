@@ -138,8 +138,8 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 14px 8px" }}>
         <div className="sa-hit" onClick={onBack} {...onActivate(onBack)} data-lens="back" style={{ cursor:"pointer", color:C.gold, fontSize:25, lineHeight:1, padding:"0 6px" }}>‹</div>
         <div style={{ flex:1, color:C.text, fontFamily:serif, fontSize:18, fontWeight:"bold" }}>Чек-листы смены</div>
-        {canEdit && !edit && <div ref={clRefEdit} onClick={startEdit} {...onActivate(startEdit)} style={{ cursor:"pointer", color:C.gold, fontSize:12.5, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:18, padding:"5px 12px" }}>✎ Править</div>}
-        {edit && <div onClick={()=>setEdit(false)} {...onActivate(()=>setEdit(false))} style={{ cursor:"pointer", color:C.muted, fontSize:12.5, padding:"5px 10px" }}>Отмена</div>}
+        {canEdit && !edit && <div ref={clRefEdit} onClick={startEdit} {...onActivate(startEdit)} data-lens-btn="soft" style={{ cursor:"pointer", color:C.gold, fontSize:12.5, fontWeight:"bold", border:`1px solid ${C.gold}55`, borderRadius:18, padding:"5px 12px" }}>✎ Править</div>}
+        {edit && <div onClick={()=>setEdit(false)} {...onActivate(()=>setEdit(false))} data-lens-btn="soft" data-lens-ink="" style={{ cursor:"pointer", color:C.muted, fontSize:12.5, padding:"5px 10px" }}>Отмена</div>}
       </div>
 
       {/* Под шапкой, а не внутри неё: шапка — флекс-ряд, пузырь там сжимается.
@@ -164,8 +164,8 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
           <>
             <div style={{ color:C.muted, fontSize:12.5, marginBottom:12, lineHeight:1.5 }}>Правишь под своё заведение{profile?.restaurant?` · ${profile.restaurant}`:""}. Изменения применятся только к твоему ресторану.</div>
             {draft.map((it,i)=>(
-              <div key={it.id} style={{ ...itemCard, padding:"8px 8px 8px 12px", display:"flex", alignItems:"center", gap:6 }}>
-                <input value={it.text} onChange={e=>dEdit(i,e.target.value)} placeholder="Текст пункта…" style={{ flex:1, minWidth:0, background:a11y?"rgba(255,250,238,0.7)":"rgba(30,24,14,0.6)", border:`1px solid ${C.border}`, borderRadius:9, padding:"9px 11px", color:C.text, fontSize:14, fontFamily:"-apple-system, sans-serif" }} />
+              <div key={it.id} data-lens-card="" style={{ ...itemCard, padding:"8px 8px 8px 12px", display:"flex", alignItems:"center", gap:6 }}>
+                <input value={it.text} onChange={e=>dEdit(i,e.target.value)} placeholder="Текст пункта…" data-lens-field="" style={{ flex:1, minWidth:0, background:a11y?"rgba(255,250,238,0.7)":"rgba(30,24,14,0.6)", border:`1px solid ${C.border}`, borderRadius:9, padding:"9px 11px", color:C.text, fontSize:14, fontFamily:"-apple-system, sans-serif" }} />
                 <div style={{ display:"flex", flexDirection:"column" }}>
                   <button onClick={()=>dMove(i,-1)} style={{ ...iconBtn, opacity:i===0?0.3:1 }}>▲</button>
                   <button onClick={()=>dMove(i,1)} style={{ ...iconBtn, opacity:i===draft.length-1?0.3:1 }}>▼</button>
@@ -173,8 +173,8 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
                 <button onClick={()=>dDel(i)} style={{ ...iconBtn, width:26, height:26, color:"#B5683A", fontSize:14 }}>✕</button>
               </div>
             ))}
-            <button onClick={dAdd} style={{ width:"100%", padding:"12px", borderRadius:12, border:`1.5px dashed ${C.gold}`, background:"transparent", color:C.gold, fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", marginTop:2 }}>+ Добавить пункт</button>
-            <button onClick={saveEdit} disabled={saving} style={{ width:"100%", marginTop:12, padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C8A96E,#7A5D2A)", color:"#fff", fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Сохраняю…":"Сохранить чек-лист"}</button>
+            <button onClick={dAdd} data-lens-btn="soft" style={{ width:"100%", padding:"12px", borderRadius:12, border:`1.5px dashed ${C.gold}`, background:"transparent", color:C.gold, fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", marginTop:2 }}>+ Добавить пункт</button>
+            <button onClick={saveEdit} disabled={saving} data-lens-btn="main" style={{ width:"100%", marginTop:12, padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C8A96E,#7A5D2A)", color:"#fff", fontFamily:serif, fontSize:14, fontWeight:"bold", cursor:"pointer", opacity:saving?0.6:1 }}>{saving?"Сохраняю…":"Сохранить чек-лист"}</button>
           </>
         ) : (
           <>
@@ -185,7 +185,7 @@ export function ChecklistScreen({ T, a11y, profile, onBack }) {
               <span style={{ color:C.muted, fontSize:12.5, fontWeight:"bold" }}>{doneCount}/{items.length}</span>
             </div>
             {items.map(it=>{ const on=checked.includes(it.id); return (
-              <div key={it.id} onClick={()=>toggle(it.id)} {...onActivate(()=>toggle(it.id))} style={{ ...itemCard, padding:"13px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+              <div key={it.id} onClick={()=>toggle(it.id)} {...onActivate(()=>toggle(it.id))} data-lens-card="" style={{ ...itemCard, padding:"13px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
                 <div style={{ width:23, height:23, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:on?"radial-gradient(circle at 35% 30%, #4FB484, #2A6B45 72%)":"transparent", border:on?"none":`2px solid ${trackBg}`, color:"#fff", fontSize:12.5, fontWeight:"bold" }}>{on?"✓":""}</div>
                 <span style={{ flex:1, color:on?C.muted:C.text, fontSize:14, lineHeight:1.4, textDecoration:on?"line-through":"none" }}>{it.text}</span>
               </div>

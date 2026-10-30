@@ -10,7 +10,8 @@ const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\
 const dashes = (s) => (code(s).match(/[А-Яа-яЁё»)"]\s—\s[А-Яа-яЁё«]/g) || []).length;
 const count = (s, sub) => s.split(sub).length - 1;
 const LOOK = rd("ui/home-look.jsx");
-const V115 = LOOK.slice(LOOK.indexOf("/* ── v115"), LOOK.lastIndexOf("`;"));
+// раздел v115 — до раздела v116 (если он есть)
+const V115 = LOOK.slice(LOOK.indexOf("/* ── v115"), LOOK.indexOf("/* ── v116") > 0 ? LOOK.indexOf("/* ── v116") : LOOK.lastIndexOf("`;"));
 const rules = code(V115).split("}").map((r) => r.trim()).filter(Boolean);
 const sels = rules.map((r) => r.split("{")[0].trim()).flatMap((s) => s.split(",").map((x) => x.trim()));
 // строка исходника, где стоит подпись кнопки (кнопка целиком на одной строке)
@@ -130,9 +131,9 @@ describe("v115: разметка «Учусь»", () => {
 });
 
 describe("v115: тексты", () => {
-  it("без тире-ритма и эмодзи в правилах; метка — v115", () => {
+  it("без тире-ритма и эмодзи в правилах; метка — v115 и позже", () => {
     expect(code(LOOK)).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     expect(dashes(LOOK)).toBe(0);
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v115</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(11[5-9]|1[2-9]\d|[2-9]\d\d)<\/span>/);
   });
 });

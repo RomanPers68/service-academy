@@ -201,9 +201,9 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
             <span style={iconBtn(view === "index")} data-lens={view === "index" ? undefined : "disc"} onClick={() => setView(v => v === "index" ? "cards" : "index")} {...onActivate(() => setView(v => v === "index" ? "cards" : "index"))} aria-label={view === "index" ? "Карточки" : "Список"}>{ic("M4 6h16M4 12h16M4 18h10")}</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-            <div ref={ckRefMode} style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
-              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
-              <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
+            <div ref={ckRefMode} data-lens-seg="flat" style={{ display:"flex", border:`1px solid ${glass.bd}`, borderRadius:999, padding:3, background:glass.bg, gap:2 }}>
+              <span style={{ ...pill(mode === "deck"), border:"none", padding:"6px 12px" }} data-lens-btn={mode === "deck" ? "tab" : undefined} onClick={() => { setMode("deck"); setIdx(0); setFlip(false); }}>Колода</span>
+              <span style={{ ...pill(mode === "quiz"), border:"none", padding:"6px 12px" }} data-lens-btn={mode === "quiz" ? "tab" : undefined} onClick={() => { setMode("quiz"); setIdx(0); setFlip(false); }}>Знаю?{due.length ? ` · ${due.length}` : ""}</span>
             </div>
             <span style={{ marginLeft:"auto", display:"flex", gap:10, whiteSpace:"nowrap" }}>
               {onEdit && canEdit ? <span ref={ckRefOwn} style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
@@ -213,25 +213,25 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
           </div>
           {(barcard || house.length > 0) && (
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, fontSize:11, color:glass.sub }}>
-              {barcard && <span style={{ ...pill(onlyCard), padding:"4px 10px", fontSize:11 }} onClick={() => setOnlyCard(v => !v)}>{onlyCard ? `Своя карта · ${pool.length}` : "Все коктейли"}</span>}
-              {canEdit && onPrint && <span style={{ ...pill(false), padding:"4px 10px", fontSize:11 }} onClick={() => onPrint()}>Печать карты ›</span>}
+              {barcard && <span style={{ ...pill(onlyCard), padding:"4px 10px", fontSize:11 }} data-lens-btn={onlyCard ? "tab" : "soft"} data-lens-ink="" onClick={() => setOnlyCard(v => !v)}>{onlyCard ? `Своя карта · ${pool.length}` : "Все коктейли"}</span>}
+              {canEdit && onPrint && <span style={{ ...pill(false), padding:"4px 10px", fontSize:11 }} data-lens-btn="soft" data-lens-ink="" onClick={() => onPrint()}>Печать карты ›</span>}
               {house.length > 0 && <span>{house.length} своих из меню</span>}
               {pubMsg && <span style={{ color: /✓/.test(pubMsg) ? "#5DBB8A" : "#E07878" }}>{pubMsg}</span>}
             </div>
           )}
           {open && (
             <div className="sa-fadein" style={{ marginBottom:12 }}>
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…" autoFocus={filters && !q}
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…" autoFocus={filters && !q} data-lens-field=""
                 style={{ width:"100%", padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
                   fontFamily:"Georgia, serif", fontSize:12.5, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
               <div className="sa-hscroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2, WebkitOverflowScrolling:"touch" }}>
-                <span style={{ ...pill(reverse), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
-                <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase("")}>Все · {ALL.filter(c => matches(c, q)).length}</span>
-                {house.length > 0 && <span style={{ ...pill(base === "Свои"), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase(base === "Свои" ? "" : "Свои")}>Свои · {house.length}</span>}
+                <span style={{ ...pill(reverse), padding:"4px 10px", fontSize:11, flexShrink:0 }} data-lens-btn={reverse ? "tab" : "soft"} data-lens-ink="" onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
+                <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} data-lens-btn={!base ? "tab" : "soft"} data-lens-ink="" onClick={() => setBase("")}>Все · {ALL.filter(c => matches(c, q)).length}</span>
+                {house.length > 0 && <span style={{ ...pill(base === "Свои"), padding:"4px 10px", fontSize:11, flexShrink:0 }} data-lens-btn={base === "Свои" ? "tab" : "soft"} data-lens-ink="" onClick={() => setBase(base === "Свои" ? "" : "Свои")}>Свои · {house.length}</span>}
                 {BASES.map(b => {
                   const n = COCKTAILS.filter(c => matches(c, q) && baseOf(c) === b).length;
                   if (!n) return null;
-                  return <span key={b} style={{ ...pill(base === b), padding:"4px 10px", fontSize:11, flexShrink:0 }} onClick={() => setBase(base === b ? "" : b)}>{b} · {n}</span>;
+                  return <span key={b} style={{ ...pill(base === b), padding:"4px 10px", fontSize:11, flexShrink:0 }} data-lens-btn={base === b ? "tab" : "soft"} data-lens-ink="" onClick={() => setBase(base === b ? "" : b)}>{b} · {n}</span>;
                 })}
               </div>
             </div>
@@ -250,7 +250,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
       {view === "index" ? (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:8 }}>
           {pool.map((x, i) => (
-            <div key={x.id} onClick={() => { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); }}
+            <div key={x.id} data-lens-card="" onClick={() => { setIdx(i); setFlip(false); setView("cards"); vibrate("light"); }}
               style={{ ...card, padding:"10px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ width:14, height:14, borderRadius:6, flexShrink:0, background:`linear-gradient(180deg,${x.color[0]},${x.color[1]})`, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.25)" }} />
               <span style={{ minWidth:0 }}>
@@ -274,7 +274,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
           onClick={() => { if (moved.current || busy.current) return; toggleFlip(); vibrate("light"); }}
           style={{ cursor:"pointer", willChange:"transform, opacity", touchAction:"pan-y" }}>
           <div className={"sa-ck-inner" + (settled ? " sa-ck-settled" : "")} style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
-            <div className="sa-ck-face sa-ck-front" style={{ ...card, padding:16 }}>
+            <div className="sa-ck-face sa-ck-front" data-lens-edge="" style={{ ...card, padding:16 }}>
             <div style={{ textAlign:"center" }}>
               {reverse
                 ? <>
@@ -291,7 +291,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 {/* v73 (Доп. 386): бирки — курсивом строчными; переключатель «В карту бара» — кнопка, прямым Georgia */}
                 {c.house && <span style={{ ...labelStyle(13), color:"#5DBB8A", border:"1px solid #5DBB8A66", borderRadius:999, padding:"2px 9px" }}>свой · из меню</span>}
                 {c.stop && <span style={{ ...labelStyle(13), color:"#E07878", border:"1px solid #E0787866", borderRadius:999, padding:"2px 9px" }}>в стопе</span>}
-                {!c.house && canEdit && restaurant && <span onClick={(e) => { e.stopPropagation(); toggleCard(c.id); }} style={{ fontFamily:"Georgia, serif", fontSize:13, cursor:"pointer", color: inCard(c) ? GOLD : glass.sub, border:`1px solid ${inCard(c) ? GOLD : glass.bd}`, borderRadius:999, padding:"2px 9px" }}>{inCard(c) ? "✓ В карте бара" : "+ В карту бара"}</span>}
+                {!c.house && canEdit && restaurant && <span onClick={(e) => { e.stopPropagation(); toggleCard(c.id); }} data-lens-btn="soft" data-lens-hi={inCard(c) ? "" : undefined} style={{ fontFamily:"Georgia, serif", fontSize:13, cursor:"pointer", color: inCard(c) ? GOLD : glass.sub, border:`1px solid ${inCard(c) ? GOLD : glass.bd}`, borderRadius:999, padding:"2px 9px" }}>{inCard(c) ? "✓ В карте бара" : "+ В карту бара"}</span>}
                 {!c.house && !canEdit && barcard && !inCard(c) && <span style={{ ...labelStyle(13), color:glass.sub, border:`1px solid ${glass.bd}`, borderRadius:999, padding:"2px 9px" }}>не в карте · эрудиция</span>}
               </div>
               {/* Доп. 242: у своего коктейля с фото — фото на лице, витраж в углу (он живёт в Сборке и указателе) */}
@@ -308,7 +308,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               <div style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:12.5, color:glass.sub, marginTop:10 }}>рецепт по тапу</div>
             </div>
             </div>
-            <div className="sa-ck-face sa-ck-back" style={{ ...card, padding:16 }}>
+            <div className="sa-ck-face sa-ck-back" data-lens-edge="" style={{ ...card, padding:16 }}>
             <div style={{ fontFamily:"Georgia, serif", color:glass.tx, fontSize:14, lineHeight:1.55 }}>
               <div style={{ fontSize:21, letterSpacing:1, textTransform:"uppercase", marginBottom:2 }}>{c.name}</div>
               <div style={{ ...labelStyle(13), color:GOLD, marginBottom:10 }}>{GLASS_RU[c.glass]} · {c.method}</div>
@@ -339,21 +339,21 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               {c.house && !c.full && onOpenDish && <div onClick={(e) => { e.stopPropagation(); onOpenDish(c.menuId); }} style={{ marginTop:10, fontSize:12.5, color:GOLD, cursor:"pointer" }}>Карточка в меню: фото и описание ›</div>}
               {/* v97 (Доп. 410): коктейль — в чат команды карточкой, коллега откроет его в своей Колоде бармена */}
               {onShareChat ? <div style={{ marginTop:10 }}><span role="button" tabIndex={0} data-share-chat={"cocktail:" + c.id} onClick={(e) => { e.stopPropagation(); vibrate("light"); onShareChat(cocktailShareItem(c)); }}
-                {...onActivate(() => onShareChat(cocktailShareItem(c)))} style={{ ...pill(false), fontSize:11.5, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}>{CHAT_SHARE_IC(GOLD)}Поделиться в чат</span></div> : null}
+                {...onActivate(() => onShareChat(cocktailShareItem(c)))} data-lens-btn="soft" style={{ ...pill(false), fontSize:11.5, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}>{CHAT_SHARE_IC(GOLD)}Поделиться в чат</span></div> : null}
               {c.house && canEdit && onEdit && <div onClick={(e) => { e.stopPropagation(); onEdit(c.full ? c.id : null); }} style={{ marginTop:8, fontSize:12.5, color:GOLD, cursor:"pointer" }}>{c.full ? "Править в редакторе ›" : "Дописать спек в редакторе ›"}</div>}
               {(() => { const fam = familyOf(c, ALL); return fam ? (
                 <div style={{ marginTop:10 }}>
                   <div style={{ ...labelStyle(13), color:GOLD, marginBottom:4 }}>{fam.title}</div>
                   <div style={{ fontSize:12.5, color:glass.sub, lineHeight:1.45, marginBottom:6 }}>{fam.note}</div>
-                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); jumpTo(x.id); }} style={{ ...pill(false), fontSize:11, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:6, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); jumpTo(x.id); }} data-lens-btn="soft" style={{ ...pill(false), fontSize:11, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:6, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
                 </div>) : null; })()}
               {(() => { const links = dishLinks(c.pair, shared); return links.length && onOpenDish ? (
                 <div style={{ marginTop:8 }}>
                   <div style={{ ...labelStyle(13), color:GOLD, marginBottom:6 }}>Из вашего меню</div>
-                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenDish(l.id); }} style={{ ...pill(false), fontSize:11, color:glass.tx }}>{l.name} ›</span>)}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{links.map(l => <span key={l.id} onClick={(e) => { e.stopPropagation(); onOpenDish(l.id); }} data-lens-btn="soft" style={{ ...pill(false), fontSize:11, color:glass.tx }}>{l.name} ›</span>)}</div>
                 </div>) : null; })()}
               {onBuild && (!c.house || c.full) && (() => { let lv = 0; try { const m = JSON.parse(localStorage.getItem("sa_bar_mastery" + (window.__saUk || "")) || "{}"); lv = (m[c.id] && m[c.id].level) || 0; } catch (e) {}
-                return <div onClick={(e) => { e.stopPropagation(); onBuild(c.id); }} {...onActivate(() => onBuild(c.id))} style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:12, border:`1px solid ${GOLD}66`, background:"rgba(214,178,102,0.10)", cursor:"pointer" }}>
+                return <div onClick={(e) => { e.stopPropagation(); onBuild(c.id); }} {...onActivate(() => onBuild(c.id))} data-lens-btn="main" style={{ marginTop:10, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:12, border:`1px solid ${GOLD}66`, background:"rgba(214,178,102,0.10)", cursor:"pointer" }}>
                   <span style={{ fontFamily:"Georgia, serif", fontSize:14, color:glass.tx }}>{lv >= 3 ? "Мастер · собрать ещё" : lv === 2 ? "Печать · собрать ещё" : "Собрать руками"}</span>
                   <span style={{ color:GOLD, fontSize:16 }}>›</span>
                 </div>; })()}
@@ -375,13 +375,13 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
       {c && mode === "quiz" && flip ? (
         <div style={{ display:"flex", gap:10, marginTop:12 }}>
           <button className="sa-btn" onClick={() => mark(false)} style={{ ...pill(false), flex:1, padding:"12px", textAlign:"center", color:"#D96A5E", borderColor:"#D96A5E66" }}>Повторить</button>
-          <button className="sa-btn" onClick={() => mark(true)} style={{ ...pill(true), flex:1, padding:"12px", textAlign:"center" }}>Знал</button>
+          <button className="sa-btn" data-lens-btn="main" onClick={() => mark(true)} style={{ ...pill(true), flex:1, padding:"12px", textAlign:"center" }}>Знал</button>
         </div>
       ) : c ? (
         <div style={{ display:"flex", justifyContent:"space-between", marginTop:12 }}>
-          <button className="sa-btn" onClick={() => go(-1)} style={{ ...pill(false), padding:"10px 18px" }}>‹ назад</button>
+          <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" onClick={() => go(-1)} style={{ ...pill(false), padding:"10px 18px" }}>‹ назад</button>
           <span style={{ alignSelf:"center", ...labelStyle(13), color:glass.sub }}>Свайп · листать</span>
-          <button className="sa-btn" onClick={() => go(1)} style={{ ...pill(false), padding:"10px 18px" }}>дальше ›</button>
+          <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" onClick={() => go(1)} style={{ ...pill(false), padding:"10px 18px" }}>дальше ›</button>
         </div>
       ) : null}
       </div>

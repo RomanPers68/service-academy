@@ -303,8 +303,9 @@ function useScrollBody(dep) {
 }
 
 // inline — без портала (дымовой тест на сервере, встраивание); обычно — слой поверх приложения
-function shell(children, vars, inline) {
-  const el = <div className="tb" style={vars}>{children}</div>;
+// v112 (Доп. 425): cls — свой класс оболочки (у радио — tb-radio: по нему линза в ui/home-look.jsx, «Живой гость» и урок у стола не задеты)
+function shell(children, vars, inline, cls = "") {
+  const el = <div className={"tb" + (cls ? " " + cls : "")} style={vars}>{children}</div>;
   return inline ? el : createPortal(el, document.body);
 }
 function roleVars(color, a11y) {

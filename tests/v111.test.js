@@ -204,6 +204,6 @@ describe("v111: тексты и метка", () => {
       expect(dashes(rd(f)), f).toBe(0);
       expect(code(rd(f)), f).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
     }
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v111</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(11[1-9]|1[2-9]\d|[2-9]\d\d)<\/span>/);   // v111 и позже
   });
 });

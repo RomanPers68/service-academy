@@ -13,6 +13,8 @@
 // v33 (Доп. 340–341): «тихая дорожка» v32 для беззвучного режима убрана — в Telegram на iPhone она
 // обрывала голос через секунду; телефон отказался читать — радио говорит почему (код ошибки);
 // обложка возвращается на место кадрами (без «пропадания» на iPhone).
+// v112 (Доп. 425): в виде «Линза» — линзами кнопки, обложка, вкладки выпусков, пластинка (кольцо вокруг) и «К вопросам»
+// (оболочка tb-radio, правила — ui/home-look.jsx, раздел v112); деления фраз, точки выпусков и переключатели — прежние.
 import React from "react";
 import { tableShell, tableVars } from "./table";
 import { Ic } from "./table-bits";
@@ -515,7 +517,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
           <div className="tb-host"><span className="tb-av" aria-hidden="true"><Ic n="speaker" s={18} /></span><span className="tb-host-t"><b>Радио в дорогу</b><span>выпусков пока нет</span></span></div>
         </div></div>
         <div className="tb-body"><div className="tb-col"><p className="rd-note">Выпуски собираются из текстовых уроков трека. Открой трек, и радио появится.</p></div></div>
-      </>, vars, inline);
+      </>, vars, inline, "tb-radio");
   }
   const right = quiz.filter((q, i) => answers[i] === q.correct).length;
   const sound = canSpeak() || liveOk === true;
@@ -683,7 +685,7 @@ export function RadioScreen({ a11y, uk, color, episodes = [], onMistakes, onActi
         ) : null}
         {phase !== "air" ? <button type="button" className="tb-ghost" onClick={onClose}>Закрыть радио</button> : null}
       </div></div>
-    </>, vars, inline);
+    </>, vars, inline, "tb-radio");
 }
 
 export default RadioScreen;

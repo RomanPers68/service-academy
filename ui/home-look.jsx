@@ -208,6 +208,45 @@ html.sa-lens [data-hub-disc]{width:38px!important;height:38px!important;border-r
 html.sa-lens [data-hub-disc]>svg{width:21px;height:21px}
 html.sa-lens [data-nb-x]{width:32px!important;height:32px!important;margin:2px;font-size:20px!important}
 
+/* ── v112: «Радио в дорогу» (ui/radio.jsx, оболочка .tb-radio — «Живой гость» и урок у стола не задеты). Владелец (30.10,
+   снимок радио): «Давай ещё радио в линзы». «Закрыть», значок радио, «назад / вперёд на фразу» и скорость — линзы с
+   кольцом (в «Для чтения» значки и «1×» — тёмным золотом #6B4E1A: на светлом стекле #7A5D2A давал 4,16); «Слушать» — большая золотая линза с кольцом (идёт выпуск — светится); пластинка — в тонком кольце, как
+   медальоны главной; вкладки выпусков — стеклянная капсула с кольцом, выбранный — плашка с ободком; обложка, «Вся
+   дорога» и «Живые голоса» — золотая кромка и блик (своего света у обложки и так хватает: подписи остаются 4,5);
+   «К вопросам», «Следующий выпуск», «Готово» — плашки с кольцом, как «Предупредить»; ответы на вопросы и «Слушать» в
+   «Дальше в плейлисте» — стекло. Деления фраз, точки выпусков, переключатели, верные и неверные ответы — прежние ── */
+html.sa-lens .tb-radio .tb-x,html.sa-lens .tb-radio .tb-av,html.sa-lens .tb-radio .rd-ctl button:not(.play){position:relative;background:var(--lk-glass);border-color:transparent;color:var(--lk-gold);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-radio .rd-ctl button:not(.play){box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 12px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .tb-radio .rd-ctl button:not(.play){color:#6B4E1A;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.14)}
+html.sa-lens .tb-radio .tb-x::after,html.sa-lens .tb-radio .tb-av::after,html.sa-lens .tb-radio .rd-ctl button::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .tb-radio .rd-ctl button.play{position:relative;color:var(--lk-hi);background:radial-gradient(circle at 50% 28%,rgba(240,214,150,0.38),rgba(200,169,110,0.16) 62%,rgba(200,169,110,0.10));
+  box-shadow:inset 0 0 0 1px rgba(232,201,131,0.7),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),inset 0 -12px 18px -10px rgba(232,197,106,0.5),0 8px 20px rgba(0,0,0,0.38)}
+html.sa-lens .tb-radio .rd-ctl button.play.on{box-shadow:inset 0 0 0 1px rgba(232,201,131,0.85),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),inset 0 -12px 18px -10px rgba(232,197,106,0.6),0 8px 20px rgba(0,0,0,0.38),0 0 26px rgba(232,197,106,0.35)}
+html.sa-lens .tb-radio .rd-ctl button.play::after{inset:-5px;border-color:rgba(214,178,102,0.55)}
+html.sa-lens.sa-light .tb-radio .rd-ctl button.play{background:radial-gradient(circle at 50% 28%,rgba(255,255,255,0.95),rgba(176,138,70,0.24) 72%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 6px 14px rgba(120,85,25,0.2)}
+html.sa-lens.sa-light .tb-radio .rd-ctl button.play.on{box-shadow:inset 0 0 0 1px rgba(139,106,48,0.75),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 6px 14px rgba(120,85,25,0.2),0 0 22px rgba(176,138,70,0.35)}
+html.sa-lens.sa-light .tb-radio .rd-ctl button.play::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens .tb-radio .rd-sheen::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .tb-radio .rd-seg{border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--inner),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens .tb-radio .rd-seg:not(.many)::after{content:"";position:absolute;inset:-3.5px;border-radius:19.5px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens .tb-radio .rd-pill{box-shadow:inset 0 0 0 1px rgba(232,201,131,0.62),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(0,0,0,0.25)}
+html.sa-lens.sa-light .tb-radio .rd-pill{box-shadow:inset 0 0 0 1px rgba(139,106,48,0.55),inset 0 1.5px 0 var(--lk-hl),0 3px 8px rgba(120,85,25,0.16)}
+html.sa-lens .tb-radio .rd-air,html.sa-lens .tb-radio .rd-sw{border-color:var(--lk-edge)}
+html.sa-lens .tb-radio .rd-air{box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--inner),0 8px 22px var(--drop)}
+html.sa-lens .tb-radio .rd-sw{box-shadow:inset 0 0 18px var(--inner),inset 0 1.5px 0 var(--lk-hl),0 4px 12px rgba(0,0,0,0.2)}
+html.sa-lens.sa-light .tb-radio .rd-sw{box-shadow:inset 0 0 18px var(--inner),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.12)}
+html.sa-lens .tb-radio .rd-kind,html.sa-lens .tb-radio .rd-who{box-shadow:inset 0 1px 0 var(--lk-hl)}
+html.sa-lens .tb-radio .tb-main:not(:disabled){position:relative;overflow:visible;color:var(--lk-hi);background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%);
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .tb-radio .tb-main:not(:disabled){background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.85),rgba(176,138,70,0.22) 70%);
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)}
+html.sa-lens .tb-radio .tb-main:not(:disabled)::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens.sa-light .tb-radio .tb-main:not(:disabled)::after{border-color:rgba(139,106,48,0.45)}
+html.sa-lens .tb-radio .rd-q button:not(.ok):not(.bad),html.sa-lens .tb-radio .rd-next li button{background:var(--lk-glass);border-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

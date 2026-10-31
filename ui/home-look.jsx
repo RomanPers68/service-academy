@@ -433,6 +433,51 @@ html.sa-lens.sa-light .rp .rp-btn.main::after{border-color:rgba(139,106,48,0.45)
 html.sa-lens .rp .rp-search input{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
 html.sa-lens .rp .rp-search input:focus{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 14px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)}
 
+/* ── v119: то, что всплывает по событию и потому не попадало в демо. Владелец (31.10, два снимка): «Двоих поймал, без
+   эффекта линзы». Новый значок (ui/mastery-card.jsx): плашка — карточка линзы (свет сверху, кромка, блик; под светом
+   сплошной тон прежнего цвета, плашка над экраном не просвечивает), «Путь мастера ›» — плашка с кольцом, «закрыть» —
+   линза 32 px; «Мастер роли» — своё сияние остаётся (кромка), «Сертификат мастера ›» — плашка с кольцом. Баннер «Книга
+   отзывов» (ui/guestbook-lite.jsx): карточка со стеклом и размытием (липнет над списком уроков), значок книги — линза,
+   «Читать ›» — плашка с кольцом, «скрыть» — линза. «Готова новая версия» (ui/update-toast.jsx): карточка, «Обновить» —
+   плашка. Всплывающее парит (data-lens-float): тень глубже, чем у карточек на экране. «Итоги месяца» (ui/month-recap.jsx):
+   «Поделиться картинкой» и «Скачать картинку» — плашки, «Поделиться текстом» — стекло, «закрыть» — линза; карточки
+   историй прежние. «Вопрос дня» (ui/qday-card.jsx): карточка, ответы — стекло, верный и неверный — прежние. «Смены в
+   календаре телефона» (ui/cal-sheet.jsx): «Подписаться» — плашка, «Скопировать ссылку» и «Сбросить ссылку» — стекло
+   (переспрос «Сбросить?» — прежний красный, капсулой), ближайшие смены — карточка, ссылка — стекло, «закрыть» — линза.
+   Подсказки (ui/widgets.jsx): «Дальше» и «Понятно» — плашки, значок — линза; сам пузырь прежний (с ним сходится носик).
+   Голос шефа и сомелье (ui/voice-note.jsx): записи — стекло (играет — яркий ободок), запись в форме блюда — кромка,
+   «Готово» и «Сохранить» — плашки, остальное — стекло, «Убрать» — красная капсула; «Голоса шефа и сомелье»: «Слушать
+   подряд» и «пауза» — плашки (значки цветом подписи), блюдо, что звучит, — яркий ободок, кнопки плеера — линзы.
+   Секретная ачивка — прежняя: баннер и так «морозное стекло», окно — бумага с печатью. Владелец (31.10, ещё два снимка):
+   «Ну и ещё троих, без эффекта линзы». Трек (ui/screens-learning.jsx): полоска номеров тем — капсула стекла с ободком и
+   бликом, «монета» текущей темы — плашка с ярким ободком, как выбранная вкладка (плотная: номера под ней не просвечивают),
+   цифры на ней — золотом; поиск и «Сменить» в шапке — стекло; «Работа над ошибками» — карточка; вид «списком»: следующий
+   урок — кромка со своим градиентом, «Начать» и «Дальше» на нём — плашка с кольцом, «листать ›» — стекло с подписью
+   золотом, темы — карточки, их значки — линзы (как у строк вкладок; значок темы чуть меньше, чтобы не упирался в
+   ободок), у «Работы над ошибками» тоже; у пройденной темы «Погреб тем ›» — стекло (плитки «Освежить» и «Раунд мастера» — прежние, их
+   значки и так линзы). В «Для чтения» мелкие подписи на плашках («Начать» 13 px, «Понятно» 11,5 px) — тёмным золотом:
+   обычным золотом плашки они не дотягивали до 4,5 ── */
+html.sa-lens [data-lens-float]{box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),0 14px 36px rgba(0,0,0,0.55)!important}
+html.sa-lens.sa-light [data-lens-float]{box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),0 12px 30px rgba(110,80,25,0.22)!important}
+html.sa-lens .ms-toast[data-lens-card]{background-color:#271D0F!important}
+html.sa-lens.sa-light .ms-toast[data-lens-card]{background-color:#FAF1DE!important}
+html.sa-lens .ms-toast [data-lens-x]{top:8px!important;right:8px!important}
+html.sa-lens .sa-bookbanner[data-lens-card]{-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%)}
+html.sa-lens .sa-bookbanner [data-lens-x]{font-size:13px!important}
+html.sa-lens [data-voices-all][data-lens-btn="main"] path,html.sa-lens [data-voices-pause] path{fill:currentColor}
+html.sa-lens .tbp-cap{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)}
+html.sa-lens.sa-light .tbp-cap{background:rgba(255,255,255,0.55);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.12)}
+html.sa-lens .tbp-ind{background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.32),rgba(200,169,110,0.16) 62%),#2B2112;
+  box-shadow:inset 0 0 0 1px rgba(232,201,131,0.62),inset 0 0 10px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 2px 8px rgba(0,0,0,0.32)}
+html.sa-lens.sa-light .tbp-ind{background:radial-gradient(120% 160% at 50% 0%,rgba(255,255,255,0.95),rgba(176,138,70,0.22) 70%),#F4EAD3;
+  box-shadow:inset 0 0 0 1px rgba(139,106,48,0.55),inset 0 1.5px 0 var(--lk-hl),0 2px 6px rgba(120,85,25,0.18)}
+html.sa-lens .tbp-ind-row span{color:var(--lk-hi)}
+html.sa-lens.sa-light .tbp-ind-row span{color:#6B4E1A}
+html.sa-lens [data-lens-card]>[data-lens="disc"]{border-radius:50%!important}
+html.sa-lens .sa-card.sa-glass[data-lens-card]>[data-lens="disc"]>svg{transform:scale(0.78)}
+html.sa-lens .tbm-cellar{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
+html.sa-lens.sa-light .sa-card[data-lens-edge] [data-lens-btn="main"],html.sa-lens.sa-light .sa-hintglow [data-lens-btn="main"]{color:#6B4E1A!important}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

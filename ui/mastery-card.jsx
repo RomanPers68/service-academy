@@ -384,7 +384,7 @@ const burst = (list, sm) => (
 // праздничная отдача — только после первого касания страницы: иначе Chrome пишет в консоль ошибку
 // (navigator.vibrate без жеста пользователя), а Telegram отдаёт отдачу и так
 const buzz = () => { try { if (typeof navigator !== "undefined" && navigator.userActivation && !navigator.userActivation.hasBeenActive) return; } catch (e) {} vibrate("success"); sfx("done"); };   // v57: и колокольчик
-const XIcon = ({ color }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
+const XIcon = ({ color = "currentColor" }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
 
 export function BadgeToast({ a11y, item, state, onOpen, onClose, inline = false }) {
   ensureMsCardCss();
@@ -442,7 +442,7 @@ function TierToast({ a11y, item, state, onOpen, onClose }) {
   const dy = drag ? Math.max(0, drag.y) : 0, dx = drag ? drag.x : 0;
   return (
     <div className={"ms-toast-pos" + (out ? " out" : "")} data-ms-toast="">
-      <div className="ms-toast" role="status" aria-live="polite" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+      <div className="ms-toast" role="status" aria-live="polite" data-lens-card="" data-lens-float="" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
         style={{ padding: "14px 14px 14px", borderRadius: 20, fontFamily: BODY,
           background: a11y ? "linear-gradient(180deg,#FFF9EC,#F4E8CD)" : "linear-gradient(180deg,#2E2312,#1E170C)",
           border: "1px solid " + (a11y ? "rgba(139,106,48,0.42)" : "rgba(214,178,102,0.45)"),
@@ -460,10 +460,10 @@ function TierToast({ a11y, item, state, onOpen, onClose }) {
             {line ? <div style={{ fontSize: msSmall(a11y, 13), lineHeight: 1.38, color: c.sub, marginTop: 3 }}>{line}</div> : null}
           </div>
         </div>
-        <button type="button" className="sa-btn" onClick={() => { vibrate("light"); finish(true); }}
+        <button type="button" className="sa-btn" data-lens-btn="main" onClick={() => { vibrate("light"); finish(true); }}
           style={{ ...msPrimary, width: "100%", minHeight: 44, marginTop: 12, fontSize: a11y ? 16 : 15 }}>Путь мастера ›</button>
-        <button type="button" aria-label="Закрыть" onClick={() => finish(false)}
-          style={{ position: "absolute", top: 2, right: 2, width: 44, height: 44, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", padding: 0 }}><XIcon color={c.sub} /></button>
+        <button type="button" aria-label="Закрыть" data-lens="disc" data-lens-x="" onClick={() => finish(false)}
+          style={{ position: "absolute", top: 2, right: 2, width: 44, height: 44, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", padding: 0, color: c.sub }}><XIcon /></button>
       </div>
     </div>
   );
@@ -478,7 +478,7 @@ function MasterModal({ a11y, item, onOpen, onClose }) {
   const title = role ? "Мастер роли «" + role + "»" : "Мастер роли";
   return (
     <div className="ms-modal" data-ms-toast="" onClick={once(onClose)} style={{ background: a11y ? "rgba(70,52,24,0.45)" : "rgba(8,6,3,0.76)" }}>
-      <div className="ms-modal-card" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+      <div className="ms-modal-card" role="dialog" aria-modal="true" aria-label={title} data-lens-edge="" data-lens-float="" onClick={(e) => e.stopPropagation()}
         style={{ padding: "22px 20px 16px", borderRadius: 26, fontFamily: BODY,
           background: a11y ? "radial-gradient(120% 70% at 50% 0%,#F7E4B2 0%,#F9F1E0 58%,#F3E8D0 100%)" : "radial-gradient(120% 70% at 50% 0%,#523B16 0%,#261B0C 56%,#1A130A 100%)",
           border: "1px solid " + (a11y ? "rgba(139,106,48,0.45)" : "rgba(232,197,106,0.5)"),
@@ -491,7 +491,7 @@ function MasterModal({ a11y, item, onOpen, onClose }) {
         <div style={{ ...msEye(a11y), color: c.gold }}>Главная награда</div>
         <h2 style={{ margin: "6px 0 8px", fontFamily: SERIF, fontWeight: 700, fontSize: a11y ? 26 : 25, lineHeight: 1.18, color: c.text, textWrap: "balance" }}>{title}</h2>
         <p style={{ margin: "0 0 16px", fontSize: a11y ? 16 : 15, lineHeight: 1.5, color: a11y ? c.sub : "#CFC2A4" }}>{"Роль пройдена, 5\u00A0золотых тем, серия 14\u00A0дней и 10\u00A0значков. Коллеги увидят знак мастера у\u00A0твоего имени."}</p>
-        <button type="button" className="sa-btn" onClick={once(onOpen)} style={{ ...msPrimary, width: "100%", minHeight: 52, fontSize: a11y ? 17 : 16 }}>Сертификат мастера ›</button>
+        <button type="button" className="sa-btn" data-lens-btn="main" onClick={once(onOpen)} style={{ ...msPrimary, width: "100%", minHeight: 52, fontSize: a11y ? 17 : 16 }}>Сертификат мастера ›</button>
         <button type="button" className="sa-btn" data-sa-back="" onClick={once(onClose)}
           style={{ display: "block", width: "100%", minHeight: 44, marginTop: 4, border: 0, background: "none", cursor: "pointer", color: a11y ? c.sub : "#CFC2A4", fontFamily: BODY, fontSize: a11y ? 16 : 15, fontWeight: "bold" }}>Позже</button>
       </div>

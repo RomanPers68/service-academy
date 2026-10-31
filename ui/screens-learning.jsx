@@ -781,8 +781,8 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
             {role.beta && <span style={{ ...labelStyle(12.5), padding:"1px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4, flexShrink: 0 }}>бета</span>}
           </div>
           <span style={{ flex: 1 }} />
-          {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink: 0 }} onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
-          <button style={{ ...T.changeRoleBtn, flexShrink: 0 }} onClick={onChangeRole}>Сменить</button>
+          {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink: 0 }} data-lens-btn="soft" onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
+          <button style={{ ...T.changeRoleBtn, flexShrink: 0 }} data-lens-btn="soft" data-lens-ink="" onClick={onChangeRole}>Сменить</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 9 }}>
           <span style={{ fontSize: 11.5, color: sub, flexShrink: 0 }}>{doneCount} из {totalLessons} · {leftMins > 0 ? `≈ ${_fmtMins(leftMins)}` : "пройдено"}</span>
@@ -821,7 +821,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
             {peekBubble(false)}
           </div>
           {dueN > 0 && onMistakes ? (
-            <div role="button" tabIndex={0} onClick={onMistakes} {...onActivate(onMistakes)} className="tbp-mist">
+            <div role="button" tabIndex={0} onClick={onMistakes} {...onActivate(onMistakes)} className="tbp-mist" data-lens-card="">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
               <span style={{ flex: 1, minWidth: 0 }}>Работа над ошибками · {dueN} {dueN % 10 === 1 && dueN % 100 !== 11 ? "вопрос" : (dueN % 10 >= 2 && dueN % 10 <= 4 && (dueN % 100 < 10 || dueN % 100 >= 20)) ? "вопроса" : "вопросов"} на повтор</span>
               <span aria-hidden="true">›</span>
@@ -910,7 +910,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         const RC = inkOf(nx.color || role.color, a11y);   // читаемо и в светлой теме (правка 170)
         const go = () => onModule(nx);
         return (
-          <div onClick={go} {...onActivate(go)} className="sa-card"
+          <div onClick={go} {...onActivate(go)} className="sa-card" data-lens-edge=""
             style={{ margin:"6px 14px 10px", padding:"12px 13px", borderRadius:18, cursor:"pointer",
               display:"flex", alignItems:"center", gap:12,
               background: a11y
@@ -945,7 +945,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
                 display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{title}</div>
               <div style={{ fontSize:11.5, color: a11y ? "#6E5C3C" : "#9C8760", marginTop:3, lineHeight:1.4 }}>{meta}</div>
             </div>
-            <div style={{ flexShrink:0, padding:"9px 15px", borderRadius:999,
+            <div data-lens-btn="main" style={{ flexShrink:0, padding:"9px 15px", borderRadius:999,
               fontFamily:"Georgia, serif", fontSize:13, fontWeight:"bold", color:"#1A1008",
               background:`linear-gradient(180deg,#E4C88C,${GOLD})` }}>
               {started ? "Дальше" : "Начать"}
@@ -959,9 +959,9 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         const _n = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
         const _w = _n === 1 ? "вопрос" : (_n % 10 >= 2 && _n % 10 <= 4 && (_n % 100 < 10 || _n % 100 >= 20)) ? "вопроса" : "вопросов";
         return (
-          <div onClick={onMistakes} {...onActivate(onMistakes)} style={{ ...T.modCard, margin:"0 14px 12px" }}>
+          <div onClick={onMistakes} {...onActivate(onMistakes)} data-lens-card="" style={{ ...T.modCard, margin:"0 14px 12px" }}>
             {/* v73 (Доп. 386): цветная полоска слева убрана — золото и так у значка */}
-            <div style={T.modIcon}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={_g} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+            <div data-lens="disc" style={T.modIcon}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={_g} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={T.modTitle}>Работа над ошибками</div>
               <div style={T.modSub}>{_n} {_w} на повтор</div>
@@ -971,7 +971,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         );
       })()}
       <div style={{ ...T.secTitle, display: "flex", alignItems: "center", gap: 8 }}><span style={{ flex: 1 }}>Программа обучения</span>
-        <button type="button" className="sa-btn" onClick={() => switchView("pager")} aria-label="Листать темы по одной" style={{ textTransform: "none", letterSpacing: 0.4, fontFamily: "Georgia, serif", fontSize: 12, padding: "4px 10px", borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${role.color}77`, color: inkOf(role.color, a11y) }}>листать ›</button></div>
+        <button type="button" className="sa-btn" onClick={() => switchView("pager")} aria-label="Листать темы по одной" data-lens-btn="soft" data-lens-ink="" style={{ textTransform: "none", letterSpacing: 0.4, fontFamily: "Georgia, serif", fontSize: 12, padding: "4px 10px", borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${role.color}77`, color: inkOf(role.color, a11y) }}>листать ›</button></div>
       <div style={T.modList} className="sa-stagger sa-g2">
         {pages.map((m, mi) => {
           const lessonsDone = m.lessons.filter(l => l.type !== "quiz" && l.type !== "result" && completed[l.id]).length;
@@ -980,9 +980,9 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           const total = m.lessons.filter(l => l.type !== "result").length;
           const pct = total > 0 ? Math.round((done / total) * 100) : 0;
           return (
-            <div key={m.id} className="sa-card sa-glass" style={T.modCard} onClick={() => openPage(mi)} {...onActivate(() => openPage(mi))}>
+            <div key={m.id} className="sa-card sa-glass" data-lens-card="" style={T.modCard} onClick={() => openPage(mi)} {...onActivate(() => openPage(mi))}>
               {/* v73 (Доп. 386): цветная полоска слева убрана — цвет темы и так у значка, подписи и процента */}
-              <div style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{(MOD_SVG[m.icon] || UI_SVG.book)(m.color, 28)}</div>
+              <div data-lens="disc" style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{(MOD_SVG[m.icon] || UI_SVG.book)(m.color, 28)}</div>
               <div style={T.modInfo}>
                 <div style={{ ...T.modTag, color: inkOf(m.color, a11y) }}>{m.tag} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
                 <div style={T.modTitle}>{m.title}</div>

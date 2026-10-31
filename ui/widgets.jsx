@@ -238,7 +238,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
         ? "inset 0 0 22px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 28px rgba(60,42,10,0.28)"
         : "inset 0 0 22px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.11), 0 10px 28px rgba(0,0,0,0.6)",
       ...(a11y && plain ? { boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 6px 20px rgba(90,66,20,0.22)" } : null) }}>
-      <span style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid",
+      <span data-lens="glyph" style={{ width:24, height:24, borderRadius:"50%", flexShrink:0, display:"grid",
         placeItems:"center", background:`${gold}2E`, border:`1px solid ${gold}66` }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold}
           strokeWidth="2" strokeLinecap="round"><path d="M12 17v.01"/>
@@ -261,7 +261,7 @@ export function HintBubble({ a11y, text, arrow = "up", at = "center", anchorRef,
           </span>
         ) : null}
       </span>
-      <span onClick={onNext || onClose} style={{ flexShrink:0, fontFamily:"Georgia, serif",
+      <span onClick={onNext || onClose} data-lens-btn="main" style={{ flexShrink:0, fontFamily:"Georgia, serif",
         fontSize:11.5, fontWeight:"bold", color:"#1A1008", cursor:"pointer",
         background:`linear-gradient(180deg,#E4C88C,${GOLD})`,
         padding:"6px 13px", borderRadius:999 }}>{onNext ? "Дальше" : "Понятно"}</span>

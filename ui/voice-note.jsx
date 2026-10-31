@@ -93,7 +93,7 @@ export function VoicePill({ v, gold, text, sub, a11y, label, onPlayed, style, he
   const nm = String(v.name || "").trim();
   const txt = label || (!nm ? meta.label : nm.toLowerCase().startsWith(meta.label.toLowerCase()) ? nm.charAt(0).toUpperCase() + nm.slice(1) : meta.label + " · " + nm);
   return (
-    <button type="button" onClick={toggle} data-voice={v.kind} data-voice-state={st}
+    <button type="button" onClick={toggle} data-voice={v.kind} data-voice-state={st} data-lens-btn="soft" data-lens-hi={on ? "" : undefined}
       aria-label={(on ? "Остановить: " : "Слушать: ") + meta.title + (v.name ? ", " + v.name : "") + (heard ? ", прослушано" : "")}
       style={{ position: "relative", overflow: "hidden", display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "100%", padding: "5px 12px 5px 5px",
         borderRadius: 999, border: `1px solid ${gold}${on ? "CC" : "77"}`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(255,248,230,0.06)",
@@ -164,7 +164,7 @@ export function VoiceRecorder({ kind, value, onChange, restaurant, dishId, gold,
   const box = { borderRadius: 14, padding: "12px 12px 12px", marginBottom: 10, border: `1px solid ${gold}44`, background: a11y ? "rgba(255,255,255,0.35)" : "rgba(255,248,230,0.04)" };
 
   return (
-    <div style={box} data-voice-rec={kind} data-voice-phase={phase}>
+    <div style={box} data-voice-rec={kind} data-voice-phase={phase} data-lens-edge="">
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
         <span style={{ fontFamily: "Georgia, serif", fontSize: 14, color: text, fontWeight: "bold" }}>{meta.title}</span>
       </div>
@@ -181,29 +181,29 @@ export function VoiceRecorder({ kind, value, onChange, restaurant, dishId, gold,
             </span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={stop} style={{ ...btn(true), flex: 1 }}>Готово</button>
-            <button type="button" onClick={cancel} style={btn(false)}>Отмена</button>
+            <button type="button" onClick={stop} data-lens-btn="main" style={{ ...btn(true), flex: 1 }}>Готово</button>
+            <button type="button" onClick={cancel} data-lens-btn="soft" style={btn(false)}>Отмена</button>
           </div>
         </div>
       ) : phase === "review" || phase === "up" ? (
         <div>
           <VoicePill v={{ kind, url: clip && clip.url, sec: clip && clip.sec, name }} gold={gold} text={text} sub={sub} a11y={a11y} label="Послушать, что получилось" style={{ marginBottom: 10 }} />
-          <input className="sa-field" value={name} onChange={(e) => setName(e.target.value)} maxLength={40}
+          <input className="sa-field" data-lens-field="" value={name} onChange={(e) => setName(e.target.value)} maxLength={40}
             placeholder={kind === "chef" ? "Кто говорит, имя: например, Алексей" : "Кто говорит, имя: например, Мария"}
             style={{ ...inputSt, marginBottom: 10, fontSize: 13.5 }} />
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={save} disabled={phase === "up"} style={{ ...btn(true), flex: 1, opacity: phase === "up" ? 0.6 : 1 }}>{phase === "up" ? "Сохраняю…" : value ? "Заменить запись" : "Сохранить"}</button>
-            <button type="button" onClick={start} disabled={phase === "up"} style={btn(false)}>Заново</button>
+            <button type="button" onClick={save} disabled={phase === "up"} data-lens-btn="main" style={{ ...btn(true), flex: 1, opacity: phase === "up" ? 0.6 : 1 }}>{phase === "up" ? "Сохраняю…" : value ? "Заменить запись" : "Сохранить"}</button>
+            <button type="button" onClick={start} disabled={phase === "up"} data-lens-btn="soft" style={btn(false)}>Заново</button>
           </div>
         </div>
       ) : value && value.url ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <VoicePill v={{ kind, ...value }} gold={gold} text={text} sub={sub} a11y={a11y} />
-          {can && <button type="button" onClick={start} style={btn(false)}>Перезаписать</button>}
-          <button type="button" onClick={remove} style={btn(false, true)}>Убрать</button>
+          {can && <button type="button" onClick={start} data-lens-btn="soft" style={btn(false)}>Перезаписать</button>}
+          <button type="button" onClick={remove} data-lens-btn="danger" style={btn(false, true)}>Убрать</button>
         </div>
       ) : can ? (
-        <button type="button" onClick={start} style={{ ...btn(false), display: "inline-flex", alignItems: "center", gap: 8 }}>{Ic.mic(gold)} Записать</button>
+        <button type="button" onClick={start} data-lens-btn="soft" style={{ ...btn(false), display: "inline-flex", alignItems: "center", gap: 8 }}>{Ic.mic(gold)} Записать</button>
       ) : (
         <div style={{ fontSize: 12.5, color: sub }}>На этом телефоне запись звука недоступна. Попробуй с другого телефона или из браузера.</div>
       )}
@@ -258,7 +258,7 @@ export function VoicesList({ T, a11y, gold, dishes = [], Head, glass }) {
   const now = on ? queue[cur] : null;
   const heardCount = all.length - fresh.length;
   const btnRound = (lbl, onClick, icon, dis) => (
-    <button type="button" aria-label={lbl} onClick={onClick} disabled={dis} style={{ width: 38, height: 38, borderRadius: 19, border: `1px solid ${gold}88`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", opacity: dis ? 0.35 : 1, flexShrink: 0 }}>{icon}</button>);
+    <button type="button" aria-label={lbl} onClick={onClick} disabled={dis} data-lens="disc" style={{ width: 38, height: 38, borderRadius: 19, border: `1px solid ${gold}88`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", opacity: dis ? 0.35 : 1, flexShrink: 0 }}>{icon}</button>);
   return (
     <div style={T.screen} className="sa-screen">
       {Head("Голоса шефа и сомелье")}
@@ -267,19 +267,19 @@ export function VoicesList({ T, a11y, gold, dishes = [], Head, glass }) {
           Шеф рассказывает о блюдах, сомелье советует, что к ним налить. Своими словами и своим голосом. Слушай по одной записи или подряд, хоть по дороге на смену.
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: heardCount ? 8 : 14 }}>
-          <button type="button" data-voices-all={on ? "on" : "off"} onClick={() => { if (on) stopVoice(); else start(all); }}
+          <button type="button" data-voices-all={on ? "on" : "off"} data-lens-btn={on ? "soft" : "main"} onClick={() => { if (on) stopVoice(); else start(all); }}
             style={{ ...T.doneBtn, flex: 1, margin: 0, background: on ? "transparent" : gold, color: on ? text : "#1A1008", border: `1px solid ${gold}${on ? "AA" : ""}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
             {on ? Ic.pause(text) : Ic.play("#1A1008")}
             <span>{on ? "Стоп" : `Слушать подряд · ${clipTime(total)}`}</span>
           </button>
-          {!on && heardCount && fresh.length ? <button type="button" data-voices-new="" onClick={() => start(fresh)}
+          {!on && heardCount && fresh.length ? <button type="button" data-voices-new="" data-lens-btn="soft" onClick={() => start(fresh)}
             style={{ ...T.doneBtn, margin: 0, flex: "0 0 auto", padding: "0 16px", background: "transparent", color: text, border: `1px solid ${gold}AA` }}>Только новые · {fresh.length}</button> : null}
         </div>
         {heardCount ? <div data-voices-heard="" style={{ fontSize: 12.5, color: sub, margin: "0 2px 14px" }}>Прослушано {heardCount} из {all.length}{fresh.length ? "" : ": всё послушал(а)"}</div> : null}
         {items.map(({ d, voices }) => {
           const playingHere = now && now.d === d;
           return (
-            <div key={d.id} data-voices-dish={d.id} style={{ ...glass(T), padding: "12px 12px", marginBottom: 10, display: "flex", gap: 12, alignItems: "flex-start", borderColor: playingHere ? gold : undefined }}>
+            <div key={d.id} data-voices-dish={d.id} data-lens-card={playingHere ? "hi" : ""} style={{ ...glass(T), padding: "12px 12px", marginBottom: 10, display: "flex", gap: 12, alignItems: "flex-start", borderColor: playingHere ? gold : undefined }}>
               {d.img ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} /> : null}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ ...labelStyle(12.5), color: gold, marginBottom: 2 }}>{d.cat || "Блюдо"}</div>
@@ -312,11 +312,11 @@ export function VoicesList({ T, a11y, gold, dishes = [], Head, glass }) {
                 {(VOICE_KINDS[now.v.kind] || {}).label}{now.v.name ? " · " + now.v.name : ""} · {st === "load" ? "загружаю" : clipTime(pos.t) + " из " + clipTime(pos.d)} · {cur + 1}/{queue.length}</div>
             </div>
             {btnRound("Предыдущая запись", () => playAt(cur - 1), Ic.prev(gold), cur <= 0)}
-            <button type="button" data-voices-pause="" aria-label={st === "pause" ? "Дальше слушать" : "Пауза"} onClick={pause}
+            <button type="button" data-voices-pause="" aria-label={st === "pause" ? "Дальше слушать" : "Пауза"} data-lens-btn="main" onClick={pause}
               style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: gold, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
               {st === "pause" ? Ic.play("#1A1008") : Ic.pause("#1A1008")}</button>
             {btnRound("Следующая запись", () => playAt(cur + 1), Ic.next(gold), cur >= queue.length - 1)}
-            <button type="button" data-voices-rate={rate} aria-label={"Скорость: " + rateLabel(rate)} onClick={speed}
+            <button type="button" data-voices-rate={rate} aria-label={"Скорость: " + rateLabel(rate)} data-lens-btn="soft" data-lens-hi={rate !== 1 ? "" : undefined} onClick={speed}
               style={{ minWidth: 46, height: 30, borderRadius: 15, border: `1px solid ${gold}88`, background: rate !== 1 ? `${gold}33` : "transparent", color: text, fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>{rateLabel(rate)}</button>
           </div>
         </div></>) : null}

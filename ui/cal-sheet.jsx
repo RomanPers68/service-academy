@@ -88,7 +88,7 @@ export function CalSheet({ a11y, admin = false, onClose }) {
           <span aria-hidden="true" style={{ color: c.gold, display: "inline-flex" }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M9 15.5l2.2 2.2 4-4.4" /></svg></span>
           <h3 style={{ flex: 1, margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Смены в календаре телефона</h3>
-          <button type="button" className="sa-btn" data-sa-back="" aria-label="Закрыть" onClick={onClose} style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "none", color: c.sub, cursor: "pointer", fontSize: 22, lineHeight: 1 }}>×</button>
+          <button type="button" className="sa-btn" data-sa-back="" aria-label="Закрыть" data-lens="disc" data-lens-x="" onClick={onClose} style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "none", color: c.sub, cursor: "pointer", fontSize: 22, lineHeight: 1 }}>×</button>
         </div>
         <p style={{ margin: "0 0 10px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>
           Твои смены появятся в календаре телефона рядом с остальными делами и будут обновляться сами, когда меняется график.
@@ -98,21 +98,21 @@ export function CalSheet({ a11y, admin = false, onClose }) {
         {st.phase === "offline" ? note("Нет связи. Открой это окно, когда появится сеть.") : null}
         {st.phase === "error" ? note("Не получилось сделать ссылку. Попробуй ещё раз позже.") : null}
         {st.phase === "ready" ? (<>
-          <div data-cal-next={st.next.length} style={{ padding: "10px 12px", borderRadius: 14, border: `1px solid ${c.line}`, background: c.bg }}>
+          <div data-cal-next={st.next.length} data-lens-card="" style={{ padding: "10px 12px", borderRadius: 14, border: `1px solid ${c.line}`, background: c.bg }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 13, color: c.gold, fontStyle: "italic", marginBottom: 4 }}>Ближайшие смены</div>
             {st.next.length ? st.next.map((s) => (
               <div key={s.date} style={{ fontSize: 14, lineHeight: 1.55, color: c.text }}>{calDay(s.date, today)} · {String(s.label || "").toLowerCase()} {s.time}</div>
             )) : <div style={{ fontSize: 13.5, color: c.sub }}>{st.schedule ? "На две недели вперёд смен нет. Появятся в календаре, когда их поставят в график." : "График ещё не составлен. Смены появятся в календаре сами."}</div>}
           </div>
           {st.used ? note("Календарь забирал смены: " + calUsed(st.used) + ". Подписка работает.", c.ok) : null}
-          <button type="button" className="sa-btn" data-cal-sub="" onClick={subscribe} disabled={busy} style={mainBtn}>Подписаться</button>
-          <button type="button" className="sa-btn" data-cal-copy="" onClick={copy} disabled={busy} style={ghostBtn}>{copied ? "Ссылка скопирована" : "Скопировать ссылку"}</button>
-          <input ref={urlRef} readOnly value={url} aria-label="Ссылка на календарь" data-cal-url="" onFocus={(e) => e.target.select()}
+          <button type="button" className="sa-btn" data-cal-sub="" data-lens-btn="main" onClick={subscribe} disabled={busy} style={mainBtn}>Подписаться</button>
+          <button type="button" className="sa-btn" data-cal-copy="" data-lens-btn="soft" onClick={copy} disabled={busy} style={ghostBtn}>{copied ? "Ссылка скопирована" : "Скопировать ссылку"}</button>
+          <input ref={urlRef} readOnly value={url} aria-label="Ссылка на календарь" data-cal-url="" data-lens-field="" onFocus={(e) => e.target.select()}
             style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 8, padding: "9px 10px", borderRadius: 10, border: `1px solid ${c.line}`, background: "transparent", color: c.sub, fontSize: 12, fontFamily: "ui-monospace, Menlo, monospace" }} />
           {msg ? note(msg, c.text) : null}
           {note(pf === "android" ? "Android: Google Календарь подписывается по ссылке на компьютере (calendar.google.com, «Добавить по URL»), на телефоне смены появятся сами."
             : "Ссылка личная: по ней видны только твои смены. Напоминание о смене по-прежнему придёт в Telegram.")}
-          <button type="button" className="sa-btn" data-cal-reset="" onClick={reset} disabled={busy}
+          <button type="button" className="sa-btn" data-cal-reset="" data-lens-btn={sure ? "danger" : "soft"} onClick={reset} disabled={busy}
             style={{ ...ghostBtn, border: `1px solid ${sure ? c.bad : c.line}`, color: sure ? c.bad : c.sub }}>{sure ? "Сбросить? Старая подписка перестанет обновляться" : "Сбросить ссылку"}</button>
         </>) : null}
       </div>

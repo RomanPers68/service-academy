@@ -43,7 +43,7 @@ export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMista
   const pick = (i) => { if (done || busy || !onAnswer) return; vibrate("light"); onAnswer(i); };
   const hide = () => { vibrate("light"); if (onHide) onHide(); };
   return (
-    <div data-qday-card={done ? (it.correct ? "ok" : "bad") : "ask"} style={{ margin: "0 14px 10px", borderRadius: 18, padding: "12px 14px 13px", fontFamily: "Georgia, serif", ...c.card }}>
+    <div data-qday-card={done ? (it.correct ? "ok" : "bad") : "ask"} data-lens-card="" style={{ margin: "0 14px 10px", borderRadius: 18, padding: "12px 14px 13px", fontFamily: "Georgia, serif", ...c.card }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
         <span style={{ ...labelStyle(a11y ? 14.5 : 13.5), color: c.gold }}>Вопрос дня</span>
         {it.t ? <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: c.sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>· {it.t}</span> : <span style={{ flex: 1 }} />}
@@ -57,6 +57,7 @@ export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMista
           return (
             <div key={i} data-qday-opt={i} data-state={right ? "right" : wrong ? "wrong" : "idle"} onClick={() => pick(i)} {...(done ? {} : onActivate(() => pick(i)))}
               aria-disabled={!done && busy ? "true" : undefined} aria-label={done ? undefined : QDAY_LETTERS[i] + ". " + o}
+              data-lens-opt={right ? "ok" : wrong ? "bad" : ""}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 12, border: `1px solid ${bd}`, cursor: done || busy ? "default" : "pointer",
                 background: right ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(210,168,90,0.16)") : wrong ? (a11y ? "rgba(160,65,47,0.10)" : "rgba(224,138,122,0.12)") : "transparent",
                 opacity: busy && !done ? 0.6 : done && !right && !wrong ? 0.65 : 1 }}>

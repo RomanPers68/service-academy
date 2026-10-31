@@ -37,7 +37,7 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
   const open = () => { vibrate("medium"); onOpen && onOpen(); };
   const lt = !!T?.a11y; // светлая тема: стекло из светлого «пергамента» вместо тёмного дыма
   return (
-    <div className="sa-bookbanner" style={{
+    <div className="sa-bookbanner" data-lens-card="" data-lens-float="" style={{
       position: "sticky", top: 10, zIndex: 40,
       margin: "12px 16px 0", borderRadius: 18, padding: "12px 14px",
       display: "flex", alignItems: "center", gap: 12,
@@ -51,7 +51,7 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
       transform: leaving ? "translateY(-16px)" : undefined,
       opacity: leaving ? 0 : undefined,
       transition: "transform 0.35s ease, opacity 0.35s ease" }}>
-      <div style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+      <div data-lens="glyph" style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
         color: lt ? "#7A5D2A" : GOLD,
         background: lt ? "radial-gradient(circle at 35% 30%, rgba(200,160,80,0.25), rgba(200,169,110,0.08))" : "radial-gradient(circle at 35% 30%, rgba(220,180,95,0.28), rgba(200,169,110,0.08))",
         border: lt ? "1px solid rgba(139,106,48,0.4)" : `1px solid ${GOLD}55`,
@@ -60,10 +60,10 @@ export function NewPageBanner({ T, mod, completed, quizDone, onOpen }) {
         <div style={{ ...labelStyle(13), color: lt ? "#7A5D2A" : GOLD_SOFT }}>Книга отзывов</div>
         <div style={{ color: T?.modTitle?.color || "#F0E8D8", fontFamily: "Georgia, serif", fontSize: 14, marginTop: 2 }}>Гость оставил тебе новую страницу</div>
       </div>
-      <button onClick={open} {...onActivate(open)} style={{ fontFamily: "Georgia, serif", flexShrink: 0, fontSize: 13, color: lt ? "#FBF7EE" : "#1A1008",
+      <button onClick={open} {...onActivate(open)} data-lens-btn="main" style={{ fontFamily: "Georgia, serif", flexShrink: 0, fontSize: 13, color: lt ? "#FBF7EE" : "#1A1008",
         background: `linear-gradient(135deg, ${lt ? "#A8823E" : GOLD} 0%, #7A5D2A 100%)`, border: "none", borderRadius: 14, padding: "9px 13px",
         cursor: "pointer", boxShadow: lt ? "0 4px 12px rgba(139,106,48,0.3)" : "0 4px 14px rgba(200,160,80,0.35)" }}>Читать ›</button>
-      <button onClick={dismiss} {...onActivate(dismiss)} aria-label="Скрыть"
+      <button onClick={dismiss} {...onActivate(dismiss)} aria-label="Скрыть" data-lens="disc" data-lens-x=""
         style={{ background: "none", border: "none", color: lt ? "rgba(120,90,40,0.6)" : "rgba(200,169,110,0.55)", fontSize: 14, lineHeight: 1, padding: "4px 2px", cursor: "pointer", flexShrink: 0 }}>✕</button>
       <style>{`
         @keyframes saBookIn { from { opacity:0; transform: translateY(-20px) scale(0.97); } to { opacity:1; transform: translateY(0) scale(1); } }

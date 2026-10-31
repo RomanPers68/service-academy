@@ -314,7 +314,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
       <div className="mr-top">
         <div className="mr-bars" aria-hidden="true">{cards.map((c, k) => <i key={c.k} className={k < i ? "done" : k === i ? "run" + (hold || last ? " hold" : "") : undefined}><b style={k === i ? { animationDuration: SHOW + "ms" } : undefined} /></i>)}</div>
         <div className="mr-hd"><b>Итоги · {r.title.toLowerCase()}</b><span>{i + 1} / {cards.length}</span>
-          <button type="button" className="mr-x" data-sa-back={pv ? undefined : ""} aria-label="Закрыть" onClick={onClose}><Ic n="x" s={16} /></button></div>
+          <button type="button" className="mr-x" data-sa-back={pv ? undefined : ""} aria-label="Закрыть" data-lens="disc" onClick={onClose}><Ic n="x" s={16} /></button></div>
       </div>
       <div className="mr-nav" onPointerDown={() => setHold(true)} onPointerUp={() => setHold(false)} onPointerCancel={() => setHold(false)} onPointerLeave={() => setHold(false)}>
         <button type="button" aria-label="Назад" onClick={() => go(-1)} />
@@ -323,9 +323,9 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
       <div className="mr-body" key={cards[i].k} aria-live="polite" style={{ pointerEvents: "none" }}>{cards[i].body}</div>
       <div className="mr-foot">
         {last ? <>
-          <button type="button" className="mr-btn" data-recap-pic="" onClick={sharePic} disabled={busy}><Ic n="share" s={18} />{busy ? "Рисуем картинку…" : "Поделиться картинкой"}</button>
+          <button type="button" className="mr-btn" data-recap-pic="" data-lens-btn="main" onClick={sharePic} disabled={busy}><Ic n="share" s={18} />{busy ? "Рисуем картинку…" : "Поделиться картинкой"}</button>
           <div className="mr-row2">
-            <button type="button" className="mr-ghost" data-recap-text="" onClick={share}>Поделиться текстом</button>
+            <button type="button" className="mr-ghost" data-recap-text="" data-lens-btn="soft" onClick={share}>Поделиться текстом</button>
           </div>
           {sent ? <p className="mr-sent" role="status">{sent}</p> : null}
           <button type="button" className="mr-ghost" onClick={onClose}>Закрыть</button>
@@ -336,7 +336,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
   const pvEl = pv ? (
     <div className="mr-pv" role="dialog" aria-modal="true" aria-label="Итоги месяца картинкой" data-recap-preview="">
       <img src={pv.url} alt={"Итоги месяца: " + r.title} />
-      <a className="mr-btn" href={pv.url} download={pv.name}>Скачать картинку</a>
+      <a className="mr-btn" data-lens-btn="main" href={pv.url} download={pv.name}>Скачать картинку</a>
       {canFiles ? <button type="button" className="mr-ghost" onClick={pvShare}>Поделиться…</button> : null}
       <p>Или нажми и удерживай картинку, затем «Сохранить» или «Поделиться». В Telegram её можно отправить из галереи.</p>
       <button type="button" className="mr-ghost" data-sa-back="" onClick={() => setPv(null)}>Готово</button>

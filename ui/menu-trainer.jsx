@@ -149,7 +149,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
     const ownIds = new Set(ownAll.map(d => d.id));
     const own = ownAll.filter(d => !d.archived); // Доп. 167: архив в тренажёре не показываем
     const del = new Set(deleted[restaurant] || []);
-    const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && d.kind !== "cocktail" && !ownIds.has(d.id) && !del.has(d.id) && !d.archived); // своя правка важнее серверной; удалённое — до публикации не показываем
+    const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && d.kind !== "cocktail" && d.kind !== "wine" && !ownIds.has(d.id) && !del.has(d.id) && !d.archived); // своя правка важнее серверной; удалённое — до публикации не показываем
     // Доп. 154: примеры-заготовки видны, пока нет меню команды (или если включены вручную);
     // отредактированный пример живёт в «своих», удалённый — в скрытых.
     const hs = hideSamples[restaurant];
@@ -273,7 +273,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v119</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v120</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -850,7 +850,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   // Блюда, опубликованные на сервере, которых нет в локальном редакторе, — их нельзя
   // ни поправить, ни удалить, пока не «заберёшь» в редактор
   const delSet = new Set(deleted[restaurant] || []);
-  const orphanShared = (shared || []).filter(s => s && s.id && s.name && !isBarcard(s) && s.kind !== "cocktail" && !(custom[restaurant] || []).some(d => d.id === s.id) && !delSet.has(s.id)); // Доп. 168/210/240: карта бара и коктейли — не блюда
+  const orphanShared = (shared || []).filter(s => s && s.id && s.name && !isBarcard(s) && s.kind !== "cocktail" && s.kind !== "wine" && !(custom[restaurant] || []).some(d => d.id === s.id) && !delSet.has(s.id)); // Доп. 168/210/240: карта бара и коктейли — не блюда
   const hidSet = new Set(hiddenIds[restaurant] || []);
   const hs = hideSamples[restaurant];
   const samplesShown = hs === false ? true : hs === true ? false : (shared || []).length === 0;
@@ -922,13 +922,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     const nextOwn = own.some(x => x.id === d.id) ? own.map(x => x.id === d.id ? upd : x) : [upd, ...own];
     setCustom({ ...custom, [restaurant]: nextOwn });
     vibrate(stopped ? "error" : "success");
-    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id), ...(shared || []).filter(x => isBarcard(x) || (x && x.kind === "cocktail"))])
+    publishList([...nextOwn, ...orphanShared.filter(x => x.id !== d.id), ...(shared || []).filter(x => isBarcard(x) || (x && (x.kind === "cocktail" || x.kind === "wine")))])
       .then((ok) => { if (ok) stopToChat(d.id, stopped); });
   };
   const publish = () => {
     if (!saToken()) { _showPub(false, "Нужен вход по коду сотрудника"); return; }
     setPubBusy(true);
-    const toPublish = [...list, ...archived, ...orphanShared, ...(shared || []).filter(d => isBarcard(d) || (d && d.kind === "cocktail"))]; // Доп. 154/167/210/240: + карта бара + коктейли бара
+    const toPublish = [...list, ...archived, ...orphanShared, ...(shared || []).filter(d => isBarcard(d) || (d && (d.kind === "cocktail" || d.kind === "wine")))]; // Доп. 154/167/210/240: + карта бара + коктейли бара; v120 (Доп. 433): + вина
     rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(toPublish) })
       .then(res => {
         setPubBusy(false);

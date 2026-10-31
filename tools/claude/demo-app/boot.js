@@ -23,7 +23,8 @@ import { HINTS, HINTS_VERSION } from "../../../data/hints.js";
 import { calPage } from "../../../lib/ical.js";
 import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib/home-look.js";
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — сообщение бота
-import { eveText, eveKb } from "../../../lib/newbie.js";   // v107: памятка новичку накануне первой смены
+import { eveText, eveKb } from "../../../lib/newbie.js";
+import { normWine, TEMP_HINT } from "../../../lib/wine.js";   // v120: винная карта демо и AI-импорт вместо сервера   // v107: памятка новичку накануне первой смены
 
 const K_SRV = "__demo_srv", K_WHO = "__demo_who", K_DAY = "__demo_day", K_T = "__demo_t", K_NEW = "__demo_newphone";
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -116,6 +117,51 @@ Object.assign(SSTAFF[0], { bday: "14.02", joined: "01.03.2022" });
 Object.assign(SSTAFF[2], { bday: "21.11", joined: "02.06.2024" });
 Object.assign(SSTAFF[3], { bday: "07.07", joined: "15.04.2023" });
 const MENU = JSON.parse(JSON.stringify(RESTAURANT_MENUS[R0] || []));
+// v120 (Доп. 433): винная карта «Двух морей» — восемь вин; у одного поля дописал AI и их ещё не проверили (кнопка «Верно»)
+const dish = (n) => (MENU.find((d) => d && d.name && d.name.startsWith(n)) || {}).id;
+const DEMO_WINES = [
+  { name: "Просекко DOC Extra Dry", producer: "Bottega", country: "Италия", region: "Венето", grapes: ["глера"], color: "sparkling", sweet: "экстра сухое", byGlass: true, priceGlass: 650, priceBottle: 3600, temp: "6–8 °C", glass: "флюте",
+    notes: ["груша", "белые цветы", "лёгкая пена"], short: "Лёгкие пузырьки и груша: начать вечер и к закускам.", pair: [dish("Креветка темпура"), dish("Ассорти паштетов")] },
+  { name: "Шабли", producer: "Domaine Laroche", country: "Франция", region: "Бургундия, Шабли", grapes: ["шардоне"], color: "white", sweet: "сухое", vintage: "2022", byGlass: true, priceGlass: 950, priceBottle: 5200, temp: "8–10 °C", glass: "бургундия",
+    notes: ["зелёное яблоко", "мел", "лимон"], short: "Свежее, минеральное, с кислинкой: к морепродуктам лучше не придумать.", story: "Шардоне без дуба с известняковых почв Шабли: чистое, звонкое, с меловым послевкусием. Гостю: «если любите свежие белые без сладости».",
+    pair: [dish("Закуска из морепродуктов"), dish("Салат с крабом"), dish("Кальмар")] },
+  { name: "Совиньон Блан", producer: "Cloudy Bay", country: "Новая Зеландия", region: "Мальборо", grapes: ["совиньон блан"], color: "white", sweet: "сухое", vintage: "2023", priceBottle: 6900, temp: "8–10 °C", glass: "универсальный",
+    notes: ["маракуйя", "крыжовник", "свежескошенная трава"], short: "Яркий и ароматный: тропические фрукты и свежая зелень.", pair: [dish("Салат с креветками")] },
+  { name: "Рислинг Кабинетт", producer: "Dr. Loosen", country: "Германия", region: "Мозель", grapes: ["рислинг"], color: "white", sweet: "полусладкое", vintage: "2021", byGlass: true, priceGlass: 780, priceBottle: 4300, temp: "8–10 °C", glass: "универсальный",
+    notes: ["персик", "лайм", "мёд"], short: "Сочный, с лёгкой сладостью и кислинкой: к острому и азиатскому.", pair: [dish("Кальмар в азиатском стиле")] },
+  { name: "Розе Côtes de Provence", producer: "Château d’Esclans", country: "Франция", region: "Прованс", grapes: ["гренаш", "сенсо"], color: "rose", sweet: "сухое", vintage: "2023", priceBottle: 5900, temp: "8–10 °C", glass: "универсальный",
+    notes: ["клубника", "грейпфрут", "травы"], short: "Бледное и сухое розовое: лето в бокале.", ai: ["grapes", "notes", "short"] },
+  { name: "Пино Нуар", producer: "Louis Jadot", country: "Франция", region: "Бургундия", grapes: ["пино нуар"], color: "red", sweet: "сухое", vintage: "2020", byGlass: true, priceGlass: 1100, priceBottle: 6100, temp: "14–16 °C", glass: "бургундия",
+    notes: ["вишня", "малина", "лесная подстилка"], short: "Лёгкое красное: можно и к рыбе, и к крабовой котлете.", pair: [dish("Крабовая котлета")] },
+  { name: "Кьянти Классико", producer: "Castello di Ama", country: "Италия", region: "Тоскана", grapes: ["санджовезе"], color: "red", sweet: "сухое", vintage: "2019", priceBottle: 7400, temp: "16–18 °C", glass: "бордо",
+    notes: ["вишня", "фиалка", "пряности"], short: "Классическая Тоскана: вишня, специи, бодрая кислотность." },
+  { name: "Москато д’Асти", producer: "Saracco", country: "Италия", region: "Пьемонт", grapes: ["москато"], color: "dessert", sweet: "сладкое", vintage: "2023", byGlass: true, priceGlass: 590, priceBottle: 3300, temp: "6–8 °C", glass: "флюте",
+    notes: ["абрикос", "апельсиновый цвет", "мускат"], short: "Сладкое и чуть игристое: к десерту, особенно к конфетам.", pair: [dish("Ассорти конфет")] },
+];
+DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean) }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
+// AI винной карты в демо — без нейросети: по словам названия угадываем стиль, честно помеченный «AI» (в приложении — api/wine-import.js)
+const WINE_GUESS = [[/просекко|prosecco|шампан|champagne|кава|cava|брют|brut|игрист|франчакорт/i, "sparkling", ["шардоне"], ["яблоко", "бриошь", "цитрус"]],
+  [/шабли|chablis|шардоне|chardonnay|мерсо/i, "white", ["шардоне"], ["яблоко", "мел", "лимон"]], [/альбариньо|albariño|albarino/i, "white", ["альбариньо"], ["персик", "морская соль", "цитрус"]],
+  [/гави|gavi|кортезе/i, "white", ["кортезе"], ["груша", "миндаль", "цитрус"]], [/грюнер|grüner|gruner/i, "white", ["грюнер вельтлинер"], ["белый перец", "яблоко"]], [/рислинг|riesling/i, "white", ["рислинг"], ["персик", "лайм", "мёд"]],
+  [/совиньон|sauvignon|сансер/i, "white", ["совиньон блан"], ["крыжовник", "трава", "цитрус"]], [/розе|rosé|rose|прованс/i, "rose", ["гренаш"], ["клубника", "грейпфрут"]],
+  [/пино нуар|pinot noir|бургундия/i, "red", ["пино нуар"], ["вишня", "малина"]], [/кьянти|chianti|санджовезе/i, "red", ["санджовезе"], ["вишня", "пряности"]],
+  [/бароло|barolo|неббиоло/i, "red", ["неббиоло"], ["роза", "смола", "вишня"]], [/риоха|rioja|темпранильо/i, "red", ["темпранильо"], ["ваниль", "слива"]],
+  [/каберне|cabernet|бордо|bordeaux|мальбек|malbec|шираз|syrah/i, "red", ["каберне совиньон"], ["смородина", "кедр", "табак"]],
+  [/москато|moscato|сотерн|токай|ледян/i, "dessert", ["москато"], ["абрикос", "мёд"]], [/портвейн|porto|херес|sherry|мадера/i, "fortified", ["тоурига насьонал"], ["изюм", "орех"]]];
+const SHORT_BY = { sparkling: "Свежие пузырьки: к закускам и для начала вечера.", white: "Свежее белое: к рыбе и морепродуктам.", rose: "Лёгкое розовое: к салатам и закускам.",
+  red: "Красное с мягкими танинами: к мясу и котлете.", dessert: "Сладкое: к десерту.", fortified: "Креплёное: к сыру и десерту." };
+const guessWine = (name) => { const g = WINE_GUESS.find(([re]) => re.test(name)) || [null, "red", [], ["ягоды", "пряности"]];
+  const year = (String(name).match(/\b(19|20)\d{2}\b/) || [""])[0];
+  return { name, grapes: g[2], color: g[1], sweet: g[1] === "sparkling" ? "брют" : g[1] === "dessert" ? "сладкое" : "сухое", vintage: year, temp: TEMP_HINT[g[1]] || "", notes: g[3], short: SHORT_BY[g[1]] || "" }; };
+const SHEET = [["Шампанское Brut Réserve", "Charles Heidsieck", "Франция", "Шампань", 0, 14500], ["Гави ди Гави", "La Scolca", "Италия", "Пьемонт", 820, 4600],
+  ["Альбариньо", "Pazo Señorans", "Испания", "Риас-Байшас", 0, 5400], ["Риоха Резерва", "Muga", "Испания", "Риоха", 980, 5900], ["Бароло", "Pio Cesare", "Италия", "Пьемонт", 0, 12800],
+  ["Мальбек", "Catena Zapata", "Аргентина", "Мендоса", 850, 4800]];
+const demoWineAi = (b) => {
+  if (b.mode === "fill") return { wines: [guessWine(String(b.name || ""))] };
+  if (b.mode === "names") return { wines: (b.names || []).slice(0, 15).map((n) => guessWine(String(n))) };
+  // фото страницы или PDF: в демо — одна и та же «страница» из шести вин
+  return { wines: SHEET.map(([name, producer, country, region, g, bt]) => ({ ...guessWine(name), producer, country, region, byGlass: !!g, priceGlass: g || "", priceBottle: bt })) };
+};
 // v109 (Доп. 422): «Что дало обучение». Дни месяца → смещения от сегодня: прошлый месяц целиком, этот — до дня за 10 до сегодня
 // (последние девять дней — дни занятий «Утра руководителя», learn ниже); в каждый день — запись журнала и ответы в тестах.
 const dOff = (iso) => Math.round((Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) - Date.UTC(+TODAY.slice(0, 4), +TODAY.slice(5, 7) - 1, +TODAY.slice(8, 10))) / 864e5);
@@ -352,6 +398,7 @@ window.fetch = function (input, init) {
   }
   if (/\/functions\/v1\/ai-chat/.test(url)) return wait(700).then(() => json({ ok: true, reply: AI_REPLY, model: "demo" }));
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
+  if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
   return realFetch ? realFetch(input, init) : Promise.reject(new Error("no fetch"));
 };

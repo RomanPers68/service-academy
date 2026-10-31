@@ -1,0 +1,148 @@
+// ui/wine-list.jsx — v120 (Доп. 433): «Винная карта» заведения для команды.
+//
+// Вина — записи kind:"wine" в меню команды (lib/wine.js). Здесь их видят все: группы по цвету, поиск, «Бокалом»,
+// карточка вина (стиль, ноты, подача, фраза гостю, к каким блюдам). Что дописал AI и ещё не подтвердили — с пометкой
+// «не проверено». Руководитель (manager, senior, владелец) правит в «Редакторе вин» (ui/wine-editor.jsx).
+import React from "react";
+import { GOLD, labelStyle } from "./tokens";
+import { onActivate, vibrate } from "../lib/utils";
+import { rpc } from "../api/supabase";
+import { cachedShared } from "../lib/deck-extras";
+import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
+import { wineRecords, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked, COLOR_GROUP, COLOR_RU, FIELD_RU } from "../lib/wine";
+
+const SERIF = "Georgia, 'Times New Roman', serif";
+export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
+export const winesWord = (n) => n + " " + plural(n, "вино", "вина", "вин");
+
+/** Меню команды: сначала кэш телефона, потом сервер (как у коктейлей). */
+export function useTeamMenu(restaurant) {
+  const [shared, setShared] = React.useState(() => cachedShared(restaurant));
+  const [loaded, setLoaded] = React.useState(false);
+  React.useEffect(() => {
+    if (!restaurant) return undefined;
+    let alive = true;
+    rpc("menu_get", { p_restaurant: restaurant }).then((res) => {
+      const arr = typeof res === "string" ? JSON.parse(res) : res;
+      if (alive && Array.isArray(arr)) { setShared(arr); rememberSharedMenu(restaurant, arr); }
+      if (alive) setLoaded(true);
+    }).catch(() => { if (alive) setLoaded(true); });
+    return () => { alive = false; };
+  }, [restaurant]);
+  return [shared, setShared, loaded];
+}
+
+export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
+  const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
+  const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A";
+  const restaurant = (profile && profile.restaurant) || "";
+  const edit = canEditWines(profile) && onEdit;
+  const [shared] = useTeamMenu(restaurant);
+  const [q, setQ] = React.useState("");
+  const [only, setOnly] = React.useState("all");   // all | glass | цвет
+  const [openId, setOpenId] = React.useState(startId || null);
+  const all = React.useMemo(() => wineRecords(shared).filter((w) => !w.archived), [shared]);
+  const colors = React.useMemo(() => groupByColor(all).map(([k]) => k).filter((k) => k !== "other"), [all]);
+  const shown = React.useMemo(() => findWines(all, q).filter((w) => (only === "all" ? true : only === "glass" ? w.byGlass : w.color === only)), [all, q, only]);
+  const groups = groupByColor(shown);
+  const glassN = all.filter((w) => w.byGlass).length, uncheckedN = all.filter(unchecked).length;
+  const dishes = React.useMemo(() => { try { return dishesOf(restaurant) || []; } catch (e) { return []; } }, [restaurant, shared]);
+  const dishName = (id) => (dishes.find((d) => d && d.id === id) || {}).name || "";
+  const head = (title, back, kicker) => (
+    <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
+      <button className="sa-btn" data-lens="back" onClick={back} {...onActivate(back)} aria-label="Назад"
+        style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ ...labelStyle(13.5), color: gold }}>{kicker}</div>
+        <div style={{ fontFamily: SERIF, fontSize: 21, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
+      </div>
+      {edit ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-edit="" onClick={() => { vibrate("light"); onEdit(openId); }}
+        style={{ flexShrink: 0, padding: "7px 13px", borderRadius: 999, border: `1px solid ${gold}77`, background: "transparent", color: text, fontFamily: SERIF, fontSize: 13, cursor: "pointer" }}>
+        {openId ? "Править" : "Редактор"}</button> : null}
+    </div>
+  );
+  const chip = (on) => ({ flexShrink: 0, padding: "6px 12px", borderRadius: 999, fontSize: 13, fontFamily: SERIF, cursor: "pointer", whiteSpace: "nowrap",
+    border: `1px solid ${on ? gold : gold + "44"}`, background: on ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? text : sub });
+  const badge = (t, c) => <span style={{ fontSize: 11.5, padding: "1px 7px", borderRadius: 999, border: `1px solid ${c}88`, color: c, whiteSpace: "nowrap" }}>{t}</span>;
+
+  // ── карточка вина ──
+  const w = openId ? all.find((x) => x.id === openId) : null;
+  if (w) {
+    const pairs = (w.pair || []).map(dishName).filter(Boolean);
+    const serve = [w.temp, w.glass ? "бокал «" + w.glass + "»" : "", w.volume].filter(Boolean).join(" · ");
+    const sec = (t) => <div style={{ ...labelStyle(13.5), color: gold, margin: "16px 0 6px" }}>{t}</div>;
+    return (
+      <div style={T.screen} className="sa-screen" data-wine-card={w.id}>
+        {head(wineTitle(w), () => setOpenId(null), "Винная карта")}
+        <div style={{ padding: "4px 16px 140px" }}>
+          <div data-lens-card="" style={{ ...T.modCard, display: "block", padding: "14px 16px", cursor: "default" }}>
+            {w.producer ? <div style={{ fontSize: 13.5, color: sub }}>{w.producer}</div> : null}
+            <div style={{ fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.45, marginTop: 4 }}>{wineLine(w) || (w.color ? COLOR_RU[w.color] : "Описание пока не заполнено")}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+              {w.byGlass ? badge("бокалом", gold) : null}
+              {w.stop ? badge("сегодня нет", red) : null}
+              {w.abv ? badge(String(w.abv).replace(".", ",") + "%", sub) : null}
+            </div>
+            {winePrice(w) ? <div style={{ fontSize: 14, color: text, marginTop: 10 }}>{winePrice(w)}</div> : null}
+          </div>
+          {unchecked(w) ? <div data-wine-unchecked="" style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.5, color: amber }}>
+            Не проверено: {w.ai.map((f) => FIELD_RU[f] || f).join(", ")}. Это подсказал AI, руководитель ещё не подтвердил.</div> : null}
+          {w.short ? <>{sec("Одной фразой гостю")}<div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 16, lineHeight: 1.5, color: text }}>«{w.short}»</div></> : null}
+          {(w.notes || []).length ? <>{sec("Ноты")}<div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{w.notes.map((n) => <span key={n} data-lens-tag="" style={{ ...chip(false), cursor: "default", color: text }}>{n}</span>)}</div></> : null}
+          {serve ? <>{sec("Подача")}<div style={{ fontSize: 14.5, color: text, lineHeight: 1.5 }}>{serve}</div></> : null}
+          {w.story ? <>{sec("О вине")}<div style={{ fontSize: 14.5, color: text, lineHeight: 1.6 }}>{w.story}</div></> : null}
+          {pairs.length || w.pairNote ? <>{sec("К блюдам")}
+            {pairs.length ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{pairs.map((n) => <span key={n} data-lens-tag="" style={{ ...chip(false), cursor: "default", color: text }}>{n}</span>)}</div> : null}
+            {w.pairNote ? <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.5, marginTop: 6 }}>{w.pairNote}</div> : null}</> : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={T.screen} className="sa-screen" data-wine-list={all.length}>
+      {head("Винная карта", onBack, "Справочник · " + restaurant)}
+      <div style={{ padding: "0 16px 140px" }}>
+        <div style={{ fontSize: 13.5, color: sub, margin: "2px 2px 10px" }} data-wine-sum="">
+          {all.length ? winesWord(all.length) + (glassN ? " · бокалом " + glassN : "") + (edit && uncheckedN ? " · не проверено " + uncheckedN : "")
+            : edit ? "Карта пока пустая. Добавь вина руками, фото страниц карты, списком или из PDF." : "Карта пока пустая."}
+        </div>
+        {!all.length && edit ? <button type="button" className="sa-btn" data-lens-btn="main" onClick={() => onEdit(null)}
+          style={{ ...T.doneBtn, width: "100%", margin: "4px 0 0", background: gold, color: "#1A1008" }}>Добавить вина</button> : null}
+        {all.length ? <>
+          <input data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Название, регион, сорт, нота…" aria-label="Поиск по винной карте"
+            style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)", color: text, fontSize: 14.5, fontFamily: SERIF, outline: "none" }} />
+          <div className="sa-hscroll" role="group" aria-label="Показать" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px" }}>
+            {[["all", "Все"], ...(glassN ? [["glass", "Бокалом"]] : []), ...colors.map((k) => [k, COLOR_GROUP[k]])].map(([k, t]) => (
+              <button key={k} type="button" aria-pressed={only === k} data-wine-only={k} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink="" onClick={() => { setOnly(k); vibrate("light"); }} style={chip(only === k)}>{t}</button>))}
+          </div>
+          {!shown.length ? <div style={{ fontSize: 14, color: sub, padding: "18px 2px" }}>Ничего не нашлось.</div> : null}
+          {groups.map(([k, list]) => (
+            <div key={k} data-wine-group={k}>
+              <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 2px 6px" }}>{COLOR_GROUP[k]} · {list.length}</div>
+              {list.map((x) => {
+                const open = () => { vibrate("light"); setOpenId(x.id); };
+                return (
+                  <div key={x.id} role="button" tabIndex={0} data-wine-row={x.id} data-lens-card="" onClick={open} {...onActivate(open)}
+                    style={{ ...T.modCard, display: "block", padding: "11px 14px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.3 }}>{wineTitle(x)}</span>
+                      {x.byGlass ? badge("бокалом", gold) : null}
+                      {x.stop ? badge("сегодня нет", red) : null}
+                    </div>
+                    {wineLine(x) ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{wineLine(x)}</div> : null}
+                    {winePrice(x) || unchecked(x) ? <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+                      {winePrice(x) ? <span style={{ fontSize: 12.5, color: text }}>{winePrice(x)}</span> : null}
+                      {unchecked(x) ? <span style={{ fontSize: 11.5, color: amber }}>не проверено</span> : null}
+                    </div> : null}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </> : null}
+      </div>
+    </div>
+  );
+}

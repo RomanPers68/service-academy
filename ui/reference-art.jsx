@@ -80,7 +80,28 @@ function Cocktails({ light }) {
   );
 }
 
-const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails };
+/** v120 (Доп. 433): «Наша винная карта» — бутылка с этикеткой перед листом карты (владелец: «в справочнике выглядит
+    как что-то инородное» — значок в линзе среди витражей; теперь витраж, как у соседей) */
+function WineList({ light }) {
+  const L = lead(light);
+  return (
+    <svg viewBox="0 0 120 120" width="100%" height="100%" aria-hidden="true">
+      <g transform="rotate(7 80 60)">
+        <rect x="58" y="22" width="44" height="74" rx="5" fill={glass(light)} stroke={L} strokeWidth="1.8" />
+        <path d="M66 36 H92 M66 47 H88 M66 58 H92 M66 69 H86 M66 80 H90" fill="none" stroke={L} strokeWidth="1.4" strokeLinecap="round" opacity="0.8" />
+      </g>
+      <path d="M38 12 H50 V30 Q50 37 56 43 Q61 48 61 56 V100 Q61 106 55 106 H33 Q27 106 27 100 V56 Q27 48 32 43 Q38 37 38 30 Z"
+        fill={light ? "rgba(128,36,58,0.5)" : "rgba(140,36,60,0.78)"} stroke={L} strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M38 12 H50 V21 H38 Z" fill={light ? "rgba(176,138,70,0.65)" : "rgba(214,178,102,0.72)"} stroke={L} strokeWidth="1.4" strokeLinejoin="round" />
+      <rect x="31" y="64" width="26" height="22" rx="2" fill={light ? "rgba(250,242,222,0.92)" : "rgba(239,228,200,0.86)"} stroke={L} strokeWidth="1.4" />
+      <path d="M36 72 H52 M38 78 H50" fill="none" stroke={L} strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M32 52 Q30 66 32 98" fill="none" stroke={shine(light)} strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="106" cy="16" r="2" fill={L} opacity="0.7" /><circle cx="17" cy="30" r="1.5" fill={L} opacity="0.5" />
+    </svg>
+  );
+}
+
+const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails, winelist: WineList };
 
 export function RefArt({ kind, light = false, size = 56 }) {
   const C = ART[kind];

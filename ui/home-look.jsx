@@ -456,7 +456,9 @@ html.sa-lens .rp .rp-search input:focus{box-shadow:inset 0 0 0 1px var(--lk-hi),
    золотом, темы — карточки, их значки — линзы (как у строк вкладок; значок темы чуть меньше, чтобы не упирался в
    ободок), у «Работы над ошибками» тоже; у пройденной темы «Погреб тем ›» — стекло (плитки «Освежить» и «Раунд мастера» — прежние, их
    значки и так линзы). В «Для чтения» мелкие подписи на плашках («Начать» 13 px, «Понятно» 11,5 px) — тёмным золотом:
-   обычным золотом плашки они не дотягивали до 4,5 ── */
+   обычным золотом плашки они не дотягивали до 4,5. v120 (Доп. 433), владелец (31.10, снимок): «Ещё пару нашёл. Далее…»: карточка
+   «Дальше» под пройденной темой (ui/screens-learning.jsx, ModuleNextCard): карточка линзы, номер шага — линза, «Перейти ›» —
+   плашка с кольцом (в «Для чтения» подпись тёмным золотом); так же карточка «Программа роли пройдена» и её кнопка ── */
 html.sa-lens [data-lens-float]{box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),0 14px 36px rgba(0,0,0,0.55)!important}
 html.sa-lens.sa-light [data-lens-float]{box-shadow:inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow),0 12px 30px rgba(110,80,25,0.22)!important}
 html.sa-lens .ms-toast[data-lens-card]{background-color:#271D0F!important}
@@ -476,7 +478,7 @@ html.sa-lens.sa-light .tbp-ind-row span{color:#6B4E1A}
 html.sa-lens [data-lens-card]>[data-lens="disc"]{border-radius:50%!important}
 html.sa-lens .sa-card.sa-glass[data-lens-card]>[data-lens="disc"]>svg{transform:scale(0.78)}
 html.sa-lens .tbm-cellar{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
-html.sa-lens.sa-light .sa-card[data-lens-edge] [data-lens-btn="main"],html.sa-lens.sa-light .sa-hintglow [data-lens-btn="main"]{color:#6B4E1A!important}
+html.sa-lens.sa-light .sa-card[data-lens-edge] [data-lens-btn="main"],html.sa-lens.sa-light .sa-hintglow [data-lens-btn="main"],html.sa-lens.sa-light [data-next-card] [data-lens-btn="main"]{color:#6B4E1A!important}
 
 `;
 export function ensureLookCss() {

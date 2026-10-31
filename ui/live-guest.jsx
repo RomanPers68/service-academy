@@ -147,8 +147,8 @@ const isFemale = (name) => /[ая]$/i.test(String(name || "").split(" ")[0]) && 
 // Блюда и напитки ресторана — из того же кэша меню, что видит Наставник
 function menuOf(restaurant) {
   let dishes = []; try { dishes = dishesOf(restaurant) || []; } catch (e) { dishes = []; }
-  let drinks = []; try { drinks = (COCKTAILS || []).map((c) => ({ name: c.name })).concat(dishes.filter((d) => d.kind === "cocktail")); } catch (e) { drinks = []; }
-  return { dishes: dishes.filter((d) => d.kind !== "cocktail"), drinks };
+  let drinks = []; try { drinks = (COCKTAILS || []).map((c) => ({ name: c.name })).concat(dishes.filter((d) => d.kind === "cocktail" || d.kind === "wine")); } catch (e) { drinks = []; }
+  return { dishes: dishes.filter((d) => d.kind !== "cocktail" && d.kind !== "wine"), drinks };   // v120: вина гостю — напитки, не блюда
 }
 
 // v31: стол сверху — где гость и сколько человек; у бара — стойка, у входа — дверь и стойка хостес

@@ -159,7 +159,8 @@ describe("v71: поиск — меню команды, как в «Колоде 
   it("то же правило, что у «Колоды меню» (ui/menu-trainer.jsx)", () => {
     const mt = rd("ui/menu-trainer.jsx");
     expect(mt).toContain("const showSamples = hs === false ? true : hs === true ? false : shared.length === 0;");
-    expect(mt).toContain('const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && d.kind !== "cocktail" && !ownIds.has(d.id) && !del.has(d.id) && !d.archived);');
+    // v120: и без вин (записи kind:"wine" — винная карта, не блюда)
+    expect(mt).toContain('const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && d.kind !== "cocktail" && d.kind !== "wine" && !ownIds.has(d.id) && !del.has(d.id) && !d.archived);');
   });
   it("карта бара: если настроена — только её коктейли и свои; если нет — все", () => {
     expect(barCocktails([]).length).toBe(COCKTAILS.length);

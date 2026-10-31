@@ -82,6 +82,8 @@ const ScheduleScreen = lazy(() => retryImport(() => import("./ui/schedule")).the
 const BuildRunner = lazy(() => retryImport(() => import("./ui/build")).then(m => ({ default: m.BuildRunner })));
 const BarLabScreen = lazy(() => retryImport(() => import("./ui/bar-lab")).then(m => ({ default: m.BarLabScreen }))); // Доп. 218: лениво, как остальные экраны
 const CocktailEditor = lazy(() => retryImport(() => import("./ui/cocktail-editor")).then(m => ({ default: m.CocktailEditor }))); // Доп. 240
+const WineListScreen = lazy(() => retryImport(() => import("./ui/wine-list")).then(m => ({ default: m.WineListScreen })));   // v120 (Доп. 433): винная карта
+const WineEditor = lazy(() => retryImport(() => import("./ui/wine-editor")).then(m => ({ default: m.WineEditor })));
 const BarCardPrint = lazy(() => retryImport(() => import("./ui/bar-card-print")).then(m => ({ default: m.BarCardPrint })));
 const GuideScreen = lazy(() => retryImport(() => import("./ui/guide")).then(m => ({ default: m.GuideScreen })));   // Доп. 280: 73 КБ мимо старта // Доп. 244
 // Лёгкий старт: редактор контента нужен только руководителю — грузится при открытии
@@ -425,7 +427,7 @@ function ServiceAcademy() {
   const [navStack, setNavStack] = useState([]);
   const navRef = useRef([]);                 // источник истины для push/pop
   const screenRef = useRef("roleSelect");    // текущий экран для императивных переходов
-  useEffect(() => { screenRef.current = screen; if (screen !== "menuTrainer") { setMenuStart(null); setMenuMode(null); } if (screen !== "barLab") setLabStart(null); if (screen !== "ckEditor") setCkEdit(null); }, [screen]);
+  useEffect(() => { screenRef.current = screen; if (screen !== "menuTrainer") { setMenuStart(null); setMenuMode(null); } if (screen !== "barLab") setLabStart(null); if (screen !== "ckEditor") setCkEdit(null); if (screen !== "wineEditor") setWineEdit(null); if (screen !== "wines") setWineStart(null); }, [screen]);
   const commitStack = useCallback((arr) => { navRef.current = arr; setNavStack(arr); }, []);
   const prevScreen = navStack.length ? navStack[navStack.length - 1] : null;
   const setPrevScreen = useCallback((x) => { if (x) commitStack([...navRef.current, x].slice(-24)); }, [commitStack]);
@@ -464,6 +466,8 @@ function ServiceAcademy() {
   const [menuStart, setMenuStart] = useState(null);
   const [labStart, setLabStart] = useState(null); // Доп. 208: открыть Сборку руками на коктейле
   const [ckEdit, setCkEdit] = useState(null); // Доп. 240: редактор коктейлей — открыть на записи
+  const [wineEdit, setWineEdit] = useState(null); // v120: редактор вин — открыть на вине
+  const [wineStart, setWineStart] = useState(null); // v120: винная карта — открыть карточку вина
   // Доп. 246: ссылка ?print=bar из Telegram — сразу карта бара для печати
   useEffect(() => { try { if (new URLSearchParams(location.search).get("print") === "bar") navigate("barPrint"); } catch (e) {} }, []);
   const [menuMode, setMenuMode] = useState(null); // Доп. 210: режим дня → тренажёр меню
@@ -3396,7 +3400,9 @@ function ServiceAcademy() {
           modules={programModules} mentorName={mentorName} goal={{ steps: todaySteps, goal }} onAskMentor={askMentor} onActivity={logActivity}
           onContents={activeModule ? () => navigate("module") : undefined} onShareChat={chatShare} />}
         {screen === "roleComplete" && <Suspense fallback={<ScreenLoader T={T} />}><RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} /></Suspense>}
-        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} onShareChat={chatShare} /></Suspense>}
+        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} onWines={() => { setRefStart(null); navigate("wines"); }} onShareChat={chatShare} /></Suspense>}
+        {screen === "wines" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><WineListScreen T={T} a11y={a11y} profile={profile} startId={wineStart} onBack={() => goBack("reference")} onEdit={(id) => { setWineEdit(id || null); navigate("wineEditor"); }} /></Suspense></div>}
+        {screen === "wineEditor" && <Suspense fallback={<ScreenLoader T={T} />}><WineEditor T={T} a11y={a11y} profile={profile} startEditId={wineEdit} onBack={() => goBack("wines")} /></Suspense>}
         {screen === "certificates" && <Suspense fallback={<ScreenLoader T={T} />}><CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} /></Suspense>}
         {screen === "exam" && <Suspense fallback={<ScreenLoader T={T} />}><ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} extraQuestions={examExtra} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} /></Suspense>}
         {screen === "certificate" && <Suspense fallback={<ScreenLoader T={T} />}><CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} onShare={() => { const ro = ROLES.find(r=>r.id===examRole); const txt = `Я сдал(а) экзамен на роль «${ro?.label||""}» в Service Academy! ${APP_SHARE_URL}`; try { if (navigator.share) { navigator.share({ text: txt, url: APP_SHARE_URL }); } else if (navigator.clipboard) { navigator.clipboard.writeText(txt); } } catch(e) {} }} /></Suspense>}

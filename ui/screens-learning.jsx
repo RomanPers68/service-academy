@@ -1019,7 +1019,7 @@ export function ModuleNextCard({ mod, next, onNext, finish, T, a11y = false }) {
     const f = finish || {};
     const go = () => f.onGo && f.onGo();
     return (
-      <div className="sa-card" style={{ ...frost, margin: "10px 16px 96px", padding: "14px 16px", borderRadius: 18 }}>
+      <div className="sa-card" data-lens-card="" data-next-card="finish" style={{ ...frost, margin: "10px 16px 96px", padding: "14px 16px", borderRadius: 18 }}>
         <div style={{ ...labelStyle(13.5), color: goldA, marginBottom: 4 }}>{f.eyebrow || "Программа роли пройдена"}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1027,7 +1027,7 @@ export function ModuleNextCard({ mod, next, onNext, finish, T, a11y = false }) {
             {f.sub && <div style={{ fontSize: 12.5, color: T.modSub.color, marginTop: 2, lineHeight: 1.45 }}>{f.sub}</div>}
           </div>
         </div>
-        {f.cta && <button className="sa-btn" onClick={go} style={{ marginTop: 12, width: "100%", border: "none", cursor: "pointer", padding: "12px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", boxShadow: "0 6px 18px rgba(214,178,102,0.32)" }}>{f.cta}</button>}
+        {f.cta && <button className="sa-btn" data-lens-btn="main" onClick={go} style={{ marginTop: 12, width: "100%", border: "none", cursor: "pointer", padding: "12px 16px", borderRadius: 999, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", boxShadow: "0 6px 18px rgba(214,178,102,0.32)" }}>{f.cta}</button>}
         {f.secondary && <div onClick={(e) => { e.stopPropagation(); f.secondary.onGo && f.secondary.onGo(); }} style={{ marginTop: 10, fontSize: 12.5, color: goldA, cursor: "pointer" }}>{f.secondary.label} ›</div>}
       </div>
     );
@@ -1041,14 +1041,14 @@ export function ModuleNextCard({ mod, next, onNext, finish, T, a11y = false }) {
   // снизу воздух, чтобы кнопка Наставника висела над пустотой, а не над карточкой
   // Доп. 203: компактно — одна строка: номер · название с подписью · капсула
   return (
-    <div className="sa-card" onClick={go} {...onActivate(go)} style={{ ...frost, margin: "10px 16px 96px", padding: "10px 12px 10px 12px", borderRadius: 18, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
-      <div style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
+    <div className="sa-card" onClick={go} {...onActivate(go)} data-lens-card="" data-next-card="next" style={{ ...frost, margin: "10px 16px 96px", padding: "10px 12px 10px 12px", borderRadius: 18, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+      <div data-lens="disc" style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, border: `1px solid ${goldA}66`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 14, color: goldA }}>{pos || "→"}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...labelStyle(13), color: goldA, marginBottom: 2 }}>{same ? "Следующий шаг" : `Дальше · ${(next.mod && next.mod.title) || ""}`}</div>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.lesson.title}</div>
         <div style={{ fontSize: 11, color: T.modSub.color, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{kind}{next.lesson.minutes ? ` · ${next.lesson.minutes} мин` : ""}{pos && lessons.length ? ` · ${pos} из ${lessons.length}` : ""}</div>
       </div>
-      <span style={{ padding: "9px 14px", borderRadius: 999, flexShrink: 0, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.32)" }}>Перейти ›</span>
+      <span data-lens-btn="main" style={{ padding: "9px 14px", borderRadius: 999, flexShrink: 0, background: `linear-gradient(180deg,#E4C88C,${GOLD})`, color: "#1a160f", fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(214,178,102,0.32)" }}>Перейти ›</span>
     </div>
   );
 

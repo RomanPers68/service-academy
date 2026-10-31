@@ -14,6 +14,8 @@ import { GOLD, GREEN, RED, labelStyle } from "./tokens";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): курсы и главы — в две колонки на широком экране
 import { refShareItem } from "../lib/share-items";   // v97 (Доп. 410): глава — в чат команды
 import { CHAT_SHARE_IC } from "./share-chat";
+import { cachedShared } from "../lib/deck-extras";   // v120 (Доп. 433): винная карта заведения
+import { wineRecords } from "../lib/wine";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -70,7 +72,7 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode }) {
+function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode, onWines, restaurant }) {
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
@@ -80,6 +82,13 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
   const cards = [
     { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} с фото`, icon: Ico.serving, on: true },
     { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
+    // v120 (Доп. 433): своя винная карта — после курса «Вина»; у команды — когда в ней есть вина, у руководителя — всегда
+    ...(() => {
+      if (!onWines) return [];
+      const ws = wineRecords(cachedShared(restaurant)).filter((w) => !w.archived), g = ws.filter((w) => w.byGlass).length;
+      const n = ws.length, word = n % 10 === 1 && n % 100 !== 11 ? "вино" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "вина" : "вин";
+      return n || isLeader ? [{ id: "winelist", t: "Наша винная карта", s: n ? `${n} ${word}` + (g ? ` · бокалом ${g}` : "") : "Пока пусто: добавь вина", icon: Ico.wine, on: true, go: onWines }] : [];
+    })(),
     { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} со схемами`, icon: Ico.coffee, on: true },
       // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
     { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} ${((n) => n % 10 === 1 && n % 100 !== 11 ? "коктейль" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "коктейля" : "коктейлей")(COCKTAILS.length)}: состав, метод и история`, icon: Ico.cocktail, on: true, deck: true },
@@ -107,10 +116,10 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     </div>
     <div className="sa-g2" style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
-        <div key={c.id} onClick={c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
-          {["serving","wine","coffee","cocktails"].includes(c.id)
+        <div key={c.id} onClick={c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} data-lens-card="" data-ref-card={c.id} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
+          {["serving","wine","coffee","cocktails","winelist"].includes(c.id)
             ? <RefArt kind={c.id} light={!!a11y} size={56} /> /* Доп. 147: витражи для курсов */
-            : <div style={T.modIcon}>{c.icon(gold, 24)}</div>}
+            : <div data-lens="disc" style={T.modIcon}>{c.icon(gold, 24)}</div>}
           <div style={{ flex: 1 }}>
             {/* v78 (Доп. 391): метки «Курс» и «Колода» над названием убраны — и так понятно; «Скоро» — у закрытого */}
             {c.tag || !c.on ? <div style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>{c.tag || "Скоро"}</div> : null}
@@ -218,7 +227,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null }) {
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null, onWines = null }) {
   // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
   const gold = accent || (a11y ? "#7A5D2A" : GOLD);
   const [rHint, rHintDone] = useHintOnce("reference");
@@ -269,7 +278,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
         step={rStep + 1} total={rSteps.length}
         onNext={rStep >= rSteps.length - 1 ? null : () => setRStep(v => v + 1)}
         onClose={rHintDone} />
-    ) : null} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onSearch={() => setView("search")} onExit={onExit} />;
+    ) : null} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onWines={onWines} restaurant={(profile && profile.restaurant) || ""} onSearch={() => setView("search")} onExit={onExit} />;
   if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

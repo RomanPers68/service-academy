@@ -137,9 +137,9 @@ describe("v119: разметка", () => {
 });
 
 describe("v119: тексты", () => {
-  it("без тире-ритма и эмодзи в правилах; метка — v119", () => {
+  it("без тире-ритма и эмодзи в правилах; метка — v119 и позже", () => {
     expect(code(LOOK)).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     expect(dashes(LOOK)).toBe(0);
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v119</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(119|1[2-9]\d|[2-9]\d\d)<\/span>/);
   });
 });
